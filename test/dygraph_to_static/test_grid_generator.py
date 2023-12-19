@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -134,20 +135,19 @@ class TestGridGenerator(Dy2StTestBase):
         self.x = paddle.uniform(shape=[1, 20, 2], dtype='float32')
 
     def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-
-        net = paddle.jit.to_static(
-            GridGenerator(40, 20),
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 3, 32, 100], dtype='float32'
-                ),
-            ],
-        )
-        ret = net(self.x, [32, 100])
+        with enable_to_static_guard(to_static):
+            net = paddle.jit.to_static(
+                GridGenerator(40, 20),
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[None, 3, 32, 100], dtype='float32'
+                    ),
+                ],
+            )
+            ret = net(self.x, [32, 100])
         return ret.numpy()
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         st_out = self._run(to_static=True)
         dy_out = self._run(to_static=False)

@@ -123,6 +123,7 @@ class API_TestTensorEye(unittest.TestCase):
         paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
 

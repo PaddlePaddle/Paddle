@@ -56,6 +56,7 @@ message ShardingConfig {
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
   optional int32 stage = 14 [ default = 1 ];
   optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
+  optional bool use_calc_stream = 16 [default = false];
 }
 
 // for dygraph
@@ -171,6 +172,8 @@ message BuildStrategy {
   optional string debug_graphviz_path = 17;
   optional bool fused_attention = 18 [ default = false];
   optional bool fused_feedforward = 19 [ default = false];
+  optional bool fuse_dot_product_attention = 20 [ default = false ];
+  optional bool fuse_resunit = 21 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -295,7 +298,7 @@ message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
 }
 
 message
-    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule|SparseAdaGradV2SGDRule
   optional double learning_rate = 1 [ default = 0.05 ];
   optional double initial_g2sum = 2 [ default = 3.0 ];
   optional double initial_range = 3 [ default = 0.0001 ];
@@ -334,7 +337,9 @@ message CtrAccessorParameter {
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
   optional bool show_scale = 10 [ default = true ];
-  repeated float load_filter_slots = 11;
+  optional bool zero_init = 11 [ default = true ];
+  repeated float load_filter_slots = 12;
+  repeated float save_filter_slots = 13;
 }
 
 message TableAccessorSaveParameter {

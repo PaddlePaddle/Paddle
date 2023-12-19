@@ -38,9 +38,9 @@ namespace auto_schedule {
 TEST(FeatureExtractor, SimpleAssign) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   ir::Expr M(32);
   ir::Expr N(32);
@@ -93,9 +93,9 @@ TEST(FeatureExtractor, SimpleAssign) {
 TEST(FeatureExtractor, MatrixMultiply) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(2);

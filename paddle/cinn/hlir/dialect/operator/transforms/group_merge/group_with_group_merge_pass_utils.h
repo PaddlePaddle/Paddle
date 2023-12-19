@@ -47,7 +47,7 @@ static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
   auto size_0 = src_master_node.outputs()[0].shape();
   auto size_1 = dst_master_node.outputs()[0].shape();
 
-  return phi::product(size_0) == phi::product(size_1);
+  return ::common::product(size_0) == ::common::product(size_1);
 }
 
 static std::unordered_set<cinn::dialect::ir::OpNode> GetInputOps(
@@ -139,7 +139,8 @@ static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
     for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
       lane = inshape[idx];
     }
-    // int max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+    // int max_num_threads =
+    // cinn::common::DefaultNVGPUTarget().max_num_threads();
     int max_num_threads = 1000;
     if (lane > max_num_threads / 2) {
       return 0;

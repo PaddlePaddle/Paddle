@@ -18,6 +18,8 @@
 #include <mutex>
 
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/init_phi.h"
+REGISTER_FILE_SYMBOLS(best_fit_allocator);
 
 namespace paddle {
 namespace memory {

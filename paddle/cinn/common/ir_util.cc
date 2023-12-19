@@ -69,8 +69,8 @@ Expr RampRelatedAdd(ir::Ramp *ramp, ir::Ramp *other) {
   CHECK(ramp);
   CHECK(other);
   if (ramp->lanes == other->lanes) {
-    Expr base_add = common::AutoSimplify(ramp->base + other->base);
-    Expr stride_add = common::AutoSimplify(ramp->stride + other->stride);
+    Expr base_add = cinn::common::AutoSimplify(ramp->base + other->base);
+    Expr stride_add = cinn::common::AutoSimplify(ramp->stride + other->stride);
     VLOG(2) << base_add;
     VLOG(2) << stride_add;
     return ir::Ramp::Make(base_add, stride_add, ramp->lanes);
@@ -156,7 +156,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
       res = indice_prod;
     }
   }
-  return common::AutoSimplify(res);
+  return cinn::common::AutoSimplify(res);
 }
 
 Expr IndiceToAbsOffset(const std::vector<int> &shape,

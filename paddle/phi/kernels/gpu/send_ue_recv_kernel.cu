@@ -24,6 +24,7 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
@@ -44,13 +45,13 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   const int& index_size = src_index.dims()[0];
   auto out_dims = out->dims();
   int64_t memset_size = 1;
-  std::vector<int64_t> dims_ = phi::vectorize(out_dims);
+  std::vector<int64_t> dims_ = common::vectorize(out_dims);
   if (out_size <= 0) {
     dims_[0] = x.dims()[0];
   } else {
     dims_[0] = out_size;
   }
-  out->Resize(phi::make_ddim(dims_));
+  out->Resize(common::make_ddim(dims_));
   for (size_t i = 0; i < dims_.size(); i++) {
     memset_size *= dims_[i];
   }
@@ -58,25 +59,14 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
+  funcs::SetConstant<Context, T> constant_functor;
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
-#ifdef PADDLE_WITH_HIP
-    hipMemset(out_data, 0, memset_bytes);
-#else
-    cudaMemset(out_data, 0, memset_bytes);
-#endif
+    constant_functor(ctx, out, static_cast<T>(0));
   } else if (reduce_op == "MAX") {
-    thrust::device_ptr<T> out_data_ptr(out_data);
-    thrust::fill(thrust::device,
-                 out_data_ptr,
-                 out_data_ptr + memset_size,
-                 std::numeric_limits<T>::lowest());
+    constant_functor(ctx, out, std::numeric_limits<T>::lowest());
 
   } else if (reduce_op == "MIN") {
-    thrust::device_ptr<T> out_data_ptr(out_data);
-    thrust::fill(thrust::device,
-                 out_data_ptr,
-                 out_data_ptr + memset_size,
-                 std::numeric_limits<T>::max());
+    constant_functor(ctx, out, std::numeric_limits<T>::max());
   }
 
   if (index_size == 0) return;
@@ -155,7 +145,8 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
       hipMemset(dst_count_data, 0, input_size * sizeof(int));
 #else
-      cudaMemset(dst_count_data, 0, input_size * sizeof(int));
+      cudaMemsetAsync(
+          dst_count_data, 0, input_size * sizeof(int), ctx.stream());
 #endif
       int64_t grid_count = (index_size + block_ - 1) / block_;
       ComputeCountCUDAKernel<T, IndexT>

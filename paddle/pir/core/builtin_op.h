@@ -34,7 +34,7 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
   static const char *attributes_name[attributes_num];
   void VerifySig() const;
   Program *program();
-  Block *block();
+  Block &block();
 
   //
   // As the top operation, ModuleOp only support create&destroye through
@@ -58,6 +58,7 @@ class IR_API ParameterOp : public pir::Op<ParameterOp> {
                     const std::string &name,
                     Type type);
   void VerifySig() const;
+  std::string param_name() const;
 
  private:
   static void PassStopGradients(OperationArgument &argument);  // NOLINT

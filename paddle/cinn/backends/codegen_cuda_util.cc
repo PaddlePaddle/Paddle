@@ -108,6 +108,26 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   buckets_.emplace_back(ir::IfThenElse::Make(predicate, call_extern_api));
 }
 
+void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(
+    ir::Expr func) {
+  std::vector<ir::Argument> args = func.as_lowered_func_ref()->args;
+  for (int i = 0; i < args.size(); ++i) {
+    if (args[i].is_var()) {
+      ir::Expr call_get_value_in_kernel_args =
+          ir::Call::Make(Int(32),
+                         runtime::intrinsic::get_value_in_cuda_kernel_args,
+                         {kernel_args_, ir::Expr(i)},
+                         {},
+                         ir::CallType::Extern,
+                         ir::FunctionRef(),
+                         0);
+      ir::Expr stmt = ir::Let::Make(ir::Expr(args[i].var_arg()),
+                                    call_get_value_in_kernel_args);
+      arg_defs_.push_back(stmt);
+    }
+  }
+}
+
 Expr detail::CollectBucketStrategyHostFunctionVisitor::CreateDeviceFunction(
     ir::Expr expr, ir::Expr predicate) {
   auto copied = ir::ir_utils::IRCopy(expr);

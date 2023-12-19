@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -21,7 +22,6 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -178,6 +178,7 @@ bool OpSupportPrecision(const std::string& op_type,
 // ref to python/paddle/base/contrib/mixed_precision/fp16_lists.py
 void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
   black_list_.insert({
+      "cast",
       // numerically-dangerous
       "exp",
       "square",

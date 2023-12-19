@@ -141,6 +141,8 @@ if '${WITH_MKLDNN}' == 'ON':
 
 if '${CINN_ONLY}' == 'OFF':
     cinnlibs.append('${PHI_LIB}')
+    cinnlibs.append('${IR_LIB}')
+    cinnlibs.append('${COMMON_LIB}')
 
 if '${WITH_GPU}' == 'ON':
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')

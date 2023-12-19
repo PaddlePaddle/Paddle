@@ -37,6 +37,9 @@ class EnvironmentVariable(Generic[T]):
     def delete(self) -> None:
         del os.environ[self.name]
 
+    def __repr__(self) -> str:
+        return f"Env({self.name}={self.get()!r})"
+
 
 class StringEnvironmentVariable(EnvironmentVariable[str]):
     def __init__(self, name: str, default: str):

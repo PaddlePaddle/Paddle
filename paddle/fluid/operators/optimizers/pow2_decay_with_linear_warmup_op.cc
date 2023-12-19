@@ -24,7 +24,7 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    auto dim = phi::make_ddim({1});
+    auto dim = common::make_ddim({1});
     ctx->SetOutputDim("LearningRateOut", dim);
     ctx->SetOutputDim("StepOut", dim);
   }

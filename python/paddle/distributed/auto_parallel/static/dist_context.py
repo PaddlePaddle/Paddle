@@ -135,6 +135,9 @@ class DistributedContext:
 
         self._json_config = json_config
 
+        # record vpp chunk size
+        self._num_model_chunks = 0
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -893,7 +896,7 @@ class DistributedContext:
         # NOTE(zhaoyingli):
         # The order of process_meshes is execution order of the ops,
         # which will help pipeline strategy to get pp_rank info.
-        self.process_meshes = process_meshes
+        self.process_meshes = copy.deepcopy(process_meshes)
         # TODO: the completion algorithm will skipped orphan tensors,
         # here we just set there process_mesh to the first one.
         for orphan_node in self._serial_orphan_tensor_nodes:
@@ -1199,9 +1202,7 @@ class BlockState:
         self.backward_to_forward_index_map = {}
 
     def parse_forward_blocks(self, program):
-        while program.current_block_idx != 0:
-            program._rollback()
-
+        program._roll_to_global_block()
         assert program.current_block_idx == 0
 
         for idx, block in enumerate(program.blocks):

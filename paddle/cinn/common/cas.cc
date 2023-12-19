@@ -2309,14 +2309,14 @@ Expr SolveInequality(Expr inequality, Var val) {
 #undef __
   Expr all = AutoSimplify(a - b);
 
-  // if (common::IsPureMath(a) && common::IsPureMath(b)) {
+  // if (cinn::common::IsPureMath(a) && cinn::common::IsPureMath(b)) {
   if (true) {
-    auto _res_positive_ = common::Solve(a, b, val);  // NOLINT
+    auto _res_positive_ = cinn::common::Solve(a, b, val);  // NOLINT
     auto& res = std::get<0>(_res_positive_);
     auto& positive = std::get<1>(_res_positive_);
     // Simplify it with CAS to avoid random result from GiNac.
     res = AutoSimplify(res);
-    res = common::cast(res, val->type());
+    res = cinn::common::cast(res, val->type());
 
     if (le_n) {
       if (positive) return ir::LE::Make(val, res);

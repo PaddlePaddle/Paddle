@@ -399,7 +399,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     3,
                 ],
             )
-            self.assertTrue(y.item() == y)
+            self.assertTrue(y.item().is_same(y))
             with self.assertRaises(TypeError):
                 x.item()
 
@@ -411,6 +411,29 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 x.place()
                 self.assertTrue(len(w) == 1)
                 self.assertTrue("place" in str(w[-1].message))
+
+    def test_cpu(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            x.cpu()
+
+    def test_cuda(self):
+        if base.is_compiled_with_cuda():
+            paddle.device.set_device("gpu")
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                with paddle.pir_utils.IrGuard():
+                    x = paddle.static.data(name='x', shape=[3, 2, 1])
+                    x.cpu()
+                    x.cuda(1, False)
+                    self.assertTrue(len(w) == 2)
+                    self.assertTrue(
+                        "device_id is not supported" in str(w[-2].message)
+                    )
+                    self.assertTrue(
+                        "blocking is not supported" in str(w[-1].message)
+                    )
+            paddle.device.set_device("cpu")
 
     def test_some_dim(self):
         with paddle.pir_utils.IrGuard():
@@ -426,6 +449,13 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
                 (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 self.assertEqual(output_x, 24)
+
+    def test_hash_error(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data('x', [2, 3])
+                self.assertRaises(NotImplementedError, hash, x)
 
     def test_clone(self):
         x_np = np.random.random(size=[100, 10]).astype('float64')

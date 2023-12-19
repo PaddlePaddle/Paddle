@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import distutils.util
 import os
 
 import numpy as np
@@ -476,6 +477,11 @@ def _p2p_helper(
 
     if len(ops) > 0:
         batch_send_recv_on_calc_stream(ops)
+
+        if distutils.util.strtobool(
+            os.getenv('FLAGS_p2p_device_synchronize', '0')
+        ):
+            paddle.device.cuda.synchronize()
 
     tensors_for_all_gather = []
     if tensor_recv_prev is not None:
