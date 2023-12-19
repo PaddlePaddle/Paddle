@@ -63,12 +63,13 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
         main_program = self.construct_program_with_while()
         while_op = main_program.global_block().ops[-1]
         self.assertEqual(while_op.name(), "pd_op.while")
-        build_pipe_for_block(while_op.as_while_op().body())
+        body_block = while_op.as_while_op().body()
+        build_pipe_for_block(body_block)
         with paddle.pir.core.program_guard(main_program):
             out_grad = paddle.full(shape=[6, 1], dtype='float32', fill_value=3)
             # check vjp interface for while_op
-            while_input = [
-                [input] for input in get_used_external_value(while_op)
+            while_input = [[input] for input in while_op.operands_source()] + [
+                [input] for input in get_used_external_value(body_block)
             ]
             self.assertEqual(len(while_input), 4)
             while_input_stop_graditents = [[True], [False], [True], [True]]
