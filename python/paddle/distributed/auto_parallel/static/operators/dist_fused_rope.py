@@ -107,11 +107,19 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
             else DistTensorSpec()
         )
 
+        use_neox_rotary_style = op_desc.attr("use_neox_rotary_style")
+
         # step2: infer spmd
         rule = get_phi_spmd_rule("fused_rotary_position_embedding")
         # tensor order following order in PHI defition
         fw_results = rule.infer_forward(
-            q_spec, k_spec, v_spec, sin_spec, cos_spec, position_ids_spec
+            q_spec,
+            k_spec,
+            v_spec,
+            sin_spec,
+            cos_spec,
+            position_ids_spec,
+            use_neox_rotary_style,
         )
         bw_results = rule.infer_backward(
             q_spec,
@@ -123,6 +131,7 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
             out_q_spec,
             out_k_spec,
             out_v_spec,
+            use_neox_rotary_style,
         )
 
         # remove optional args in spmd results
