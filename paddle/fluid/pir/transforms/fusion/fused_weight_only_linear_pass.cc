@@ -71,9 +71,8 @@ class FusedWeightOnlyLinearPattern
       auto w_dims = match_ctx.Tensor("w").Shape();
       if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
 
-      auto w_dtype = match_ctx.Tensor("w").Dtype();
-      if (!w_dtype.dtype().isa<pir::Float16Type>() &&
-          !w_dtype.dtype().isa<pir::BFloat16Type>())
+      auto w_dtype = match_ctx.Tensor("w").Dtype().get();
+      if (!w_dtype.isa<pir::Float16Type>() && !w_dtype.isa<pir::BFloat16Type>())
         return false;
 
       auto x_dims = match_ctx.Tensor("x").Shape();

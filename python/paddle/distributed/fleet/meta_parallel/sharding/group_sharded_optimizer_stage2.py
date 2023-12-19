@@ -194,13 +194,26 @@ class GroupShardedOptimizerStage2(Optimizer):
                 and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
                 and not offload
             ):
-                self._optim._grad_clip = HybridParallelClipGrad(
-                    self._optim._grad_clip, hcg
-                )
+                if self.use_main_grad:
+                    self._optim._inner_opt._grad_clip = HybridParallelClipGrad(
+                        self._optim._inner_opt._grad_clip, hcg
+                    )
+                else:
+                    self._optim._grad_clip = HybridParallelClipGrad(
+                        self._optim._grad_clip, hcg
+                    )
             else:
-                self._optim._grad_clip = GroupShardedClipGrad(
-                    self._optim._grad_clip, paddle.get_device(), self._group
-                )
+                if self.use_main_grad:
+                    self._optim._inner_opt._grad_clip = GroupShardedClipGrad(
+                        self._optim._inner_opt._grad_clip,
+                        paddle.get_device(),
+                        self._group,
+                    )
+                else:
+                    self._optim._grad_clip = GroupShardedClipGrad(
+                        self._optim._grad_clip, paddle.get_device(), self._group
+                    )
+
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):

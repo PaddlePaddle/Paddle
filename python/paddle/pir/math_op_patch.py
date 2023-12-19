@@ -493,6 +493,9 @@ def monkey_patch_value():
                 "Currently, we can only set shape for dense and selected_row tensor"
             )
 
+    def value_hash(self):
+        raise NotImplementedError('In python Value can not hash!')
+
     import paddle
 
     value_methods = [
@@ -509,6 +512,7 @@ def monkey_patch_value():
         ('clear_gradient', clear_gradient),
         ('append', append),
         ('set_shape', set_shape),
+        ('__hash__', value_hash),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
@@ -587,12 +591,11 @@ def monkey_patch_value():
             '__matmul__',
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
-        #  for logical compare
-        # TODO(gouzil): Open after deleting c++ logic
-        # (
-        #     '__eq__',
-        #     _binary_creator_('__eq__', paddle.tensor.equal, False, None),
-        # ),
+        # for logical compare
+        (
+            '__eq__',
+            _binary_creator_('__eq__', paddle.tensor.equal, False, None),
+        ),
         (
             '__ne__',
             _binary_creator_('__ne__', paddle.tensor.not_equal, False, None),

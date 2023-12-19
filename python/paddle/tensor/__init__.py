@@ -60,7 +60,6 @@ from .creation import (  # noqa: F401
     zeros,
     zeros_like,
 )
-
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
     bincount,
@@ -381,6 +380,7 @@ from .math import (  # noqa: F401
     vander,
 )
 from .random import (  # noqa: F401
+    binomial,
     exponential_,
     multinomial,
     normal,
@@ -783,6 +783,7 @@ tensor_method_func = [
     'masked_scatter',
     'masked_scatter_',
     "combinations",
+    'signbit',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
