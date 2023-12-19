@@ -79,6 +79,7 @@ using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::IfOp;
 using paddle::dialect::SelectedRowsType;
+using paddle::dialect::WhileOp;
 
 using pir::Attribute;
 using pir::Block;
@@ -307,6 +308,10 @@ void BindBlock(py::module *m) {
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
+      .def_property_readonly(
+          "get_parent",
+          [](Block &self) { return self.GetParentOp()->GetParent(); },
+          return_value_policy::reference)
       .def_property_readonly("ops",
                              [](Block &self) -> py::list {
                                py::list op_list;
@@ -499,7 +504,15 @@ void BindOperation(py::module *m) {
              self.ReplaceAllUsesWith(op_results);
            })
       .def("as_if_op",
-           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); });
+           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
+      .def("as_while_op", [](Operation &self) -> WhileOp {
+        auto while_op = self.dyn_cast<WhileOp>();
+        if (!while_op) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Can't cast non-while type Operation to WhileOp."));
+        }
+        return while_op;
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -748,8 +761,8 @@ void BindValue(py::module *m) {
            [](Value self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
-      .def("__eq__", &Value::operator==)
-      .def("__hash__", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("is_same", &Value::operator==)
+      .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
   // For basaic operators
   OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
@@ -1016,7 +1029,8 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
                                    no_need_buffer_values.end());
 }
 
-using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
+using OpResultMap =
+    std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
     const Program &program) {
   // Limitation of this function:
@@ -1029,12 +1043,14 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
     auto *cloned_op = BuildOpFrom(&op, value_map);
     cloned_program->block()->push_back(cloned_op);
   }
-  std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
+  std::vector<pir::OpResult> associated_array_key, associated_array_value;
   for (auto &pair : value_map) {
-    op_result_map[pair.first.dyn_cast<pir::OpResult>()] =
-        pair.second.dyn_cast<pir::OpResult>();
+    associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
+    associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
-  return std::make_pair(cloned_program, op_result_map);
+  return std::make_pair(
+      cloned_program,
+      std::make_pair(associated_array_key, associated_array_value));
 }
 
 void AppendSetParameter(Program *forward_program,
@@ -1172,7 +1188,9 @@ SplitedResult SplitForwardBackward(
             dtype,
             place);
     counter += 1;
-    backward_value_map[v] = op->results()[0].Value::impl();
+    pir::Value target = op->results()[0].Value::impl();
+    target.set_type(v.type());
+    backward_value_map[v] = target;
   };
 
   auto create_output_fn_forward = [&ctx,

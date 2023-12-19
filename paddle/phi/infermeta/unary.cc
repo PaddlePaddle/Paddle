@@ -590,21 +590,6 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "dtype of indices must be DataType::INT32 or DataType::INT64"));
 
-  if (dtype == DataType::INT32) {
-    int _axis = 0;
-    if (axis < 0) {
-      _axis = axis + x_dims.size();
-    } else {
-      _axis = axis;
-    }
-    PADDLE_ENFORCE_LT(
-        common::vectorize(x_dims)[_axis],
-        INT32_MAX,
-        phi::errors::OutOfRange(
-            "cummax with axis %ld may be overflow, set dtype int64 to continue",
-            axis));
-  }
-
   if (x_dims.size() > 0) {
     PADDLE_ENFORCE_GE(
         axis,
@@ -631,6 +616,21 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
         errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
                                 "but the value given is %d.",
                                 axis));
+  }
+
+  if (dtype == DataType::INT32) {
+    int _axis = 0;
+    if (axis < 0) {
+      _axis = axis + x_dims.size();
+    } else {
+      _axis = axis;
+    }
+    PADDLE_ENFORCE_LT(
+        common::vectorize(x_dims)[_axis],
+        INT32_MAX,
+        phi::errors::OutOfRange(
+            "cummax with axis %ld may be overflow, set dtype int64 to continue",
+            axis));
   }
 
   out->set_dims(x_dims);
@@ -5311,6 +5311,12 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
   out->set_strides(x.strides());
+}
+
+void NumberCountInferMeta(const MetaTensor& x,
+                          int upper_range,
+                          MetaTensor* out) {
+  out->share_meta(x);
 }
 
 }  // namespace phi

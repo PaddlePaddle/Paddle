@@ -135,7 +135,7 @@ def _format_item(np_var, max_width=0, signed=False):
         item_str = f'{np_var}'
 
     if max_width > len(item_str):
-        if signed:  # handle sign character for tenosr with negative item
+        if signed:  # handle sign character for tensor with negative item
             if np_var < 0:
                 return item_str.ljust(max_width)
             else:
