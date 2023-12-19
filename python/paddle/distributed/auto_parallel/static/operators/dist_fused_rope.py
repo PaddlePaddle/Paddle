@@ -40,22 +40,33 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
         # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args), build fake spec for optional args
 
         op_desc = dist_op.serial_op.desc
+        input_parameters = op_desc.input_names()
+        output_parameters = op_desc.output_names()
+        is_input_arg_exist = (
+            lambda parameter: parameter in input_parameters
+            and op_desc.input(parameter)
+        )
+        is_output_arg_exist = (
+            lambda parameter: parameter in output_parameters
+            and op_desc.output(parameter)
+        )
+
         q = op_desc.input('q')[0]
-        k = op_desc.input('k')[0] if op_desc.HasInput('k') else None
-        v = op_desc.input('v')[0] if op_desc.HasInput('v') else None
-        sin = op_desc.input('sin')[0] if op_desc.HasInput('sin') else None
-        cos = op_desc.input('cos')[0] if op_desc.HasInput('cos') else None
+        k = op_desc.input('k')[0] if is_input_arg_exist('k') else None
+        v = op_desc.input('v')[0] if is_input_arg_exist('v') else None
+        sin = op_desc.input('sin')[0] if is_input_arg_exist('sin') else None
+        cos = op_desc.input('cos')[0] if is_input_arg_exist('cos') else None
         position_ids = (
             op_desc.input('position_ids')[0]
-            if op_desc.HasInput('position_ids')
+            if is_input_arg_exist('position_ids')
             else None
         )
         out_q = op_desc.output('out_q')[0]
         out_k = (
-            op_desc.output('out_k')[0] if op_desc.HasOutput('out_k') else None
+            op_desc.output('out_k')[0] if is_output_arg_exist('out_k') else None
         )
         out_v = (
-            op_desc.output('out_v')[0] if op_desc.HasOutput('out_v') else None
+            op_desc.output('out_v')[0] if is_output_arg_exist('out_v') else None
         )
 
         q_spec = get_dist_tensor_spec(dist_op, q)
@@ -133,7 +144,6 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
                     output_results_without_optional_arg.append(
                         output_results[idx]
                     )
-
             fw_and_bw_results_without_optional_arg.append(
                 [
                     input_results_without_optional_arg,
@@ -145,14 +155,12 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
         # tensor order following order in PHI defition
         changed = update_op_dims_mapping(
             dist_op,
-            [
-                input_arg
-                for input_arg in [q, k, v, sin, cos, position_ids]
-                if input_arg is not None
+            input_arg_names=[
+                input_arg for input_arg in input_args if input_arg is not None
             ],
-            [
+            output_arg_names=[
                 output_arg
-                for output_arg in [out_q, out_k, out_v]
+                for output_arg in output_args
                 if output_arg is not None
             ],
             fw_results=fw_and_bw_results_without_optional_arg[0],
