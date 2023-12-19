@@ -4,7 +4,6 @@ if(WITH_TESTING AND WITH_CINN)
     SRCS
     map_expr_test.cc
     DEPS
-    op_with_group_merge_pass
     op_dialect_vjp
     cinn_op_dialect
     pir)
