@@ -492,8 +492,6 @@ if(WITH_PYTHON)
                       DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
-
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_functions.cc ${PYBIND_SRCS})
