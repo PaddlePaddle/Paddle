@@ -594,7 +594,7 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
     InstructionSchedulingPriorityLess compare) {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
-  VLOG(4) << "1";
+
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
             << ", remain deps: " << deps_[next_id]->DynamicDep();
@@ -604,9 +604,17 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
   std::vector<size_t> trace_order;
   SchedulingQueue ready_ops(compare);
 
+  std::stringstream ss;
+  if (VLOG_IS_ON(6)) {
+    ss << "\nLeaf nodes: ";
+  }
   for (size_t instr_id = 0; instr_id < dependecy_count_->size(); ++instr_id) {
     if ((*dependecy_count_)[instr_id] == 0) {
       ready_ops.push(instr_id);
+      if (VLOG_IS_ON(6)) {
+        ss << instr_id << "[" << vec_instruction_base_[instr_id]->Name()
+           << "]->";
+      }
     }
   }
 
@@ -615,11 +623,19 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
     ready_ops.pop();
     trace_order.push_back(now_id);
 
+    if (VLOG_IS_ON(6)) {
+      ss << "\n" << now_id << " downstreams: ";
+    }
+
     auto next_op_set = op_downstream_map[now_id];
 
     for (size_t next_op_id : next_op_set) {
       if (IsReady(next_op_id)) {
         ready_ops.push(next_op_id);
+        if (VLOG_IS_ON(6)) {
+          ss << next_op_id << "[" << vec_instruction_base_[next_op_id]->Name()
+             << "]->";
+        }
       }
     }
   }
@@ -633,15 +649,10 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
   trace_execute_order_ = trace_order;
 
   if (VLOG_IS_ON(6)) {
-    std::stringstream ss;
-    ss << "trace order: ";
-    for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-      ss << vec_instruction_base_[trace_execute_order_[idx]]->Name() << "["
-         << trace_execute_order_[idx] << "]"
-         << " -> ";
-    }
-    ss << "end\n";
-    VLOG(6) << ss.str();
+    std::cout << "======================== pir interpreter trace order "
+                 "========================"
+              << std::endl;
+    std::cout << ss.str() << std::endl;
   }
 }
 
@@ -779,7 +790,7 @@ std::string PirInterpreter::DebugDependency() {
       ir_dependency_builder_.OpDownstreamMap();
   std::stringstream ss;
   ss << std::setw(7) << "id -> down_stream_id\n";
-  for (auto const& pair : downstream_map) {
+  for (auto const& pair : op_downstream_map) {
     ss << std::setw(7) << pair.first << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
@@ -1361,6 +1372,13 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
 
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
+
+    if (VLOG_IS_ON(1)) {
+      std::vector<std::string> instr_debug_info = DebugInfo();
+      for (auto& item : instr_debug_info) {
+        std::cout << item << std::endl;
+      }
+    }
 
     // Run
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
