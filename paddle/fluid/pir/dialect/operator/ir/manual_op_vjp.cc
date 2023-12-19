@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
@@ -124,6 +125,70 @@ std::vector<std::vector<pir::OpResult>> ExpandOp::Vjp(
       }
     }
   }
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> IncrementOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "Increment op's inputs size should be 2, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "Increment op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of increment_grad";
+
+  float value = op->attribute("value").dyn_cast<pir::FloatAttribute>().data();
+
+  VLOG(6) << "Vjp prepare call increment's vjp inteface";
+
+  pir::OpResult tensor_res = paddle::dialect::increment(inputs_[0][0], -value);
+
+  std::vector<std::vector<pir::OpResult>> res{{tensor_res}};
+
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> Increment_Op::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "Increment_ op's inputs size should be 2, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "Increment_ op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of increment__grad";
+
+  float value = op->attribute("value").dyn_cast<pir::FloatAttribute>().data();
+
+  VLOG(6) << "Vjp prepare call increment_'s vjp inteface";
+
+  pir::OpResult tensor_res = paddle::dialect::increment_(inputs_[0][0], -value);
+
+  std::vector<std::vector<pir::OpResult>> res{{tensor_res}};
+
   return res;
 }
 

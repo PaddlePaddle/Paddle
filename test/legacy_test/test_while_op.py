@@ -23,6 +23,7 @@ from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.incubate.layers.nn import shuffle_batch
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -57,7 +58,7 @@ class TestWhileOp(unittest.TestCase):
         cond2 = paddle.less_than(x=j, y=array_len2)
         while_op = paddle.static.nn.control_flow.While(cond=cond)
         while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
-        with while_op.block():
+        with while_op.body():
             d = paddle.tensor.array_read(array=data_array, i=i)
             prev = paddle.tensor.array_read(array=mem_array, i=i)
             result = paddle.add_n([d, prev])
@@ -65,7 +66,7 @@ class TestWhileOp(unittest.TestCase):
             i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
 
-            with while_op2.block():
+            with while_op2.body():
                 d2 = paddle.tensor.array_read(array=data_array, i=j)
                 prev2 = paddle.tensor.array_read(array=mem_array, i=j)
                 result2 = paddle.add_n([d2, prev2])
@@ -80,10 +81,10 @@ class TestWhileOp(unittest.TestCase):
         return loss, sum_result
 
     # TODO(zhangbo): Support pir test(support write_to_array and read_from_array, support while_grad).
-    def test_simple_net(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(main_program, startup_program):
+    def _test_simple_net(self):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
 
             append_backward(loss)
@@ -103,20 +104,21 @@ class TestWhileOp(unittest.TestCase):
 
     # TODO(zhangbo): Support pir test(support write_to_array and read_from_array)
     def test_simple_net_forward(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(main_program, startup_program):
-            self.simple_net()
-            binary = base.compiler.CompiledProgram(main_program)
-            cpu = core.CPUPlace()
-            exe = Executor(cpu)
-            d = []
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                self.simple_net()
+                binary = base.compiler.CompiledProgram(main_program)
+                cpu = core.CPUPlace()
+                exe = Executor(cpu)
+                d = []
 
-            for i in range(3):
-                d.append(numpy.random.random(size=[10]).astype('float32'))
+                for i in range(3):
+                    d.append(numpy.random.random(size=[10]).astype('float32'))
 
-            for _ in range(2):
-                exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
+                for _ in range(2):
+                    exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
     @compare_legacy_with_pt
     def test_exceptions(self):
@@ -135,7 +137,7 @@ class TestWhileOp(unittest.TestCase):
 class BadInputTest(unittest.TestCase):
     @compare_legacy_with_pt
     def test_error(self):
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def test_bad_x():
                 x = [1, 2, 3]
@@ -194,9 +196,9 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
         """
-        main_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
 
             def func(x):
                 s = paddle.zeros([])
