@@ -267,6 +267,13 @@ set(op_dialect_vjp_srcs
     ${op_decomp_source_file}
     ${op_vjp_source_file}
     ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/base/decomp_trans.cc)
+
+if(WITH_MKLDNN)
+  set(op_dialect_vjp_srcs
+      ${op_dialect_vjp_srcs}
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_onednn_dialect.cc)
+endif()
+
 set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
 
 cc_library(
