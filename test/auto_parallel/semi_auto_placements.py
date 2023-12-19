@@ -20,6 +20,9 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.base import core
+from paddle.distributed.auto_parallel.placement_type import (
+    check_placements_equal,
+)
 
 
 class TestDistTensorSRP(unittest.TestCase):
@@ -66,6 +69,28 @@ class TestDistTensorSRP(unittest.TestCase):
         self.assertEqual(hash(replicate_1), hash(replicate))
         self.assertEqual(hash(partial_1), hash(partial))
 
+    def run_test_check_placements_equal(self):
+        this_placements = [dist.Shard(1), dist.Replicate()]
+        that_placements = [dist.Shard(1)]
+        self.assertTrue(
+            check_placements_equal(this_placements, that_placements)
+        )
+        self.assertTrue(
+            check_placements_equal(that_placements, this_placements)
+        )
+        that_placements = [dist.Shard(1), dist.Replicate(), dist.Shard(0)]
+        self.assertFalse(
+            check_placements_equal(this_placements, that_placements)
+        )
+        that_placements = [dist.Shard(0), dist.Replicate()]
+        self.assertFalse(
+            check_placements_equal(this_placements, that_placements)
+        )
+        that_placements = [dist.Replicate(), dist.Shard(1)]
+        self.assertFalse(
+            check_placements_equal(this_placements, that_placements)
+        )
+
     def run_test_dist_tensor(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -104,6 +129,7 @@ class TestDistTensorSRP(unittest.TestCase):
 
     def test_case(self):
         self.run_test_placements()
+        self.run_test_check_placements_equal()
         self.run_test_dist_tensor()
 
 

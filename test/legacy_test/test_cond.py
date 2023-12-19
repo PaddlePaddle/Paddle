@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
+from simple_nets import (
+    batchnorm_fc_with_inputs,
+    simple_fc_net_with_inputs,
+)
 from utils import compare_legacy_with_pt
 
 import paddle
@@ -192,7 +195,7 @@ class TestCondInputOutput(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
             ret = exe.run(main_program, fetch_list=[out, da])
         else:
@@ -253,7 +256,9 @@ class TestCondInputOutput(unittest.TestCase):
         def false_func():
             return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='int32', value=3
-            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='bool', value=2)
+            ), paddle.tensor.fill_constant(
+                shape=[4, 5], dtype='bool', value=False
+            )
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -458,9 +463,9 @@ class TestCondInputOutput(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
-                if p == b:
+                if p.is_same(b):
                     db = g
             ret = exe.run(main_program, fetch_list=[out, b, da, db])
         else:
@@ -475,7 +480,7 @@ class TestCondInputOutput(unittest.TestCase):
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_inside_cond(self):
         """
         pseudocode:
@@ -539,11 +544,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 expected_a_grad = 2.0 * expected_a if feed_i < 8 else 0.0
             if paddle.framework.in_pir_mode():
                 for p, g in grad_list:
-                    if p == a:
+                    if p.is_same(a):
                         da = g
                 ret = exe.run(
                     main_program,
-                    feed={'i': np.full((1), feed_i)},
+                    feed={'i': np.full((1), feed_i, np.float32)},
                     fetch_list=[out, da],
                 )
             else:
@@ -555,7 +560,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_inside_cond_0d_tensor(self):
         """
         pseudocode:
@@ -613,7 +618,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == i:
+                if p.is_same(i):
                     di = g
             ret = exe.run(main_program, fetch_list=[out, di])
         else:
@@ -630,7 +635,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         )
         self.assertEqual(ret[1].shape, ())
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_op_in_condition(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -670,9 +675,9 @@ class TestCondNestedControlFlow(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
-                if p == b:
+                if p.is_same(b):
                     db = g
             ret = exe.run(main_program, fetch_list=[out, da, db])
         else:
@@ -691,6 +696,8 @@ class TestCondBackward(unittest.TestCase):
         Helper function that compares calculated backward value is close to dy/dx
         """
         paddle.enable_static()
+        if not paddle.framework.in_pir_mode():
+            pass
         main_program = paddle.static.Program()
         main_program.random_seed = 123
         startup_program = paddle.static.Program()
@@ -700,12 +707,13 @@ class TestCondBackward(unittest.TestCase):
                 name='image', shape=[-1, 9], dtype='float32'
             )
             img.stop_gradient = False
+            img.persistable = True
             label = paddle.static.data(
                 name='label', shape=[-1, 1], dtype='int64'
             )
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
-            append_backward(loss)
+            grad_list = append_backward(loss)
         place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup_program)
@@ -718,16 +726,29 @@ class TestCondBackward(unittest.TestCase):
             feed_label = np.random.randint(
                 low=0, high=10, size=[1, 1], dtype=np.int64
             )
-
-            img_grad, loss_value = exe.run(
-                main_program,
-                feed={
-                    'i': np.full((1), feed_i, np.int32),
-                    'image': feed_img,
-                    'label': feed_label,
-                },
-                fetch_list=[img.grad_name, loss.name],
-            )
+            if paddle.framework.in_pir_mode():
+                for p, g in grad_list:
+                    if p.is_same(img):
+                        dimg = g
+                img_grad, loss_value = exe.run(
+                    main_program,
+                    feed={
+                        'i': np.full((1), feed_i, np.int32),
+                        'image': feed_img,
+                        'label': feed_label,
+                    },
+                    fetch_list=[dimg, loss],
+                )
+            else:
+                img_grad, loss_value = exe.run(
+                    main_program,
+                    feed={
+                        'i': np.full((1), feed_i, np.int32),
+                        'image': feed_img,
+                        'label': feed_label,
+                    },
+                    fetch_list=[img.grad_name, loss.name],
+                )
 
             numerical_grad = np.zeros(shape=[num_devices, 9], dtype=np.float32)
             feed_img_delta = np.copy(feed_img)
@@ -740,7 +761,7 @@ class TestCondBackward(unittest.TestCase):
                         'image': feed_img_delta,
                         'label': feed_label,
                     },
-                    fetch_list=[loss.name],
+                    fetch_list=[loss],
                 )
                 numerical_grad[0][j] = (loss_delta - loss_value) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
@@ -785,11 +806,12 @@ class TestCondBackward(unittest.TestCase):
                 fetch_list=[loss],
             )
 
+    # @test_with_pir_api
     def test_cond_backward(self):
         paddle.enable_static()
 
         def cond_func(i, img, label):
-            predicate = (i % 2) == 0
+            predicate = paddle.equal((i % 2), 0)
             return paddle.static.nn.cond(
                 predicate,
                 lambda: simple_fc_net_with_inputs(img, label, class_num=10),
@@ -799,12 +821,13 @@ class TestCondBackward(unittest.TestCase):
         self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
         self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
 
+    # @test_with_pir_api
     def test_half_nested_cond_backward(self):
         paddle.enable_static()
 
         def branch(i, img, label):
             return paddle.static.nn.cond(
-                (i % 2) == 0,
+                paddle.equal((i % 2), 0),
                 lambda: simple_fc_net_with_inputs(img, label, class_num=10),
                 lambda: batchnorm_fc_with_inputs(img, label, class_num=10),
             )
@@ -836,12 +859,13 @@ class TestCondBackward(unittest.TestCase):
             core.is_compiled_with_cuda(),
         )
 
+    # @test_with_pir_api
     def test_nested_cond_backward(self):
         paddle.enable_static()
 
         def branch(i, img, label, mod_two):
             if mod_two:
-                predicate = (i % 2) == 0
+                predicate = paddle.equal((i % 2), 0)
             else:
                 predicate = (i % 2) != 0
             return paddle.static.nn.cond(

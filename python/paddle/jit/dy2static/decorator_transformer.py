@@ -26,7 +26,6 @@ __all__ = []
 IGNORE_NAMES = [
     'declarative',
     'to_static',
-    'dygraph_to_static_func',
     'wraps',
     'staticmethod',
     'classmethod',

@@ -150,8 +150,9 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         loss_fn = nn.MSELoss()
 
         # static training
+        strategy = dist.Strategy()
         dist_model, dist_loader = dist.to_static(
-            layer, self.data_loader, loss_fn, opt
+            layer, self.data_loader, loss_fn, opt, strategy=strategy
         )
 
         dist_model._mode = None

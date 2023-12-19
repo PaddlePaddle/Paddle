@@ -2210,10 +2210,9 @@ def insert_dependencies_for_vars(
     for post_var in post_vars:
         assert block.has_var(post_var.name)
 
+    post_dist_attr = dist_context.get_tensor_dist_attr_for_program(post_vars[0])
     if process_mesh is None:
-        process_mesh = dist_context.get_tensor_dist_attr_for_program(
-            post_vars[0]
-        ).process_mesh
+        process_mesh = post_dist_attr.process_mesh
     assert process_mesh is not None
 
     use_nop = True
@@ -2245,6 +2244,7 @@ def insert_dependencies_for_vars(
         depend_op_dist_attr.impl_type = "default"
         depend_op_dist_attr.process_mesh = process_mesh
         depend_op_dist_attr.is_recompute = is_recompute
+        depend_op_dist_attr.chunk_id = post_dist_attr.chunk_id
         for input_varname in depend_op.desc.input_arg_names():
             var = block.var(input_varname)
             mapping = dist_context.get_tensor_dist_attr_for_program(
@@ -2399,3 +2399,70 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
     else:
         tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
     return DistTensorSpec(tensor_shape, tensor_dist_attr)
+
+
+# get grad_var_to_var from distributed context, recording the mapping from backward grad variable to forward variable
+# which is used for decomposing backward ops when enabling prim after distributed
+def get_grad_var_to_var(dist_context):
+    # get grad_var_to_var in distributed context
+    grad_var_to_var_map = dist_context._dist_op_context.grad_var_to_var
+    assert len(grad_var_to_var_map.keys()) == 1, "invalid grad_var_to_var"
+    grad_var_to_var = grad_var_to_var_map[1]
+    return grad_var_to_var
+
+
+# update grad_var_to_var manually according to different distributed pass or strategy, thus recording complete and correct mapping between backward to forward
+def update_grad_var_to_var(program, strategy, grad_var_to_var):
+    from paddle.distributed.fleet.meta_optimizers.common import (
+        OP_ROLE_KEY,
+        OpRole,
+    )
+
+    # update grad_var_to_var according to different distributed pass
+    first_backward_op_idx = -1
+    for idx, op in enumerate(program.global_block().ops):
+        # process @RESHARD variable in distributed training
+        if (
+            op.has_attr("op_namescope")
+            and op.attr("op_namescope") == "/auto_parallel/reshard"
+        ):
+            reshard_op_types = [
+                "split",
+                "assign",
+                "cast",
+                "c_concat",
+                "concat",
+                "c_allgather",
+                "slice",
+            ]
+            if op.desc.type() in reshard_op_types:
+                input_names = op.desc.input_names()
+                if "X" in input_names or "Input" in input_names:
+                    inputs = (
+                        op.desc.input("X")
+                        if "X" in input_names
+                        else op.desc.input("Input")
+                    )
+                if "Out" in op.desc.output_names():
+                    outputs = op.desc.output("Out")
+                if inputs[0] in grad_var_to_var.keys():
+                    for output in outputs:
+                        grad_var_to_var[output] = grad_var_to_var[inputs[0]]
+
+        # process amp pass in distributed training
+        if (
+            strategy.amp.enable
+            and op.has_attr(OP_ROLE_KEY)
+            and (op.attr(OP_ROLE_KEY) & int(OpRole.Backward))
+            and (op.attr(OP_ROLE_KEY) & int(OpRole.Loss))
+        ):
+            first_backward_op_idx = idx
+
+    # process amp pass in distributed training
+    if first_backward_op_idx != -1:
+        scale_loss_op = program.global_block().ops[first_backward_op_idx - 1]
+        scale_loss_var_name = scale_loss_op.desc.output("Out")[0]
+        first_backward_op = program.global_block().ops[first_backward_op_idx]
+        scale_loss_grad_var_name = first_backward_op.desc.output("Out")[0]
+        if scale_loss_grad_var_name not in grad_var_to_var.keys():
+            grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name
