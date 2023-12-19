@@ -50,10 +50,11 @@ TEST(Tile, Ctor) {
       common::make_ddim({2, 12, 8, 10}), out_grad_dist_attr);
   phi::distributed::SpmdInfo backward_spmd_info =
       TileGradInferSpmd(x, out_grad, repeat_times);
-  EXPECT_EQ(backward_spmd_info.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(backward_spmd_info.first.size(), static_cast<size_t>(2));
   EXPECT_EQ(backward_spmd_info.second.size(), static_cast<size_t>(1));
   check_dim_mapping(backward_spmd_info.first[0], {-1, -1, 1});
-  check_dim_mapping(backward_spmd_info.second[0], {0, -1, -1, 1});
+  check_dim_mapping(backward_spmd_info.first[1], {0, -1, -1, 1});
+  check_dim_mapping(backward_spmd_info.second[0], {-1, -1, 1});
   check_partial_dims(backward_spmd_info.second[0], {0});
 }
 }  // namespace auto_parallel

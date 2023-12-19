@@ -149,7 +149,7 @@ SpmdInfo TileInferSpmdReverse(const DistMetaTensor& x,
     x_dims_mapping_dst[i] = out_dims_mapping_dst[i + broadcast_dims];
   }
   auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  x_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
 
   VLOG(4) << "TriuInferSpmdReverse:";
 
