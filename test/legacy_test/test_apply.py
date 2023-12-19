@@ -33,37 +33,46 @@ class TestTensorApplyAPI(unittest.TestCase):
     def test_error(self):
         self.x.stop_gradient = False
 
-        def fn(x):
+        def fn_inplace(x):
             x.apply_(self.function)
 
-        self.assertRaises(RuntimeError, fn, self.x)
+        def fn_outplace(x, func):
+            x.apply(func)
 
-    def test_to_pir(self):
-        def fn(x):
-            y = x.apply(self.function)
+        self.assertRaises(RuntimeError, fn_inplace, self.x)
+        self.assertRaises(RuntimeError, fn_outplace, self.x, self.function)
+        with paddle.jit.api.sot_mode_guard(False):
+            self.assertRaises(
+                RuntimeError,
+                paddle.jit.to_static(fn_outplace),
+                self.x,
+                self.function,
+            )
+            with paddle.pir_utils.IrGuard():
+                self.assertRaises(
+                    RuntimeError,
+                    paddle.jit.to_static(fn_outplace),
+                    self.x,
+                    self.function,
+                )
+
+    def test_to_static(self):
+        def fn(x, func):
+            y = x.apply(func)
             return y
 
         with paddle.jit.api.sot_mode_guard(False):
             paddle.disable_static()
             jit_g = paddle.jit.to_static(fn)
-            out = jit_g(self.x)
-
-        np.testing.assert_allclose(
-            self.function(self.x).numpy(), out.numpy(), rtol=1e-05
-        )
-
-    def test_to_legacy_ir(self):
-        def fn(x):
-            y = x.apply(self.function)
-            return y
-
-        with paddle.jit.api.sot_mode_guard(False):
+            out_legacy_ir = jit_g(self.x, self.function)
             with paddle.pir_utils.IrGuard():
-                paddle.disable_static()
                 jit_g = paddle.jit.to_static(fn)
-                out = jit_g(self.x)
+                out_pir = jit_g(self.x, self.function)
         np.testing.assert_allclose(
-            self.function(self.x).numpy(), out.numpy(), rtol=1e-05
+            self.function(self.x).numpy(), out_legacy_ir.numpy(), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            self.function(self.x).numpy(), out_pir.numpy(), rtol=1e-05
         )
 
 

@@ -581,6 +581,11 @@ const phi::DDim &GetValueDims(Value value) {
 
 pir::OpResult apply(Value self, py::object func) {
   py::gil_scoped_acquire gil;
+  auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Cannot apply function on a tensor that required gradient."));
+  }
   PyObject *py_func = func.release().ptr();
   Py_INCREF(py_func);
   PyObject *res = nullptr;
@@ -592,10 +597,10 @@ pir::OpResult apply(Value self, py::object func) {
     Py_DECREF(tmp_self);
   } catch (std::exception &e) {
     PADDLE_THROW(phi::errors::Unavailable(
-        "Hook function of Tensor raises an exception: %s.", e.what()));
+        "Apply function of Tensor raises an exception: %s.", e.what()));
   } catch (...) {
     PADDLE_THROW(phi::errors::Fatal(
-        "Hook function of Tensor raises an unknown exception."));
+        "Apply function of Tensor raises an unknown exception."));
   }
   if (res == Py_None) {
     return self.dyn_cast<OpResult>();
@@ -816,7 +821,7 @@ void BindValue(py::module *m) {
            [](Value self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
-      .def("apply", &apply);
+      .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
