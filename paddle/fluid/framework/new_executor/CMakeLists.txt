@@ -10,19 +10,15 @@ set(new_executor_deps
     program_translator
     op_dialect_vjp
     pir_transforms
+    global_utils
     garbage_collector
     executor_gc_helper
     framework_proto)
 
 if(WITH_CINN AND NOT CINN_ONLY)
   set(new_executor_deps
-      ${new_executor_deps}
-      cinn_runtime_dialect
-      buffered_reader
-      device_context
-      global_utils
-      op_registry
-      ${DEVICE_EVENT_LIBS})
+      ${new_executor_deps} cinn_runtime_dialect buffered_reader device_context
+      op_registry ${DEVICE_EVENT_LIBS})
 endif()
 
 cc_library(
