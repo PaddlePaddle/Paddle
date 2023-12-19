@@ -56,7 +56,7 @@ void OneDNNOperatorDialect::initialize() {
   // use RegisterOps when list has more than two ops.
   RegisterOps<
 #define GET_OP_LIST
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op_info.cc"  // NOLINT
+#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
       >();
   RegisterInterfaces<ParameterConvertInterface>();
 }
