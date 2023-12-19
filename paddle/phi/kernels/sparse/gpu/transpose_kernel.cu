@@ -24,16 +24,14 @@
 
 namespace phi {
 namespace sparse {
-
-template <typename IntT>
-__global__ void TransposeCooCudaKernel(const IntT *x_indices_data,
+__global__ void TransposeCooCudaKernel(const int64_t *x_indices_data,
                                        const int *perm,
                                        const std::size_t n_dim,
-                                       const IntT x_nnz,
-                                       IntT *out_indices_data) {
-  CUDA_KERNEL_LOOP_TYPE(index, x_nnz * n_dim, IntT) {
-    IntT i = index / x_nnz;
-    IntT j = index % x_nnz;
+                                       const int64_t x_nnz,
+                                       int64_t *out_indices_data) {
+  CUDA_KERNEL_LOOP_TYPE(index, x_nnz * n_dim, int64_t) {
+    int64_t i = index / x_nnz;
+    int64_t j = index % x_nnz;
     out_indices_data[index] = x_indices_data[j + perm[i] * x_nnz];
   }
 }
@@ -153,23 +151,23 @@ __global__ void TransposeCsr3DCudaKernel(const IntT *x_crows_data,
   }
 }
 
-template <typename T, typename Context, typename IntT>
-void TransposeCooImpl(const Context &dev_ctx,
-                      const SparseCooTensor &x,
-                      const std::vector<int> &perm,
-                      SparseCooTensor *out) {
+template <typename T, typename Context>
+void TransposeCooKernel(const Context &dev_ctx,
+                        const SparseCooTensor &x,
+                        const std::vector<int> &perm,
+                        SparseCooTensor *out) {
   // create out sparse tensor
-  IntT x_nnz = x.nnz();
+  int64_t x_nnz = x.nnz();
   std::size_t n_dim = perm.size();
   DDim out_dims = x.dims().transpose(perm);
-  DenseTensor out_indices = EmptyLike<IntT, Context>(dev_ctx, x.indices());
+  DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
   DenseTensor out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of indices
   const DenseTensor &x_indices = x.indices();
-  const auto *x_indices_data = x_indices.data<IntT>();
-  auto *out_indices_data = out_indices.data<IntT>();
+  const auto *x_indices_data = x_indices.data<int64_t>();
+  auto *out_indices_data = out_indices.data<int64_t>();
   int *d_perm;
 
   auto d_perm_tensor = memory_utils::Alloc(
@@ -190,17 +188,6 @@ void TransposeCooImpl(const Context &dev_ctx,
                            0,
                            dev_ctx.stream()>>>(
       x_indices_data, d_perm, n_dim, x_nnz, out_indices_data);
-}
-
-template <typename T, typename Context>
-void TransposeCooKernel(const Context &dev_ctx,
-                        const SparseCooTensor &x,
-                        const std::vector<int> &perm,
-                        SparseCooTensor *out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "TransposeCooKernel", ([&] {
-                                 TransposeCooImpl<T, Context, data_t>(
-                                     dev_ctx, x, perm, out);
-                               }));
 }
 
 template <typename T, typename Context, typename IntT>
@@ -292,7 +279,7 @@ void TransposeCsrImpl(const Context &dev_ctx,
                      sizeof(IntT) * out_dims.size(),
                      dev_ctx.stream());
 
-  IntT x_nnz = x.nnz();
+  IntT x_nnz = static_cast<IntT>(x.nnz());
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_dims[0], 1);
   if (perm.size() == 2) {
