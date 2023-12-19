@@ -38,7 +38,6 @@ using StrategyFunction = std::function<std::shared_ptr<OpStrategy>(
     const std::vector<std::vector<int>>&,
     const cinn::common::Target&)>;
 
-// TODO(6clc): combine with StrategyFunction
 using StrategyFunctionSymbolic = std::function<std::shared_ptr<OpStrategy>(
     const NodeAttr&,
     const std::vector<ir::Tensor>&,

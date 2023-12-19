@@ -19,25 +19,22 @@ namespace ir {
 
 void DynamicShapeGroupScheduler::Schedule() {
   // Fake schedule for test
-  int max_spacial_numel = 1;
-  ScheduleBlockNode* node0 = schedule_block_graph_->StartPoints()[0];
-  ScheduleBlockNode* node1 = schedule_block_graph_->EndPoints()[0];
-
-  ir::Expr block_realize0 = node0->Block();
-  ir::Expr block_realize1 = node1->Block();
-
   std::vector<Expr> all_blocks = ir_sch_->GetAllBlocks();
-  auto block0 = all_blocks[0];
-  if (all_blocks.size() > 1) {
+  for (int i = 0; i < all_blocks.size(); i++) {
+    std::vector<Expr> loops = ir_sch_->GetLoops(all_blocks[i]);
+    ir_sch_->Fuse(loops);
+  }
+
+  for (all_blocks = ir_sch_->GetAllBlocks(); all_blocks.size() > 1;) {
+    auto block0 = all_blocks[0];
     ir_sch_->ComputeInline(block0);
     all_blocks = ir_sch_->GetAllBlocks();
-    block0 = all_blocks[0];
   }
-  std::vector<Expr> block0_loops = ir_sch_->GetLoops(block0);
-  ir_sch_->Fuse(block0_loops);
+
   all_blocks = ir_sch_->GetAllBlocks();
-  block0_loops = ir_sch_->GetLoops(all_blocks[0]);
-  auto splited_loops1 = ir_sch_->DySplit(block0_loops[0], {1024, -1});
+  auto block0_loops = ir_sch_->GetLoops(all_blocks[0]);
+  auto splited_loops1 = ir_sch_->Split(block0_loops[0], {1024, -1});
+
   ir_sch_->Bind(splited_loops1[0], "threadIdx.x");
   ir::Expr predicate1 = ir::LE::Make(Expr(1023), Expr(1024));
   std::unique_ptr<ir::IRSchedule> new_ir_sch1 =
