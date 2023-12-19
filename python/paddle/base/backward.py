@@ -2762,15 +2762,16 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         targets = _as_list(targets)
         inputs = _as_list(inputs)
         target_gradients = _as_list(target_gradients)
-        if no_grad_set is None:
-            no_grad_set = set()
-        elif no_grad_set is not set:
-            no_grad_set = set(no_grad_set)
-        else:
-            no_grad_set = no_grad_set
+
+        from paddle.autograd.backward_utils import ValueSet
         from paddle.autograd.ir_backward import (
             calc_gradient as pir_calc_gradient,
         )
+
+        if no_grad_set is None:
+            no_grad_set = ValueSet()
+        else:
+            no_grad_set = ValueSet(no_grad_set)
 
         input_grad = pir_calc_gradient(
             targets, inputs, target_gradients, no_grad_set

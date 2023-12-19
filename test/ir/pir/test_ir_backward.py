@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.autograd.ir_backward import grad
 
 paddle.enable_static()
@@ -292,6 +293,69 @@ class TestBackward_4(unittest.TestCase):
             (grad_x,) = exe.run(program, fetch_list=[out])
             res = np.full([2, 2], 6.0, dtype='float32')
             self.assertEqual((grad_x == res).all(), True)
+
+
+class TestValueSet(unittest.TestCase):
+    def setUp(self) -> None:
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                self.x = paddle.static.data('x', [2, 3])
+                self.y = paddle.static.data('y', [4, 5])
+
+    def test_copy(self):
+        a = ValueSet([self.x, self.y])
+        b = a.copy()
+        self.assertNotEqual(id(a), id(b))
+        self.assertTrue(len(a) == len(b))
+
+    def test_or(self):
+        a = ValueSet([self.x])
+        b = ValueSet([self.y])
+        c = a | b
+        self.assertTrue(len(c) == 2)
+
+
+class TestValueDict(unittest.TestCase):
+    def setUp(self) -> None:
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                self.x = paddle.static.data('x', [2, 3])
+                self.y = paddle.static.data('y', [4, 5])
+
+    def test_init(self):
+        a = ValueDict()
+        a[self.x] = 'x'
+        a[self.y] = 'y'
+        b = ValueDict(a)
+        self.assertTrue(len(b) == 2)
+
+    def test_bool(self):
+        a = ValueDict()
+        self.assertFalse(bool(a))
+
+    def test_getitem_and_pop_error(self):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data('x', [2, 3])
+                y = paddle.static.data('y', [4, 5])
+                a = ValueDict()
+                a[x] = 'x'
+                self.assertRaises(KeyError, a.__getitem__, y)
+                self.assertRaises(KeyError, a.pop, y)
+
+    def test_update(self):
+        a = ValueDict()
+        a[self.x] = 'x'
+        b = ValueDict()
+        b[self.y] = 'y'
+        a.update(b)
+        self.assertTrue(a[self.y] == 'y')
 
 
 if __name__ == "__main__":
