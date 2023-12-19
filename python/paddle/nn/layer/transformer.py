@@ -779,7 +779,6 @@ class TransformerDecoderLayer(Layer):
             and post-precess of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
             network. Default relu.
-        layer_norm_eps: the eps value in layer normalization components. Default=1e-5.
         attn_dropout (float, optional): The dropout probability used
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
@@ -807,6 +806,7 @@ class TransformerDecoderLayer(Layer):
             corresponding layer would not have trainable bias parameter. See
             usage for details in :code:`ParamAttr` . Default: None,which means
             the default bias parameter property is used.
+        layer_norm_eps: the eps value in layer normalization components. Default=1e-5.
 
     Examples:
 
@@ -839,12 +839,12 @@ class TransformerDecoderLayer(Layer):
         dim_feedforward,
         dropout=0.1,
         activation="relu",
-        layer_norm_eps=1e-5,
         attn_dropout=None,
         act_dropout=None,
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        layer_norm_eps=1e-5,
     ):
         self._config = locals()
         self._config.pop("self")
