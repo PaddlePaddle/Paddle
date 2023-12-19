@@ -75,7 +75,8 @@ class TestConv2dAddFusePass(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
-        self.pass_accuracy_verification = True
+        # todo(bukejiyu): This pass will support accuracy verification in the future
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct()

@@ -23,10 +23,6 @@ from paddle.base import core
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestMatmulScaleFusePattern(PassTest):
     r"""
     x_var   f_var
@@ -81,7 +77,7 @@ class TestMatmulScaleFusePattern(PassTest):
                                     yield [main_prog, start_prog], False
 
     def setUp(self):
-        self.places = [paddle.CPUPlace()]
+        self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 

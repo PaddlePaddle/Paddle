@@ -23,10 +23,6 @@ from paddle.base import core
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestFcFusePassPattern(PassTest):
     r"""
     Matmul     Y
@@ -90,6 +86,7 @@ class TestFcFusePassPattern(PassTest):
                                 yield [main_prog, start_prog], False
 
     def setUp(self):
+        self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 

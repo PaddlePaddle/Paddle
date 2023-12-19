@@ -40,19 +40,43 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "weight_only_linear requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "weight_only_linear requires CUDA >= 11.2",
 )
 class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
-    def is_prog_valid(self, w_shape, bias_shape):
+    def is_conifg_valid(self, w_shape, bias_shape):
         if w_shape[-1] != bias_shape[0]:
             return False
 
     def get_valid_op_map(self, dtype, w_shape):
         # weight_quantize need weight's dtype to be fp16 or bf16
-        if dtype == "float32" or w_shape[0] % 64 != 0 or w_shape[1] % 16 != 0:
+        if (
+            dtype == "float32"
+            or w_shape[0] % 64 != 0
+            or w_shape[1] % 16 != 0
+            or (
+                (
+                    paddle.device.cuda.get_device_capability()[0] == 8
+                    and paddle.device.cuda.get_device_capability()[1] == 6
+                )
+                is False
+                and (
+                    paddle.device.cuda.get_device_capability()[0] == 8
+                    and paddle.device.cuda.get_device_capability()[1] == 0
+                )
+                is False
+                and (
+                    paddle.device.cuda.get_device_capability()[0] == 7
+                    and paddle.device.cuda.get_device_capability()[1] == 5
+                )
+                is False
+                and (
+                    paddle.device.cuda.get_device_capability()[0] == 7
+                    and paddle.device.cuda.get_device_capability()[1] == 0
+                )
+                is False
+            )
+        ):
             self.valid_op_map = {
                 "pd_op.weight_only_linear": 0,
                 "pd_op.weight_quantize": 0,
@@ -75,7 +99,7 @@ class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
         for dtype in ['float16', "float32"]:
             for w_shape in [[64, 64], [64, 15]]:
                 for bias_shape in [[64], [15]]:
-                    if self.is_prog_valid(w_shape, bias_shape) is False:
+                    if self.is_conifg_valid(w_shape, bias_shape) is False:
                         continue
                     with paddle.pir_utils.IrGuard():
                         start_prog = paddle.static.Program()

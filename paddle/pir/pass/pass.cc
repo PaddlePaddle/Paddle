@@ -35,12 +35,16 @@ Pass::~Pass() = default;
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
 
 void Pass::PrintStatistics(int64_t match_count) const {
-  LOG(INFO) << "--- detected [" << match_count << "] subgraphs!";
+  if (match_count != 0) {
+    LOG(INFO) << "--- detected [" << match_count << "] subgraphs!";
+  }
 }
 
 void Pass::PrintStatistics(int64_t match_count, int64_t all_count) const {
-  LOG(INFO) << "--- detected [" << match_count << "/" << all_count
-            << "] subgraphs!";
+  if (all_count != 0 && match_count != 0) {
+    LOG(INFO) << "--- detected [" << match_count << "/" << all_count
+              << "] subgraphs!";
+  }
 }
 
 void Pass::PrintStatistics(const std::string& custom_log) const {

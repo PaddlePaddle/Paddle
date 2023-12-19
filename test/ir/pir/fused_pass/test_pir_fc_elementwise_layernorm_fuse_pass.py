@@ -23,10 +23,6 @@ from paddle.base import core
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestFcElementwiseLayerNormFusePattern(PassTest):
     r"""
     fc     Y1

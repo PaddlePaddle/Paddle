@@ -23,10 +23,6 @@ from paddle.base import core
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestConv2dAddActFusePattern(PassTest):
     r"""
       x_var   f_var
@@ -86,7 +82,8 @@ class TestConv2dAddActFusePattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
-        self.pass_accuracy_verification = True
+        # todo(bukejiyu): This pass will support accuracy verification in the future
+        self.skip_accuracy_verification = True
 
     def sample_program(self):
         yield self.build_ir_progam(), False
@@ -164,7 +161,8 @@ class TestConv2dAdd2ActFusePattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
-        self.pass_accuracy_verification = True
+        # todo(bukejiyu): This pass will support accuracy verification in the future
+        self.skip_accuracy_verification = True
 
     def sample_program(self):
         yield self.build_ir_progam(), False
