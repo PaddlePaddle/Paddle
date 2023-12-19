@@ -17,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
@@ -238,5 +239,9 @@ class ValueShape {
 };
 
 using ValueShapeDimExprs = ValueShape<DimExpr>;
+
+std::string ToTxtString(const DimExpr& dim_expr);
+
+std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 
 }  // namespace symbol
