@@ -37,18 +37,6 @@ def check_cast_op(op):
     )
 
 
-def check_cast_op_pir(op):
-    return (
-        op.name() == 'pd_op.cast'
-        and op.attrs()['dtype']
-        in (
-            paddle.base.libpaddle.DataType.FLOAT16,
-            paddle.base.libpaddle.DataType.BFLOAT16,
-        )
-        and op.operand_source(0).dtype == paddle.base.libpaddle.DataType.FLOAT32
-    )
-
-
 def output_hist(out):
     hist, _ = np.histogram(out, range=(-1, 1))
     hist = hist.astype("float32")
@@ -1204,85 +1192,6 @@ class TestBilinearInitializer(unittest.TestCase):
         self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
 
 
-class TestBilinearInitializerPir(unittest.TestCase):
-    def setUp(self):
-        self.set_parameter_op_name = 'builtin.set_parameter'
-        self.init_op_name = "pd_op.assign_value"
-        self.cast_op_name = "pd_op.cast"
-
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_bilinear_initializer(self, dtype="float32"):
-        """Test the bilinear initializer with supplied arguments"""
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-            with paddle.static.program_guard(main, startup):
-                param = paddle.pir.core.create_parameter(
-                    dtype=dtype,
-                    shape=[8, 1, 3, 3],
-                    name="param",
-                    initializer=paddle.nn.initializer.Bilinear(),
-                )
-                block = startup.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                checked_cast_ops = self.get_init_ops_by_op_name(
-                    block, self.cast_op_name
-                )
-                num_cast_op = (
-                    1 if dtype in ["float16", "uint16", "float64"] else 0
-                )
-                self.assertEqual(len(checked_cast_ops), num_cast_op)
-
-            return startup
-
-    def test_bilinear_initializer_fp64(self):
-        self.test_bilinear_initializer(dtype='float64')
-
-    def test_bilinear_initializer_fp16(self):
-        """Test the bilinear initializer with supplied arguments"""
-        startup = self.test_bilinear_initializer("float16")
-        cast_ops = self.get_init_ops_by_op_name(
-            startup.global_block(), self.cast_op_name
-        )
-        self.assertGreater(len(cast_ops), 0)
-        cast_op = cast_ops[0]
-        self.assertTrue(check_cast_op_pir(cast_op))
-
-    def test_bilinear_initializer_bf16(self):
-        """Test the bilinear initializer with supplied arguments"""
-        startup = self.test_bilinear_initializer("uint16")
-        cast_ops = self.get_init_ops_by_op_name(
-            startup.global_block(), self.cast_op_name
-        )
-        self.assertGreater(len(cast_ops), 0)
-        cast_op = cast_ops[0]
-        self.assertTrue(check_cast_op_pir(cast_op))
-
-    def test_type_error(self):
-        self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
-
-
 class TestBilinearInitializerDygraphAPI(unittest.TestCase):
     def func_test_case(self):
         factor = 2
@@ -1366,81 +1275,6 @@ class TestNumpyArrayInitializer(unittest.TestCase):
         """Test the numpy array initializer with bfloat16"""
         block = self.test_numpy_array_initializer("uint16")
         self.assertTrue(block.ops[1])
-
-
-class TestNumpyArrayInitializerPir(unittest.TestCase):
-    def setUp(self):
-        self.set_parameter_op_name = 'builtin.set_parameter'
-        self.init_op_name = "pd_op.assign_value"
-        self.cast_op_name = "pd_op.cast"
-
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_numpy_array_initializer(self, dtype="float32"):
-        """Test the numpy array initializer with supplied arguments"""
-        np_array = np.random.random(10000).astype(dtype)
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-            with paddle.static.program_guard(main, startup):
-                param = paddle.pir.core.create_parameter(
-                    dtype=np_array.dtype,
-                    shape=np_array.shape,
-                    name="param",
-                    initializer=paddle.nn.initializer.Assign(np_array),
-                )
-                block = startup.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                checked_cast_ops = self.get_init_ops_by_op_name(
-                    block, self.cast_op_name
-                )
-                num_cast_op = 1 if dtype in ["float16", "uint16"] else 0
-                self.assertEqual(len(checked_cast_ops), num_cast_op)
-
-                init_op = checked_ops[0]
-                assert (init_op.attrs()['values'] == np_array).all()
-
-            return startup
-
-    def test_numpy_array_initializer_fp16(self):
-        """Test the numpy array initializer with float16"""
-        startup = self.test_numpy_array_initializer("float16")
-        cast_ops = self.get_init_ops_by_op_name(
-            startup.global_block(), self.cast_op_name
-        )
-        self.assertGreater(len(cast_ops), 0)
-        cast_op = cast_ops[0]
-        self.assertTrue(check_cast_op_pir(cast_op))
-
-    def test_numpy_array_initializer_bf16(self):
-        """Test the numpy array initializer with bfloat16"""
-        startup = self.test_numpy_array_initializer("uint16")
-        cast_ops = self.get_init_ops_by_op_name(
-            startup.global_block(), self.cast_op_name
-        )
-        self.assertGreater(len(cast_ops), 0)
-        cast_op = cast_ops[0]
-        self.assertTrue(check_cast_op_pir(cast_op))
 
 
 class TestSetGlobalInitializer(unittest.TestCase):
@@ -1675,28 +1509,11 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 )
             return res[0]
 
-        def run_pir_graph(dtype):
-            with paddle.pir_utils.IrGuard():
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                main = paddle.static.Program()
-                startup = paddle.static.Program()
-                with paddle.static.program_guard(main, startup):
-                    param = paddle.pir.core.create_parameter(
-                        dtype=dtype,
-                        shape=random_value.shape,
-                        name="w",
-                        initializer=paddle.nn.initializer.Assign(random_value),
-                    )
-                    exe.run(startup)
-                    res = exe.run(main, fetch_list=[param])
-            return res[0]
-
         dynamic_res = run_dynamic_graph("float32")
         static_res = run_static_graph("float32")
-        pir_res = run_pir_graph("float32")
 
         np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
-        np.testing.assert_array_equal(dynamic_res.numpy(), pir_res)
+        np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
 
     def test_assign_static_fp64(self):
         random_value = np.random.randn(128, 128).astype("float64")
@@ -1730,28 +1547,11 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 )
             return res[0]
 
-        def run_pir_graph(dtype):
-            with paddle.pir_utils.IrGuard():
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                main = paddle.static.Program()
-                startup = paddle.static.Program()
-                with paddle.static.program_guard(main, startup):
-                    param = paddle.pir.core.create_parameter(
-                        dtype=dtype,
-                        shape=random_value.shape,
-                        name="ww",
-                        initializer=paddle.nn.initializer.Assign(random_value),
-                    )
-                    exe.run(startup)
-                    res = exe.run(main, fetch_list=[param])
-            return res[0]
-
         dynamic_res = run_dynamic_graph("float64")
         static_res = run_static_graph("float64")
-        pir_res = run_pir_graph("float64")
 
         np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
-        np.testing.assert_array_equal(dynamic_res.numpy(), pir_res)
+        np.testing.assert_array_equal(dynamic_res.numpy(), static_res)
 
 
 # 2-D Parameter with shape: [10, 15]

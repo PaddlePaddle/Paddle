@@ -16,11 +16,7 @@ from paddle import _C_ops
 
 from ...base import core, framework, unique_name
 from ...base.data_feeder import check_type
-from ...base.framework import (
-    _current_expected_place,
-    in_dygraph_mode,
-    in_pir_mode,
-)
+from ...base.framework import _current_expected_place, in_dygraph_mode
 from .initializer import Initializer
 
 __all__ = []
@@ -58,10 +54,8 @@ class NumpyArrayInitializer(Initializer):
         """
         block = self._check_block(block)
 
-        assert isinstance(
-            var, (framework.Variable, paddle.pir.core.ParameterMeta)
-        )
-        assert isinstance(block, (framework.Block, paddle.pir.Block))
+        assert isinstance(var, framework.Variable)
+        assert isinstance(block, framework.Block)
 
         # to be compatible of fp16 initalizers
         if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
@@ -76,29 +70,23 @@ class NumpyArrayInitializer(Initializer):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
-        elif var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
-            out_var = var
-            out_dtype = core.DataType.FLOAT32
-            np_value = self._value.astype("float32")
         else:
             out_var = var
             out_dtype = var.dtype
             np_value = self._value
 
-        if out_dtype in (core.VarDesc.VarType.FP32, core.DataType.FLOAT32):
+        if out_dtype == core.VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in np_value.flat]
-        elif out_dtype in (core.VarDesc.VarType.FP64, core.DataType.FLOAT64):
+        elif out_dtype == core.VarDesc.VarType.FP64:
             value_name = "fp64_values"
             values = [float(v) for v in np_value.flat]
-        elif out_dtype in (core.VarDesc.VarType.INT32, core.DataType.INT32):
+        elif out_dtype == core.VarDesc.VarType.INT32:
             value_name = "int32_values"
             values = [int(v) for v in np_value.flat]
-        elif out_dtype in (
-            core.VarDesc.VarType.INT8,
-            core.VarDesc.VarType.UINT8,
-            core.DataType.INT8,
-            core.DataType.UINT8,
+        elif (
+            out_dtype == core.VarDesc.VarType.INT8
+            or out_dtype == core.VarDesc.VarType.UINT8
         ):
             value_name = "int8_values"
             values = [int(v) for v in np_value.flat]
@@ -127,16 +115,6 @@ class NumpyArrayInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
-        elif in_pir_mode():
-            out_var = _C_ops.assign_value(
-                list(self._value.shape),
-                out_dtype,
-                values,
-                _current_expected_place(),
-            )
-            if var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
-                out_var = _C_ops.cast(out_var, var.dtype)
-            return out_var
         else:
             op = block.append_op(
                 type='assign_value',
