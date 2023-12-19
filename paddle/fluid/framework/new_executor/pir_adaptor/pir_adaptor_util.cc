@@ -405,6 +405,7 @@ void HandleForSpecialOp(pir::Operation* op,
     value_exe_info->Add(value, fetch_var_name);
   } else if (op_name == paddle::dialect::FeedOp::name() ||
              op_name == paddle::dialect::DataOp::name()) {
+    VLOG(6) << "Handle for " << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable"
             << value_exe_info->GetScope();
@@ -417,18 +418,21 @@ void HandleForSpecialOp(pir::Operation* op,
       auto* t = var->GetMutable<phi::DenseTensor>();
       if (op_name == paddle::dialect::DataOp::name()) {
         auto shape = op->attribute<dialect::IntArrayAttribute>("shape");
+        auto dim = phi::make_ddim(shape.data().GetData());
         auto dtype = op->attribute<dialect::DataTypeAttribute>("dtype");
         auto place = op->attribute<dialect::PlaceAttribute>("place").data();
         if (place.GetType() == phi::AllocationType::UNDEFINED) {
           place = phi::CPUPlace();
         }
-        phi::DenseTensorMeta meta(dtype.data(),
-                                  phi::make_ddim(shape.data().GetData()));
-        t->set_meta(meta);
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-        dev_ctx->Alloc(t, dtype.data());
-        VLOG(10) << "alloc var: " << op->attribute<pir::StrAttribute>("name")
-                 << " " << t->initialized();
+        if (phi::product(dim) >= 0) {
+          phi::DenseTensorMeta meta(dtype.data(), dim);
+          t->set_meta(meta);
+          auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+          dev_ctx->Alloc(t, dtype.data());
+          VLOG(10) << "[Alloc var]: "
+                   << op->attribute<pir::StrAttribute>("name") << " "
+                   << t->initialized();
+        }
       }
     }
     PADDLE_ENFORCE(var,
