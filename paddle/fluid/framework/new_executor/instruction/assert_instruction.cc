@@ -71,7 +71,6 @@ void AssertInstruction::Run() {
   formatter.SetSummarize(
       op_->attribute<::pir::Int64Attribute>("summarize").data());
 
-  // Choice 1 : print each tensor name
   const std::vector<pir::Value>& inputs_data_val =
       op_->dyn_cast<paddle::dialect::AssertOp>()
           .data()
@@ -83,12 +82,6 @@ void AssertInstruction::Run() {
         value_exe_info_->GetVarByValue(val)->Get<phi::DenseTensor>();
     formatter.Print(tensor, name);
   }
-
-  // Choice 2 : print combine tensor name
-  //   const std::string& name =
-  //   value_exe_info_->GetVarName(op_->dyn_cast<paddle::dialect::AssertOp>().data());
-  //   const phi::DenseTensor &tensor = data_var_->Get<phi::DenseTensor>();
-  //   formatter.Print(tensor, name);
 
   PADDLE_THROW(platform::errors::InvalidArgument(
       "The condition variable '%s' of AssertOp must be "

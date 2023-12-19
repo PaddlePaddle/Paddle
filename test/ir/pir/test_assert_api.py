@@ -14,35 +14,100 @@
 
 import unittest
 
-import numpy as np
-
 import paddle
 
 paddle.enable_static()
 
 
 class TestBuildModuleWithAssertOp(unittest.TestCase):
-    def construct_program_with_assert(self):
+    def test_assert_construct(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            x = paddle.static.data(name="x", shape=[6, 8], dtype="float32")
+            x = paddle.static.data(name="x", shape=[2, 8], dtype="float32")
             condition = paddle.all(x > 0)
-            paddle.static.nn.control_flow.Assert(condition, [x], 6)
-        return main_program
-
-    def test_if_with_single_output(self):
-        main_program = self.construct_program_with_assert()
+            paddle.static.nn.control_flow.Assert(condition, [x], 20)
         assert_op = main_program.global_block().ops[-1]
         self.assertEqual(assert_op.name(), "pd_op.assert")
         self.assertEqual(len(assert_op.results()), 0)
 
-    def test_run(self):
-        feed_dict = {"x": np.random.randn(6, 8).astype("float32")}
+    def run_network(self, net_func):
         with paddle.pir_utils.IrGuard():
-            main = self.construct_program_with_assert()
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(main, feed=feed_dict)
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                net_func()
+
+            exe = paddle.static.Executor()
+            exe.run(main)
+
+    def test_assert_true(self):
+        def net_func():
+            condition = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=True
+            )
+            paddle.static.nn.control_flow.Assert(condition, [])
+
+        self.run_network(net_func)
+
+    def test_assert_false(self):
+        def net_func():
+            condition = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=False
+            )
+            paddle.static.nn.control_flow.Assert(condition)
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
+
+    # TODO(MarioLulab): May lead `test_assert_construct` construct empty main_program. Fix it soon.
+    # def test_assert_cond_numel_error(self):
+    #     def net_func():
+    #         condition = paddle.tensor.fill_constant(
+    #             shape=[1, 2], dtype='bool', value=True
+    #         )
+    #         paddle.static.nn.control_flow.Assert(condition, [])
+
+    #     with self.assertRaises(ValueError):
+    #         self.run_network(net_func)
+
+    def test_assert_print_data(self):
+        def net_func():
+            zero = paddle.tensor.fill_constant(
+                shape=[5], dtype='int64', value=0
+            )
+            one = paddle.tensor.fill_constant(shape=[5], dtype='int64', value=1)
+            condition = paddle.less_than(one, zero).all()  # False
+            paddle.static.nn.control_flow.Assert(
+                condition, [zero, one], summarize=8
+            )
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
+
+    def test_assert_summary(self):
+        def net_func():
+            x = paddle.tensor.fill_constant(
+                shape=[10], dtype='float32', value=2.0
+            )
+            condition = paddle.max(x) < 1.0
+            paddle.static.nn.control_flow.Assert(condition, (x,), 5)
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
+
+    def test_assert_summary_greater_than_size(self):
+        def net_func():
+            x = paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='float32', value=2.0
+            )
+            condition = paddle.max(x) < 1.0
+            paddle.static.nn.control_flow.Assert(
+                condition, [x], 10, name="test"
+            )
+
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
 
 
 if __name__ == "__main__":
