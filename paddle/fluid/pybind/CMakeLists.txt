@@ -39,7 +39,6 @@ set(PYBIND_DEPS
     phi_utils
     phi
     op_dialect_vjp
-    pir_adaptor
     program_translator
     pir_transforms
     pir
