@@ -481,41 +481,38 @@ void AssertOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    PADDLE_ENFORCE(input_size == 2u,
-                   "The size %d of inputs must be equal to 2.",
-                   input_size);
+    IR_ENFORCE(input_size == 2u,
+               "The size %d of inputs must be equal to 2.",
+               input_size);
 
     if ((*this)->operand_source(0).type().isa<pir::DenseTensorType>()) {
-      PADDLE_ENFORCE(
-          (*this)
-              ->operand_source(0)
-              .type()
-              .dyn_cast<pir::DenseTensorType>()
-              .dtype()
-              .isa<pir::BoolType>(),
-          phi::errors::PreconditionNotMet(
-              "Type validation failed for the 1th input, it should be a "
-              "bool DenseTensorType."));
+      IR_ENFORCE((*this)
+                     ->operand_source(0)
+                     .type()
+                     .dyn_cast<pir::DenseTensorType>()
+                     .dtype()
+                     .isa<pir::BoolType>(),
+                 "Type validation failed for the 0th input, it should be a "
+                 "bool DenseTensorType.");
     }
 
     if (auto vec_type =
-            (*this)->operand_source(1).type().dyn_cast<pir::VectorType>()) {
+            (*this)->operand(1).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
-        PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                           vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
-                       "Type validation failed for the 1th input, got %s.",
-                       (*this)->operand_source(1).type());
+        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
+                       vec_type[i].isa<paddle::dialect::SelectedRowsType>() ||
+                       vec_type[i].isa<AllocatedDenseTensorType>(),
+                   "Type validation failed for the 1th input.");
       }
     } else {
-      PADDLE_ENFORCE((*this)->operand_source(1)
-                             .type()
-                             .isa<paddle::dialect::DenseTensorType>() ||
-                         (*this)
-                             ->operand_source(1)
-                             .type()
-                             .isa<paddle::dialect::SelectedRowsType>(),
-                     "Type validation failed for the 1th input, got %s.",
-                     (*this)->operand_source(1).type());
+      IR_ENFORCE(
+          (*this)->operand(1).type().isa<paddle::dialect::DenseTensorType>() ||
+              (*this)
+                  ->operand(1)
+                  .type()
+                  .isa<paddle::dialect::SelectedRowsType>(),
+          (*this)->operand(1).type().isa<AllocatedDenseTensorType>(),
+          "Type validation failed for the 1th input.");
     }
   }
   VLOG(4) << "Verifying attributes:";
