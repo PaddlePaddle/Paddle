@@ -329,7 +329,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             paddle.seed(1)
-            start_up = base.default_startup_program()
+            start_up = paddle.static.default_startup_program()
             x = np.arange(6).reshape(6)
             path_table = np.array([(1, 2, -1), (1, 2, -1)]).astype('int64')
             path_code = np.array([(1, 0, -1), (0, 0, -1)]).astype('int64')
@@ -339,7 +339,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
 
-            main_program = base.default_main_program()
+            main_program = paddle.static.default_main_program()
             place = base.CPUPlace()
             feeder = base.DataFeeder(feed_list=data_list, place=place)
             exe = paddle.static.Executor(place)
@@ -657,11 +657,12 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             )
 
             exe = paddle.static.Executor(self.place)
+            exe.run(startup_program)
             feed_dict = {'x': self.x_np, 'labels': self.labels_np}
             if self.is_custom:
                 feed_dict["path_code"] = self.path_code_np
                 feed_dict["path_table"] = self.path_table_np
-            (ret,) = exe.run(feed=feed_dict, fetch_list=[out])
+            (ret,) = exe.run(train_program, feed=feed_dict, fetch_list=[out])
 
             np.testing.assert_allclose(ret, self.out_np, rtol=1e-05)
 
