@@ -94,7 +94,6 @@ def maximum_path_len_algo(optimizer_list):
     edge, indegree = create_graph(optimizer_list)
     topo_sort(edge, indegree)
     max_path = floyd(edge)
-    print("max_path=", max_path)
     candidate = []
     for idx in max_path:
         candidate.append(optimizer_list[idx])

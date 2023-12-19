@@ -108,6 +108,11 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -781,40 +786,45 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
-      ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
-      //----------------------------------------------------------------------------------------------//
-      // Operator fusion pass
-      pm_for_op_program.AddPass(::pir::CreateConv2dBnFusePass());
-      pm_for_op_program.AddPass(::pir::CreateConv2dAddActFusePass());
-      pm_for_op_program.AddPass(::pir::CreateConv2dAddFusePass());
-      //----------------------------------------------------------------------------------------------//
+      if (config_.use_gpu()) {
+        ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
+        //----------------------------------------------------------------------------------------------//
+        // Operator fusion pass
+        gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
+        gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
+        gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateFcWithSpecialOpFusePass());
+        gpu_pm.AddPass(::pir::CreateFcFusePass());
+        gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
+        gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
+        //----------------------------------------------------------------------------------------------//
 
-      //----------------------------------------------------------------------------------------------//
-      // Functional pass
-      //----------------------------------------------------------------------------------------------//
+        //----------------------------------------------------------------------------------------------//
+        // Functional pass
+        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
+        //----------------------------------------------------------------------------------------------//
 
-      //----------------------------------------------------------------------------------------------//
-      // Basic pass required by the framework
-      pm_for_op_program.AddPass(
-          ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
-      pm_for_op_program.AddPass(
-          ::pir::CreateConstantFoldingPass(place_, sub_scope_));
-      pm_for_op_program.AddPass(::pir::CreateDeadCodeEliminationPass());
-      pm_for_op_program.AddPass(
-          ::pir::CreateReplaceFetchWithShadowOutputPass());
-      //----------------------------------------------------------------------------------------------//
+        //----------------------------------------------------------------------------------------------//
+        // Basic pass required by the framework
+        gpu_pm.AddPass(
+            ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
+        gpu_pm.AddPass(::pir::CreateConstantFoldingPass(place_, sub_scope_));
+        gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        //----------------------------------------------------------------------------------------------//
 
-      // pm_for_op_program.EnableIRPrinting();
-      pm_for_op_program.Run(pir_program_.get());
+        // gpu_pm.EnableIRPrinting();
+        gpu_pm.Run(pir_program_.get());
+      }
 
       pir_program_ = std::move(
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
 
-      ::pir::PassManager pm_for_kernel_program(::pir::IrContext::Instance(), 3);
+      ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {
-        pm_for_kernel_program.AddPass(::pir::CreateInplacePass());
+        lowered_pm.AddPass(::pir::CreateInplacePass());
       }
-      pm_for_kernel_program.Run(pir_program_.get());
+      lowered_pm.Run(pir_program_.get());
 
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
@@ -1734,6 +1744,9 @@ void AnalysisPredictor::PrepareArgument() {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
+      if (!FLAGS_enable_pir_in_executor) {
+        pass_builder->AppendPass("inplace_op_var_pass");
+      }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
                    "optimization.";
     } else {

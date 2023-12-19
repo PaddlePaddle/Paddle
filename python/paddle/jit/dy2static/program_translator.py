@@ -32,7 +32,8 @@ from paddle.base.dygraph.base import (
 )
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
-from paddle.pir import OpResult
+from paddle.pir import Value
+from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -1030,7 +1031,7 @@ class ASTStaticFunction(StaticFunction):
         inputs = [
             var
             for var in flatten(concrete_program.inputs)
-            if isinstance(var, (framework.Variable, OpResult))
+            if isinstance(var, (framework.Variable, Value))
         ]
         return inputs
 
@@ -1044,7 +1045,7 @@ class ASTStaticFunction(StaticFunction):
         outputs = [
             var
             for var in flatten(concrete_program.outputs)
-            if isinstance(var, (framework.Variable, OpResult))
+            if isinstance(var, (framework.Variable, Value))
         ]
 
         return outputs
@@ -1202,7 +1203,9 @@ class ConcreteProgram:
         # framework.default_startup_program().random_seed
         # ) }}}
         with ir_static.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_to_static=True):
+            with _to_static_mode_guard_(
+                is_to_static=True
+            ), static_op_arg_cast_guard(_convert_into_value):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.pir_to_static_inputs_with_spec(
                     input_spec, main_program

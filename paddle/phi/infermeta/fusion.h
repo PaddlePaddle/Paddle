@@ -54,9 +54,23 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& rope_emb,
                                       const MetaTensor& mask,
                                       const MetaTensor& tgt_mask,
+                                      const MetaTensor& cache_k_quant_scales,
+                                      const MetaTensor& cache_v_quant_scales,
+                                      const MetaTensor& cache_k_dequant_scales,
+                                      const MetaTensor& cache_v_dequant_scales,
+                                      const MetaTensor& qkv_out_scale,
+                                      const MetaTensor& qkv_bias,
+                                      const MetaTensor& out_shift,
+                                      const MetaTensor& out_smooth,
                                       int max_seq_len,
                                       int block_size,
                                       bool use_neox_style,
+                                      bool dynamic_cachekv_quant,
+                                      const int quant_round_type,
+                                      const float quant_max_bound,
+                                      const float quant_min_bound,
+                                      const float out_scale,
+                                      const std::string& compute_dtype,
                                       MetaTensor* fmha_out,
                                       MetaTensor* qkv_out,
                                       MetaTensor* key_cache_out,
@@ -761,6 +775,20 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     MetaTensor* ln_scale_grad,
     MetaTensor* ln_bias_grad);
 
+void FusedDotProductAttentionInferMeta(const MetaTensor& q,
+                                       const MetaTensor& k,
+                                       const MetaTensor& v,
+                                       MetaTensor* out,
+                                       MetaTensor* softmax_out,
+                                       MetaTensor* rng_state);
+
+void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
+                                           const MetaTensor& k,
+                                           const MetaTensor& v,
+                                           MetaTensor* q_grad,
+                                           MetaTensor* k_grad,
+                                           MetaTensor* v_grad);
+
 void SkipLayerNormInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             const MetaTensor& scale,
@@ -801,4 +829,16 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
     int pre_cache_length,
     MetaTensor* out);
 
+void QKVAttentionXPUInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              const MetaTensor& q_max,
+                              const MetaTensor& k_max,
+                              const MetaTensor& v_max,
+                              float alpha,
+                              int head_num,
+                              int head_dim,
+                              DataType out_dtype,
+                              MetaTensor* qkv,
+                              MetaTensor* qkv_max);
 }  // namespace phi

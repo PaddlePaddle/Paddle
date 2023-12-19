@@ -18,7 +18,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_mode_only,
+    test_default_and_pir,
     test_legacy_and_pt_and_pir,
 )
 from test_resnet import ResNetHelper
@@ -66,7 +66,7 @@ class TestResnetWithPass(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -76,9 +76,11 @@ class TestResnetWithPass(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
-        self.verify_predict()
+        # TODO(@xiongkun): open after save / load supported in pir.
+        if not paddle.base.framework.use_pir_api():
+            self.verify_predict()
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_in_static_mode_mkldnn(self):
         paddle.set_flags({'FLAGS_use_mkldnn': True})
         try:
