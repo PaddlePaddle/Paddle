@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+from paddle.autograd.ir_backward import grad
 from paddle.base.core import call_vjp, has_vjp
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
@@ -36,7 +37,7 @@ def body(i, ten):
     return [i, ten]
 
 
-class TestBuildModuleWithIfOp(unittest.TestCase):
+class TestBuildModuleWithWhileOp(unittest.TestCase):
     def construct_program_with_while(self):
         main_program = paddle.static.Program()
         with paddle.pir.core.program_guard(main_program):
@@ -46,6 +47,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             ten = paddle.full(
                 shape=[1], fill_value=10, dtype='int64'
             )  # loop length
+            i.stop_gradient = False
             i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
             return main_program
 
@@ -53,6 +55,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         main_program = self.construct_program_with_while()
         last_op = main_program.global_block().ops[-1]
         out = last_op.results()
+        self.assertEqual(out[0].stop_gradient, False)
         self.assertEqual(last_op.name(), "pd_op.while")
         self.assertEqual(len(out), 2)
 
@@ -69,8 +72,8 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             ]
             self.assertEqual(len(while_input), 4)
             while_input_stop_graditents = [[True], [False], [True], [True]]
-            while_output = [while_op.results()]
-            while_output_grad = [[out_grad, out_grad]]
+            while_output = [[value] for value in while_op.results()]
+            while_output_grad = [[out_grad], [out_grad], [out_grad]]
             self.assertEqual(has_vjp(while_op), True)
             grad_outs = call_vjp(
                 while_op,
@@ -86,6 +89,78 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             self.assertEqual(while_grad_op.name(), "pd_op.while")
             while_grad_output = while_grad_op.results()
             self.assertEqual(len(while_grad_output), 1)
+
+    def test_while_base_backward(self):
+        main_program = self.construct_program_with_while()
+        full_op1 = main_program.global_block().ops[0]
+        while_op = main_program.global_block().ops[-1]
+        with paddle.pir.core.program_guard(main_program):
+            out = while_op.result(0) + 1
+            grad_outs = grad(
+                out,
+                [full_op1.result(0)],
+            )
+
+            self.assertEqual(
+                grad_outs[0].get_defining_op().name(), "pd_op.while"
+            )
+
+
+def cond2(i, j, ten):
+    return i < ten
+
+
+def body2(i, j, ten):
+    i = i + j
+    return [i, j, ten]
+
+
+class TestBuildModuleWithWhile2Op(unittest.TestCase):
+    def test_add_n_program(self):
+        main_program = paddle.static.Program()
+        with paddle.pir.core.program_guard(main_program):
+            i = paddle.full(
+                shape=[1], fill_value=0, dtype='int64'
+            )  # loop counter
+            j = paddle.full(
+                shape=[1], fill_value=2, dtype='int64'
+            )  # loop counter
+            ten = paddle.full(
+                shape=[1], fill_value=10, dtype='int64'
+            )  # loop length
+            i.stop_gradient = False
+            j.stop_gradient = False
+            i_, j_, ten_ = paddle.static.nn.while_loop(
+                cond2, body2, [i, j, ten]
+            )
+            out = i_ - j_
+
+            grad_outs = grad(
+                out,
+                [i, j],
+            )
+
+            self.assertEqual(
+                grad_outs[0].get_defining_op().name(), "pd_op.while"
+            )
+            self.assertEqual(
+                main_program.global_block()
+                .ops[-1]
+                .as_while_op()
+                .body()
+                .ops[-2]
+                .name(),
+                "pd_op.add",
+            )
+            self.assertEqual(
+                main_program.global_block()
+                .ops[-1]
+                .as_while_op()
+                .body()
+                .ops[-4]
+                .name(),
+                "cf.has_elements",
+            )
 
 
 if __name__ == "__main__":
