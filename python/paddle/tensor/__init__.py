@@ -788,6 +788,7 @@ tensor_method_func = [
     'masked_scatter',
     'masked_scatter_',
     "combinations",
+    'signbit',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
