@@ -2757,7 +2757,8 @@ struct ReadArrayOpTranscriber : public OpTranscriber {
           "Op read_from_array should have corresponding OpInfo "
           "pd_op.read_array");
     }
-        return op_info;
+    
+      return op_info;
   }
 };
 
