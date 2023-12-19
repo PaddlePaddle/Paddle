@@ -58,12 +58,14 @@ class Rprop(Optimizer):
         learning_rate_range (tuple, optional): The range of learning rate.
             Learning rate cannot be smaller than the first element of the tuple;
             learning rate cannot be larger than the second element of the tuple.
+            The default value is (1e-5, 50).
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode.
             The default value is None in static graph mode, at this time all parameters will be updated.
         etas (tuple, optional): Tuple used to update learning rate.
             The first element of the tuple is the multiplicative decrease factor;
             the second element of the tuple is the multiplicative increase factor.
+            The default value is (0.5, 1.2).
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of some derived class of ``GradientClipBase`` .
             There are three clipping strategies ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` ).
             Default None, meaning there is no gradient clipping.
