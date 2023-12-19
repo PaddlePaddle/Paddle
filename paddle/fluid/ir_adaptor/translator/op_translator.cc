@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -1905,23 +1906,6 @@ struct FillConstantTranscriber : public OpTranscriber {
   }
 };
 
-static std::vector<int64_t> ParseCompatibleShapes(
-    const std::vector<int64_t>& dim1, const std::vector<int64_t>& dim2) {
-  IR_ENFORCE(dim1.size() == dim2.size(),
-             "Does not support rank inconsistency: dim1=%d, dim2=%d",
-             dim1.size(),
-             dim2.size());
-  std::vector<int64_t> result;
-  for (size_t i = 0; i < dim1.size(); ++i) {
-    if (dim1[i] != dim2[i]) {
-      result.push_back(-1);
-    } else {
-      result.push_back(dim1[i]);
-    }
-  }
-  return result;
-}
-
 struct SelectInputOpTranscriber : public OpTranscriber {
   pir::Operation* operator()(pir::IrContext* ctx,
                              TranslationContext* param_map,
@@ -1983,12 +1967,11 @@ struct SelectInputOpTranscriber : public OpTranscriber {
       }
       auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
       auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-      std::vector<int64_t> compat_shape = ParseCompatibleShapes(
-          common::vectorize(dim1), common::vectorize(dim2));
+      auto dim = common::ComputeCompatibleDim(dim1, dim2);
       op_output_types.push_back(
           paddle::dialect::DenseTensorType::get(ctx,
                                                 tensor1.dtype(),
-                                                common::make_ddim(compat_shape),
+                                                dim,
                                                 tensor1.data_layout(),
                                                 tensor1.lod(),
                                                 tensor1.offset()));

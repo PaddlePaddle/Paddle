@@ -95,6 +95,17 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       scope,
       platform::errors::InvalidArgument(
           "Scope in DeleteQuantDequantLinearOpPass should not be null."));
+
+  VLOG(3) << "Running delete_quant_dequant_linear_op_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running delete_quant_dequant_linear_op_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running delete_quant_dequant_linear_op_pass is: "
+        << graph->GetBlockId();
+  }
+
   std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
 
   // Create pattern
