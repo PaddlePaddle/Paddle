@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    memory
+    staticgraph_executor_statistics
     executor
     fleet_wrapper
     box_wrapper
@@ -19,6 +19,7 @@ set(PYBIND_DEPS
     layer
     tracer
     engine
+    common
     scope_pool
     analysis_predictor
     imperative_profiler
@@ -34,26 +35,27 @@ set(PYBIND_DEPS
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
-    plan
     global_utils
+    plan
     phi_utils
     phi
-    pir_adaptor
     op_dialect_vjp
+    pir_adaptor
     program_translator
     pir_transforms
     pir
     new_profiler
-    jit_layer
-    jit_property
+    fluid_jit
     prim_utils
+    gather_op_handle
     static_tensor_operants
     type_info
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
-                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
+  set(PYBIND_DEPS
+      ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+      add_broadcast_to_elementwise_pass pd_to_cinn_pass sub_graph_checker)
 endif()
 
 if(WITH_PSCORE)
@@ -63,7 +65,8 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
+                  common)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -121,6 +124,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
+    control_flow_api.cc
     pir.cc
     graph.cc
     bind_fleet_executor.cc
@@ -191,7 +195,7 @@ if(WITH_GLOO)
 endif()
 
 if(WITH_CRYPTO)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
+  set(PYBIND_DEPS ${PYBIND_DEPS} framework_io)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif()
 
@@ -223,6 +227,10 @@ if(WITH_PSCORE)
   list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
+endif()
+
+if(WITH_CINN)
+  set(PYBIND_SRCS ${PYBIND_SRCS} test.cc)
 endif()
 
 if(WITH_RPC)
@@ -358,6 +366,12 @@ if(WITH_PYTHON)
         DEPENDS pir)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
+
+    add_custom_command(
+      OUTPUT ${op_impl_path}/common.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${COMMON_LIB} ${op_impl_path}
+      DEPENDS common)
+    list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/common.dll)
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
@@ -495,6 +509,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
+    list(APPEND PYBIND_DEPS common)
     list(APPEND PYBIND_DEPS final_dygraph_function)
     list(APPEND PYBIND_DEPS final_dygraph_node)
     list(APPEND PYBIND_DEPS dygraph_function)

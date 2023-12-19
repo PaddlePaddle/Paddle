@@ -212,7 +212,7 @@ void PowKernel(const Context& dev_ctx,
                      static_cast<void*>(&pow_factor),
                      sizeof(T));
 
-  auto x_dims = vectorize<int>(x.dims());
+  auto x_dims = common::vectorize<int>(x.dims());
   // use [1] to replace [], because xpu not support []
   if (x_dims.size() == 0) {
     x_dims = std::vector<int>({1});
@@ -334,10 +334,19 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
 
     auto xpu_context = dev_ctx.x_context();
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      int r = xpu::fast_swish(
-          xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish");
+      if (!std::is_same<T, ::phi::dtype::bfloat16>::value) {
+        // use fast_swish if NOT bf16
+        int r = xpu::fast_swish(
+            xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish");
+      } else {
+        // use plain swish
+        int r = xpu::swish(
+            xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+      }
     } else {
+      // use plain swish
       int r =
           xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
@@ -514,6 +523,19 @@ struct XPUCosFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPURsqrtFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int ret = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::rsqrt<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rsqrt");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Log, XPULogFunctor)
@@ -526,6 +548,7 @@ DEFINE_XPU_ACTIVATION_KERNEL(Tanh, XPUTanhFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Silu, XPUSiluFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Sin, XPUSinFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Cos, XPUCosFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Rsqrt, XPURsqrtFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
@@ -560,8 +583,13 @@ void HardSwishKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     relu, XPU, ALL_LAYOUT, phi::ReluKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(silu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SiluKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(
     elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
@@ -617,3 +645,4 @@ PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
 PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)
+PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)

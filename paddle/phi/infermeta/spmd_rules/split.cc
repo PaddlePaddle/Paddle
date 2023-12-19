@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // Step0: Verify input args based on split logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -105,8 +105,8 @@ SpmdInfo SplitWithNumInferSpmdReverse(
     int axis) {
   // Step0: Verify input args based on split logic
   int nouts = outs.size();
-  int out_ndim = phi::vectorize(outs[0]->dims()).size();
-  auto x_shape = phi::vectorize(x.dims());
+  int out_ndim = common::vectorize(outs[0]->dims()).size();
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr.dims_mapping();
@@ -125,7 +125,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
                                    x_ndim,
                                    out_ndim));
   for (int i = 0; i < num; i++) {
-    auto shape = phi::vectorize(outs[i]->dims());
+    auto shape = common::vectorize(outs[i]->dims());
     int ndim = shape.size();
     auto dist_attr = outs[i]->dist_attr();
     int dims_mapping_size = dist_attr.dims_mapping().size();
@@ -187,7 +187,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   VLOG(4) << "Einsum Notation: " << x_axes << "-->" << out_axes;
   for (int i = 0; i < nouts; i++) {
     VLOG(4) << "Output" << std::to_string(i) << " shape: ["
-            << str_join(phi::vectorize(outs[i]->dims())) << "] "
+            << str_join(common::vectorize(outs[i]->dims())) << "] "
             << "src_dims_mapping: ["
             << str_join(outs[i]->dist_attr().dims_mapping()) << "] "
             << "dst_dims_mapping: ["
@@ -213,6 +213,22 @@ SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
                                int axis) {
   int num = sections.size();
   return SplitWithNumInferSpmdReverse(x, outs, num, axis);
+}
+
+SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
+                                      int num,
+                                      const Scalar& axis) {
+  auto tmp = SplitWithNumInferSpmd(x, num, axis.to<int32_t>());
+  // bridge the diff concerning vector output between static and dynamic auto
+  // parallel ToDo(liuzhenhai): unify the difference between static and dynamic
+  SpmdInfo ret;
+  ret.first = tmp.first;
+  std::vector<TensorDistAttr> out_dist_attrs;
+  for (const auto& out : tmp.second) {
+    out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
+  }
+  ret.second = {out_dist_attrs};
+  return ret;
 }
 
 }  // namespace distributed

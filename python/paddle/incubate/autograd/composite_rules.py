@@ -179,8 +179,9 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
             bias = reshape(bias, x.shape[begin_norm_axis:])
         out = out + bias
 
-    mean_ = reshape(mean_, [-1])
-    variance = reshape(variance, [-1])
+    # keep the mean and variance shape as input x before begin_norm_axis
+    mean_ = reshape(mean_, x.shape[:begin_norm_axis])
+    variance = reshape(variance, x.shape[:begin_norm_axis])
     if is_amp:
         out = cast(out, dtype)
     return out, mean_, variance

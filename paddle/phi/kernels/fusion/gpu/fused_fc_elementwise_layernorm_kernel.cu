@@ -27,11 +27,11 @@ namespace cub = hipcub;
 #include <cuda_fp16.h>
 #endif
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -420,7 +420,7 @@ void FusedFCElementwiseLayerNormKernel(
   auto w_dims = w.dims();
   int N = w_dims[1];
   int K = w_dims[0];
-  int M = phi::product(x.dims()) / K;
+  int M = common::product(x.dims()) / K;
 
   const T* x_data = x.data<T>();
   const T* w_data = w.data<T>();

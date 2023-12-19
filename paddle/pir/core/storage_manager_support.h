@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <set>
 #include "paddle/pir/core/interface_support.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/type.h"
@@ -95,8 +96,8 @@ class StorageHelperBase : public BaseT {
   /// \brief Returns an interface map for the interfaces registered to this
   /// storage user.
   ///
-  static std::vector<InterfaceValue> interface_map() {
-    return pir::detail::GetInterfaceMap<ConcreteT, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteT, InterfaceList>();
   }
 
   ///

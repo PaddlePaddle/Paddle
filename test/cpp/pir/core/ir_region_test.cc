@@ -45,7 +45,7 @@ TEST(region, erase_op_test) {
   // Test pir::Block::erase
   pir::Block* block = program.block();
   EXPECT_EQ(block->size(), 3u);
-  block->erase(*(block->back()));
+  block->erase(block->back());
   EXPECT_EQ(block->size(), 2u);
 
   // Test pir::Region::erase

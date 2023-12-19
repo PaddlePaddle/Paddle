@@ -86,7 +86,17 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     return;
   }
 
-  if (auto s = attr.dyn_cast<StrAttribute>()) {
+  if (auto t = attr.dyn_cast<TensorNameAttribute>()) {
+    std::string t_val = t.data();
+    std::string replacement = "\\\"";
+    std::string search = "\"";
+    size_t found = t_val.find(search);
+    while (found != std::string::npos) {
+      t_val.replace(found, search.length(), replacement);
+      found = t_val.find(search, found + replacement.length());
+    }
+    os << "\"" << t_val << "\"";
+  } else if (auto s = attr.dyn_cast<StrAttribute>()) {
     std::string s_val = s.AsString();
     std::string replacement = "\\\"";
     std::string search = "\"";
@@ -181,15 +191,15 @@ void IrPrinter::PrintFullOperation(Operation* op) {
 }
 
 void IrPrinter::PrintRegion(const Region& region) {
-  for (auto block : region) {
+  for (auto& block : region) {
     PrintBlock(block);
   }
 }
 
-void IrPrinter::PrintBlock(const Block* block) {
+void IrPrinter::PrintBlock(const Block& block) {
   os << "{\n";
-  for (auto item : *block) {
-    PrintOperation(item);
+  for (auto& item : block) {
+    PrintOperation(&item);
     os << newline;
   }
   os << "}\n";

@@ -44,6 +44,7 @@ if(NOT APPLE)
     SRCS
     analyzer_tester.cc
     EXTRA_DEPS
+    common
     paddle_inference_shared
     ARGS
     --inference_model_dir=${WORD2VEC_MODEL_DIR})

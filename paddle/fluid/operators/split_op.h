@@ -79,7 +79,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
                 "Only one dimension value of Attr(num_or_sections) "
                 "in SplitOp can be -1. "
                 "But received Attr(num_or_sections) = [%s].",
-                phi::make_ddim(sections)));
+                common::make_ddim(sections)));
       }
 
       if (unk_dim_idx != -1) {
@@ -95,7 +95,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
                 "size "
                 "along the split dimension. But received Attr(num_or_sections) "
                 "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                phi::make_ddim(sections),
+                common::make_ddim(sections),
                 in_dims,
                 axis));
         if (each_section_is_known) {
@@ -110,7 +110,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
                 "size "
                 "along the split dimension. But received Attr(num_or_sections)"
                 " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                phi::make_ddim(sections),
+                common::make_ddim(sections),
                 in_dims,
                 axis));
       }

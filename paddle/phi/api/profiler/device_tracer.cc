@@ -196,7 +196,7 @@ void CUPTIAPI bufferCompleted(CUcontext ctx,
       errors::PermissionDenied(
           "Only one thread is allowed to call bufferCompleted()."));
   CUptiResult status;
-  CUpti_Activity *record = NULL;
+  CUpti_Activity *record = nullptr;
   if (validSize > 0) {
     do {
       status = dynload::cuptiActivityGetNextRecord(buffer, validSize, &record);

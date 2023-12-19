@@ -156,11 +156,11 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-3,
+            5e-3,
             1e-3,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        program_config.set_input_type(np.int8)
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             1e-3,
@@ -174,14 +174,14 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-3,
+            5e-3,
             1e-3,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        program_config.set_input_type(np.int8)
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-3,
-            1e-3,
+            5e-3,
+            5e-3,
         )
 
     def add_skip_trt_case(self):

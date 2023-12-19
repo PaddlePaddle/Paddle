@@ -150,6 +150,11 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
+    tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
+    grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1, mesh);
+  }
   {
     eager_gil_scoped_release guard;
     egr::Backward(tensors, grad_tensors, retain_graph);
@@ -170,6 +175,15 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(
+          &mesh, tensors, inputs, grad_tensors, no_grad_vars)) {
+    tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
+    inputs = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1, mesh);
+    grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 2), 2, mesh);
+    no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7, mesh);
+  }
+
   std::vector<paddle::Tensor> result;
   {
     eager_gil_scoped_release guard;
@@ -498,7 +512,7 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
 // This function copies from function `EmptyTensorInitializer` with default
 // parameters
 static Tensor InitializedEmptyTensor() {
-  auto ddims = phi::make_ddim({0});
+  auto ddims = common::make_ddim({0});
   auto tensor = paddle::Tensor();
   tensor.set_name(
       egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
@@ -564,11 +578,45 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
               << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
     } else {
-      paddle::Tensor tensor =
-          std::move(CastPyArg2Tensor(obj, i + 1));  // NOLINT
-      ctx.EmplaceBackInput(std::move(tensor));
+      const paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
+      ctx.EmplaceBackInput(tensor);
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add Tensor for general case.";
+    }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, *(ctx.AllMutableInput()))) {
+    paddle::CustomOpKernelContext empty_ctx;
+    ctx = empty_ctx;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      const auto& input = inputs.at(i);
+      // Parse op_type first, so that use i + 1
+      PyObject* obj = PyTuple_GET_ITEM(args, i + 1);
+      // Emplace Py_None from python, this means optional inputs passed to C++,
+      // use one un-initialized tensor to indicate both Tensor and
+      // vector<Tensor> inputs.
+      if (obj == Py_None) {
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add un-initialized tensor "
+                   "because the optional input is None";
+        ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+        continue;
+      }
+      if (paddle::framework::detail::IsDuplicableVar(input)) {
+        std::vector<paddle::Tensor> tensors =
+            std::move(CastPyArg2VectorOfTensor(obj, i + 1, mesh));  // NOLINT
+        ctx.EmplaceBackInputs(std::move(tensors));
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add vector<Tensor> size = "
+                << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
+      } else {
+        paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
+        ConvertAllInputsToDistTensor(mesh, tensor);
+        ctx.EmplaceBackInput(tensor);
+        VLOG(7) << "Custom operator add input " << input
+                << " to CustomOpKernelContext. Add Tensor for general case.";
+      }
     }
   }
 
@@ -834,7 +882,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
     // sort and merge duplicate indices
     std::shared_ptr<phi::SparseCooTensor> coo_tensor =
         std::make_shared<phi::SparseCooTensor>(
-            *dense_indices, *dense_elements, phi::make_ddim(dense_shape));
+            *dense_indices, *dense_elements, common::make_ddim(dense_shape));
     tensor.set_impl(coo_tensor);
     auto name =
         egr::Controller::Instance().GenerateUniqueName("generated_tensor");
@@ -884,7 +932,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
         std::make_shared<phi::SparseCsrTensor>(*dense_crows,
                                                *dense_cols,
                                                *dense_elements,
-                                               phi::make_ddim(dense_shape));
+                                               common::make_ddim(dense_shape));
     tensor.set_impl(csr_tensor);
     auto name =
         egr::Controller::Instance().GenerateUniqueName("generated_tensor");
@@ -937,6 +985,11 @@ static PyObject* eager_api_async_read(PyObject* self,
   auto& buffer = GetTensorFromArgs("async_read", "buffer", args, 3, false);
   auto& offset = GetTensorFromArgs("async_read", "offset", args, 4, false);
   auto& count = GetTensorFromArgs("async_read", "count", args, 5, false);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src, dst, index, buffer, offset, count)) {
+    ConvertAllInputsToDistTensor(mesh, src, dst, index, buffer, offset, count);
+  }
+
   {
     eager_gil_scoped_release guard;
     PADDLE_ENFORCE_EQ(
@@ -1111,6 +1164,10 @@ static PyObject* eager_api_async_write(PyObject* self,
   auto& dst = GetTensorFromArgs("async_write", "dst", args, 1, false);
   auto& offset = GetTensorFromArgs("async_write", "offset", args, 2, false);
   auto& count = GetTensorFromArgs("async_write", "count", args, 3, false);
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, src, dst, offset, count)) {
+    ConvertAllInputsToDistTensor(mesh, src, dst, offset, count);
+  }
   {
     eager_gil_scoped_release guard;
     PADDLE_ENFORCE_EQ(

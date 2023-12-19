@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
@@ -35,6 +36,10 @@ SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
                                int axis);
 
 SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis);
+
+SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
+                                      int num,
+                                      const Scalar& axis);
 
 SpmdInfo SplitWithNumInferSpmdReverse(
     const DistMetaTensor& x,

@@ -80,7 +80,7 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
   hlir::framework::ApplyPasses(graph.get(),
@@ -117,7 +117,7 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_1) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -158,7 +158,7 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_2) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -199,7 +199,7 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_3) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -240,7 +240,7 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_4) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -274,7 +274,7 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_5) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -311,7 +311,7 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_0) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -348,7 +348,7 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_2) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -387,7 +387,7 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_4) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -426,7 +426,7 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_5) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -462,7 +462,7 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_0) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -497,7 +497,7 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_1) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -535,7 +535,7 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_2) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -573,7 +573,7 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_3) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -612,7 +612,7 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_4) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 
@@ -648,7 +648,7 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_5) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<Graph>(program, target);
 

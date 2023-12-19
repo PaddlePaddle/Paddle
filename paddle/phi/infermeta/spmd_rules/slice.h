@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
@@ -39,6 +40,34 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
                                const std::vector<int>& ends,
                                const std::vector<int64_t>& infer_flags,
                                const std::vector<int64_t>& decrease_axis);
+
+SpmdInfo SliceInferSpmdDynamic(const DistMetaTensor& input,
+                               const std::vector<int64_t>& axes,
+                               const IntArray& starts,
+                               const IntArray& ends,
+                               const std::vector<int64_t>& infer_flags,
+                               const std::vector<int64_t>& decrease_axis);
+
+SpmdInfo SliceGradInferSpmdDynamic(const DistMetaTensor& input,
+                                   const DistMetaTensor& out_grad,
+                                   const std::vector<int64_t>& axes,
+                                   const IntArray& starts,
+                                   const IntArray& ends,
+                                   const std::vector<int64_t>& infer_flags,
+                                   const std::vector<int64_t>& decrease_axis);
+
+SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
+                                      const std::vector<int>& axes,
+                                      const IntArray& starts,
+                                      const IntArray& ends,
+                                      const IntArray& strides);
+
+SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
+                                          const DistMetaTensor& out_grad,
+                                          const std::vector<int>& axes,
+                                          const IntArray& starts,
+                                          const IntArray& ends,
+                                          const IntArray& strides);
 
 }  // namespace distributed
 }  // namespace phi

@@ -58,13 +58,13 @@ void ReduceFunctor(const DeviceContext& context,
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
-    auto dims_vector = phi::vectorize(out_dims);
+    auto dims_vector = common::vectorize(out_dims);
     for (size_t i = 0; i < dims_ref.size(); ++i) {
       dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = phi::make_ddim(dims_vector);
+    out_dims = common::make_ddim(dims_vector);
   }
   auto& place = *context.eigen_device();
   Functor functor;
@@ -90,7 +90,7 @@ void ReduceGradFunctor(const DeviceContext& context,
   auto x_grad = EigenTensor<T, D>::From(*output);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto x_dims = input0.dims();
-  auto reduced_dims_v = phi::vectorize(x_dims);
+  auto reduced_dims_v = common::vectorize(x_dims);
   std::vector<int> dims_ref = dims;
   Eigen::array<int, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
@@ -104,7 +104,7 @@ void ReduceGradFunctor(const DeviceContext& context,
     broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
     broad_cats_times *= x_dims[dims_ref[i]];
   }
-  auto reduced_dims = phi::make_ddim(reduced_dims_v);
+  auto reduced_dims = common::make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
 

@@ -31,6 +31,13 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
     auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
+    const phi::distributed::ProcessMesh *mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, X, Params, Out)) {
+      X = GetTensorListFromArgs("run_program", "X", args, 0, true, mesh);
+      Params =
+          GetTensorListFromArgs("run_program", "Params", args, 1, true, mesh);
+      Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true, mesh);
+    }
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
     ConstructAttrMapFromPyArgs(
@@ -70,6 +77,13 @@ static PyObject *pir_eager_api_run_program(PyObject *self,
     auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
+    const phi::distributed::ProcessMesh *mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, X, Params, Out)) {
+      X = GetTensorListFromArgs("run_program", "X", args, 0, true, mesh);
+      Params =
+          GetTensorListFromArgs("run_program", "Params", args, 1, true, mesh);
+      Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true, mesh);
+    }
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
     VLOG(1) << "Start Pir ConstructAttrMapFromPyArgs";

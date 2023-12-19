@@ -57,8 +57,11 @@ __global__ void bernoulli_cuda_kernel(
     for (size_t j = 0; j < 4; j++) {
       size_t idx = i + j;
       if (idx < size) {
-        out_data[idx] =
-            static_cast<T>((&rand.x)[j] <= static_cast<MPType>(x_data[idx]));
+        MPType p = static_cast<MPType>(x_data[idx]);
+        PADDLE_ENFORCE(p >= 0 && p <= 1,
+                       "The probability should be in [0, 1], but got %f",
+                       p);
+        out_data[idx] = static_cast<T>((&rand.x)[j] <= static_cast<MPType>(p));
       }
     }
   }

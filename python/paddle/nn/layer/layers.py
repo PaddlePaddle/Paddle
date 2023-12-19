@@ -23,24 +23,26 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
+from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
-from paddle.base.dygraph.base import in_declarative_mode  # noqa: F401
 from paddle.base.dygraph.base import (
     _convert_into_variable,
+    in_declarative_mode,  # noqa: F401
     in_to_static_mode,
     program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
 from paddle.base.executor import Executor, global_scope
-from paddle.base.framework import Parameter, Program
-from paddle.base.framework import _current_expected_place as _get_device
 from paddle.base.framework import (
-    _global_flags,
+    Parameter,
+    Program,
+    _current_expected_place as _get_device,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
+    in_pir_mode,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -265,14 +267,9 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-        if (use_mkldnn is not None) and use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
@@ -732,7 +729,7 @@ class Layer:
         """Create parameters for this layer.
 
         Parameters:
-            shape(list): Shape of the parameter.
+            shape(list): Shape of the parameter. The data type in the list must be int.
             attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
             dtype(str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
@@ -843,12 +840,12 @@ class Layer:
         Create Tensor for this layer.
 
         Parameters:
-            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
-            persistable(bool, optional): if set this tensor persistable. Default: False
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None.
+            persistable(bool, optional): if set this tensor persistable. Default: False.
             dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be "float32". Default: None
+                If set None, it will be "float32". Default: None.
 
         Returns:
             Tensor, created Tensor.
@@ -892,6 +889,11 @@ class Layer:
         """
 
         Returns a list of all Parameters from current layer and its sub-layers.
+
+        Parameters:
+            include_sublayers (bool, optional): Whether to return the parameters of the sublayer.
+                If True, the returned list contains the parameters of the sublayer.
+                Default: True.
 
         Returns:
             list of Tensor, a list of Parameters.
@@ -1057,7 +1059,7 @@ class Layer:
         Returns a list of sub layers.
 
         Parameters:
-            include_self(bool, optional): Whether return self as sublayers. Default: False
+            include_self(bool, optional): Whether return self as sublayers. Default: False.
 
         Returns:
             list of Layer, a list of sub layers.
@@ -1136,7 +1138,9 @@ class Layer:
                  [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
-        params_set = set()
+        params_set = (
+            ValueSet() if in_pir_mode() and not in_to_static_mode() else set()
+        )
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
@@ -1267,7 +1271,7 @@ class Layer:
         Returns a list of all buffers from current layer and its sub-layers.
 
         Parameters:
-            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
+            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True.
 
         Returns:
             list of Tensor, a list of buffers.
@@ -1671,7 +1675,10 @@ class Layer:
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
-        elif isinstance(value, paddle.pir.OpResult) and value.persistable:
+        elif (
+            isinstance(value, paddle.pir.Value)
+            and value.get_defining_op().name() == 'builtin.parameter'
+        ):
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
@@ -1723,7 +1730,9 @@ class Layer:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
-                    if type(value) == framework.Variable:
+                    if type(value) == framework.Variable or isinstance(
+                        value, paddle.pir.Value
+                    ):
                         from paddle import assign
 
                         # Note(zhhsplendid): the condition below happens in PaddleGan model,
@@ -1880,10 +1889,10 @@ class Layer:
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
         """
 
         if destination is None:
@@ -1936,9 +1945,9 @@ class Layer:
         Get all parameters and buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
         Retruns:
             dict, a dict contains all the parameters and persistable buffers.
@@ -1973,9 +1982,9 @@ class Layer:
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -2007,7 +2016,7 @@ class Layer:
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
-                                                  Default: True
+                                                  Default: True.
         Returns:
             missing_keys(list):A list of str containing the missing keys
             unexpected_keys(list):A list of str containing the unexpected keys
@@ -2063,6 +2072,8 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
+            if isinstance(param, paddle.Tensor) and not param._is_initialized():
+                continue
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
