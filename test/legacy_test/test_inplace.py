@@ -1707,7 +1707,9 @@ class TestDygraphInplaceLogNormal(TestDygraphInplace):
         self.seed = 100
 
     def inplace_api_processing(self, var):
-        return paddle.log_normal_(var, self.shape, self.mean, self.std, self.seed)
+        return paddle.log_normal_(
+            var, self.shape, self.mean, self.std, self.seed
+        )
 
     def non_inplace_api_processing(self, var):
         return paddle.log_normal(var, self.index, self.axis, self.value)

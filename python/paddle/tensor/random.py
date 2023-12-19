@@ -1519,7 +1519,7 @@ def bernoulli_(x, p=0.5, name=None):
         - x (Tensor): Input Tensor ``x``.
     Examples:
         .. code-block:: python
-        
+
             >>> import paddle
             >>> x = paddle.empty((3, 4)).uniform_(0, 1)
             >>> x.bernoulli_()
@@ -1537,7 +1537,7 @@ def bernoulli_(x, p=0.5, name=None):
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
 
-    uniform_(x, min=0., max=1.)
+    uniform_(x, min=0.0, max=1.0)
     return x.set_value((x < p).astype(x.dtype))
 
 
@@ -1571,7 +1571,7 @@ def log_normal(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         - out (Tensor): A Tensor filled with random values sampled from a log normal distribution with ``mean`` and ``std`` .
     Examples:
         .. code-block:: python
-            
+
             :name: log_normal-example-1
             >>> import paddle
             >>> out1 = paddle.log_normal(shape=[2, 3])
@@ -1616,11 +1616,13 @@ def log_normal(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
             )
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    
-    n_mean = paddle.log(mean ** 2 / paddle.sqrt(mean ** 2 + std ** 2))
-    n_std = paddle.sqrt(paddle.log(1 + (std ** 2 / mean ** 2)))
 
-    distribution = gaussian(shape, mean=n_mean, std=n_std, seed=seed, dtype=dtype)
+    n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
+    n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
+
+    distribution = gaussian(
+        shape, mean=n_mean, std=n_std, seed=seed, dtype=dtype
+    )
     return paddle.exp(distribution)
 
 
@@ -1665,7 +1667,7 @@ def log_normal_(x, mean=0.0, std=1.0, seed=0, name=None):
             >>> # doctest: -SKIP
 
     """
-    n_mean = paddle.log(mean ** 2 / paddle.sqrt(mean ** 2 + std ** 2))
-    n_std = paddle.sqrt(paddle.log(1 + (std ** 2 / mean ** 2)))
+    n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
+    n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
 
     return gaussian_(x, mean=mean, std=std, seed=seed).exp_()

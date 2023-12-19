@@ -380,8 +380,11 @@ from .math import (  # noqa: F401
     vander,
 )
 from .random import (  # noqa: F401
+    bernoulli_,
     binomial,
     exponential_,
+    log_normal,
+    log_normal_,
     multinomial,
     normal,
     normal_,
@@ -394,9 +397,6 @@ from .random import (  # noqa: F401
     standard_normal,
     uniform,
     uniform_,
-    bernoulli_,
-    log_normal,
-    log_normal_,
 )
 from .search import (  # noqa: F401
     argmax,
