@@ -33,6 +33,15 @@ if(WITH_DISTRIBUTE)
     spmd_rules
     phi)
 
+  paddle_test(
+    fused_linear_param_grad_add_spmd_rule_test
+    SRCS
+    fused_linear_param_grad_add_spmd_rule_test.cc
+    DEPS
+    spmd_rule_test_util
+    spmd_rules
+    phi)
+
 endif()
 
 cc_test(
