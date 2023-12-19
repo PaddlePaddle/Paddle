@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <unsupported/Eigen/SpecialFunctions>
+#include "unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsImpl.h"
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/gammaln_kernel.h"
 
 namespace phi {
 template <typename T>
