@@ -33,9 +33,6 @@ struct IgammaGradFunctor {
     const MT mp_x = static_cast<MT>(x_[idx]);
     const MT mp_a = static_cast<MT>(a_[idx]);
     const MT mp_a_1 = static_cast<MT>(a_[idx] - 1);
-    // output_[idx] = static_cast<T>(mp_dout * -Eigen::numext::exp(-mp_x) *
-    // Eigen::numext::pow(mp_x, mp_a_1) / Eigen::numext::igammac(mp_a,
-    // static_cast<MT>(0)));
     output_[idx] =
         static_cast<T>(mp_dout * -Eigen::numext::exp(-mp_x) *
                        Eigen::numext::pow(mp_x, mp_a_1) / std::tgamma(mp_a));
