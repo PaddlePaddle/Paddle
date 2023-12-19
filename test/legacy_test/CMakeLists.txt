@@ -1439,6 +1439,3 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     test_fleet_executor_with_task_nodes
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
-
-set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 30)
-set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 30)
