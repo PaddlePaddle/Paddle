@@ -379,7 +379,8 @@
   kernel :
     func : dropout
     data_type : x
-  optional : seed_tensor, mask
+  intermediate : mask
+  optional : seed_tensor
   backward : dropout_grad
 
 - op : einsum
