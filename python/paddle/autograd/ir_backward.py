@@ -633,7 +633,7 @@ def append_backward_ops(
         assert len(while_op.as_while_op().block_arguments()) + 1 == len(
             while_op.operands_source()
         ), "while op's block_arguments size + 1 should same to whiel op's operands_source"
-        map = {}
+        map = ValueDict()
         for arg, value in zip(
             while_op.as_while_op().block_arguments(),
             while_op.operands_source()[1:],
