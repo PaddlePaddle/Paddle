@@ -1712,7 +1712,9 @@ class TestDygraphInplaceLogNormal(TestDygraphInplace):
         )
 
     def non_inplace_api_processing(self, var):
-        return paddle.log_normal(var, self.index, self.axis, self.value)
+        return paddle.log_normal(
+            var, self.shape, self.mean, self.std, self.seed
+        )
 
 
 if __name__ == '__main__':
