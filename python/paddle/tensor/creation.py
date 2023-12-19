@@ -924,14 +924,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
             if dtype in ['int8', 'uint8', 'int16', 'int32', 'int64']:
-                attrs['str_value'] = str(int(value))
-                attrs['value'] = int(value)
+                attrs['str_value'] = str(value)
+                attrs['value'] = value
             elif dtype in ['complex64', 'complex128']:
                 attrs['str_value'] = str(value)
                 attrs['value'] = value
             else:
-                attrs['str_value'] = str(float(value))
-                attrs['value'] = float(value)
+                attrs['str_value'] = str(value)
+                attrs['value'] = value
 
         helper = LayerHelper("fill_constant", **locals())
         inputs = {}

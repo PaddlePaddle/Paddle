@@ -1846,8 +1846,10 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
       auto defining_info = (*param_map)[value_tensor_vars[0]];
       op_inputs.push_back(defining_info.value);
     } else {
-      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-      pir::Attribute new_attr = pir::FloatAttribute::get(ctx, value);
+      auto value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                    op_desc.GetAttr("value"));
+      pir::Attribute new_attr =
+          paddle::dialect::ScalarAttribute::get(ctx, value);
       auto defining_op =
           InsertFullOperationForAttributeInput(ctx, block, new_attr);
       op_inputs.push_back(defining_op->result(0));
