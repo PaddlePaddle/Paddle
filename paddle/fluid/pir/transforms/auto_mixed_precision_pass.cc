@@ -181,6 +181,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   std::unordered_set<std::string> white_list_;
 
   std::unordered_set<pir::Operation*> op_run_low_precision_;
+  std::unordered_map<pir::Value, paddle::dialect::CastOp> cached_cast_ops_;
 
   void ProcessBlock(pir::Block* block) {}
 
@@ -418,10 +419,15 @@ class AutoMixedPrecisionPass : public pir::Pass {
                     phi::DataType precision,
                     pir::PatternRewriter& rewriter) const {  // NOLINT
     auto value = operand.source();
+    if (cached_cast_ops_.count(value)) {
+      operand.set_source(cached_cast_ops_[value]->result(0));
+      return;
+    }
     rewriter.set_insertion_point(op);  // before op
     paddle::dialect::CastOp cast_op =
         rewriter.Build<paddle::dialect::CastOp>(value, precision);
     operand.set_source(cast_op->result(0));
+    cached_cast_ops_[value] = cast_op;
   }
 
   void RewriteBuiltinOp(pir::Operation* op,
