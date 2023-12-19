@@ -49,6 +49,7 @@ class TestTensorApplyAPI(unittest.TestCase):
                 self.function,
             )
             with paddle.pir_utils.IrGuard():
+                paddle.disable_static()
                 self.assertRaises(
                     RuntimeError,
                     paddle.jit.to_static(fn_outplace),
@@ -62,10 +63,10 @@ class TestTensorApplyAPI(unittest.TestCase):
             return y
 
         with paddle.jit.api.sot_mode_guard(False):
-            paddle.disable_static()
             jit_g = paddle.jit.to_static(fn)
             out_legacy_ir = jit_g(self.x, self.function)
             with paddle.pir_utils.IrGuard():
+                paddle.disable_static()
                 jit_g = paddle.jit.to_static(fn)
                 out_pir = jit_g(self.x, self.function)
         np.testing.assert_allclose(
