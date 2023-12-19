@@ -36,7 +36,7 @@ def get_cuda_version():
         return -1
 
 
-class TestMatmul(unittest.TestCase):
+class TestMatmulSparseDense(unittest.TestCase):
     # x: sparse, y: dense, out: dense
     def check_result(self, x_shape, y_shape, format):
         if len(x_shape) == 3:
@@ -93,7 +93,7 @@ class TestMatmul(unittest.TestCase):
         self.check_result([8, 16, 12], [8, 12, 10], 'csr')
 
 
-class TestMatmulCSR(unittest.TestCase):
+class TestMatmulCSRCSR(unittest.TestCase):
     # x: csr sparse, y: csr sparse, out: csr sparse
     def check_result(self, x_shape, y_shape):
         mask = paddle.randint(0, 2, x_shape)
@@ -149,8 +149,15 @@ class TestMatmulCSR(unittest.TestCase):
     def test_matmul_2d(self):
         self.check_result([16, 12], [12, 10])
 
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        "only support cuda>=11.8",
+    )
+    def test_matmul_3d(self):
+        self.check_result([8, 16, 12], [8, 12, 10])
 
-class TestMatmulCOO(unittest.TestCase):
+
+class TestMatmulCOOCOO(unittest.TestCase):
     # x: coo sparse, y: coo sparse, out: coo sparse
     def check_result(self, x_shape, y_shape):
         mask = paddle.randint(0, 2, x_shape)
@@ -204,6 +211,13 @@ class TestMatmulCOO(unittest.TestCase):
     )
     def test_matmul_2d(self):
         self.check_result([16, 12], [12, 10])
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        "only support cuda>=11.8",
+    )
+    def test_matmul_3d(self):
+        self.check_result([8, 16, 12], [8, 12, 10])
 
 
 class TestMaskedMatmul(unittest.TestCase):

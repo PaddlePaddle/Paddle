@@ -104,10 +104,26 @@ void MatmulKernelImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatmulKernelImpl(const Context& dev_ctx,
-                      const SparseCsrTensor& x,
-                      const SparseCsrTensor& y,
-                      SparseCsrTensor* out) {
+void MatmulCooDenseKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out) {
+  MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MatmulCsrDenseKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out) {
+  MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MatmulCsrCsrKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const SparseCsrTensor& y,
+                        SparseCsrTensor* out) {
 #if CUDA_VERSION >= 11000
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
@@ -148,15 +164,8 @@ void MatmulKernelImpl(const Context& dev_ctx,
     batch_size *= out_dim_vec[i];
   }
 
-  PADDLE_ENFORCE_EQ(
-      batch_size,
-      1,
-      phi::errors::InvalidArgument(
-          "Batched computation is not supported in cusparseSPGEMM."));
-
-  // cusparseSPGEMM only support 32-bit indices.
-  DenseTensor out_crows =
-      phi::Empty<int32_t>(dev_ctx, {xdim_vec[x_ndims - 2] + 1});
+  int64_t out_crows_size = batch_size * (xdim_vec[x_ndims - 2] + 1);
+  DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx, {out_crows_size});
   DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx, {0});
   DenseTensor out_values = phi::Empty<T>(dev_ctx, {0});
   out->SetMember(out_crows, out_cols, out_values, out->dims());
@@ -174,30 +183,6 @@ void MatmulKernelImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatmulCooDenseKernel(const Context& dev_ctx,
-                          const SparseCooTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out) {
-  MatmulKernelImpl<T>(dev_ctx, x, y, out);
-}
-
-template <typename T, typename Context>
-void MatmulCsrDenseKernel(const Context& dev_ctx,
-                          const SparseCsrTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out) {
-  MatmulKernelImpl<T>(dev_ctx, x, y, out);
-}
-
-template <typename T, typename Context>
-void MatmulCsrCsrKernel(const Context& dev_ctx,
-                        const SparseCsrTensor& x,
-                        const SparseCsrTensor& y,
-                        SparseCsrTensor* out) {
-  MatmulKernelImpl<T>(dev_ctx, x, y, out);
-}
-
-template <typename T, typename Context>
 void MatmulCooCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const SparseCooTensor& y,
@@ -207,7 +192,7 @@ void MatmulCooCooKernel(const Context& dev_ctx,
   SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
   SparseCsrTensor out_csr;
   out_csr.set_dims(out->dims());
-  MatmulKernelImpl<T>(dev_ctx, x_csr, y_csr, &out_csr);
+  MatmulCsrCsrKernel<T>(dev_ctx, x_csr, y_csr, &out_csr);
   CsrToCooKernel<T>(dev_ctx, out_csr, out);
 }
 

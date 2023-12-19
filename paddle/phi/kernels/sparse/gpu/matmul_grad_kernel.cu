@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -149,13 +150,22 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
 #if CUDA_VERSION >= 11030
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
+  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  auto x_ndims = xdim_vec.size();
+  std::vector<int> perm;
+  if (x_ndims == 2) {
+    perm = {1, 0};
+  } else {
+    perm = {0, 2, 1};
+  }
+
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
   if (dx) {
     // InferMeta of SparseCsrTensor 'dx', CreateLikeInferMeta
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
     // cusparseSPGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
-    SparseCsrTensor trans_y =
-        phi::funcs::sparse::CSRTanspose<T, int32_t>(dev_ctx, y);
+    SparseCsrTensor trans_y;
+    TransposeCsrKernel<T, Context>(dev_ctx, y, perm, &trans_y);
 
     sparse_blas.SPGEMM(
         false, false, static_cast<T>(1), dout, trans_y, static_cast<T>(0), dx);
@@ -165,8 +175,8 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   if (dy) {
     // InferMeta of DenseTensor 'dy'
     EmptyLikeCsrKernel<T, Context>(dev_ctx, y, dy);
-    SparseCsrTensor trans_x =
-        phi::funcs::sparse::CSRTanspose<T, int32_t>(dev_ctx, x);
+    SparseCsrTensor trans_x;
+    TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &trans_x);
 
     sparse_blas.SPGEMM(
         false, false, static_cast<T>(1), trans_x, dout, static_cast<T>(0), dy);
@@ -271,23 +281,23 @@ PD_REGISTER_KERNEL(matmul_csr_dense_grad,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(matmul_csr_csr_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::MatmulCsrCsrGradKernel,
-                   float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
+// PD_REGISTER_KERNEL(matmul_csr_csr_grad,
+//                    GPU,
+//                    ALL_LAYOUT,
+//                    phi::sparse::MatmulCsrCsrGradKernel,
+//                    float,
+//                    double) {
+//   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+// }
 
-PD_REGISTER_KERNEL(matmul_coo_coo_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::MatmulCooCooGradKernel,
-                   float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
+// PD_REGISTER_KERNEL(matmul_coo_coo_grad,
+//                    GPU,
+//                    ALL_LAYOUT,
+//                    phi::sparse::MatmulCooCooGradKernel,
+//                    float,
+//                    double) {
+//   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+// }
 
 PD_REGISTER_KERNEL(masked_matmul_csr_grad,
                    GPU,

@@ -181,79 +181,6 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   }
 }
 
-template <typename T, typename IntT>
-SparseCsrTensor CSRTanspose(const phi::GPUContext& dev_ctx,
-                            const phi::SparseCsrTensor& x) {
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
-  auto x_ndims = xdim_vec.size();
-  int64_t M = xdim_vec[x_ndims - 2];
-  int64_t N = xdim_vec[x_ndims - 1];
-  int batch_size = 1;
-  for (int i = 0; i < x_ndims - 2; i++) {
-    batch_size *= xdim_vec[i];
-  }
-  int64_t batch_nnz = x.nnz() / batch_size;
-
-  const IntT* x_crows_data = x.non_zero_crows().data<IntT>();
-  const IntT* x_cols_data = x.non_zero_cols().data<IntT>();
-  const T* x_values_data = x.non_zero_elements().data<T>();
-
-  SparseCsrTensor out;
-  DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx, {N + 1});
-  DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx, {x.nnz()});
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {x.nnz()});
-  out.SetMember(out_crows, out_cols, out_values, {N, M});
-  const IntT* out_crows_data = out.non_zero_crows().data<IntT>();
-  const IntT* out_cols_data = out.non_zero_cols().data<IntT>();
-  const T* out_values_data = out.non_zero_elements().data<T>();
-
-  cudaDataType_t gpu_type = GetGpuDataType<T>();
-  size_t buffer_size;
-  dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
-    phi::dynload::cusparseCsr2cscEx2_bufferSize(
-        handle,
-        M,
-        N,
-        batch_nnz,
-        const_cast<T*>(x_values_data),
-        const_cast<IntT*>(x_crows_data),
-        const_cast<IntT*>(x_cols_data),
-        const_cast<T*>(out_values_data),
-        const_cast<IntT*>(out_crows_data),
-        const_cast<IntT*>(out_cols_data),
-        gpu_type,
-        CUSPARSE_ACTION_NUMERIC,
-        CUSPARSE_INDEX_BASE_ZERO,
-        CUSPARSE_CSR2CSC_ALG1,
-        &buffer_size);
-  });
-
-  phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      buffer_size,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  void* tmp_buffer_ptr = tmp_buffer->ptr();
-
-  dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
-    phi::dynload::cusparseCsr2cscEx2(handle,
-                                     M,
-                                     N,
-                                     batch_nnz,
-                                     const_cast<T*>(x_values_data),
-                                     const_cast<IntT*>(x_crows_data),
-                                     const_cast<IntT*>(x_cols_data),
-                                     const_cast<T*>(out_values_data),
-                                     const_cast<IntT*>(out_crows_data),
-                                     const_cast<IntT*>(out_cols_data),
-                                     gpu_type,
-                                     CUSPARSE_ACTION_NUMERIC,
-                                     CUSPARSE_INDEX_BASE_ZERO,
-                                     CUSPARSE_CSR2CSC_ALG1,
-                                     tmp_buffer_ptr);
-  });
-  return out;
-}
-
 template <typename T>
 class CuSparseSpMatDescriptor {
  public:
@@ -682,6 +609,8 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                       CUSPARSE_SPGEMM_DEFAULT,
                                       spgemmDesc);
   });
+
+  phi::dynload::cusparseSpGEMM_destroyDescr(spgemmDesc);
 }
 }  // namespace sparse
 }  // namespace funcs
