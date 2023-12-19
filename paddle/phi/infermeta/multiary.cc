@@ -747,6 +747,162 @@ void BatchNormInferMeta(const MetaTensor& x,
   y->set_dtype(x.dtype());
 }
 
+void DataNormInferMeta(const MetaTensor& scale_w,
+                       const MetaTensor& bias,
+                       const MetaTensor& x,
+                       const MetaTensor& batch_size,
+                       const MetaTensor& batch_sum,
+                       const MetaTensor& batch_square_sum,
+                       float epsilon,
+                       int slot_dim,
+                       float summary_decay_rate,
+                       bool enable_scale_and_shift,
+                       const std::string& data_layout_str,
+                       bool sync_stats,
+                       MetaTensor* y,
+                       MetaTensor* means,
+                       MetaTensor* scales,
+                       MetaConfig config
+
+) {
+  // OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DataNorm");
+  // OP_INOUT_CHECK(
+  //     ctx->HasInput("BatchSize"), "Input", "BatchSize", "DataNorm");
+  // OP_INOUT_CHECK(ctx->HasInput("BatchSum"), "Input", "BatchSum", "DataNorm");
+  // OP_INOUT_CHECK(
+  //     ctx->HasInput("BatchSquareSum"), "Input", "BatchSquareSum",
+  //     "DataNorm");
+
+  // OP_INOUT_CHECK(ctx->HasOutput("Means"), "Output", "Means", "DataNorm");
+  // OP_INOUT_CHECK(ctx->HasOutput("Scales"), "Output", "Scales", "DataNorm");
+  // OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "DataNorm");
+
+  if (enable_scale_and_shift) {
+    // PADDLE_ENFORCE_EQ(
+    //     !scale_w,
+    //     false,
+    //     phi::errors::InvalidArgument(
+    //         "Input(scale_w) of DataNormOp should not be null."));
+    // PADDLE_ENFORCE_EQ(!bias,
+    //                   false,
+    //                   phi::errors::InvalidArgument(
+    //                       "Input(bias) of DataNormOp should not be null."));
+    if (!scale_w) {
+      phi::errors::InvalidArgument(
+          "Input(scale_w) of DataNormOp should not be null.");
+    }
+    if (!bias) {
+      phi::errors::InvalidArgument(
+          "Input(bias) of DataNormOp should not be null.");
+    }
+  }
+
+  const auto x_dims = x.dims();
+  // const auto x_dims = ctx->GetInputDim("X");
+
+  // const DataLayout data_layout = common::StringToDataLayout(
+  //     ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() >= 2 && x_dims.size() <= 5,
+      true,
+      phi::errors::InvalidArgument("Input X must have 2 to 5 dimensions."));
+
+  const int64_t C =
+      (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                        : x_dims[x_dims.size() - 1]);
+
+  // PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(),
+  PADDLE_ENFORCE_EQ(
+      batch_size.dims().size(),
+      1UL,
+      phi::errors::InvalidArgument("The input dim of BatchSize should be 1"));
+  // PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(),
+  PADDLE_ENFORCE_EQ(
+      batch_sum.dims().size(),
+      1UL,
+      phi::errors::InvalidArgument("The input dim of BatchSum should be 1"));
+  // PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(),
+  PADDLE_ENFORCE_EQ(batch_square_sum.dims().size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input dim of BatchSquareSum should be 1"));
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(batch_size.dims().at(0),
+                      C,
+                      phi::errors::InvalidArgument(
+                          "The input dim[0] of BatchSize should be C"));
+    PADDLE_ENFORCE_EQ(batch_sum.dims().at(0),
+                      C,
+                      phi::errors::InvalidArgument(
+                          "The input dim[0] of BatchSum should be C"));
+    PADDLE_ENFORCE_EQ(batch_square_sum.dims().at(0),
+                      C,
+                      phi::errors::InvalidArgument(
+                          "The input dim[0] of BatchSqureSum should be C"));
+  }
+
+  if (enable_scale_and_shift) {
+    // const auto& scale_dim = ctx->GetInputDim("scale_w");
+    // const auto& bias_dim = ctx->GetInputDim("bias");
+    const auto& scale_dim = scale_w.dims();
+    const auto& bias_dim = bias.dims();
+
+    PADDLE_ENFORCE_EQ(
+        scale_dim.size(),
+        1UL,
+        phi::errors::InvalidArgument("the dimensionof scale"
+                                     "must equal to 1. But received: "
+                                     "the shape of scale is [%s], "
+                                     "the dimensionof scale is [%d]",
+                                     scale_dim,
+                                     scale_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        bias_dim.size(),
+        1UL,
+        phi::errors::InvalidArgument("the dimension of bias"
+                                     "must equal to 1. But received: "
+                                     "the shape of bias is [%s],"
+                                     "the dimension of bias is [%d]",
+                                     bias_dim,
+                                     bias_dim.size()));
+
+    bool check = true;
+    if ((!config.is_runtime) &&
+        (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
+      check = false;
+    }
+
+    if (check) {
+      PADDLE_ENFORCE_EQ(scale_dim.at(0),
+                        C,
+                        phi::errors::InvalidArgument(
+                            "the shape of scale must equal to [%d]"
+                            "But received: the shape of scale is [%d]",
+                            C,
+                            scale_dim.at(0)));
+      PADDLE_ENFORCE_EQ(bias_dim.at(0),
+                        C,
+                        phi::errors::InvalidArgument(
+                            "the shape of bias must equal to [%d]"
+                            "But received: the shape of bias is [%d]",
+                            C,
+                            bias_dim.at(0)));
+    }
+  }
+
+  y->set_dims(x_dims);
+  means->set_dims({C});
+  scales->set_dims({C});
+  // ctx->SetOutputDim("Y", x_dims);
+  // ctx->SetOutputDim("Means", {C});
+  // ctx->SetOutputDim("Scales", {C});
+  // ctx->ShareLoD("X", "Y");
+  y->share_lod(x);
+}
+
 void BatchNormInferInferMeta(const MetaTensor& x,
                              const MetaTensor& mean,
                              const MetaTensor& variance,
