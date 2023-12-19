@@ -31,6 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
+#include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"

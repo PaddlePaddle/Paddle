@@ -242,19 +242,16 @@ set(op_dialect_srcs
     ${pir_update_op_source_file}
     ${api_source_file})
 
+if(WITH_MKLDNN)
+  set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file})
+endif()
+
 set(op_dialect_deps phi common pir type_info string_helper)
 
 cc_library(
   op_dialect
   SRCS ${op_dialect_srcs}
   DEPS ${op_dialect_deps})
-
-if(WITH_MKLDNN)
-  cc_library(
-    op_onednn_dialect
-    SRCS ${onednn_op_source_file}
-    DEPS ${op_dialect_deps})
-endif()
 
 #Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib
 set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
