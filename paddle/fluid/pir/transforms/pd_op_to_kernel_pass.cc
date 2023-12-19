@@ -1907,18 +1907,33 @@ pir::Operation* BuildKernelOp(
           vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
     } else {
       auto op_info_parser = GetOpYamlInfoParser(op_item);
-      op_attribute.emplace("extra_args",
-                           op_info_parser->OpRuntimeInfo().extra_args);
+      std::vector<pir::Attribute> extra_args;
+      for (auto& arg : op_info_parser->OpRuntimeInfo().extra_args) {
+        extra_args.push_back(pir::StrAttribute::get(ctx, arg));
+      }
+      op_attribute.emplace(
+          "extra_args",
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), extra_args));
       op_attribute.emplace(
           "layout_transform_arg",
-          op_info_parser->OpRuntimeInfo().layout_transform_arg);
+          pir::StrAttribute::get(
+              ctx, op_info_parser->OpRuntimeInfo().layout_transform_arg));
+      std::vector<pir::Attribute> layout_transform_inputs;
+      for (auto& input :
+           op_info_parser->OpRuntimeInfo().layout_transform_inputs) {
+        layout_transform_inputs.push_back(pir::StrAttribute::get(ctx, input));
+      }
+      op_attribute.emplace("layout_transform_inputs",
+                           pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                                    layout_transform_inputs));
       op_attribute.emplace(
-          "layout_transform_inputs",
-          op_info_parser->OpRuntimeInfo().layout_transform_inputs);
-      op_attribute.emplace("is_onednn_only",
-                           op_info_parser->OpRuntimeInfo().is_onednn_only);
-      op_attribute.emplace("dynamic_fallback",
-                           op_info_parser->OpRuntimeInfo().dynamic_fallback);
+          "is_onednn_only",
+          pir::BoolAttribute::get(
+              ctx, op_info_parser->OpRuntimeInfo().is_onednn_only));
+      op_attribute.emplace(
+          "dynamic_fallback",
+          pir::BoolAttribute::get(
+              ctx, op_info_parser->OpRuntimeInfo().dynamic_fallback));
       if (op_item->HasTrait<OneDNNDynamicFallbackTrait>()) {
         pir::OpInfo phi_kernel_op_info =
             ctx->GetRegisteredOpInfo(OneDNNMixedPhiKernelOp::name());

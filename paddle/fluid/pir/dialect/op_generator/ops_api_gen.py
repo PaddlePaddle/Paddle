@@ -103,6 +103,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'sequence_mask',
     'number_count',
     'assign_value',
+    'onednn_to_paddle_layout',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
