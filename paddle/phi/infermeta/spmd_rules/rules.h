@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/squeeze.h"
 #include "paddle/phi/infermeta/spmd_rules/stack.h"
+#include "paddle/phi/infermeta/spmd_rules/tile.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
 #include "paddle/phi/infermeta/spmd_rules/triu.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
@@ -596,6 +597,10 @@ PD_REGISTER_SPMD_RULE(
     tril_triu,
     PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmd),
     PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(tile,
+                      PD_INFER_SPMD(phi::distributed::TileInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::TileInferSpmdReverse));
 
 // cross_entropy_with_softmax
 PD_REGISTER_SPMD_RULE(
