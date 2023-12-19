@@ -1,9 +1,9 @@
-paddle_test(type_test SRCS type_test.cc DEPS pir common)
-paddle_test(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir)
-paddle_test(ir_value_test SRCS ir_value_test.cc DEPS pir)
-paddle_test(ir_op_test SRCS ir_op_test.cc DEPS pir test_dialect)
-paddle_test(ir_region_test SRCS ir_region_test.cc DEPS pir)
-paddle_test(ir_builder_test SRCS ir_builder_test.cc DEPS pir)
+paddle_test(type_test SRCS type_test.cc DEPS common)
+paddle_test(ir_attribute_test SRCS ir_attribute_test.cc)
+paddle_test(ir_value_test SRCS ir_value_test.cc)
+paddle_test(ir_op_test SRCS ir_op_test.cc DEPS test_dialect)
+paddle_test(ir_region_test SRCS ir_region_test.cc)
+paddle_test(ir_builder_test SRCS ir_builder_test.cc)
 cc_test_old(
   ir_program_test
   SRCS

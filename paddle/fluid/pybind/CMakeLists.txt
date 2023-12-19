@@ -43,7 +43,6 @@ set(PYBIND_DEPS
     pir_adaptor
     program_translator
     pir_transforms
-    pir
     new_profiler
     fluid_jit
     prim_utils
@@ -156,6 +155,15 @@ set(PYBIND_SRCS
     auto_parallel_py.cc
     eval_frame_tools.cc
     eval_frame.c)
+
+if(NOT WITH_SHARED_IR)
+  # Note: We want to compile pir source into paddle.so directly, because
+  # we can't get all pir symbols when link pir static lib
+  file(GLOB_RECURSE PIR_CPP_SOURCES "${CMAKE_SOURCE_DIR}/paddle/pir/*.cc")
+  set(PYBIND_SRCS ${PYBIND_SRCS} ${PIR_CPP_SOURCES})
+else()
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir)
+endif()
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
