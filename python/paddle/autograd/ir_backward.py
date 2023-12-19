@@ -273,9 +273,6 @@ def update_no_grad_set_after_prune(
                 for item in get_real_op_inputs(used_op):
                     inputs_set.add(item)
 
-
-    
-
     if inputs_set:
         for op in total_ops:
             if some_in_set(get_real_op_inputs(op), inputs_set):
