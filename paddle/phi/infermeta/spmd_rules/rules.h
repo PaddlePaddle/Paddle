@@ -520,6 +520,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    flash_attention,
+    PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
+    PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdReverse));
+
 // reshape rule
 PD_REGISTER_SPMD_RULE(reshape,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
