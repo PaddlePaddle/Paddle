@@ -726,34 +726,65 @@ void PirInterpreter::BuildInstruction() {
 }
 
 std::string PirInterpreter::DebugInstructions() {
+  // log formate: var[101] = pd_op.relu(var[100]) or for inplace op var[100] =
+  // pd_op.relu_(var[100])
   std::stringstream ss;
-  ss << "\n"
-     << std::left << std::setw(7) << "id" << std::setw(40) << "instruction"
-     << std::setw(40) << "inputs_id" << std::setw(40) << "outputs_id"
-     << std::endl;
-  uint64_t idx = 0;
+  ss << "{outputs}"
+     << " = "
+     << " instruction_name[idx] "
+     << "({inputs})"
+     << "\n";
+  uint64_t instr_idx = 0;
   for (auto& instr : vec_instruction_base_) {
-    ss << std::setw(7) << idx++ << std::setw(40) << instr->Name();
-
-    std::stringstream ss_inputs;
-    for (auto& input : instr->Inputs()) {
-      ss_inputs << "{";
-      for (auto id : input.second) {
-        ss_inputs << id << " ";
-      }
-      ss_inputs << "} ";
-    }
-    ss << std::setw(40) << ss_inputs.str();
+    ss << std::setw(10) << instr_idx++ << ": ";
 
     std::stringstream ss_outputs;
     for (auto& output : instr->Outputs()) {
-      ss_outputs << "{";
+      ss_outputs << "( ";
       for (auto id : output.second) {
         ss_outputs << id << " ";
       }
-      ss_outputs << "} ";
+      ss_outputs << ") ";
     }
-    ss << std::setw(40) << ss_outputs.str() << std::endl;
+    ss << std::setw(40) << ss_outputs.str();
+
+    ss << std::setw(40) << " = " << instr->Name();
+
+    std::stringstream ss_inputs;
+    for (auto& input : instr->Inputs()) {
+      ss_inputs << " ( ";
+      for (auto id : input.second) {
+        ss_inputs << id << " ";
+      }
+      ss_inputs << ") ";
+    }
+    ss << ss_inputs.str() << "\n";
+  }
+  ss << "---------------------------var_id -> var_name -> "
+        "variable*---------------------------\n";
+  for (size_t var_id = 0; var_id < value_exe_info_->GetVarList().size();
+       var_id++) {
+    auto* var = value_exe_info_->GetVarList()[var_id];
+    auto var_name = value_exe_info_->GetVarName(var);
+    ss << std::setw(5) << var_id << " -> " << std::setw(50) << var_name
+       << " -> " << std::setw(50) << var;
+  }
+  ss << "----------------------------------------------------------------------"
+        "---------------\n";
+  return ss.str();
+}
+
+std::string PirInterpreter::DebugDependency() {
+  std::map<size_t, std::set<size_t>> op_downstream_map =
+      ir_dependency_builder_.OpDownstreamMap();
+  std::stringstream ss;
+  ss << std::setw(7) << "id -> down_stream_id\n";
+  for (auto const& pair : downstream_map) {
+    ss << std::setw(7) << pair.first << " -> ";
+    std::copy(pair.second.begin(),
+              pair.second.end(),
+              std::ostream_iterator<size_t>(ss, " "));
+    ss << std::endl;
   }
   return ss.str();
 }
@@ -784,6 +815,29 @@ std::string PirInterpreter::DebugValueInfo() {
        << value_exe_info_->GetVarId(kv.first) << " -> " << var << "\n";
   }
   return os.str();
+}
+
+std::vector<std::string> PirInterpreter::DebugInfo() {
+  // print block
+  std::stringstream block_stream;
+  block_stream << "======================== The network executed by pir "
+                  "interpreter ========================\n";
+  pir::IrPrinter printer(block_stream);
+  printer.PrintBlock(*ir_block_);
+  std::string block_info = block_stream.str();
+  // print instruction
+  std::stringstream instr_stream;
+  instr_stream << "======================== The instruction executed by pir "
+                  "interpreter ========================\n";
+  instr_stream << DebugInstructions() << "\n";
+  std::string instr_info = instr_stream.str();
+  // print dependency
+  std::stringstream depend_stream;
+  depend_stream << "======================= The dependency of all instruction "
+                   "========================\n";
+  depend_stream << DebugDependency() << "\n";
+  std::string depend_info = depend_stream.str();
+  return {block_info, instr_info, depend_info};
 }
 
 void PirInterpreter::BuildInstructionDependences() {
@@ -1217,6 +1271,13 @@ paddle::framework::FetchList PirInterpreter::Run(
 
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
+
+    if (VLOG_IS_ON(1)) {
+      std::vector<std::string> instr_debug_info = DebugInfo();
+      for (auto& item : instr_debug_info) {
+        std::cout << item << std::endl;
+      }
+    }
 
     // Run
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
