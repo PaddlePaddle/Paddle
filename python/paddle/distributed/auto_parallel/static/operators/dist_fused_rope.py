@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import logging
-
-from paddle.base.log_helper import get_logger
-
 from ..completion import get_phi_spmd_rule
 from ..dist_attribute import DistTensorSpec
 from ..utils import get_dist_tensor_spec
@@ -24,10 +20,6 @@ from .common import (
     get_default_distributed_operator_impl,
     register_distributed_operator_impl_container,
     update_op_dims_mapping,
-)
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 
