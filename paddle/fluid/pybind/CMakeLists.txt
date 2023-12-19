@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    staticgraph_executor_statistics
+    new_executor
     executor
     fleet_wrapper
     box_wrapper

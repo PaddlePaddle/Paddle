@@ -1,30 +1,35 @@
-add_subdirectory(garbage_collector)
-add_subdirectory(instruction)
-add_subdirectory(interpreter)
-add_subdirectory(workqueue)
-add_subdirectory(pir_adaptor)
+file(GLOB_RECURSE new_executor_srcs "*.cc")
 
-set(STANDALONE_EXECUTOR_SRCS
-    feed_fetch_utils.cc interpretercore.cc new_executor_defs.cc
-    standalone_executor.cc program_interpreter.cc pir_interpreter.cc)
+if(NOT (WITH_CINN AND NOT CINN_ONLY))
+  list(REMOVE_ITEM new_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
+endif()
 
-set(STANDALONE_EXECUTOR_DEPS
-    interpreter
-    interpretercore_garbage_collector
-    workqueue
+set(new_executor_deps
+    pir
+    program_translator
     op_dialect_vjp
     pir_transforms
-    pir_adaptor
-    program_translator
-    instruction_base
-    pir)
+    garbage_collector
+    executor_gc_helper
+    framework_proto)
+
+if(WITH_CINN AND NOT CINN_ONLY)
+  set(new_executor_deps
+      ${new_executor_deps}
+      cinn_runtime_dialect
+      buffered_reader
+      device_context
+      global_utils
+      op_registry
+      ${DEVICE_EVENT_LIBS})
+endif()
 
 cc_library(
-  standalone_executor
-  SRCS ${STANDALONE_EXECUTOR_SRCS}
-  DEPS ${STANDALONE_EXECUTOR_DEPS})
-
-cc_library(
-  staticgraph_executor_statistics
-  SRCS executor_statistics.cc
-  DEPS enforce glog phi common)
+  new_executor
+  SRCS ${new_executor_srcs}
+  DEPS ${new_executor_deps})
+add_dependencies(new_executor xxhash)
+if(WITH_MKLDNN)
+  add_dependencies(new_executor mkldnn)
+endif()
