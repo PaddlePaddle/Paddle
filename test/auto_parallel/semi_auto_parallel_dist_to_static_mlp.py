@@ -211,6 +211,7 @@ class TestSimpleNetForSemiAutoParallel:
         np.testing.assert_allclose(dy_losses, dy2static_losses, rtol=1e-6)
 
         # save load
+        dist_model_dy_layer_state_dict = dist_model._engine._model.state_dict()
         state_dict_to_save = dist_model.state_dict()
         dist.save_state_dict(state_dict_to_save, self._ckpt_path)
         dist.barrier()
