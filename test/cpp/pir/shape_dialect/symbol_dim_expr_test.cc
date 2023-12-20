@@ -50,7 +50,7 @@ TEST(DimExpr, constraint) {
 }
 
 /*
-  Simulate the DataShapeDimExprs result of below codes:
+  Simulate the ShapeOrDataDimExprs result of below codes:
   def (x, y):
     extend_x = x.shape
     out = pd.reshape(y, extend_x)
@@ -80,22 +80,22 @@ TEST(DimExpr, data_shape_expr) {
       builder.Build<paddle::dialect::ReshapeOp>(y, extend_x);
   ::pir::Value out = reshape_op.out();
 
-  // 3. Show ideal DataShapeDimExprs of each pir::Value
-  std::unordered_map<pir::Value, DataShapeDimExprs> value2shape{};
+  // 3. Show ideal ShapeOrDataDimExprs of each pir::Value
+  std::unordered_map<pir::Value, ShapeOrDataDimExprs> value2shape{};
   std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
   std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
-  // x => {shape: nullopt, shape: [S0, 2]}
-  DataShapeDimExprs x_value_shape{x_shapes};
+  // x => {shape: [S0, 2], data: nullopt}
+  ShapeOrDataDimExprs x_value_shape{x_shapes};
   value2shape.emplace(x, x_value_shape);
-  // y => {shape: nullopt, shape: [1, S1, 2]}
-  DataShapeDimExprs y_value_shape{y_shapes};
+  // y => {shape: [1, S1, 2], data: nullopt}
+  ShapeOrDataDimExprs y_value_shape{y_shapes};
   value2shape.emplace(y, y_value_shape);
-  // extend_x => {shape: [S0, 2], shape: [2]}
-  DataShapeDimExprs extend_x_value_shape =
-      DataShapeDimExprs::MakeConsistentValueShape(x_shapes);
+  // extend_x => {shape: [2], data: [S0, 2]}
+  ShapeOrDataDimExprs extend_x_value_shape =
+      ShapeOrDataDimExprs::MakeConsistentShapeOrData(x_shapes);
   value2shape.emplace(extend_x, extend_x_value_shape);
-  // out => {shape:: nullopt, shape: [S0, 2]}
-  DataShapeDimExprs out_value_shape{x_shapes};
+  // out => {shape: [S0, 2], data: nullopt}
+  ShapeOrDataDimExprs out_value_shape{x_shapes};
   value2shape.emplace(out, out_value_shape);
 }
 
