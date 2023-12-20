@@ -30,7 +30,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
@@ -47,6 +46,10 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/utils/flags.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#endif
 
 PHI_DECLARE_bool(print_ir);
 namespace paddle {

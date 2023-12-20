@@ -16,7 +16,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
@@ -26,6 +25,10 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#endif
 
 namespace paddle {
 namespace dialect {
