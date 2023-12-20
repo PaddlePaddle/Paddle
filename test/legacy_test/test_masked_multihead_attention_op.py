@@ -467,7 +467,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                     "bias_static": bias.astype(dtype),
                     "src_mask_static": src_mask.astype(dtype),
                 },
-                fetch_list=[outs],
+                fetch_list=[outs[0], outs[1]],
             )
 
         return paddle_naive_mmha_out, out_s

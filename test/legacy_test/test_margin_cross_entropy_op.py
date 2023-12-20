@@ -18,8 +18,9 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
+from paddle.static import Program, program_guard
 
 
 def stable_softmax_comm(x):
@@ -421,7 +422,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
 
                 exe = paddle.base.Executor(place)
                 [loss_res, softmax_res] = exe.run(
-                    paddle.base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={'logits': logits_np, 'label': labels_np},
                     fetch_list=[loss, softmax],
                 )
