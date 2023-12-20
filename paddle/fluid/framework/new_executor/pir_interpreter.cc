@@ -125,7 +125,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
     SchedulingPriority rhs_scheduling_priority =
         vec_instruction_base_[rhs]->GetSchedulingPriority();
     if (lhs_scheduling_priority == rhs_scheduling_priority) {
-      return lhs < rhs;
+      return lhs > rhs;
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
@@ -187,7 +187,7 @@ PirInterpreter::PirInterpreter(
     SchedulingPriority rhs_scheduling_priority =
         vec_instruction_base_[rhs]->GetSchedulingPriority();
     if (lhs_scheduling_priority == rhs_scheduling_priority) {
-      return lhs < rhs;
+      return lhs > rhs;
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
