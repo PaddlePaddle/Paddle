@@ -35,7 +35,7 @@ class TestReadFileWithDynamic(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def read_file_decode_jpeg(self):
+    def test_read_file_decode_jpeg_dynamic(self):
         if not paddle.is_compiled_with_cuda():
             return
         img_bytes = read_file(self.img_path)
@@ -57,7 +57,7 @@ class TestReadFileWithStatic(unittest.TestLoader):
         self.temp_dir.cleanup()
 
     @test_with_pir_api
-    def read_file_decode_jpeg(self):
+    def test_read_file_decode_jpeg_static(self):
         paddle.enable_static()
         if not paddle.is_compiled_with_cuda():
             return
