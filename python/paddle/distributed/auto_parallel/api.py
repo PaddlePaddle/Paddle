@@ -1303,15 +1303,17 @@ def to_static(
         loss(Loss|Callable|None, optional): The loss function for training
             or evaluating the model. Can be a `paddle.nn.Layer` instance or
             any callable function. Default: None.
-        optimizer(paddle.optimizer.Optimizer|_ShardOptimizer|None, optional): The optimizer
-            for training. Default: None.
+        optimizer(paddle.optimizer.Optimizer|_ShardOptimizer|None, optional):
+            The optimizer for training. It can `paddle.optimizer.Optimizer`
+            or `_ShardOptimizer` wrapped by `shard_optimizer`. Default: None.
         strategy(paddle.distributed.Strategy|None, optional): Configs for
             parallel strategies and optimization settings (e.g. sharding,
             pipeline parallelism). Default: None.
 
     Returns:
         DistModel: A ``DistModel`` instance converted the input ``layer``.
-        DistributedDataLoader: An optimized data loader that can be used to generate data, it's usage is the same as ``paddle.io.DataLoader`` .
+        DistributedDataLoader: An optimized data loader that can be used to
+            generate data, it's usage is the same as ``paddle.io.DataLoader``.
 
     Examples:
         .. code-block:: python
@@ -1406,6 +1408,9 @@ def to_static(
             >>> # export CUDA_VISIBLE_DEVICES=0,1
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
+    if isinstance(optimizer, _ShardOptimizer):
+        optimizer = optimizer._inner_opt
+
     dist_model = DistModel(layer, loader, loss, optimizer, strategy)
     dist_loader = dist_model.dist_loader
 
