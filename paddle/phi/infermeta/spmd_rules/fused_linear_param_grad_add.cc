@@ -71,5 +71,7 @@ SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
           {weight_grad_dist_attr, bias_grad_dist_attr}};
 }
 
+SpmdInfo FusedLinearParamGradAddInferSpmdFakeReverse() { return SpmdInfo(); }
+
 }  // namespace distributed
 }  // namespace phi

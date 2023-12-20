@@ -26,5 +26,7 @@ SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
                                           const DistMetaTensor& dbias,
                                           bool multi_precision,
                                           bool has_bias);
-}
+
+SpmdInfo FusedLinearParamGradAddInferSpmdFakeReverse();
+}  // namespace distributed
 }  // namespace phi
