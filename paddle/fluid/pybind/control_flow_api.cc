@@ -35,6 +35,7 @@
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
+using paddle::dialect::AssertOp;
 using paddle::dialect::HasElementsOp;
 using paddle::dialect::IfOp;
 using paddle::dialect::WhileOp;
@@ -93,6 +94,21 @@ void BindWhileOp(py::module* m) {
       .def("block_arguments",
            &WhileOp::block_args,
            return_value_policy::reference);
+}
+
+void BindAssertOp(py::module* m) {
+  m->def("build_assert_op",
+         [](Value cond, const std::vector<Value>& data, int64_t summarize) {
+           auto data_combine_op =
+               ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(data);
+           return ApiBuilder::Instance().GetBuilder()->Build<AssertOp>(
+               cond, data_combine_op.out(), summarize);
+         });
+  py::class_<AssertOp> assert_op(*m, "AssertOp", R"DOC(
+    AssertOp in python api.
+  )DOC");
+  assert_op.def(
+      "as_operation", &AssertOp::operation, return_value_policy::reference);
 }
 
 void GetUsedExternalValueImpl(
@@ -231,6 +247,7 @@ void BindControlFlowApi(py::module* m) {
   });
   BindIfOp(m);
   BindWhileOp(m);
+  BindAssertOp(m);
 }
 
 }  // namespace pybind
