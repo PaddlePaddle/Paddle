@@ -18,10 +18,11 @@ from enum import Enum
 
 from paddle.base import core
 from paddle.base.framework import Operator, Parameter, Program, get_flags
-from paddle.distributed.auto_parallel.static.dist_attribute import (
+
+from ..auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
-from paddle.distributed.auto_parallel.static.utils import (
+from ..auto_parallel.static.utils import (
     get_logger,
     is_backward_op,
     is_forward_op,
@@ -30,7 +31,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
     use_new_executor,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from ..fleet.meta_optimizers.common import OpRole
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
