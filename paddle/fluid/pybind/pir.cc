@@ -594,28 +594,6 @@ const phi::DDim &GetValueDims(Value value) {
         self, scale_value, bias_value, bias_after_scale); \
   });
 
-#define OVERRIDE_OPERATOR_FOR_EACH(operator,         \
-                                   api,              \
-                                   scale_value,      \
-                                   bias_value,       \
-                                   bias_after_scale) \
-  OVERRIDE_OPERATOR(operator, api, Value)            \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               int,                  \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               float,                \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               double,               \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)
-
 #define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)         \
   value.def(#operator, [](Value self, other_type other) {                \
     auto rhs =                                                           \
@@ -623,11 +601,6 @@ const phi::DDim &GetValueDims(Value value) {
     return paddle::dialect::api(self, rhs);                              \
   });
 
-#define OVERRIDE_COMPARE_OP_FOR_EACH(operator, api)   \
-  OVERRIDE_OPERATOR(operator, api, Value)             \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, int)   \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, float) \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, double)
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge

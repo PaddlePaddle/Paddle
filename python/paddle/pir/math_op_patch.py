@@ -516,7 +516,7 @@ def monkey_patch_value():
         ('append', append),
         ('set_shape', set_shape),
         ('__hash__', value_hash),
-        # For basaic operators
+        # For basic operators
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
