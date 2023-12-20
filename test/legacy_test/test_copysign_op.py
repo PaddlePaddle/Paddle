@@ -129,6 +129,18 @@ class TestCopySignAPI(unittest.TestCase):
                 )
 
             out_ref = ref_copysign(self.x, self.y)
+            if self.x.dtype in [np.int32, np.int64, np.uint8]:
+                print('-'*100)
+                print('in static ', self.__class__)
+                print(self.x.dtype)
+                print(self.x)
+                print(self.y.dtype)
+                print(self.y)
+                print(out_ref.dtype)
+                print(out_ref)
+                print(out.dtype)
+                print(out)
+                print('-'*100)
             np.testing.assert_allclose(out_ref, res[0])
         paddle.disable_static()
 
@@ -137,8 +149,19 @@ class TestCopySignAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
         out = paddle.copysign(x, y)
-
         out_ref = ref_copysign(self.x, self.y)
+        if self.x.dtype in [np.int32, np.int64, np.uint8]:
+            print('-'*100)
+            print('in dynamic ', self.__class__)
+            print(self.x.dtype)
+            print(self.x)
+            print(self.y.dtype)
+            print(self.y)
+            print(out_ref.dtype)
+            print(out_ref)
+            print(out.dtype)
+            print(out)
+            print('-'*100)
         np.testing.assert_allclose(out_ref, out.numpy())
         paddle.enable_static()
 

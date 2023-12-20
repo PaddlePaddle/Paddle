@@ -24,8 +24,7 @@ namespace phi {
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
-template <typename T, typename U>
-inline HOSTDEVICE auto copysign_func(const T& a, const U& b) {
+inline HOSTDEVICE double copysign_func(const double& a, const double& b) {
   return std::copysign(a, b);
 }
 
