@@ -1034,14 +1034,14 @@ class Completer:
 
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
-        self._update_chunk_id(serial_main_program)
+        self._complete_chunk_id(serial_main_program)
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
         self._dist_context.validate_dist_attr_for_program()
         return serial_main_program
 
-    def _update_chunk_id(self, serial_main_program):
-        def complete_chunk_id(block, op, chunk_id, var_to_chunk_id):
+    def _complete_chunk_id(self, serial_main_program):
+        def set_chunk_id(block, op, chunk_id, var_to_chunk_id):
             dist_op = self._dist_context.get_dist_op_for_program(op)
             dist_op.dist_attr.chunk_id = chunk_id
             for name in op.input_arg_names + op.output_arg_names:
@@ -1144,11 +1144,9 @@ class Completer:
                     block_id = op.attr('sub_block').id
                     sub_block = serial_main_program.blocks[block_id]
                     for op in sub_block.ops:
-                        complete_chunk_id(
-                            sub_block, op, chunk_id, var_to_chunk_id
-                        )
+                        set_chunk_id(sub_block, op, chunk_id, var_to_chunk_id)
                 else:
-                    complete_chunk_id(block, op, chunk_id, var_to_chunk_id)
+                    set_chunk_id(block, op, chunk_id, var_to_chunk_id)
 
     def _update_dist_attr_for_dp(self):
         # TODO: we must ensure the world process group contains all ranks
