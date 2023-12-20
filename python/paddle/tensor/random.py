@@ -1654,20 +1654,30 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
         else:
             std = paddle.to_tensor(std)
         n_mean, n_std = normalize_mean_std(mean, std)
-        distribution = normal(
-            shape=paddle.shape(mean), mean=n_mean, std=n_std, name=name
+        distribution = gaussian(
+            shape=paddle.shape(mean),
+            mean=n_mean,
+            std=n_std,
+            dtype=dtype,
+            name=name,
         )
     elif isinstance(std, Variable):
         mean = paddle.to_tensor(mean)
         n_mean, n_std = normalize_mean_std(mean, std)
-        distribution = normal(
-            shape=paddle.shape(std), mean=n_mean, std=n_std, name=name
+        distribution = gaussian(
+            shape=paddle.shape(std),
+            mean=n_mean,
+            std=n_std,
+            dtype=dtype,
+            name=name,
         )
     else:
         mean = paddle.to_tensor(mean)
         std = paddle.to_tensor(std)
         n_mean, n_std = normalize_mean_std(mean, std)
-        distribution = normal(mean=n_mean, std=n_std, shape=shape, name=name)
+        distribution = gaussian(
+            mean=n_mean, std=n_std, shape=shape, dtype=dtype, name=name
+        )
 
     return paddle.exp(distribution)
 
@@ -1713,9 +1723,9 @@ def log_normal_(x, mean=0.0, std=1.0, name=None):
             >>> # doctest: -SKIP
 
     """
-    if not isinstance(mean, Variable):
+    if not isinstance(mean, Variable) or not isinstance(mean, float):
         mean = paddle.to_tensor(mean)
-    if not isinstance(std, Variable):
+    if not isinstance(std, Variable) or not isinstance(std, float):
         std = paddle.to_tensor(std)
 
     n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
