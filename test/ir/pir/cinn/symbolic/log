@@ -1,0 +1,307 @@
+Splited Program (fwd | bwd): 
+ForwardProgram is :
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)0]} : () -> pd_op.tensor<1xi64>
+ (%4) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)1]} : () -> pd_op.tensor<1xi64>
+ (%5) = "pd_op.slice" (%2, %3, %4) {axes:[(Int64)0],decrease_axis:[(Int64)0],infer_flags:[(Int64)1],stop_gradient:[true]} : (pd_op.tensor<2xi32>, pd_op.tensor<1xi64>, pd_op.tensor<1xi64>) -> pd_op.tensor<i32>
+ (%6) = "pd_op.cast" (%5) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%7) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%8) = "builtin.combine" (%6, %7) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%9) = "pd_op.stack" (%8) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%10, %11) = "pd_op.reshape" (%1, %9) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%12) = "pd_op.subtract" (%10, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%12) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+BackwardProgram is:
+{
+}
+
+===-------------------------------------------------------------------------===
+        IRPrinting on builtin.module before shape_optimization_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)0]} : () -> pd_op.tensor<1xi64>
+ (%4) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)1]} : () -> pd_op.tensor<1xi64>
+ (%5) = "cinn_op.slice" (%2) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%6) = "pd_op.cast" (%5) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%7) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%8) = "builtin.combine" (%6, %7) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%9) = "pd_op.stack" (%8) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%10, %11) = "pd_op.reshape" (%1, %9) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%12) = "pd_op.subtract" (%10, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%12) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+        IRPrinting on builtin.module after shape_optimization_pass pass
+===-------------------------------------------------------------------------===
+{
+ shape.func () {
+ }
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)0]} : () -> pd_op.tensor<1xi64>
+ (%4) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)1]} : () -> pd_op.tensor<1xi64>
+ (%5) = "cinn_op.slice" (%2) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%6) = "pd_op.cast" (%5) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%7) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%8) = "builtin.combine" (%6, %7) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%9) = "pd_op.stack" (%8) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%10, %11) = "pd_op.reshape" (%1, %9) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%12) = "pd_op.subtract" (%10, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%12) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+   IRPrinting on builtin.module before add_broadcast_to_elementwise_pass pass
+===-------------------------------------------------------------------------===
+{
+ shape.func () {
+ }
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)0]} : () -> pd_op.tensor<1xi64>
+ (%4) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)1]} : () -> pd_op.tensor<1xi64>
+ (%5) = "cinn_op.slice" (%2) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%6) = "pd_op.cast" (%5) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%7) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%8) = "builtin.combine" (%6, %7) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%9) = "pd_op.stack" (%8) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%10, %11) = "pd_op.reshape" (%1, %9) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%12) = "pd_op.subtract" (%10, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%12) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+   IRPrinting on builtin.module after add_broadcast_to_elementwise_pass pass
+===-------------------------------------------------------------------------===
+{
+ shape.func () {
+ }
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)0]} : () -> pd_op.tensor<1xi64>
+ (%4) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)1]} : () -> pd_op.tensor<1xi64>
+ (%5) = "cinn_op.slice" (%2) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%6) = "pd_op.cast" (%5) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%7) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%8) = "builtin.combine" (%6, %7) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%9) = "pd_op.stack" (%8) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%10, %11) = "pd_op.reshape" (%1, %9) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%12) = "pd_op.subtract" (%10, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%12) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+      IRPrinting on builtin.module before dead_code_elimination_pass pass
+===-------------------------------------------------------------------------===
+{
+ shape.func () {
+ }
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)0]} : () -> pd_op.tensor<1xi64>
+ (%4) = "pd_op.full_int_array" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(cpu),stop_gradient:[true],value:[(Int64)1]} : () -> pd_op.tensor<1xi64>
+ (%5) = "cinn_op.slice" (%2) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%6) = "pd_op.cast" (%5) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%7) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%8) = "builtin.combine" (%6, %7) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%9) = "pd_op.stack" (%8) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%10, %11) = "pd_op.reshape" (%1, %9) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%12) = "pd_op.subtract" (%10, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%12) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+       IRPrinting on builtin.module after dead_code_elimination_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "cinn_op.slice" (%2) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%4) = "pd_op.cast" (%3) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%5) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%6) = "builtin.combine" (%4, %5) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%7) = "pd_op.stack" (%6) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%8, %9) = "pd_op.reshape" (%1, %7) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%10) = "pd_op.subtract" (%8, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%10) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+            IRPrinting on builtin.module before build_cinn_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%2) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%3) = "cinn_op.slice" (%2) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%4) = "pd_op.cast" (%3) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%5) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%6) = "builtin.combine" (%4, %5) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%7) = "pd_op.stack" (%6) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%8, %9) = "pd_op.reshape" (%1, %7) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%10) = "pd_op.subtract" (%8, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "builtin.set_parameter" (%10) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+            IRPrinting on builtin.module after build_cinn_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%4) = "cinn_op.slice" (%3) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%5) = "pd_op.cast" (%4) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%6) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%7) = "builtin.combine" (%5, %6) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%8) = "pd_op.stack" (%7) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%9, %10) = "pd_op.reshape" (%2, %8) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%11) = "pd_op.subtract" (%9, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%11) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+       IRPrinting on builtin.module before infer_symbolic_shape_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%4) = "cinn_op.slice" (%3) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%5) = "pd_op.cast" (%4) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%6) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%7) = "builtin.combine" (%5, %6) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%8) = "pd_op.stack" (%7) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%9, %10) = "pd_op.reshape" (%2, %8) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%11) = "pd_op.subtract" (%9, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%11) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+       IRPrinting on builtin.module after infer_symbolic_shape_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%4) = "cinn_op.slice" (%3) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%5) = "pd_op.cast" (%4) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%6) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%7) = "builtin.combine" (%5, %6) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%8) = "pd_op.stack" (%7) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%9, %10) = "pd_op.reshape" (%2, %8) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%11) = "pd_op.subtract" (%9, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%11) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+     IRPrinting on builtin.module before cinn_dynamic_reshape_op_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "pd_op.shape" (%0) {stop_gradient:[true]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<2xi32>
+ (%4) = "cinn_op.slice" (%3) {axes:[(Int64)0],decrease_axis:[(Int64)0],ends:[(Int64)1],infer_flags:[(Int64)1],starts:[(Int64)0],stop_gradient:[true]} : (pd_op.tensor<2xi32>) -> pd_op.tensor<i32>
+ (%5) = "pd_op.cast" (%4) {dtype:(pd_op.DataType)int64,stop_gradient:[true]} : (pd_op.tensor<i32>) -> pd_op.tensor<i64>
+ (%6) = "pd_op.full" () {dtype:(pd_op.DataType)int64,place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)256} : () -> pd_op.tensor<i64>
+ (%7) = "builtin.combine" (%5, %6) {stop_gradient:[true]} : (pd_op.tensor<i64>, pd_op.tensor<i64>) -> vec[pd_op.tensor<i64>,pd_op.tensor<i64>]
+ (%8) = "pd_op.stack" (%7) {axis:(Int32)0,stop_gradient:[true]} : (vec[pd_op.tensor<i64>,pd_op.tensor<i64>]) -> pd_op.tensor<2xi64>
+ (%9, %10) = "pd_op.reshape" (%2, %8) {stop_gradient:[false,false]} : (pd_op.tensor<-1x256xf32>, pd_op.tensor<2xi64>) -> pd_op.tensor<-1x-1xf32>, pd_op.tensor<0x-1x256xi64>
+ (%11) = "pd_op.subtract" (%9, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x-1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%11) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+      IRPrinting on builtin.module after cinn_dynamic_reshape_op_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "cinn_op.reshape" (%2) {shape:[(Int32)-1,(Int32)1],stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x1xf32>
+ (%4) = "pd_op.subtract" (%3, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%4) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+      IRPrinting on builtin.module before dead_code_elimination_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "cinn_op.reshape" (%2) {shape:[(Int32)-1,(Int32)1],stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x1xf32>
+ (%4) = "pd_op.subtract" (%3, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%4) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+       IRPrinting on builtin.module after dead_code_elimination_pass pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "cinn_op.reshape" (%2) {shape:[(Int32)-1,(Int32)1],stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x1xf32>
+ (%4) = "pd_op.subtract" (%3, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%4) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
+
+
+===-------------------------------------------------------------------------===
+          IRPrinting on builtin.module before cinn_group_lowering pass
+===-------------------------------------------------------------------------===
+{
+ (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[-1,256],stop_gradient:[false]} : () -> pd_op.tensor<-1x256xf32>
+ (%1) = cinn_op.group () -> pd_op.tensor<-1x256xf32> {
+ (%2) = "pd_op.exp" (%0) {stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ (%3) = "cinn_op.reshape" (%2) {shape:[(Int32)-1,(Int32)1],stop_gradient:[false]} : (pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x1xf32>
+ (%4) = "pd_op.subtract" (%3, %0) {stop_gradient:[false]} : (pd_op.tensor<-1x1xf32>, pd_op.tensor<-1x256xf32>) -> pd_op.tensor<-1x256xf32>
+ () = "cf.yield" (%4) {} : (pd_op.tensor<-1x256xf32>) ->  
+ }
+ () = "builtin.set_parameter" (%1) {parameter_name:"output_0"} : (pd_op.tensor<-1x256xf32>) -> 
+}
