@@ -26,7 +26,6 @@ CUDA_LIB=$8/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 EXIT_CODE=0 # init default exit code
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
-test_suite_list="cpu_tester*" # init test suite list, pass to --gtest_filter
 
 export RED='\033[0;31m' # red color
 export NC='\033[0m' # no color
@@ -37,19 +36,20 @@ current_dir=`pwd`
 build_dir=${current_dir}/build
 log_dir=${current_dir}/log
 
-# check mkldnn installation
-if [ $2 == ON ]; then
-  # You can export yourself if move the install path
-  MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
-  test_suite_list="${test_suite_list}:mkldnn_tester*"
-fi
-
 if [ $3 == ON ]; then
   use_gpu_list='true false'
-  test_suite_list="${test_suite_list}:gpu_tester*"
+  test_suite_list="gpu_tester*"
 else
   use_gpu_list='false'
+  test_suite_list="cpu_tester*" # init test suite list, pass to --gtest_filter
+
+  # check mkldnn installation
+  if [ $2 == ON ]; then
+    # You can export yourself if move the install path
+    MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
+    test_suite_list="${test_suite_list}:mkldnn_tester*"
+  fi
 fi
 
 # check tensorrt installation

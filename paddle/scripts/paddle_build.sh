@@ -3288,6 +3288,20 @@ EOF
     fi
 }
 
+function test_fluid_lib_cpu() {
+    infer_ut_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/test/cpp/inference/infer_ut
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} OFF ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+    TEST_EXIT_CODE=$?
+    infer_ut_endTime_s=`date +%s`
+    echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
+    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+    if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
 function test_go_inference_api() {
     cat <<EOF
     ========================================
@@ -4249,6 +4263,7 @@ function main() {
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
         gen_fluid_lib_by_setup ${parallel_number}
+	test_fluid_lib_cpu
         ;;
       gpu_inference)
         test_fluid_lib
