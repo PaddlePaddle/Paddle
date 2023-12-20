@@ -1106,6 +1106,7 @@ class Completer:
 
         part_size = len(seg_op_deps.keys()) // vpp_degree
 
+        # get boundary of each chunk
         results = [0] * (vpp_degree + 1)
         memory_counter = 0
         result_idx = 1
