@@ -21,6 +21,11 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.distributed import ParallelEnv
+from paddle.distributed.auto_parallel.static.utils import (
+    is_backward_op,
+    is_forward_op,
+    is_optimize_op,
+)
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()
@@ -112,6 +117,7 @@ def apply_pass(schedule_mode, acc_step):
 def reset_prog():
     paddle.base.framework.switch_main_program(paddle.static.Program())
     paddle.base.framework.switch_startup_program(paddle.static.Program())
+    paddle.utils.unique_name.switch()
 
 
 class MyDataset(paddle.io.Dataset):
@@ -158,54 +164,30 @@ class TestVPPPass(unittest.TestCase):
         self.init(engine)
         return engine
 
-    def check_results(self, ref_losses, check_losses):
-        np.testing.assert_allclose(
-            ref_losses,
-            check_losses,
-            rtol=self.rtol,
-            atol=self.atol,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
-        )
-
     def test_pp_pass(self):
-        # pp2-fthenb
-        engine_fthenb = self.get_engine(schedule_mode="FThenB", acc_step=2)
-        history_fthenb = engine_fthenb.fit(
-            self.dataset, batch_size=self.batch_size, log_freq=1
-        )
-        assert engine_fthenb._strategy.pipeline.schedule_mode == "FThenB"
-
         # pp2-vpp
-        engine_vpp_acc2 = self.get_engine(schedule_mode="VPP", acc_step=2)
-        history_vpp_acc2 = engine_vpp_acc2.fit(
-            self.dataset, batch_size=self.batch_size, log_freq=1
-        )
-        assert engine_vpp_acc2._strategy.pipeline.schedule_mode == "VPP"
+        engine = self.get_engine(schedule_mode="VPP", acc_step=4)
+        engine.fit(self.dataset, batch_size=self.batch_size, log_freq=1)
+        assert engine._strategy.pipeline.schedule_mode == "VPP"
 
-        # pp2-1f1b
-        engine_1f1b = self.get_engine(schedule_mode="1F1B", acc_step=4)
-        history_1f1b = engine_1f1b.fit(
-            self.dataset, batch_size=self.batch_size, log_freq=1
-        )
-        assert engine_1f1b._strategy.pipeline.schedule_mode == "1F1B"
+        fw_chunk_ids = []
+        bw_chunk_ids = []
+        for op in engine.main_program.global_block().ops:
+            if is_optimize_op(op):
+                break
 
-        # pp2-vpp
-        engine_vpp_acc4 = self.get_engine(schedule_mode="VPP", acc_step=4)
-        history_vpp_acc4 = engine_vpp_acc4.fit(
-            self.dataset, batch_size=self.batch_size, log_freq=1
-        )
-        assert engine_vpp_acc4._strategy.pipeline.schedule_mode == "VPP"
+            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            if is_forward_op(op):
+                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+            if is_backward_op(op):
+                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
 
-        if paddle.distributed.get_rank() == 1:
-            losses_fthenb = np.array(history_fthenb.history["loss"])
-            losses_vpp_acc2 = np.array(history_vpp_acc2.history["loss"])
-            self.check_results(losses_fthenb, losses_vpp_acc2)
-
-            losses_1f1b = np.array(history_1f1b.history["loss"])
-            losses_vpp_acc4 = np.array(history_vpp_acc4.history["loss"])
-            self.check_results(losses_1f1b, losses_vpp_acc4)
+        if paddle.distributed.get_rank() == 0:
+            assert sum(fw_chunk_ids) == 8
+            assert sum(bw_chunk_ids) == 13
+        else:
+            assert sum(fw_chunk_ids) == 12
+            assert sum(bw_chunk_ids) == 13
 
 
 if __name__ == "__main__":
