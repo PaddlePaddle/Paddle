@@ -111,6 +111,10 @@ def _select_sdp(head_dim):
     is determined by the sdp_kernel configuration or specified through input values.
     """
     place = paddle.get_device()
+
+    if "xpu" in place:
+        return "flash_attn"
+
     # not use sdp_kernel
     if g_enable_flash is None:
         if "gpu" not in place:
@@ -222,10 +226,7 @@ def flash_attention(
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_mode():
-            (
-                result_attention,
-                result_softmax,
-            ) = _C_ops.flash_attn(
+            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
                 query,
                 key,
                 value,
@@ -508,7 +509,7 @@ def scaled_dot_product_attention(
             fixed_seed_offset = (None,)
             return_softmax = False
             rng_name = ""
-            out, _ = _C_ops.flash_attn(
+            out, _, _, _ = _C_ops.flash_attn(
                 query,
                 key,
                 value,

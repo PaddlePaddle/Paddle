@@ -572,7 +572,6 @@ class CodeGen:
 
         if (
             op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
-            or op_name in ["print", "hardshrink", "det"]
             or len(mapping_name_to_type) == 0
         ):
             return ""
@@ -766,8 +765,15 @@ class CodeGen:
                 op_info, op_inst_name
             )
 
+            kernel_name = (
+                list(dispatch_kernel.keys())[0]
+                if dispatch_kernel and len(dispatch_kernel.keys()) == 1
+                else op_name
+            )
+            if op_name.endswith('_') and not kernel_name.endswith('_'):
+                kernel_name = kernel_name + '_'
             api_inner_code = API_INNER_CODE_TEMPLATE.format(
-                check_data_type=self._gen_check_data_type(op_info, op_name),
+                check_data_type=self._gen_check_data_type(op_info, kernel_name),
                 handle_optional_inputs=self._gen_handle_optional_inputs(
                     op_info
                 ),

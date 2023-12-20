@@ -35,6 +35,7 @@
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
+using paddle::dialect::HasElementsOp;
 using paddle::dialect::IfOp;
 using paddle::dialect::WhileOp;
 using pir::Block;
@@ -88,7 +89,10 @@ void BindWhileOp(py::module* m) {
     WhileOp in python api.
   )DOC");
   while_op.def("body", &WhileOp::body, return_value_policy::reference)
-      .def("as_operation", &WhileOp::operation, return_value_policy::reference);
+      .def("as_operation", &WhileOp::operation, return_value_policy::reference)
+      .def("block_arguments",
+           &WhileOp::block_args,
+           return_value_policy::reference);
 }
 
 void GetUsedExternalValueImpl(
@@ -124,6 +128,30 @@ std::vector<Value> GetUsedExternalValue(const Operation& op) {
   std::vector<Value> used_values;
   GetUsedExternalValueImpl(defined_values, used_values, op);
   return used_values;
+}
+
+Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
+  PADDLE_ENFORCE(fwd_op.isa<WhileOp>(),
+                 phi::errors::PreconditionNotMet(
+                     "param op of BuildHasElementsOp must be while op."));
+  auto fwdop = fwd_op.dyn_cast<WhileOp>();
+  TuplePushOp push_op;
+  for (auto iter = fwdop.body().rbegin(); iter != fwdop.body().rend(); ++iter) {
+    if (iter->isa<TuplePushOp>()) {
+      push_op = iter->dyn_cast<TuplePushOp>();
+      PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
+                        false,
+                        phi::errors::InvalidArgument(
+                            "The last container in foward while op must used "
+                            "after construct while_grad op"));
+      break;
+    }
+  }
+  auto new_cond = ApiBuilder::Instance()
+                      .GetBuilder()
+                      ->Build<HasElementsOp>(push_op.container())
+                      .out();
+  return new_cond;
 }
 
 void BuildPipeForBlock(Block* block) {
@@ -193,6 +221,7 @@ void PyIfOp::UpdateOutput() {
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value", GetUsedExternalValue);
   m->def("build_pipe_for_block", BuildPipeForBlock);
+  m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {
     std::vector<Value> input_values;
     for (auto input : inputs) {
@@ -200,9 +229,9 @@ void BindControlFlowApi(py::module* m) {
     }
     ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
   });
-
   BindIfOp(m);
   BindWhileOp(m);
 }
+
 }  // namespace pybind
 }  // namespace paddle

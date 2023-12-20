@@ -163,7 +163,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
 
   if (dx) {
     ctx.template Alloc<T1>(dx);
-    funcs::set_constant(ctx, dx, 0);
+    funcs::set_constant(ctx, dx, static_cast<T1>(0));
 
     switch (kernel_size_.size()) {
       case 2: {

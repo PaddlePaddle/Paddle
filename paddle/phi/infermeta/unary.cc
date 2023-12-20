@@ -590,21 +590,6 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "dtype of indices must be DataType::INT32 or DataType::INT64"));
 
-  if (dtype == DataType::INT32) {
-    int _axis = 0;
-    if (axis < 0) {
-      _axis = axis + x_dims.size();
-    } else {
-      _axis = axis;
-    }
-    PADDLE_ENFORCE_LT(
-        common::vectorize(x_dims)[_axis],
-        INT32_MAX,
-        phi::errors::OutOfRange(
-            "cummax with axis %ld may be overflow, set dtype int64 to continue",
-            axis));
-  }
-
   if (x_dims.size() > 0) {
     PADDLE_ENFORCE_GE(
         axis,
@@ -631,6 +616,21 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
         errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
                                 "but the value given is %d.",
                                 axis));
+  }
+
+  if (dtype == DataType::INT32) {
+    int _axis = 0;
+    if (axis < 0) {
+      _axis = axis + x_dims.size();
+    } else {
+      _axis = axis;
+    }
+    PADDLE_ENFORCE_LT(
+        common::vectorize(x_dims)[_axis],
+        INT32_MAX,
+        phi::errors::OutOfRange(
+            "cummax with axis %ld may be overflow, set dtype int64 to continue",
+            axis));
   }
 
   out->set_dims(x_dims);
@@ -663,6 +663,16 @@ void CropInferMeta(const MetaTensor& x,
                         "dimensions (%d) of the input.",
                         shape_dims.size(),
                         x_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      offsets_vec.size(),
+      x_dim.size(),
+      errors::InvalidArgument(
+          "The number of elements (%d) of attribute 'offsets' for "
+          "CropTensor must be equal to the number of "
+          "dimensions (%d) of the input.",
+          offsets_vec.size(),
+          x_dim.size()));
 
   if (config.is_runtime) {
     out->share_lod(x);
@@ -3500,6 +3510,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   xshape->set_dims(common::make_ddim(xshape_dims));
   xshape->share_lod(x);
   xshape->set_strides(x.strides());
+  xshape->set_dtype(DataType::INT64);
   ReshapeInferMeta(x, shape, out, config);
 }
 
@@ -4031,6 +4042,18 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     // setp2: fill out dims
     FillSplitOutDims(x, axis_value, sections_vec, &out);
   }
+}
+
+void SequenceMaskScalarInferMeta(const MetaTensor& x,
+                                 const Scalar& max_len,
+                                 int out_dtype,
+                                 MetaTensor* y) {
+  auto dim = phi::vectorize<int>(x.dims());
+  int maxlen = max_len.to<int>();
+  dim.push_back(maxlen > 0 ? maxlen : -1);
+  y->set_dims(phi::make_ddim(dim));
+  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
+  y->set_dtype(out_phi_dtype);
 }
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
@@ -5257,8 +5280,8 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
 
   out->set_dtype(DataType::INT8);
 
-  scale->set_dims(common::make_ddim(dim_scale));
-  scale->set_dtype(DataType::FLOAT32);
+  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dtype(x.dtype());
 }
 
 void ChannelShuffleInferMeta(const MetaTensor& x,
@@ -5324,6 +5347,12 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
   out->set_strides(x.strides());
+}
+
+void NumberCountInferMeta(const MetaTensor& x,
+                          int upper_range,
+                          MetaTensor* out) {
+  out->share_meta(x);
 }
 
 }  // namespace phi

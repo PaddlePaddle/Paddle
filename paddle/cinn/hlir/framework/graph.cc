@@ -21,7 +21,6 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #endif
-#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 

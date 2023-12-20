@@ -22,8 +22,7 @@ if(WITH_DISTRIBUTE)
     DEPS
     spmd_rule_test_util
     spmd_rules
-    phi
-    common)
+    phi)
   paddle_test(
     softmax_grad_spmd_rule_test
     SRCS
@@ -35,6 +34,7 @@ if(WITH_DISTRIBUTE)
 
 endif()
 
-
-cc_test(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)
-
+cc_test(
+  dist_mapper_test
+  SRCS dist_mapper_test.cc
+  DEPS phi)

@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include <algorithm>
 #include <vector>
 
@@ -189,6 +190,14 @@ DEFINE_GPU_TRANS(3);
 DEFINE_GPU_TRANS(4);
 DEFINE_GPU_TRANS(5);
 DEFINE_GPU_TRANS(6);
+
+template <typename T>
+__global__ void FillConstantKernel(const int N, T* a, const T val) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
+       i += blockDim.x * gridDim.x) {
+    a[i] = val;
+  }
+}
 
 #define REINTERPRET(T, DST_PTR, SRC_PTR) \
   T* DST_PTR = reinterpret_cast<T*>(SRC_PTR)

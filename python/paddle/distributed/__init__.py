@@ -84,6 +84,9 @@ from .auto_parallel.api import (
     reshard,
     shard_layer,
     shard_optimizer,
+    to_static,
+    Strategy,
+    DistModel,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -102,6 +105,9 @@ from .sharding import (  # noqa: F401
 )
 
 from . import rpc  # noqa: F401
+
+from .checkpoint.save_state_dict import save_state_dict
+from .checkpoint.load_state_dict import load_state_dict
 
 __all__ = [
     "io",
@@ -157,5 +163,10 @@ __all__ = [
     "Shard",
     "Replicate",
     "Partial",
+    "save_state_dict",
+    "load_state_dict",
     "shard_optimizer",
+    "to_static",
+    "Strategy",
+    "DistModel",
 ]
