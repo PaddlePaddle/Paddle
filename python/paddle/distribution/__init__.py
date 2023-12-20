@@ -12,27 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distribution import transform
-from paddle.distribution.bernoulli import Bernoulli
-from paddle.distribution.beta import Beta
-from paddle.distribution.categorical import Categorical
-from paddle.distribution.cauchy import Cauchy
-from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
-from paddle.distribution.dirichlet import Dirichlet
-from paddle.distribution.distribution import Distribution
-from paddle.distribution.gumbel import Gumbel
-from paddle.distribution.exponential_family import ExponentialFamily
-from paddle.distribution.independent import Independent
-from paddle.distribution.kl import kl_divergence, register_kl
-from paddle.distribution.lognormal import LogNormal
-from paddle.distribution.multinomial import Multinomial
-from paddle.distribution.multivariate_normal import MultivariateNormal
-from paddle.distribution.normal import Normal
-from paddle.distribution.transform import *  # noqa: F403
-from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.distribution.uniform import Uniform
-from paddle.distribution.laplace import Laplace
-from paddle.distribution.geometric import Geometric
+from . import transform
+from .bernoulli import Bernoulli
+from .beta import Beta
+from .categorical import Categorical
+from .cauchy import Cauchy
+from .continuous_bernoulli import ContinuousBernoulli
+from .dirichlet import Dirichlet
+from .distribution import Distribution
+from .exponential_family import ExponentialFamily
+from .geometric import Geometric
+from .gumbel import Gumbel
+from .independent import Independent
+from .kl import kl_divergence, register_kl
+from .laplace import Laplace
+from .lognormal import LogNormal
+from .multinomial import Multinomial
+from .multivariate_normal import MultivariateNormal
+from .normal import Normal
+from .transform import (  # noqa:F401
+    AbsTransform,
+    AffineTransform,
+    ChainTransform,
+    ExpTransform,
+    IndependentTransform,
+    PowerTransform,
+    ReshapeTransform,
+    SigmoidTransform,
+    SoftmaxTransform,
+    StackTransform,
+    StickBreakingTransform,
+    TanhTransform,
+    Transform,
+)
+from .transformed_distribution import TransformedDistribution
+from .uniform import Uniform
 
 __all__ = [
     'Bernoulli',
