@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.initializer as I
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDeformConv2D(TestCase):
@@ -522,10 +523,11 @@ class TestDeformConv2DFunctional(TestCase):
         self.prepare()
         static_dcn_v1, static_dcn_v2 = self.static_graph_case_dcn()
         dy_dcn_v1, dy_dcn_v2 = self.dygraph_case_dcn()
-        (
-            new_static_dcn_v1,
-            new_static_dcn_v2,
-        ) = self.new_api_static_graph_case_dcn()
+        with paddle.pir_utils.IrGuard():
+            (
+                new_static_dcn_v1,
+                new_static_dcn_v2,
+            ) = self.new_api_static_graph_case_dcn()
         np.testing.assert_array_almost_equal(static_dcn_v1, dy_dcn_v1)
         np.testing.assert_array_almost_equal(static_dcn_v2, dy_dcn_v2)
         np.testing.assert_array_almost_equal(static_dcn_v1, new_static_dcn_v1)
@@ -727,6 +729,7 @@ class TestDeformConv2DFunctionalWithGroups(TestDeformConv2DFunctional):
 
 
 class TestDeformConv2DError(unittest.TestCase):
+    @test_with_pir_api
     def test_input_error(self):
         def test_input_rank_error():
             paddle.enable_static()
