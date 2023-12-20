@@ -118,10 +118,10 @@ def shard_tensor(
     data, mesh, placements, dtype=None, place=None, stop_gradient=None
 ):
     """
-    Constructs a ``paddle.Tensor`` with distributed attributes from ``data``,
-    which can scalar, tuple, list, numpy.ndarray, paddle.Tensor.
+    Creates a distributed Tensor (i.e., Tensor with distributed attributes or DistTensor for short)
+    from the input data, which can be a scalar, tuple, list, numpy.ndarray, or paddle.Tensor.
 
-    If the ``data`` is already a Tensor, transform it to a Distributed Tensor.
+    If the ``data`` is already a Tensor, it will be transformed into a distributed Tensor.
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
@@ -129,10 +129,10 @@ def shard_tensor(
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
             be Shard, Replicate and Partial.
-        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
-            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
-            'complex64' , 'complex128'. Default: None, infers dtype from ``data``
-            except for python float number which gets dtype from ``get_default_type`` .
+        dtype(str|np.dtype, optional): The desired data type of returned tensor.
+            It Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
+            'complex64' , 'complex128'. Default: None. If None, the the dtype is infered from ``data``
+            except for python float number, in which case the dtype is infered from ``get_default_type`` .
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
@@ -338,8 +338,8 @@ def shard_layer(
     Converts all layer's parameters to DistTensor parameters according to
     the `shard_fn` specified. It could also control the conversion of input
     or output of the layer by specifying the `input_fn` and `output_fn`.
-    (i.e. convert the input to `paddle.Tensor` with DistTensor, convert output
-    back to `paddle.Tensor` with DenseTensor.)
+    (i.e. convert the input to `paddle.Tensor` with distributed attributes,
+    convert output back to `paddle.Tensor` without distributed attributes.)
 
     The `shard_fn` should have the following signature:
 
@@ -349,13 +349,13 @@ def shard_layer(
 
         def input_fn(inputs, process_mesh) -> list(paddle.Tensor)
 
-    In general, the type of `input_fn` return value is paddle.Tensor with DistTensor.
+    In general, the type of `input_fn` return value is paddle.Tensor with distributed attributes.
 
     The `output_fn` should have the following signature:
 
         def output_fn(outputs, process_mesh) -> list(paddle.Tensor)
 
-    In general, the type of `output_fn` return value is paddle.Tensor with DenseTensor.
+    In general, the type of `output_fn` return value is paddle.Tensor with distributed attributes.
 
     Args:
         layer (paddle.nn.Layer): The Layer object to be shard.
@@ -368,12 +368,12 @@ def shard_layer(
             The `input_fn` will be registered for the Layer as a `forward pre-hook`.
             By default we do not shard the input.
         output_fn (Callable): Specify how the output of the layer is sharded or
-            convert it back to `paddle.Tensor` with DenseTensor.
+            convert it back to `paddle.Tensor` without distributed attributes.
             The `output_fn` will be registered for the Layer as `forward post-hook`.
             By default we do not shard or convert the output.
     Returns:
         Layer: A layer that contains parameters/buffers
-            that are all `paddle.Tensor` with DistTensor
+            that are all `paddle.Tensor` with distributed attributes.
 
     Examples:
         .. code-block:: python
