@@ -400,7 +400,8 @@ def monkey_patch_tensor():
                 >>> f = lambda x: 3*x+2
                 >>> x.apply_(f)
                 >>> print(x)
-                17
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                 17.)
 
         """
         if not self.stop_gradient:
@@ -425,9 +426,11 @@ def monkey_patch_tensor():
                 >>> f = lambda x: 3*x+2
                 >>> y = x.apply(f)
                 >>> print(y)
-                17
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                 17.)
                 >>> print(x)
-                5
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                 5.)
 
         """
         if not self.stop_gradient:
