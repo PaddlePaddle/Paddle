@@ -401,6 +401,7 @@ class TestSigmoid(TestActivation):
             max_relative_error=0.01,
             check_prim=True,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -1887,6 +1888,7 @@ class TestFloor(TestActivation):
                 check_prim=True,
                 only_check_prim=True,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -1937,7 +1939,13 @@ class TestCos(TestActivation):
                 check_pir=True,
             )
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     def if_enable_cinn(self):
         pass
@@ -2146,7 +2154,13 @@ class TestSin(TestActivation, TestParameter):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     def if_enable_cinn(self):
         pass
@@ -2539,7 +2553,9 @@ class TestLeakyRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestLeakyReluAlpha1(TestLeakyRelu):
@@ -3015,6 +3031,7 @@ class TestHardSwish(TestActivation):
             else False,
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
@@ -4842,12 +4859,13 @@ create_test_act_fp16_class(
     grad_check=False,
     enable_cinn=True,
     check_pir=True,
+    check_prim_pir=True,
 )
-create_test_act_fp16_class(TestCos, check_pir=True)
+create_test_act_fp16_class(TestCos, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestTan, check_pir=True)
 create_test_act_fp16_class(TestCosh, check_pir=True)
 create_test_act_fp16_class(TestAcos, check_pir=True)
-create_test_act_fp16_class(TestSin, check_pir=True)
+create_test_act_fp16_class(TestSin, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin, check_pir=True)
 create_test_act_fp16_class(TestAtan, check_pir=True)
@@ -5002,13 +5020,17 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(TestAbs, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_bf16_class(
-    TestFloor, grad_check=False, check_prim=True, check_pir=True
+    TestFloor,
+    grad_check=False,
+    check_prim=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
-create_test_act_bf16_class(TestCos, check_pir=True)
+create_test_act_bf16_class(TestCos, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestTan, check_pir=True)
 create_test_act_bf16_class(TestCosh, check_pir=True)
 create_test_act_bf16_class(TestAcos, check_pir=True)
-create_test_act_bf16_class(TestSin, check_pir=True)
+create_test_act_bf16_class(TestSin, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin, check_pir=True)
 create_test_act_bf16_class(TestAtan, check_pir=True)

@@ -156,6 +156,7 @@ def _can_apply_infer_spmd_rule(dist_op):
 
     # TODO remove me. ops to be adapted: squeeze2
     __adapted_ops__ = [
+        "fused_rotary_position_embedding",
         "matmul_v2",
         "elementwise_div",
         "gelu",
@@ -173,6 +174,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "split",
         "unsqueeze2",
         "silu",
+        "concat",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":

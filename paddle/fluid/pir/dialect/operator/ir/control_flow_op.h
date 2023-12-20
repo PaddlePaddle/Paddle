@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/pir/core/block.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace paddle {
@@ -65,7 +66,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
 ///      cond, outputs = body(outputs)
 ///   }
 ///
-class WhileOp : public pir::Op<WhileOp> {
+class WhileOp : public pir::Op<WhileOp, VjpInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.while"; }
@@ -78,9 +79,16 @@ class WhileOp : public pir::Op<WhileOp> {
                     const std::vector<pir::Value> &inputs);
   pir::Block &body();
   pir::Value cond();
+  const pir::Block::ArgListType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig() {}
   void VerifyRegion() {}
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
@@ -114,7 +122,7 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value stack);
+                    pir::Value container);
   void VerifySig();
   pir::Value input() { return operand_source(0); }
   pir::Value out() { return result(0); }

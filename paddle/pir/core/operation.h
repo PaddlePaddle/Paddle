@@ -90,7 +90,10 @@ class IR_API alignas(8) Operation final
   ///
   uint32_t num_results() const { return num_results_; }
   OpResult result(uint32_t index) const { return op_result_impl(index); }
-  Type result_type(uint32_t index) const { return result(index).type(); }
+  template <typename T = Type>
+  T result_type(uint32_t index) const {
+    return result(index).type().dyn_cast<T>();
+  }
   std::vector<OpResult> results();
 
   ///
@@ -101,6 +104,7 @@ class IR_API alignas(8) Operation final
   std::vector<OpOperand> operands();
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
+  Type operand_type(uint32_t index) const { return operand(index).type(); }
 
   ///
   /// \brief op successor related public interfaces
