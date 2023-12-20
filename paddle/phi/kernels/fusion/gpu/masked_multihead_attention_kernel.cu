@@ -895,6 +895,21 @@ void DispatchWithDtype(const Context &dev_ctx,
   int max_seq_len = cache_kv.dims()[3];
   int dim_head = cache_kv.dims()[4];
   int timestep = max_seq_len;
+  if (sequence_lengths) {
+    std::vector<int> sequence_lengths_data(
+        sequence_lengths->dims()[0]);  // bitchsize * 1
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            sequence_lengths_data.data(),
+                            phi::GPUPlace(),
+                            sequence_lengths->data<int>(),
+                            sequence_lengths->dims()[0] * sizeof(int),
+                            dev_ctx.stream());
+    cudaStreamSynchronize(dev_ctx.stream());
+    for (int i = 0; i < sequence_lengths->dims()[0]; ++i) {
+      CHECK_LT(sequence_lengths_data[i], max_seq_len)
+          << "sequence_length must less max_seq_len";
+    }
+  }
   float inv_sqrt_dh = 1. / sqrt(dim_head);
 
   int k_num_head = cache_kv.dims()[2];
