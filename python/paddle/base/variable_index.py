@@ -503,12 +503,13 @@ def _setitem_static(x, indices, values):
                     decrease_axes,
                     none_axes,
                 )
-            # map var to the new output, for dy2static
-            from paddle.jit.pir_dy2static.parameter_recorder import (
-                _global_inplace_map,
-            )
+            if in_pir_mode():
+                # map var to the new output, for dy2static
+                from paddle.jit.pir_dy2static.parameter_recorder import (
+                    _global_inplace_map,
+                )
 
-            _global_inplace_map.add(default_main_program(), x, output)
+                _global_inplace_map.add(default_main_program(), x, output)
             return output
         else:
             helper = paddle.base.layer_helper.LayerHelper(
