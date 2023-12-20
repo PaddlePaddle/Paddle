@@ -1,7 +1,8 @@
-set(instruction_base.cc
+set(nstruction_base.cc
     phi_kernel_instruction.cc
     legacy_kernel_instruction.cc
     if_instruction.cc
+    assert_instruction.cc
     while_instruction.cc
     select_input_instruction.cc
     has_elements_instruction.cc

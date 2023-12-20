@@ -192,6 +192,10 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::string DebugInstructions();
 
+  std::string DebugDependency();
+
+  std::vector<std::string> DebugInfo();
+
   void PreAnalysis();
 
   void BuildInstruction();
