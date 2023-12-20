@@ -1133,6 +1133,59 @@ def name_scope(prefix=None):
             _name_scope = _name_scope.parent()
 
 
+class NameStruct:
+    def __init__(self, name="", parent=None):
+        self._children = {}
+        self._name = name
+        self._parent = parent
+
+    def child(self, prefix):
+        if prefix not in self._children:
+            new_child = NameStruct(prefix, self)
+            self._children[prefix] = [new_child]
+        else:
+            new_child = NameStruct(
+                prefix + "_%d" % len(self._children[prefix]), self
+            )
+            self._children[prefix].append(new_child)
+        return new_child
+
+    def parent(self):
+        return self._parent
+
+    def name(self):
+        return self._name
+
+
+_name_struct = NameStruct()
+
+
+@signature_safe_contextmanager
+def name_struct(prefix=None):
+    # TODO(panyx0718): Only [0-9a-z].
+    # in dygraph we don't need namescope since it will cause mem leak
+    if in_dygraph_mode():
+        yield
+    else:
+        assert prefix, "namescope prefix can not be empty."
+        global _name_struct
+        _name_struct = _name_struct.child(prefix)
+        try:
+            yield
+        finally:
+            _name_struct = _name_struct.parent()
+
+
+def _full_name_struct():
+    global _name_struct
+    struct = _name_struct
+    name = ""
+    while struct:
+        name = struct.name() + "/" + name
+        struct = struct.parent()
+    return name
+
+
 def _full_name_scope():
     global _name_scope
     scope = _name_scope
@@ -2982,6 +3035,9 @@ class Operator:
 
             self._amp_options: AmpOptions = DEFAULT_AMP_OPTIONS
 
+            # attr for op's call chain
+            self._struct_name = _full_name_struct()
+
             op_maker = core.op_proto_and_checker_maker
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
@@ -3757,6 +3813,14 @@ class Operator:
             bool: AmpOptions of this Operator.
         """
         return self._amp_options
+
+    @property
+    def struct_name(self):
+        return self._struct_name
+
+    @struct_name.setter
+    def struct_name(self, struct_name):
+        self._struct_name = struct_name
 
 
 @signature_safe_contextmanager
@@ -7077,6 +7141,7 @@ class Program:
         for dst_block, src_block in zip(self.blocks, other.blocks):
             for dst_op, src_op in zip(dst_block.ops, src_block.ops):
                 dst_op.set_amp_options(src_op.amp_options)
+                dst_op.struct_name = src_op.struct_name
 
     def list_vars(self):
         """

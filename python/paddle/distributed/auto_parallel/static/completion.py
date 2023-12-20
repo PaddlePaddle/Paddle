@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import copy
 import logging
 import os
+import re
 
 import paddle
 from paddle.base.core import (  # noqa: F401
@@ -39,10 +41,13 @@ from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
     _g_gradient_clip_ops,
+    get_pp_degree,
     is_gradient_clip_op,
     is_loss_grad_op,
     is_loss_op,
     is_naive_data_parallel,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
 )
 
 _logger = get_logger(
@@ -1029,10 +1034,121 @@ class Completer:
 
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
+        self._update_chunk_id(serial_main_program)
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
         self._dist_context.validate_dist_attr_for_program()
         return serial_main_program
+
+    def _update_chunk_id(self, serial_main_program):
+        def complete_chunk_id(block, op, chunk_id, var_to_chunk_id):
+            dist_op = self._dist_context.get_dist_op_for_program(op)
+            dist_op.dist_attr.chunk_id = chunk_id
+            for name in op.input_arg_names + op.output_arg_names:
+                var = block._find_var_recursive(name)
+                if "lod_tensor_blocking_queue" in name:
+                    continue
+                if name not in var_to_chunk_id:
+                    op_dist_attr = (
+                        self._dist_context.get_op_dist_attr_for_program(op)
+                    )
+                    tensor_dist_attr = (
+                        self._dist_context.get_tensor_dist_attr_for_program(var)
+                    )
+                    if (
+                        op_dist_attr.process_mesh
+                        == tensor_dist_attr.process_mesh
+                    ):
+                        tensor_dist_attr.chunk_id = op_dist_attr.chunk_id
+                        var_to_chunk_id[var.name] = op_dist_attr.chunk_id
+
+        pp_degree = get_pp_degree(self._dist_context)
+        vpp_degree = self._dist_context.strategy.pipeline.vpp_degree
+        seg_method = self._dist_context.strategy.pipeline.vpp_seg_method
+
+        if pp_degree < 2 or vpp_degree < 2 or not seg_method:
+            return
+
+        block = serial_main_program.global_block()
+        ops = block.ops
+
+        seg_op_deps = collections.OrderedDict()
+        regex = re.compile(seg_method, re.IGNORECASE)
+        for i, op in enumerate(ops):
+            struct_name = op.struct_name
+            m = regex.search(struct_name)
+            if not m:
+                continue
+
+            struct_name = struct_name[m.start(0) :].split("/")[0]
+            if struct_name not in seg_op_deps:
+                seg_op_deps[struct_name] = [i]
+            else:
+                assert (
+                    seg_op_deps[struct_name][-1] + 1 == i
+                ), "The segment's ops should be continuous."
+                pre_op = ops[seg_op_deps[struct_name][-1]]
+                pre_dist_op = self._dist_context.get_dist_op_for_program(pre_op)
+                dist_op = self._dist_context.get_dist_op_for_program(op)
+                assert (
+                    pre_dist_op.dist_attr.process_mesh
+                    == dist_op.dist_attr.process_mesh
+                ), "The segment's ops should have same process_mesh."
+                seg_op_deps[struct_name].extend([i])
+
+        # the num of chunk is equal to vpp_degree
+        num_parts = pp_degree * vpp_degree
+        assert (
+            len(seg_op_deps.keys()) % num_parts == 0
+        ), "number of layers[{}] ({}) should be devided by part number ({}).".format(
+            seg_method, len(seg_op_deps.keys()), num_parts
+        )
+
+        part_size = len(seg_op_deps.keys()) // vpp_degree
+
+        results = [0] * (vpp_degree + 1)
+        memory_counter = 0
+        result_idx = 1
+        for struct_name, idxs in seg_op_deps.items():
+            memory_counter += 1
+            if memory_counter == part_size:
+                results[result_idx] = idxs[-1] + 1
+                result_idx += 1
+                memory_counter = 0
+            results[vpp_degree] = len(ops)
+
+        var_to_chunk_id = {}
+        for chunk_id in range(len(results) - 1):
+            start_idx = results[chunk_id]
+            end_idx = results[chunk_id + 1]
+            _logger.info(
+                "[chunk_{}] start op: [{}]: [{}] [{}]".format(
+                    chunk_id,
+                    ops[start_idx].type,
+                    ops[start_idx].input_arg_names,
+                    ops[start_idx].output_arg_names,
+                )
+            )
+            _logger.info(
+                "[chunk_{}] end op: [{}]: [{}] [{}]".format(
+                    chunk_id,
+                    ops[end_idx - 1].type,
+                    ops[end_idx - 1].input_arg_names,
+                    ops[end_idx - 1].output_arg_names,
+                )
+            )
+
+            for idx in range(start_idx, end_idx):
+                op = ops[idx]
+                if op.has_attr("sub_block"):
+                    block_id = op.attr('sub_block').id
+                    sub_block = serial_main_program.blocks[block_id]
+                    for op in sub_block.ops:
+                        complete_chunk_id(
+                            sub_block, op, chunk_id, var_to_chunk_id
+                        )
+                else:
+                    complete_chunk_id(block, op, chunk_id, var_to_chunk_id)
 
     def _update_dist_attr_for_dp(self):
         # TODO: we must ensure the world process group contains all ranks
@@ -1197,6 +1313,9 @@ class Completer:
             [HighOrderGrad] Complete the annotation of vars and ops only for high order gradient.
             This function is temporary to support high order gradient, and will be removed in the future.
         """
+
+        if serial_main_program._appending_grad_times < 2:
+            return
 
         if serial_main_program is None:
             serial_main_program = self._dist_context.serial_main_program
@@ -1434,6 +1553,7 @@ class Completer:
             )
             grad_op_dist_attr = OperatorDistAttr()
             ref_process_mesh = fwd_op_dist_attr.process_mesh
+            ref_chunk_id = fwd_op_dist_attr.chunk_id
 
             if grad_op.type == "concat" and forward_op.type == "split":
                 split_input_var_name = forward_op.input("X")[0]
@@ -1442,11 +1562,12 @@ class Completer:
                 )
                 # var
                 output_var = vars[grad_op.desc.output('Out')[0]]
-                output_var_dist_attr = TensorDistAttr()
-                output_var_dist_attr.dims_mapping = ref_dims_mapping
-                output_var_dist_attr.process_mesh = ref_process_mesh
-                self._dist_context.set_tensor_dist_attr_for_program(
-                    output_var, output_var_dist_attr
+                set_var_dist_attr(
+                    self._dist_context,
+                    output_var,
+                    ref_dims_mapping,
+                    ref_process_mesh,
+                    chunk_id=ref_chunk_id,
                 )
                 # op
                 for input_name in grad_op.input_arg_names:
@@ -1499,14 +1620,15 @@ class Completer:
                 for output_name in grad_op.output_arg_names:
                     if output_name == "@EMPTY@":
                         output_var = vars[output_name]
-                        tensor_dist_attr = TensorDistAttr()
                         ref_dims_mapping = [
                             -1 for _ in range(len(output_var.shape))
                         ]
-                        tensor_dist_attr.dims_mapping = ref_dims_mapping
-                        tensor_dist_attr.process_mesh = ref_process_mesh
-                        self._dist_context.set_tensor_dist_attr_for_program(
-                            output_var, tensor_dist_attr
+                        set_var_dist_attr(
+                            self._dist_context,
+                            output_var,
+                            ref_dims_mapping,
+                            ref_process_mesh,
+                            chunk_id=ref_chunk_id,
                         )
                         grad_op_dist_attr.set_output_dims_mapping(
                             output_name, ref_dims_mapping
@@ -1520,11 +1642,12 @@ class Completer:
                     )
                     # var
                     output_var = vars[output_name]
-                    tensor_dist_attr = TensorDistAttr()
-                    tensor_dist_attr.dims_mapping = ref_dims_mapping
-                    tensor_dist_attr.process_mesh = ref_process_mesh
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        output_var, tensor_dist_attr
+                    set_var_dist_attr(
+                        self._dist_context,
+                        output_var,
+                        ref_dims_mapping,
+                        ref_process_mesh,
+                        chunk_id=ref_chunk_id,
                     )
                     # op
                     grad_op_dist_attr.set_output_dims_mapping(
@@ -1532,6 +1655,7 @@ class Completer:
                     )
 
             grad_op_dist_attr.process_mesh = ref_process_mesh
+            grad_op_dist_attr.chunk_id = ref_chunk_id
             grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
             grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
             grad_op_dist_attr.chunk_id = fwd_op_dist_attr.chunk_id
@@ -1657,37 +1781,31 @@ class Completer:
                     len(grad_op.output_arg_names)
                 )
 
-                loss_grad_var = vars[grad_op.output_arg_names[0]]
                 loss_var = vars[loss_op.output_arg_names[0]]
+                loss_grad_var = vars[grad_op.output_arg_names[0]]
                 assert loss_var.name + "@GRAD" == loss_grad_var.name
-                loss_var_distr_attr = (
-                    self._dist_context.get_tensor_dist_attr_for_program(
-                        loss_var
-                    )
+                dist_loss_var = self._dist_context.get_dist_tensor_for_program(
+                    loss_var
+                )
+                dist_loss_op = self._dist_context.get_dist_op_for_program(
+                    loss_op
                 )
 
-                # TODO complete other attribute for grad var
-                tensor_dist_attr = TensorDistAttr()
-                tensor_dist_attr.dims_mapping = loss_var_distr_attr.dims_mapping
-                tensor_dist_attr.process_mesh = loss_var_distr_attr.process_mesh
-                self._dist_context.set_tensor_dist_attr_for_program(
-                    loss_grad_var, tensor_dist_attr
+                set_var_dist_attr(
+                    self._dist_context,
+                    loss_grad_var,
+                    dist_loss_var.dist_attr.dims_mapping,
+                    dist_loss_var.dist_attr.process_mesh,
+                    chunk_id=dist_loss_var.dist_attr.chunk_id,
                 )
-
-                loss_op_dist_attr = (
-                    self._dist_context.get_op_dist_attr_for_program(loss_op)
-                )
-                grad_op_dist_attr = OperatorDistAttr()
-                grad_op_dist_attr.process_mesh = loss_op_dist_attr.process_mesh
-                grad_op_dist_attr.chunk_id = loss_op_dist_attr.chunk_id
-                ref_dims_mapping = loss_op_dist_attr.get_output_dims_mapping(
-                    loss_var.name
-                )
-                grad_op_dist_attr.set_output_dims_mapping(
-                    loss_grad_var.name, ref_dims_mapping
-                )
-                self._dist_context.set_op_dist_attr_for_program(
-                    grad_op, grad_op_dist_attr
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    grad_op,
+                    dist_loss_op.dist_attr.process_mesh,
+                    dist_loss_op.dist_attr.get_output_dims_mapping(
+                        loss_var.name
+                    ),
+                    self._dist_context,
+                    chunk_id=dist_loss_op.dist_attr.chunk_id,
                 )
                 continue
 
@@ -1748,14 +1866,16 @@ class Completer:
                     )
                     ref_fwd_dims_mapping = ref_fwd_dist_attr.dims_mapping
                     ref_fwd_process_mesh = ref_fwd_dist_attr.process_mesh
+                    ref_fwd_chunk_id = ref_fwd_dist_attr.chunk_id
 
                     # output
-                    tensor_dist_attr = TensorDistAttr()
-                    tensor_dist_attr.dims_mapping = ref_fwd_dims_mapping
-                    tensor_dist_attr.process_mesh = ref_fwd_process_mesh
                     output_var = vars[output_name]
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        output_var, tensor_dist_attr
+                    set_var_dist_attr(
+                        self._dist_context,
+                        output_var,
+                        ref_fwd_dims_mapping,
+                        ref_fwd_process_mesh,
+                        chunk_id=ref_fwd_chunk_id,
                     )
 
                     # op
@@ -1768,34 +1888,12 @@ class Completer:
                         output_name, ref_fwd_dims_mapping
                     )
                     grad_op_dist_attr.process_mesh = ref_fwd_process_mesh
-                    # NOTE(zhaoyingli):
-                    # The sum op is used to accmulate the grads' value of the same forward var,
-                    # sum op's chunk_id is same with the last op which generate the grad.
-                    chunk_id = None
-                    for pre_idx in range(
-                        idx - 1, first_backward_op_idx + 1, -1
-                    ):
-                        pre_grad_op = ops[pre_idx]
-                        inter_arg_name = list(
-                            set(pre_grad_op.output_arg_names)
-                            & set(grad_op.input_arg_names)
-                        )
-                        if len(inter_arg_name) > 0:
-                            pre_op_dist_attr = (
-                                self._dist_context.get_op_dist_attr_for_program(
-                                    pre_grad_op
-                                )
-                            )
-                            chunk_id = pre_op_dist_attr.chunk_id
-                            break
-                    assert chunk_id is not None
-                    grad_op_dist_attr.chunk_id = chunk_id
+                    grad_op_dist_attr.chunk_id = ref_fwd_chunk_id
                     self._dist_context.set_op_dist_attr_for_program(
                         grad_op, grad_op_dist_attr
                     )
 
                 elif grad_op.type == 'fill_any_like':
-                    # TODO: support complete chunk_id
                     ref_var_name = grad_op.input_arg_names[0]
                     ref_var = vars[ref_var_name]
                     ref_dist_attr = (
@@ -1805,18 +1903,21 @@ class Completer:
                     )
                     ref_dims_mapping = ref_dist_attr.dims_mapping
                     ref_process_mesh = ref_dist_attr.process_mesh
+                    ref_chunk_id = ref_dist_attr.chunk_id
                     # var
                     output_var_name = grad_op.output_arg_names[0]
                     output_var = vars[output_var_name]
-                    tensor_dist_attr = TensorDistAttr()
-                    tensor_dist_attr.dims_mapping = ref_dims_mapping
-                    tensor_dist_attr.process_mesh = ref_process_mesh
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        output_var, tensor_dist_attr
+                    set_var_dist_attr(
+                        self._dist_context,
+                        output_var,
+                        ref_dims_mapping,
+                        ref_process_mesh,
+                        chunk_id=ref_chunk_id,
                     )
                     # op
                     grad_op_dist_attr = OperatorDistAttr()
                     grad_op_dist_attr.process_mesh = ref_process_mesh
+                    grad_op_dist_attr.chunk_id = ref_chunk_id
                     grad_op_dist_attr.set_input_dims_mapping(
                         ref_var_name, ref_dims_mapping
                     )
@@ -2059,44 +2160,6 @@ class Completer:
                         op, op_dist_attr
                     )
                     continue
-
-    def _complete_var_chunk_id(self, serial_main_program=None):
-        """
-        NOTE(zhaoyingli): Temporary methods.
-        This func is for completing the chunk_id attr for every var
-        """
-
-        if serial_main_program is None:
-            serial_main_program = self._dist_context.serial_main_program
-        else:
-            self._dist_context._serial_main_program = serial_main_program
-
-        var_to_chunk_id = {}
-        for block in serial_main_program.blocks:
-            for op in block.ops:
-                for name in op.input_arg_names + op.output_arg_names:
-                    var = block._find_var_recursive(name)
-                    if "lod_tensor_blocking_queue" in name:
-                        continue
-                    if name not in var_to_chunk_id:
-                        op_dist_attr = (
-                            self._dist_context.get_op_dist_attr_for_program(op)
-                        )
-                        tensor_dist_attr = (
-                            self._dist_context.get_tensor_dist_attr_for_program(
-                                var
-                            )
-                        )
-                        if (
-                            op_dist_attr.process_mesh
-                            == tensor_dist_attr.process_mesh
-                        ):
-                            tensor_dist_attr.chunk_id = op_dist_attr.chunk_id
-                            var_to_chunk_id[var.name] = op_dist_attr.chunk_id
-
-        self._dist_context._num_model_chunks = len(
-            set(var_to_chunk_id.values())
-        )
 
     def complete_prim_annotation(self, serial_main_program=None):
         """

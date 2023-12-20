@@ -29,6 +29,33 @@ PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
 
 
+class MyLinear(nn.Layer):
+    def __init__(
+        self,
+        hidden_size=1024,
+        intermediate_size=4 * 1024,
+        dropout_ratio=0.1,
+        weight_attr=None,
+    ):
+        super().__init__()
+
+        self.linear0 = nn.Linear(
+            hidden_size, intermediate_size, weight_attr, bias_attr=None
+        )
+        self.linear1 = nn.Linear(
+            intermediate_size, hidden_size, weight_attr, bias_attr=None
+        )
+        self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
+
+    def forward(self, input):
+        out = self.linear0(input)
+        out = F.gelu(out, approximate=True)
+        out = self.linear1(out)
+        out = self.dropout(out)
+
+        return out
+
+
 class MLPLayer(nn.Layer):
     def __init__(
         self,
@@ -43,67 +70,27 @@ class MLPLayer(nn.Layer):
             initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
         )
 
-        self.linear0 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear1 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
-        )
-        self.linear2 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear3 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
-        )
-        self.linear4 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear5 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
-        )
-        self.linear6 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear7 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
+        self.layers = nn.LayerList(
+            [
+                MyLinear(
+                    hidden_size, intermediate_size, dropout_ratio, weight_attr
+                )
+                for _ in range(4)
+            ]
         )
 
-        self.linear8 = nn.Linear(hidden_size, 1, weight_attr, bias_attr=None)
+        self.linear = nn.Linear(hidden_size, 1, weight_attr, bias_attr=None)
         self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
-        self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
+        self.layer_to_mesh = [PP_MESH_0, PP_MESH_1, PP_MESH_0, PP_MESH_1]
 
     def forward(self, input):
-        out = auto.shard_op(self.norm, PP_MESH_0)(input)
+        out = self.norm(input)
 
-        out = auto.shard_op(self.linear0, PP_MESH_0, chunk_id=0)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_0, chunk_id=0)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear1, PP_MESH_0, chunk_id=0)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_0, chunk_id=0)(out)
+        for i, layer in enumerate(self.layers):
+            auto.shard_tensor(out, self.layer_to_mesh[i], [None, None])
+            out = layer(out)
 
-        out = auto.shard_op(self.linear2, PP_MESH_1, chunk_id=0)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_1, chunk_id=0)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear3, PP_MESH_1, chunk_id=0)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_1, chunk_id=0)(out)
-
-        out = auto.shard_op(self.linear4, PP_MESH_0, chunk_id=1)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_0, chunk_id=1)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear5, PP_MESH_0, chunk_id=1)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_0, chunk_id=1)(out)
-
-        out = auto.shard_op(self.linear6, PP_MESH_1, chunk_id=1)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_1, chunk_id=1)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear7, PP_MESH_1, chunk_id=1)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_1, chunk_id=1)(out)
-
-        out = auto.shard_op(self.linear8, PP_MESH_1, chunk_id=1)(out)
+        out = self.linear(out)
         return out
 
 
@@ -116,6 +103,8 @@ def apply_pass(schedule_mode, acc_step):
     pipeline.enable = True
     pipeline.schedule_mode = schedule_mode
     pipeline.accumulate_steps = acc_step
+    pipeline.vpp_degree = 2
+    pipeline.vpp_seg_method = "MyLinear"
 
     return strategy
 
@@ -149,9 +138,9 @@ class TestVPPPass(unittest.TestCase):
         self.dataset = MyDataset(self.batch_size * self.batch_num)
 
     def init(self, engine):
-        paddle.seed(2021)
-        np.random.seed(2021)
-        random.seed(2021)
+        paddle.seed(2024 + paddle.distributed.get_rank())
+        np.random.seed(2024 + paddle.distributed.get_rank())
+        random.seed(2024 + paddle.distributed.get_rank())
         paddle.distributed.fleet.init(is_collective=True)
         place = paddle.base.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
@@ -163,9 +152,7 @@ class TestVPPPass(unittest.TestCase):
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model = MLPLayer()
-        loss = auto.shard_op(
-            paddle.nn.CrossEntropyLoss(), PP_MESH_1, chunk_id=1
-        )
+        loss = paddle.nn.CrossEntropyLoss()
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
