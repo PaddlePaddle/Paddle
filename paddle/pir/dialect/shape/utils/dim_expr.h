@@ -148,7 +148,6 @@ using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 template <typename T>
 class ValueShape {
  public:
-  ValueShape() = default;
   explicit ValueShape(const std::vector<T>& shape)
       : value_(std::nullopt), shape_(shape) {}
   ValueShape() = default;

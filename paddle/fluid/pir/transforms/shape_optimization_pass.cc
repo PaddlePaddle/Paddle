@@ -747,8 +747,11 @@ void UpdateShapeAnalysisValue2ValueShapeDimExprs(
   for (const auto& [value_id, value_shape_str] :
        shape_analysis->value_to_valueshape_expr_) {
     auto value = value_id2value.at(value_id);
+    VLOG(0) << "##### SetValueShapeDimExprs: " << value_id << " " << value.impl();
+    VLOG(0) << "#### shape_analysis: " << shape_analysis;
     shape_analysis->SetValueShapeDimExprs(
         value, String2ValueShapeDimExprs(value_shape_str));
+    VLOG(1) << "##### HasValueShapeDimExprs " << shape_analysis->HasValueShapeDimExprs(value);
   }
 }
 
