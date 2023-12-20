@@ -26,8 +26,8 @@ if sys.platform == 'win32':
     RTOL = {'float32': 1e-02, 'float64': 1e-04}
     ATOL = {'float32': 1e-02, 'float64': 1e-04}
 else:
-    RTOL = {'float32': 1e-03, 'float64': 1e-05}
-    ATOL = {'float32': 1e-03, 'float64': 1e-05}
+    RTOL = {'float32': 1e-06, 'float64': 1e-15}
+    ATOL = {'float32': 1e-06, 'float64': 1e-15}
 
 
 class MatrixExpTestCase(unittest.TestCase):
