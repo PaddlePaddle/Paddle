@@ -195,7 +195,11 @@ class AutoMixedPrecisionPass : public pir::Pass {
       } else if (op->isa<paddle::dialect::FeedOp>() ||
                  op->isa<paddle::dialect::FetchOp>()) {
         support_low_precision = enable_low_precision_io_;
-      } else if (OpHasFloatResult(op)) {  // pd op with float result
+      } else if (OpHasFloatOpOperand(op) ||
+                 OpHasFloatResult(op)) {  // pd op with float result,
+        // but op like not_equal has float input, but has not float result
+        // if I don't add this, not_equal will be added to op_run_low_precision_
+        // if I add this, full_like op will be run at high precision
         auto op_type = op_name.substr(op_name.find(".") + 1);
         auto backend = ConvertPlaceToBackend(place_);
         support_low_precision =
@@ -227,6 +231,17 @@ class AutoMixedPrecisionPass : public pir::Pass {
   }
 
   void UpdateOpPrecision(pir::Block* block) {
+    // handle full like op
+    for (auto& op_item : *block) {
+      auto op = &op_item;
+      if (op->isa<paddle::dialect::FullLikeOp>()) {
+        auto input_operation = GetDefiningOpForInput(op, 0);
+        if (!op_run_low_precision_.count(input_operation)) {
+          op_run_low_precision_.erase(op);
+        }
+      }
+    }
+
     for (auto& op_item : *block) {
       auto op = &op_item;
       // remove attribute input op
@@ -441,6 +456,29 @@ class AutoMixedPrecisionPass : public pir::Pass {
     }
   }
 
+  bool OpHasFloatOpOperand(pir::Operation* op) const {
+    for (size_t i = 0; i < op->num_operands(); i++) {
+      auto operand = op->operand_source(i);
+      if (!operand.type()) continue;
+      if (operand.type().isa<paddle::dialect::DenseTensorType>()) {
+        auto dtype = pir::GetDataTypeFromValue(operand);
+        if (IsDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
+          return true;
+        }
+      } else if (operand.type().isa<pir::VectorType>()) {
+        auto vec_type = operand.type().dyn_cast<pir::VectorType>();
+        for (size_t j = 0; j < vec_type.size(); j++) {
+          auto dtype =
+              vec_type[j].dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+          if (IsDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   bool OpHasFloatResult(pir::Operation* op) const {
     for (size_t i = 0; i < op->num_results(); i++) {
       auto result = op->result(i);
@@ -634,6 +672,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
                   << std::endl;
         if (out_phi_dtype == phi::DataType::UNDEFINED)
           out_phi_dtype = precision_mode_;
+        if (!IsDataTypeFloat(out_phi_dtype)) continue;
         SetResultDataType(result, out_phi_dtype, builder.ir_context());
       }
 
