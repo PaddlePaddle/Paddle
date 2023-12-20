@@ -183,7 +183,7 @@ class TestLlamaAuto:
 
     def run_test_cases(self):
         self.run_llama(to_static=0)
-        self.run_llama(to_static=0)
+        self.run_llama(to_static=1)
 
 
 if __name__ == '__main__':
