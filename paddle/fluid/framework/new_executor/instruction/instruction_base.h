@@ -98,7 +98,7 @@ class InstructionBase {
   }
 
   const std::shared_ptr<EventInter>& EventToRecord() const {
-    return *event_to_record_;
+    return event_to_record_;
   }
   void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
                         platform::DeviceType waiter_type) {
