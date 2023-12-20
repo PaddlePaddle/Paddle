@@ -55,7 +55,7 @@ class AddNOp : public pir::Op<AddNOp,
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
   static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation *op);
@@ -396,7 +396,7 @@ class ExpandOp : public pir::Op<ExpandOp,
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
@@ -448,7 +448,7 @@ class IncrementOp
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
@@ -490,7 +490,7 @@ class Increment_Op
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
 };

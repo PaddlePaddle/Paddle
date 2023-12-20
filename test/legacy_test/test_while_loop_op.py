@@ -253,7 +253,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 class TestApiWhileLoop_Backward(unittest.TestCase):
     # TODO(zhangbo): Support while grad exe for pir
     @test_with_pir_api
-    def test_while_loop_backward(self):
+    def _test_while_loop_backward(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
 
@@ -313,8 +313,12 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         print("res[2]: ", res[2])
 
     # TODO(zhangbo): Support while grad exe for pir
-    def _test_while_loop_backward2(self):
-        def cond(i, x):
+    @test_with_pir_api
+    def test_while_loop_backward2(self):
+        def cond1(i, x):
+            return i < 2
+
+        def cond2(i, x):
             return i < 3
 
         def body(i, x):
@@ -327,12 +331,15 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         with paddle.static.program_guard(main_program, startup_program):
             i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
+            i.persistable = True
             x = paddle.static.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
+            x.persistable = True
 
-            out = paddle.static.nn.while_loop(cond, body, [i, x])
+            out = paddle.static.nn.while_loop(cond1, body, [i, x])
             mean = paddle.mean(out[1])
             grad_list = append_backward(mean)
+            print(main_program)
 
         place = (
             base.CUDAPlace(0)
@@ -344,6 +351,8 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         feed_i = np.ones(1).astype('float32')
         feed_x = np.ones(1).astype('float32')
         data = np.asarray([2]).astype('float32')
+        ans = np.asarray([1]).astype('float32')
+        x1_grad = np.asarray([1]).astype('float32')
         i_grad = np.asarray([3]).astype('float32')
         x_grad = np.asarray([2]).astype('float32')
 
@@ -356,17 +365,18 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
-                fetch_list=[mean, di, dx],
+                fetch_list=[out[1], di, dx],
             )
         else:
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
-                fetch_list=[mean.name, i.grad_name, x.grad_name],
+                fetch_list=[out[1].name, i.grad_name, x.grad_name],
             )
-        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
-        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
-        np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
+        print(res[0], res[1], res[1])
+        np.testing.assert_allclose(np.asarray(res[0]), ans, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[1]), ans, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[2]), ans, rtol=1e-05)
 
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):

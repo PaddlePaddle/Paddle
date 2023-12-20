@@ -31,7 +31,7 @@ using IntArray = paddle::experimental::IntArray;
 std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
     pir::Operation* op,
     const std::vector<std::vector<pir::Value>>& inputs_,
-    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& outputs,
     const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
   VLOG(6) << "Prepare inputs of add_n_grad";
@@ -83,7 +83,7 @@ std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
 std::vector<std::vector<pir::OpResult>> ExpandOp::Vjp(
     pir::Operation* op,
     const std::vector<std::vector<pir::Value>>& inputs_,
-    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& outputs,
     const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
   PADDLE_ENFORCE_EQ(inputs_.size(),
@@ -131,7 +131,7 @@ std::vector<std::vector<pir::OpResult>> ExpandOp::Vjp(
 std::vector<std::vector<pir::OpResult>> IncrementOp::Vjp(
     pir::Operation* op,
     const std::vector<std::vector<pir::Value>>& inputs_,
-    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& outputs,
     const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
   PADDLE_ENFORCE_EQ(
@@ -163,7 +163,7 @@ std::vector<std::vector<pir::OpResult>> IncrementOp::Vjp(
 std::vector<std::vector<pir::OpResult>> Increment_Op::Vjp(
     pir::Operation* op,
     const std::vector<std::vector<pir::Value>>& inputs_,
-    const std::vector<std::vector<pir::OpResult>>& outputs,
+    const std::vector<std::vector<pir::Value>>& outputs,
     const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
   PADDLE_ENFORCE_EQ(

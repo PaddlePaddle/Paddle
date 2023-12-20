@@ -23,7 +23,6 @@ from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.incubate.layers.nn import shuffle_batch
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
