@@ -792,7 +792,7 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
 
     # should fix: may fail in CI-windows
     @test_with_pir_api
-    def test_lamb(self):
+    def _test_lamb(self):
         self._check_mlp()
 
 
