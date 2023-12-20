@@ -114,8 +114,12 @@ class TestCinnDyShapeBase(TestCinnSubGraphBase):
         return out
 
     def test_eval_symolic(self):
-        cinn_out = self.eval_symbolic(use_cinn=True)
-        print("cinn_out:", cinn_out)
+        import os
+
+        is_debug = os.getenv('IS_DEBUG_DY_SHAPE')
+        if is_debug:
+            cinn_out = self.eval_symbolic(use_cinn=True)
+            print("cinn_out:", cinn_out)
 
         # dy_out = self.eval_symbolic(use_cinn=False)
         # print("dy_out:", dy_out)

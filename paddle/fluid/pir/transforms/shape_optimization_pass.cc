@@ -698,7 +698,7 @@ void debug_print_op_info(
   }
 }
 
-void CreateSymDimsForAllValues(pir::ModuleOp module_op) {
+void InferSymExprForAllValues(pir::ModuleOp module_op) {
   auto shape_analysis_mgr = pir::ShapeAnalysisManager::Instance();
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       shape_analysis_mgr.Get(module_op.program());
@@ -768,7 +768,7 @@ class ShapeOptimizationPass : public pir::Pass {
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
     print_program(module_op, "Origin Program:");
 
-    CreateSymDimsForAllValues(module_op);
+    InferSymExprForAllValues(module_op);
     MaterializeShapeComputation(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
