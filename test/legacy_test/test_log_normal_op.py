@@ -46,7 +46,7 @@ class TestLogNormalAPI(unittest.TestCase):
             )
 
             out_1 = random.log_normal(
-                shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10
+                shape=[2000, 500], dtype="float32", mean=0.0, std=1.0
             )
 
             out_2 = random.log_normal(
@@ -54,7 +54,6 @@ class TestLogNormalAPI(unittest.TestCase):
                 dtype="float32",
                 mean=0.0,
                 std=1.0,
-                seed=10,
             )
 
             out_3 = random.log_normal(
@@ -62,31 +61,18 @@ class TestLogNormalAPI(unittest.TestCase):
                 dtype="float32",
                 mean=0.0,
                 std=1.0,
-                seed=10,
             )
 
             out_4 = random.log_normal(
-                shape=shape_tensor_int32,
-                dtype="float32",
-                mean=0.0,
-                std=1.0,
-                seed=10,
+                shape=shape_tensor_int32, dtype="float32", mean=0.0, std=1.0
             )
 
             out_5 = random.log_normal(
-                shape=shape_tensor_int64,
-                dtype="float32",
-                mean=0.0,
-                std=1.0,
-                seed=10,
+                shape=shape_tensor_int64, dtype="float32", mean=0.0, std=1.0
             )
 
             out_6 = random.log_normal(
-                shape=shape_tensor_int64,
-                dtype=np.float32,
-                mean=0.0,
-                std=1.0,
-                seed=10,
+                shape=shape_tensor_int64, dtype=np.float32, mean=0.0, std=1.0
             )
 
             exe = base.Executor(place=base.CPUPlace())
@@ -181,7 +167,7 @@ class TestRandomValue(unittest.TestCase):
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
         paddle.set_device('gpu')
-        paddle.seed(2021)
+        paddle.seed(100)
         expect = [
             -0.79037829,
             -0.54411126,

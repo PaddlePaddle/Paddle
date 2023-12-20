@@ -1633,12 +1633,12 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
 
     if isinstance(mean, Variable):
         check_dtype(
-                mean.dtype,
-                'mean',
-                ['float16', 'float32', 'float64'],
-                'log_normal',
-                "If mean is a Tensor, it's data type only support float32, float64",
-            )
+            mean.dtype,
+            'mean',
+            ['float16', 'float32', 'float64'],
+            'log_normal',
+            "If mean is a Tensor, it's data type only support float32, float64",
+        )
         if isinstance(std, Variable):
             check_dtype(
                 std.dtype,
@@ -1667,9 +1667,7 @@ def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
         mean = paddle.to_tensor(mean)
         std = paddle.to_tensor(std)
         n_mean, n_std = normalize_mean_std(mean, std)
-        distribution = normal(
-            mean=n_mean, std=n_std, shape=shape, name=name
-        )
+        distribution = normal(mean=n_mean, std=n_std, shape=shape, name=name)
 
     return paddle.exp(distribution)
 

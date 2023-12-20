@@ -1683,7 +1683,7 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
 class TestDygraphInplaceBernoulli(TestDygraphInplace):
     def init_data(self):
         self.shape = (20, 40)
-        self.x = np.random.random(self.shape)
+        self.input_var_numpy = np.random.random(self.shape)
         self.dtype = "float32"
         self.mean = 0
         self.std = 1
@@ -1700,7 +1700,7 @@ class TestDygraphInplaceBernoulli(TestDygraphInplace):
 class TestDygraphInplaceLogNormal(TestDygraphInplace):
     def init_data(self):
         self.shape = (20, 40)
-        self.x = np.random.random(self.shape)
+        self.input_var_numpy = np.random.random(self.shape)
         self.dtype = "float32"
         self.mean = 0
         self.std = 1
