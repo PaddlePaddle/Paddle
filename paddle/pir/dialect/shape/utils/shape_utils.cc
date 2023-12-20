@@ -154,13 +154,17 @@ ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
 
 ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   auto it = tables_.find(program->module_op().operation()->id());
-
+  VLOG(0) << "######### program: " << program
+          << " id: " << program->module_op().operation()->id();
+  VLOG(0) << "##### tables_.size() " << tables_.size();
   if (it == tables_.end()) {
+    VLOG(0) << "######### program not found: " << program;
     it = tables_
              .emplace(program->module_op().operation()->id(),
                       ShapeConstraintIRAnalysis(program->module_op()))
              .first;
   }
+  VLOG(0) << "##### After tables_.size() " << tables_.size();
 
   return it->second;
 }

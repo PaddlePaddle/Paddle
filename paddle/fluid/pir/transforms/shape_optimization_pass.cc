@@ -746,19 +746,18 @@ void UpdateShapeAnalysisValue2ValueShapeDimExprs(
     const std::unordered_map<std::string, pir::Value>& value_id2value) {
   for (const auto& [value_id, value_shape_str] :
        shape_analysis->value_to_valueshape_expr_) {
+    VLOG(1) << "UpdateShapeAnalysisValue2ValueShapeDimExprs value_id = "
+            << value_id;
     auto value = value_id2value.at(value_id);
-    VLOG(0) << "##### SetValueShapeDimExprs: " << value_id << " " << value.impl();
-    VLOG(0) << "#### shape_analysis: " << shape_analysis;
     shape_analysis->SetValueShapeDimExprs(
         value, String2ValueShapeDimExprs(value_shape_str));
-    VLOG(1) << "##### HasValueShapeDimExprs " << shape_analysis->HasValueShapeDimExprs(value);
   }
 }
 
 void CreateSymDimsForAllValues(const pir::ModuleOp& module_op) {
-  auto shape_analysis_mgr = pir::ShapeAnalysisManager::Instance();
   pir::ShapeConstraintIRAnalysis& shape_analysis =
-      shape_analysis_mgr.Get(const_cast<pir::ModuleOp&>(module_op).program());
+      pir::ShapeAnalysisManager::Instance().Get(
+          const_cast<pir::ModuleOp&>(module_op).program());
   std::unordered_map<std::string, pir::Value> value_id2value{};
   for (int i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {

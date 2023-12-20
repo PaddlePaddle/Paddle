@@ -32,6 +32,7 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/utils/flags.h"
 
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
@@ -184,7 +185,7 @@ bool AllInputDenseTensor(pir::Operation* op) {
 }
 
 bool IsSupportCinn(pir::Operation* op) {
-  if (op->dyn_cast<paddle::dialect::DataOp>()) {
+  if (op->isa<paddle::dialect::DataOp>() || op->isa<pir::SetParameterOp>()) {
     return false;
   }
   return true;
