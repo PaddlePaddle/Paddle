@@ -128,7 +128,8 @@ class TestCase2(TestASGDOp):
         self.ys = self.ys.astype("float16")
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
 
 class TestCase3(TestASGDOp):
@@ -146,7 +147,8 @@ class TestCase3(TestASGDOp):
         self.params_out = convert_float_to_uint16(self.params_out)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
 
 class TestCase4(TestASGDOp):
