@@ -88,9 +88,15 @@ class RecomputeState(ProgramStats):
                     continue
 
             seg_name = op.attr('op_namescope')
-            seg_name = (
-                seg_name if '_exclude_rc' not in seg_name else seg_name[:-11]
+            start_idx = seg_name.index("/auto_parallel/rc_")
+            end_idx = (
+                seg_name.index("/exclude_rc")
+                if is_recompute_exclude_op(op)
+                else len(seg_name)
             )
+            assert start_idx and end_idx
+            seg_name = seg_name[start_idx:end_idx]
+
             if seg_name not in self.seg_op_deps:
                 self.seg_op_deps[seg_name] = [i]
             else:
