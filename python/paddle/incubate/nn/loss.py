@@ -60,7 +60,7 @@ def identity_loss(x, reduction="none"):
             raise Exception("Unsupported reduction type.")
 
     if in_dynamic_mode():
-        return _C_ops.identity_loss(x, "reduction", reduction)
+        return _C_ops.identity_loss(x, reduction)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "identity_loss")
     attrs = {'reduction': reduction}
