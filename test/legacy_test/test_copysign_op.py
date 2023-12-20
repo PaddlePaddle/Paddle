@@ -46,6 +46,12 @@ class TestCopySignOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+        self.check_grad(['x', 'y'], ['out'])
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad(['y'], ['out'])
+
+    def test_check_grad_ignore_y(self):
         self.check_grad(['x'], ['out'])
 
     def init_config(self):
@@ -72,6 +78,7 @@ class TestCopySignBF16(OpTest):
             'y': convert_float_to_uint16(y),
         }
         self.outputs = {'out': convert_float_to_uint16(out)}
+        self.place = core.CUDAPlace(0)
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -81,8 +88,17 @@ class TestCopySignBF16(OpTest):
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['x', 'y'], ['out'])
+        self.check_grad_with_place(self.place, ['x', 'y'], ['out'])
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            self.place, ['y'], ['out'], no_grad_set=set('x')
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            self.place, ['x'], ['out'], no_grad_set=set('y')
+        )
 
 
 class TestCopySignAPI(unittest.TestCase):
@@ -129,18 +145,18 @@ class TestCopySignAPI(unittest.TestCase):
                 )
 
             out_ref = ref_copysign(self.x, self.y)
-            if self.x.dtype in [np.int32, np.int64, np.uint8]:
-                print('-' * 100)
-                print('in static ', self.__class__)
-                print(self.x.dtype)
-                print(self.x)
-                print(self.y.dtype)
-                print(self.y)
-                print(out_ref.dtype)
-                print(out_ref)
-                print(out.dtype)
-                print(out)
-                print('-' * 100)
+            # if self.x.dtype in [np.int32, np.int64, np.uint8]:
+            # print('-'*100)
+            # print('in static ', self.__class__)
+            # print(self.x.dtype)
+            # print(self.x)
+            # print(self.y.dtype)
+            # print(self.y)
+            # print(out_ref.dtype)
+            # print(out_ref)
+            # print(out.dtype)
+            # print(out)
+            # print('-'*100)
             np.testing.assert_allclose(out_ref, res[0])
         paddle.disable_static()
 
@@ -150,18 +166,18 @@ class TestCopySignAPI(unittest.TestCase):
         y = paddle.to_tensor(self.y)
         out = paddle.copysign(x, y)
         out_ref = ref_copysign(self.x, self.y)
-        if self.x.dtype in [np.int32, np.int64, np.uint8]:
-            print('-' * 100)
-            print('in dynamic ', self.__class__)
-            print(self.x.dtype)
-            print(self.x)
-            print(self.y.dtype)
-            print(self.y)
-            print(out_ref.dtype)
-            print(out_ref)
-            print(out.dtype)
-            print(out)
-            print('-' * 100)
+        # if self.x.dtype in [np.int32, np.int64, np.uint8]:
+        # print('-'*100)
+        # print('in dynamic ', self.__class__)
+        # print(self.x.dtype)
+        # print(self.x)
+        # print(self.y.dtype)
+        # print(self.y)
+        # print(out_ref.dtype)
+        # print(out_ref)
+        # print(out.dtype)
+        # print(out)
+        # print('-'*100)
         np.testing.assert_allclose(out_ref, out.numpy())
         paddle.enable_static()
 
@@ -269,6 +285,13 @@ class TestCopySignBroadcastCase2(TestCopySignAPI):
         dtype = np.float16
         self.x = (np.random.randn(3, 4, 5) * 10).astype(dtype)
         self.y = (np.random.randn(4, 5) * 10).astype(dtype)
+
+
+class TestCopySignBroadcastCase3(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.float16
+        self.x = (np.random.randn(4, 5) * 10).astype(dtype)
+        self.y = (np.random.randn(3, 4, 5) * 10).astype(dtype)
 
 
 if __name__ == "__main__":
