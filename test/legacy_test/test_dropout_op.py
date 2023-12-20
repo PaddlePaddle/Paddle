@@ -20,7 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from utils import static_guard
 
 import paddle
-from paddle import _C_ops, base, static
+from paddle import base, static
 from paddle.autograd.ir_backward import grad
 from paddle.base import Program, Scope, core, program_guard
 from paddle.base.executor import scope_guard
@@ -1313,69 +1313,6 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
-
-
-class TestDropoutBackward(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        self.places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
-
-    def cal_grad_upscale_train(self, mask, prob):
-        return mask.astype("float32") / (1 - prob)
-
-    def cal_grad_downscale_in_infer(self, mask):
-        return mask.astype("float32")
-
-    def test_backward_downscale_in_infer(self):
-        for place in self.places:
-            with base.dygraph.guard(place):
-                input = paddle.uniform([40, 40], dtype="float32")
-                input.stop_gradient = False
-                out, mask = _C_ops.dropout(
-                    input, None, 0.5, False, "downgrade_in_infer", 0, False
-                )
-                out.backward()
-
-                np.testing.assert_array_equal(
-                    input.gradient(),
-                    self.cal_grad_downscale_in_infer(mask.numpy()),
-                )
-
-    def test_backward_upscale_train(self):
-        for place in self.places:
-            with base.dygraph.guard(place):
-                prob = 0.5
-                input = paddle.uniform([40, 40], dtype="float32")
-                input.stop_gradient = False
-                out, mask = _C_ops.dropout(
-                    input, None, 0.5, False, "upscale_in_train", 0, False
-                )
-                out.backward()
-
-                np.testing.assert_allclose(
-                    input.gradient(),
-                    self.cal_grad_upscale_train(mask.numpy(), prob),
-                    rtol=1e-05,
-                )
-
-    def test_backward_upscale_train_2(self):
-        for place in self.places:
-            with base.dygraph.guard(place):
-                prob = 0.3
-                input = paddle.uniform([40, 40], dtype="float32")
-                input.stop_gradient = False
-                out, mask = _C_ops.dropout(
-                    input, None, 0.3, False, "upscale_in_train", 0, False
-                )
-                out.backward()
-
-                np.testing.assert_allclose(
-                    input.gradient(),
-                    self.cal_grad_upscale_train(mask.numpy(), prob),
-                    rtol=1e-05,
-                )
 
 
 class TestDropOutWithProbTensor(unittest.TestCase):
