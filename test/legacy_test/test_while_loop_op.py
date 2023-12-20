@@ -252,8 +252,8 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
     # TODO(zhangbo): Support while grad exe for pir
-    @test_with_pir_api
-    def _test_while_loop_backward(self):
+
+    def test_while_loop_backward(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
 
@@ -279,7 +279,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             out = paddle.static.nn.while_loop(cond, body, [i, x])
             mean = paddle.mean(out[1])
             grad_list = append_backward(mean)
-            print(main_program)
 
         place = (
             base.CUDAPlace(0)
@@ -310,7 +309,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             )
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
-        print("res[2]: ", res[2])
 
     # TODO(zhangbo): Support while grad exe for pir
     @test_with_pir_api
@@ -373,7 +371,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 feed={'i': feed_i, 'x': feed_x},
                 fetch_list=[out[1].name, i.grad_name, x.grad_name],
             )
-        print(res[0], res[1], res[1])
+
         np.testing.assert_allclose(np.asarray(res[0]), ans, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), ans, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[2]), ans, rtol=1e-05)
@@ -381,7 +379,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
     # TODO(zhangbo): Support while grad exe for pir
-    @test_with_pir_api
+
     def test_nested_net_with_backward_and_lodtensor(self):
         def external_cond(i, j, x, mem_array):
             return paddle.less_than(i, array_len)
@@ -446,7 +444,6 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             sum_result = paddle.tensor.array_read(array=mem_array, i=j)
             mean = paddle.mean(sum_result)
             append_backward(mean)
-            print(main_program)
 
             place = (
                 base.CUDAPlace(0)
