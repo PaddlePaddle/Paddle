@@ -224,13 +224,15 @@ struct DirichletSampler<CPUContext, T> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& alpha,
                   DenseTensor* out) {
+    // sample from K gamma distributions, where K=alpha.numel()
     DenseTensor gamma_samples;
     gamma_samples.Resize(alpha.dims());
     dev_ctx.template Alloc<T>(&gamma_samples);
 
     GammaSampler<CPUContext, T> gamm_sampler;
     gamm_sampler(dev_ctx, alpha, &gamma_samples);
-
+    
+    // normalize them into a simplex, along the last axis
     DenseTensor gamma_sum;
     auto new_shape = gamma_samples.dims();
     new_shape[new_shape.size() - 1] = 1;
@@ -250,7 +252,7 @@ struct DirichletSampler<CPUContext, T> {
   }
 };
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 struct GammaCUDAFunctor {
   GammaCUDAFunctor(const T* alpha, T* gamma, uint64_t seed, uint64_t offset)
@@ -302,13 +304,15 @@ struct DirichletSampler<GPUContext, T> {
   void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& alpha,
                   DenseTensor* out) {
+    // sample from K gamma distributions, where K=alpha.numel()
     DenseTensor gamma_samples;
     gamma_samples.Resize(alpha.dims());
     dev_ctx.template Alloc<T>(&gamma_samples);
-    
+
     GammaSampler<GPUContext, T> gamma_sampler;
     sampler(dev_ctx, alpha, &gamma_samples);
-
+    
+    // normalize them into a simplex, along the last axis
     DenseTensor gamma_sum;
     auto new_shape = gamma_samples.dims();
     new_shape[new_shape.size() - 1] = 1;
