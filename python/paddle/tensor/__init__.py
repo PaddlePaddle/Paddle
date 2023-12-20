@@ -357,6 +357,7 @@ from .math import (  # noqa: F401
     sigmoid,
     sigmoid_,
     sign,
+    signbit,
     sin,
     sin_,
     sinh,
