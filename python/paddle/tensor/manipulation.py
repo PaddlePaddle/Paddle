@@ -6772,39 +6772,49 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
 
             >>> import paddle
 
-            >>> x = paddle.zeros((8, 8))
-            >>> value = paddle.ones((8, 2))
+            >>> x = paddle.zeros((6, 9))
+            >>> value = paddle.ones((6, 2))
             >>> res = paddle.slice_scatter(x, value, axis=1, start=2, stop=6, step=2)
             >>> print(res)
-            Tensor(shape=[8, 8], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 0., 1., 0., 1., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0.]])
+            Tensor(shape=[6, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.]])
+
+            >>> # broadcast `value` got the same result
+            >>> x = paddle.zeros((6, 9))
+            >>> value = paddle.ones((6, 1))
+            >>> res = paddle.slice_scatter(x, value, axis=1, start=2, stop=6, step=2)
+            >>> print(res)
+            Tensor(shape=[6, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.]])
+
+            >>> # can only use start or stop
+            >>> x = paddle.zeros((6, 9))
+            >>> value = paddle.ones((2, 9))
+            >>> res = paddle.slice_scatter(x, value, stop=2)
+            >>> print(res)
+            Tensor(shape=[6, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 1., 1., 1., 1., 1., 1., 1., 1.],
+             [1., 1., 1., 1., 1., 1., 1., 1., 1.],
+             [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+             [0., 0., 0., 0., 0., 0., 0., 0., 0.]])
 
     """
-    if x.ndim != value.ndim:
-        raise ValueError(
-            f"The input x and value should have save dimension, but got input of {x.ndim} and value of {value.ndim}."
-        )
-
     x_shape = x.shape
-    value_shape = value.shape
 
     start = 0 if start is None else start
     stop = x_shape[axis] if stop is None else stop
-
-    index = list(range(start, stop, step))
-    exp_shape = [*x_shape[:axis], len(index), *x_shape[axis + 1 :]]
-    if tuple(exp_shape) != tuple(value_shape):
-        raise ValueError(
-            "The value.shape should be same of [*x_shape[:axis], len(index), *x_shape[axis+1:]],"
-            f"but got value.shape of {value.shape} and slice shape {exp_shape}."
-        )
 
     starts = [start]
     ends = [stop]

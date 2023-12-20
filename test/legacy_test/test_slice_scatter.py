@@ -263,22 +263,39 @@ class TestSliceScatterApi4DAxis3Float32(TestSliceScatterApi4DAxis3):
         self.dtype = 'float32'
 
 
+class TestSliceScatterApiBroadcase(TestSliceScatterApi):
+    def init_shape(self):
+        self.x_shape = [8, 9]
+        self.value_shape = [8, 1]
+        self.axis = 1
+        self.start = 2
+        self.stop = 6
+        self.step = 2
+
+
+class TestSliceScatterApiBroadcaseFloat32(TestSliceScatterApiBroadcase):
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+
 class TestSliceScatterApiError(unittest.TestCase):
     def test_error_ndim(self):
+        paddle.disable_static()
         with self.assertRaises(ValueError):
-            x = np.random.rand(8, 6, 3)
-            value = np.random.rand(8, 3)
+            x = paddle.to_tensor(np.random.rand(8, 6, 3))
+            value = paddle.to_tensor(np.random.rand(8, 3))
             _ = paddle.slice_scatter(x, value)
 
     def test_error_index(self):
+        paddle.disable_static()
         with self.assertRaises(ValueError):
-            x = np.random.rand(8, 6)
-            value = np.random.rand(8, 3)
+            x = paddle.to_tensor(np.random.rand(8, 6))
+            value = paddle.to_tensor(np.random.rand(8, 3))
             _ = paddle.slice_scatter(x, value, axis=1, step=1)
 
         with self.assertRaises(ValueError):
-            x = np.random.rand(8, 6)
-            value = np.random.rand(2, 6)
+            x = paddle.to_tensor(np.random.rand(8, 6))
+            value = paddle.to_tensor(np.random.rand(2, 6))
             _ = paddle.slice_scatter(x, value)
 
 
