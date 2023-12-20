@@ -151,14 +151,10 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    if (this->HasInput("ValueTensor")) {
-      op->SetType("set_value_grad");
-      op->SetInput("ValueTensor", this->Input("ValueTensor"));
-      op->SetOutput(framework::GradVarName("ValueTensor"),
-                    this->InputGrad("ValueTensor"));
-    } else {
-      op->SetType("set_value_with_scalar_grad");
-    }
+    op->SetType("set_value_grad");
+    op->SetInput("ValueTensor", this->Input("ValueTensor"));
+    op->SetOutput(framework::GradVarName("ValueTensor"),
+                  this->InputGrad("ValueTensor"));
 
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
