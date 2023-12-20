@@ -36,7 +36,6 @@ set(PYBIND_DEPS
     cuda_graph_with_memory_pool
     fleet_executor
     global_utils
-    plan
     phi_utils
     phi
     op_dialect_vjp

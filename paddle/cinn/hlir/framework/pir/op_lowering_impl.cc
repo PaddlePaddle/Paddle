@@ -221,7 +221,7 @@ void OpLowererImpl::LowerOpsForMapExpr(
     std::vector<Type> out_types;
     std::vector<std::vector<int>> out_shapes;
 
-    CollectOutputInfo(op, &out_types, &out_shapes);
+    CollectOutputInfo(op, &out_types, &out_shapes, group);
     VLOG(4) << "out_types.size(): " << out_types.size();
     NodeAttr node_attrs = details::CollectAttrs(*op);
 
@@ -364,7 +364,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
 
   std::vector<Type> out_types;
   std::vector<std::vector<int>> out_shapes;
-  CollectOutputInfo(op, &out_types, &out_shapes);
+  CollectOutputInfo(op, &out_types, &out_shapes, group);
   VLOG(4) << "out_types.size(): " << out_types.size();
 
   NodeAttr node_attrs = details::CollectAttrs(*op);
@@ -484,6 +484,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             ir::_Var_::Make(symbol_name, cinn::common::Int(32)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
+        VLOG(4) << "device kernel func's " << non_tensor_arg_idx << " is from "
+                << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
       }
     }
   }
@@ -519,20 +521,38 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   std::vector<Expr> func_bodies;
   for (auto* op : ops) {
     // 1.Select Op impl
-    std::vector<Type> out_types;
-    std::vector<std::vector<int>> out_shapes;
-    CollectOutputInfo(op, &out_types, &out_shapes);
-    VLOG(4) << "out_types.size(): " << out_types.size();
-    NodeAttr node_attrs = details::CollectAttrs(*op);
-
     std::vector<ir::Tensor> op_func_arg_tensors =
         CollectInputTensor(group, op, group_func_arg_tensors, tensor_map);
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
-    auto op_impl = OpStrategy::SelectImpl(strategy[cinn_op](
-        node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
+    std::shared_ptr<OpImpl> op_impl = nullptr;
+    if (FLAGS_cinn_bucket_compile) {
+      std::vector<Type> out_types;
+      std::vector<std::vector<ir::Dim>> out_shapes;
+      CollectOutputInfo(op, &out_types, &out_shapes, group);
+      VLOG(4) << "out_types.size(): " << out_types.size();
+      NodeAttr node_attrs = details::CollectAttrs(*op);
+      auto& strategy =
+          Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
+      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
+                                                         op_func_arg_tensors,
+                                                         out_types,
+                                                         out_shapes,
+                                                         this->target_));
+    } else {
+      std::vector<Type> out_types;
+      std::vector<std::vector<int>> out_shapes;
+      CollectOutputInfo(op, &out_types, &out_shapes, group);
+      VLOG(4) << "out_types.size(): " << out_types.size();
+      NodeAttr node_attrs = details::CollectAttrs(*op);
+      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
+                                                         op_func_arg_tensors,
+                                                         out_types,
+                                                         out_shapes,
+                                                         this->target_));
+    }
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
@@ -923,10 +943,10 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
   return tensors;
 }
 
-void OpLowererImpl::CollectOutputInfo(
-    ::pir::Operation* op,
-    std::vector<Type>* out_types,
-    std::vector<std::vector<int>>* out_shapes) {
+void OpLowererImpl::CollectOutputInfo(::pir::Operation* op,
+                                      std::vector<Type>* out_types,
+                                      std::vector<std::vector<int>>* out_shapes,
+                                      const GroupPtr& group) {
   auto op_results = op->results();
   for (auto& out_value : op_results) {
     std::string output_id = ValueName(out_value);
@@ -937,6 +957,33 @@ void OpLowererImpl::CollectOutputInfo(
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
     auto out_shape = ::common::vectorize<int>(type_info.dims());
     out_shapes->push_back(std::move(out_shape));
+  }
+}
+
+void OpLowererImpl::CollectOutputInfo(
+    ::pir::Operation* op,
+    std::vector<Type>* out_types,
+    std::vector<std::vector<ir::Dim>>* out_shapes,
+    const GroupPtr& group) {
+  auto op_results = op->results();
+  for (auto& out_value : op_results) {
+    std::string output_id = ValueName(out_value);
+
+    auto type_info =
+        out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+
+    out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
+    if (group->shape_analysis != nullptr) {
+      auto sym_vec =
+          group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
+              out_value);
+      std::vector<ir::Dim> sym_shape;
+      for (auto& sym : sym_vec) {
+        sym_shape.emplace_back(
+            ir::Dim(output_id + "_" + sym.GetSymName(), sym));
+      }
+      out_shapes->push_back(std::move(sym_shape));
+    }
   }
 }
 
