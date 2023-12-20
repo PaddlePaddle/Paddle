@@ -26,7 +26,7 @@ using bfloat16 = phi::dtype::bfloat16;
 
 template <typename T, typename U>
 inline HOSTDEVICE auto copysign_func(const T& a, const U& b) {
-  return std::copysign(a, b);
+  return std::copysign(static_cast<float>(a), static_cast<float>(b));
 }
 
 inline HOSTDEVICE phi::dtype::float16 copysign_func(phi::dtype::float16 a,
