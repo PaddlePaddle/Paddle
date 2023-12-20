@@ -50,12 +50,12 @@ TEST(DimExpr, constraint) {
 }
 
 /*
-  Simulate the ValueShapeDimExprs result of below codes:
+  Simulate the DataShapeDimExprs result of below codes:
   def (x, y):
     extend_x = x.shape
     out = pd.reshape(y, extend_x)
 */
-TEST(DimExpr, value_shape_expr) {
+TEST(DimExpr, data_shape_expr) {
   // 1. Init pir::program and pir::builder
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ::pir::Program program(ctx);
@@ -80,22 +80,22 @@ TEST(DimExpr, value_shape_expr) {
       builder.Build<paddle::dialect::ReshapeOp>(y, extend_x);
   ::pir::Value out = reshape_op.out();
 
-  // 3. Show ideal ValueShapeDimExprs of each pir::Value
-  std::unordered_map<pir::Value, ValueShapeDimExprs> value2shape{};
+  // 3. Show ideal DataShapeDimExprs of each pir::Value
+  std::unordered_map<pir::Value, DataShapeDimExprs> value2shape{};
   std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
   std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
-  // x => {value: nullopt, shape: [S0, 2]}
-  ValueShapeDimExprs x_value_shape{x_shapes};
+  // x => {shape: nullopt, shape: [S0, 2]}
+  DataShapeDimExprs x_value_shape{x_shapes};
   value2shape.emplace(x, x_value_shape);
-  // y => {value: nullopt, shape: [1, S1, 2]}
-  ValueShapeDimExprs y_value_shape{y_shapes};
+  // y => {shape: nullopt, shape: [1, S1, 2]}
+  DataShapeDimExprs y_value_shape{y_shapes};
   value2shape.emplace(y, y_value_shape);
-  // extend_x => {value: [S0, 2], shape: [2]}
-  ValueShapeDimExprs extend_x_value_shape =
-      ValueShapeDimExprs::MakeConsistentValueShape(x_shapes);
+  // extend_x => {shape: [S0, 2], shape: [2]}
+  DataShapeDimExprs extend_x_value_shape =
+      DataShapeDimExprs::MakeConsistentValueShape(x_shapes);
   value2shape.emplace(extend_x, extend_x_value_shape);
-  // out => {value:: nullopt, shape: [S0, 2]}
-  ValueShapeDimExprs out_value_shape{x_shapes};
+  // out => {shape:: nullopt, shape: [S0, 2]}
+  DataShapeDimExprs out_value_shape{x_shapes};
   value2shape.emplace(out, out_value_shape);
 }
 

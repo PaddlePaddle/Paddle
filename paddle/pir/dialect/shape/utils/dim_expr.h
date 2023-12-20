@@ -214,34 +214,34 @@ class DimExpr : public DimExprBase {
 //                   | Broadcastable DimExpr
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
-// ValueShapeDimExprs = tValue [DimExpr] | tShape [DimExpr]
+// DataShapeDimExprs = tData [DimExpr] | tShape [DimExpr]
 template <typename T>
-class ValueShape {
+class DataShape {
  public:
-  explicit ValueShape(const std::vector<T>& shape)
+  explicit DataShape(const std::vector<T>& shape)
       : value_(std::nullopt), shape_(shape) {}
-  ValueShape() = default;
-  ValueShape(const ValueShape&) = default;
-  ValueShape(ValueShape&&) = default;
-  ValueShape& operator=(const ValueShape&) = default;
-  ValueShape& operator=(ValueShape&&) = default;
+  DataShape() = default;
+  DataShape(const DataShape&) = default;
+  DataShape(DataShape&&) = default;
+  DataShape& operator=(const DataShape&) = default;
+  DataShape& operator=(DataShape&&) = default;
 
-  static ValueShape MakeConsistentValueShape(const std::vector<T>& value) {
-    T shape(std::int64_t(value.size()));
-    return ValueShape(value, std::vector<T>{shape});
+  static DataShape MakeConsistentDataShape(const std::vector<T>& data) {
+    T shape(std::int64_t(data.size()));
+    return DataShape(data, std::vector<T>{shape});
   }
 
   const std::optional<std::vector<T>>& shape() const { return shape_; }
-  const std::optional<std::vector<T>>& value() const { return value_; }
+  const std::optional<std::vector<T>>& data() const { return data_; }
 
  private:
-  explicit ValueShape(const std::vector<T>& value, const std::vector<T>& shape)
-      : value_(value), shape_(shape) {}
+  explicit DataShape(const std::vector<T>& data, const std::vector<T>& shape)
+      : data_(data), shape_(shape) {}
 
-  std::optional<std::vector<T>> value_;
+  std::optional<std::vector<T>> data_;
   std::optional<std::vector<T>> shape_;
 };
 
-using ValueShapeDimExprs = ValueShape<DimExpr>;
+using DataShapeDimExprs = DataShape<DimExpr>;
 
 }  // namespace symbol
