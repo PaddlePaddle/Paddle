@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -114,6 +115,7 @@ def fractional_pool2d_forward(
 
 class TestFractionalMaxPool2DAPI(unittest.TestCase):
     def setUp(self):
+        np.random.seed(2023)
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
         self.res_1_np = fractional_pool2d_forward(
             x=self.x_np, output_size=[3, 3], random_u=0.3
@@ -257,6 +259,7 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
 
 class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
     def setUp(self):
+        np.random.seed(2023)
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
         self.res_1_np = fractional_pool2d_forward(
             x=self.x_np, output_size=[3, 3], random_u=0.3
@@ -381,10 +384,16 @@ class TestFractionalMaxPool2DAPIDtype(unittest.TestCase):
             if core.is_float16_supported(place):
                 dtypes += ['float16']
 
-            if use_cuda and core.is_bfloat16_supported(place):
+            # use_cuda and core.is_bfloat16_supported(cpu) can not be correctly detected for win32
+            if (
+                sys.platform != 'win32'
+                and use_cuda
+                and core.is_bfloat16_supported(place)
+            ):
                 dtypes += ['uint16']
 
             for dtype in dtypes:
+                np.random.seed(2023)
                 x_np = np.random.random([2, 3, 7, 7]).astype(dtype)
                 res_np = fractional_pool2d_forward(
                     x=x_np, output_size=[3, 3], random_u=0.3
@@ -406,6 +415,7 @@ class TestFractionalMaxPool2DAPIErrorRandomU(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
 
+            np.random.seed(2023)
             x_np = np.random.random([2, 3, 7, 7])
 
             # error random_u of `<0`
