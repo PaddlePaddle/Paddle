@@ -39,6 +39,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
@@ -321,11 +323,15 @@ void BindBlock(py::module *m) {
           [](Block &self) { return &self.front(); },
           return_value_policy::reference)
       .def_property_readonly(
+          "parent_op",
+          [](Block &self) { return self.GetParentOp(); },
+          return_value_policy::reference)
+      .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
       .def_property_readonly(
-          "get_parent",
+          "parent_block",
           [](Block &self) { return self.GetParentOp()->GetParent(); },
           return_value_policy::reference)
       .def_property_readonly("ops",
@@ -717,6 +723,14 @@ void BindValue(py::module *m) {
                 kAttrIsPersisable,
                 BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
+      .def("all_used_ops",
+           [](Value &self) -> py::list {
+             py::list op_list;
+             for (auto it = self.use_begin(); it != self.use_end(); ++it) {
+               op_list.append(it.owner());
+             }
+             return op_list;
+           })
       .def(
           "get_defining_op",
           [](Value self) -> pir::Operation * {
@@ -1384,8 +1398,45 @@ pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
   }
 }
 
+void ResetParameterName(pir::Operation *op, const std::string &name) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  if (op->isa<pir::SetParameterOp>()) {
+    op->set_attribute("parameter_name", pir::StrAttribute::get(ctx, name));
+  }
+}
+
+std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
+  std::map<int, int> inplace_info;
+  if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
+    return inplace_info;
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_(),
+      paddle::dialect::IsLegacyOp(op_name));
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      const std::string &inplace_name = yaml_parser.InplaceName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
+    }
+  }
+  return inplace_info;
+}
+
 void BindUtils(pybind11::module *m) {
   m->def("clone_program", CloneProgram);
+  m->def("get_op_inplace_info", GetOpInplaceInfo);
+  m->def("reset_parameter_name", ResetParameterName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_set_parameters", AppendSetParameters);
   m->def("fake_op_result", FakeOpResult);

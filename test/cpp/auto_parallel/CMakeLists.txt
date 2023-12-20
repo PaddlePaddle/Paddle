@@ -22,12 +22,20 @@ if(WITH_DISTRIBUTE)
     DEPS
     spmd_rule_test_util
     spmd_rules
-    phi
-    common)
+    phi)
   paddle_test(
     softmax_grad_spmd_rule_test
     SRCS
     softmax_grad_spmd_rule_test.cc
+    DEPS
+    spmd_rule_test_util
+    spmd_rules
+    phi)
+
+  paddle_test(
+    tile_spmd_rule_test
+    SRCS
+    tile_spmd_rule_test.cc
     DEPS
     spmd_rule_test_util
     spmd_rules

@@ -70,8 +70,8 @@ class TestShardLayer(unittest.TestCase):
 
         for param in sharded_params_layer.parameters():
             self.assertTrue(param.is_dist())
-            for x in param.dist_attr.dims_mapping:
-                self.assertEqual(x, -1)
+            for x in param.placements:
+                self.assertEqual(x, dist.Replicate())
 
         # test shard buffers
         test_buffer = paddle.randn([10])
@@ -79,7 +79,7 @@ class TestShardLayer(unittest.TestCase):
         sharded_buffers_layer = dist.shard_layer(layer, self.mesh, shard_fn)
         self.assertTrue(sharded_buffers_layer.test_buffer.is_dist())
         self.assertEqual(
-            sharded_buffers_layer.test_buffer.dist_attr.dims_mapping, [-1]
+            sharded_buffers_layer.test_buffer.placements, [dist.Replicate()]
         )
 
     def test_shard_layer_input_fn_and_output_fn(self):
@@ -106,8 +106,8 @@ class TestShardLayer(unittest.TestCase):
 
         for param in replicate_params_layer.parameters():
             self.assertTrue(param.is_dist())
-            for x in param.dist_attr.dims_mapping:
-                self.assertEqual(x, -1)
+            for x in param.placements:
+                self.assertEqual(x, dist.Replicate())
 
         # test shard buffers
         test_buffer = paddle.randn([10])
@@ -117,7 +117,7 @@ class TestShardLayer(unittest.TestCase):
         )
         self.assertTrue(sharded_buffers_layer.test_buffer.is_dist())
         self.assertEqual(
-            sharded_buffers_layer.test_buffer.dist_attr.dims_mapping, [-1]
+            sharded_buffers_layer.test_buffer.placements, [dist.Replicate()]
         )
 
     def test_process_mesh_argument_error(self):
@@ -136,10 +136,8 @@ class TestShardLayer(unittest.TestCase):
 
         exception = None
         try:
-            dist_attr = dist.DistAttr(
-                mesh=self.mesh, sharding_specs=[None, None]
-            )
-            dist.shard_layer(layer, dist_attr)
+            placements = [dist.Replicate()]
+            dist.shard_layer(layer, placements)
         except ValueError as ex:
             self.assertIn(
                 "The argument `process_mesh` is not `dist.ProcessMesh` type",
