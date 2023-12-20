@@ -24,6 +24,19 @@ class TestTensorApplyAPI(unittest.TestCase):
         self.x = paddle.to_tensor([1, 2, 3, 4, 5], stop_gradient=True)
         self.function = lambda x: 3 * x + 2
 
+    def test_dtype(self):
+        for dtype in ["float64", "float16", "bfloat16"]:
+            self.x.to(dtype)
+            self.test_dygraph()
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "only support cuda",
+    )
+    def test_on_gpu(self):
+        self.x.to("gpu")
+        self.test_dygraph()
+
     def test_dygraph(self):
         y = self.x.apply(self.function)
         np.testing.assert_allclose(
