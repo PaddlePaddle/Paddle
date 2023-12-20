@@ -27,7 +27,7 @@
 namespace phi {
 namespace distributed {
 
-bool XToRReshardFunction::IsSuitable(const DistTensor& in,
+bool ManyToOneXToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
@@ -42,11 +42,11 @@ bool XToRReshardFunction::IsSuitable(const DistTensor& in,
   return true;
 }
 
-void XToRReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void ManyToOneXToRReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call XToRReshardFunction Eval";
+  VLOG(3) << "Call ManyToOneXToRReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_mesh = in_dist_attr.process_mesh();
 
