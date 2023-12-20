@@ -12,44 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/standard_gamma_kernel_impl.h"
-
-#include <random>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/dirichlet_util.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
-
-namespace phi {
-
-template <typename T>
-struct GammaSampler<CPUContext, T> {
-  void operator()(const CPUContext& dev_ctx,
-                  const DenseTensor& alpha,
-                  DenseTensor* out) {
-    auto generator = dev_ctx.GetGenerator()->GetCPUEngine();
-
-    auto uniform = [&generator]() -> T {
-      std::uniform_real_distribution<T> u(0.0, 1.0);
-      return u(*generator);
-    };
-    BaseSampler<T, decltype(uniform)> standard_uniform(uniform);
-
-    auto normal = [&generator]() {
-      std::normal_distribution<T> n(0.0, 1.0);
-      return n(*generator);
-    };
-    BaseSampler<T, decltype(normal)> standard_normal(normal);
-
-    GammaCPUFunctor<T, decltype(uniform), decltype(normal)> gamma_functor(
-        alpha.data<T>(), out->data<T>(), standard_uniform, standard_normal);
-    funcs::ForRange<CPUContext> for_range(dev_ctx, out->numel());
-    for_range(gamma_functor);
-  }
-};
-
-}  // namespace phi
+#include "paddle/phi/kernels/impl/standard_gamma_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     standard_gamma, CPU, ALL_LAYOUT, phi::StandardGammaKernel, float, double) {}

@@ -14,18 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_divide_kernel.h"
-#include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
-#include "paddle/phi/kernels/gpu/dirichlet_util.h"
-#include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
-namespace phi {
-
-}  // namespace phi
 
 PD_REGISTER_KERNEL(dirichlet,
                    GPU,

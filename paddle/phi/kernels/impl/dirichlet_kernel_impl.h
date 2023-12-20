@@ -224,36 +224,13 @@ struct DirichletSampler<CPUContext, T> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& alpha,
                   DenseTensor* out) {
-    // auto generator = dev_ctx.GetGenerator()->GetCPUEngine();
-
-    // auto uniform = [&generator]() -> T {
-    //   std::uniform_real_distribution<T> u(0.0, 1.0);
-    //   return u(*generator);
-    // };
-    // BaseSampler<T, decltype(uniform)> standard_uniform(uniform);
-
-    // auto normal = [&generator]() {
-    //   std::normal_distribution<T> n(0.0, 1.0);
-    //   return n(*generator);
-    // };
-    // BaseSampler<T, decltype(normal)> standard_normal(normal);
-
-    // sample from K gamma distributions, where K=alpha.numel()
     DenseTensor gamma_samples;
     gamma_samples.Resize(alpha.dims());
     dev_ctx.template Alloc<T>(&gamma_samples);
-    GammaSampler<Context, T> gamm_sampler;
+
+    GammaSampler<CPUContext, T> gamm_sampler;
     gamm_sampler(dev_ctx, alpha, &gamma_samples);
 
-    // GammaCPUFunctor<T, decltype(uniform), decltype(normal)> gamma_functor(
-    //     alpha.data<T>(),
-    //     gamma_samples.data<T>(),
-    //     standard_uniform,
-    //     standard_normal);
-    // funcs::ForRange<CPUContext> for_range(dev_ctx, alpha.numel());
-    // for_range(gamma_functor);
-
-    // normalize them into a simplex, along the last axis
     DenseTensor gamma_sum;
     auto new_shape = gamma_samples.dims();
     new_shape[new_shape.size() - 1] = 1;
@@ -325,24 +302,13 @@ struct DirichletSampler<GPUContext, T> {
   void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& alpha,
                   DenseTensor* out) {
-    // auto p_gen = dev_ctx.GetGenerator();
-    // auto seed_and_offset = p_gen->IncrementOffset(10);  // hard-coded offset
-    // auto seed = seed_and_offset.first;
-    // auto offset = seed_and_offset.second;
-
-    // sample from K gamma distributions, where K=alpha.numel()
     DenseTensor gamma_samples;
     gamma_samples.Resize(alpha.dims());
     dev_ctx.template Alloc<T>(&gamma_samples);
+    
     GammaSampler<GPUContext, T> gamma_sampler;
     sampler(dev_ctx, alpha, &gamma_samples);
 
-    // GammaCUDAFunctor<T> gamma_functor(
-    //     alpha.data<T>(), gamma_samples.data<T>(), seed, offset);
-    // funcs::ForRange<GPUContext> for_range(dev_ctx, out->numel());
-    // for_range(gamma_functor);
-
-    // normalize them into a simplex, along the last axis
     DenseTensor gamma_sum;
     auto new_shape = gamma_samples.dims();
     new_shape[new_shape.size() - 1] = 1;
