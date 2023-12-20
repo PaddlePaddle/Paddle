@@ -28,7 +28,61 @@ __all__ = []
 
 class ASGD(Optimizer):
     r"""
-    TODO
+    Optimizer of the ASGD algorithm.Please refer to this for details:
+    `Minimizing Finite Sums with the Stochastic Average Gradient <https://hal.science/hal-00860051v2>`_.
+
+    .. math::
+
+       \begin{aligned}
+            &\hspace{0mm} d=0,\ y_i=0\ \textbf{for}\ i=1,2,...,n                            \\
+            &\hspace{0mm} \textbf{for}\  \: m=0,1,...\ \textbf{do} \:                       \\
+            &\hspace{5mm} i=m\ \%\ n                                                        \\
+            &\hspace{5mm} d=d-y_i+f_i{}'(x)                                                 \\
+            &\hspace{5mm} y_i=f_i{}'(x)                                                     \\
+            &\hspace{5mm} x=x-learning\_rate(\frac{d}{\mathrm{min}(m+1,\ n)}+\lambda x)     \\
+            &\hspace{0mm} \textbf{end for}                                                  \\
+       \end{aligned}
+
+    Parameters:
+        learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
+            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
+        batch_num (int, optional): The number of batches needed to complete one epoch. The default value is 1.
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+            This parameter is required in dygraph mode.
+            The default value is None in static graph mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+            It can be a float value as coeff of L2 regularization or :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
+            the regularization setting here in optimizer will be ignored for this parameter.
+            Otherwise, the regularization setting here in optimizer will take effect.
+            Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of some derived class of ``GradientClipBase`` .
+            There are three clipping strategies ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` ).
+            Default None, meaning there is no gradient clipping.
+        multi_precision (bool, optional): In mixed precision training scenarios based on GPU,
+            this parameter is mainly used to ensure the numerical stability of gradient updates.
+            When it is set to True, the optimizer will save a backup of FP32 type parameters with an equal value for FP16 type parameters.
+            When updating gradients, first increase the gradient type to FP32, and then assign it to the FP32 type parameter backup.
+            Finally, the updated FP32 type value will be converted to FP16 type first,
+            and then assigned to the actual FP16 type parameters participating in the calculation.
+            The default value is False.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.to_tensor(inp)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> rprop = paddle.optimizer.Rprop(learning_rate=0.001, batch_num=10, parameters=linear.parameters(), weight_decay=0.01)
+            >>> out.backward()
+            >>> rprop.step()
+            >>> rprop.clear_grad()
     """
     _d_acc_str = "d"
     _y_acc_str = "y"
