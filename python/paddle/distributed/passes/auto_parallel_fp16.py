@@ -122,6 +122,7 @@ def _keep_fp32_input(op, in_name):
 
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_output(op, out_name):
+    # TODO(lizhiyu02): Support 'custom_white_list' adn 'custom_black_list' in amp_options
     if not op.amp_options.enable:
         return True
     op_type = op.type
@@ -200,7 +201,7 @@ class FP16State:
                         self.out_var_op_deps[name].extend(
                             [op.desc.original_id()]
                         )
-                self._mark_cast_options(op)
+                self._mark_amp_options_info(op)
                 self._mark_op(op)
 
         # set forward tensor dtype
@@ -213,7 +214,10 @@ class FP16State:
 
         return self.is_train
 
-    def _mark_cast_options(self, op):
+    def _mark_amp_options_info(self, op):
+        """
+        Mark amp options info for backward ops according to forward ops
+        """
         if is_forward_op(op):
             self.forward_op_to_amp_options[
                 op.desc.original_id()
@@ -250,7 +254,7 @@ class FP16State:
                         self._op_fp16_dict[op.desc.original_id()] = True
                     return
 
-            if __amp_utils__._need_keep_fp32(
+            if not op.amp_options.enable or __amp_utils__._need_keep_fp32(
                 op, self.amp_list.unsupported_list, self.use_fp16_guard
             ):
                 self._op_fp16_dict[op.desc.original_id()] = False

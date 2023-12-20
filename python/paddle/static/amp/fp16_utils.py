@@ -122,8 +122,6 @@ def _keep_layer_norm_scale_bias_to_fp32(*args):
 
 
 def _keep_fp32_input(op, in_name):
-    if not op.amp_options.enable:
-        return True
     op_type = op.type
     if op_type == 'batch_norm':
         # Scale, Bias, Mean, Variance should be float32.
@@ -151,8 +149,6 @@ def _keep_fp32_input(op, in_name):
 
 
 def _keep_fp32_output(op, out_name):
-    if not op.amp_options.enable:
-        return True
     op_type = op.type
     if op_type in ['batch_norm', 'fused_bn_add_activation']:
         return out_name != 'Y'
@@ -356,8 +352,6 @@ def _is_in_black_varnames(op, amp_lists):
 
 
 def _need_keep_fp32(op, unsupported_op_list, use_fp16_guard):
-    if not op.amp_options.enable:
-        return True
     if op.type in unsupported_op_list:
         # the highest priority condition: If ops don't have fp16 computing kernels,
         # they must be executed in fp32 calculation pattern.

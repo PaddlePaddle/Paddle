@@ -146,6 +146,8 @@ class AMPLists:
             return _is_in_fp32_varnames(op, self._amp_list)
 
     def _op_keep_fp32_input(self, op, in_name):
+        if not op.amp_options.enable:
+            return True
         if self._is_float16:
             return _keep_fp32_input(op, in_name)
         else:
@@ -156,6 +158,8 @@ class AMPLists:
             return False
 
     def _op_keep_fp32_output(self, op, out_name):
+        if not op.amp_options.enable:
+            return True
         if self._is_float16:
             return _keep_fp32_output(op, out_name)
         else:
