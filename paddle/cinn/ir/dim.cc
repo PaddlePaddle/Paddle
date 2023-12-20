@@ -18,35 +18,36 @@
 namespace cinn {
 namespace ir {
 
-using pir::shape::SymbolicDimOp;
-
 const _Dim_* Dim::operator->() const { return As<_Dim_>(); }
 _Dim_* Dim::operator->() { return As<_Dim_>(); }
 
-SymbolicDimOp _Dim_::GetSymbolicDim() const { return sym_dim; }
+symbol::DimExpr _Dim_::GetSymbolicDim() const { return sym_dim; }
 
-bool _Dim_::IsDynamic() const { return sym_dim.IsDynamic(); }
+bool _Dim_::IsDynamic() const { return sym_dim.isa<std::string>(); }
 
-std::string _Dim_::GetSymbolName() const { return sym_dim.GetSymName(); }
+std::string _Dim_::GetSymbolName() const {
+  return sym_dim.dyn_cast<std::string>();
+}
 
-int64_t _Dim_::GetRealDimSize() const { return sym_dim.GetDimSize(); }
+int64_t _Dim_::GetRealDimSize() const { return sym_dim.dyn_cast<int64_t>(); }
 
 Expr _Dim_::GetDimExpr() const { return dim_expr; }
 
-Dim _Dim_::Make(const std::string& name, const SymbolicDimOp& sym_dim) {
+Dim _Dim_::Make(const std::string& name, const symbol::DimExpr& sym_dim) {
   auto* n = make_shared<_Dim_>();
   n->name = name;
   n->sym_dim = sym_dim;
-  if (sym_dim.IsDynamic()) {
-    n->dim_expr = Expr(Var(sym_dim.GetSymName(), cinn::common::Int(32)));
+  if (sym_dim.isa<std::string>()) {
+    n->dim_expr =
+        Expr(Var(sym_dim.dyn_cast<std::string>(), cinn::common::Int(32)));
   } else {
-    n->dim_expr = Expr(static_cast<int32_t>(sym_dim.GetDimSize()));
+    n->dim_expr = Expr(static_cast<int32_t>(sym_dim.dyn_cast<int64_t>()));
   }
 
   return Dim(n);
 }
 
-Dim::Dim(const std::string& name, const SymbolicDimOp& sym_dim)
+Dim::Dim(const std::string& name, const symbol::DimExpr& sym_dim)
     : IrNodeRef(_Dim_::Make(name, sym_dim).self()) {}
 
 }  // namespace ir
