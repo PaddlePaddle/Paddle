@@ -11,6 +11,7 @@ set(new_executor_deps
     op_dialect_vjp
     pir_transforms
     global_utils
+    framework_io
     garbage_collector
     executor_gc_helper
     device_event_base
@@ -22,10 +23,14 @@ if(WITH_CINN AND NOT CINN_ONLY)
       op_registry ${DEVICE_EVENT_LIBS})
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+  set(new_executor_deps ${new_executor_deps} device_event_custom_device)
+endif()
 cc_library(
   new_executor
   SRCS ${new_executor_srcs}
   DEPS ${new_executor_deps})
+
 add_dependencies(new_executor xxhash framework_proto)
 if(WITH_MKLDNN)
   add_dependencies(new_executor mkldnn)
