@@ -18,9 +18,9 @@
 #include <random>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/cpu/elementwise.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/dirichlet_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -53,7 +53,6 @@
 #define COMPAT_LOG1P std::log1p
 #endif
 
-
 #ifdef PADDLE_WITH_CUDA
 #include <curand_kernel.h>
 #endif
@@ -73,7 +72,6 @@ using COMPAT_RANDSTATEPHILOX4_32_10_T = hiprandStatePhilox4_32_10_t;
 #define COMPAT_RAND_NORMAL hiprand_normal
 #endif
 
-
 namespace phi {
 
 template <typename ScalarT, typename SamplerT>
@@ -86,14 +84,12 @@ struct BaseSampler {
   }
 };
 
-
 template <typename Context, typename T>
 struct GammaSampler {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& alpha,
                   DenseTensor* out);
 };
-
 
 template <typename Context, typename T>
 struct DirichletSampler {
@@ -218,7 +214,6 @@ struct GammaSampler<CPUContext, T> {
   }
 };
 
-
 template <typename T>
 struct DirichletSampler<CPUContext, T> {
   void operator()(const CPUContext& dev_ctx,
@@ -229,9 +224,9 @@ struct DirichletSampler<CPUContext, T> {
     gamma_samples.Resize(alpha.dims());
     dev_ctx.template Alloc<T>(&gamma_samples);
 
-    GammaSampler<CPUContext, T> gamm_sampler;
-    gamm_sampler(dev_ctx, alpha, &gamma_samples);
-    
+    GammaSampler<CPUContext, T> gamma_sampler;
+    gamma_sampler(dev_ctx, alpha, &gamma_samples);
+
     // normalize them into a simplex, along the last axis
     DenseTensor gamma_sum;
     auto new_shape = gamma_samples.dims();
@@ -310,8 +305,8 @@ struct DirichletSampler<GPUContext, T> {
     dev_ctx.template Alloc<T>(&gamma_samples);
 
     GammaSampler<GPUContext, T> gamma_sampler;
-    sampler(dev_ctx, alpha, &gamma_samples);
-    
+    gamma_sampler(dev_ctx, alpha, &gamma_samples);
+
     // normalize them into a simplex, along the last axis
     DenseTensor gamma_sum;
     auto new_shape = gamma_samples.dims();

@@ -16,7 +16,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
-
 PD_REGISTER_KERNEL(dirichlet,
                    GPU,
                    ALL_LAYOUT,

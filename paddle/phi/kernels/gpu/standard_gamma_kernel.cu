@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/standard_gamma_kernel_impl.h"
 
-
 PD_REGISTER_KERNEL(standard_gamma,
                    GPU,
                    ALL_LAYOUT,

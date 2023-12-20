@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/standard_gamma_kernel.h"
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
+#include "paddle/phi/kernels/standard_gamma_kernel.h"
 
 namespace phi {
 template <typename T, typename Context>
