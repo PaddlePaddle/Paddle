@@ -33,8 +33,6 @@ if os.path.exists(legacy_core):
     except Exception as e:
         raise e
 
-from .layers.math_op_patch import monkey_patch_variable
-
 # import all class inside framework into base module
 # import all class inside executor into base module
 from . import (  # noqa: F401
@@ -116,6 +114,7 @@ from .framework import (  # noqa: F401
     xpu_places,
 )
 from .initializer import set_global_initializer  # noqa: F401
+from .layers.math_op_patch import monkey_patch_variable
 from .lod_tensor import (  # noqa: F401
     create_lod_tensor,
     create_random_int_lodtensor,

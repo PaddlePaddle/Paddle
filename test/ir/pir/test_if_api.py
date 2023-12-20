@@ -56,7 +56,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         self.assertEqual(len(if_op.results()), 1)
         value_list = get_used_external_value(if_op)
         self.assertEqual(len(value_list), 3)
-        self.assertEqual(value_list[0], if_op.operand_source(0))
+        self.assertTrue(value_list[0].is_same(if_op.operand_source(0)))
 
     def test_if_with_multiple_output(self):
         main_program = self.construct_program_with_if()
