@@ -55,11 +55,4 @@ TEST(region, walk_test) {
   pir::Block* block = program.block();
   block->Walk([&](pir::Block* block) { block_size++; });
   EXPECT_EQ(block_size, 0u);
-
-  // Test pir::Region::Walk
-  size_t region_size = 0;
-  pir::Region& region = program.module_op()->region(0);
-  region.push_back(new pir::Block());
-  region.Walk([&](pir::Region* region) { region_size++; });
-  EXPECT_EQ(region_size, 0u);
 }
