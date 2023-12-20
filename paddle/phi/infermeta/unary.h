@@ -477,6 +477,7 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
                              const int32_t arch,
+                             const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale);
 

@@ -524,6 +524,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
                                DataType out_dtype,
+                               const int32_t group_size,
                                MetaTensor* out);
 
 }  // namespace phi

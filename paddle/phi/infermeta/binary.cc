@@ -3329,6 +3329,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
                                DataType out_dtype,
+                               const int32_t group_size,
                                MetaTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size(),
                     2UL,
@@ -3336,18 +3337,44 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                         "The x tensor of dequantize op must be 2D, but got[%d]",
                         x.dims().size()));
   PADDLE_ENFORCE_EQ(
-      scale.dims().size(),
-      1UL,
-      phi::errors::InvalidArgument(
-          "The scale tensor of dequantize op must be 1D, but got[%d]",
-          scale.dims().size()));
-  PADDLE_ENFORCE_EQ(scale.dims()[0],
-                    x.dims()[0],
-                    phi::errors::InvalidArgument(
-                        "The scale tensor's shape must be equal to the x "
-                        "tensor's shape, but got [%d] not equal to [%d]",
-                        scale.dims()[0],
-                        x.dims()[0]));
+      (group_size == -1 || group_size == 64 || group_size == 128),
+      true,
+      phi::errors::InvalidArgument("group_size must be -1, 64 or 128."));
+
+  auto dim_scale = scale.dims();
+
+  // per-channel dequantization
+  if (group_size == -1) {
+    PADDLE_ENFORCE_EQ(
+        dim_scale.size(),
+        1UL,
+        phi::errors::InvalidArgument("The scale tensor of dequantize op must "
+                                     "be 1D in per-channel mode, but got[%d]",
+                                     scale.dims().size()));
+    PADDLE_ENFORCE_EQ(dim_scale[0],
+                      x.dims()[0],
+                      phi::errors::InvalidArgument(
+                          "The scale tensor's shape must be equal to the x "
+                          "tensor's shape, but got [%d] not equal to [%d]",
+                          scale.dims()[0],
+                          x.dims()[0]));
+  } else /* groupwise dequantization */ {
+    PADDLE_ENFORCE_EQ(
+        dim_scale.size(),
+        2UL,
+        phi::errors::InvalidArgument("The scale tensor of dequantize op must "
+                                     "be 2D in group-wise mode, but got[%d]",
+                                     scale.dims().size()));
+    PADDLE_ENFORCE_EQ(
+        dim_scale[0],
+        (x.dims()[1] + (group_size - 1)) / group_size,
+        errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
+                                "to (Input(weight).dim[1] + (group_size -1))"
+                                " / group_size"
+                                "But receive %d and %d",
+                                dim_scale[0],
+                                (x.dims()[1] + (group_size - 1)) / group_size));
+  }
   int n = x.dims()[1];
   int k = x.dims()[0];
   out->set_dims(common::make_ddim({n, k}));

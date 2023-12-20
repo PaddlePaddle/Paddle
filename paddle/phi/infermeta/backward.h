@@ -459,6 +459,7 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
                                    const int32_t arch,
+                                   const int32_t group_size,
                                    MetaTensor* x_grad);
 
 void YoloLossGradInferMeta(const MetaTensor& x,
