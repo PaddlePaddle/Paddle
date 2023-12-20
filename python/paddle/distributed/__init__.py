@@ -15,8 +15,6 @@
 import atexit  # noqa: F401
 
 from paddle.base.core import Placement, ReduceType
-from paddle.distributed.fleet.base.topology import ParallelMode
-from paddle.distributed.fleet.dataset import InMemoryDataset, QueueDataset
 
 from . import (
     cloud_utils,  # noqa: F401
@@ -82,6 +80,8 @@ from .entry_attr import (
     ShowClickEntry,
 )
 from .fleet import BoxPSDataset  # noqa: F401
+from .fleet.base.topology import ParallelMode
+from .fleet.dataset import InMemoryDataset, QueueDataset
 from .launch.main import launch
 from .parallel import (
     DataParallel,  # noqa: F401
