@@ -29,9 +29,9 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
-def reshape(x):
-    y = paddle.exp(x)
-    out = paddle.reshape(y, x.shape) - x
+def reshape(x, y):
+    z = paddle.exp(x)
+    out = y - paddle.reshape(z, y.shape)
     return out
 
 
@@ -50,8 +50,8 @@ class CINNReshapeSubGraphNet(paddle.nn.Layer):
         super().__init__()
         self.fn = reshape
 
-    def forward(self, x):
-        out = self.fn(x)
+    def forward(self, x, y):
+        out = self.fn(x, y)
         return out
 
 
@@ -68,6 +68,8 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.shape = [4, 256]
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
+        self.y = paddle.randn(self.shape, dtype="float32")
+        self.y.stop_gradient = False
 
     def eval_symbolic(self, use_cinn):
         paddle.seed(2022)
@@ -75,7 +77,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
         input_spec = [InputSpec(shape=[None, 256], dtype='float32')]
         net = apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x)
+        out = net(self.x, self.y)
         return out
 
     def test_eval_symolic(self):
