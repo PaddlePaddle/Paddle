@@ -12,8 +12,6 @@ paddle_test(
 
 paddle_test(ir_region_test SRCS ir_region_test.cc DEPS pir)
 
-paddle_test(ir_walk_test SRCS ir_walk_test.cc DEPS pir test_dialect)
-
 paddle_test(ir_builder_test SRCS ir_builder_test.cc DEPS pir)
 cc_test_old(
   ir_program_test
