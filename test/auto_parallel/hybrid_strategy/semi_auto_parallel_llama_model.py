@@ -642,7 +642,6 @@ class LlamaModelAuto(nn.Layer):
                 past_key_value,
                 use_cache,
             )
-
             pre_ipp = decoder_layer.ipp
 
             if type(layer_outputs) is tuple:
@@ -711,9 +710,29 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         masked_lm_labels = dist.shard_tensor(
             masked_lm_labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
         )
-        masked_lm_loss = self.loss_func(
-            prediction_scores.astype("float32"), masked_lm_labels.unsqueeze(2)
+
+        # Force Replicated to match dy & st
+        prediction_scores1 = dist.reshard(
+            prediction_scores,
+            get_mesh(-1),
+            [dist.Replicate(), dist.Replicate()],
         )
+        masked_lm_labels1 = dist.reshard(
+            masked_lm_labels, get_mesh(-1), [dist.Replicate(), dist.Replicate()]
+        )
+
+        # Force entropy same kernel
+        if isinstance(prediction_scores1, paddle.Tensor):
+            masked_lm_loss = self.loss_func(
+                prediction_scores1.astype("float32")._use_gpudnn(False),
+                masked_lm_labels1.unsqueeze(2),
+            )
+        else:
+            masked_lm_loss = self.loss_func(
+                prediction_scores1.astype("float32"),
+                masked_lm_labels1.unsqueeze(2),
+            )
+
         masked_lm_loss = paddle.masked_select(
             masked_lm_loss, masked_lm_loss > 0
         ).astype("float32")
@@ -754,6 +773,7 @@ class LlamaForCausalLMAuto(nn.Layer):
         input_ids = dist.shard_tensor(
             input_ids, get_mesh(), [dist.Shard(0), dist.Replicate()]
         )
+
         output_attentions = (
             output_attentions if output_attentions is not None else False
         )

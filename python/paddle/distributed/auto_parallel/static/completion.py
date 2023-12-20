@@ -56,6 +56,7 @@ __skip_dims_mapping_op__ = [
 ]
 
 _skip_propagation_prefix = "Auto_Parallel_Completion_Skipped"
+_max_propagation_step = 500
 
 
 def mark_as_sharding_propagation_skip_op(op):
@@ -156,6 +157,7 @@ def _can_apply_infer_spmd_rule(dist_op):
 
     # TODO remove me. ops to be adapted: squeeze2
     __adapted_ops__ = [
+        "fused_rotary_position_embedding",
         "matmul_v2",
         "elementwise_div",
         "gelu",
@@ -503,9 +505,10 @@ class Completer:
 
     def _update_dims_mapping(self):
         # Complete dims_mapping for each node
+        step = 0
         reach_fix_point = False
 
-        while not reach_fix_point:
+        while (not reach_fix_point) and (step < _max_propagation_step):
             changed = False
             for is_fwd in [True, False]:
                 all_nodes = (
@@ -534,7 +537,14 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+            step += 1
         # NOTE: this will be removed after changing the reshard rule
+
+        if step >= _max_propagation_step:
+            _logger.debug(
+                "Sharding Propagation reach the Max Step and is NOT Converge! The Sharding Propagation Iteration is Terminated."
+            )
+
         self._update_dims_mapping_for_special()
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
