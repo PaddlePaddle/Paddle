@@ -26,6 +26,11 @@ endif()
 if(WITH_CUSTOM_DEVICE)
   set(new_executor_deps ${new_executor_deps} device_event_custom_device)
 endif()
+
+if(WITH_GPU)
+  set(new_executor_deps ${new_executor_deps} device_event_gpu)
+endif()
+
 cc_library(
   new_executor
   SRCS ${new_executor_srcs}
