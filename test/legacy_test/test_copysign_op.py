@@ -130,7 +130,7 @@ class TestCopySignAPI(unittest.TestCase):
 
             out_ref = ref_copysign(self.x, self.y)
             if self.x.dtype in [np.int32, np.int64, np.uint8]:
-                print('-'*100)
+                print('-' * 100)
                 print('in static ', self.__class__)
                 print(self.x.dtype)
                 print(self.x)
@@ -140,7 +140,7 @@ class TestCopySignAPI(unittest.TestCase):
                 print(out_ref)
                 print(out.dtype)
                 print(out)
-                print('-'*100)
+                print('-' * 100)
             np.testing.assert_allclose(out_ref, res[0])
         paddle.disable_static()
 
@@ -151,7 +151,7 @@ class TestCopySignAPI(unittest.TestCase):
         out = paddle.copysign(x, y)
         out_ref = ref_copysign(self.x, self.y)
         if self.x.dtype in [np.int32, np.int64, np.uint8]:
-            print('-'*100)
+            print('-' * 100)
             print('in dynamic ', self.__class__)
             print(self.x.dtype)
             print(self.x)
@@ -161,7 +161,7 @@ class TestCopySignAPI(unittest.TestCase):
             print(out_ref)
             print(out.dtype)
             print(out)
-            print('-'*100)
+            print('-' * 100)
         np.testing.assert_allclose(out_ref, out.numpy())
         paddle.enable_static()
 

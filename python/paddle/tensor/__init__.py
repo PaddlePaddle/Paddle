@@ -60,7 +60,6 @@ from .creation import (  # noqa: F401
     zeros,
     zeros_like,
 )
-
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
     bincount,
@@ -242,6 +241,8 @@ from .math import (  # noqa: F401
     clip_,
     combinations,
     conj,
+    copysign,
+    copysign_,
     cos,
     cos_,
     cosh,
@@ -254,8 +255,6 @@ from .math import (  # noqa: F401
     cumsum,
     cumsum_,
     cumulative_trapezoid,
-    copysign,
-    copysign_,
     deg2rad,
     diagonal,
     diff,

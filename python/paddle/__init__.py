@@ -362,6 +362,8 @@ from .tensor.math import (  # noqa: F401
     clip,
     combinations,
     conj,
+    copysign,
+    copysign_,
     cos,
     cos_,
     cosh,
@@ -491,8 +493,6 @@ from .tensor.math import (  # noqa: F401
     trunc,
     trunc_,
     vander,
-    copysign,
-    copysign_,
 )
 from .tensor.random import (
     bernoulli,

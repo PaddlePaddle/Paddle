@@ -391,12 +391,13 @@ class TestDygraphInplaceCopysign(TestDygraphInplace):
 
     def non_inplace_api_processing(self, var):
         return paddle.copysign(var, self.y)
-    
+
     def test_leaf_inplace_var_error(self):
         with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var.stop_gradient = False
             self.y = paddle.rand([2, 10, 20])
+
             def leaf_inplace_error():
                 self.inplace_api_processing(var)
 
