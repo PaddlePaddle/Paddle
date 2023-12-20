@@ -17,8 +17,7 @@ set(STANDALONE_EXECUTOR_DEPS
     pir_adaptor
     program_translator
     instruction_base
-    pir
-    plan)
+    pir)
 
 cc_library(
   standalone_executor

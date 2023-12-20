@@ -671,6 +671,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             args = cur_block.args()
             next_var = body(*args)
             next_cond = cond(*next_var)
+            next_cond.stop_gradient = True
             cf_yield([next_cond, *next_var])
         return while_op.as_operation().results()
 
