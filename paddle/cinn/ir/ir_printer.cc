@@ -39,6 +39,7 @@ void IrPrinter::Print(const Expr &e) {
 void IrPrinter::Print(const std::vector<Expr> &exprs,
                       const std::string &splitter) {
   for (std::size_t i = 0; !exprs.empty() && i + 1 < exprs.size(); i++) {
+    VLOG(-1) << "xxx " << i;
     Visit(exprs[i]);
     str_ += splitter;
   }
@@ -608,13 +609,15 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
 }
 
 void IrPrinter::Visit(const _Dim_ *x) {
+  VLOG(-1) << "start visit _DIM_";
   str_ += "Dim(name: ";
-  str_ += x->name;
-  str_ += ", sym_name: ";
-  str_ += x->GetSymbolName();
-  str_ += ", dim_size: ";
-  str_ += std::to_string(x->GetRealDimSize());
+  // str_ += x->name;
+  // str_ += ", sym_name: ";
+  // str_ += x->GetSymbolName();
+  // str_ += ", dim_size: ";
+  // str_ += std::to_string(x->GetRealDimSize());
   str_ += ")";
+  VLOG(-1) << "end visit _DIM_";
 }
 
 void IrPrinter::Visit(const IntrinsicOp *x) {
@@ -703,6 +706,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a) {
 }
 
 std::ostream &operator<<(std::ostream &os, const std::vector<Dim> &a) {
+  VLOG(-1) << "printer ir::Dim";
   std::stringstream ss;
   IrPrinter printer(ss);
   printer.Print(std::vector<Expr>(a.begin(), a.end()));

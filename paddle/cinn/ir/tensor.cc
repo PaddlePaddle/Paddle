@@ -79,10 +79,14 @@ Tensor _Tensor_::Make(const std::string &name,
                       const std::vector<Var> &reduce_axis) {
   CHECK(!name.empty()) << "Tensor name is set empty";
   auto n = make_shared<_Tensor_>();
+  VLOG(-1) << "yyyy ";
   n->name = name;
   n->sym_shape = sym_shape;
+  VLOG(-1) << "yyyy " << sym_shape;
+  VLOG(-1) << "yyyy " << n->sym_shape;
   for (int i = 0; i < sym_shape.size(); i++) {
     n->shape.emplace_back(sym_shape[i]->dim_expr);
+    VLOG(-1) << "yyyy " << sym_shape[i]->dim_expr;
   }
   n->sym_domain = sym_domain;
   for (int i = 0; i < sym_domain.size(); i++) {

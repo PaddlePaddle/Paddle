@@ -975,12 +975,10 @@ void OpLowererImpl::CollectOutputInfo(
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
     if (group->shape_analysis != nullptr) {
       auto sym_vec =
-          group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-              out_value);
+          group->shape_analysis->GetValueShapeDimExprs(out_value).shape();
       std::vector<ir::Dim> sym_shape;
-      for (auto& sym : sym_vec) {
-        sym_shape.emplace_back(
-            ir::Dim(output_id + "_" + sym.GetSymName(), sym));
+      for (auto& sym : sym_vec.value()) {
+        sym_shape.emplace_back(ir::Dim(output_id, sym));
       }
       out_shapes->push_back(std::move(sym_shape));
     }

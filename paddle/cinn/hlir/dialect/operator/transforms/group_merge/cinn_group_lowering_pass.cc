@@ -155,6 +155,10 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       value2id[yeild_op->operand_source(i)] = i;
     }
     std::unordered_map<pir::Value, pir::Value> value_map;
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+    auto shape_analysis_ =
+        std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
 
     // op fusion
     auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(

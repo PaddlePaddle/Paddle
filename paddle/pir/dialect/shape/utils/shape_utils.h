@@ -130,7 +130,7 @@ class IR_API ShapeAnalysisManager {
   static ShapeAnalysisManager& Instance();
   ShapeConstraintIRAnalysis& Get(pir::Program* program);
 
-  ShapeAnalysisManager(const ShapeAnalysisManager&) = delete;
+  // ShapeAnalysisManager(const ShapeAnalysisManager&) = delete;
   ShapeAnalysisManager(ShapeAnalysisManager&&) = delete;
   ShapeAnalysisManager& operator=(const ShapeAnalysisManager&) = delete;
 
