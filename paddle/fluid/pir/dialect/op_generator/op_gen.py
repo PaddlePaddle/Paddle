@@ -1192,6 +1192,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 if (
                     op_name in decomp_interface_declare_gen_op_list
                     and kernel_func_name in decomp_interface_declare_gen_op_list
+                    and dialect_name != "pd_onednn_op"
                 ):
                     op_interfaces = op_interfaces + [
                         "paddle::dialect::DecompInterface"

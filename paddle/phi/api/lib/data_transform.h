@@ -177,7 +177,9 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
   bool ret = src_place.GetType() == AllocationType::GPUPINNED ||
              (target != Backend::ALL_BACKEND &&
               phi::TransToPhiBackend(src_place) !=
-                  (target != Backend::GPUDNN ? target : Backend::GPU));
+                  (target != Backend::GPUDNN ? target : Backend::GPU) &&
+              (src_place.GetType() != AllocationType::CPU &&
+               target == Backend::ONEDNN));
   return ret;
 }
 

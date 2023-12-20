@@ -28,6 +28,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -315,10 +316,8 @@ static pir::OpResult AddOneDNN2PaddleLayoutTransferOp(
 
   std::unordered_map<std::string, pir::Attribute> op_attribute;
   op_attribute = {
-      {"op_name",
-       pir::StrAttribute::get(ctx, "pd_op.onednn_to_paddle_layout_kernel")},
-      {"kernel_name",
-       pir::StrAttribute::get(ctx, "onednn_to_paddle_layout_kernel")},
+      {"op_name", pir::StrAttribute::get(ctx, "pd_op.onednn_to_paddle_layout")},
+      {"kernel_name", pir::StrAttribute::get(ctx, "onednn_to_paddle_layout")},
       {"kernel_key", KernelAttribute::get(ctx, kernel_key)},
       {"dst_layout",
        pir::Int32Attribute::get(ctx, static_cast<int>(dst_layout))}};
@@ -1901,6 +1900,7 @@ pir::Operation* BuildKernelOp(
   pir::Operation* op = nullptr;
   if (op_item->HasTrait<OneDNNTrait>()) {
     if (IsOneDNNLegacyOp(op_item->name())) {
+      VLOG(4) << "choose OneDNNLegacyKernelOp";
       pir::OpInfo legacy_kernel_op_info =
           ctx->GetRegisteredOpInfo(OneDNNLegacyKernelOp::name());
       op = pir::Operation::Create(
@@ -1935,12 +1935,14 @@ pir::Operation* BuildKernelOp(
           pir::BoolAttribute::get(
               ctx, op_info_parser->OpRuntimeInfo().dynamic_fallback));
       if (op_item->HasTrait<OneDNNDynamicFallbackTrait>()) {
+        VLOG(4) << "choose OneDNNMixedPhiKernelOp";
         pir::OpInfo phi_kernel_op_info =
             ctx->GetRegisteredOpInfo(OneDNNMixedPhiKernelOp::name());
 
         op = pir::Operation::Create(
             vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
       } else {
+        VLOG(4) << "choose OneDNNPhiKernelOp";
         pir::OpInfo phi_kernel_op_info =
             ctx->GetRegisteredOpInfo(OneDNNPhiKernelOp::name());
 
@@ -2054,6 +2056,8 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<KernelDialect>();
+  ctx->GetOrRegisterDialect<OneDNNOperatorDialect>();
+  ctx->GetOrRegisterDialect<OneDNNKernelDialect>();
 
   std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
   std::unordered_map<pir::Value, pir::Value> map_value_pair;
