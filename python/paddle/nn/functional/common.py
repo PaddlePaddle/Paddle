@@ -1137,7 +1137,7 @@ def dropout(
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
-            out = _C_ops.dropout(
+            out, mask = _C_ops.dropout(
                 x,
                 None,
                 p,
