@@ -74,6 +74,30 @@ class DynamicReshapeOpPattern
   std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
+class DeadCodeEliminationPattern : public pir::RewritePattern {
+ public:
+  DeadCodeEliminationPattern(
+      pir::IrContext* context,
+      pir::PatternBenefit benefit = 1,
+      const std::vector<std::string>& generated_names = {})
+      : RewritePattern(MatchAnyOpTypeTag(), benefit, context, generated_names) {
+  }
+
+  bool Match(pir::Operation* op) const override {
+    if (op->HasTrait<pir::SideEffectTrait>()) return false;
+
+    if (op->isa<paddle::dialect::DataOp>()) {
+      return false;
+    }
+    return op->use_empty();
+  }
+
+  void Rewrite(pir::Operation* op,
+               pir::PatternRewriter& rewriter) const override {  // NOLINT
+    rewriter.EraseOp(op);
+  }
+};
+
 class DynamicReshapeOpPass : public pir::Pass {
  public:
   DynamicReshapeOpPass(
@@ -84,6 +108,7 @@ class DynamicReshapeOpPass : public pir::Pass {
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<DynamicReshapeOpPattern>(context, shape_analysis_);
+    ps.Add<DeadCodeEliminationPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }

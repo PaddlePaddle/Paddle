@@ -93,6 +93,18 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                     .dyn_cast<paddle::dialect::DenseTensorType>()
                     .dims();
 
+  // TODO(zyfncg): support dynamic shape
+  if (op->operand_source(0)
+          .type()
+          .dyn_cast<pir::ShapedTypeInterface>()
+          .IsDynamicShape() ||
+      op->operand_source(1)
+          .type()
+          .dyn_cast<pir::ShapedTypeInterface>()
+          .IsDynamicShape()) {
+    return false;
+  }
+
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
     if (!IsSameDim(x_dims, output_shape)) {
