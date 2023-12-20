@@ -440,5 +440,6 @@ class WeightOnlyLinearTestCase13(WeightOnlyLinearTestCase):
         self.in_features = 128
         self.out_features = 288
 
+
 if __name__ == '__main__':
     unittest.main()

@@ -173,13 +173,16 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
   constexpr int kWarpSize = 32;
   constexpr int kBlockSize = 64;
   constexpr int kWarpNum = kBlockSize / kWarpSize;
-  constexpr int kVectorSize = 128 / sizeof(T) / 8;  
-  PADDLE_ENFORCE_EQ(
-    total_n % kVectorSize,
-    0,
-    phi::errors::PreconditionNotMet("Currently, weight_quant_gpu kernel only support n with multiple of %d, please use", kVectorSize));
+  constexpr int kVectorSize = 128 / sizeof(T) / 8;
+  PADDLE_ENFORCE_EQ(total_n % kVectorSize,
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "Currently, weight_quant_gpu kernel only support n "
+                        "with multiple of %d, please use",
+                        kVectorSize));
   int vec_total_n = total_n / kVectorSize;
-  int kGridSize = max((vec_total_n + kBlockSize - 1) / kBlockSize,(int)1);
+  int kGridSize =
+      max((vec_total_n + kBlockSize - 1) / kBlockSize, static_cast<int>(1));
   per_channel_quant_gpu<T, kVectorSize><<<kGridSize, kBlockSize>>>(
       weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
 }
