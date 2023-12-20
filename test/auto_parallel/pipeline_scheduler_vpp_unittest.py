@@ -144,9 +144,9 @@ class TestVPPPass(unittest.TestCase):
         self.dataset = MyDataset(self.batch_size * self.batch_num)
 
     def init(self, engine):
-        paddle.seed(2024 + paddle.distributed.get_rank())
-        np.random.seed(2024 + paddle.distributed.get_rank())
-        random.seed(2024 + paddle.distributed.get_rank())
+        paddle.seed(2021)
+        np.random.seed(2021)
+        random.seed(2021)
         paddle.distributed.fleet.init(is_collective=True)
         place = paddle.base.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
