@@ -48,6 +48,7 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.output_types.swap(output_types);
   argument.AddRegion().emplace_back();
   argument.AddRegion().emplace_back();
+  cond.set_attribute(kStopGradientAttrName, builder.bool_attr(true));
 }
 
 void IfOp::Build(pir::Builder &builder,             // NOLINT
@@ -289,10 +290,22 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInput(cond);
   argument.AddInputs(inputs);
   auto &body = argument.AddRegion().emplace_back();
+  std::vector<pir::Attribute> outs_stop_gradient;
   for (auto val : inputs) {
     argument.AddOutput(val.type());
-    body.AddArgument(val.type());
+    auto arg = body.AddArgument(val.type());
+
+    auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
+    arg.set_attribute(kStopGradientAttrName,
+                      bool_attr ? bool_attr : builder.bool_attr(false));
+    outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                           : builder.bool_attr(false));
   }
+
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
+
   cond.set_attribute(kStopGradientAttrName, builder.bool_attr(true));
 }
 pir::Block &WhileOp::body() {
@@ -300,6 +313,7 @@ pir::Block &WhileOp::body() {
   if (body_region.empty()) body_region.emplace_back();
   return body_region.front();
 }
+
 pir::Value WhileOp::cond() { return (*this)->operand_source(0); }
 
 void WhileOp::Print(pir::IrPrinter &printer) {
@@ -367,6 +381,14 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
                         "the outputs size is %d.",
                         inputs.size(),
                         outputs.size()));
+  PADDLE_ENFORCE_EQ(inputs.size(),
+                    out_grads.size() + 1,
+                    phi::errors::InvalidArgument(
+                        "while op's inputs' size should equal to "
+                        "output_grads' size + 1, Now the inputs's size is %d ."
+                        "the output_grads size is %d.",
+                        inputs.size(),
+                        out_grads.size()));
   PADDLE_ENFORCE_EQ(stop_gradients[0][0],
                     true,
                     phi::errors::InvalidArgument(
@@ -377,25 +399,10 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
 
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> loop_vars;
-  size_t index = 0;
 
-  for (; index < outputs.size(); ++index) {
+  for (size_t index = 0; index < out_grads.size(); ++index) {
     if (!stop_gradients[index + 1][0]) {
       loop_vars.push_back(out_grads[index][0]);
-    }
-  }
-  for (++index; index < inputs.size(); ++index) {
-    if (!stop_gradients[index][0]) {
-      auto fwd_type = inputs[index][0].type().dyn_cast<DenseTensorType>();
-      PADDLE_ENFORCE_NE(
-          fwd_type,
-          pir::Type(),
-          phi::errors::InvalidArgument(
-              "The forward value type must be dense tensor type."));
-      auto shape = vectorize(fwd_type.dims());
-      auto dtype = TransToPhiDataType(fwd_type.dtype());
-      auto full_op = builder.Build<FullOp>(shape, 0.0, dtype, phi::CPUPlace());
-      loop_vars.push_back(full_op.out());
     }
   }
   auto while_grad = builder.Build<WhileOp>(cond_val, loop_vars);
@@ -426,9 +433,7 @@ std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
   res[0].resize(1);
   for (size_t i = 1u; i < inputs.size(); ++i) {
     res[i].resize(1);
-    if (!stop_gradients[i][0]) {
-      res[i][0] = pop_op.result(i - 1);
-    }
+    res[i][0] = pop_op.result(i - 1);
   }
   return res;
 }
@@ -439,6 +444,10 @@ void HasElementsOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInput(container);
   argument.AddOutput(
       DenseTensorType::get(builder.ir_context(), builder.bool_type(), {1}));
+  std::vector<pir::Attribute> outs_stop_gradient{builder.bool_attr(true)};
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 void HasElementsOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";

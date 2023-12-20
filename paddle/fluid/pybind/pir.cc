@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/pir.h"
+
 #include <Python.h>
 #include <algorithm>
 #include <memory>
@@ -23,12 +24,13 @@
 #include <utility>
 
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/pybind/pybind_variant_caster.h"
-
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pybind/control_flow_api.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
+
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -39,14 +41,24 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-#include "paddle/fluid/pybind/control_flow_api.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -60,6 +72,7 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
+
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
@@ -106,6 +119,9 @@ USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
+USE_PIR_PASS(fc_fuse_pass);
+USE_PIR_PASS(fc_with_special_op_fuse_pass);
+USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
@@ -305,11 +321,15 @@ void BindBlock(py::module *m) {
           [](Block &self) { return &self.front(); },
           return_value_policy::reference)
       .def_property_readonly(
+          "parent_op",
+          [](Block &self) { return self.GetParentOp(); },
+          return_value_policy::reference)
+      .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
       .def_property_readonly(
-          "get_parent",
+          "parent_block",
           [](Block &self) { return self.GetParentOp()->GetParent(); },
           return_value_policy::reference)
       .def_property_readonly("ops",
@@ -701,6 +721,14 @@ void BindValue(py::module *m) {
                 kAttrIsPersisable,
                 BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
+      .def("all_used_ops",
+           [](Value &self) -> py::list {
+             py::list op_list;
+             for (auto it = self.use_begin(); it != self.use_end(); ++it) {
+               op_list.append(it.owner());
+             }
+             return op_list;
+           })
       .def(
           "get_defining_op",
           [](Value self) -> pir::Operation * {

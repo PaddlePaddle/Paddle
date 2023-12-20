@@ -1,5 +1,4 @@
-set(instruction_base_srcs
-    instruction_base.cc
+set(instruction_base.cc
     phi_kernel_instruction.cc
     legacy_kernel_instruction.cc
     if_instruction.cc
@@ -21,11 +20,13 @@ endif()
 cc_library(
   instruction_base
   SRCS ${instruction_base_srcs}
-  DEPS pir_adaptor phi common framework_proto)
-
+  DEPS framework_proto)
+if(WITH_MKLDNN)
+  add_dependencies(instruction_base mkldnn)
+endif()
 if(WITH_CINN AND NOT CINN_ONLY)
   cc_library(
     cinn_jit_instruction NOT_FOR_INFER
     SRCS cinn_jit_instruction.cc
-    DEPS phi common cinnapi cinn_op_dialect cinn_runtime_dialect)
+    DEPS cinnapi cinn_op_dialect cinn_runtime_dialect)
 endif()

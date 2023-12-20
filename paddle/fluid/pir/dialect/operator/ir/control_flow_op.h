@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/pir/core/block.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace paddle {
@@ -78,6 +79,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
                     const std::vector<pir::Value> &inputs);
   pir::Block &body();
   pir::Value cond();
+  const pir::Block::ArgListType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig() {}
   void VerifyRegion() {}

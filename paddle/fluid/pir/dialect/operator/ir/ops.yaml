@@ -988,6 +988,18 @@
     data_type : dtype
     backend : place
 
+- op : read_file
+  args : (str filename = "", DataType dtype=DataType::UINT8, Place place=CPUPlace())
+  output : Tensor(out)
+  infer_meta :
+    func : ReadFileInferMeta
+    param : [filename]
+  kernel :
+    func : read_file
+    param : [filename]
+    data_type : dtype
+    backend : place
+
 - op : recv_v2
   args : (int[] out_shape = {}, DataType dtype = DataType::FLOAT32, int peer = 0, int ring_id = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output : Tensor(out)
