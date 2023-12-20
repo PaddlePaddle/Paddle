@@ -70,7 +70,7 @@ void Region::clear() {
   }
 }
 
-template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+template <WalkOrder Order, typename FuncT>
 void Region::Walk(FuncT &&callback) {
   for (auto &block : *this) {
     block.Walk<Order>(callback);
