@@ -1419,6 +1419,11 @@ class OpTest(unittest.TestCase):
                     ir_program, feed=feed, fetch_list=[fetch_list]
                 )
 
+                if paddle.utils.is_sequence(
+                    ret_tuple
+                ) and paddle.utils.is_sequence(outs):
+                    outs = paddle.utils.pack_sequence_as(ret_tuple, outs)
+
                 outputs_sig = [
                     sig_name
                     for sig_name in outputs_sig
@@ -1427,10 +1432,13 @@ class OpTest(unittest.TestCase):
                 result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
-                        for i in range(len(self.python_out_sig_sub_name[key])):
-                            result[key][0][
-                                i
-                            ].name = self.python_out_sig_sub_name[key][i]
+                        result[key][0] = {
+                            a: [b]
+                            for a, b in zip(
+                                self.python_out_sig_sub_name[key],
+                                result[key][0],
+                            )
+                        }
                 return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
@@ -2438,43 +2446,24 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
-            def find_imperative_actual(target_name, pir_outs, place):
+            def find_pir_actual(self, target_name, pir_outs):
                 for name in pir_outs:
                     if name == target_name:
                         return pir_outs[name][0]
 
-                    var_list = pir_outs[name]
-                    for i, var in enumerate(var_list):
-                        if isinstance(var, list):
-                            for tensor in var:
-                                if tensor.name == target_name:
-                                    return tensor
-                        elif (
-                            isinstance(var, paddle.Tensor)
-                            and var.name == target_name
-                        ):
-                            return pir_outs[name][i]
-                    self.assertTrue(
-                        False,
-                        f"Found failed {pir_outs.keys()} {target_name}",
-                    )
+                    sub_dict = pir_outs[name][0]
+                    if isinstance(sub_dict, dict):
+                        for key, value in sub_dict.items():
+                            if key == target_name:
+                                return value[0]
 
-            def find_imperative_expect(self, target_name, pir_outs, place):
-                for name in pir_outs:
-                    if name == target_name:
-                        return pir_outs[name][0]
-                self.assertTrue(
-                    False,
-                    f"Found failed {pir_outs.keys()} {target_name}",
-                )
+                raise AssertionError("No pir output named " + target_name)
 
             def find_actual_value(self, target_name):
                 with paddle.pir.core.program_guard(
                     paddle.pir.core.default_main_program()
                 ):
-                    actual = find_imperative_actual(
-                        target_name, self.outputs, place
-                    )
+                    actual = self.find_pir_actual(target_name, self.outputs)
                     actual_t = np.array(actual)
                     return actual, actual_t
 
@@ -2482,8 +2471,8 @@ class OpTest(unittest.TestCase):
                 with paddle.pir.core.program_guard(
                     paddle.pir.core.default_main_program()
                 ):
-                    expect = self.find_imperative_expect(
-                        target_name, self.ref_outputs, place
+                    expect = find_imperative_expect(
+                        target_name, self.ref_outputs
                     )
                     expect_t = np.array(expect)
                     return expect, expect_t
@@ -3677,10 +3666,19 @@ class OpTest(unittest.TestCase):
 
         return res
 
-    def _find_var_in_pir(self, output_vars, name):
-        if name in output_vars:
-            return output_vars[name]
-        raise AssertionError(name, " not in outputs:", output_vars.keys())
+    def _find_var_in_pir(self, output_vars, target_name):
+        for name in output_vars:
+            if name == target_name:
+                return output_vars[name]
+
+            sub_dict = output_vars[name][0]
+            if isinstance(sub_dict, dict):
+                for key, value in sub_dict.items():
+                    if key == target_name:
+                        return value
+        raise AssertionError(
+            target_name, " not in outputs:", output_vars.keys()
+        )
 
     def _get_ir_gradient(
         self,
@@ -3754,10 +3752,13 @@ class OpTest(unittest.TestCase):
                 )
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
-                        for i in range(len(self.python_out_sig_sub_name[key])):
-                            outputs[key][0][
-                                i
-                            ].name = self.python_out_sig_sub_name[key][i]
+                        outputs[key][0] = {
+                            a: [b]
+                            for a, b in zip(
+                                self.python_out_sig_sub_name[key],
+                                outputs[key][0],
+                            )
+                        }
                 fetch_list = getattr(self, "fetch_list", [])
 
                 # cast outputs
