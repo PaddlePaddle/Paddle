@@ -1388,7 +1388,8 @@ class OpTest(unittest.TestCase):
                 fetch_list = getattr(self, "fetch_list", [])
                 # if the fetch_list is customized by user, we use it directly.
                 # if not, fill the fetch_list by the user configured outputs in test.
-
+                # filter ret_tuple
+                ret_to_check = []
                 if len(fetch_list) == 0:
                     if isinstance(ret_tuple, (tuple, list)):
                         assert len(ret_tuple) == len(outputs_sig)
@@ -1398,14 +1399,17 @@ class OpTest(unittest.TestCase):
                             if not self._need_fetch(sig_name):
                                 continue
                             if isinstance(var, list):
+                                ret_to_check.append(var)
                                 for v in var:
                                     fetch_list.append(v)
                             else:
+                                ret_to_check.append(var)
                                 fetch_list.append(var)
                     elif isinstance(
                         ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
+                        ret_to_check = ret_tuple
                     elif ret_tuple is None:
                         pass
                     else:
@@ -1418,17 +1422,17 @@ class OpTest(unittest.TestCase):
                 outs = executor.run(
                     ir_program, feed=feed, fetch_list=[fetch_list]
                 )
-
-                if paddle.utils.is_sequence(
-                    ret_tuple
-                ) and paddle.utils.is_sequence(outs):
-                    outs = paddle.utils.pack_sequence_as(ret_tuple, outs)
-
                 outputs_sig = [
                     sig_name
                     for sig_name in outputs_sig
                     if self._need_fetch(sig_name)
                 ]
+
+                if paddle.utils.is_sequence(
+                    ret_to_check
+                ) and paddle.utils.is_sequence(outs):
+                    outs = paddle.utils.pack_sequence_as(ret_to_check, outs)
+
                 result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
@@ -2459,6 +2463,23 @@ class OpTest(unittest.TestCase):
 
                 raise AssertionError("No pir output named " + target_name)
 
+            def find_pir_expect(self, target_name, dygraph_outs, place):
+                for name in dygraph_outs:
+                    if name == target_name:
+                        return dygraph_outs[name][0]
+                    var_list = dygraph_outs[name]
+                    for i, var in enumerate(var_list):
+                        if isinstance(var, list):
+                            for tensor in var:
+                                if tensor.name == target_name:
+                                    return tensor
+                        elif (
+                            isinstance(var, paddle.Tensor)
+                            and var.name == target_name
+                        ):
+                            return dygraph_outs[name][i]
+                raise AssertionError("No pir ref_output named " + target_name)
+
             def find_actual_value(self, target_name):
                 with paddle.pir.core.program_guard(
                     paddle.pir.core.default_main_program()
@@ -2473,7 +2494,7 @@ class OpTest(unittest.TestCase):
                 with paddle.pir.core.program_guard(
                     paddle.pir.core.default_main_program()
                 ):
-                    expect = find_imperative_expect(
+                    expect = self.find_pir_expect(
                         target_name, self.ref_outputs, place
                     )
                     expect_t = np.array(expect)
