@@ -47,8 +47,8 @@ class TestFusedLinearParamGradAddSPMDRule(unittest.TestCase):
         infered_dist_attrs = rule.infer_forward(
             input, out_grad, dweight, dbais, 0, True
         )
-        self.assertEqual(infered_dist_attrs[1][0], [-1, 1])
-        self.assertEqual(infered_dist_attrs[1][1], [1])
+        self.assertEqual(infered_dist_attrs[1][0].dims_mapping, [-1, 1])
+        self.assertEqual(infered_dist_attrs[1][1].dims_mapping, [1])
 
         # test mp split by row
         input = self.build_inputs([0, -1, 1], [2, 512, 1024])
@@ -58,8 +58,8 @@ class TestFusedLinearParamGradAddSPMDRule(unittest.TestCase):
         infered_dist_attrs = rule.infer_forward(
             input, out_grad, dweight, dbais, 0, True
         )
-        self.assertEqual(infered_dist_attrs[1][0], [1, -1])
-        self.assertEqual(infered_dist_attrs[1][1], [-1])
+        self.assertEqual(infered_dist_attrs[1][0].dims_mapping, [1, -1])
+        self.assertEqual(infered_dist_attrs[1][1].dims_mapping, [-1])
 
 
 if __name__ == "__main__":
