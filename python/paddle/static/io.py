@@ -103,7 +103,7 @@ def _get_valid_program(program=None):
         program = program._program
         if program is None:
             raise TypeError(
-                "The type of input program is invalid, expected tyep is Program, but received None"
+                "The type of input program is invalid, expected type is Program, but received None"
             )
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended."
@@ -1135,6 +1135,8 @@ def save_vars(
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
+        # flush to root_scope
+        executor.flush()
         executor.run(save_program)
         if save_to_memory:
             return global_scope().find_var(params_var_name).get_bytes()

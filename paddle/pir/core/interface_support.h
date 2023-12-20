@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_value.h"
 
 namespace pir {
@@ -23,10 +23,9 @@ template <typename ConcreteT, typename... Args>
 class ConstructInterfacesOrTraits {
  public:
   /// Construct method for interfaces.
-  static InterfaceValue *interface(InterfaceValue *p_interface) {
+  static void interface(InterfaceSet &interface_set) {  // NOLINT
     (void)std::initializer_list<int>{
-        0, (PlacementConstrctInterface<Args>(p_interface), 0)...};
-    return p_interface;
+        0, (ConstrctInterface<Args>(interface_set), 0)...};
   }
 
   /// Construct method for traits.
@@ -39,11 +38,14 @@ class ConstructInterfacesOrTraits {
  private:
   /// Placement new interface.
   template <typename T>
-  static void PlacementConstrctInterface(
-      InterfaceValue *&p_interface) {  // NOLINT
-    p_interface->swap(InterfaceValue::get<ConcreteT, T>());
-    VLOG(6) << "New a interface: id[" << p_interface->type_id() << "].";
-    ++p_interface;
+  static void ConstrctInterface(InterfaceSet &interface_set) {  // NOLINT
+    InterfaceValue val = InterfaceValue::
+        Get<ConcreteT, T, typename T::template Model<ConcreteT>>();
+    auto suceess = interface_set.insert(std::move(val)).second;
+    IR_ENFORCE(suceess,
+               "Interface: id[%u] is already registered. inset failed",
+               TypeId::get<T>());
+    VLOG(6) << "New a interface: id[" << TypeId::get<T>() << "].";
   }
 
   /// Placement new trait.
@@ -57,12 +59,11 @@ class ConstructInterfacesOrTraits {
 
 /// Specialized for tuple type.
 template <typename ConcreteT, typename... Args>
-class ConstructInterfacesOrTraits<ConcreteT, std::tuple<Args...>> {
+class ConstructInterfacesOrTraits<ConcreteT, std::tuple<Args...>> {  // NOLINT
  public:
   /// Construct method for interfaces.
-  static InterfaceValue *interface(InterfaceValue *p_interface) {
-    return ConstructInterfacesOrTraits<ConcreteT, Args...>::interface(
-        p_interface);
+  static void interface(InterfaceSet &interface_set) {  // NOLINT
+    ConstructInterfacesOrTraits<ConcreteT, Args...>::interface(interface_set);
   }
 
   /// Construct method for traits.
@@ -71,38 +72,12 @@ class ConstructInterfacesOrTraits<ConcreteT, std::tuple<Args...>> {
   }
 };
 
-template <typename T>
-void *LookUp(const TypeId &interface_id,
-             const uint32_t num_interfaces,
-             const uint32_t num_traits,
-             const T *t) {
-  if (num_interfaces > 0) {
-    const InterfaceValue *p_first_interface =
-        reinterpret_cast<const InterfaceValue *>(
-            reinterpret_cast<const char *>(t) - sizeof(TypeId) * num_traits -
-            sizeof(InterfaceValue) * num_interfaces);
-    size_t left = 0, right = num_interfaces;
-    while (left < right) {
-      size_t mid = (left + right) / 2;
-      if ((p_first_interface + mid)->type_id() == interface_id) {
-        return (p_first_interface + mid)->model();
-      } else if ((p_first_interface + mid)->type_id() < interface_id) {
-        left = mid + 1;
-      } else {
-        right = mid;
-      }
-    }
-  }
-  return nullptr;
-}
-
 template <typename ConcreteT, typename InterfaceList>
-std::vector<InterfaceValue> GetInterfaceMap() {
-  constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
-  std::vector<InterfaceValue> interfaces_map(interfaces_num);
+InterfaceSet GetInterfaceSet() {
+  InterfaceSet interfaces_set;
   ConstructInterfacesOrTraits<ConcreteT, InterfaceList>::interface(
-      interfaces_map.data());
-  return interfaces_map;
+      interfaces_set);
+  return interfaces_set;
 }
 
 template <typename ConcreteT, typename TraitList>

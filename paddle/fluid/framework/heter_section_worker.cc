@@ -39,7 +39,7 @@ void SetMicroId(paddle::framework::Scope* scope,
           "the type of microbatch_id  should be phi::DenseTensor"));
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   std::vector<int> dims{1};
-  tensor->Resize(phi::make_ddim(dims));
+  tensor->Resize(common::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
       place, framework::TransToPhiDataType(framework::proto::VarType::FP32));
   if (platform::is_gpu_place(place)) {

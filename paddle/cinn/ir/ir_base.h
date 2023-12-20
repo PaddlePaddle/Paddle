@@ -29,12 +29,12 @@
 namespace cinn {
 
 namespace ir {
-using common::BFloat16;
-using common::Float;
-using common::Float16;
-using common::Int;
-using common::Type;
-using common::type_of;
+using cinn::common::BFloat16;
+using cinn::common::Float;
+using cinn::common::Float16;
+using cinn::common::Int;
+using cinn::common::Type;
+using cinn::common::type_of;
 
 class Module;
 class IRVisitor;
@@ -144,7 +144,7 @@ struct Expr;
 /**
  * The base of all the nodes in the IR.
  */
-class IrNode : public common::Object {
+class IrNode : public cinn::common::Object {
  public:
   //! The operands of this operator.
   std::vector<Expr> operands;
@@ -177,7 +177,7 @@ class IrNode : public common::Object {
 /**
  * A handle to store any IRNode.
  */
-class IrNodeRef : public common::Shared<IrNode> {
+class IrNodeRef : public cinn::common::Shared<IrNode> {
  public:
   IrNodeRef() = default;
   IrNodeRef(const IrNodeRef& other) : Shared(other.p_) {}

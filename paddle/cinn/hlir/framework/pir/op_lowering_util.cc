@@ -338,6 +338,7 @@ std::vector<::pir::Operation*> BFSTopologicalOrderWithPriority(
 
 std::unordered_set<::pir::Operation*> GetMasters(
     ::pir::Operation* op,
+    PrettyNamer* pretty_name,
     const std::unordered_set<::pir::Operation*>& ops_inline,
     const std::unordered_set<::pir::Operation*>& ops_set) {
   // find consumer
@@ -375,6 +376,7 @@ bool IsConstOp(const ::pir::Operation* op) {
 
 bool CanbeInline(::pir::Operation* op,
                  ::pir::Operation* reducer,
+                 PrettyNamer* pretty_name,
                  const std::vector<::pir::Operation*> consumers,
                  const std::unordered_set<::pir::Operation*> masters,
                  const GroupPtr& group,
@@ -428,6 +430,7 @@ bool CanbeInline(::pir::Operation* op,
 
 ::pir::Operation* GetMasterToComputeAt(
     ::pir::Operation* op,
+    PrettyNamer* pretty_name,
     const std::vector<::pir::Operation*>& ops_in_order,
     const std::unordered_set<::pir::Operation*>& ops_inline,
     const std::unordered_set<::pir::Operation*>& ops_set,
@@ -519,7 +522,7 @@ bool CanbeInline(::pir::Operation* op,
 void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
                            const std::string& block_name,
                            const std::vector<int>& axes,
-                           const common::Target& target,
+                           const cinn::common::Target& target,
                            const bool just_reorder = false) {
   // reorder none-last reduce axis to last.
   // like: shape = [16,16,16,16,16],axes = [1,3] -> new order = [0, 2, 4, 1, 3].
@@ -570,11 +573,11 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
                               const std::string& block_name,
                               const std::vector<int>& inshape,
                               const std::vector<int>& axes,
-                              const common::Target& target) {
+                              const cinn::common::Target& target) {
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < inshape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {
@@ -699,7 +702,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
                                  const std::string& block_name,
                                  const std::vector<int>& inshape,
                                  const std::vector<int>& axes,
-                                 const common::Target& target) {
+                                 const cinn::common::Target& target) {
   int tail = 0;
   bool bound = true;
   auto shape = pe::GetFirstStepReduceShape(inshape, axes, bound, tail);
@@ -927,11 +930,14 @@ void MergeReduceToReduce(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
     ::pir::Operation* master,
+    PrettyNamer* pretty_name,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   VLOG(3) << "start to MergeReduceToReduce...";
-  auto op_out_name = CompatibleInfo::ValueName(op->result(0));
-  auto master_out_name = CompatibleInfo::ValueName(master->result(0));
+  auto op_out_name =
+      pretty_name->GetOrNew(op->result(0), CompatibleInfo::kNamePrefix);
+  auto master_out_name =
+      pretty_name->GetOrNew(master->result(0), CompatibleInfo::kNamePrefix);
   auto shape = CompatibleInfo::ValueShape(op->operand_source(0));
 
   std::vector<int> axes = GetReducerDimAttr(master);
@@ -1114,6 +1120,7 @@ void MergeReduceToReduce(
 void InsertSyncThread(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
+    PrettyNamer* pretty_name,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   auto shape = CompatibleInfo::ValueShape(op->operand_source(0));
@@ -1127,7 +1134,8 @@ void InsertSyncThread(
     return;
   }
 
-  auto op_out_name = CompatibleInfo::ValueName(op->result(0));
+  auto op_out_name =
+      pretty_name->GetOrNew(op->result(0), CompatibleInfo::kNamePrefix);
   std::string post = "";
   for (int idx = 0;; ++idx) {
     if (!tmp_tensor_info.count(op_out_name + post)) {
@@ -1152,16 +1160,20 @@ void MergeReduceLoop(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
     ::pir::Operation* master,
+    PrettyNamer* pretty_name,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   VLOG(3) << "start to MergeReduceLoop...";
   if (CompatibleInfo::OpKind(*master) == kReduction && op != master) {
-    MergeReduceToReduce(ir_sch, op, master, tensor_map, tmp_tensor_info);
+    MergeReduceToReduce(
+        ir_sch, op, master, pretty_name, tensor_map, tmp_tensor_info);
     return;
   }
 
-  auto op_out_name = CompatibleInfo::ValueName(op->result(0));
-  auto master_out_name = CompatibleInfo::ValueName(master->result(0));
+  auto op_out_name =
+      pretty_name->GetOrNew(op->result(0), CompatibleInfo::kNamePrefix);
+  auto master_out_name =
+      pretty_name->GetOrNew(master->result(0), CompatibleInfo::kNamePrefix);
   int min_index_loop = INT_MAX;
   std::string post_ = "", post__ = "_0";
   for (int idx = 0;; ++idx) {
@@ -1189,7 +1201,7 @@ void MergeReduceLoop(
     post_ = "_" + std::to_string(idx);
     post__ = "_" + std::to_string(idx + 1);
   }
-  InsertSyncThread(ir_sch, op, tensor_map, tmp_tensor_info);
+  InsertSyncThread(ir_sch, op, pretty_name, tensor_map, tmp_tensor_info);
 
   if (op == master) return;
   auto node_loops = ir_sch.GetLoops(op_out_name);
@@ -1227,23 +1239,27 @@ void LoopComputeAt(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
     ::pir::Operation* master,
+    PrettyNamer* pretty_name,
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
-  auto op_out_name = CompatibleInfo::ValueName(op->result(0));
+  auto op_out_name =
+      pretty_name->GetOrNew(op->result(0), CompatibleInfo::kNamePrefix);
   if (!group->output_ops.count(op)) {
     auto block = ir_sch.GetBlock(op_out_name);
     ir_sch.SetBuffer(block, "local");
   }
 
   if (CompatibleInfo::OpKind(*op) == framework::kReduction) {
-    MergeReduceLoop(ir_sch, op, master, tensor_map, tmp_tensor_info);
+    MergeReduceLoop(
+        ir_sch, op, master, pretty_name, tensor_map, tmp_tensor_info);
     return;
   }
 
   if (op == master) return;
   auto master_out = master->result(0);
-  auto master_out_name = CompatibleInfo::ValueName(master_out);
+  auto master_out_name =
+      pretty_name->GetOrNew(master_out, CompatibleInfo::kNamePrefix);
 
   auto node_loops = ir_sch.GetLoops(op_out_name);
   auto master_loops = ir_sch.GetLoops(master_out_name);
@@ -1285,6 +1301,7 @@ void LoopAssignReduce(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
     ::pir::Operation* reducer,
+    PrettyNamer* pretty_name,
     const Target& target,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
@@ -1294,8 +1311,10 @@ void LoopAssignReduce(
   }
   ::pir::Value op_data = op->result(0);
   ::pir::Value reducer_data = reducer->result(0);
-  std::string op_data_name = CompatibleInfo::ValueName(op_data);
-  std::string reducer_data_name = CompatibleInfo::ValueName(reducer_data);
+  std::string op_data_name =
+      pretty_name->GetOrNew(op_data, CompatibleInfo::kNamePrefix);
+  std::string reducer_data_name =
+      pretty_name->GetOrNew(reducer_data, CompatibleInfo::kNamePrefix);
 
   // flatten loops.
   auto loops = ir_sch.GetLoops(op_data_name);
@@ -1493,10 +1512,12 @@ void LoopAssignReduce(
 }
 
 std::unordered_map<std::string, ::pir::Value> GetOutValueSet(
+    PrettyNamer* pretty_name,
     const std::unordered_set<::pir::Operation*>& ops_set) {
   std::unordered_map<std::string, ::pir::Value> out_value_set;
   for (auto* op : ops_set) {
-    out_value_set[CompatibleInfo::ValueName(op->result(0))] = op->result(0);
+    out_value_set[pretty_name->GetOrNew(
+        op->result(0), CompatibleInfo::kNamePrefix)] = op->result(0);
   }
   return out_value_set;
 }
@@ -1504,11 +1525,12 @@ std::unordered_map<std::string, ::pir::Value> GetOutValueSet(
 void SyncThreadWithShared(
     ir::IRSchedule& ir_sch,  // NOLINT
     const GroupPtr& group,
+    PrettyNamer* pretty_name,
     const std::unordered_set<::pir::Operation*>& ops_inline,
     const std::unordered_set<::pir::Operation*>& ops_set,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
   auto exprs_inorder = ir_sch.GetAllBlocks();
-  auto op_out_set = GetOutValueSet(ops_set);
+  auto op_out_set = GetOutValueSet(pretty_name, ops_set);
 
   std::unordered_set<std::string> sync_mark;
   auto check_sync_mark = [&](const int start, const std::string& m_id) {
@@ -1546,7 +1568,7 @@ void SyncThreadWithShared(
     auto* op = op_data.dyn_cast<::pir::OpResult>().owner();
     auto op_shape = CompatibleInfo::ValueShape(op_data);
 
-    auto masters = GetMasters(op, ops_inline, ops_set);
+    auto masters = GetMasters(op, pretty_name, ops_inline, ops_set);
     if (masters.empty()) {
       continue;
     }
@@ -1561,7 +1583,8 @@ void SyncThreadWithShared(
 
       auto op_shape_size = CompatibleInfo::ShapeProduct(op_shape);
       auto master_shape_size = CompatibleInfo::ShapeProduct(master_shape);
-      std::string master_data_name = CompatibleInfo::ValueName(master_data);
+      std::string master_data_name =
+          pretty_name->GetOrNew(master_data, CompatibleInfo::kNamePrefix);
       if (op_shape_size != master_shape_size) {
         if (check_sync_mark(idx, master_data_name)) {
           auto loops = ir_sch.GetLoops(master_data_name);
@@ -1573,7 +1596,8 @@ void SyncThreadWithShared(
     }
     if (do_set_buffer_to_shared &&
         group->output_ops.find(op) == group->output_ops.end()) {
-      auto block = ir_sch.GetBlock(CompatibleInfo::ValueName(op_data));
+      auto block = ir_sch.GetBlock(
+          pretty_name->GetOrNew(op_data, CompatibleInfo::kNamePrefix));
       ir_sch.SetBuffer(block, "shared");
     }
   }

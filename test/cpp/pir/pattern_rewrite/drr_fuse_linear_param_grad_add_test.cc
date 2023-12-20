@@ -155,8 +155,8 @@ void BuildProgram3(pir::Builder &builder) {  // NOLINT
 }
 
 bool verify_pass(const pir::Program &program) {
-  for (auto op : *(program.block())) {
-    if (op->name() == paddle::dialect::FusedLinearParamGradAddOp::name()) {
+  for (auto &op : *(program.block())) {
+    if (op.name() == paddle::dialect::FusedLinearParamGradAddOp::name()) {
       return true;
     }
   }

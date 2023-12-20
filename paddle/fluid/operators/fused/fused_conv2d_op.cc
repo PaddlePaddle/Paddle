@@ -63,11 +63,6 @@ TODO: Documentation of conv2d op.
              "to which convolution output will be added."
              "Used with fuse_residual_connection fusion.")
         .AsDispensable();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
     AddAttr<std::string>("fuse_activation",
                          "(string, default \"\") Only used in mkldnn kernel")
         .SetDefault("");
@@ -80,8 +75,6 @@ TODO: Documentation of conv2d op.
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn", "(bool, default false) Used in mkldnn kernel")
-        .SetDefault(true);
     AddComment(R"DOC(
 Convolution Operator.
 

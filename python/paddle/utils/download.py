@@ -21,6 +21,7 @@ import sys
 import tarfile
 import time
 import zipfile
+from urllib.parse import urlparse
 
 import httpx
 
@@ -196,22 +197,31 @@ def _get_download(url, fullname):
         return False
 
 
-def _wget_download(url, fullname):
-    # using wget to download url
-    tmp_fullname = fullname + "_tmp"
-    # –user-agent
-    command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
-    subprc = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    _ = subprc.communicate()
-
-    if subprc.returncode != 0:
-        raise RuntimeError(
-            f'{command} failed. Please make sure `wget` is installed or {url} exists'
+def _wget_download(url: str, fullname: str):
+    try:
+        assert urlparse(url).scheme in (
+            'http',
+            'https',
+        ), 'Only support https and http url'
+        # using wget to download url
+        tmp_fullname = fullname + "_tmp"
+        # –user-agent
+        command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
+        subprc = subprocess.Popen(
+            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
+        _ = subprc.communicate()
 
-    shutil.move(tmp_fullname, fullname)
+        if subprc.returncode != 0:
+            raise RuntimeError(
+                f'{command} failed. Please make sure `wget` is installed or {url} exists'
+            )
+
+        shutil.move(tmp_fullname, fullname)
+
+    except Exception as e:  # requests.exceptions.ConnectionError
+        logger.info(f"Downloading {url} failed with exception {str(e)}")
+        return False
 
     return fullname
 

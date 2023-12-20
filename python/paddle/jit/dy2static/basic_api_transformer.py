@@ -156,22 +156,35 @@ class NameloadJstTransformer(BaseTransformer):
         node.func = self.visit(node.func)
         return node
 
-    def visit_Attribute(self, node):
-        assert isinstance(node, gast.Attribute)
-        assert isinstance(node.attr, str)
-        if utils.ast_to_source_code(node).startswith("_jst."):  # skip _jst.xxx
+    def create_visit_with_convert_load(self, node_type, skip_fn=None):
+        def visit(node):
+            assert isinstance(node, node_type)
+            if skip_fn and skip_fn(node):
+                return node
+            self.generic_visit(node)
+            if isinstance(node.ctx, gast.Load):
+                node = self._surround_with_ld(node)
             return node
-        self.generic_visit(node)
-        if isinstance(node.ctx, gast.Load):
-            node = self._surround_with_ld(node)
-        return node
+
+        return visit
+
+    def visit_Attribute(self, node):
+        def skip_fn(node):
+            if utils.ast_to_source_code(node).startswith(
+                "_jst."
+            ):  # skip _jst.xxx
+                return True
+            return False
+
+        return self.create_visit_with_convert_load(gast.Attribute, skip_fn)(
+            node
+        )
+
+    def visit_Subscript(self, node):
+        return self.create_visit_with_convert_load(gast.Subscript)(node)
 
     def visit_Name(self, node):
-        assert isinstance(node, gast.Name)
-        self.generic_visit(node)
-        if isinstance(node.ctx, gast.Load):
-            node = self._surround_with_ld(node)
-        return node
+        return self.create_visit_with_convert_load(gast.Name)(node)
 
 
 class AttributeJstTransformer(BaseTransformer):

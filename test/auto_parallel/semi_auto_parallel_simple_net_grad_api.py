@@ -42,10 +42,7 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
         image, label = self.init_input_data()
         if shard_input:
             image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
-                ),
+                image, self._mesh, placements=[dist.Shard(0)]
             )
         out = layer(image)
 

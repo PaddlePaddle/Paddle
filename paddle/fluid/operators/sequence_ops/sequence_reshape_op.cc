@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 
 namespace paddle {
 namespace operators {

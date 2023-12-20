@@ -87,14 +87,6 @@ EquationGraphTopoWalker<VT, FT> GetSubgraph(
       VisitNextFunctions, VisitInputVariables, VisitOutputVariables);
 }
 
-inline List<Dim> MakeDims(std::size_t num_dims) {
-  List<Dim> ret{};
-  for (std::size_t i = 0; i < num_dims; ++i) {
-    ret->emplace_back(UniqueId::New());
-  }
-  return ret;
-}
-
 template <typename DoEachT>
 void IdentityConnect(const Index& out, const Index& in, const DoEachT& DoEach) {
   DoEach(Identity<tOut<Index>, tIn<Index>>{out, in});
@@ -151,18 +143,18 @@ inline void Equal(const Iterator& lhs,
 
 template <typename DoEachT>
 void GenerateDotEquation(const List<Iterator>& iterators,
-                         const List<Dim>& dims,
+                         const List<DimExpr>& dims,
                          const Index& index,
                          const DoEachT& DoEach) {
-  DoEach(IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>{
+  DoEach(IndexDot<List<DimExpr>, tOut<Index>, tIn<List<Iterator>>>{
       dims, index, iterators});
-  DoEach(IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>{
+  DoEach(IndexUnDot<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>>{
       dims, iterators, index});
 }
 
 template <typename DoEachT>
 Index MakeDot(const List<Iterator>& iterators,
-              const List<Dim>& dims,
+              const List<DimExpr>& dims,
               const DoEachT& DoEach) {
   Index ret{UniqueId::New()};
   GenerateDotEquation(iterators, dims, ret, DoEach);
@@ -170,7 +162,7 @@ Index MakeDot(const List<Iterator>& iterators,
 }
 
 inline Index MakeDot(const List<Iterator>& iterators,
-                     const List<Dim>& dims,
+                     const List<DimExpr>& dims,
                      Equations* equations) {
   return MakeDot(iterators, dims, [&](const auto& equation) {
     (*equations)->emplace_back(equation);
@@ -183,23 +175,6 @@ inline List<Iterator> MakeIterators(std::size_t num_iterators) {
     ret->emplace_back(UniqueId::New());
   }
   return ret;
-}
-
-template <typename DoEachT>
-List<Iterator> MakeUnDot(const Index& index,
-                         const List<Dim>& dims,
-                         const DoEachT& DoEach) {
-  List<Iterator> ret{};
-  GenerateDotEquation(ret, dims, index, DoEach);
-  return ret;
-}
-
-inline List<Iterator> MakeUnDot(const Index& index,
-                                const List<Dim>& dims,
-                                Equations* equations) {
-  return MakeUnDot(index, dims, [&](const auto& equation) {
-    (*equations)->emplace_back(equation);
-  });
 }
 
 }  // namespace cinn::adt

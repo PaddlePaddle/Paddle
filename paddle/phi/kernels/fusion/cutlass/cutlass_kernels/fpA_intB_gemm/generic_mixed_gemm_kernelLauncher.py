@@ -38,7 +38,7 @@ void generic_mixed_gemm_kernelLauncher_template<{T},
                                                 {Stages}>(
     const {T}* A,
     const {WeightType}* B,
-    const float* weight_scales,
+    const {T}* weight_scales,
     const {T}* biases,
     {T}* C,
     int m,
@@ -82,20 +82,29 @@ epilogue_tags = ["bias", "biasFtGelu", "biasReLU", "noBias"]
 
 WeightTypes = ["uint8_t", "cutlass::uint4b_t"]
 ThreadblockShapes = [
+    "cutlass::gemm::GemmShape<16, 128, 64>",
     "cutlass::gemm::GemmShape<32, 128, 64>",
     "cutlass::gemm::GemmShape<64, 128, 64>",
     "cutlass::gemm::GemmShape<128, 128, 64>",
-    "cutlass::gemm::GemmShape<256, 128, 64>",
     "cutlass::gemm::GemmShape<128, 256, 64>",
 ]
 WarpShapes = [
+    "cutlass::gemm::GemmShape<16, 32, 64>",
     "cutlass::gemm::GemmShape<32, 32, 64>",
-    "cutlass::gemm::GemmShape<64, 32, 64>",
-    "cutlass::gemm::GemmShape<128, 32, 64>",
+    "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
 ]
-StagesList = {70: [2], 75: [2], 80: [2, 3, 4]}
+
+ThreadblockShapes_sm70 = [
+    "cutlass::gemm::GemmShape<32, 128, 64>",
+    "cutlass::gemm::GemmShape<64, 128, 64>",
+]
+WarpShapes_sm70 = [
+    "cutlass::gemm::GemmShape<32, 32, 64>",
+    "cutlass::gemm::GemmShape<64, 64, 64>",
+]
+StagesList = {70: [2], 75: [2], 80: [2, 3, 4, 5]}
 
 ElementTypes = {"fp16": "half", "bf16": "__nv_bfloat16"}
 Archs = {
@@ -105,9 +114,9 @@ Archs = {
 }
 EpilogueTags = {
     "bias": "EpilogueOpBias",
-    "biasFtGelu": "EpilogueOpBiasFtGelu",
-    "biasReLU": "EpilogueOpBiasReLU",
     "noBias": "EpilogueOpNoBias",
+    # "biasFtGelu": "EpilogueOpBiasFtGelu",
+    # "biasReLU": "EpilogueOpBiasReLU",
 }
 
 
@@ -168,15 +177,20 @@ def generate_source_cu(
     element_type: str, arch: int, epilogue_tag: str, stages: int
 ):
     all_code = CommonHead
+    ThreadblockShapes_arch = ThreadblockShapes
+    WarpShapes_arch = WarpShapes
+    if arch < 80:
+        ThreadblockShapes_arch = ThreadblockShapes_sm70
+        WarpShapes_arch = WarpShapes_sm70
     for WeightType in WeightTypes:
-        for i in range(len(ThreadblockShapes)):
+        for i in range(len(ThreadblockShapes_arch)):
             value_dict = {
                 "T": ElementTypes[element_type],
                 "WeightType": WeightType,
                 "arch": Archs[arch],
                 "EpilogueTag": EpilogueTags[epilogue_tag],
-                "ThreadblockShape": ThreadblockShapes[i],
-                "WarpShape": WarpShapes[i],
+                "ThreadblockShape": ThreadblockShapes_arch[i],
+                "WarpShape": WarpShapes_arch[i],
                 "Stages": str(stages),
             }
             all_code += SubstituteTemplate(
@@ -190,7 +204,7 @@ if __name__ == "__main__":
     args = parse_args()
     archs = args.cuda_arch
     header_all = DefineHeader
-    header_name = "autogen/arch_define.h"
+    header_name = "autogen_tmp/arch_define.h"
     if archs:
         for arch in archs:
             define_line = "#define USE_FPAINTB_GEMM_WITH_SM%s\n" % str(arch)
@@ -203,7 +217,7 @@ if __name__ == "__main__":
             for arch in archs:
                 for epilogue_tag in EpilogueTags.keys():
                     for stages in StagesList[arch]:
-                        file_name = "autogen/generic_mixed_gemm_kernelLauncher_{}_sm{}_stages{}_{}.cu".format(
+                        file_name = "autogen_tmp/generic_mixed_gemm_kernelLauncher_{}_sm{}_stages{}_{}.cu".format(
                             element_type, arch, stages, epilogue_tag
                         )
                         all_code = generate_source_cu(

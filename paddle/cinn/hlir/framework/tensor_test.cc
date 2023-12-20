@@ -24,7 +24,7 @@ TEST(Tensor, basic) {
   _Tensor_ tensor;
   tensor.Resize(Shape{{3, 2}});
 
-  auto* data = tensor.mutable_data<float>(common::DefaultHostTarget());
+  auto* data = tensor.mutable_data<float>(cinn::common::DefaultHostTarget());
 
   for (int i = 0; i < tensor.shape().numel(); i++) {
     data[i] = i;

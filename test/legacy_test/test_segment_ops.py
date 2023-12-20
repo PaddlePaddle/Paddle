@@ -127,7 +127,7 @@ class TestSegmentOps(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
     def convert_bf16(self):
         if self.dtype == np.uint16:
@@ -277,7 +277,7 @@ class TestSegmentSumBF16Op(TestSegmentOps):
         self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ["X"], "Out")
+        self.check_grad_with_place(self.place, ["X"], "Out", check_pir=True)
 
 
 @unittest.skipIf(
@@ -300,6 +300,7 @@ class TestSegmentMaxBF16Op(TestSegmentMax):
             ["X"],
             "Out",
             user_defined_grads=[self.gradient],
+            check_pir=True,
         )
 
 
@@ -323,6 +324,7 @@ class TestSegmentMinBF16Op(TestSegmentMin):
             ["X"],
             "Out",
             user_defined_grads=[self.gradient],
+            check_pir=True,
         )
 
 
@@ -341,7 +343,7 @@ class TestSegmentMeanBF16Op(TestSegmentMean):
         self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ["X"], "Out")
+        self.check_grad_with_place(self.place, ["X"], "Out", check_pir=True)
 
 
 class API_SegmentOpsTest(unittest.TestCase):

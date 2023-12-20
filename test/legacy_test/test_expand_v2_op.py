@@ -375,6 +375,7 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [2, 3])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -406,6 +407,7 @@ class TestExpandTripleGradCheck(unittest.TestCase):
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [2, 3])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

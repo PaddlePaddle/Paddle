@@ -35,9 +35,9 @@ TEST(AutoUnroll, Init) {
       {M, N}, [&](Var i, Var j) { return A(i, j) * B(i, j); }, "C");
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   ast_gen_ius::TensorGroup tensor_group({C});
   auto funcs =
@@ -65,9 +65,9 @@ TEST(AutoUnroll, UnrollableApply) {
       "C");
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   auto stages = CreateStages({C});
   auto funcs = cinn::lang::LowerVec(

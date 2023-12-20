@@ -319,34 +319,35 @@ class TestDistMPTraining(unittest.TestCase):
     def test_sharding_adam(self):
         if not g_shard_split_param:
             sharded_accumulators = {
-                'linear_0.w_0_moment1_0',
-                'linear_1.b_0_moment1_0',
-                'linear_2.b_0_moment1_0',
-                'embedding_0.w_0_moment1_0',
-                'linear_0.w_0_moment2_0',
-                'linear_1.b_0_moment2_0',
-                'linear_2.b_0_moment2_0',
-                'embedding_0.w_0_moment2_0',
-                'linear_0.w_0_beta1_pow_acc_0',
-                'linear_1.b_0_beta1_pow_acc_0',
-                'linear_2.b_0_beta1_pow_acc_0',
-                'embedding_0.w_0_beta1_pow_acc_0',
-                'linear_0.w_0_beta2_pow_acc_0',
-                'linear_1.b_0_beta2_pow_acc_0',
-                'linear_2.b_0_beta2_pow_acc_0',
                 'embedding_0.w_0_beta2_pow_acc_0',
+                'linear_1.b_0_moment2_0',
+                'linear_0.b_0_beta1_pow_acc_0',
+                'linear_0.b_0_beta2_pow_acc_0',
+                'linear_1.b_0_moment1_0',
+                'linear_2.b_0_beta2_pow_acc_0',
+                'linear_2.b_0_moment2_0',
+                'embedding_0.w_0_moment1_0',
+                'embedding_0.w_0_beta1_pow_acc_0',
+                'linear_0.b_0_moment2_0',
+                'linear_2.b_0_moment1_0',
+                'linear_0.b_0_moment1_0',
+                'linear_1.b_0_beta2_pow_acc_0',
+                'linear_1.b_0_beta1_pow_acc_0',
+                'embedding_0.w_0_moment2_0',
+                'linear_2.b_0_beta1_pow_acc_0',
             }
             self.sharding_model(
-                Optimizer="adam", sharded_accumulators=sharded_accumulators
+                Optimizer="adam",
+                sharded_accumulators=sharded_accumulators,
             )
 
     def test_sharding_momentum(self):
         if not g_shard_split_param:
             sharded_accumulators = {
-                'linear_6.w_0_velocity_0',
                 'linear_7.b_0_velocity_0',
-                'linear_8.b_0_velocity_0',
+                'linear_6.b_0_velocity_0',
                 'embedding_2.w_0_velocity_0',
+                'linear_8.b_0_velocity_0',
             }
             self.sharding_model(
                 Optimizer="Momentum", sharded_accumulators=sharded_accumulators
@@ -354,9 +355,9 @@ class TestDistMPTraining(unittest.TestCase):
 
     def test_sharding_momentum_amp(self):
         sharded_accumulators = {
-            'linear_12.w_0_velocity_0',
-            'linear_13.b_0_velocity_0',
             'linear_14.b_0_velocity_0',
+            'linear_13.b_0_velocity_0',
+            'linear_12.b_0_velocity_0',
             'embedding_4.w_0_velocity_0',
         }
         self.sharding_model(

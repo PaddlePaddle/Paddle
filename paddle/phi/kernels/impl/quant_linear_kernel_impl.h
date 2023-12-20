@@ -37,7 +37,7 @@ void QuantLinearKernel(const Context& dev_ctx,
 
   auto input_dims = x.dims();
   std::vector<int64_t> output_dims;
-  auto in_mat_dims = phi::flatten_to_2d(input_dims, in_num_col_dims);
+  auto in_mat_dims = common::flatten_to_2d(input_dims, in_num_col_dims);
   auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
   auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
   PADDLE_ENFORCE_EQ(
@@ -51,7 +51,7 @@ void QuantLinearKernel(const Context& dev_ctx,
           in_mat_dims[1],
           in_mat_dims,
           w_dims0,
-          phi::make_ddim({w_dims0, w_dims1})));
+          common::make_ddim({w_dims0, w_dims1})));
 
   output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
   for (int i = 0; i < in_num_col_dims; ++i) {
@@ -59,11 +59,11 @@ void QuantLinearKernel(const Context& dev_ctx,
   }
   output_dims.push_back(w_dims1);
 
-  y->Resize(phi::make_ddim(output_dims));
+  y->Resize(common::make_ddim(output_dims));
   y->set_lod(x.lod());
 
   auto out_dims = y->dims();
-  int M = phi::product(out_dims) / w_dims1;
+  int M = common::product(out_dims) / w_dims1;
 
   const T* input_data = x.data<T>();
   auto* output_data = dev_ctx.template Alloc<T>(y, y->numel() * sizeof(T));
@@ -76,6 +76,10 @@ void QuantLinearKernel(const Context& dev_ctx,
           "The weight's datatype is expected to be int8 when use quant. But "
           "received weight's datatype is %d",
           static_cast<int>(w.dtype())));
+#ifdef PADDLE_WITH_HIP
+  PADDLE_THROW(
+      phi::errors::Unimplemented("FCInt8Functor not surpport for rocm"));
+#else
   phi::funcs::FCInt8Functor<Context, T> fc;
   fc(dev_ctx,
      M,
@@ -92,6 +96,7 @@ void QuantLinearKernel(const Context& dev_ctx,
      bias_data,
      with_relu,
      padding_weights);
+#endif
   return;
 }
 

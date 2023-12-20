@@ -104,8 +104,6 @@ static void trt_ernie(bool with_fp16, std::vector<float> result) {
 
   SetConfig(&config, model_dir, true /* use_gpu */);
 
-  config.SwitchUseFeedFetchOps(false);
-
   int batch = 1;
   int min_seq_len = 1;
   int max_seq_len = 128;

@@ -57,9 +57,9 @@ class TestMeasurer : public ::testing::Test {
 
   void SetUp() override {
 #ifdef CINN_WITH_CUDA
-    Target target = common::DefaultNVGPUTarget();
+    Target target = cinn::common::DefaultNVGPUTarget();
 #else
-    Target target = common::DefaultHostTarget();
+    Target target = cinn::common::DefaultHostTarget();
 #endif
     std::unordered_set<std::string> fetch_ids;
     auto program = CreateAddReluProgram();
@@ -70,7 +70,7 @@ class TestMeasurer : public ::testing::Test {
     TaskCreator task_creator;
     tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
     const auto& dtype_dict =
-        graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+        graph->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
             "inferdtype");
     const auto& shape_dict = graph->GetAttrs<
         absl::flat_hash_map<std::string, hlir::framework::shape_t>>(

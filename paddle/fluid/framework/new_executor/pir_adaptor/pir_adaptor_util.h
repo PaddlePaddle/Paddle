@@ -43,11 +43,11 @@
 namespace paddle {
 namespace framework {
 
-class CondInstruction;
+class IfInstruction;
 class WhileInstruction;
 class ValueExecutionInfo {
  public:
-  friend class CondInstruction;
+  friend class IfInstruction;
   friend class WhileInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
@@ -65,6 +65,8 @@ class ValueExecutionInfo {
   int GetIdByName(const std::string& name) const;
 
   std::string GetNameById(int id) const;
+
+  Variable* GetVarByValue(pir::Value value) const;
 
   const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 
@@ -122,9 +124,19 @@ inline bool IsInvalid(pir::Value value) {
   return true;
 }
 
+Variable* CreateVar(pir::Value value,
+                    const std::string& var_name_prefix,
+                    bool force_persisable,
+                    ValueExecutionInfo* value_exe_info);
+
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
                 ValueExecutionInfo* value_exe_info = nullptr);
+
+void DeepCopyVariable(const Variable* src_var,
+                      Variable* dst_var,
+                      ValueExecutionInfo* value_exe_info,
+                      uint32_t stack_size);
 
 void BuildRuntimeContext(pir::Operation* op,
                          const ValueExecutionInfo& value_exec_info,
@@ -208,12 +220,15 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackInputs(inputs);
+    } else if (var->IsType<phi::SelectedRows>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::SelectedRows>());
+      ctx->EmplaceBackInput(InType(tensor_in));
     } else {
       PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
                                               var->Type()));
     }
   }
-
+  VLOG(8) << "EmplaceBackInput done";
   // EmplaceBackAttributes
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
@@ -370,6 +385,25 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackAttr(vec_res);
+
+    } else if (attr_type_name == "pir::ArrayAttribute<pir::StrAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      std::vector<std::string> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<pir::StrAttribute>(),
+            true,
+            phi::errors::PreconditionNotMet(
+                "Element in array list MUST be pir::StrAttribute "));
+
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[i].dyn_cast<pir::StrAttribute>().AsString());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
+
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
       ctx->EmplaceBackAttr(
           attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
@@ -382,6 +416,7 @@ void BuildPhiContext(pir::Operation* op,
     }
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
+  VLOG(8) << "EmplaceBackBackAttributes done";
 
   // EmplaceBackOutputs
   VLOG(8) << "ctx->EmplaceBackOutput: ";
@@ -448,6 +483,7 @@ void BuildPhiContext(pir::Operation* op,
           phi::errors::Unimplemented("only support DenseTensor and vector "));
     }
   }
+  VLOG(8) << "EmplaceBackOutputs done";
 
   VLOG(6) << "Done build phi context";
 }

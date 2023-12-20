@@ -72,15 +72,21 @@ class MLPLayer(nn.Layer):
             process_mesh1,
             [["y", None, None]],
             [[None, "x", None]],
+            chunk_id=0,
         )
         linear0_out = linear0(input)
 
-        gelu = auto.shard_op(F.gelu, process_mesh1, [["y", "x", None], None])
+        gelu = auto.shard_op(
+            F.gelu, process_mesh1, [["y", "x", None], None], chunk_id=0
+        )
         gelu_out = gelu(linear0_out, approximate=True)
 
         auto.shard_tensor(self.linear1.weight, shard_spec=["y", None])
         linear1 = auto.shard_op(
-            self.linear1, process_mesh1[1], out_shard_specs=[["y", None, None]]
+            self.linear1,
+            process_mesh1[1],
+            out_shard_specs=[["y", None, None]],
+            chunk_id=1,
         )
         linear1_out = linear1(gelu_out)
 
@@ -181,6 +187,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(dist_op.dist_attr.process_mesh, process_mesh1)
         self.assertEqual(dist_op.dist_attr.impl_type, "default")
         self.assertEqual(dist_op.dist_attr.impl_idx, 0)
+        self.assertEqual(dist_op.dist_attr.chunk_id, 0)
         self.assertTrue(dist_op.dist_attr.is_annotated("process_mesh"))
         tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(input.name)
         self.assertEqual(tensor_dist_attr.process_mesh, process_mesh1)
@@ -192,6 +199,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(dist_op.dist_attr.process_mesh, process_mesh1)
         self.assertEqual(dist_op.dist_attr.impl_type, "default")
         self.assertEqual(dist_op.dist_attr.impl_idx, 0)
+        self.assertEqual(dist_op.dist_attr.chunk_id, 0)
         tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(
             linear0_out.name
         )
@@ -205,6 +213,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(dist_op.dist_attr.process_mesh, process_mesh1)
         self.assertEqual(dist_op.dist_attr.impl_type, "default")
         self.assertEqual(dist_op.dist_attr.impl_idx, 0)
+        self.assertEqual(dist_op.dist_attr.chunk_id, 0)
         self.assertTrue(dist_op.dist_attr.is_annotated("process_mesh"))
         tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(
             linear0_out.name
@@ -223,6 +232,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(dist_op.dist_attr.process_mesh, process_mesh1[1])
         self.assertEqual(dist_op.dist_attr.impl_type, "default")
         self.assertEqual(dist_op.dist_attr.impl_idx, 0)
+        self.assertEqual(dist_op.dist_attr.chunk_id, 1)
         self.assertTrue(dist_op.dist_attr.is_annotated("process_mesh"))
         tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(gelu_out.name)
         self.assertEqual(tensor_dist_attr.process_mesh, process_mesh1[1])
@@ -234,6 +244,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(dist_op.dist_attr.process_mesh, process_mesh1[1])
         self.assertEqual(dist_op.dist_attr.impl_type, "default")
         self.assertEqual(dist_op.dist_attr.impl_idx, 0)
+        self.assertEqual(dist_op.dist_attr.chunk_id, 1)
         self.assertTrue(dist_op.dist_attr.is_annotated("process_mesh"))
         tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(
             linear1_out.name
