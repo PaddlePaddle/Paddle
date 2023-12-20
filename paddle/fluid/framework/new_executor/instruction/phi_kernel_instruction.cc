@@ -84,14 +84,14 @@ PhiKernelInstruction::PhiKernelInstruction(
                              .dyn_cast<pir::StrAttribute>()
                              .AsString());
   }
-  std::vector<std::string> events_to_wait;
-  auto array_attr = op_attributes.at("events_to_wait")
-                        .dyn_cast<pir::ArrayAttribute>()
-                        .AsVector();
-  for (auto& attr : array_attr) {
-    events_to_wait.push_back(attr.dyn_cast<pir::StrAttribute>().AsString());
-  }
   if (op_attributes.count("events_to_wait") != 0) {
+    std::vector<std::string> events_to_wait;
+    auto array_attr = op_attributes.at("events_to_wait")
+                          .dyn_cast<pir::ArrayAttribute>()
+                          .AsVector();
+    for (auto& attr : array_attr) {
+      events_to_wait.push_back(attr.dyn_cast<pir::StrAttribute>().AsString());
+    }
     SetEventsToWaitInfo(events_to_wait);
   }
   VLOG(6) << "finish process dist attributes";
