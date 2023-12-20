@@ -16,7 +16,7 @@ import platform
 import re
 import subprocess
 
-import paddle.distributed.passes
+import paddle
 from paddle.distributed.passes import PassContext
 from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
 from paddle.distributed.ps.utils.public import (
