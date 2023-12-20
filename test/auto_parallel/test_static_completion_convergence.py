@@ -17,36 +17,22 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestDistTensorAPI(test_base.CommunicationTestDistBase):
+class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120)
-        self._default_envs = {
-            "shape": "(10, 20)",
-            "dtype": "float32",
-            "seeds": str(self._seeds),
-            "shard": "0",
-        }
-        self._changeable_envs = {
-            "backend": ["cpu", "gpu"],
-        }
+        super().setUp(
+            num_of_devices=2,
+            timeout=300,
+        )
+        self._default_envs = {"dtype": "float32", "seed": "2023"}
+        self._changeable_envs = {"backend": ["gpu"]}
 
-    def test_dist_tensor_api(self):
+    def test_mlp(self):
         envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
+            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_placements.py",
-                user_defined_envs=envs,
-            )
-
-    def test_dtensor_from_local_api(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_dtensor_from_local.py",
+                "static_completion_convergence.py",
                 user_defined_envs=envs,
             )
 

@@ -172,9 +172,53 @@ inline bool is_error(const T& stat) {
 }
 
 namespace pir {
+
+#ifdef __GNUC__
+inline std::string demangle(std::string name) {
+  int status = -4;  // some arbitrary value to eliminate the compiler warning
+  std::unique_ptr<char, void (*)(void*)> res{
+      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+  return (status == 0) ? res.get() : name;
+}
+#else
+inline std::string demangle(std::string name) { return name; }
+#endif
+
+static std::string GetCurrentTraceBackString() {
+  std::ostringstream sout;
+  sout << "\n\n--------------------------------------\n";
+  sout << "C++ Traceback (most recent call last):";
+  sout << "\n--------------------------------------\n";
+#if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
+  static constexpr int TRACE_STACK_LIMIT = 100;
+
+  void* call_stack[TRACE_STACK_LIMIT];
+  auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+  auto symbols = backtrace_symbols(call_stack, size);
+  Dl_info info;
+  int idx = 0;
+  int end_idx = 0;
+  for (int i = size - 1; i >= end_idx; --i) {
+    if (dladdr(call_stack[i], &info) && info.dli_sname) {
+      auto demangled = demangle(info.dli_sname);
+      std::string path(info.dli_fname);
+      // C++ traceback info are from core.so
+      if (path.substr(path.length() - 3).compare(".so") == 0) {
+        sout << idx++ << " " << demangled << "\n";
+      }
+    }
+  }
+  free(symbols);
+#else
+  sout << "Not support stack backtrace yet.\n";
+#endif
+  return sout.str();
+}
+
 class IrNotMetException : public std::exception {
  public:
-  explicit IrNotMetException(const std::string& str) : err_str_(str) {}
+  explicit IrNotMetException(const std::string& str)
+      : err_str_(str + GetCurrentTraceBackString()) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
 
