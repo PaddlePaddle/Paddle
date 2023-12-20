@@ -16,6 +16,9 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/fluid/platform/init_phi.h"
+
+REGISTER_FILE_SYMBOLS(aligned_allocator);
 namespace paddle {
 namespace memory {
 namespace allocation {
