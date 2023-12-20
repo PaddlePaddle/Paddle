@@ -27,7 +27,7 @@ np.random.seed(SEED)
 paddle.seed(SEED)
 
 
-def output_log_normal(shape, mean, std):
+def ref_log_normal(shape, mean, std):
     return np.exp(np.random.normal(mean, std, shape))
 
 
