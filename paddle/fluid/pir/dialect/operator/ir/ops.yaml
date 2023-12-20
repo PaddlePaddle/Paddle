@@ -876,6 +876,8 @@
            multiply_sr {selected_rows, dense -> selected_rows}
   inplace : (x -> out)
   backward : multiply_grad
+  data_transform :
+    support_trans_dtype : x,y
 
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)

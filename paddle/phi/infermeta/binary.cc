@@ -1295,18 +1295,18 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     auto out_dims = common::make_ddim(out_dims_array);
     out->set_dims(out_dims);
   } else {
-    out->set_dims(x.dims());
+    out->set_dims(y.dims());
   }
   // dtype need promote when meet input dtype with more precision
-  paddle::experimental::DataTypeSet dtype_set{x.dtype()};
-  dtype_set = dtype_set | paddle::experimental::DataTypeSet(y.dtype());
+  paddle::experimental::DataTypeSet dtype_set{y.dtype()};
+  dtype_set = dtype_set | paddle::experimental::DataTypeSet(x.dtype());
   DataType promote_result = PromoteTypes(dtype_set);
   if (promote_result == DataType::UNDEFINED) {
-    promote_result = x.dtype();
+    promote_result = y.dtype();
   }
   out->set_dtype(promote_result);
-  out->set_layout(x.layout());
-  out->share_lod(x);
+  out->set_layout(y.layout());
+  out->share_lod(y);
 }
 
 void EmbeddingInferMeta(const MetaTensor& x,

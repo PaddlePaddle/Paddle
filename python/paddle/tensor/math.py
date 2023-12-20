@@ -1101,14 +1101,13 @@ def multiply(x, y, name=None):
               [2, 4, 6]]])
 
     """
+    if x.dtype != y.dtype:
+        raise TypeError(
+            f'Input tensors must be same type, but received type of x: {x.dtype}, type of y: {y.dtype} '
+        )
     if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
-        if x.dtype != y.dtype:
-            raise TypeError(
-                f'Input tensors must be same type, but received type of x: {x.dtype}, type of y: {y.dtype} '
-            )
-
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
