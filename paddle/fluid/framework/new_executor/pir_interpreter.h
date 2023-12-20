@@ -107,6 +107,17 @@ class PirInterpreter : public InterpreterBaseImpl {
   // Only for debug
   Variable* DebugVar(const std::string& name) const override;
 
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+  GetForceEventsToWaitInfo() {
+    return force_evnets_to_wait_;
+  }
+
+  void SetForceEventsToWaitInfo(
+      std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+          force_evnets_to_wait) {
+    force_evnets_to_wait_ = force_evnets_to_wait;
+  }
+
  private:
   // build graph
   void UpdateSyncOpNum();
@@ -152,6 +163,9 @@ class PirInterpreter : public InterpreterBaseImpl {
   std::atomic<size_t> unfinished_op_number_{0};
 
   ExecutionConfig execution_config_;
+
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+      force_evnets_to_wait_;
 
   VariableScope var_scope_;
   Scope* scope_{nullptr};

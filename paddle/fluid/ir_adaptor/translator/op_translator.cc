@@ -664,6 +664,18 @@ static void TranslateOpDistAttribute(const OpDesc& op_desc,
           "scheduling_priority", dist_attr->scheduling_priority());
       (*attr_map)["scheduling_priority"] = new_attr;
     }
+
+    pir::Attribute force_record_event_attr = attribute_translator(
+        "force_record_event", dist_attr->force_record_event());
+    (*attr_map)["force_record_event"] = force_record_event_attr;
+
+    pir::Attribute event_to_record_attr =
+        attribute_translator("event_to_record", dist_attr->event_to_record());
+    (*attr_map)["event_to_record"] = event_to_record_attr;
+
+    pir::Attribute events_to_wait_attr =
+        attribute_translator("events_to_wait", dist_attr->events_to_wait());
+    (*attr_map)["events_to_wait"] = events_to_wait_attr;
   }
 }
 
