@@ -273,8 +273,9 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       }
       auto* ir_producer_op =
           ir_node->operand(i).source().dyn_cast<pir::OpResult>().owner();
-      if (drr_input_tensors[i]->consumers().size() !=
-          ir_node->operand(i).source().use_count()) {
+      if (ir_producer_op == nullptr ||
+          drr_input_tensors[i]->consumers().size() !=
+              ir_node->operand(i).source().use_count()) {
         matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
                 << i << "] { " << drr_node->outputs().size()
@@ -396,7 +397,10 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       auto ir_val = res_match_ctx.GetIrValue(input->name());
       if (ir_val) {
         Operation* ir_input_op = ir_val.dyn_cast<pir::OpResult>().owner();
-        if (max_input_op_index < op_2_temp_program_index.at(ir_input_op)) {
+        if (op_2_temp_program_index.count(ir_input_op) == 0) {
+          max_input_op_index = 0UL;
+        } else if (max_input_op_index <
+                   op_2_temp_program_index.at(ir_input_op)) {
           max_input_op_index = op_2_temp_program_index.at(ir_input_op);
           max_index_op = ir_input_op;
         } else if (max_input_op_index ==

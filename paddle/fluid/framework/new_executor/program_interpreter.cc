@@ -918,6 +918,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     if (op->Type() == "while") {
       op->SetInputHooks(input_hookfuncs_);
       op->SetOutputHooks(output_hookfuncs_);
+      op->SetAttr("used_for_inference", true);
     }
   }
 
