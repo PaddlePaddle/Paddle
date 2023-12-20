@@ -28,6 +28,8 @@ if(NOT WITH_GPU)
   # disable some model test on CPU to avoid timeout
   list(REMOVE_ITEM TEST_OPS test_resnet)
   list(REMOVE_ITEM TEST_OPS test_build_strategy)
+  list(REMOVE_ITEM TEST_OPS test_bert)
+  list(REMOVE_ITEM TEST_OPS test_bert_v2) # tmp test
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
