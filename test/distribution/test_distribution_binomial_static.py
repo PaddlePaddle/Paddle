@@ -30,7 +30,7 @@ paddle.enable_static()
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'total_count', 'probability'),
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs'),
     [
         (
             'one-dim',
@@ -50,20 +50,20 @@ class TestBinomial(unittest.TestCase):
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(main_program, startup_program):
-            probability = paddle.static.data(
-                'probability', self.probability.shape, self.probability.dtype
+            probs = paddle.static.data(
+                'probs', self.probs.shape, self.probs.dtype
             )
             total_count = paddle.static.data(
                 'total_count', self.total_count.shape, self.total_count.dtype
             )
-            dist = Binomial(total_count, probability)
+            dist = Binomial(total_count, probs)
             mean = dist.mean
             var = dist.variance
             entropy = dist.entropy()
             large_samples = dist.sample(shape=(1000,))
         fetch_list = [mean, var, entropy, large_samples]
         feed = {
-            'probability': self.probability,
+            'probs': self.probs,
             'total_count': self.total_count,
         }
 
@@ -76,41 +76,37 @@ class TestBinomial(unittest.TestCase):
         ] = executor.run(main_program, feed=feed, fetch_list=fetch_list)
 
     def test_mean(self):
-        self.assertEqual(
-            str(self.mean.dtype).split('.')[-1], self.probability.dtype
-        )
+        self.assertEqual(str(self.mean.dtype).split('.')[-1], self.probs.dtype)
         np.testing.assert_allclose(
             self.mean,
             self._np_mean(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_variance(self):
-        self.assertEqual(
-            str(self.var.dtype).split('.')[-1], self.probability.dtype
-        )
+        self.assertEqual(str(self.var.dtype).split('.')[-1], self.probs.dtype)
         np.testing.assert_allclose(
             self.var,
             self._np_variance(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_entropy(self):
         self.assertEqual(
-            str(self.entropy.dtype).split('.')[-1], self.probability.dtype
+            str(self.entropy.dtype).split('.')[-1], self.probs.dtype
         )
         np.testing.assert_allclose(
             self.entropy,
             self._np_entropy(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_sample(self):
         self.assertEqual(
-            str(self.large_samples.dtype).split('.')[-1], self.probability.dtype
+            str(self.large_samples.dtype).split('.')[-1], self.probs.dtype
         )
         sample_mean = self.large_samples.mean(axis=0)
         sample_variance = self.large_samples.var(axis=0)
@@ -118,18 +114,18 @@ class TestBinomial(unittest.TestCase):
         np.testing.assert_allclose(sample_variance, self.var, atol=0, rtol=0.20)
 
     def _np_variance(self):
-        return scipy.stats.binom.var(self.total_count, self.probability)
+        return scipy.stats.binom.var(self.total_count, self.probs)
 
     def _np_mean(self):
-        return scipy.stats.binom.mean(self.total_count, self.probability)
+        return scipy.stats.binom.mean(self.total_count, self.probs)
 
     def _np_entropy(self):
-        return scipy.stats.binom.entropy(self.total_count, self.probability)
+        return scipy.stats.binom.entropy(self.total_count, self.probs)
 
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'total_count', 'probability', 'value'),
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs', 'value'),
     [
         (
             'value-same-shape',
@@ -155,17 +151,17 @@ class TestBinomialProbs(unittest.TestCase):
             total_count = paddle.static.data(
                 'total_count', self.total_count.shape, self.total_count.dtype
             )
-            probability = paddle.static.data(
-                'probability', self.probability.shape, self.probability.dtype
+            probs = paddle.static.data(
+                'probs', self.probs.shape, self.probs.dtype
             )
             value = paddle.static.data(
                 'value', self.value.shape, self.value.dtype
             )
-            dist = Binomial(total_count, probability)
+            dist = Binomial(total_count, probs)
             pmf = dist.prob(value)
         feed = {
             'total_count': self.total_count,
-            'probability': self.probability,
+            'probs': self.probs,
             'value': self.value,
         }
         fetch_list = [pmf]
@@ -178,11 +174,9 @@ class TestBinomialProbs(unittest.TestCase):
     def test_prob(self):
         np.testing.assert_allclose(
             self.pmf,
-            scipy.stats.binom.pmf(
-                self.value, self.total_count, self.probability
-            ),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            scipy.stats.binom.pmf(self.value, self.total_count, self.probs),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
 

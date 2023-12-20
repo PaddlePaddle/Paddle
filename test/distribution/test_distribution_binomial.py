@@ -25,7 +25,7 @@ from paddle.distribution.binomial import Binomial
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'total_count', 'probability'),
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs'),
     [
         (
             'one-dim',
@@ -43,37 +43,37 @@ class TestBinomial(unittest.TestCase):
     def setUp(self):
         self._dist = Binomial(
             total_count=paddle.to_tensor(self.total_count),
-            probability=paddle.to_tensor(self.probability),
+            probs=paddle.to_tensor(self.probs),
         )
 
     def test_mean(self):
         mean = self._dist.mean
-        self.assertEqual(mean.numpy().dtype, self.probability.dtype)
+        self.assertEqual(mean.numpy().dtype, self.probs.dtype)
         np.testing.assert_allclose(
             mean,
             self._np_mean(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_variance(self):
         var = self._dist.variance
-        self.assertEqual(var.numpy().dtype, self.probability.dtype)
+        self.assertEqual(var.numpy().dtype, self.probs.dtype)
         np.testing.assert_allclose(
             var,
             self._np_variance(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_entropy(self):
         entropy = self._dist.entropy()
-        self.assertEqual(entropy.numpy().dtype, self.probability.dtype)
+        self.assertEqual(entropy.numpy().dtype, self.probs.dtype)
         np.testing.assert_allclose(
             entropy,
             self._np_entropy(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_sample(self):
@@ -97,18 +97,18 @@ class TestBinomial(unittest.TestCase):
         )
 
     def _np_variance(self):
-        return scipy.stats.binom.var(self.total_count, self.probability)
+        return scipy.stats.binom.var(self.total_count, self.probs)
 
     def _np_mean(self):
-        return scipy.stats.binom.mean(self.total_count, self.probability)
+        return scipy.stats.binom.mean(self.total_count, self.probs)
 
     def _np_entropy(self):
-        return scipy.stats.binom.entropy(self.total_count, self.probability)
+        return scipy.stats.binom.entropy(self.total_count, self.probs)
 
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'total_count', 'probability', 'value'),
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs', 'value'),
     [
         (
             'value-same-shape',
@@ -128,27 +128,23 @@ class TestBinomialProbs(unittest.TestCase):
     def setUp(self):
         self._dist = Binomial(
             total_count=self.total_count,
-            probability=paddle.to_tensor(self.probability),
+            probs=paddle.to_tensor(self.probs),
         )
 
     def test_prob(self):
         np.testing.assert_allclose(
             self._dist.prob(paddle.to_tensor(self.value)),
-            scipy.stats.binom.pmf(
-                self.value, self.total_count, self.probability
-            ),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            scipy.stats.binom.pmf(self.value, self.total_count, self.probs),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_log_prob(self):
         np.testing.assert_allclose(
             self._dist.log_prob(paddle.to_tensor(self.value)),
-            scipy.stats.binom.logpmf(
-                self.value, self.total_count, self.probability
-            ),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            scipy.stats.binom.logpmf(self.value, self.total_count, self.probs),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
 
@@ -176,11 +172,11 @@ class TestBinomialKL(unittest.TestCase):
     def setUp(self):
         self._dist1 = Binomial(
             total_count=paddle.to_tensor(self.n_1),
-            probability=paddle.to_tensor(self.p_1),
+            probs=paddle.to_tensor(self.p_1),
         )
         self._dist2 = Binomial(
             total_count=paddle.to_tensor(self.n_2),
-            probability=paddle.to_tensor(self.p_2),
+            probs=paddle.to_tensor(self.p_2),
         )
 
     def test_kl_divergence(self):
@@ -200,10 +196,10 @@ class TestBinomialKL(unittest.TestCase):
         support = np.arange(1 + self.n_1.max(), dtype=self.p_1.dtype)
         support = support.reshape((-1,) + (1,) * len(self.p_1.shape))
         log_prob_1 = scipy.stats.binom.logpmf(
-            support, dist1.total_count, dist1.probability
+            support, dist1.total_count, dist1.probs
         )
         log_prob_2 = scipy.stats.binom.logpmf(
-            support, dist2.total_count, dist2.probability
+            support, dist2.total_count, dist2.probs
         )
         return (np.exp(log_prob_1) * (log_prob_1 - log_prob_2)).sum(0)
 

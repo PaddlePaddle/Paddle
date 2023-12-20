@@ -20,7 +20,7 @@ from paddle.distribution import distribution
 
 class Binomial(distribution.Distribution):
     r"""
-    The Binomial distribution with size `total_count` and `probability` parameters.
+    The Binomial distribution with size `total_count` and `probs` parameters.
 
     In probability theory and statistics, the binomial distribution is the most basic discrete probability distribution defined on :math:`[0, n] \cap \mathbb{N}`,
     which can be viewed as the number of times a potentially unfair coin is tossed to get heads, and the result
@@ -34,14 +34,14 @@ class Binomial(distribution.Distribution):
 
     In the above equation:
 
-    * :math:`total_count = n`: is the size, meaning the total number of Bernoulli experiments.
-    * :math:`probability = p`: is the probability of the event happening in one Bernoulli experiments.
+    * :math:`total\_count = n`: is the size, meaning the total number of Bernoulli experiments.
+    * :math:`probs = p`: is the probability of the event happening in one Bernoulli experiments.
 
     Args:
         total_count(int|Tensor): The size of Binomial distribution which should be greater than 0, meaning the number of independent bernoulli
             trials with probability parameter :math:`p`. The data type will be converted to 1-D Tensor with paddle global default dtype if the input
-            :attr:`probability` is not Tensor, otherwise will be converted to the same as :attr:`probability`.
-        probability(float|Tensor): The probability of Binomial distribution which should reside in [0, 1], meaning the probability of success
+            :attr:`probs` is not Tensor, otherwise will be converted to the same as :attr:`probs`.
+        probs(float|Tensor): The probability of Binomial distribution which should reside in [0, 1], meaning the probability of success
             for each individual bernoulli trial. If the input data type is float, it will be converted to a 1-D Tensor with paddle global default dtype.
 
     Examples:
@@ -67,15 +67,13 @@ class Binomial(distribution.Distribution):
             [2.94053698, 3.00781751, 2.51124287])
     """
 
-    def __init__(self, total_count, probability):
+    def __init__(self, total_count, probs):
         self.dtype = paddle.get_default_dtype()
-        self.total_count, self.probability = self._to_tensor(
-            total_count, probability
-        )
+        self.total_count, self.probs = self._to_tensor(total_count, probs)
 
-        if not self._check_constraint(self.total_count, self.probability):
+        if not self._check_constraint(self.total_count, self.probs):
             raise ValueError(
-                'Every element of input parameter `total_count` should be grater than or equal to one, and `probability` should be grater than or equal to zero and less than or equal to one.'
+                'Every element of input parameter `total_count` should be grater than or equal to one, and `probs` should be grater than or equal to zero and less than or equal to one.'
             )
         if self.total_count.shape == []:
             batch_shape = (1,)
@@ -83,37 +81,37 @@ class Binomial(distribution.Distribution):
             batch_shape = self.total_count.shape
         super().__init__(batch_shape)
 
-    def _to_tensor(self, total_count, probability):
+    def _to_tensor(self, total_count, probs):
         """Convert the input parameters into Tensors if they were not and broadcast them
 
         Returns:
-            Tuple[Tensor, Tensor]: converted total_count and probability.
+            Tuple[Tensor, Tensor]: converted total_count and probs.
         """
         # convert type
-        if isinstance(probability, float):
-            probability = paddle.to_tensor(probability, dtype=self.dtype)
+        if isinstance(probs, float):
+            probs = paddle.to_tensor(probs, dtype=self.dtype)
         else:
-            self.dtype = probability.dtype
+            self.dtype = probs.dtype
         if isinstance(total_count, int):
             total_count = paddle.to_tensor(total_count, dtype=self.dtype)
         else:
             total_count = paddle.cast(total_count, dtype=self.dtype)
 
         # broadcast tensor
-        return paddle.broadcast_tensors([total_count, probability])
+        return paddle.broadcast_tensors([total_count, probs])
 
-    def _check_constraint(self, total_count, probability):
+    def _check_constraint(self, total_count, probs):
         """Check the constraints for input parameters
 
         Args:
             total_count (Tensor)
-            probability (Tensor)
+            probs (Tensor)
 
         Returns:
             bool: pass or not.
         """
         total_count_check = (total_count >= 1).all()
-        probability_check = (probability >= 0).all() * (probability <= 1).all()
+        probability_check = (probs >= 0).all() * (probs <= 1).all()
         return total_count_check and probability_check
 
     @property
@@ -123,7 +121,7 @@ class Binomial(distribution.Distribution):
         Returns:
             Tensor: mean value.
         """
-        return self.total_count * self.probability
+        return self.total_count * self.probs
 
     @property
     def variance(self):
@@ -132,7 +130,7 @@ class Binomial(distribution.Distribution):
         Returns:
             Tensor: variance value.
         """
-        return self.total_count * self.probability * (1 - self.probability)
+        return self.total_count * self.probs * (1 - self.probs)
 
     def sample(self, shape=()):
         """Generate binomial samples of the specified shape. The final shape would be ``shape+batch_shape`` .
@@ -141,7 +139,7 @@ class Binomial(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor: Sampled data with shape `sample_shape` + `batch_shape`. The returned data type is the same as `probability`.
+            Tensor: Sampled data with shape `sample_shape` + `batch_shape`. The returned data type is the same as `probs`.
         """
         if not isinstance(shape, Sequence):
             raise TypeError('sample shape must be Sequence object.')
@@ -153,9 +151,7 @@ class Binomial(distribution.Distribution):
             output_size = paddle.broadcast_to(
                 self.total_count, shape=output_shape
             )
-            output_prob = paddle.broadcast_to(
-                self.probability, shape=output_shape
-            )
+            output_prob = paddle.broadcast_to(self.probs, shape=output_shape)
             sample = paddle.binomial(
                 paddle.cast(output_size, dtype="int32"), output_prob
             )
@@ -174,12 +170,8 @@ class Binomial(distribution.Distribution):
 
         * :math:`\Omega`: is the support of the distribution.
 
-        Args:
-            n (float): size of the binomial r.v.
-            p (float): probability of the binomial r.v.
-
         Returns:
-            Tensor: Shannon entropy of binomial distribution. The data type is the same as `probability`.
+            Tensor: Shannon entropy of binomial distribution. The data type is the same as `probs`.
         """
         values = self._enumerate_support()
         log_prob = self.log_prob(values)
@@ -204,7 +196,7 @@ class Binomial(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability. The data type is the same as `probability`.
+          Tensor: log probability. The data type is the same as `probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
 
@@ -214,8 +206,8 @@ class Binomial(distribution.Distribution):
             - paddle.lgamma(self.total_count - value + 1.0)
             - paddle.lgamma(value + 1.0)
         )
-        eps = paddle.finfo(self.probability.dtype).eps
-        probs = paddle.clip(self.probability, min=eps, max=1 - eps)
+        eps = paddle.finfo(self.probs.dtype).eps
+        probs = paddle.clip(self.probs, min=eps, max=1 - eps)
         # log_p
         return paddle.nan_to_num(
             (
@@ -233,7 +225,7 @@ class Binomial(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor: probability. The data type is the same as `probability`.
+            Tensor: probability. The data type is the same as `probs`.
         """
         return paddle.exp(self.log_prob(value))
 
@@ -258,7 +250,7 @@ class Binomial(distribution.Distribution):
             other (Binomial): instance of ``Binomial``.
 
         Returns:
-            Tensor: kl-divergence between two binomial distributions. The data type is the same as `probability`.
+            Tensor: kl-divergence between two binomial distributions. The data type is the same as `probs`.
 
         """
         if not (paddle.equal(self.total_count, other.total_count)).all():
