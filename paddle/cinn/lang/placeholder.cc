@@ -35,31 +35,45 @@ ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
 ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
                              Type type,
                              const std::string &name) {
+  VLOG(-1) << type;
   if (type.is_float(32)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<float>(name, shape);
   } else if (type.is_float(64)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<double>(name, shape);
   } else if (type.is_bfloat16()) {
+    VLOG(-1) << "xxx ";
     return Placeholder<bfloat16>(name, shape);
   } else if (type.is_float16()) {
+    VLOG(-1) << "xxx ";
     return Placeholder<float16>(name, shape);
   } else if (type.is_int(8)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<int8_t>(name, shape);
   } else if (type.is_int(16)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<int16_t>(name, shape);
   } else if (type.is_int(32)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<int32_t>(name, shape);
   } else if (type.is_int(64)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<int64_t>(name, shape);
   } else if (type.is_uint(8)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<uint8_t>(name, shape);
   } else if (type.is_uint(16)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<uint16_t>(name, shape);
   } else if (type.is_uint(32)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<uint32_t>(name, shape);
   } else if (type.is_uint(64)) {
+    VLOG(-1) << "xxx ";
     return Placeholder<uint64_t>(name, shape);
   } else if (type.is_bool()) {
+    VLOG(-1) << "xxx ";
     return Placeholder<bool>(name, shape);
   }
   CINN_NOT_IMPLEMENTED

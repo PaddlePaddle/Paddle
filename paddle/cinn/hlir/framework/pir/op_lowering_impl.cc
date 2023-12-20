@@ -892,13 +892,13 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
   if (group->shape_analysis != nullptr) {
-    // const auto& sym_vec =
-    // group->shape_analysis->GetValueShapeDimExprs(value);
-    auto sym_vec =
-        group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
+    const auto& sym_vec =
+        group->shape_analysis->GetValueShapeDimExprs(value).shape();
+    // auto sym_vec =
+    //     group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
     std::vector<ir::Dim> sym_shape;
-    for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(ir::Dim(input_id + "_" + sym.GetSymName(), sym));
+    for (auto& sym : sym_vec.value()) {
+      sym_shape.emplace_back(ir::Dim(input_id, sym));
     }
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
@@ -974,13 +974,11 @@ void OpLowererImpl::CollectOutputInfo(
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
     if (group->shape_analysis != nullptr) {
-      auto sym_vec =
-          group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-              out_value);
+      const auto& sym_vec =
+          group->shape_analysis->GetValueShapeDimExprs(out_value).shape();
       std::vector<ir::Dim> sym_shape;
-      for (auto& sym : sym_vec) {
-        sym_shape.emplace_back(
-            ir::Dim(output_id + "_" + sym.GetSymName(), sym));
+      for (auto& sym : sym_vec.value()) {
+        sym_shape.emplace_back(ir::Dim(output_id, sym));
       }
       out_shapes->push_back(std::move(sym_shape));
     }

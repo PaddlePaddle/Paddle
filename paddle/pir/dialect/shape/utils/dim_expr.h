@@ -258,7 +258,10 @@ class ValueShape {
     return ValueShape(std::vector<T>{shape}, value);
   }
 
-  const std::optional<std::vector<T>>& shape() const { return shape_; }
+  const std::optional<std::vector<T>>& shape() const {
+    VLOG(-1) << "dddd ";
+    return shape_;
+  }
   const std::optional<std::vector<T>>& value() const { return value_; }
 
  private:

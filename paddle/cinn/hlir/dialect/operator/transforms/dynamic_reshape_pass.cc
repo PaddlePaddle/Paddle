@@ -48,14 +48,9 @@ class DynamicReshapeOpPattern
 
     auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
         op->operand_source(0).dyn_cast<pir::OpResult>(), shape);
-    VLOG(1) << "#### OUTPUT value id: " << pir::GetValueId(&output) << " "
-            << output.impl();
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    VLOG(0) << "#### shape_analysis: " << &shape_analysis;
-    VLOG(0) << "#### shape_analysis value_to_valueshape_expr_: "
-            << shape_analysis.value_to_valueshape_expr_.size();
 
     CHECK(shape_analysis.HasValueShapeDimExprs(output))
         << "Can't find DimExpr for output of reshape in shape_analysis.";
@@ -131,9 +126,6 @@ class DynamicReshapeOpPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    VLOG(0) << "####### op->isa<cinn::dialect::GroupOp>(): "
-            << op->isa<cinn::dialect::GroupOp>() << " : " << op->name();
-    VLOG(0) << "####### op->num_regions(): " << op->num_regions();
     return op->num_regions() > 0;
   }
 

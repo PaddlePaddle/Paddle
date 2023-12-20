@@ -98,6 +98,7 @@ Placeholder<T>::Placeholder(const std::string &name,
 template <typename T>
 Placeholder<T>::Placeholder(const std::string &name,
                             const std::vector<ir::Dim> &shape) {
+  VLOG(-1) << "dddd";
   Init(name, shape);
 }
 
@@ -117,6 +118,7 @@ ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
 template <typename T>
 void Placeholder<T>::Init(const std::string &name,
                           const std::vector<Expr> &shape) {
+  VLOG(-1) << "xxx ";
   ir::Var buffer_ptr(Context::Global().NewName("buffer"));
   buffer_ptr->set_type(type_of<T>());
 
@@ -127,6 +129,7 @@ void Placeholder<T>::Init(const std::string &name,
   for (int i = 0; i < shape.size(); i++)
     axis.emplace_back(cinn::common::axis_name(i));
 
+  VLOG(-1) << "xxx ";
   auto op = ir::PlaceholderOp::Make(name, shape, type_of<T>());
 
   tensor_ = ir::Tensor(name, type_of<T>(), shape, shape, op, {});

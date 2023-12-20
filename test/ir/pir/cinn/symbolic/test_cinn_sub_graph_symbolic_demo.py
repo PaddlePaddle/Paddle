@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle.static import InputSpec
 
@@ -29,20 +31,20 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
-def reshape(x):
-    y = paddle.exp(x)
-    out = paddle.reshape(y, x.shape) - x
-    return out
-
-
 # def reshape(x):
 #     y = paddle.exp(x)
-#     z = y - x
-#     i = paddle.shape(x)[0]
-#     j = paddle.shape(y)[1]
-#     out = paddle.reshape(z, shape=[i, j])
-#     # out = paddle.reshape(z, shape=[128, 4, 2])
+#     out = paddle.reshape(y, x.shape) - x
 #     return out
+
+
+def reshape(x):
+    y = paddle.exp(x)
+    z = y - x
+    i = paddle.shape(x)[0]
+    j = paddle.shape(y)[1]
+    out = paddle.reshape(z, shape=[i, j])
+    # out = paddle.reshape(z, shape=[128, 4, 2])
+    return out
 
 
 class CINNReshapeSubGraphNet(paddle.nn.Layer):
@@ -80,8 +82,8 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
     def test_eval_symolic(self):
         cinn_out = self.eval_symbolic(use_cinn=True)
-        # dy_out = self.eval_symbolic(use_cinn=False)
-        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':
