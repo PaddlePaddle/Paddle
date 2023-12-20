@@ -3472,6 +3472,12 @@
   outputs :
     out : Out
 
+- op: number_count
+  inputs :
+    {numbers: numbers}
+  outputs :
+    out : Out
+
 - op: read_from_array
   inputs:
     array : X
