@@ -26,9 +26,9 @@ KernelSignature FusedGemmEpilogueOpArgumentMapping(
 KernelSignature FusedGemmEpilogueGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("fused_gemm_epilogue_grad",
-                         {"X", "Y", "ReserveSpace", "Out@GRAD"},
-                         {"trans_x", "trans_y", "activation"},
-                         {"X@GRAD", "Y@GRAD", "BiasC@GRAD"});
+                         {"X", "Y", "ReserveSpace","DOut"},
+                         {"trans_x", "trans_y", "activation_grad"},
+                         {"DX", "DY", "DBias"});
 }
 
 }  // namespace phi
