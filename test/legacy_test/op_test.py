@@ -2446,7 +2446,7 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
-            def find_pir_actual(self, target_name, pir_outs):
+            def find_pir_actual(self, target_name, pir_outs, place):
                 for name in pir_outs:
                     if name == target_name:
                         return pir_outs[name][0]
@@ -2463,7 +2463,9 @@ class OpTest(unittest.TestCase):
                 with paddle.pir.core.program_guard(
                     paddle.pir.core.default_main_program()
                 ):
-                    actual = self.find_pir_actual(target_name, self.outputs)
+                    actual = self.find_pir_actual(
+                        target_name, self.outputs, place
+                    )
                     actual_t = np.array(actual)
                     return actual, actual_t
 
@@ -2472,7 +2474,7 @@ class OpTest(unittest.TestCase):
                     paddle.pir.core.default_main_program()
                 ):
                     expect = find_imperative_expect(
-                        target_name, self.ref_outputs
+                        target_name, self.ref_outputs, place
                     )
                     expect_t = np.array(expect)
                     return expect, expect_t
