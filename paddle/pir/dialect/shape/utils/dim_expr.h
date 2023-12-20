@@ -275,4 +275,7 @@ std::string ToTxtString(const DimExpr& dim_expr);
 
 std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 
+std::ostream& operator<<(std::ostream&,
+                         const ValueShapeDimExprs& value_shape_expr);
+
 }  // namespace symbol

@@ -746,9 +746,12 @@ void UpdateShapeAnalysisValue2ValueShapeDimExprs(
     const std::unordered_map<std::string, pir::Value>& value_id2value) {
   for (const auto& [value_id, value_shape_str] :
        shape_analysis->value_to_valueshape_expr_) {
+    VLOG(1) << "UpdateShapeAnalysisValue2ValueShapeDimExprs value_id = "
+            << value_id;
     auto value = value_id2value.at(value_id);
     shape_analysis->SetValueShapeDimExprs(
         value, String2ValueShapeDimExprs(value_shape_str));
+    VLOG(1) << shape_analysis->GetValueShapeDimExprs(value);
   }
 }
 

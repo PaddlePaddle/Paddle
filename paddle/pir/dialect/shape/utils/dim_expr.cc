@@ -184,4 +184,26 @@ std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
   return stream;
 }
 
+std::string ToTxtString(const std::optional<std::vector<DimExpr>>& dim_exprs) {
+  if (!dim_exprs.has_value()) {
+    return "";
+  }
+  std::string ret("");
+  for (std::size_t i = 0; i < dim_exprs.value().size(); ++i) {
+    ret += ToTxtString(dim_exprs.value().at(i));
+    if (i != dim_exprs.value().size() - 1) {
+      ret += ", ";
+    }
+  }
+  return ret;
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const ValueShapeDimExprs& value_shape_expr) {
+  std::string value = ToTxtString(value_shape_expr.value());
+  std::string shape = ToTxtString(value_shape_expr.shape());
+  stream << "Value = " << value << ", Shape = " << shape;
+  return stream;
+}
+
 }  // namespace symbol

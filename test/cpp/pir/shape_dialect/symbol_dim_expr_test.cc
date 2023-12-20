@@ -93,7 +93,7 @@ TEST(DimExpr, equal) {
 }
 
 TEST(DimExpr, print) {
-  imExprBuilder builder{nullptr};
+  DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
