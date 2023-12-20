@@ -760,7 +760,6 @@ def append_backward_ops(
                                 ) = argument_to_value(grad_op)
                             sub_state = state.copy(sub_fwd_block)
                             sub_backward_ops = []
-                            breakpoint()
                             append_backward_ops(
                                 op,
                                 [input[0] for input in inputs],
