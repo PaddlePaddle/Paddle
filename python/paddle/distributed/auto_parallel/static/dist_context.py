@@ -15,9 +15,9 @@
 import copy
 from collections import defaultdict
 
-from paddle.distributed.passes import PassContext
 from paddle.framework import IrGraph, core, set_flags
 
+from ...passes import PassContext
 from ..process_mesh import ProcessMesh
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
