@@ -908,6 +908,42 @@ class TestDygraphInplaceIgammac(TestDygraphInplaceWithContinuous):
     def non_inplace_api_processing(self, var):
         return paddle.igammac(var, a=self.a)
 
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.base.dygraph.guard():
+            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            var_b[1:2] = 3.3  # var_b is modified inplace after using it
+
+            var_d = var_b**2
+
+            loss = paddle.nn.functional.relu(var_c + var_d)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "received tensor_version:1 != wrapper_version_snapshot:0",
+            ):
+                loss.backward()
+
 
 class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):

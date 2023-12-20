@@ -1239,17 +1239,6 @@
   inplace: (x -> out)
   backward : igamma_grad
 
-- op : igammac
-  args : (Tensor x, Tensor a)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-    param : [x, a]
-  kernel :
-    func : igammac
-  inplace: (x -> out)
-  backward : igammac_grad
-
 - op : imag
   args : (Tensor x)
   output : Tensor (out)

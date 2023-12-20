@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 from scipy import special
 
 import paddle
@@ -26,37 +25,7 @@ def ref_igammac(x, a):
     return special.gammainc(a, x)
 
 
-class TestIgammaOp(OpTest):
-    def setUp(self):
-        self.op_type = 'igammac'
-        self.python_api = paddle.igammac
-        self.init_dtype_type()
-        self.shape = (3, 40)
-        self.x = np.random.random(self.shape).astype(self.dtype) + 1
-        self.a = np.random.random(self.shape).astype(self.dtype) + 1
-        self.inputs = {'x': self.x, 'a': self.a}
-        out = ref_igammac(self.x, self.a)
-        self.outputs = {'out': out}
-
-    def init_dtype_type(self):
-        self.dtype = np.float64
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-
-    def test_check_grad(self):
-        self.check_grad(['x'], 'out', check_pir=True)
-
-
-class TestIgammaOpFp32(TestIgammaOp):
-    def init_dtype_type(self):
-        self.dtype = np.float32
-
-    def test_check_grad(self):
-        self.check_grad(['x'], 'out', numeric_grad_delta=0.01, check_pir=True)
-
-
-class TestIgammaOpApi(unittest.TestCase):
+class TestIgammacApi(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4, 5]
         self.init_dtype_type()
@@ -82,7 +51,7 @@ class TestIgammaOpApi(unittest.TestCase):
                 feed={'x': self.x_np, 'a': self.a_np}, fetch_list=[out]
             )
         out_ref = ref_igammac(self.x_np, self.a_np)
-        np.testing.assert_allclose(out_ref, res, rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(out_ref, res, rtol=1e-6, atol=1e-6)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -90,11 +59,11 @@ class TestIgammaOpApi(unittest.TestCase):
         a = paddle.to_tensor(self.a_np)
         out = paddle.igammac(x, a)
         out_ref = ref_igammac(self.x_np, self.a_np)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-6, atol=1e-6)
         paddle.enable_static()
 
 
-class TestIgammaOpApiFp32(TestIgammaOpApi):
+class TestIgammacApiFp32(TestIgammacApi):
     def init_dtype_type(self):
         self.dtype = "float32"
 

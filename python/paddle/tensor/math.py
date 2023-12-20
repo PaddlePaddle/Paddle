@@ -5122,17 +5122,7 @@ def igammac(x, a, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.        , 0.84270084, 0.99999225, 1.        , 1.        ])
     """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.igammac(x, a)
-    else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'igammac')
-        check_variable_and_dtype(a, 'a', ['float32', 'float64'], 'igammac')
-        helper = LayerHelper('igammac', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='igammac', inputs={'x': x, 'a': a}, outputs={'out': out}
-        )
-        return out
+    return 1.0 - paddle.igamma(x, a)
 
 
 @inplace_apis_in_dygraph_only
@@ -5141,8 +5131,11 @@ def igammac_(x, a, name=None):
     Inplace version of ``igammac`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_igammac`.
     """
-    if in_dynamic_mode():
-        return _C_ops.igammac_(x, a)
+    return (
+        paddle.igamma_(x, a)
+        .multiply_(paddle.full_like(x, -1.0))
+        .add_(paddle.full_like(x, 1.0))
+    )
 
 
 def lgamma(x, name=None):
