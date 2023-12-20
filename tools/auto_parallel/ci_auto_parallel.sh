@@ -94,7 +94,6 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         done
     fi
 done
-git checkout -b ${AGILE_REVISION} ${AGILE_REVISION}
 }
 
 print_info(){
