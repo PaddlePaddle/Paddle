@@ -17,6 +17,8 @@
 namespace symbol {
 
 using BroadcastDimExpr = Broadcast<DimExpr>;
+using MinDimExpr = Min<DimExpr>;
+using MaxDimExpr = Max<DimExpr>;
 
 DimExpr DimExprBuilder::ConstSize(std::int64_t dim) { SYMBOL_NOT_IMPLEMENTED; }
 
@@ -41,15 +43,15 @@ DimExpr DimExprBuilder::Div(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 DimExpr DimExprBuilder::Max(const DimExpr& lhs, const DimExpr& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
+  return MaxDimExpr{List<DimExpr>{lhs, rhs}};
 }
 
 DimExpr DimExprBuilder::Min(const DimExpr& lhs, const DimExpr& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
+  return MinDimExpr{List<DimExpr>{lhs, rhs}};
 }
 
 DimExpr DimExprBuilder::Broadcast(const DimExpr& lhs, const DimExpr& rhs) {
-  return BroadcastDimExpr(std::vector{lhs, rhs});
+  return BroadcastDimExpr{List<DimExpr>{lhs, rhs}};
 }
 
 std::vector<DimExpr> DimExprBuilder::ConstShape(
