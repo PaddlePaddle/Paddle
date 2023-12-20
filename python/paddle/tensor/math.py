@@ -5004,7 +5004,7 @@ def gammaln(x, name=None):
     Calculates the logarithm of the absolute value of the gamma function elementwisely.
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, bfloat16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5026,7 +5026,7 @@ def gammaln(x, name=None):
         return _C_ops.gammaln(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'gammaln'
+            x, 'x', ['float16', 'float32', 'float64', 'bfloat16'], 'gammaln'
         )
         helper = LayerHelper('gammaln', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
