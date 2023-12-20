@@ -156,6 +156,7 @@ def _can_apply_infer_spmd_rule(dist_op):
 
     # TODO remove me. ops to be adapted: squeeze2
     __adapted_ops__ = [
+        "fused_rotary_position_embedding",
         "matmul_v2",
         "elementwise_div",
         "gelu",

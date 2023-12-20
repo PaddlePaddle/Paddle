@@ -92,6 +92,12 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 
+// fused rope
+PD_REGISTER_SPMD_RULE(
+    fused_rotary_position_embedding,
+    PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmdReverse));
+
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
     replicated,
