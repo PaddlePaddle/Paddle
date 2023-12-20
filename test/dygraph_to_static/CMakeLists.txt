@@ -40,12 +40,12 @@ set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
-set_tests_properties(test_bert PROPERTIES TIMEOUT 180)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
+set_tests_properties(test_bert_v2 PROPERTIES TIMEOUT 240)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)

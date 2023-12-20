@@ -58,7 +58,7 @@ class MyTest2(MyTest):
 """
 
 logger = logging.getLogger("Dygraph to static utils")
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
     "FLAGS_enable_pir_with_pt_in_dy2st", True
