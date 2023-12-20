@@ -91,6 +91,29 @@ class NestSequence:
         return self._var_list[item]
 
 
+class UnionFindSet:
+    def __init__(self):
+        self.father = ValueDict()
+
+    def union(self, x, y):
+        # x -> y
+        father_x = self.find_root(x)
+        father_y = self.find_root(y)
+        if not (father_x.is_same(father_y)):
+            self.father[father_x] = father_y
+
+    def find_root(self, x):
+        if not self.father.__contains__(x):
+            self.father[x] = x
+        if self.father[x].is_same(x):
+            return x
+        self.father[x] = self.find_root(self.father[x])
+        return self.father[x]
+
+    def iter_elements(self):
+        yield from self.father.keys()
+
+
 class RunableProgram:
     """a pir program ready for run_program_op to run. constructed by 3 parts:
     - pir program (pir::Program)
@@ -119,6 +142,20 @@ class RunableProgram:
             if op.name() == "builtin.parameter":
                 ret[op.result(0)] = op.attrs()["parameter_name"]
         return ret
+
+    @classmethod
+    def _get_name_defining_op(cls, program, value):
+        for op in program.global_block().ops:
+            if op.name() == "pd_op.data":
+                if value.is_same(op.result(0)):
+                    return op
+            if op.name() == "builtin.set_parameter":
+                if value.is_same(op.operand(0).source()):
+                    return op
+            if op.name() == "builtin.parameter":
+                if value.is_same(op.result(0)):
+                    return op
+        return None
 
     @cached_property
     def get_name_value_map(self):
@@ -280,7 +317,38 @@ class RunableProgram:
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values
+        self.deal_inplace_values(self.forward_program)
+        self.deal_inplace_values(self.backward_program)
         return value_program_attr
+
+    def deal_inplace_values(self, program):
+        # deal inplace op and modify program inplacely.
+        value2name = self._get_value_name_map_from_program(program)
+
+        def has_name(value):
+            if self._get_name_defining_op(program, value) is not None:
+                return True
+            return False
+
+        ufset = UnionFindSet()
+        for op in program.global_block().ops:
+            for out_idx, in_idx in paddle.core.pir.get_op_inplace_info(
+                op
+            ).items():
+                left = op.result(out_idx)
+                right = op.operand(in_idx).source()
+                if has_name(left):
+                    ufset.union(right, left)
+                else:
+                    ufset.union(left, right)
+
+        for value in ufset.iter_elements():
+            if has_name(ufset.find_root(value)):
+                name_defining_op = self._get_name_defining_op(program, value)
+                if name_defining_op:
+                    paddle.core.pir.reset_parameter_name(
+                        name_defining_op, value2name[ufset.find_root(value)]
+                    )
 
     @cached_property
     def program_name_attr(self):

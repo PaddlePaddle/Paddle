@@ -456,11 +456,9 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    PADDLE_ENFORCE_NE(
-        param_name,
-        orig_name,
-        phi::errors::PreconditionNotMet(
-            "SetParamer param name should not equal with var name"));
+    if (param_name == orig_name) {
+      return;
+    }
 
     if (value_exe_info->GetScope()->root()->FindVar(param_name) == nullptr) {
       const_cast<Scope*>(value_exe_info->GetScope()->root())

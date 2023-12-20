@@ -888,6 +888,7 @@ def shard_tensor(
     # `paddle.to_tensor` supports both dynamic and static mode
     if stop_gradient is None:
         stop_gradient = getattr(data, "stop_gradient", True)
+
     tensor = paddle.to_tensor(
         data, dtype=dtype, place=place, stop_gradient=stop_gradient
     )
@@ -909,6 +910,27 @@ def shard_tensor(
         # TODO(zhiqiu): we need to refine the static shard_tensor
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
         return shard_tensor_static(tensor, mesh, sharding_specs)
+
+
+def dtensor_from_local(local_tensor, mesh, placements):
+    # assume the each rank has the same tensor shape for now, just use the local shape to calculate the global shape
+    global_dims = list(local_tensor.shape)
+    for idx, placement in enumerate(placements):
+        if placement.is_shard():
+            shard_dim = placement.get_dim()
+            local_dim_size = global_dims[shard_dim]
+            global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
+
+    place = paddle.framework._current_expected_place()
+    place = paddle.framework._get_paddle_place(place)
+
+    return paddle.Tensor(
+        local_tensor,
+        dims=global_dims,
+        process_mesh=mesh,
+        placements=placements,
+        place=place,
+    )
 
 
 def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
