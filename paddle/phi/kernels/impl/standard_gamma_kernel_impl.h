@@ -15,16 +15,9 @@
 #pragma once
 
 #include "paddle/phi/kernels/standard_gamma_kernel.h"
+#include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
 namespace phi {
-
-template <typename Context, typename T>
-struct GammaSampler {
-  void operator()(const Context& dev_ctx,
-                  const DenseTensor& alpha,
-                  DenseTensor* out);
-};
-
 template <typename T, typename Context>
 void StandardGammaKernel(const Context& dev_ctx,
                          const DenseTensor& alpha,

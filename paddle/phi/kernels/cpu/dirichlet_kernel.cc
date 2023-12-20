@@ -15,7 +15,6 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/dirichlet_util.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -23,61 +22,6 @@
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
-namespace phi {
-
-template <typename T>
-struct DirichletSampler<CPUContext, T> {
-  void operator()(const CPUContext& dev_ctx,
-                  const DenseTensor& alpha,
-                  DenseTensor* out) {
-    auto generator = dev_ctx.GetGenerator()->GetCPUEngine();
-
-    auto uniform = [&generator]() -> T {
-      std::uniform_real_distribution<T> u(0.0, 1.0);
-      return u(*generator);
-    };
-    BaseSampler<T, decltype(uniform)> standard_uniform(uniform);
-
-    auto normal = [&generator]() {
-      std::normal_distribution<T> n(0.0, 1.0);
-      return n(*generator);
-    };
-    BaseSampler<T, decltype(normal)> standard_normal(normal);
-
-    // sample from K gamma distributions, where K=alpha.numel()
-    DenseTensor gamma_samples;
-    gamma_samples.Resize(alpha.dims());
-    dev_ctx.template Alloc<T>(&gamma_samples);
-
-    GammaCPUFunctor<T, decltype(uniform), decltype(normal)> gamma_functor(
-        alpha.data<T>(),
-        gamma_samples.data<T>(),
-        standard_uniform,
-        standard_normal);
-    funcs::ForRange<CPUContext> for_range(dev_ctx, alpha.numel());
-    for_range(gamma_functor);
-
-    // normalize them into a simplex, along the last axis
-    DenseTensor gamma_sum;
-    auto new_shape = gamma_samples.dims();
-    new_shape[new_shape.size() - 1] = 1;
-    gamma_sum.Resize(new_shape);
-    dev_ctx.template Alloc<T>(&gamma_sum);
-
-    funcs::ReduceKernelImpl<CPUContext, T, T, funcs::SumFunctor>(
-        dev_ctx,
-        gamma_samples,
-        &gamma_sum,
-        {new_shape.size() - 1},
-        true,
-        false);
-
-    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
-        dev_ctx, gamma_samples, gamma_sum, funcs::DivideFunctor<T>(), out);
-  }
-};
-
-}  // namespace phi
 
 PD_REGISTER_KERNEL(
     dirichlet, CPU, ALL_LAYOUT, phi::Dirichletkernel, float, double) {}
