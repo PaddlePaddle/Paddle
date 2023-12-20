@@ -193,7 +193,7 @@ ir::Tensor Reshape(const ir::Tensor& A,
                    const std::vector<int>& new_shape,
                    const std::string& name) {
   std::vector<Expr> new_expr_shape;
-  std::vector<Expr> A_expr_shape = A->shape;
+  const std::vector<Expr>& A_expr_shape = A->shape;
   int input_total_size = 1;
   int output_total_size = 1;
   for (auto& i : A_expr_shape) {
@@ -230,7 +230,7 @@ ir::Tensor Reshape(const ir::Tensor& A,
                    const std::vector<ir::Dim>& new_shape,
                    const std::string& name) {
   std::vector<Expr> new_expr_shape;
-  std::vector<Expr> A_expr_shape = A->shape;
+  const std::vector<Expr>& A_expr_shape = A->shape;
   ir::Expr input_total_size(1);
   for (auto& i : A_expr_shape) {
     // CHECK(i.is_constant()) << "Input tensor's shape should be constant
