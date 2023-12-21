@@ -3042,7 +3042,7 @@ class Operator:
 
             self._amp_options: AmpOptions = DEFAULT_AMP_OPTIONS
 
-            # attr for op's call chain
+            # recard the call path of op, only used in AutoParallel
             self._struct_name = _full_name_struct()
 
             op_maker = core.op_proto_and_checker_maker
