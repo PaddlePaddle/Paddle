@@ -405,12 +405,14 @@ class AMPState:
         """
         num_cast_ops = 0
         var_name_dict = {}
+
         if op.type == "cast":
             in_var = block._find_var_recursive(op.input('X')[0])
             out_var = block._find_var_recursive(op.output('Out')[0])
             op._set_attr('in_dtype', in_var.dtype)
             out_var.desc.set_dtype(paddle.dtype(op.attr('out_dtype')))
             return num_cast_ops
+
         for in_name in op.input_names:
             if (
                 src_dtype == core.VarDesc.VarType.FP32
