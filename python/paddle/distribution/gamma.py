@@ -103,7 +103,7 @@ class Gamma(exponential_family.ExponentialFamily):
         """Probability density funciotn evaluated at value
 
         Args:
-            value (Tensor): Value to be evaluated.
+            value (float|Tensor): Value to be evaluated.
 
         Returns:
             Tensor: Probability.
@@ -114,7 +114,7 @@ class Gamma(exponential_family.ExponentialFamily):
         """Log probability density function evaluated at value
 
         Args:
-            value (Tensor): Value to be evaluated
+            value (float|Tensor): Value to be evaluated
 
         Returns:
             Tensor: Log probability.

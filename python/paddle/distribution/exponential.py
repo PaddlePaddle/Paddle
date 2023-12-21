@@ -31,8 +31,12 @@ class Exponential(exponential_family.ExponentialFamily):
 
         f(x; \theta) =  \theta e^{- \theta x },  (x \ge 0) $$
 
+    In the above equation:
+
+    * :math:`rate = \theta`: is the rate parameter.
+
     Args:
-        rate (float|Tensor): Rate parameter. The value of beta must be positive.
+        rate (float|Tensor): Rate parameter. The value of rate must be positive.
 
     Example::
         .. code-block:: python
@@ -81,7 +85,7 @@ class Exponential(exponential_family.ExponentialFamily):
             shape (Sequence[int], optional): Shape of the generated samples.
 
         Returns:
-            Tensor, A tensor with prepended dimensions shape.The data type is float32.
+            Tensor, A tensor with prepended dimensions shape. The data type is float32.
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -93,7 +97,7 @@ class Exponential(exponential_family.ExponentialFamily):
             shape (Sequence[int], optional): Shape of the generated samples.
 
         Returns:
-            Tensor: A tensor with prepended dimensions shape.The data type is float32.
+            Tensor: A tensor with prepended dimensions shape. The data type is float32.
         """
         shape = distribution.Distribution._extend_shape(
             self, sample_shape=shape
@@ -116,7 +120,7 @@ class Exponential(exponential_family.ExponentialFamily):
             { f(x; \theta) = \theta e^{- \theta x}, (x \ge 0 ) }
 
         Args:
-            value (Tensor): Value to be evaluated.
+            value (float|Tensor): Value to be evaluated.
 
         Returns:
             Tensor: Probability.
@@ -127,7 +131,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """Log probability density function evaluated at value.
 
         Args:
-            value (Tensor): Value to be evaluated
+            value (float|Tensor): Value to be evaluated
 
         Returns:
             Tensor: Log probability.
@@ -151,7 +155,7 @@ class Exponential(exponential_family.ExponentialFamily):
             { cdf(x; \theta) = 1 - e^{- \theta x }, (x \ge 0) }
 
         Args:
-            value (Tensor): Value to be evaluated.
+            value (float|Tensor): Value to be evaluated.
 
         Returns:
             Tensor: CDF evaluated at value.
@@ -167,7 +171,7 @@ class Exponential(exponential_family.ExponentialFamily):
             { icdf(x; \theta) = -\frac{ 1 }{ \theta } ln(1 + x), (x \ge 0) }
 
         Args:
-            value (Tensor): Value to be evaluated.
+            value (float|Tensor): Value to be evaluated.
 
         Returns:
             Tensor: CDF evaluated at value.
