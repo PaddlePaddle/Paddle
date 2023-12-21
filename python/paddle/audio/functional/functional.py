@@ -128,7 +128,7 @@ def mel_frequencies(
     f_max: float = 11025.0,
     htk: bool = False,
     dtype: str = 'float32',
-) -> Tensor:
+) -> Union[Tensor, Variable, Value]:
     """Compute mel frequencies.
 
     Args:

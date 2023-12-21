@@ -156,6 +156,32 @@ class TestAudioFuncitons(unittest.TestCase):
             paddle_mel_freq, librosa_mel_freq, decimal=3
         )
 
+    @parameterize(
+        [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
+    )
+    @test_with_pir_api
+    def test_audio_function_mel_static(
+        self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
+    ):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            paddle_mel_freq = paddle.audio.functional.mel_frequencies(
+                n_mels, f_min, f_max, htk_flag, 'float64'
+            )
+
+        exe = paddle.static.Executor()
+        (paddle_mel_freq_ret,) = exe.run(main, fetch_list=[paddle_mel_freq])
+        librosa_mel_freq = librosa.mel_frequencies(
+            n_mels, f_min, f_max, htk_flag
+        )
+        np.testing.assert_almost_equal(
+            paddle_mel_freq_ret, librosa_mel_freq, decimal=3
+        )
+
+        paddle.disable_static()
+
     @parameterize([8000, 16000], [64, 128, 256])
     def test_audio_function_fft(self, sr: int, n_fft: int):
         librosa_fft = librosa.fft_frequencies(sr, n_fft)
