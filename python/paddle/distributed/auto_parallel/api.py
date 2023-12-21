@@ -440,15 +440,13 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            # TODO(pangengzheng): construct dist_tensor with _dtensor_from_local api when it is ready.
-            global_tensor = paddle.zeros(global_shape, dtype=local_tensor.dtype)
             mesh = dist.ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )
             )
             placements = to_placements(dist_attr["dims_mapping"], mesh)
-            dist_tensor = dist.shard_tensor(global_tensor, mesh, placements)
+            dist_tensor = dtensor_from_local(local_tensor, mesh, placements)
             assert (
                 dist_tensor._local_value().shape == local_tensor.shape
             ), f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"
