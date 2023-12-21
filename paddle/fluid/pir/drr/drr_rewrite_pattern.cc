@@ -267,6 +267,13 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       source_pattern_match_ctx->BindIrValue(
           drr_input_tensors[i]->name(),
           std::make_shared<IrValue>(ir_node->operand(i).source()));
+      if (ir_node->operand_source(i).isa<pir::BlockArgument>()) {
+        matched = false;
+        VLOG(8) << drr_node->name()
+                << " Match failed: it's input value is a block argument.";
+        break;
+      }
+
       auto* drr_producer_op = drr_input_tensors[i]->producer();
       if (drr_producer_op == nullptr) {
         continue;
@@ -281,18 +288,14 @@ bool DrrRewritePattern::MatchFromOutputToInput(
                 << ir_node->operand(i).source().use_count() << " }.";
         break;
       }
-      if (ir_node->operand_source(i).isa<BlockArgument>()) {
-        matched = false;
-        VLOG(8) << drr_node->name()
-                << " Match failed: it's input value is a block argument.";
-        break;
-      }
+
       auto* ir_producer_op = ir_node->operand_source(i).defining_op();
       // bfs producer_op of current_op
       if (drr_visited.count(drr_producer_op) &&
           ir_visited.count(ir_producer_op)) {
         continue;
       }
+
       if (!drr_visited.count(drr_producer_op) &&
           !ir_visited.count(ir_producer_op)) {
         drr_q.push(drr_producer_op);

@@ -36,20 +36,25 @@ class DeadCodeEliminationPass : public pir::Pass {
 
  private:
   void EraseOp(const pir::Block& block, int64_t* num_erasers) {
+    std::vector<pir::Operation*> deleted_ops;
     for (auto& op : block) {
       if (op.HasTrait<pir::SideEffectTrait>() ||
           op.isa<paddle::dialect::DataOp>()) {
         continue;
       }
       if (op.use_empty()) {
-        op.Erase();
-        (*num_erasers)++;
-      } else {
-        for (size_t i = 0; i < op.num_regions(); ++i) {
-          auto& inner_region = op.region(i);
-          for (auto& inner_block : inner_region) {
-            EraseOp(inner_block, num_erasers);
-          }
+        deleted_ops.push_back(&op);
+      }
+    }
+    for (auto* op : deleted_ops) {
+      op->Erase();
+      (*num_erasers)++;
+    }
+    for (auto& op : block) {
+      for (size_t i = 0; i < op.num_regions(); ++i) {
+        auto& inner_region = op.region(i);
+        for (auto& inner_block : inner_region) {
+          EraseOp(inner_block, num_erasers);
         }
       }
     }
