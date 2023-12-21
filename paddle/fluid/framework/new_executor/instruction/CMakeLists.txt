@@ -15,7 +15,6 @@ cc_library(
   DEPS framework_proto)
 
 add_dependencies(instruction_base xxhash framework_proto)
-
 if(WITH_MKLDNN)
   add_dependencies(instruction_base mkldnn)
 endif()
