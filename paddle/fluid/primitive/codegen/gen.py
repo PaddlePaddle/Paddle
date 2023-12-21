@@ -53,43 +53,61 @@ BACKENDS_BLACK_LIST = [
     "embedding_grad",
 ]
 
+# prim op with one input and one output, with no attribute
+UNARY_PRIM_VJP_OPS = [
+    'erf_grad',
+    'exp_grad',
+    'floor_grad',
+    'log_grad',
+    'sin_grad',
+    'cos_grad',
+    'tanh_grad',
+]
 
-PRIM_VJP = [
-    'divide_grad',
-    'sum_grad',
-    'cast_grad',
+# prim op with two inputs and one output, with no attribute
+BINARY_PRIM_VJP_OPS = [
     'add_grad',
+    'divide_grad',
     'subtract_grad',
     'multiply_grad',
     'elementwise_pow_grad',
+    'maximum_grad',
+]
+
+OTHER_PRIM_VJP_OPS = [
+    'assign_grad',
+    'cumsum_grad',
+    'sum_grad',
+    'cast_grad',
     'reshape_grad',
     'split_grad',
-    'tanh_grad',
     'transpose_grad',
     'concat_grad',
-    'erf_grad',
-    'exp_grad',
     'expand_grad',
-    'log_grad',
     'gather_nd_grad',
     'pad_grad',
     'max_grad',
-    'maximum_grad',
     'slice_grad',
     'tile_grad',
-]  # vjp list of primitive op
+    'topk_grad',
+]
+
+# whole vjp list of primitive op vjp
+PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
+
 CUSTOM_VJP = [
-    'gelu_grad',
-    'layer_norm_grad',
     'dropout_grad',
+    'gelu_grad',
+    'hardswish_grad',
+    'layer_norm_grad',
+    'leaky_relu_grad',
+    'relu_grad',
+    'sigmoid_grad',
     'silu_grad',
     'softmax_grad',
     'sqrt_grad',
-    'relu_grad',
-    'hardswish_grad',
-    'leaky_relu_grad',
-    'sigmoid_grad',
 ]  # custom vjp list of composite op
+
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 

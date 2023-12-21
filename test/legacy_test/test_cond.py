@@ -195,7 +195,7 @@ class TestCondInputOutput(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
             ret = exe.run(main_program, fetch_list=[out, da])
         else:
@@ -463,9 +463,9 @@ class TestCondInputOutput(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
-                if p == b:
+                if p.is_same(b):
                     db = g
             ret = exe.run(main_program, fetch_list=[out, b, da, db])
         else:
@@ -544,7 +544,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 expected_a_grad = 2.0 * expected_a if feed_i < 8 else 0.0
             if paddle.framework.in_pir_mode():
                 for p, g in grad_list:
-                    if p == a:
+                    if p.is_same(a):
                         da = g
                 ret = exe.run(
                     main_program,
@@ -618,7 +618,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == i:
+                if p.is_same(i):
                     di = g
             ret = exe.run(main_program, fetch_list=[out, di])
         else:
@@ -675,9 +675,9 @@ class TestCondNestedControlFlow(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
-                if p == b:
+                if p.is_same(b):
                     db = g
             ret = exe.run(main_program, fetch_list=[out, da, db])
         else:
