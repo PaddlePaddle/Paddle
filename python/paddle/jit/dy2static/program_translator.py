@@ -65,7 +65,6 @@ from .utils import (
     prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
-    unwrap,
 )
 
 if TYPE_CHECKING:
@@ -134,9 +133,7 @@ class FunctionCache:
         If the conversion of A.foo happens after B.foo, it will reuse the transformed ast node of B.foo
         to speed up the conversion.
         """
-        # Note: In Python2, it will raise OSError when inspect function
-        # with decorator directly and function.__wrapped__ holds the actual function.
-        func = unwrap(func)
+        func = inspect.unwrap(func)
         source_code = func_to_source_code(func)
 
         # TODO(liym27):
