@@ -4320,20 +4320,22 @@ class TestThresholdedRelu(TestActivation):
         self.op_type = "thresholded_relu"
         self.init_dtype()
         self.init_shape()
+        self.set_attrs()
         self.python_api = paddle.nn.functional.thresholded_relu
-
-        threshold = 15
-        value = 5
 
         np.random.seed(1024)
         x = np.random.uniform(-20, 20, self.shape).astype(self.dtype)
         x[np.abs(x) < 0.005] = 0.02
-        out = ref_thresholded_relu(x, threshold, value)
+        out = ref_thresholded_relu(x, self.threshold, self.value)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"threshold": threshold, "value": value}
+        self.attrs = {"threshold": self.threshold, "value": self.value}
         self.convert_input_output()
+
+    def set_attrs(self):
+        self.threshold = 15
+        self.value = 5
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -4347,6 +4349,12 @@ class TestThresholdedRelu(TestActivation):
         self.check_output(check_pir=True)
 
 
+class TestThresholdedRelu_ZeroValue(TestThresholdedRelu):
+    def set_attrs(self):
+        self.threshold = 15
+        self.value = 0
+
+
 class TestThresholdedRelu_ZeroDim(TestThresholdedRelu):
     def init_shape(self):
         self.shape = []
@@ -4355,8 +4363,7 @@ class TestThresholdedRelu_ZeroDim(TestThresholdedRelu):
 class TestThresholdedReluAPI(unittest.TestCase):
     # test paddle.nn.ThresholdedReLU, paddle.nn.functional.thresholded_relu
     def setUp(self):
-        self.threshold = 15
-        self.value = 5
+        self.set_attrs()
         np.random.seed(1024)
         self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
@@ -4365,6 +4372,10 @@ class TestThresholdedReluAPI(unittest.TestCase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+
+    def set_attrs(self):
+        self.threshold = 15
+        self.value = 5
 
     @test_with_pir_api
     def test_static_api(self):
@@ -4413,6 +4424,12 @@ class TestThresholdedReluAPI(unittest.TestCase):
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
                 F.thresholded_relu(x_fp16)
+
+
+class TestThresholdedReluAPI_ZeroValue(TestThresholdedReluAPI):
+    def set_attrs(self):
+        self.threshold = 15
+        self.value = 0
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
