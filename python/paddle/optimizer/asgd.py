@@ -79,10 +79,10 @@ class ASGD(Optimizer):
             >>> inp = paddle.to_tensor(inp)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> rprop = paddle.optimizer.Rprop(learning_rate=0.001, batch_num=10, parameters=linear.parameters(), weight_decay=0.01)
+            >>> asgd = paddle.optimizer.ASGD(learning_rate=0.001, batch_num=10, parameters=linear.parameters(), weight_decay=0.01)
             >>> out.backward()
-            >>> rprop.step()
-            >>> rprop.clear_grad()
+            >>> asgd.step()
+            >>> asgd.clear_grad()
     """
     _d_acc_str = "d"
     _y_acc_str = "y"
