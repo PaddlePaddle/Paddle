@@ -21,7 +21,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     compare_legacy_with_pt,
     test_ast_only,
-    test_pir_only,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -29,6 +29,9 @@ from paddle import base
 from paddle.autograd import PyLayer
 from paddle.framework import use_pir_api
 from paddle.jit.dy2static.partial_program import partial_program_from
+from paddle.jit.dy2static.pir_partial_program import (
+    partial_program_from as pir_partial_program_from,
+)
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
@@ -235,7 +238,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
 class TestPartialProgramRaiseError(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
+    @test_legacy_and_pt_and_pir
     def test_param_type(self):
         x_data = np.random.random((20, 20)).astype('float32')
 
@@ -252,15 +255,19 @@ class TestPartialProgramRaiseError(Dy2StTestBase):
         # TypeError: Type of self._params should be list or tuple,
         # but received <class 'paddle.base.framework.EagerParamBase'>.
         with self.assertRaises(TypeError):
-            breakpoint()  # TODO(gouzil): 跑到老ir执行器了，需要看看是不是哪个api没适配
-            partial_program_from(concrete_program)
+            if use_pir_api():
+                pir_partial_program_from(concrete_program)
+            else:
+                partial_program_from(concrete_program)
 
-        params[0] = "linear.w.0"
-        concrete_program.parameters = params
-        # TypeError: Type of self._params[0] should be framework.EagerParamBase,
-        # but received <type 'str'>.
-        with self.assertRaises(TypeError):
-            partial_program_from(concrete_program)
+        # Under PIR, params are tuples and cannot be modified
+        if not use_pir_api():
+            params[0] = "linear.w.0"
+            concrete_program.parameters = params
+            # TypeError: Type of self._params[0] should be framework.EagerParamBase,
+            # but received <type 'str'>.
+            with self.assertRaises(TypeError):
+                partial_program_from(concrete_program)
 
 
 if __name__ == '__main__':
