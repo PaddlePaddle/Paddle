@@ -23,8 +23,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/init_phi.h"
+#include "paddle/utils/test_macros.h"
 
 namespace symbol {
 
@@ -177,7 +176,7 @@ using DimExprBase = std::variant<std::int64_t,
                                  Min<DimExpr>,
                                  Broadcast<DimExpr>>;
 
-class DimExpr : public DimExprBase {
+class TEST_API DimExpr : public DimExprBase {
  public:
   using DimExprBase::DimExprBase;
 
@@ -205,12 +204,12 @@ class DimExpr : public DimExprBase {
     return static_cast<const DimExprBase&>(*this);
   }
 
-  DimExpr operator+(const DimExpr& other) const;
-  DimExpr operator-(const DimExpr& other) const;
-  DimExpr operator*(const DimExpr& other) const;
-  DimExpr operator/(const DimExpr& other) const;
-  bool operator==(const DimExpr& other) const;
-  bool operator!=(const DimExpr& other) const;
+  TEST_API DimExpr operator+(const DimExpr& other) const;
+  TEST_API DimExpr operator-(const DimExpr& other) const;
+  TEST_API DimExpr operator*(const DimExpr& other) const;
+  TEST_API DimExpr operator/(const DimExpr& other) const;
+  TEST_API bool operator==(const DimExpr& other) const;
+  TEST_API bool operator!=(const DimExpr& other) const;
 };
 
 // DimExprConstraint = Equal DimExpr
@@ -219,7 +218,7 @@ using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
 // ShapeOrDataDimExprs = (tShape [DimExpr], tData (opt [DimExpr]))
 template <typename T>
-class ShapeOrData {
+class TEST_API ShapeOrData {
  public:
   explicit ShapeOrData(const std::vector<T>& shape)
       : shape_(shape), data_(std::nullopt) {}
