@@ -14,6 +14,12 @@
 
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
+#include "paddle/fluid/platform/enforce.h"
+
+#include "paddle/fluid/platform/init_phi.h"
+
+REGISTER_FILE_SYMBOLS(dim_expr);
+
 namespace symbol {
 
 DimExpr DimExpr::operator+(const DimExpr& other) const {
