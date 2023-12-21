@@ -46,7 +46,6 @@ class IR_API IrContext {
   ///
   /// \brief Initializes a new instance of IrContext.
   ///
-  static IrContext *Instance();
 
   IrContext();
   ~IrContext();
@@ -191,5 +190,5 @@ class IR_API IrContext {
  private:
   IrContextImpl *impl_;
 };
-
+static IrContext *Instance();
 }  // namespace pir
