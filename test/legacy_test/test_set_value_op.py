@@ -2032,5 +2032,33 @@ class TestSetValueWithScalarInStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[1], expected_x_grad)
 
 
+class TestSetValueWithScalarInDygraph(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = (10, 2)
+
+    def test_value_input_is_scalar(self):
+        x = paddle.ones(self.shape)
+        x.stop_gradient = False
+        y = x * 1
+
+        # mock test case x[0, 0] = 10 with no ValueTensor input
+        out = paddle._C_ops.set_value(
+            y, [0, 0], [1, 1], [1, 1], [0, 1], [], [], [1], [10.0]
+        )
+
+        loss = out.sum()
+        loss.backward()
+
+        np_data = np.ones(self.shape).astype('float32')
+        np_data[0, 0] = 10
+
+        expected_x_grad = np.ones(self.shape)
+        expected_x_grad[0, 0] = 0
+
+        np.testing.assert_array_equal(out, np_data)
+        np.testing.assert_array_equal(x.grad, expected_x_grad)
+
+
 if __name__ == '__main__':
     unittest.main()
