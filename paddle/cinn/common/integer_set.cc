@@ -472,5 +472,35 @@ std::optional<bool> SingleIntervalIntSet::ProveSuperSet(
   return std::nullopt;
 }
 
+ir::Expr EnhancedSimplify(
+    ir::Expr e,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
+  struct Mutator : public ir::IRMutator<ir::Expr*> {
+    explicit Mutator(
+        const absl::flat_hash_map<std::string, CasInterval>& var_intervals)
+        : var_intervals_(var_intervals), analyzer_(var_intervals_) {}
+
+    void operator()(ir::Expr* expr) { Visit(expr); }
+    void Visit(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+   private:
+    void Visit(const ir::Mod* op, ir::Expr* expr) override {
+      std::optional<bool> prove_lt = analyzer_.ProveLT(op->a(), op->b());
+      if (prove_lt.has_value() && prove_lt.value()) {
+        *expr = op->a();
+      }
+    }
+
+   private:
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals_;
+    SymbolicExprAnalyzer analyzer_;
+  };
+
+  Mutator mutator(var_intervals);
+  ir::Expr copied = ir::ir_utils::IRCopy(e);
+  mutator(&copied);
+  return copied;
+}
+
 }  // namespace common
 }  // namespace cinn

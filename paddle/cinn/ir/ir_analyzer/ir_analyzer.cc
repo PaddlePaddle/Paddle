@@ -275,7 +275,7 @@ std::vector<Expr> GetConsumerSBlocks(const Expr& block, const Expr& root) {
   return consumers;
 }
 
-std::vector<std::pair<Expr, Expr>> GetLoadsAndSBlocksOfSBlock(
+std::vector<std::pair<Expr, Expr>> GetConsumerLoadsAndSBlocks(
     const Expr& block, const Expr& root) {
   CHECK(block.As<ScheduleBlockRealize>());
   CHECK(root.As<ScheduleBlockRealize>());
@@ -368,7 +368,7 @@ std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
   for (ir::Expr index : indices) {
     ir::Expr index_value = ReplaceVarWithExpr(
         index, s_block->iter_vars, s_block_realize->iter_values);
-    iter_values.push_back(index_value);
+    iter_values.push_back(common::AutoSimplify(index_value));
   }
   return iter_values;
 }

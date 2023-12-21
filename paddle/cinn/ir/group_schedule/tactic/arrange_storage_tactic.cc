@@ -78,7 +78,9 @@ std::tuple<CudaAxisSpace, CudaAxisSpace> GetCudaAxisSpace(
     const Expr& for_expr = var2for.second;
     const ir::For* for_node = for_expr.As<ir::For>();
     CHECK_NOTNULL(for_node);
-    IntSet interval{for_node->min, for_node->min + for_node->extent - Expr(1)};
+    IntSet interval{
+        for_node->min,
+        common::AutoSimplify(for_node->min + for_node->extent - Expr(1))};
     if (for_node->is_gpu_thread_binded()) {
       if (for_node->bind_info().offset == 0) {
         cuda_thread_space.x = interval;
@@ -97,6 +99,21 @@ std::tuple<CudaAxisSpace, CudaAxisSpace> GetCudaAxisSpace(
       }
     }
   }
+  VLOG(6) << "GetCudaAxisSpace of block: " << block_name
+          << "\n cuda_block_space: ["
+          << "x = [" << cuda_block_space.x.Min() << " : "
+          << cuda_block_space.x.Max() << "] "
+          << "y = [" << cuda_block_space.y.Min() << " : "
+          << cuda_block_space.y.Max() << "] "
+          << "z = [" << cuda_block_space.z.Min() << " : "
+          << cuda_block_space.z.Max() << "]]"
+          << "\n cuda_thread_space: ["
+          << "x = [" << cuda_thread_space.x.Min() << " : "
+          << cuda_thread_space.x.Max() << "] "
+          << "y = [" << cuda_thread_space.y.Min() << " : "
+          << cuda_thread_space.y.Max() << "] "
+          << "z = [" << cuda_thread_space.z.Min() << " : "
+          << cuda_thread_space.z.Max() << "]]";
   return {cuda_block_space, cuda_thread_space};
 }
 
@@ -113,28 +130,29 @@ IntSet Evaluate(Expr expr,
     if (fixed.count(var) != 0) {
       const ir::Var& fixed_var = fixed.at(var);
       var_intervals.emplace(
-          var->name,
+          fixed_var->name,
           common::CasInterval(fixed_var->lower_bound, fixed_var->upper_bound));
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, Expr(fixed_var));
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, Expr(fixed_var));
     } else if (var_domain.count(var) != 0) {
       Expr var_min = var_domain.at(var).Min();
       Expr var_max = var_domain.at(var).Max();
-      var_intervals.emplace(var->name, common::CasInterval(var_min, var_max));
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, var_min);
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var_max);
     } else {
       CHECK(var->lower_bound.defined());
       CHECK(var->upper_bound.defined());
-      var_intervals.emplace(
-          var->name, common::CasInterval(var->lower_bound, var->upper_bound));
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, var->lower_bound);
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var->upper_bound);
     }
   }
-  return IntSet(common::AutoSimplify(copy_for_upper_bound),
-                common::AutoSimplify(copy_for_lower_bound),
-                var_intervals);
+  ir::Expr lower_bound =
+      common::AutoSimplify(copy_for_lower_bound, var_intervals);
+  ir::Expr upper_bound =
+      common::AutoSimplify(copy_for_upper_bound, var_intervals);
+  lower_bound = common::EnhancedSimplify(lower_bound, var_intervals);
+  upper_bound = common::EnhancedSimplify(upper_bound, var_intervals);
+  return IntSet(lower_bound, upper_bound, var_intervals);
 }
 
 std::unordered_map<ir::Var, ir::Var> GetFixedVar(
@@ -190,6 +208,7 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
       }
     }
   }
+  return fix_var_map;
 }
 
 std::unordered_map<ir::Var, IntSet> GetVarDomainOfSBlock(
@@ -201,7 +220,9 @@ std::unordered_map<ir::Var, IntSet> GetVarDomainOfSBlock(
     const ir::For* for_node = var2for.second.As<ir::For>();
     var_domains.emplace(
         var2for.first,
-        IntSet(for_node->min, for_node->min + for_node->extent - ir::Expr(1)));
+        IntSet(for_node->min,
+               common::AutoSimplify(for_node->min + for_node->extent -
+                                    ir::Expr(1))));
   }
   return var_domains;
 }
@@ -219,6 +240,8 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
   std::string load_block_name = load_block.As<ir::ScheduleBlockRealize>()
                                     ->schedule_block.As<ir::ScheduleBlock>()
                                     ->name;
+  VLOG(6) << "Analyzing cross type of Store: [" << store << "] and Load: ["
+          << load << "]";
 
   // 1. Determine domain range
   CudaAxisSpace cuda_block_space_of_store;
@@ -232,13 +255,17 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
   std::optional<bool> is_block_sub_space =
       IsSubCudaAxisSpace(cuda_block_space_of_load, cuda_block_space_of_store);
   if (!is_block_sub_space.has_value() || !is_block_sub_space.value()) {
+    VLOG(6) << "load cuda block space is not sub space of store";
     return CudaAxisType::kCudaBlock;
   }
+  VLOG(6) << "load cuda block space is sub space of store";
   std::optional<bool> is_thread_sub_space =
       IsSubCudaAxisSpace(cuda_thread_space_of_load, cuda_thread_space_of_store);
   if (!is_thread_sub_space.has_value() || !is_thread_sub_space.value()) {
+    VLOG(6) << "load cuda thread space is not sub space of store";
     return CudaAxisType::kCudaThread;
   }
+  VLOG(6) << "load cuda thread space is sub space of store";
 
   // 2. Determine value range
   std::unordered_map<ir::Var, ir::Var> cuda_block_fixed_var_of_store =
@@ -275,9 +302,15 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
                                         store_var_domain);
     IntSet block_load_range = Evaluate(
         iter_values_of_load[i], cuda_block_fixed_var_of_load, load_var_domain);
+    VLOG(6) << "block_store_range of [" << iter_values_of_store[i] << "] = ["
+            << block_store_range.Min() << " : " << block_store_range.Max()
+            << "]";
+    VLOG(6) << "block_load_range of [" << iter_values_of_load[i] << "] = ["
+            << block_load_range.Min() << " : " << block_load_range.Max() << "]";
     std::optional<bool> is_block_sub_set =
         block_load_range.ProveSubSet(block_store_range);
     if (!is_block_sub_set.has_value() || !is_block_sub_set.value()) {
+      VLOG(6) << "load range of a cuda block is not sub set of store";
       return CudaAxisType::kCudaBlock;
     }
 
@@ -287,9 +320,16 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
     IntSet thread_load_range = Evaluate(iter_values_of_load[i],
                                         cuda_block_thread_fixed_var_of_load,
                                         load_var_domain);
+    VLOG(6) << "thread_store_range of [" << iter_values_of_store[i] << "] = ["
+            << thread_store_range.Min() << " : " << thread_store_range.Max()
+            << "]";
+    VLOG(6) << "thread_load_range of [" << iter_values_of_load[i] << "] = ["
+            << thread_load_range.Min() << " : " << thread_load_range.Max()
+            << "]";
     std::optional<bool> is_thread_sub_set =
         thread_load_range.ProveSubSet(thread_store_range);
     if (!is_thread_sub_set.has_value() || !is_thread_sub_set.value()) {
+      VLOG(6) << "load range of a cuda thread is not sub set of store";
       return CudaAxisType::kCudaThread;
     }
   }
@@ -317,7 +357,8 @@ void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
   // Traverse load nodes to check if there are loads that cross cuda blocks or
   // threads
   std::vector<std::pair<Expr, Expr>> loads_and_blocks =
-      analyzer::GetLoadsAndSBlocksOfSBlock(store_block, root_block);
+      analyzer::GetConsumerLoadsAndSBlocks(store_block, root_block);
+
   ir::MemoryType memory_type = ir::MemoryType::GPULocal;
   for (const auto& load_and_block : loads_and_blocks) {
     ir::Expr load = load_and_block.first;

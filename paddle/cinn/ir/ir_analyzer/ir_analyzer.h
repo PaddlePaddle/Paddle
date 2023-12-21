@@ -51,7 +51,7 @@ Tensor GetStoreTensorOfSBlock(const Expr& block);
 
 std::vector<Expr> GetConsumerSBlocks(const Expr& block, const Expr& root);
 
-std::vector<std::pair<Expr, Expr>> GetLoadsAndSBlocksOfSBlock(const Expr& block,
+std::vector<std::pair<Expr, Expr>> GetConsumerLoadsAndSBlocks(const Expr& block,
                                                               const Expr& root);
 
 std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>

@@ -93,5 +93,18 @@ class SingleIntervalIntSet {
   cas_intervals_t var_intervals_;
 };
 
+std::optional<bool> ProveEQ(const SingleIntervalIntSet& lhs,
+                            const SingleIntervalIntSet& rhs);
+std::optional<SingleIntervalIntSet> ProvedUnion(const SingleIntervalIntSet& a,
+                                                const SingleIntervalIntSet& b);
+std::optional<SingleIntervalIntSet> ProvedIntersect(
+    const SingleIntervalIntSet& a, const SingleIntervalIntSet& b);
+cas_intervals_t MergeVarIntervals(const SingleIntervalIntSet& a,
+                                  const SingleIntervalIntSet& b);
+
+ir::Expr EnhancedSimplify(
+    ir::Expr e,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals);
+
 }  // namespace common
 }  // namespace cinn
