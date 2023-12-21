@@ -11,6 +11,7 @@ set(new_executor_deps
     op_dialect_vjp
     pir_transforms
     global_utils
+    buffered_reader
     framework_io
     garbage_collector
     executor_gc_helper
@@ -18,9 +19,8 @@ set(new_executor_deps
     framework_proto)
 
 if(WITH_CINN AND NOT CINN_ONLY)
-  set(new_executor_deps
-      ${new_executor_deps} cinn_runtime_dialect buffered_reader device_context
-      op_registry ${DEVICE_EVENT_LIBS})
+  set(new_executor_deps ${new_executor_deps} cinn_runtime_dialect
+                        device_context op_registry ${DEVICE_EVENT_LIBS})
 endif()
 
 if(WITH_CUSTOM_DEVICE)
