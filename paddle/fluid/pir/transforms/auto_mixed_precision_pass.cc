@@ -60,6 +60,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         precision_mode_(precision_mode) {}
 
   bool Initialize(pir::IrContext* context) override {
+    enable_low_precision_io_ = false;
     SetDefaultBlacklist();
     SetDefaultWhitelist();
     return true;
@@ -190,83 +191,107 @@ class AutoMixedPrecisionPass : public pir::Pass {
     return true;
   }
 
-  void UpdateOpPrecision(pir::Block* block) {
-    bool updated = false;
-    // handle full like op
-    for (auto& op_item : *block) {
-      auto op = &op_item;
-      if (op->isa<paddle::dialect::FullLikeOp>()) {
-        auto input_operation = GetDefiningOpForInput(op, 0);
-        if (!op_run_low_precision_.count(input_operation)) {
-          op_run_low_precision_.erase(op);
+  bool CheckUseOpsScalaAttribute(
+      const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
+    for (auto [use_op, idx] : use_ops) {
+      if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+        auto [input_infos, _1, _2, _3, _4] =
+            use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
+                .GetOpInfo();
+        if (input_infos[idx].type_name.find("ScalarAttribute") !=
+            std::string::npos) {
+          return true;
         }
       }
     }
+    return false;
+  }
 
-    for (auto& op_item : *block) {
-      auto op = &op_item;
-      // remove attribute input op
-      if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
-        auto [input_infos, _1, _2, _3, _4] =
-            op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-        for (size_t idx = 0; idx < input_infos.size(); ++idx) {
-          if (op->operand_source(idx) &&
-              input_infos[idx].type_name.find("ScalarAttribute") !=
-                  std::string::npos) {
-            LOG(INFO) << "op name " << op->name() << " try to remove attribute"
-                      << std::endl;
-            LOG(INFO) << "Remove op name "
-                      << GetDefiningOpForInput(op, idx)->name() << " attribute"
-                      << std::endl;
-            op_run_low_precision_.erase(GetDefiningOpForInput(op, idx));
+  bool CheckOutputIsScalarAttribute(pir::Operation* op) {
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      auto use_ops = pir::GetUseOpsForOutput(op, i);
+      if (CheckUseOpsScalaAttribute(use_ops)) return true;
+    }
+    return false;
+  }
+
+  void UpdateOpPrecision(pir::Block* block) {
+    bool precision_updated = false;
+    do {
+      precision_updated = false;
+      // handle full like op
+      for (auto& op_item : *block) {
+        auto op = &op_item;
+        if (op_should_not_handle_.count(op)) continue;
+        if (!OpRunLowPrecision(op)) continue;
+        if (op->isa<paddle::dialect::FullLikeOp>()) {
+          auto input_operation = GetDefiningOpForInput(op, 0);
+          if (!op_run_low_precision_.count(input_operation)) {
+            op_run_low_precision_.erase(op);
+            precision_updated = true;
+          }
+        }
+        if (!OpRunLowPrecision(op)) continue;
+        if (op->isa<paddle::dialect::CastOp>()) {  // add for cast op, not cast
+                                                   // to float. i.e cast to bool
+                                                   // or int
+          // if datatype of result0 is not float, then cast op should be not
+          // handled
+          auto result_dtype = paddle::dialect::TransToPhiDataType(
+              pir::GetDataTypeFromValue(op->result(0)));
+          if (!IsDataTypeFloat(result_dtype)) {
+            op_run_low_precision_.erase(op);
+            op_should_not_handle_.insert(op);
+            precision_updated = true;
+          }
+        }
+        if (!OpRunLowPrecision(op)) continue;
+        if (CheckOutputIsScalarAttribute(op)) {  // Output is ScalarAttribute
+          LOG(INFO) << "op " << op->name() << " output is ScalarAttribute"
+                    << std::endl;
+          op_run_low_precision_.erase(op);
+          precision_updated = true;
+        }
+        if (!OpRunLowPrecision(op)) continue;
+        for (size_t idx = 0; idx < op->num_operands(); ++idx) {
+          if (!op->operand_source(idx)) continue;
+          auto operand = op->operand(idx);
+          if (operand.type() && operand.type().isa<pir::VectorType>()) {
+            // check if there are all float in the vectortype
+            auto vec_type = operand.type().dyn_cast<pir::VectorType>();
+            if (VectorTypeFloat(vec_type)) {
+              auto input_operation = GetDefiningOpForInput(op, idx);
+              // 如果有一个是高精的话，则必须都跑在高精上
+              if (!op_run_low_precision_.count(op) ||
+                  !op_run_low_precision_.count(input_operation)) {
+                op_run_low_precision_.erase(op);
+                op_run_low_precision_.erase(input_operation);
+                precision_updated = true;
+              }
+            }
           }
         }
       }
+
       // 输出的方式比较好
       // 一个op和他的输出是绑定的
       // op1 -> var1
       // var1 -> op2
       // var1 的精度
 
-      // precision should be same as input
-      // if (op->isa<paddle::dialect::ShareDataOp>()) {
-      //   auto input_operation = GetDefiningOpForInput(op, 0);
-      //   if (!op_run_low_precision_.count(input_operation)) {
-      //     op_run_low_precision_.erase(op);
-      //   }
-      // }
-    }
-    // builtin.combine -> vector type
-    // reshape op
-    // reshape -> vector_type
-
-    for (auto& op_item : *block) {
-      auto op = &op_item;
-      for (size_t idx = 0; idx < op->num_operands(); ++idx) {
-        if (!op->operand_source(idx)) continue;
-        auto operand = op->operand(idx);
-        if (operand.type() && operand.type().isa<pir::VectorType>()) {
-          // check if there are all float in the vectortype
-          auto vec_type = operand.type().dyn_cast<pir::VectorType>();
-          if (VectorTypeFloat(vec_type)) {
-            auto input_operation = GetDefiningOpForInput(op, idx);
-            // 如果有一个是高精的话，则必须都跑在高精上
-            if (!op_run_low_precision_.count(op) ||
-                !op_run_low_precision_.count(input_operation)) {
-              op_run_low_precision_.erase(op);
-              op_run_low_precision_.erase(input_operation);
-            }
-          }
-        }
-      }
-    }
+      // builtin.combine -> vector type
+      // reshape op
+      // reshape -> vector_type
+    } while (precision_updated);
     // 产生(op1, op2)的跑在高精度
     // (op1 -> var1, op2 -> var2) => combine => var3 是 op3(属性输入)
-
     // print if op run low precision
     for (auto& op_item : *block) {
       auto op = &op_item;
-      if (op_run_low_precision_.count(op)) {
+      if (op_should_not_handle_.count(op)) {
+        LOG(INFO) << "op " << op->name() << " should not be handled"
+                  << std::endl;
+      } else if (op_run_low_precision_.count(op)) {
         LOG(INFO) << "op " << op->name() << " run low precision" << std::endl;
       } else {
         LOG(INFO) << "op " << op->name() << " run high precision" << std::endl;
@@ -618,6 +643,21 @@ class AutoMixedPrecisionPass : public pir::Pass {
         op->set_attribute("dtype", attr_dtype);
       }
 
+      if (op->HasAttribute("use_mkldnn") &&
+          op->attribute("use_mkldnn").dyn_cast<pir::BoolAttribute>().data() ==
+              true &&
+          op->HasAttribute("mkldnn_data_type")) {  // useless now?
+        std::string mkldnn_data_type = op->attribute("mkldnn_data_type")
+                                           .dyn_cast<pir::StrAttribute>()
+                                           .AsString();
+        std::string low_precision = phi::DataTypeToString(precision_mode_);
+        if (mkldnn_data_type != low_precision) {
+          pir::Attribute attr_mkldnn_data_type =
+              pir::StrAttribute::get(builder.ir_context(), low_precision);
+          op->set_attribute("mkldnn_data_type", attr_mkldnn_data_type);
+        }
+      }
+
       auto phi_kernel =
           GetPhiKernelInPrecision(op_type, backend, precision_mode_);
       PADDLE_ENFORCE(
@@ -681,7 +721,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
     }
   }
 };
-
 }  // namespace
 
 namespace pir {
