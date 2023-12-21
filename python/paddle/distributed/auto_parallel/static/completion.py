@@ -1075,6 +1075,7 @@ class Completer:
         block = serial_main_program.global_block()
         ops = block.ops
 
+        # 1. search seg_method in op's struct_name, and get all ops of segments
         seg_op_deps = collections.OrderedDict()
         regex = re.compile(seg_method, re.IGNORECASE)
         for i, op in enumerate(ops):
@@ -1109,7 +1110,7 @@ class Completer:
 
         part_size = len(seg_op_deps.keys()) // vpp_degree
 
-        # get boundary of each chunk
+        # 2. get boundary index of each chunk
         results = [0] * (vpp_degree + 1)
         memory_counter = 0
         result_idx = 1
@@ -1121,6 +1122,7 @@ class Completer:
                 memory_counter = 0
             results[vpp_degree] = len(ops)
 
+        # 3. set right chunk_id for each op
         var_to_chunk_id = {}
         for chunk_id in range(len(results) - 1):
             start_idx = results[chunk_id]
