@@ -215,7 +215,7 @@ TEST(DrrTest, drr_demo) {
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
-  // pm.EnablePassTiming();
+  pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
