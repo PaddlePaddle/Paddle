@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/onednn_legacy_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_phi_kernel_instruction.h"
 
-#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
@@ -23,30 +22,36 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
+
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 namespace paddle {
 namespace framework {
 
-OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
+OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
     size_t id,
     const platform::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "OneDNNLegacyKernelInstruction not defined now."));
+      "OneDNNMixedPhiKernelInstruction not defined now."));
 }
 
-OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {}
+OneDNNMixedPhiKernelInstruction::~OneDNNMixedPhiKernelInstruction() {}
 
-void OneDNNLegacyKernelInstruction::Run() {
+void OneDNNMixedPhiKernelInstruction::Run() {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "OneDNNLegacyKernelInstruction not defined now."));
+      "OneDNNMixedPhiKernelInstruction not defined now."));
 }
+
 }  // namespace framework
 }  // namespace paddle

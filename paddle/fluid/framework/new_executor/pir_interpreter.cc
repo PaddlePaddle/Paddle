@@ -34,9 +34,9 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/framework/new_executor/instruction/onednn_legacy_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/onednn_mixed_phi_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/onednn_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 

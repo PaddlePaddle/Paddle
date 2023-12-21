@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/onednn_mixed_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
@@ -36,21 +36,21 @@
 namespace paddle {
 namespace framework {
 
-OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
+OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
     size_t id,
     const platform::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "OneDNNMixedPhiKernelInstruction not defined now."));
+      "OneDNNPhiKernelInstruction not defined now."));
 }
 
-OneDNNMixedPhiKernelInstruction::~OneDNNMixedPhiKernelInstruction() {}
+OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {}
 
-void OneDNNMixedPhiKernelInstruction::Run() {
+void OneDNNPhiKernelInstruction::Run() {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "OneDNNMixedPhiKernelInstruction not defined now."));
+      "OneDNNPhiKernelInstruction not defined now."));
 }
 
 }  // namespace framework

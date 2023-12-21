@@ -14,9 +14,9 @@ set(instruction_base_srcs
 
 if(WITH_MKLDNN)
   set(instruction_base_srcs
-      ${instruction_base_srcs} onednn_phi_kernel_instruction.cc
-      onednn_mixed_phi_kernel_instruction.cc
-      onednn_legacy_kernel_instruction.cc)
+      ${instruction_base_srcs} onednn/onednn_phi_kernel_instruction.cc
+      onednn/onednn_mixed_phi_kernel_instruction.cc
+      onednn/onednn_legacy_kernel_instruction.cc)
 endif()
 
 cc_library(
