@@ -56,13 +56,6 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   auto sch_block_expr = block.As<ir::ScheduleBlockRealize>()->schedule_block;
   sch_block_expr.As<ir::ScheduleBlock>()->attrs.emplace(
       ir::attr::compute_at_extra_var, new_var_names);
-  std::cout << "reconstructor.source_expr " << reconstructor.source_expr
-            << std::endl;
-  std::cout << "reconstructor.target_expr " << reconstructor.target_expr
-            << std::endl;
-  std::cout << "reconstructor.loop_ " << reconstructor.loop_ << std::endl;
-  std::cout << "reconstructor.new_loop_ " << reconstructor.new_loop_
-            << std::endl;
   this->Replace(reconstructor.source_expr, reconstructor.target_expr);
   this->Replace(reconstructor.loop_, reconstructor.new_loop_);
 
