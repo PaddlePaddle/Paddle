@@ -570,9 +570,7 @@ class CodeGen:
             zip(op_info.input_name_list, op_info.input_optional_list)
         )
 
-        if (
-          len(mapping_name_to_type) == 0
-        ):
+        if op_name in ["real_grad"] or len(mapping_name_to_type) == 0:
             return ""
         try:
             data_type_candidates = op_info.kernel_map['data_type']['candidates']
