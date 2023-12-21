@@ -23,6 +23,7 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
