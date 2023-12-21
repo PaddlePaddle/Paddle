@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/infer_type_op_interface.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
 
-bool InferShapedTypeOpInterface::ReifyReturnTypeShapes(
-    Builder& builder,
-    const std::vector<OpOperand>& operands,
-    std::vector<Value>& reified_return_shapes) {
-  return impl_->reify_return_type_shapes(
-      operation(), builder, operands, reified_return_shapes);
-}
-}  // namespace pir
+class Pass;
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::InferShapedTypeOpInterface)
+IR_API std::unique_ptr<Pass> CreateFcFusePass();
+
+}  // namespace pir

@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/infer_type_op_interface.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
@@ -227,7 +227,7 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
   }
 };
 
-// Fold dim of an operation that implements the InferShapedTypeOpInterface
+// Fold dim of an operation that implements the InferSymbolicShapeInterface
 template <typename OpTy>
 struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
   using OpRewritePattern<OpTy>::OpRewritePattern;
@@ -237,14 +237,15 @@ struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
     if (!dim_value) return false;
 
     auto shaped_type_op =
-        dim_value.owner()->dyn_cast<InferShapedTypeOpInterface>();
+        dim_value.owner()
+            ->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (!shaped_type_op) return false;
 
     std::optional<int64_t> dim_index = dim_op.GetConstantIndex();
     if (!dim_index) return false;
 
     std::vector<Value> reified_result_shapes;
-    if (!shaped_type_op.ReifyReturnTypeShapes(
+    if (!shaped_type_op.InferSymbolicShape(
             rewriter, shaped_type_op->operands(), reified_result_shapes))
       return false;
 

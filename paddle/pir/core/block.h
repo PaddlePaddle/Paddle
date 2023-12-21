@@ -22,6 +22,7 @@
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/region.h"
+#include "paddle/pir/core/visitors.h"
 
 namespace pir {
 class Operation;
@@ -118,6 +119,22 @@ class IR_API Block {
   }
   void AddArguments(std::initializer_list<Type> type_list) {
     AddArguments(std::begin(type_list), std::end(type_list));
+  }
+
+  // Walk the operations in the specified [begin, end) range of this block.
+  // PostOrder by default.
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
+    for (auto &op = begin; op != end; ++op) {
+      detail::Walk<Order>(&*op, callback);
+    }
+  }
+
+  // Walk the operations in the whole of this block.
+  // PostOrder by default.
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(FuncT &&callback) {
+    return Walk<Order>(begin(), end(), std::forward<FuncT>(callback));
   }
 
  private:

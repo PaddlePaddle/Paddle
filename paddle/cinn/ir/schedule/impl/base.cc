@@ -16,6 +16,22 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
+/** \brief A macro that guards the beginning of each implementation of schedule
+ */
+#define CINN_IR_SCHEDULE_BEGIN() try {
+/**
+ * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
+ */
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  }
+
 namespace cinn {
 namespace ir {
 
@@ -270,7 +286,13 @@ Expr DyScheduleImpl::SampleCategorical(
     utils::LinearRandomEngine::StateType* rand_seed,
     const std::vector<int>& candidates,
     const std::vector<float>& probs) {
-  CINN_NOT_IMPLEMENTED;
+  // check two sizes
+  CHECK_EQ(candidates.size(), probs.size())
+      << "candidates and probs must have same size.";
+  int seed_idx = utils::SampleDiscreteFromDistribution(probs, rand_seed);
+  auto result = candidates[seed_idx];
+  Expr result_expr(result);
+  return result_expr;
 }
 
 std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
@@ -278,7 +300,30 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
     const Expr& loop,
     int n,
     int max_innermost_factor) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK(loop.As<ir::For>())
+      << "Expr param of SamplePerfectTile should be a For loop";
+  CHECK_GE(n, 2) << "The number of tile factors should be at least 2";
+  CHECK_GE(max_innermost_factor, 1)
+      << "The max innermost factor should be at least 1";
+  CHECK(cinn::common::is_zero(loop.As<ir::For>()->min))
+      << "The For loop should start from 0";
+  int loop_extent = GetLoopExtent(loop);
+  std::vector<int> innermost_factors;
+  for (int i = max_innermost_factor; i >= 1; --i) {
+    if (loop_extent % i == 0) {
+      innermost_factors.push_back(i);
+    }
+  }
+  CHECK(!innermost_factors.empty()) << "No innermost factor found";
+  int innermost_factor = innermost_factors[utils::SampleUniformInt(
+      0, innermost_factors.size(), rand_seed)];
+  auto result = SampleTile(rand_seed, n - 1, loop_extent / innermost_factor);
+  std::vector<Expr> result_expr;
+  for (auto& factor : result) {
+    result_expr.push_back(Expr(factor));
+  }
+  result_expr.push_back(Expr(innermost_factor));
+  return result_expr;
 }
 
 Expr DyScheduleImpl::AddUnitLoop(const Expr& block) const {

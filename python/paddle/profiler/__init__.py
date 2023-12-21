@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .profiler import ProfilerState, ProfilerTarget
-from .profiler import make_scheduler, export_chrome_tracing, export_protobuf
-from .profiler import Profiler
-from .profiler import SummaryView
-from .profiler import TracerEventType
-from .utils import RecordEvent, load_profiler_result
+from .profiler import (
+    Profiler,
+    ProfilerState,
+    ProfilerTarget,
+    SummaryView,
+    TracerEventType,  # noqa: F401
+    export_chrome_tracing,
+    export_protobuf,
+    make_scheduler,
+)
 from .profiler_statistic import SortedKeys
+from .utils import RecordEvent, load_profiler_result
 
 __all__ = [
     'ProfilerState',

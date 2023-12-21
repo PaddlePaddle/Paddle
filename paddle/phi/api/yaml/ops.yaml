@@ -15,6 +15,7 @@
     data_type : x
   inplace: (x -> out)
   backward : abs_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
@@ -2195,6 +2196,19 @@
     func : round
   inplace : (x -> out)
   backward : round_grad
+
+- op : rprop_
+  args : (Tensor param, Tensor grad, Tensor prev, Tensor learning_rate, Tensor master_param, Tensor learning_rate_range, Tensor etas, bool multi_precision=false)
+  output : Tensor(param_out), Tensor(prev_out), Tensor(learning_rate_out), Tensor(master_param_out)
+  infer_meta :
+    func : RpropInferMeta
+  kernel :
+    func : rprop
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (prev -> prev_out), (learning_rate -> learning_rate_out), (master_param -> master_param_out)
 
 - op : rsqrt
   args : (Tensor x)

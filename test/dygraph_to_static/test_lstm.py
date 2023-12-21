@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
 )
@@ -58,15 +59,14 @@ class TestLstm(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     def run_lstm(self, to_static):
-        paddle.jit.enable_to_static(to_static)
+        with enable_to_static_guard(to_static):
+            paddle.static.default_main_program().random_seed = 1001
+            paddle.static.default_startup_program().random_seed = 1001
 
-        paddle.static.default_main_program().random_seed = 1001
-        paddle.static.default_startup_program().random_seed = 1001
-
-        net = paddle.jit.to_static(Net(12, 2))
-        x = paddle.zeros((2, 10, 12))
-        y = net(x)
-        return y.numpy()
+            net = paddle.jit.to_static(Net(12, 2))
+            x = paddle.zeros((2, 10, 12))
+            y = net(x)
+            return y.numpy()
 
     def test_lstm_to_static(self):
         dygraph_out = self.run_lstm(to_static=False)
@@ -74,7 +74,6 @@ class TestLstm(Dy2StTestBase):
         np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
 
     def save_in_eval(self, with_training: bool):
-        paddle.jit.enable_to_static(True)
         net = Net(12, 2)
         x = paddle.randn((2, 10, 12))
         if with_training:
@@ -150,7 +149,6 @@ class TestSaveInEvalMode(Dy2StTestBase):
 
     @test_legacy_and_pt_and_pir
     def test_save_in_eval(self):
-        paddle.jit.enable_to_static(True)
         net = paddle.jit.to_static(LinearNet())
         x = paddle.randn((2, 10))
         x.stop_gradient = False

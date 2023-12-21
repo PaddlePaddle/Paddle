@@ -35,7 +35,6 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.jit.dy2static as _jst
-from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
 
@@ -228,16 +227,18 @@ class TestEnableDeclarative(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_raise_error(self):
-        net = to_static(full_graph=True)(NetWithError())
+        net = paddle.jit.to_static(full_graph=True)(NetWithError())
         with self.assertRaises(ValueError):
             net(paddle.to_tensor(self.x))
 
     @test_legacy_and_pt_and_pir
     def test_enable_disable_to_static(self):
-        static_output = to_static(decorated_simple_func)(self.x, self.weight)
+        static_output = paddle.jit.to_static(decorated_simple_func)(
+            self.x, self.weight
+        )
 
         with enable_to_static_guard(False):
-            dygraph_output = to_static(decorated_simple_func)(
+            dygraph_output = paddle.jit.to_static(decorated_simple_func)(
                 self.x, self.weight
             )
             np.testing.assert_allclose(

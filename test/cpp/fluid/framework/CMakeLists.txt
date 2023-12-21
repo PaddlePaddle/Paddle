@@ -39,7 +39,7 @@ cc_test(
 cc_test(
   lod_tensor_test
   SRCS lod_tensor_test.cc
-  DEPS phi common lod_tensor memory)
+  DEPS phi common lod_tensor)
 
 if(WITH_GPU)
   nv_test(
@@ -263,15 +263,10 @@ cc_test(
   SRCS dlpack_tensor_test.cc
   DEPS dlpack_tensor glog)
 
-cc_test_old(
+cc_test(
   op_compatible_info_test
-  SRCS
-  op_compatible_info_test.cc
-  DEPS
-  op_compatible_info
-  proto_desc
-  string_helper
-  glog)
+  SRCS op_compatible_info_test.cc
+  DEPS op_compatible_info proto_desc string_helper glog)
 
 cc_test(
   infershape_utils_test
@@ -322,8 +317,7 @@ if(WITH_CINN)
     python)
   set_tests_properties(cinn_cache_key_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  paddle_test(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc
-              DEPS common)
+  paddle_test(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   # target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
 
@@ -347,3 +341,8 @@ if(WITH_CINN)
     cinn_op_dialect)
   set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
+
+cc_test(
+  workqueue_test
+  SRCS new_executor/workqueue_test.cc
+  DEPS standalone_executor)
