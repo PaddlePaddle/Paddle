@@ -19,7 +19,7 @@
 namespace phi {
 namespace distributed {
 
-class ManyToOneXToRReshardFunction final : public ReshardFunction {
+class XToRShrinkReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
@@ -29,7 +29,7 @@ class ManyToOneXToRReshardFunction final : public ReshardFunction {
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
 
-  std::string Name() override { return "ManyToOneXToRReshard"; }
+  std::string Name() override { return "XToRShrinkReshard"; }
 };
 
 }  // namespace distributed

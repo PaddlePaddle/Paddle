@@ -234,8 +234,8 @@ void BindAutoParallel(py::module *m) {
       *m, "PToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
-  py::class_<phi::distributed::XToRReshardFunction>(
-      *m, "XToRReshardFunction", ReshardFunction)
+  py::class_<phi::distributed::XToRShrinkReshardFunction>(
+      *m, "XToRShrinkReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SameNdMeshReshardFunction>(
