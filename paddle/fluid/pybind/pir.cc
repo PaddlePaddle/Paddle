@@ -581,28 +581,6 @@ const phi::DDim &GetValueDims(Value value) {
   }
 }
 
-#define OVERRIDE_OPERATOR(operator, api, other_type)      \
-  value.def(#operator, [](Value self, other_type other) { \
-    return paddle::dialect::api(self, other);             \
-  });
-
-#define OVERRIDE_OPERATOR_WITH_SCALE(operator,            \
-                                     other_type,          \
-                                     scale_value,         \
-                                     bias_value,          \
-                                     bias_after_scale)    \
-  value.def(#operator, [](Value self, other_type other) { \
-    return paddle::dialect::scale(                        \
-        self, scale_value, bias_value, bias_after_scale); \
-  });
-
-#define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)         \
-  value.def(#operator, [](Value self, other_type other) {                \
-    auto rhs =                                                           \
-        paddle::dialect::full(/*shape=*/{}, other, GetValueDtype(self)); \
-    return paddle::dialect::api(self, rhs);                              \
-  });
-
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -713,6 +691,7 @@ void BindValue(py::module *m) {
             return nullptr;
           },
           return_value_policy::reference)
+      .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
       .def("is_dense_tensor_type",
            [](Value self) {

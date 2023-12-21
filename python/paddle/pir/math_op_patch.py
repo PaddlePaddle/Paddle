@@ -281,7 +281,7 @@ def monkey_patch_value():
     def _scalar_div_(var, value):
         return paddle.scale(var, 1.0 / value, 0.0)
 
-    def _neg_(var):
+    def _scalar_neg_(var):
         return paddle.scale(var, -1.0, 0.0)
 
     def _binary_creator_(
@@ -595,7 +595,7 @@ def monkey_patch_value():
             '__matmul__',
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
-        ('__neg__', _neg_),
+        ('__neg__', _scalar_neg_),
         # For compare opeartors
         (
             '__eq__',
