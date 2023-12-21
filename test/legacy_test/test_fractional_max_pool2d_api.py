@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
@@ -228,8 +227,14 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place, device = (
+                (paddle.CUDAPlace(0), 'gpu')
+                if use_cuda
+                else (paddle.CPUPlace(), 'cpu')
+            )
             paddle.disable_static(place=place)
+            paddle.set_device(device)
+
             x = paddle.to_tensor(self.x_np)
 
             out_1 = paddle.nn.functional.fractional_max_pool2d(
@@ -326,8 +331,14 @@ class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place, device = (
+                (paddle.CUDAPlace(0), 'gpu')
+                if use_cuda
+                else (paddle.CPUPlace(), 'cpu')
+            )
             paddle.disable_static(place=place)
+            paddle.set_device(device)
+
             x = paddle.to_tensor(self.x_np)
 
             fractional_max_pool = paddle.nn.FractionalMaxPool2D(
@@ -376,20 +387,20 @@ class TestFractionalMaxPool2DAPIDtype(unittest.TestCase):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place, device = (
+                (paddle.CUDAPlace(0), 'gpu')
+                if use_cuda
+                else (paddle.CPUPlace(), 'cpu')
+            )
             paddle.disable_static(place=place)
+            paddle.set_device(device)
 
             dtypes = ['float32', 'float64']
 
             if core.is_float16_supported(place):
                 dtypes += ['float16']
 
-            # use_cuda and core.is_bfloat16_supported(cpu) can not be correctly detected for win32
-            if (
-                sys.platform != 'win32'
-                and use_cuda
-                and core.is_bfloat16_supported(place)
-            ):
+            if use_cuda and core.is_bfloat16_supported(place):
                 dtypes += ['uint16']
 
             for dtype in dtypes:
@@ -412,8 +423,13 @@ class TestFractionalMaxPool2DAPIErrorRandomU(unittest.TestCase):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place, device = (
+                (paddle.CUDAPlace(0), 'gpu')
+                if use_cuda
+                else (paddle.CPUPlace(), 'cpu')
+            )
             paddle.disable_static(place=place)
+            paddle.set_device(device)
 
             np.random.seed(2023)
             x_np = np.random.random([2, 3, 7, 7])
