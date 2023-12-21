@@ -1229,14 +1229,12 @@
   backward : i1e_grad
 
 - op : identity_loss
-  args : (Tensor x, int reduction)
+  args : (Tensor x, int reduction = 1)
   output : Tensor(out)
   infer_meta :
     func : IdentityLossInferMeta
   kernel :
     func : identity_loss
-    data_type : x
-    backend : x
   inplace: (x -> out)
   backward : identity_loss_grad
 

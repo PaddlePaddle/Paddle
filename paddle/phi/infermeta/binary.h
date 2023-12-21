@@ -297,6 +297,11 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
                         MetaTensor* residual,
                         MetaConfig config = MetaConfig());
 
+void IdentityLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& out_grad,
+                               const int reduction,
+                               MetaTensor* x_grad);
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
@@ -525,10 +530,5 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const std::string& algo,
                                DataType out_dtype,
                                MetaTensor* out);
-
-void IdentityLossGradInferMeta(const MetaTensor& x,
-                               const MetaTensor& out_grad,
-                               const int reduction,
-                               MetaTensor* x_grad);
 
 }  // namespace phi

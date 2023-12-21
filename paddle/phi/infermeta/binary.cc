@@ -1808,6 +1808,15 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void IdentityLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& out_grad,
+                               const int reduction,
+                               MetaTensor* x_grad) {
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
@@ -3352,15 +3361,6 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   int k = x.dims()[0];
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(out_dtype);
-}
-
-void IdentityLossGradInferMeta(const MetaTensor& x,
-                               const MetaTensor& out_grad,
-                               const int reduction,
-                               MetaTensor* x_grad) {
-  x_grad->set_dims(x.dims());
-  x_grad->share_lod(x);
-  x_grad->set_dtype(out_grad.dtype());
 }
 
 }  // namespace phi
