@@ -34,9 +34,11 @@ namespace storage_helper_base_impl {
 ///
 template <class... Traits>
 bool hasTrait(TypeId traitID) {
-  TypeId traitIDs[] = {TypeId::get<Traits>()...};
-  for (unsigned i = 0, e = sizeof...(Traits); i != e; ++i)
-    if (traitIDs[i] == traitID) return true;
+  if constexpr (sizeof...(Traits) != 0) {
+    TypeId traitIDs[] = {TypeId::get<Traits>()...};
+    for (unsigned i = 0, e = sizeof...(Traits); i != e; ++i)
+      if (traitIDs[i] == traitID) return true;
+  }
   return false;
 }
 

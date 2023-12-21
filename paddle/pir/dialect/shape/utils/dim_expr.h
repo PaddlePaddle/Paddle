@@ -21,6 +21,8 @@
 #include <variant>
 #include <vector>
 
+#include "paddle/pir/core/dll_decl.h"
+
 #include "glog/logging.h"
 
 namespace symbol {
@@ -114,7 +116,7 @@ using DimExprBase = std::variant<std::int64_t,
                                  Min<DimExpr>,
                                  Broadcast<DimExpr>>;
 
-class DimExpr : public DimExprBase {
+class IR_API DimExpr : public DimExprBase {
  public:
   using DimExprBase::DimExprBase;
 

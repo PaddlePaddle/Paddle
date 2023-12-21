@@ -9,31 +9,15 @@ cc_test_old(
   SRCS
   ir_program_test.cc
   DEPS
-  op_dialect_vjp
-  pir
-  phi
   common
-  gtest)
-
-cc_test_old(
-  ir_infershape_test
-  SRCS
-  ir_infershape_test.cc
-  DEPS
-  op_dialect_vjp
+  gtest
   pir
-  phi
-  common
-  gtest)
-
-cc_test_old(
-  scalar_attribute_test
-  SRCS
-  scalar_attribute_test.cc
-  DEPS
   op_dialect_vjp
-  pir
-  gtest)
+  phi)
+
+cc_test_old(ir_infershape_test SRCS ir_infershape_test.cc DEPS common gtest)
+
+cc_test_old(scalar_attribute_test SRCS scalar_attribute_test.cc DEPS gtest)
 
 file(
   DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
@@ -60,24 +44,10 @@ file(
 copy_if_different(${CMAKE_CURRENT_SOURCE_DIR}/TestParserText.txt
                   ${CMAKE_CURRENT_BINARY_DIR}/TestParserText.txt)
 
-cc_test_old(
-  program_translator_test
-  SRCS
-  program_translator_test.cc
-  DEPS
-  program_translator
-  gtest
-  op_dialect_vjp
-  pir)
+cc_test_old(program_translator_test SRCS program_translator_test.cc DEPS
+            program_translator gtest)
 
-cc_test_old(
-  add_dialect_parser_test
-  SRCS
-  add_dialect_parser_test.cc
-  DEPS
-  gtest
-  op_dialect_vjp
-  pir)
+paddle_test(add_dialect_parser_test SRCS add_dialect_parser_test.cc DEPS gtest)
 
 cc_test(
   ir_parser_test
@@ -105,27 +75,13 @@ cc_test_old(
   op_dialect_vjp
   pir)
 
-cc_test_old(
-  type_interface_test
-  SRCS
-  type_interface_test.cc
-  DEPS
-  pir
-  test_dialect
-  gtest
-  op_dialect_vjp)
+paddle_test(type_interface_test SRCS type_interface_test.cc DEPS test_dialect
+            gtest)
 
-cc_test_old(
-  block_operand_test
-  SRCS
-  block_operand_test.cc
-  DEPS
-  test_dialect
-  gtest
-  pir)
+cc_test_old(block_operand_test SRCS block_operand_test.cc DEPS test_dialect
+            gtest)
 
-paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect
-            pir)
+paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
