@@ -15,6 +15,22 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
+/** \brief A macro that guards the beginning of each implementation of schedule
+ */
+#define CINN_IR_SCHEDULE_BEGIN() try {
+/**
+ * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
+ */
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  }
+
 namespace cinn {
 namespace ir {
 
@@ -35,11 +51,38 @@ void DyScheduleImpl::ReverseComputeAt(const Expr& block,
 }
 
 void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK(schedule_block.As<ir::ScheduleBlockRealize>());
+  Expr root = this->GetRootBlock(schedule_block);
+  Expr store = CheckComputeInlineValidationAndGetStore(schedule_block, root);
+  ComputeInliner inliner(store.As<ir::Store>()->tensor.as_tensor_ref(), store);
+  CHECK(inliner.BodyPatternAllowInline());
+  // Create a plan that removes the block to be inlined
+  LeafBlockRemovalPlan remove_plan(
+      schedule_block, &inliner.src_stmt, &inliner.tgt_stmt);
+  remove_plan(&root);
+  inliner(&root);
+  return;
 }
 
 void DyScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
-  CINN_NOT_IMPLEMENTED;
+  Expr root = this->GetRootBlock(schedule_block);
+  auto exprs =
+      CheckReverseComputeInlineValidationAndGetExprs(schedule_block, root);
+  Expr inlined_load = std::get<0>(exprs);
+  Expr inlined_store = std::get<1>(exprs);
+  Expr target_store = std::get<2>(exprs);
+  ReverseComputeInliner inliner(
+      inlined_store.As<ir::Store>()->tensor.as_tensor_ref(),
+      inlined_store,
+      inlined_load,
+      target_store);
+  CHECK(inliner.BodyPatternAllowInline());
+  // Create a plan that removes the block to be inlined
+  LeafBlockRemovalPlan remove_plan(
+      schedule_block, &inliner.src_stmt, &inliner.tgt_stmt);
+  remove_plan(&root);
+  inliner(&root);
+  inliner(&root);
 }
 
 }  // namespace ir
@@ -108,6 +151,8 @@ void StScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
   for (int i = 0; i < loops.size(); ++i) {
+    VLOG(3) << i << "-th loop is:\n " << loops[i];
+    VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
     CHECK_EQ(GetLoopExtent(loops[i]), GetLoopExtent(block_loops[i]));
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {

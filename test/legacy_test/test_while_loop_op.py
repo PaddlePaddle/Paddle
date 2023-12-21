@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 import paddle.nn.functional as F
@@ -23,15 +23,14 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
-
-sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils import compare_legacy_with_pt
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestApiWhileLoop(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_tuple(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -39,9 +38,9 @@ class TestApiWhileLoop(unittest.TestCase):
         def body(i):
             return paddle.add(x=i, y=one)
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             ten = paddle.tensor.fill_constant(
@@ -61,6 +60,7 @@ class TestApiWhileLoop(unittest.TestCase):
         )
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_list(self):
         def cond(i, mem):
             return paddle.less_than(i, ten)
@@ -70,9 +70,9 @@ class TestApiWhileLoop(unittest.TestCase):
             i = paddle.increment(i)
             return [i, mem]
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -182,6 +182,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
+    @test_with_pir_api
     @compare_legacy_with_pt
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
@@ -207,9 +208,9 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             i = paddle.increment(i)
             return [i, j, init, sums]
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             j = paddle.zeros(shape=[1], dtype='int64')
             init = paddle.static.data(

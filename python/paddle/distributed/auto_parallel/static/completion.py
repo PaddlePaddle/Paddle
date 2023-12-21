@@ -16,11 +16,13 @@ import copy
 import logging
 import os
 
+import paddle
 from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
     get_spmd_rule,
 )
+from paddle.base.framework import Operator
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import core
@@ -29,10 +31,10 @@ from ..process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import _node_id
 from .operators.common import (
+    _gradient_sync_by_partial_ops,
     find_compatible_distributed_operator_impls,
     find_distributed_operator_impl_container,
 )
-from .operators.common import _gradient_sync_by_partial_ops
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
@@ -52,6 +54,25 @@ __skip_dims_mapping_op__ = [
     "while",
     "read",
 ]
+
+_skip_propagation_prefix = "Auto_Parallel_Completion_Skipped"
+_max_propagation_step = 500
+
+
+def mark_as_sharding_propagation_skip_op(op):
+    op._set_attr('op_namescope', '/' + _skip_propagation_prefix)
+
+
+def is_sharding_propagation_skip_op(op):
+    if isinstance(op, paddle.base.libpaddle.OpDesc):
+        op_desc = op
+    elif isinstance(op, Operator):
+        op_desc = op.desc
+    else:
+        raise RuntimeError(f"static mode operator is expected but got [{op}]")
+    return op_desc.has_attr(
+        "op_namescope"
+    ) and _skip_propagation_prefix in op_desc.attr("op_namescope")
 
 
 def compute_compatible_dim_mapping(dim_mapping_list):
@@ -136,6 +157,7 @@ def _can_apply_infer_spmd_rule(dist_op):
 
     # TODO remove me. ops to be adapted: squeeze2
     __adapted_ops__ = [
+        "fused_rotary_position_embedding",
         "matmul_v2",
         "elementwise_div",
         "gelu",
@@ -152,6 +174,8 @@ def _can_apply_infer_spmd_rule(dist_op):
         "transpose2",
         "split",
         "unsqueeze2",
+        "silu",
+        "concat",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
@@ -217,6 +241,7 @@ class Completer:
                         or pred_op_node.op().type()
                         == "create_double_buffer_reader"
                         or pred_op_node.op().type() == "read"
+                        # or is_sharding_propagation_skip_op(pred_op_node.op()) # reshard should only fwd tensor propagation
                     ):
                         continue
                     op_dist_attr = (
@@ -254,6 +279,7 @@ class Completer:
                         or succ_op_node.op().type()
                         == "create_double_buffer_reader"
                         or succ_op_node.op().type() == "read"
+                        or is_sharding_propagation_skip_op(succ_op_node.op())
                     ):
                         continue
                     op_dist_attr = (
@@ -292,7 +318,10 @@ class Completer:
         if (not op_node.is_op()) or (op_node.op() is None):
             return False
         # Skip reader op
-        if op_desc.type() in __skip_dims_mapping_op__:
+        if (
+            op_desc.type() in __skip_dims_mapping_op__
+            or is_sharding_propagation_skip_op(op_node.op())
+        ):
             return False
 
         dist_op = self._dist_context.get_dist_op_for_graph(op_node)
@@ -476,9 +505,10 @@ class Completer:
 
     def _update_dims_mapping(self):
         # Complete dims_mapping for each node
+        step = 0
         reach_fix_point = False
 
-        while not reach_fix_point:
+        while (not reach_fix_point) and (step < _max_propagation_step):
             changed = False
             for is_fwd in [True, False]:
                 all_nodes = (
@@ -507,7 +537,14 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+            step += 1
         # NOTE: this will be removed after changing the reshard rule
+
+        if step >= _max_propagation_step:
+            _logger.debug(
+                "Sharding Propagation reach the Max Step and is NOT Converge! The Sharding Propagation Iteration is Terminated."
+            )
+
         self._update_dims_mapping_for_special()
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
@@ -1707,7 +1744,7 @@ class Completer:
 
             # grad ops that have not a corresponding mapping in grad_op_id_to_op_id
             else:
-                if grad_op.type == 'sum':
+                if grad_op.type in ['sum', 'grad_add']:
                     assert all(map(_is_grad_var_name, grad_op.input_arg_names))
                     output_name = grad_op.output_arg_names[0]
                     assert (

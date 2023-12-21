@@ -748,7 +748,7 @@ void FleetWrapper::SaveCacheTable(const uint64_t table_id,
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
-    LOG(ERROR) << "save cache table stat failed";
+    VLOG(0) << "save cache table stat failed";
   }
 }
 

@@ -66,6 +66,7 @@ PD_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(fetch, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(conv2d, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cummax, CPU, ALL_LAYOUT);
 
 // Define op1.
 class Operation1 : public pir::Op<Operation1> {
@@ -541,4 +542,40 @@ TEST(constant_folding, ConstantFolding_Combine) {
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 12u);
+}
+
+void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {
+  pir::Builder builder = pir::Builder(ctx, program->block());
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({2, 2}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto cummax_op = builder.Build<paddle::dialect::CummaxOp>(x, 0);
+
+  auto out = cummax_op.out();
+  auto indices = cummax_op.indices();
+
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(indices, "indices", 1);
+}
+
+TEST(constant_folding, ConstantFolding_MultiOutput) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  BuildMultiOutputProgram(&program, ctx);
+
+  pir::PassManager pm(ctx);
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }

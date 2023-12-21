@@ -44,6 +44,16 @@ class IrDtype {
 
   bool operator==(IrDtype other) const { return dtype_ == other.dtype_; }
 
+  template <typename T>
+  bool isa() const {
+    return dtype_.isa<T>();
+  }
+
+  template <typename T>
+  T dyn_cast() const {
+    return dtype_.dyn_cast<T>();
+  }
+
  private:
   const pir::Type dtype_;
 };
@@ -68,6 +78,29 @@ class IrValue : public TensorInterface {
   ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
   DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }
 
+  explicit operator bool() const { return value_.operator bool(); }
+
+  template <typename T>
+  bool isa() const {
+    return value_.isa<T>();
+  }
+
+  template <typename T>
+  T dyn_cast() const {
+    return value_.dyn_cast<T>();
+  }
+
+  template <typename T>
+  bool type_isa() const {
+    return value_.type().isa<T>();
+  }
+
+  template <typename T>
+  T type_dyn_cast() const {
+    return value_.type().dyn_cast<T>();
+  }
+
+  // Don't use it in drr pass!
   const Value& get() const { return value_; }
 
  private:

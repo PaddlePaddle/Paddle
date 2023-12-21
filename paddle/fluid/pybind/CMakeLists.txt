@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    memory
+    staticgraph_executor_statistics
     executor
     fleet_wrapper
     box_wrapper
@@ -35,26 +35,26 @@ set(PYBIND_DEPS
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
-    plan
     global_utils
     phi_utils
     phi
-    pir_adaptor
     op_dialect_vjp
+    pir_adaptor
     program_translator
     pir_transforms
     pir
     new_profiler
-    jit_layer
-    jit_property
+    fluid_jit
     prim_utils
+    gather_op_handle
     static_tensor_operants
     type_info
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
-                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
+  set(PYBIND_DEPS
+      ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+      add_broadcast_to_elementwise_pass pd_to_cinn_pass sub_graph_checker)
 endif()
 
 if(WITH_PSCORE)
@@ -114,7 +114,8 @@ if(NOT WIN32)
 endif()
 
 if(WITH_PYTHON)
-  list(APPEND PYBIND_DEPS py_func_op)
+  # list(APPEND PYBIND_DEPS py_func_op)
+  set(PYBIND_DEPS ${PYBIND_DEPS} py_func_op)
 endif()
 
 set(PYBIND_SRCS
@@ -226,6 +227,10 @@ if(WITH_PSCORE)
   list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
+endif()
+
+if(WITH_CINN)
+  set(PYBIND_SRCS ${PYBIND_SRCS} test.cc)
 endif()
 
 if(WITH_RPC)

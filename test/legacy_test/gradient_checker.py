@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.base.backward import _append_grad_suffix_, _as_list
 from paddle.base.framework import in_pir_mode
@@ -498,9 +499,12 @@ def double_grad_check(
     x_init = _as_list(x_init)
 
     if in_pir_mode():
-        program, op_map = paddle.base.libpaddle.pir.clone_program(
+        program, (keys, values) = paddle.base.libpaddle.pir.clone_program(
             paddle.static.default_main_program()
         )
+        op_map = ValueDict()
+        for key, value in zip(keys, values):
+            op_map[key] = value
         clone_x = []
         for xi in x:
             clone_x.append(op_map[xi])
@@ -589,9 +593,12 @@ def triple_grad_check(
 
     # x <=> [x, dout, ddx]
     if in_pir_mode():
-        program, op_map = paddle.base.libpaddle.pir.clone_program(
+        program, (keys, values) = paddle.base.libpaddle.pir.clone_program(
             paddle.static.default_main_program()
         )
+        op_map = ValueDict()
+        for key, value in zip(keys, values):
+            op_map[key] = value
         clone_x = []
         for xi in x:
             clone_x.append(op_map[xi])

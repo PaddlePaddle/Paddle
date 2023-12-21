@@ -329,7 +329,9 @@ def _replace_value_with_input_spec(args):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec.from_tensor(input_var)
             input_var.stop_gradient = stop_gradient
-        elif isinstance(input_var, paddle.base.framework.Variable):
+        elif isinstance(
+            input_var, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec(
                 input_var.shape, input_var.dtype, input_var.name

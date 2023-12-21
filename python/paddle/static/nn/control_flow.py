@@ -26,7 +26,12 @@ from paddle.base.framework import (
     in_pir_mode,
     static_only,
 )
-from paddle.base.libpaddle.pir import build_if_op, build_while_op, cf_yield
+from paddle.base.libpaddle.pir import (
+    build_assert_op,
+    build_if_op,
+    build_while_op,
+    cf_yield,
+)
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -103,6 +108,11 @@ def Assert(cond, data=None, summarize=20, name=None):
     )
     check_type(summarize, "summarize", int, "static.nn.control_flow.Assert")
     check_type(name, "name", (str, type(None)), "static.nn.control_flow.Assert")
+
+    if in_pir_mode():
+        input_data = [] if data is None else list(data)
+        assert_op = build_assert_op(cond, input_data, summarize)
+        return
 
     layer_name = name if name else ('assert_' + cond.name)
     helper = LayerHelper(layer_name, **locals())
@@ -671,6 +681,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             args = cur_block.args()
             next_var = body(*args)
             next_cond = cond(*next_var)
+            next_cond.stop_gradient = True
             cf_yield([next_cond, *next_var])
         return while_op.as_operation().results()
 
@@ -1220,11 +1231,12 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     )
                 return false_fn()
         return None
-
+    true_output = None
+    false_output = None
     if in_pir_mode():
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
         if_op = build_if_op(pred)
-        true_output = None
-        false_output = None
         if true_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
@@ -1232,10 +1244,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         type(true_fn).__name__
                     )
                 )
-        with if_op.true_block():
-            true_output = true_fn()
-            if true_output is not None:
-                cf_yield(flatten(true_output))
+            with if_op.true_block():
+                true_output = true_fn()
         if false_fn is not None:
             if not callable(false_fn):
                 raise TypeError(
@@ -1243,53 +1253,43 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         type(false_fn).__name__
                     )
                 )
-        with if_op.false_block():
-            false_output = false_fn()
-            if false_output is not None:
-                cf_yield(flatten(false_output))
-
-        if true_output is None and false_output is None:
-            return None
-
-        if_op.update_output()
-        return if_op.results()
-
-    check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-    check_type(name, "name", (str, type(None)), "base.layers.cond")
-    helper = LayerHelper('cond', **locals())
-    true_output = None
-    false_output = None
-    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
-    if true_fn is not None:
-        if not callable(true_fn):
-            raise TypeError(
-                "The true_fn in cond must be callable, but received {}".format(
-                    type(true_fn).__name__
+            with if_op.false_block():
+                false_output = false_fn()
+    else:
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
+        helper = LayerHelper('cond', **locals())
+        copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
+        if true_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn in cond must be callable, but received {}".format(
+                        type(true_fn).__name__
+                    )
                 )
+            true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
+            with true_cond_block.block():
+                origin_true_output = true_fn()
+                if origin_true_output is not None:
+                    true_output = map_structure(
+                        copy_to_parent_func, origin_true_output
+                    )
+        if false_fn is not None:
+            if not callable(false_fn):
+                raise TypeError(
+                    "The false_fn in cond must be callable, but received {}".format(
+                        type(false_fn).__name__
+                    )
+                )
+            false_cond_block = ConditionalBlock(
+                [paddle.logical_not(pred)], is_scalar_condition=True
             )
-        true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
-        with true_cond_block.block():
-            origin_true_output = true_fn()
-            if origin_true_output is not None:
-                true_output = map_structure(
-                    copy_to_parent_func, origin_true_output
-                )
-    if false_fn is not None:
-        if not callable(false_fn):
-            raise TypeError(
-                "The false_fn in cond must be callable, but received {}".format(
-                    type(false_fn).__name__
-                )
-            )
-        false_cond_block = ConditionalBlock(
-            [paddle.logical_not(pred)], is_scalar_condition=True
-        )
-        with false_cond_block.block():
-            origin_false_output = false_fn()
-            if origin_false_output is not None:
-                false_output = map_structure(
-                    copy_to_parent_func, origin_false_output
-                )
+            with false_cond_block.block():
+                origin_false_output = false_fn()
+                if origin_false_output is not None:
+                    false_output = map_structure(
+                        copy_to_parent_func, origin_false_output
+                    )
 
     if true_output is None and false_output is None:
         return None
@@ -1380,6 +1380,14 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output
         )
+
+    if in_pir_mode():
+        with if_op.true_block():
+            cf_yield(flatten(true_output))
+        with if_op.false_block():
+            cf_yield(flatten(false_output))
+        if_op.update_output()
+        return pack_sequence_as(true_output, flatten(if_op.results()))
 
     mask = paddle.cast(pred, dtype='int32')
     merge_func = (
