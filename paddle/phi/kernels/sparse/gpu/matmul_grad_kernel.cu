@@ -149,19 +149,20 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
                             SparseCsrTensor* dy) {
 #if CUDA_VERSION >= 11000
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  SparseCsrTensor tmp_dout;
+  CastCsrKernel<T, Context>(
+      dev_ctx, dout, phi::DataType::INT32, dout.values().dtype(), &tmp_dout);
   // dx{SparseCsr} = dout{SparseCsr} * y'{SparseCsr}
   if (dx) {
     auto dims_numel = y.dims().size();
-    SparseCsrTensor transpose_y, tmp_dout, tmp_y;
+    SparseCsrTensor transpose_y, tmp_y;
     if (dims_numel == 2) {
       TransposeCsrKernel<T, Context>(dev_ctx, y, {1, 0}, &transpose_y);
     } else {
       TransposeCsrKernel<T, Context>(dev_ctx, y, {0, 2, 1}, &transpose_y);
     }
     CastCsrKernel<T, Context>(
-        dev_ctx, dout, phi::DATATYPE::INT32, dout.values().dtype(), &tmp_dout);
-    CastCsrKernel<T, Context>(
-        dev_ctx, transpose_y, phi::DATATYPE::INT32, y.values().dtype(), &tmp_y);
+        dev_ctx, transpose_y, phi::DataType::INT32, y.values().dtype(), &tmp_y);
 
     sparse_blas.SPMM(false,
                      false,
@@ -175,16 +176,14 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   // dy{SparseCsr} = x'{SparseCsr} * dout{SparseCsr}
   if (dy) {
     auto dims_numel = x.dims().size();
-    SparseCsrTensor transpose_x, tmp_dout, tmp_x;
+    SparseCsrTensor transpose_x, tmp_x;
     if (dims_numel == 2) {
       TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0}, &transpose_x);
     } else {
       TransposeCsrKernel<T, Context>(dev_ctx, x, {0, 2, 1}, &transpose_x);
     }
     CastCsrKernel<T, Context>(
-        dev_ctx, dout, phi::DATATYPE::INT32, dout.values().dtype(), &tmp_dout);
-    CastCsrKernel<T, Context>(
-        dev_ctx, transpose_x, phi::DATATYPE::INT32, x.values().dtype(), &tmp_x);
+        dev_ctx, transpose_x, phi::DataType::INT32, x.values().dtype(), &tmp_x);
     sparse_blas.SPMM(false,
                      false,
                      static_cast<T>(1),

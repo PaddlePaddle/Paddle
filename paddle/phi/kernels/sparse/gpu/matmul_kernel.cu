@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -248,9 +249,9 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
   out->set_dims(common::make_ddim(out_dim_vec));
   SparseCsrTensor x_tmp, y_tmp;
   CastCsrKernel<T, Context>(
-      dev_ctx, x, phi::DATATYPE::INT32, x.values().dtype(), &x_tmp);
+      dev_ctx, x, phi::DataType::INT32, x.values().dtype(), &x_tmp);
   CastCsrKernel<T, Context>(
-      dev_ctx, y, phi::DATATYPE::INT32, y.values().dtype(), &y_tmp);
+      dev_ctx, y, phi::DataType::INT32, y.values().dtype(), &y_tmp);
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(

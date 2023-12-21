@@ -312,7 +312,6 @@ void TransposeCsrKernel(const Context &dev_ctx,
                                                                out_values_data);
   }
 }
-
 }  // namespace sparse
 }  // namespace phi
 
