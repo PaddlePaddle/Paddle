@@ -1062,6 +1062,9 @@ class Completer:
                         tensor_dist_attr.chunk_id = op_dist_attr.chunk_id
                         var_to_chunk_id[var.name] = op_dist_attr.chunk_id
 
+        if not self._dist_context.strategy:
+            return
+
         pp_degree = get_pp_degree(self._dist_context)
         vpp_degree = self._dist_context.strategy.pipeline.vpp_degree
         seg_method = self._dist_context.strategy.pipeline.vpp_seg_method
