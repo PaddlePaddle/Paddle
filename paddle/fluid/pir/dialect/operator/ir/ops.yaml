@@ -85,14 +85,6 @@
   kernel :
     func : any
 
-- op : assert
-  args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
-  output :
-  kernel :
-    func : assert
-    param : [cond, data, summarize]
-    data_type : cond
-
 - op : assign
   args : (Tensor x)
   output : Tensor
@@ -379,7 +371,7 @@
   kernel :
     func : dropout
     data_type : x
-  optional : seed_tensor
+  optional : seed_tensor, mask
   backward : dropout_grad
 
 - op : einsum
@@ -985,6 +977,18 @@
   kernel :
     func : randperm
     param : [n, dtype]
+    data_type : dtype
+    backend : place
+
+- op : read_file
+  args : (str filename = "", DataType dtype=DataType::UINT8, Place place=CPUPlace())
+  output : Tensor(out)
+  infer_meta :
+    func : ReadFileInferMeta
+    param : [filename]
+  kernel :
+    func : read_file
+    param : [filename]
     data_type : dtype
     backend : place
 
