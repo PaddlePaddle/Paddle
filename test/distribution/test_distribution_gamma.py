@@ -291,6 +291,7 @@ class TestGammaSample(unittest.TestCase):
             ),
         )
 
+    # TODO: implement standard_gamma grad op.
     # def test_rsample_backpropagation(self):
     #     sample_shape = (1000,)
     #     with paddle.base.dygraph.guard(self.place):

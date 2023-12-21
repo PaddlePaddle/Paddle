@@ -260,6 +260,16 @@ class TestExponentialSample(unittest.TestCase):
             self.assertEqual(len(grads), 1)
             self.assertEqual(grads[0].dtype, self._paddle_expon.rate.dtype)
             self.assertEqual(grads[0].shape, self._paddle_expon.rate.shape)
+            np.testing.assert_allclose(
+                -samples.sum() / self._paddle_expon.rate,
+                grads[0],
+                rtol=config.RTOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+                atol=config.ATOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+            )
 
 
 @parameterize.place(config.DEVICES)
