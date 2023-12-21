@@ -9,7 +9,6 @@ set(new_executor_deps
     pir
     program_translator
     op_dialect_vjp
-    pir_transforms
     global_utils
     buffered_reader
     framework_io

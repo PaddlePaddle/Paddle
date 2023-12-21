@@ -9,7 +9,8 @@ if(NOT WITH_CINN)
     ${CMAKE_CURRENT_SOURCE_DIR}/shape_optimization_pass.cc)
 endif()
 
-set(transforms_deps drr op_dialect op_dialect_vjp pir device_event_base)
+set(transforms_deps drr op_dialect op_dialect_vjp new_executor pir
+                    device_event_base)
 
 if(WITH_CINN)
   set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi)
