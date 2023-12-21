@@ -284,6 +284,21 @@ class TestCastTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestCastInplaceContinuous(unittest.TestCase):
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
+            target = x.cast("uint8")
+            x.cast_("uint8")
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+            target = x.cast("float32")
+            x.cast_("float32")
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+
+        run(paddle.CPUPlace())
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
