@@ -156,6 +156,7 @@ PhiKernelInstruction::~PhiKernelInstruction() {
 }
 
 void PhiKernelInstruction::Run() {
+  VLOG(4) << "run phi kernel instruction";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }

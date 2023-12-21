@@ -68,6 +68,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
 }
 
 void TuplePushInstruction::Run() {
+  VLOG(4) << "run tuple_push instruction";
   if (tuple_push_op_.tuple_size() == 0) {
     stack_element_var_array_->emplace_back(nullptr);
   } else {

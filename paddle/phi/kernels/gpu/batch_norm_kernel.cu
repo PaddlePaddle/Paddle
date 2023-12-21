@@ -900,7 +900,6 @@ void BatchNormKernel(const Context &ctx,
       }
       reserve_space->Resize({reserve_space_size});
       ctx.template Alloc<T>(reserve_space);
-      std::cout << "(N * H * W * D) == 1" << std::endl;
       // Only 1 element in normalization dimension,
       // skip the batch norm calculation, let y = x.
       phi::Copy(ctx, x, ctx.GetPlace(), false, y);

@@ -968,7 +968,6 @@ void BatchNormGradFunctor(const Context &ctx,
         workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
         workspace_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
-        std::cout << "reserve_space_size " << reserve_space_size << std::endl;
         uint8_t *reserve_space_ptr = nullptr;
         if (reserve_space_size != 0) {
           reserve_space_ptr =

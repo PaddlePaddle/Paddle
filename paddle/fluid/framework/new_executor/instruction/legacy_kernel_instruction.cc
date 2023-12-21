@@ -162,6 +162,7 @@ LegacyKernelInstruction::~LegacyKernelInstruction() {
 }
 
 void LegacyKernelInstruction::Run() {
+  VLOG(4) << "run legacy kernel instruction";
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
