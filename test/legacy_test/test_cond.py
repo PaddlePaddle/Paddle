@@ -757,7 +757,7 @@ class TestCondBackward(unittest.TestCase):
                     feed_img_delta[0][j] = feed_img[0][j] + delta
                     if paddle.framework.in_pir_mode():
                         for p, g in grad_list:
-                            if p == img:
+                            if p.is_same(img):
                                 dimg = g
                         _, loss_delta = exe.run(
                             main_program,
