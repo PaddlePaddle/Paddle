@@ -36,7 +36,6 @@ set(PYBIND_DEPS
     cuda_graph_with_memory_pool
     fleet_executor
     global_utils
-    plan
     phi_utils
     phi
     op_dialect_vjp
@@ -114,7 +113,8 @@ if(NOT WIN32)
 endif()
 
 if(WITH_PYTHON)
-  list(APPEND PYBIND_DEPS py_func_op)
+  # list(APPEND PYBIND_DEPS py_func_op)
+  set(PYBIND_DEPS ${PYBIND_DEPS} py_func_op)
 endif()
 
 set(PYBIND_SRCS

@@ -19,12 +19,14 @@ from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.cauchy import Cauchy
+from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.geometric import Geometric
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
+from paddle.distribution.multivariate_normal import MultivariateNormal
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
 from paddle.framework import in_dynamic_mode
@@ -192,8 +194,18 @@ def _kl_cauchy_cauchy(p, q):
     return p.kl_divergence(q)
 
 
+@register_kl(ContinuousBernoulli, ContinuousBernoulli)
+def _kl_continuousbernoulli_continuousbernoulli(p, q):
+    return p.kl_divergence(q)
+
+
 @register_kl(Normal, Normal)
 def _kl_normal_normal(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(MultivariateNormal, MultivariateNormal)
+def _kl_mvn_mvn(p, q):
     return p.kl_divergence(q)
 
 

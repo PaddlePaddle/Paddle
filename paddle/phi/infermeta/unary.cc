@@ -3627,6 +3627,7 @@ void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
           "The rank of input should be less than 7, but received %d.",
           in_dims.size()));
   out->set_dims(in_dims);
+  out->set_dtype(x.dtype());
 }
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
@@ -5311,6 +5312,12 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
   out->set_strides(x.strides());
+}
+
+void NumberCountInferMeta(const MetaTensor& x,
+                          int upper_range,
+                          MetaTensor* out) {
+  out->share_meta(x);
 }
 
 }  // namespace phi

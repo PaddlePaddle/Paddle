@@ -429,6 +429,7 @@ def has_fetch_operations(
         A boolean value that indicates whether a block has fetch operators
         that match the info contained in fetch_targets.
     """
+    from paddle.autograd.backward_utils import ValueSet
 
     fetch_info = [[], []]
     for op in block.ops:
@@ -443,7 +444,7 @@ def has_fetch_operations(
                 raise Exception(
                     f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
                 )
-        elif fetch_var not in fetch_info[0]:
+        elif fetch_var not in ValueSet(fetch_info[0]):
             need_fetch_info.append(fetch_var)
 
     return need_fetch_info
