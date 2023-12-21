@@ -31,7 +31,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"precision_recall",
      {"MaxProbs", "Indices", "Labels", "Weights", "StatesInfo"}},
     {"layer_norm", {"X", "Scale", "Bias"}},
-    {"conv2d_fusion", {"Input", "Filter", "Bias", "ResidualData"}},
+    {"fused_conv2d_add_act", {"Input", "Filter", "Bias", "ResidualData"}},
     {"bincount", {"X", "Weights"}},
     {"fused_attention",
      {"X",

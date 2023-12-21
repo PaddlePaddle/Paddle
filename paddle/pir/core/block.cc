@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/region.h"
 

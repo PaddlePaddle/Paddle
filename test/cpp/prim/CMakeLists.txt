@@ -1,5 +1,6 @@
 set(prim_eager_deps
     phi
+    common
     hook_utils
     utils
     global_utils
@@ -33,7 +34,7 @@ if(NOT WIN32)
   cc_test(
     test_vjp_pir
     SRCS test_vjp.cc
-    DEPS pir_adaptor op_dialect_vjp pir)
+    DEPS op_dialect_vjp pir)
 endif()
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

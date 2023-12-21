@@ -35,6 +35,8 @@
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
+using paddle::dialect::AssertOp;
+using paddle::dialect::HasElementsOp;
 using paddle::dialect::IfOp;
 using paddle::dialect::WhileOp;
 using pir::Block;
@@ -84,6 +86,29 @@ void BindWhileOp(py::module* m) {
     return ApiBuilder::Instance().GetBuilder()->Build<WhileOp>(cond,
                                                                loop_values);
   });
+  py::class_<WhileOp> while_op(*m, "WhileOp", R"DOC(
+    WhileOp in python api.
+  )DOC");
+  while_op.def("body", &WhileOp::body, return_value_policy::reference)
+      .def("as_operation", &WhileOp::operation, return_value_policy::reference)
+      .def("block_arguments",
+           &WhileOp::block_args,
+           return_value_policy::reference);
+}
+
+void BindAssertOp(py::module* m) {
+  m->def("build_assert_op",
+         [](Value cond, const std::vector<Value>& data, int64_t summarize) {
+           auto data_combine_op =
+               ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(data);
+           return ApiBuilder::Instance().GetBuilder()->Build<AssertOp>(
+               cond, data_combine_op.out(), summarize);
+         });
+  py::class_<AssertOp> assert_op(*m, "AssertOp", R"DOC(
+    AssertOp in python api.
+  )DOC");
+  assert_op.def(
+      "as_operation", &AssertOp::operation, return_value_policy::reference);
 }
 
 void GetUsedExternalValueImpl(
@@ -119,6 +144,40 @@ std::vector<Value> GetUsedExternalValue(const Operation& op) {
   std::vector<Value> used_values;
   GetUsedExternalValueImpl(defined_values, used_values, op);
   return used_values;
+}
+
+std::vector<Value> GetUsedExternalValue(const Block& block) {
+  auto& args = block.args();
+  std::unordered_set<Value> defined_values(args.begin(), args.end());
+  std::vector<Value> used_values;
+  for (auto& op : block) {
+    GetUsedExternalValueImpl(defined_values, used_values, op);
+  }
+  return used_values;
+}
+
+Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
+  PADDLE_ENFORCE(fwd_op.isa<WhileOp>(),
+                 phi::errors::PreconditionNotMet(
+                     "param op of BuildHasElementsOp must be while op."));
+  auto fwdop = fwd_op.dyn_cast<WhileOp>();
+  TuplePushOp push_op;
+  for (auto iter = fwdop.body().rbegin(); iter != fwdop.body().rend(); ++iter) {
+    if (iter->isa<TuplePushOp>()) {
+      push_op = iter->dyn_cast<TuplePushOp>();
+      PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
+                        false,
+                        phi::errors::InvalidArgument(
+                            "The last container in foward while op must used "
+                            "after construct while_grad op"));
+      break;
+    }
+  }
+  auto new_cond = ApiBuilder::Instance()
+                      .GetBuilder()
+                      ->Build<HasElementsOp>(push_op.container())
+                      .out();
+  return new_cond;
 }
 
 void BuildPipeForBlock(Block* block) {
@@ -186,8 +245,12 @@ void PyIfOp::UpdateOutput() {
 }
 
 void BindControlFlowApi(py::module* m) {
-  m->def("get_used_external_value", GetUsedExternalValue);
+  m->def("get_used_external_value",
+         [](const Operation& op) { return GetUsedExternalValue(op); });
+  m->def("get_used_external_value",
+         [](const Block& block) { return GetUsedExternalValue(block); });
   m->def("build_pipe_for_block", BuildPipeForBlock);
+  m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {
     std::vector<Value> input_values;
     for (auto input : inputs) {
@@ -195,9 +258,10 @@ void BindControlFlowApi(py::module* m) {
     }
     ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
   });
-
   BindIfOp(m);
   BindWhileOp(m);
+  BindAssertOp(m);
 }
+
 }  // namespace pybind
 }  // namespace paddle

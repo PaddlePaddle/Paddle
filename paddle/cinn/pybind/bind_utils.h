@@ -30,9 +30,9 @@
 namespace py = pybind11;
 
 namespace cinn::pybind {
-using common::CINNValue;
-using common::Shared;
-using common::Type;
+using cinn::common::CINNValue;
+using cinn::common::Shared;
+using cinn::common::Type;
 using ir::Expr;
 using ir::ExprNode;
 

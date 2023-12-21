@@ -27,7 +27,7 @@ void TrilTriuKernel(const Context& ctx,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
-  auto xshape = vectorize<int>(x.dims());
+  auto xshape = common::vectorize<int>(x.dims());
   int r = 0;
   if (lower) {
     r = xpu::tril(ctx.x_context(),
@@ -70,9 +70,18 @@ PD_REGISTER_KERNEL(tril_triu,
                    phi::TrilTriuKernel,
                    int,
                    float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    tril, XPU, ALL_LAYOUT, phi::TrilKernel, int, float, phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   bool) {}
+PD_REGISTER_KERNEL(tril,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TrilKernel,
+                   int,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   bool) {}
 PD_REGISTER_KERNEL(triu,
                    XPU,
                    ALL_LAYOUT,
@@ -80,4 +89,5 @@ PD_REGISTER_KERNEL(triu,
                    int,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   bool) {}

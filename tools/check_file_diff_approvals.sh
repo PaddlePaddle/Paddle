@@ -90,6 +90,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/autograd/ir_backward.py"
            "python/paddle/autograd/backward_utils.py"
            "paddle/scripts/paddle_build.sh"
+           "paddle/phi/infermeta/spmd_rules"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -227,6 +228,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then 
 	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n " 
             check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen 
+      elif [ "${API_FILE}" == "paddle/phi/infermeta/spmd_rules" ]; then 
+	      echo_line="You must have one RD (liuzhenhai(liuzhenhai93) or liyurui(LiYuRio) or shenliang03(ForFishes) or zhangyichen03(pkuzyc) or chenqiuliang(zhiqiu)) approval for changing ${API_FILE} , which manages the code for spmd_rules.\n"
+            check_approval 1 liuzhenhai93 LiYuRio ForFishes pkuzyc zhiqiu
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
@@ -289,6 +293,12 @@ HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH |grep "cc_test_old" || true`
 if [ "${HAS_USED_CCTESTOLD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by phlrain or risemeup1 or zhangbo9674 or Galaxy1458 for using cc_test_old. Thanks!\n"
     check_approval 1 phlrain risemeup1 zhangbo9674 Galaxy1458
+fi
+
+HAS_USED_CCTEST=`git diff -U0 upstream/$BRANCH |grep "cc_test" || true`
+if [ "${HAS_USED_CCTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="Paddle utest will gradually discard cc_test\n  instead, the paddle_test is recommended,\n if you must use cc_test, you must be approved by risemeup1 or zhangbo9674 or Galaxy1458 for using cc_test. Thanks!\n"
+    check_approval 1 risemeup1 zhangbo9674 Galaxy1458
 fi
 
 HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/op_compat.yaml" || true`
@@ -382,6 +392,19 @@ INVALID_UNITTEST_ASSERT_CHECK=`echo "$ALL_ADDED_LINES" | grep -zoE '\+\s+((asser
 if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request qili93 (Recommend) or luotao1 or Aurelius84 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
     check_approval 1 qili93 luotao1 Aurelius84
+fi
+
+DEPRECATED_FLAKE8=`git diff --name-only upstream/$BRANCH | grep ".flake8" || true`
+if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one SigureMo or gouzil approval for file changes in .flake8, we are planned to replace Flake8 with Ruff in the future.\n"
+    check_approval 1 SigureMo gouzil
+fi
+
+TEST_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- test |grep "^+")
+ENABLE_TO_STATIC_CHECK=`echo "$TEST_FILE_ADDED_LINES" | grep "enable_to_static(" || true`
+if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (SigureMo, Aurelius84 or 2742195759) approval for using 'paddle.jit.enable_to_static', we recommend using 'enable_to_static_guard' in the related test files.\n"
+    check_approval 1 SigureMo Aurelius84 2742195759
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
@@ -553,13 +576,13 @@ RUNTYPE_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH|gre
 if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for CMAKELISTS_FILE in ${RUNTYPE_FILE_CHANGED};
     do
-        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "SERIAL|RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST|RUN_TYPE=NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY|RUN_TYPE=DIST:NIGHTLY|PROPERTIES[[:space:]]+TIMEOUT" || true`
+        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "SERIAL|RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST|RUN_TYPE=HYBRID|RUN_TYPE=NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY|RUN_TYPE=DIST:NIGHTLY|PROPERTIES[[:space:]]+TIMEOUT" || true`
     if [[ ${RUNTYPE_ADD} != "" ]];then
         RUNTYPE_ADD_LINES="${RUNTYPE_ADD_LINES}\n${CMAKELISTS_FILE}\n${RUNTYPE_ADD}\n"
     fi
     done
     if [[ ${RUNTYPE_ADD_LINES} != "" ]];then
-        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE as EXCLUSIVE, DIST, NIGHTLY, EXCLUSIVE:NIGHTLY or DISTNIGHTLY, or setting parameter SERIAL, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification"
+        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE as EXCLUSIVE, DIST, HYBRID, NIGHTLY, EXCLUSIVE:NIGHTLY or DISTNIGHTLY, or setting parameter SERIAL, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification"
     check_approval 1 XieYunshen chalsliu
     fi
 fi

@@ -27,6 +27,7 @@ import numpy as np
 import paddle.base.unique_name as nameGen
 from paddle import base
 from paddle.base import core
+from paddle.distributed.collective import _init_parallel_env
 
 
 def DataTypeCast(date_type):
@@ -44,6 +45,8 @@ def DataTypeCast(date_type):
         np_dtype = np.int32
     elif date_type == "int64":
         np_dtype = np.int64
+    elif date_type == "bfloat16":
+        np_dtype = np.uint16
     else:
         raise ValueError("This data type is not support!")
 
@@ -131,9 +134,12 @@ class TestCollectiveRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        self.initCommunicator(
-            startup_prog, rank, nranks, True, current_endpoint, endpoints
-        )
+        if args["dynamic_static_unified_comm"]:
+            _init_parallel_env("bkcl")
+        else:
+            self.initCommunicator(
+                startup_prog, rank, nranks, True, current_endpoint, endpoints
+            )
         self.rank = rank
         np_dtype = DataTypeCast(args["dtype"])
         result = self.get_model(train_prog, startup_prog, np_dtype)
@@ -161,6 +167,9 @@ def runtime_main(test_class, col_type, sub_type):
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
     args["dtype"] = os.getenv("DTYPE")
+    args["dynamic_static_unified_comm"] = bool(
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+    )
     model.run_trainer(args)
 
 
@@ -265,6 +274,7 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "DTYPE": dtype,
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(need_envs)
         if check_error_log:

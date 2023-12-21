@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace phi {

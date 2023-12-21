@@ -216,7 +216,7 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
     break;
   }
 
-  return helper->target_ == common::DefaultNVGPUTarget()
+  return helper->target_ == cinn::common::DefaultNVGPUTarget()
              ? (succesive_reduce_dimension <= helper->target_.max_num_threads()
                     ? true
                     : false)
@@ -263,7 +263,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     return false;
   }
 
-  if (helper->target_ != common::DefaultNVGPUTarget()) {
+  if (helper->target_ != cinn::common::DefaultNVGPUTarget()) {
     return true;
   }
 

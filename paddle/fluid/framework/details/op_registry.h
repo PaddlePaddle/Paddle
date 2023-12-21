@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -33,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {

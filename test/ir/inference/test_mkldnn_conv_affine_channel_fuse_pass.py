@@ -152,7 +152,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             teller1,
             IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
-            because currently its fused op (Conv2DFusion) only supports data format of channel first (NCHW).",
+            because currently its fused op (FusedConv2dAddAct) only supports data format of channel first (NCHW).",
         )
 
         self.add_ignore_check_case(

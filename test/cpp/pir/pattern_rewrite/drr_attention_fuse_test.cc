@@ -17,9 +17,12 @@
 #include <cstdint>
 #include <vector>
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
+
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass_manager.h"
 
@@ -142,6 +145,8 @@ TEST(DrrTest, AttentionFuse) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateAttentionFusePass());
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);

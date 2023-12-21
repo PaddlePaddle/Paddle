@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 

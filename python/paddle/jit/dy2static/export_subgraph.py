@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 
 from paddle import pir
 from paddle.base import core
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.base.framework import Variable, get_flags
+from paddle.base.framework import get_flags
+from paddle.static.log_helper import get_logger
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 __all__ = []
 
-MAX_FILE_PATH_LEN = 50
+MAX_FILE_PATH_LEN = 100
 
 
 class SubGraphRole:
@@ -42,6 +48,7 @@ class BaseExporter:
         self.program = program
         self.role = role
         self.root_dir = get_saving_dir()
+        self.fetch_col = 0
 
     def save(self):
         # step 1: Create subgraph saving path.
@@ -57,8 +64,12 @@ class BaseExporter:
         content = str(pir_program)
         with open(path, 'w') as f:
             f.write(content)
+        _logger.info(f"Successfully save subgraph into {path}")
 
     def parse_inout(self):
+        """
+        Return feed/fetch/intermediate var name list.
+        """
         raise NotImplementedError("Need to implement parse_inout method")
 
     def translate_into_pir(self):
@@ -90,9 +101,8 @@ class BaseExporter:
 
     def insert_feed_op(self, intputs, rename_prefix):
         global_block = self.program.block(0)
-
-        for i, var in enumerate(intputs):
-            old_name = var.name
+        intputs.sort()
+        for i, old_name in enumerate(intputs):
             new_name = rename_prefix + str(i)
             global_block._rename_var(old_name, new_name)
             out = global_block.var(new_name)
@@ -116,9 +126,8 @@ class BaseExporter:
             type=core.VarDesc.VarType.FETCH_LIST,
             persistable=False,
         )
-        for i, out in enumerate(outputs):
-            var = self.get_var(out)
-            old_name = var.name
+        outputs.sort()
+        for i, old_name in enumerate(outputs):
             new_name = rename_prefix + str(i)
             global_block._rename_var(old_name, new_name)
             new_var = global_block.var(new_name)
@@ -126,21 +135,10 @@ class BaseExporter:
                 type="fetch",
                 inputs={'X': [new_var]},
                 outputs={'Out': [fetch_var]},
-                attrs={'col': i},
+                attrs={'col': self.fetch_col},
             )
+            self.fetch_col += 1
         global_block._sync_with_cpp()
-
-    def rename_ops(self, ops, new_name, old_name):
-        for op in ops:
-            op._rename_input(old_name, new_name)
-            op._rename_output(old_name, new_name)
-
-    def get_var(self, name_or_var):
-        if isinstance(name_or_var, Variable):
-            return name_or_var
-        assert isinstance(name_or_var, str)
-        global_block = self.program.block(0)
-        return global_block.var(name_or_var)
 
 
 class InferExporter(BaseExporter):
@@ -153,12 +151,10 @@ class InferExporter(BaseExporter):
         raw_inputs = self.pp_layer._inputs.tolist() + self.pp_layer._params
         raw_outputs = self.pp_layer._outputs.tolist()
         for var in raw_inputs:
-            new_var = global_block.var(var.name)
-            inputs.append(new_var)
+            inputs.append(var.name)
 
         for var in raw_outputs:
-            new_var = global_block.var(var.name)
-            outputs.append(new_var)
+            outputs.append(var.name)
 
         return inputs, outputs, []
 
@@ -175,19 +171,15 @@ class TrainFwdExporter(BaseExporter):
         raw_outputs = self.pp_layer._outputs.tolist()
 
         inter_outs = {
-            name
-            for name in self.raw_inter_outs
-            if self.program.block(0).has_var(name)
+            name for name in self.raw_inter_outs if global_block.has_var(name)
         }
         for var in raw_inputs:
-            new_var = global_block.var(var.name)
-            inputs.append(new_var)
+            inputs.append(var.name)
             if var.name in inter_outs:
                 inter_outs.remove(var.name)
 
         for var in raw_outputs:
-            new_var = global_block.var(var.name)
-            outputs.append(new_var)
+            outputs.append(var.name)
             if var.name in inter_outs:
                 inter_outs.remove(var.name)
 
@@ -206,7 +198,7 @@ class TrainBwdExporter(BaseExporter):
 
         for var_name in self.raw_inputs:
             if global_block.has_var(var_name):
-                inputs.append(global_block.var(var_name))
+                inputs.append(var_name)
 
         # add fill_constant grad_var as input
         for var in self.pp_layer._outputs.tolist():
@@ -214,14 +206,14 @@ class TrainBwdExporter(BaseExporter):
             if init_grad_name not in self.raw_inputs and global_block.has_var(
                 init_grad_name
             ):
-                inputs.append(global_block.var(init_grad_name))
+                inputs.append(init_grad_name)
 
         for var_name in self.raw_outputs:
             if (
                 global_block.has_var(var_name)
                 and var_name not in self.raw_inputs
             ):
-                outputs.append(global_block.var(var_name))
+                outputs.append(var_name)
 
         return inputs, outputs, []
 
@@ -232,14 +224,21 @@ def pir_exporter(pp_layer, program, role, shared_inputs=None, inter_outs=None):
     root_saving_dir = get_saving_dir()
     if not root_saving_dir:
         return
-    copy_program = program.clone()
-    if role == SubGraphRole.Infer:
-        InferExporter(pp_layer, copy_program, role).save()
-    elif role == SubGraphRole.Forward:
-        TrainFwdExporter(pp_layer, copy_program, role, inter_outs).save()
-    elif role == SubGraphRole.Backward:
-        TrainBwdExporter(
-            pp_layer, copy_program, role, shared_inputs, inter_outs
-        ).save()
-    else:
-        raise RuntimeError("role only support Infer/Forward/Backward")
+    try:
+        copy_program = program.clone()
+        if role == SubGraphRole.Infer:
+            InferExporter(pp_layer, copy_program, role).save()
+        elif role == SubGraphRole.Forward:
+            TrainFwdExporter(pp_layer, copy_program, role, inter_outs).save()
+        elif role == SubGraphRole.Backward:
+            TrainBwdExporter(
+                pp_layer, copy_program, role, shared_inputs, inter_outs
+            ).save()
+        else:
+            raise RuntimeError(
+                f"role only support Infer/Forward/Backward, but got: {role}"
+            )
+    except Exception as e:
+        _logger.error(
+            f"Export subgraph failed: {e}\n. Received original program: {str(program)}"
+        )

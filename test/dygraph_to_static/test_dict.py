@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -118,23 +119,19 @@ def update_cache(cache):
 
 
 class TestNetWithDict(Dy2StTestBase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.batch_size = self.x.shape[0]
 
     def _run_static(self):
-        return self.train(to_static=True)
+        with enable_to_static_guard(True):
+            return self.train()
 
     def _run_dygraph(self):
-        return self.train(to_static=False)
+        with enable_to_static_guard(False):
+            return self.train()
 
-    def train(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def train(self):
         with base.dygraph.guard(PLACE):
             net = paddle.jit.to_static(
                 MainNetWithDict(batch_size=self.batch_size)
@@ -190,11 +187,9 @@ class TestDictPop(Dy2StTestBase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-
-        result = self.dygraph_func(self.input)
-
-        return result.numpy()
+        with enable_to_static_guard(to_static):
+            result = self.dygraph_func(self.input)
+            return result.numpy()
 
     @test_legacy_and_pt_and_pir
     def test_transformed_result(self):
@@ -232,8 +227,7 @@ class TestDictPop3(TestNetWithDict):
     def setUp(self):
         self.x = np.array([2, 2]).astype('float32')
 
-    def train(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def train(self):
         with base.dygraph.guard(PLACE):
             net = paddle.jit.to_static(NetWithDictPop())
             ret = net(z=0, x=self.x, y=True)

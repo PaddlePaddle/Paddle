@@ -15,7 +15,9 @@
 #pragma once
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/pir/core/block.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace paddle {
@@ -39,8 +41,8 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
                     std::unique_ptr<pir::Block> &&false_block);
 
   pir::Value cond() { return operand_source(0); }
-  pir::Block *true_block();
-  pir::Block *false_block();
+  pir::Block &true_block();
+  pir::Block &false_block();
   pir::Region &true_region() { return (*this)->region(0); }
   pir::Region &false_region() { return (*this)->region(1); }
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -65,7 +67,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
 ///      cond, outputs = body(outputs)
 ///   }
 ///
-class WhileOp : public pir::Op<WhileOp> {
+class WhileOp : public pir::Op<WhileOp, VjpInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.while"; }
@@ -78,9 +80,16 @@ class WhileOp : public pir::Op<WhileOp> {
                     const std::vector<pir::Value> &inputs);
   pir::Block &body();
   pir::Value cond();
+  const pir::Block::ArgListType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig() {}
   void VerifyRegion() {}
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
@@ -94,8 +103,67 @@ struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
   TuplePushOpVjpInterfaceModel() : VjpInterface::Concept(Vjp) {}
 };
 
+///
+/// \brief HasElementsOp is used in conjunction with WhileOp and StackType to
+/// determine whether an element exists in the value corresponding to StackType
+/// in the While usage scenario. Example:
+/// (%stack_0, %inlet_0, %outlet_0) = "cf.create_stack" ()
+/// ...
+/// (%0) = "pd_op.has_elements" (%stack_0)
+/// (...) = "pd_op.while"(%0) [...] {
+///   ...
+/// }
+///
+class HasElementsOp : public pir::Op<HasElementsOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cf.has_elements"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value container);
+  void VerifySig();
+  pir::Value input() { return operand_source(0); }
+  pir::Value out() { return result(0); }
+};
+
+///
+/// \brief The AssertOp is an operation that asserts the given condition is
+/// true. If the condition is false, prints the tensors in data. ``summarize``
+/// specifies the number of the elements in the tensors to print.
+
+/// It takes two inputs: cond and data, and takes one attribute: summarize. The
+/// semantics of AssertOp[assert_op(cond, data, summarize)] are as below:
+///   if(!cond){
+///      print(summarize number of elements in data)
+///   }
+///
+class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.assert"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[1];
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value cond_,
+                    pir::Value data_,
+                    int64_t summarize);
+
+  static OpInfoTuple GetOpInfo();
+  void VerifySig();
+
+  pir::Value cond() { return operand_source(0); }
+  pir::Value data() { return operand_source(1); }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp);
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp);

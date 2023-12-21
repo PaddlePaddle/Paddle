@@ -67,7 +67,7 @@ void SetValueGradImpl(const Context& dev_ctx,
           "The input of `set_value_grad`(out_grad) has not been initialized"));
 
   auto in_dims = out_grad.dims();
-  auto in_dims_vector = phi::vectorize<int64_t>(in_dims);
+  auto in_dims_vector = common::vectorize<int64_t>(in_dims);
 
   std::vector<int> decrease_axis_int32(decrease_axes.begin(),
                                        decrease_axes.end());
@@ -88,7 +88,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                              axes.size(),
                              false);
 
-  DDim out_dims(phi::make_ddim(out_dims_vector));
+  DDim out_dims(common::make_ddim(out_dims_vector));
 
   std::vector<int> reverse_vector(starts_local.size(), 0);
   funcs::StridedSliceFunctor(starts_local.data(),
@@ -159,7 +159,7 @@ void SetValueGradImpl(const Context& dev_ctx,
         reinterpret_cast<const XPUType*>(tmp.data<T>()),
         reinterpret_cast<XPUType*>(x_grad->data<T>()),
         out_dims_vector,
-        phi::vectorize<int64_t>(x_grad->dims()),
+        common::vectorize<int64_t>(x_grad->dims()),
         starts_indices,
         ends_indices,
         steps_indices);
@@ -265,11 +265,11 @@ void SetValueGradImpl(const Context& dev_ctx,
           Full<T>(dev_ctx,
                   {fake_value_grad_dims.Get(), fake_value_grad_dims.size()},
                   static_cast<T>(0));
-      auto value_grad_dims_vec = phi::vectorize<int64_t>(value_grad_dims);
+      auto value_grad_dims_vec = common::vectorize<int64_t>(value_grad_dims);
       // for value is a 0-D Tensor
       if (value_grad_dims.size() == 0) {
-        value_grad_dims_vec =
-            phi::vectorize<int64_t>(phi::make_ddim(std::vector<int>({1})));
+        value_grad_dims_vec = common::vectorize<int64_t>(
+            common::make_ddim(std::vector<int>({1})));
       }
       for (auto offset : offsets) {
         for (int i = 0; i < out_dims_size; i++) {
@@ -279,7 +279,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                        reinterpret_cast<const XPUType*>(tmp.data<T>()),
                        reinterpret_cast<XPUType*>(tmp2.data<T>()),
                        out_dims_vector,
-                       phi::vectorize<int64_t>(offset),
+                       common::vectorize<int64_t>(offset),
                        slice_end);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "slice");
         r = xpu::broadcast_add(

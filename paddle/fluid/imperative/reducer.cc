@@ -841,7 +841,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     UNUSED const int run_order = next_group_ % nrings_;
 
     auto *tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
-    tensor->Resize(phi::make_ddim({group.all_length_}))
+    tensor->Resize(common::make_ddim({group.all_length_}))
         .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
 
     // For CUDA or XPU, compute_stream --> comm_stream.

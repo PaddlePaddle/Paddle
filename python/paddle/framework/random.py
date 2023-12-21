@@ -67,14 +67,18 @@ def seed(seed):
 def get_rng_state(device=None):
     """
     Get all random states of random generators of specified device.
+
     Args:
         device(str): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
             If None, return the generators of current device (specified by ``set_device``).
+
     Returns:
         GeneratorState:  object.
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> sts = paddle.get_rng_state()
     """

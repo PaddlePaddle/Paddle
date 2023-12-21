@@ -26,6 +26,7 @@ from paddle.distributed.auto_parallel.static.process_group import (
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
+    is_optimize_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
@@ -66,12 +67,6 @@ def set_op_dtype_to_fp16(op):
         op._set_attr('out_dtype', __target_dtype__)
     if op.has_attr('dtype') and op.attr('dtype') == core.VarDesc.VarType.FP32:
         op._set_attr('dtype', __target_dtype__)
-
-    if __target_dtype__ == core.VarDesc.VarType.BF16:
-        if op.has_attr('use_mkldnn'):
-            op._set_attr('use_mkldnn', True)
-        if op.has_attr('mkldnn_data_type'):
-            op._set_attr('mkldnn_data_type', 'bfloat16')
 
 
 # adapot for backward op
@@ -291,7 +286,10 @@ class FP16State:
                         if out_var.dtype == __target_dtype__:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
             elif is_backward_op(op):
-                if self._is_fp16_op(op.desc.original_id()) is True:
+                if (
+                    self._is_fp16_op(op.desc.original_id()) is True
+                    or op.type == "cast"
+                ):
                     for out_name in op.output_names:
                         if _keep_fp32_output(op, out_name):
                             continue
@@ -418,6 +416,7 @@ class FP16State:
                         # refine op's dist_attr
                         ref_mesh = in_var_dist_attr.process_mesh
                         ref_mapping = in_var_dist_attr.dims_mapping
+                        ref_chunk_id = consume_op_attr.chunk_id
 
                         cast_var = block.create_var(
                             name=cast_name,
@@ -426,7 +425,11 @@ class FP16State:
                             stop_gradient=in_var.stop_gradient,
                         )
                         set_var_dist_attr(
-                            dist_context, cast_var, ref_mapping, ref_mesh
+                            dist_context,
+                            cast_var,
+                            ref_mapping,
+                            ref_mesh,
+                            chunk_id=ref_chunk_id,
                         )
 
                         op_namescope = "/"
@@ -447,7 +450,11 @@ class FP16State:
                             'op_namescope', op_namescope
                         )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                            cast_op, ref_mesh, ref_mapping, dist_context
+                            cast_op,
+                            ref_mesh,
+                            ref_mapping,
+                            dist_context,
+                            chunk_id=ref_chunk_id,
                         )
                         num_cast_ops += 1
 
@@ -465,7 +472,6 @@ class FP16State:
         self, op, idx, block, src_dtype, dst_dtype, dist_context
     ):
         num_cast_ops = 0
-        op_id = op.desc.id()
         original_id = op.desc.original_id()
         dist_op_context = dist_context.dist_op_context
         forward_op_id = dist_op_context.grad_op_id_to_op_id[original_id]
@@ -512,7 +518,9 @@ class FP16State:
                 assert grad_dist_attr is not None, f"{grad_name}"
                 ref_mesh = grad_dist_attr.process_mesh
                 ref_mapping = grad_dist_attr.dims_mapping
+                ref_chunk_id = grad_op_attr.chunk_id
 
+                grad_dist_attr.chunk_id = ref_chunk_id
                 cast_grad = block.create_var(
                     name=unique_name.generate_with_ignorable_key(
                         "".join([cast_name, '@GRAD'])
@@ -546,7 +554,11 @@ class FP16State:
                 grad.desc.set_dtype(src_dtype)
 
                 naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                    cast_op, ref_mesh, ref_mapping, dist_context
+                    cast_op,
+                    ref_mesh,
+                    ref_mapping,
+                    dist_context,
+                    chunk_id=ref_chunk_id,
                 )
                 num_cast_ops += 1
 
@@ -576,7 +588,9 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
         persistable=False,
         stop_gradient=False,
     )
-    set_var_dist_attr(dist_context, found_inf, [-1], world_process_group.ranks)
+    set_var_dist_attr(
+        dist_context, found_inf, [-1], world_process_group.ranks, chunk_id=0
+    )
 
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
@@ -593,6 +607,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
     new_op_dist_attr = OperatorDistAttr(new_op.desc)
     new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
     new_op_dist_attr.impl_idx = 0
+    new_op_dist_attr.chunk_id = 0
     if len(world_process_group.ranks) > 1:
         new_op_dist_attr.impl_type = "check_finite_and_unscale"
     for g in grads:
@@ -622,6 +637,8 @@ def _set_op_dist_attr_with_ranks(new_op, ranks, block, dist_context):
     new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = ProcessMesh(ranks)
     new_op_dist_attr.impl_idx = 0
+    assert is_optimize_op(new_op)
+    new_op_dist_attr.chunk_id = 0
     for var_name in new_op.input_arg_names:
         var = block.var(var_name)
         var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
@@ -671,6 +688,7 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
         output_var,
         [-1 for i in src_var.shape],
         world_process_group.ranks,
+        chunk_id=0,
     )
 
     # TODO to support CUDAPinned/XPU Places
@@ -852,6 +870,7 @@ class FP16Pass(AMPPass):
                                 all_infs,
                                 [-1],
                                 world_process_group.ranks,
+                                chunk_id=0,
                             )
                             _set_op_dist_attr_with_ranks(
                                 concat_op,
@@ -887,6 +906,7 @@ class FP16Pass(AMPPass):
                                 found_inf,
                                 [-1 for i in found_inf.shape],
                                 world_process_group.ranks,
+                                chunk_id=0,
                             )
                             _set_op_dist_attr_with_ranks(
                                 reduce_any_op,

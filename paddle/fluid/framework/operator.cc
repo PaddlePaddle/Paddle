@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -29,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/operators/ops_signature/signatures.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -37,11 +39,9 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/phi/ops/compat/signatures.h"
 #include "paddle/utils/flags.h"
 
 namespace phi {
@@ -1487,6 +1487,37 @@ bool OperatorWithKernel::SupportsCUDNN(const phi::DataType data_type) const {
   }
 }
 
+bool OperatorWithKernel::SupportsCPUBF16() const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::CPU &&
+                           kern_pair.first.dtype() == phi::DataType::BFLOAT16;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_cpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.place_ == platform::CPUPlace() &&
+                   kern_pair.first.data_type_ ==
+                       proto::VarType::Type::VarType_Type_BF16;
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
@@ -1803,6 +1834,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (!this->DnnFallback() &&
           !paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+        kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
+        kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
+      } else if (platform::is_cpu_place(kernel_type_->place_) &&
+                 kernel_type_->data_type_ ==
+                     proto::VarType::Type::VarType_Type_BF16 &&
+                 !this->SupportsCPUBF16() &&
+                 this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2129,6 +2167,13 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 #ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
+  } else if (platform::is_cpu_place(expected_kernel_key.place_) &&
+             expected_kernel_key.data_type_ ==
+                 proto::VarType::Type::VarType_Type_BF16 &&
+             !this->SupportsCPUBF16() &&
+             this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }

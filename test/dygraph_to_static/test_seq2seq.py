@@ -20,9 +20,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
+    enable_to_static_guard,
+    test_legacy_only,
+    test_sot_mgs0_only,
 )
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
@@ -208,14 +208,13 @@ class TestSeq2seq(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     def run_dygraph(self, mode="train", attn_model=False):
-        paddle.jit.enable_to_static(False)
-        if mode == "train":
-            return train(self.args, attn_model)
-        else:
-            return infer(self.args, attn_model)
+        with enable_to_static_guard(False):
+            if mode == "train":
+                return train(self.args, attn_model)
+            else:
+                return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
-        paddle.jit.enable_to_static(True)
         if mode == "train":
             return train(self.args, attn_model)
         else:
@@ -239,13 +238,14 @@ class TestSeq2seq(Dy2StTestBase):
             msg=f"\npred_dygraph = {pred_dygraph} \npred_static = {pred_static}",
         )
 
-    # Disable duplicated test case to avoid timeout
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
+    @test_sot_mgs0_only
+    @test_legacy_only
     def test_base_model(self):
         self._test_train(attn_model=False)
         self._test_predict(attn_model=False)
 
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
+    @test_sot_mgs0_only
+    @test_legacy_only
     def test_attn_model(self):
         self._test_train(attn_model=True)
         # TODO(liym27): add predict

@@ -17,8 +17,7 @@ set(STANDALONE_EXECUTOR_DEPS
     pir_adaptor
     program_translator
     instruction_base
-    pir
-    plan)
+    pir)
 
 cc_library(
   standalone_executor
@@ -28,4 +27,4 @@ cc_library(
 cc_library(
   staticgraph_executor_statistics
   SRCS executor_statistics.cc
-  DEPS enforce glog phi)
+  DEPS enforce glog phi common)

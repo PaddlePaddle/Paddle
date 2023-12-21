@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_value.h"
 
 namespace pir {

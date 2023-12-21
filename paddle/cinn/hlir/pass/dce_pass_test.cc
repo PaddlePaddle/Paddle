@@ -30,7 +30,7 @@ TEST(DCE, Test_0) {
 
   auto fetch_ids = {D->id};
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph =
       std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
@@ -54,7 +54,7 @@ TEST(DCE, Test_1) {
 
   auto fetch_ids = {F->id};
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph =
       std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);

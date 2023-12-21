@@ -136,7 +136,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
 }
 
-const std::vector<shape::SymbolicDimOp>&
+std::vector<shape::SymbolicDimOp>&
 ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
     const Value& value) {
   if (value_to_sym_dims_.find(value) == value_to_sym_dims_.end()) {
@@ -145,6 +145,10 @@ ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
               .second);
   }
   return value_to_sym_dims_.at(value);
+}
+
+symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {
+  return symbol::DimExprBuilder(&constraints_);
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
@@ -163,6 +167,13 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   }
 
   return it->second;
+}
+
+std::string GetValueId(Value* val) {
+  auto op_id = val->defining_op()->id();
+  auto val_idx = val->dyn_cast<OpResult>().index();
+
+  return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
 }
 
 }  // namespace pir

@@ -17,10 +17,11 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 namespace cinn::adt {
 
@@ -32,7 +33,13 @@ class MapExprCtx final {
   MapExprCtx(const MapExprCtx&) = delete;
   MapExprCtx(MapExprCtx&&) = delete;
 
-  explicit MapExprCtx(const MapExpr& map_expr) : map_expr_(map_expr) {}
+  explicit MapExprCtx(
+      const MapExpr& map_expr,
+      const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
+          map_expr_symbolic2dialect_symbolic)
+      : map_expr_(map_expr),
+        map_expr_symbolic2dialect_symbolic_(
+            map_expr_symbolic2dialect_symbolic) {}
 
   const MapExpr& map_expr() const { return map_expr_; }
 
@@ -47,9 +54,16 @@ class MapExprCtx final {
     return node2lowered_funcs_;
   }
 
+  const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
+  map_expr_symbolic2dialect_symbolic() const {
+    return map_expr_symbolic2dialect_symbolic_;
+  }
+
  private:
   const MapExpr map_expr_;
   Node2LoweredFuncs node2lowered_funcs_;
+  std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
+      map_expr_symbolic2dialect_symbolic_;
 };
 
 }  // namespace cinn::adt

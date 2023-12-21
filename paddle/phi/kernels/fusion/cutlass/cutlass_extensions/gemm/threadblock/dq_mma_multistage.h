@@ -145,14 +145,12 @@ class DqMmaMultistage : public DqMmaBase<Shape_,
   /// Minimum architecture is Sm80 to support cp.async
   using ArchTag = arch::Sm80;
 
-  using Dequantizer =
-      warp::MmaTensorOpDequantizer<Operator,
-                                   typename Base::WarpGemm,
-                                   Operand::kB,
-                                   ElementScale,
-                                   LayoutScale,
-                                   32,
-                                   typename Operator::FragmentA::Element>;
+  using Dequantizer = warp::MmaTensorOpDequantizer<Operator,
+                                                   typename Base::WarpGemm,
+                                                   Operand::kB,
+                                                   ElementScale,
+                                                   LayoutScale,
+                                                   32>;
 
   /// Complex transform on A operand
   static ComplexTransform const kTransformA = Operator::kTransformA;

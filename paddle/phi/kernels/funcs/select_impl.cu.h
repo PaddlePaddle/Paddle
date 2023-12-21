@@ -25,9 +25,9 @@ namespace cub = hipcub;
 #endif
 
 #include <algorithm>
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -444,10 +444,10 @@ void SelectKernel(const KPDevice &dev_ctx,
   std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
 
   if (SelectData == 1) {
-    out->Resize(phi::make_ddim(out_dim));
+    out->Resize(common::make_ddim(out_dim));
   } else if (SelectData == 0) {  // == 0 where_index
     out_dim.push_back(static_cast<int64_t>(rank));
-    out->Resize(phi::make_ddim(out_dim));
+    out->Resize(common::make_ddim(out_dim));
   }
   auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data

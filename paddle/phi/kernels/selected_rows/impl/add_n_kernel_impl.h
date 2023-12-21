@@ -82,7 +82,7 @@ void AddNKernel(const Context &dev_ctx,
     // no data, just set a empty out tensor.
     auto *out_dense = out->mutable_value();
     out_dense->clear();
-    out_dense->Resize(phi::make_ddim({0}));
+    out_dense->Resize(common::make_ddim({0}));
     dev_ctx.template Alloc<T>(out_dense);
   }
 }

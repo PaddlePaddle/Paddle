@@ -14,13 +14,13 @@
 
 #include "paddle/cinn/adt/get_sub_reshape_dim_ranges.h"
 
-#include "paddle/cinn/adt/equation_constant.h"
+#include "paddle/cinn/adt/dim_expr.h"
 
 namespace cinn::adt {
 
 namespace {
 
-std::int64_t GetNumel(const List<Constant>& constants) {
+std::int64_t GetNumel(const List<DimExpr>& constants) {
   std::int64_t ret = 1;
   for (const auto& constant : *constants) {
     ret *= constant.Get<std::int64_t>();
@@ -32,8 +32,8 @@ std::int64_t GetNumel(const List<Constant>& constants) {
 
 std::optional<std::tuple<std::vector<std::pair<int, int>>,
                          std::vector<std::pair<int, int>>>>
-GetSubReshapeDimRanges(const List<Constant>& lhs_dims,
-                       const List<Constant>& rhs_dims) {
+GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
+                       const List<DimExpr>& rhs_dims) {
   if (GetNumel(lhs_dims) != GetNumel(rhs_dims)) {
     return std::nullopt;
   }
@@ -46,7 +46,7 @@ GetSubReshapeDimRanges(const List<Constant>& lhs_dims,
   int lhs_end = 0;
   int rhs_end = 0;
 
-  const auto GetProduct = [&](const List<Constant>& dims,
+  const auto GetProduct = [&](const List<DimExpr>& dims,
                               std::size_t end) -> std::int64_t {
     end = (end > dims->size() ? dims->size() : end);
     std::int64_t ret = 1;

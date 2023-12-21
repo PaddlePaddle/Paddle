@@ -32,9 +32,9 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             float epsilon,
                             int begin_norm_axis) {
   // Step0: verify input args based on layer_norm logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto scale_shape = phi::vectorize(scale.dims());
-  auto bias_shape = phi::vectorize(bias.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto scale_shape = common::vectorize(scale.dims());
+  auto bias_shape = common::vectorize(bias.dims());
   int x_ndim = x_shape.size();
   int scale_ndim = scale_shape.size();
   int bias_ndim = bias_shape.size();
@@ -158,10 +158,10 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
                                    float epsilon,
                                    int begin_norm_axis) {
   // Step0: Verify input args based on layer_norm logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto out_shape = phi::vectorize(out.dims());
-  auto mean_shape = phi::vectorize(mean.dims());
-  auto variance_shape = phi::vectorize(variance.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto out_shape = common::vectorize(out.dims());
+  auto mean_shape = common::vectorize(mean.dims());
+  auto variance_shape = common::vectorize(variance.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   int mean_ndim = mean_shape.size();
@@ -303,7 +303,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
                                 float epsilon,
                                 int begin_norm_axis) {
   auto get_shape = [](const auto& meta) {
-    return phi::vectorize<int64_t>(meta.dims());
+    return common::vectorize<int64_t>(meta.dims());
   };
   // 1、check tensors shapes
   auto x_shape = get_shape(x);
@@ -384,7 +384,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
   for (int i = 0; i < begin_norm_axis; ++i) {
     auto mapping = dim_mapping[i];
     if (mapping != -1) {
-      partial_on_dims.push_back(i);
+      partial_on_dims.push_back(mapping);
     }
   }
   scale_grad_dist_attr.set_partial_status(partial_on_dims);
