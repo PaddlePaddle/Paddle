@@ -150,7 +150,7 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .body()
                 .ops[-2]
                 .name(),
-                "pd_op.add",
+                "cf.has_elements",
             )
             self.assertEqual(
                 main_program.global_block()

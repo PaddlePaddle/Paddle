@@ -806,6 +806,10 @@ def append_backward_ops(
                                     _,
                                     sub_bwd_block_argument_to_value_map,
                                 ) = argument_to_value(grad_op)
+                            else:
+                                sub_bwd_block_argument_to_value_map = (
+                                    ValueDict()
+                                )
                             sub_state = state.copy(sub_fwd_block)
                             sub_backward_ops = []
                             append_backward_ops(
