@@ -18,8 +18,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "test/cpp/pir/tools/test_pir_utils.h"
 
 namespace symbol::test {
 
@@ -49,6 +47,56 @@ TEST(DimExpr, constraint) {
   DimExpr sym1 = DimExpr("S1");
   builder.CstrEq(sym0, sym1);
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
+}
+
+/*
+  Simulate the ShapeOrDataDimExprs result of below codes:
+  def (x, y):
+    extend_x = x.shape
+    out = pd.reshape(y, extend_x)
+*/
+TEST(DimExpr, data_shape_expr) {
+  // 1. Init pir::program and pir::builder
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ::pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+
+  // 2. Show fake network, assume calling x.shape correspond to ShapeOp
+  const std::vector<int64_t> x_shape = {-1, 2};
+  const std::vector<int64_t> y_shape = {1, -1, 2};
+  auto x = builder
+               .Build<paddle::dialect::DataOp>(
+                   "input_x", x_shape, phi::DataType::FLOAT32, phi::GPUPlace())
+               .result(0);
+  auto y = builder
+               .Build<paddle::dialect::DataOp>(
+                   "input_y", y_shape, phi::DataType::FLOAT32, phi::GPUPlace())
+               .result(0);
+
+  auto shape_op = builder.Build<paddle::dialect::ShapeOp>(x);
+  ::pir::Value extend_x = shape_op.out();
+  paddle::dialect::ReshapeOp reshape_op =
+      builder.Build<paddle::dialect::ReshapeOp>(y, extend_x);
+  ::pir::Value out = reshape_op.out();
+
+  // 3. Show ideal ShapeOrDataDimExprs of each pir::Value
+  std::unordered_map<pir::Value, ShapeOrDataDimExprs> value2shape{};
+  std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
+  std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
+  // x => {shape: [S0, 2], data: nullopt}
+  ShapeOrDataDimExprs x_value_shape{x_shapes};
+  value2shape.emplace(x, x_value_shape);
+  // y => {shape: [1, S1, 2], data: nullopt}
+  ShapeOrDataDimExprs y_value_shape{y_shapes};
+  value2shape.emplace(y, y_value_shape);
+  // extend_x => {shape: [2], data: [S0, 2]}
+  ShapeOrDataDimExprs extend_x_value_shape =
+      ShapeOrDataDimExprs::MakeConsistentShapeOrData(x_shapes);
+  value2shape.emplace(extend_x, extend_x_value_shape);
+  // out => {shape: [S0, 2], data: nullopt}
+  ShapeOrDataDimExprs out_value_shape{x_shapes};
+  value2shape.emplace(out, out_value_shape);
 }
 
 TEST(Simplify, NumberArithmetic) {
