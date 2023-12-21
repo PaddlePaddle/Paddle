@@ -130,7 +130,7 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
 }
 
 int64_t hash_with_seed(int64_t value, int64_t seed) {
-  return value + 0x9e3779b9 + (value << 6) + (seed >> 2);
+  return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
 }
 
 inline void run_program_ad_func(
@@ -159,12 +159,8 @@ inline void run_program_ad_func(
   auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  int64_t place_hash_key = 0x9e3779b9;
+  int64_t place_hash_key = 0;
   for (const paddle::Tensor& tensor : x) {
-    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
-    place_hash_key = hash_with_seed(place_hash_key, device_type);
-  }
-  for (const paddle::Tensor& tensor : params) {
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
@@ -290,10 +286,6 @@ inline void pir_run_program_ad_func(
   // if require_any_grad is False, don't save any middle vars.
   int64_t place_hash_key = 0x9e3779b9;
   for (const paddle::Tensor& tensor : x) {
-    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
-    place_hash_key = hash_with_seed(place_hash_key, device_type);
-  }
-  for (const paddle::Tensor& tensor : params) {
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
