@@ -227,7 +227,10 @@ def _strong_wolfe(
     low_pos, high_pos = (0, 1) if bracket_f[0] <= bracket_f[-1] else (1, 0)
     while not done and ls_iter < max_ls:
         # line-search bracket is so small
-        if paddle.abs(bracket[1] - bracket[0]) * d_norm < tolerance_change:
+        if (
+            abs(float(bracket[1] - bracket[0])) * float(d_norm)
+            < tolerance_change
+        ):
             break
 
         # compute new trial value
