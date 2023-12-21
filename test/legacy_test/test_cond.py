@@ -727,7 +727,7 @@ class TestCondBackward(unittest.TestCase):
                 )
                 if paddle.framework.in_pir_mode():
                     for p, g in grad_list:
-                        if p == img:
+                        if p.is_same(img):
                             dimg = g
                     img_grad, loss_value = exe.run(
                         main_program,
@@ -780,7 +780,6 @@ class TestCondBackward(unittest.TestCase):
                         )
                     numerical_grad[0][j] = (loss_delta - loss_value) / delta
                     feed_img_delta[0][j] = feed_img[0][j]
-
                 np.testing.assert_allclose(
                     img_grad, numerical_grad, rtol=0.05, atol=0.05
                 )
