@@ -51,75 +51,6 @@
 
 namespace {
 
-class AutoMixedPrecisionPattern : public pir::RewritePattern {
- public:
-  AutoMixedPrecisionPattern(
-      pir::IrContext* context,
-      const phi::Place& place,
-      const phi::DataType& precision_mode,
-      bool enable_low_precision_io = false,
-      pir::PatternBenefit benefit = 1,
-      const std::vector<std::string>& generated_names = {})
-      : RewritePattern(MatchAnyOpTypeTag(), benefit, context, generated_names) {
-    // precision_mode_ = precision_mode;  // should be set by user
-    // place_ = place;                    // should be set by user
-    // // enable_low_precision_io_ = enable_low_precision_io;
-    // SetDefaultBlacklist();
-    // SetDefaultWhitelist();
-  }
-
-  void SetDefaultBlacklist() {
-    // black_list_.insert({
-    //     paddle::dialect::ExpOp::name(),
-    //     paddle::dialect::SquareOp::name(),
-    //     paddle::dialect::LogOp::name(),
-    //     // paddle::dialect::FetchOp::name(),
-
-    //     // paddle::dialect::Mean::name(),
-    //     // paddle::dialect::Sum::name(),
-    //     paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
-    // });
-  }
-
-  void SetDefaultWhitelist() {
-    // white_list_.insert({paddle::dialect::FullOp::name(),
-    //                     paddle::dialect::Conv2dOp::name(),
-    //                     paddle::dialect::TransposeOp::name()});
-    // return;
-  }
-
-  bool Match(pir::Operation* op) const override {
-    // if enable_low_precision_io_ is true, all the op will be transformed into,
-    // input and output included
-    if (op->isa<pir::ParameterOp>() || op->isa<pir::SetParameterOp>() ||
-        op->isa<paddle::dialect::CastOp>() ||
-        op->isa<paddle::dialect::FullIntArrayOp>())
-      return false;
-
-    // if (!enable_low_precision_io_) {
-    //   if (op->isa<paddle::dialect::FeedOp>()) return false;
-    // }
-
-    // if op is a full op, its user cannot be a scale op
-    //   if (op->isa<paddle::dialect::FullOp>()) {
-    //     auto use_ops = GetUseOpsForOutput(op, 0);
-    //     for (auto [use_op, idx] : use_ops) {
-    //       if (use_op->isa<paddle::dialect::ScaleOp>()) {
-    //         return false;
-    //       }
-    //     }
-    //   }
-
-    //   if (!IsBuiltinOp(op)) {
-    //     return OpHasFloatResult(op);
-    //   }
-
-    //   return true;
-    // }
-    return true;
-  }
-};
-
 class AutoMixedPrecisionPass : public pir::Pass {
  public:
   AutoMixedPrecisionPass(const phi::Place& place,
@@ -129,10 +60,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
         precision_mode_(precision_mode) {}
 
   bool Initialize(pir::IrContext* context) override {
-    pir::RewritePatternSet ps(context);
-    ps.Add<AutoMixedPrecisionPattern>(context, place_, precision_mode_);
-    // ps.Add<FoldMultiCastOpPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
+    SetDefaultBlacklist();
+    SetDefaultWhitelist();
     return true;
   }
 
@@ -171,12 +100,34 @@ class AutoMixedPrecisionPass : public pir::Pass {
   std::unordered_set<std::string> white_list_;
 
   mutable std::unordered_set<pir::Operation*> op_run_low_precision_;
+  mutable std::unordered_set<pir::Operation*> op_should_not_handle_;
   mutable std::unordered_map<pir::Value, paddle::dialect::CastOp>
       cached_cast_ops_;
+
+  void SetDefaultBlacklist() {
+    // black_list_.insert({
+    //     paddle::dialect::ExpOp::name(),
+    //     paddle::dialect::SquareOp::name(),
+    //     paddle::dialect::LogOp::name(),
+    //     // paddle::dialect::FetchOp::name(),
+
+    //     // paddle::dialect::Mean::name(),
+    //     // paddle::dialect::Sum::name(),
+    //     paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
+    // });
+  }
+
+  void SetDefaultWhitelist() {
+    // white_list_.insert({paddle::dialect::FullOp::name(),
+    //                     paddle::dialect::Conv2dOp::name(),
+    //                     paddle::dialect::TransposeOp::name()});
+    // return;
+  }
 
   void ProcessBlock(pir::Block* block, pir::Builder& builder) const {  // NOLINT
     for (auto& op_item : *block) {
       auto op = &op_item;
+      if (op_should_not_handle_.count(op)) continue;
       RewriteOp(op, builder);
     }
   }
@@ -206,6 +157,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
             OpSupportPrecision(op_type, backend, precision_mode_);
       } else {  // pd op without float result
         support_low_precision = false;
+        op_should_not_handle_.insert(op);
       }
       if (support_low_precision) {
         op_run_low_precision_.insert(op);
