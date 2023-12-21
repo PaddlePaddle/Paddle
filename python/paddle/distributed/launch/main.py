@@ -576,10 +576,10 @@ def launch():
 
             end_time = time.time()
             ctx.logger.info(
-                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
             )
             logger.info(
-                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
             )
 
         # build AutoTuner to get new config
@@ -1098,8 +1098,8 @@ def launch():
         assert best_cfg and best_cfg["time"] != -1
 
         end_time = time.time()
-        ctx.logger.info(f"AutoTuner ended in {end_time-start_time}s.")
-        logger.info(f"AutoTuner ended in {end_time-start_time}s.")
+        ctx.logger.info(f"AutoTuner ended in {end_time - start_time}s.")
+        logger.info(f"AutoTuner ended in {end_time - start_time}s.")
         # launch best cfg
         # estimation search need not run best cfg
         if not tuner_cfg.get("run_best", True) or tuner_cfg["search_algo"].get(
