@@ -18,7 +18,7 @@
 
 namespace symbol {
 
-class DimExprBuilder {
+class TEST_API DimExprBuilder {
  public:
   explicit DimExprBuilder(std::vector<DimExprConstraint>* constraints)
       : constraints_(constraints) {}
