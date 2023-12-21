@@ -37,6 +37,7 @@ cc_library(
   DEPS ${new_executor_deps})
 
 add_dependencies(new_executor xxhash framework_proto)
+
 if(WITH_MKLDNN)
   add_dependencies(new_executor mkldnn)
 endif()
