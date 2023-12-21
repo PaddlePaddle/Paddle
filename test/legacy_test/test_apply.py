@@ -52,6 +52,9 @@ class TestTensorApplyAPI(unittest.TestCase):
         def fn_outplace(x, func):
             x.apply(func)
 
+        def function(x, y, z):
+            return x + y + z
+
         self.assertRaises(RuntimeError, fn_inplace, self.x)
         self.assertRaises(RuntimeError, fn_outplace, self.x, self.function)
         with paddle.jit.api.sot_mode_guard(False):
@@ -61,6 +64,14 @@ class TestTensorApplyAPI(unittest.TestCase):
                 self.x,
                 self.function,
             )
+            self.x.stop_gradient = True
+            self.assertRaises(
+                ValueError,
+                paddle.jit.to_static(fn_outplace),
+                self.x,
+                function,
+            )
+            self.x.stop_gradient = False
             with paddle.pir_utils.IrGuard():
                 paddle.disable_static()
                 self.assertRaises(

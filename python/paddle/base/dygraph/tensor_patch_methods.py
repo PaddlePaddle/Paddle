@@ -397,31 +397,32 @@ def monkey_patch_tensor():
                 >>> import paddle
 
                 >>> paddle.seed(0)
-                >>> x = paddle.rand(shape=[3,3]).to("cpu", "float64")
-                >>> print(x)
-                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                       [[0.39904648, 0.51667917, 0.02493039],
-                        [0.94007939, 0.94585413, 0.79673123],
-                        [0.41501412, 0.82025695, 0.22904338]])
+                >>> x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("cpu", "float64")
                 >>> f = lambda x: 3*x+2
                 >>> x.apply_(f)
                 >>> print(x)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                       [[3.19713950, 3.55003738, 2.07479119],
-                        [4.82023811, 4.83756256, 4.39019394],
-                        [3.24504232, 4.46077061, 2.68713021]])
+                       [[3.19713944, 3.55003750, 2.07479117],
+                        [4.82023817, 4.83756238, 4.39019370],
+                        [3.24504235, 4.46077085, 2.68713014]])
 
 
-                >>> x = paddle.rand(shape=[3,3]).to("cpu", "float16")
+                >>> x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("cpu", "float16")
                 >>> x.apply_(f)
                 >>> print(x)
                 Tensor(shape=[3, 3], dtype=float16, place=Place(cpu), stop_gradient=True,
-                       [[3.19726562, 3.55078125, 2.07421875],
-                        [4.82031250, 4.83593750, 4.39062500],
-                        [3.24414062, 4.46093750, 2.68750000]])
+                       [[3.19531250, 3.54882812, 2.07421875],
+                        [4.81640625, 4.83593750, 4.39062500],
+                        [3.24414062, 4.46093750, 2.68554688]])
 
 
-                >>> x = paddle.rand(shape=[3,3]).to("cpu", "bfloat16")
+                >>> x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("cpu", "bfloat16")
                 >>> x.apply_(f)
                 >>> print(x)
                 Tensor(shape=[3, 3], dtype=bfloat16, place=Place(cpu), stop_gradient=True,
@@ -431,7 +432,9 @@ def monkey_patch_tensor():
 
 
                 >>> if paddle.is_compiled_with_cuda():
-                >>>     x = paddle.rand(shape=[3,3]).to("gpu", "float32")
+                >>>     x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("gpu", "float32")
                 >>>     x.apply_(f)
                 >>>     print(x)
                 Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
@@ -458,31 +461,32 @@ def monkey_patch_tensor():
                 >>> import paddle
 
                 >>> paddle.seed(0)
-                >>> x = paddle.rand(shape=[3,3]).to("cpu", "float64")
+                >>> x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("cpu", "float64")
                 >>> f = lambda x: 3*x+2
                 >>> y = x.apply(f)
                 >>> print(y)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                       [[3.19713950, 3.55003738, 2.07479119],
-                        [4.82023811, 4.83756256, 4.39019394],
-                        [3.24504232, 4.46077061, 2.68713021]])
-                >>> print(x)
-                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                       [[0.39904648, 0.51667917, 0.02493039],
-                        [0.94007939, 0.94585413, 0.79673123],
-                        [0.41501412, 0.82025695, 0.22904338]])
+                       [[3.19713944, 3.55003750, 2.07479117],
+                        [4.82023817, 4.83756238, 4.39019370],
+                        [3.24504235, 4.46077085, 2.68713014]])
 
 
-                >>> x = paddle.rand(shape=[3,3]).to("cpu", "float16")
+                >>> x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("cpu", "float16")
                 >>> y = x.apply(f)
                 >>> print(y)
                 Tensor(shape=[3, 3], dtype=float16, place=Place(cpu), stop_gradient=True,
-                       [[3.19726562, 3.55078125, 2.07421875],
-                        [4.82031250, 4.83593750, 4.39062500],
-                        [3.24414062, 4.46093750, 2.68750000]])
+                       [[3.19531250, 3.54882812, 2.07421875],
+                        [4.81640625, 4.83593750, 4.39062500],
+                        [3.24414062, 4.46093750, 2.68554688]])
 
 
-                >>> x = paddle.rand(shape=[3,3]).to("cpu", "bfloat16")
+                >>> x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("cpu", "bfloat16")
                 >>> y = x.apply(f)
                 >>> print(y)
                 Tensor(shape=[3, 3], dtype=bfloat16, place=Place(cpu), stop_gradient=True,
@@ -492,7 +496,9 @@ def monkey_patch_tensor():
 
 
                 >>> if paddle.is_compiled_with_cuda():
-                >>>     x = paddle.rand(shape=[3,3]).to("gpu", "float32")
+                >>>     x = paddle.to_tensor([[0.39904648, 0.51667917, 0.02493039],
+                >>>        [0.94007939, 0.94585413, 0.79673123],
+                >>>        [0.41501412, 0.82025695, 0.22904338]]).to("gpu", "float32")
                 >>>     y = x.apply(f)
                 >>>     print(y)
                 Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
