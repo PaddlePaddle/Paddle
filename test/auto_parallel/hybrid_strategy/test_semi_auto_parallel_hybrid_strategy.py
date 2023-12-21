@@ -42,6 +42,16 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
             )
             ckpt_path.cleanup()
 
+    def test_fused_linear_param_grad_add(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_fused_linear_param_grad_add.py",
+                user_defined_envs=envs,
+            )
+
 
 class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
@@ -191,11 +201,13 @@ class TestSemiAutoParallelLlamaDPMPStrategy(
 
 class TestSemiAutoParallelLlama2D(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=4, timeout=200, nnode=1)
+        super().setUp(num_of_devices=4, timeout=400, nnode=1)
         self._default_envs = {"dp": "2", "mp": "2", "pp": "1", "acc_step": "2"}
         self._changeable_envs = {
             "backend": ["gpu"],
             "use_sp": ["true", "false"],
+            "recompute": ["true", "false"],
+            "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy(self):
@@ -216,9 +228,38 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
         self._changeable_envs = {
             "backend": ["gpu"],
             "use_sp": ["true", "false"],
+            # TODO(Yuang Liu): add recompute ut to pp after fixing pp probs
+            # "recompute": ["true", "false"],
+            # "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_llama.py",
+                user_defined_envs=envs,
+            )
+
+
+class TestSemiAutoParallelLlamaACC(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
+        self._default_envs = {
+            "dp": "2",
+            "mp": "2",
+            "pp": "2",
+            "acc_step": "1",
+            "FLAGS_embedding_deterministic": "1",
+            "FLAGS_cudnn_deterministic": "1",
+        }
+        self._changeable_envs = {
+            "backend": ["gpu"],
+        }
+
+    def test_simple_net_hybrid_strategy_acc(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )

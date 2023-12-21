@@ -1,15 +1,9 @@
 paddle_test(type_test SRCS type_test.cc DEPS pir op_dialect_vjp)
 paddle_test(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir)
 paddle_test(ir_value_test SRCS ir_value_test.cc DEPS pir)
-paddle_test(
-  ir_op_test
-  SRCS
-  ir_op_test.cc
-  DEPS
-  pir
-  test_dialect
-  op_dialect_vjp)
+paddle_test(ir_op_test SRCS ir_op_test.cc DEPS test_dialect op_dialect_vjp)
 paddle_test(ir_region_test SRCS ir_region_test.cc DEPS pir)
+
 paddle_test(ir_builder_test SRCS ir_builder_test.cc DEPS pir)
 cc_test_old(
   ir_program_test
@@ -131,8 +125,7 @@ cc_test_old(
   gtest
   pir)
 
-paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect
-            pir)
+paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
