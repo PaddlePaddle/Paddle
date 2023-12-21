@@ -1,4 +1,5 @@
-set(nstruction_base.cc
+set(instruction_base_srcs
+    instruction_base.cc
     phi_kernel_instruction.cc
     legacy_kernel_instruction.cc
     if_instruction.cc
