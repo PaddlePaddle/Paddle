@@ -235,7 +235,7 @@ def foo_func(a, b, c=1, d=2):
 
 class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
     def setUp(self):
-        paddle.jit.enable_to_static(True)
+        pass
 
     @test_ast_only
     @test_legacy_and_pt_and_pir

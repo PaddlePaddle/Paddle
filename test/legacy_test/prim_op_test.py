@@ -21,6 +21,7 @@ import numpy as np
 from utils import dygraph_guard, static_guard
 
 import paddle
+from paddle.autograd.backward_utils import ValueSet
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core
 from paddle.base.executor import scope_guard
@@ -953,7 +954,7 @@ class PrimGradChecker(PrimForwardChecker):
     def gen_no_grad_set(self, var_dict):
         if self.no_grad_set is None:
             return None
-        no_grad_set = set()
+        no_grad_set = ValueSet() if in_pir_mode() else set()
         for name in self.no_grad_set:
             if name in var_dict:
                 no_grad_set.add(var_dict[name])

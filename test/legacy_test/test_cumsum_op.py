@@ -143,7 +143,9 @@ class TestSumOp1(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -252,7 +254,9 @@ class TestSumOpExclusive1(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -351,7 +355,9 @@ class TestSumOpExclusiveFP16(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = np.float16
@@ -390,7 +396,9 @@ class TestSumOpReverseExclusive(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -411,7 +419,13 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
             self.check_output(check_pir=True)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestCumsumFP16Op.__name__ = cls_name
@@ -459,6 +473,7 @@ def create_test_bf16_class(parent):
                 check_prim=True,
                 numeric_grad_delta=0.05,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16")
