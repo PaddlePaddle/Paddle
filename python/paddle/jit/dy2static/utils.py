@@ -38,8 +38,8 @@ from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
-from .ast_utils import ast_to_source_code
 from .static_analysis import StaticAnalysisVisitor
+from .transformers.utils import ast_to_source_code
 from .utils_helper import (  # noqa: F401
     DYGRAPH_MODULE_PREFIX,
     DYGRAPH_TO_STATIC_MODULE_PREFIX,

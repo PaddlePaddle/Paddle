@@ -24,8 +24,8 @@ from paddle.base import dygraph, layers  # noqa: F401
 from paddle.base.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
-from .ast_utils import ast_to_source_code
 from .logging_utils import warn
+from .transformers.utils import ast_to_source_code
 
 
 def index_in_list(array_list, item):
