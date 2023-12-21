@@ -271,11 +271,9 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       if (drr_producer_op == nullptr) {
         continue;
       }
-      auto* ir_producer_op =
-          ir_node->operand(i).source().dyn_cast<pir::OpResult>().owner();
-      if (ir_producer_op == nullptr ||
-          drr_input_tensors[i]->consumers().size() !=
-              ir_node->operand(i).source().use_count()) {
+
+      if (drr_input_tensors[i]->consumers().size() !=
+          ir_node->operand(i).source().use_count()) {
         matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
                 << i << "] { " << drr_node->outputs().size()
@@ -283,6 +281,13 @@ bool DrrRewritePattern::MatchFromOutputToInput(
                 << ir_node->operand(i).source().use_count() << " }.";
         break;
       }
+      if (ir_node->operand_source(i).isa<BlockArgument>()) {
+        matched = false;
+        VLOG(8) << drr_node->name()
+                << " Match failed: it's input value is a block argument.";
+        break;
+      }
+      auto* ir_producer_op = ir_node->operand_source(i).defining_op();
       // bfs producer_op of current_op
       if (drr_visited.count(drr_producer_op) &&
           ir_visited.count(ir_producer_op)) {

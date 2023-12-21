@@ -141,7 +141,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     core.Run({});
 
-    rewriter.SetInsertionPointToStart(rewriter.block());
+    // ParameterOp and ConstantTensorOp should be created in the top-level block
+    rewriter.SetInsertionPointToStart(
+        rewriter.block()->parent_program()->block());
 
     bool use_parameter_op = ReplaceResultByParameterOp(op);
 
@@ -169,14 +171,15 @@ class ConstantFoldingPattern : public pir::RewritePattern {
             paddle::framework::TensorCopySync(
                 temp_tensor, place_, output_tensor);
           }
-          auto parameter_op = rewriter.Build<pir::ParameterOp>(
-              output_var_name, op->result(i).type());
-          parameter_op->set_attribute(
-              kAttrIsPersisable,
-              rewriter.array_attr({rewriter.bool_attr(true)}));
-
-          rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
         }
+
+        auto parameter_op = rewriter.Build<pir::ParameterOp>(
+            output_var_name, op->result(i).type());
+        parameter_op->set_attribute(
+            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+        rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
+
       } else {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
