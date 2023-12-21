@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
@@ -158,21 +159,36 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
 
+  // cusparseSpGEMM  only support 32-bit index.
+  SparseCsrTensor x_tmp, y_tmp, out_tmp;
+  CastCsrKernel<T, Context>(
+      dev_ctx, x, DataType::INT32, x.values().dtype(), &x_tmp);
+  CastCsrKernel<T, Context>(
+      dev_ctx, y, DataType::INT32, y.values().dtype(), &y_tmp);
+
   std::vector<int64_t> out_dim_vec = phi::vectorize(out->dims());
   int batch_size = 1;
   for (int i = 0; i < out_dim_vec.size() - 2; i++) {
     batch_size *= out_dim_vec[i];
   }
-
   int64_t out_crows_size = batch_size * (xdim_vec[x_ndims - 2] + 1);
   DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx, {out_crows_size});
   DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx, {0});
   DenseTensor out_values = phi::Empty<T>(dev_ctx, {0});
-  out->SetMember(out_crows, out_cols, out_values, out->dims());
+  out_tmp.SetMember(out_crows, out_cols, out_values, out->dims());
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
-  sparse_blas.SPGEMM(
-      false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
+  sparse_blas.SPGEMM(false,
+                     false,
+                     static_cast<T>(1),
+                     x_tmp,
+                     y_tmp,
+                     static_cast<T>(0),
+                     &out_tmp);
+
+  CastCsrKernel<T, Context>(
+      dev_ctx, out_tmp, DataType::INT64, out_tmp.values().dtype(), out);
+
 #else
 #ifdef PADDLE_WITH_CUDA
   PADDLE_THROW(phi::errors::Unimplemented(
@@ -307,6 +323,7 @@ PD_REGISTER_KERNEL(matmul_coo_coo,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
 PD_REGISTER_KERNEL(matmul_csr_csr,
@@ -316,6 +333,7 @@ PD_REGISTER_KERNEL(matmul_csr_csr,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(masked_matmul_csr,

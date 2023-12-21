@@ -107,20 +107,7 @@ class TestMatmulCsrCsr(unittest.TestCase):
         dense_out = paddle.matmul(dense_x, dense_y)
 
         sp_x = origin_x.detach().to_sparse_csr()
-        # only support 32-bit index.
-        sp_x_crows = paddle.cast(sp_x.crows(), "int32")
-        sp_x_cols = paddle.cast(sp_x.cols(), "int32")
-        sp_x = paddle.sparse.sparse_csr_tensor(
-            sp_x_crows, sp_x_cols, sp_x.values(), sp_x.shape
-        )
-
         sp_y = origin_y.detach().to_sparse_csr()
-        # only support 32-bit index.
-        sp_y_crows = paddle.cast(sp_y.crows(), "int32")
-        sp_y_cols = paddle.cast(sp_y.cols(), "int32")
-        sp_y = paddle.sparse.sparse_csr_tensor(
-            sp_y_crows, sp_y_cols, sp_y.values(), sp_y.shape
-        )
 
         sp_x.stop_gradient = False
         sp_y.stop_gradient = False
@@ -171,19 +158,7 @@ class TestMatmulCooCoo(unittest.TestCase):
         dense_out = paddle.matmul(dense_x, dense_y)
 
         sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
-
-        # only support 32-bit index.
-        sp_x_indices = paddle.cast(sp_x.indices(), "int32")
-        sp_x = paddle.sparse.sparse_coo_tensor(
-            sp_x_indices, sp_x.values(), sp_x.shape
-        )
-
         sp_y = origin_y.detach().to_sparse_coo(len(y_shape))
-        # only support 32-bit index.
-        sp_y_indices = paddle.cast(sp_y.indices(), "int32")
-        sp_y = paddle.sparse.sparse_coo_tensor(
-            sp_y_indices, sp_y.values(), sp_y.shape
-        )
 
         sp_x.stop_gradient = False
         sp_y.stop_gradient = False
