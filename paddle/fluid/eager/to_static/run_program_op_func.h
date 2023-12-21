@@ -129,8 +129,8 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
   return res;
 }
 
-inline int64_t hash_int_value(int64_t value) {
-  return value + 0x9e3779b9 + (value << 6) + (value >> 2);
+int64_t hash_with_seed(int64_t value, int64_t seed) {
+  return value + 0x9e3779b9 + (value << 6) + (seed >> 2);
 }
 
 inline void run_program_ad_func(
@@ -159,14 +159,14 @@ inline void run_program_ad_func(
   auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  std::vector<int64_t> place_hash_keys = std::vector<int64_t>();
+  int64_t place_hash_key = 0x9e3779b9;
   for (const paddle::Tensor& tensor : x) {
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
-    place_hash_keys.emplace_back(hash_int_value(device_type));
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
   for (const paddle::Tensor& tensor : params) {
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
-    place_hash_keys.emplace_back(hash_int_value(device_type));
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
   RunProgramAPI(x_tmp,
                 params_tmp,
@@ -174,7 +174,7 @@ inline void run_program_ad_func(
                 step_scope,
                 require_any_grad,
                 attrs,
-                place_hash_keys);
+                place_hash_key);
   VLOG(2) << "start run run_program grad";
   auto is_test = false;
   if (attrs.count("is_test")) {
@@ -188,7 +188,7 @@ inline void run_program_ad_func(
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
     // Set place hash keys for backward
-    grad_node->SetPlaceHashKeys(place_hash_keys);
+    grad_node->SetPlaceHashKey(place_hash_key);
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
@@ -288,14 +288,14 @@ inline void pir_run_program_ad_func(
 
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  std::vector<int64_t> place_hash_keys = std::vector<int64_t>();
+  int64_t place_hash_key = 0x9e3779b9;
   for (const paddle::Tensor& tensor : x) {
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
-    place_hash_keys.emplace_back(hash_int_value(device_type));
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
   for (const paddle::Tensor& tensor : params) {
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
-    place_hash_keys.emplace_back(hash_int_value(device_type));
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
   PirRunProgramAPI(x,
                    params,
@@ -304,10 +304,10 @@ inline void pir_run_program_ad_func(
                    step_scope,
                    require_any_grad,
                    attrs,
-                   place_hash_keys);
+                   place_hash_key);
   if (!is_test && require_any_grad) {
     // Set place hash keys for backward
-    grad_node->SetPlaceHashKeys(place_hash_keys);
+    grad_node->SetPlaceHashKey(place_hash_key);
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
