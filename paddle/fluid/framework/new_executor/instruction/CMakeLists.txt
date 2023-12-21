@@ -22,7 +22,7 @@ endif()
 cc_library(
   instruction_base
   SRCS ${instruction_base_srcs}
-  DEPS pir_adaptor phi common framework_proto)
+  DEPS framework_proto)
 if(WITH_MKLDNN)
   add_dependencies(instruction_base mkldnn)
 endif()
