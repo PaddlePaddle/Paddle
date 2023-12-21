@@ -740,7 +740,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             m.bmm(n).numpy(), paddle.bmm(m, n).numpy()
         )
         np.testing.assert_array_equal(
-            x.histogram(5, -1, 1).numpy(), paddle.histogram(x, 5, -1, 1).numpy()
+            x.histogram(bins=5, min=-1, max=1).numpy(),
+            paddle.histogram(x, bins=5, min=-1, max=1).numpy(),
         )
         np.testing.assert_array_equal(
             x.equal(y).numpy(), paddle.equal(x, y).numpy()
