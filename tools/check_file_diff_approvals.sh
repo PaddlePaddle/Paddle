@@ -297,7 +297,7 @@ fi
 
 HAS_USED_CCTEST=`git diff -U0 upstream/$BRANCH |grep "cc_test" || true`
 if [ "${HAS_USED_CCTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Paddle utest will gradually discard cc_test\n  insteadly, the paddle_test is recommended,\n if you must use cc_test, you must be approved by risemeup1 or zhangbo9674 or Galaxy1458 for using cc_test. Thanks!\n"
+    echo_line="Paddle utest will gradually discard cc_test\n  instead, the paddle_test is recommended,\n if you must use cc_test, you must be approved by risemeup1 or zhangbo9674 or Galaxy1458 for using cc_test. Thanks!\n"
     check_approval 1 risemeup1 zhangbo9674 Galaxy1458
 fi
 
