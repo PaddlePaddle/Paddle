@@ -29,6 +29,7 @@ paddle.enable_static()
 
 class TestApiWhileLoop(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_tuple(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -38,7 +39,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             ten = paddle.tensor.fill_constant(
@@ -58,6 +59,7 @@ class TestApiWhileLoop(unittest.TestCase):
         )
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_list(self):
         def cond(i, mem):
             return paddle.less_than(i, ten)
@@ -69,7 +71,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -179,6 +181,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
+    @test_with_pir_api
     @compare_legacy_with_pt
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
@@ -206,7 +209,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             j = paddle.zeros(shape=[1], dtype='int64')
             init = paddle.static.data(
