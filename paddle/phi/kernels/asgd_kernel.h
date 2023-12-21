@@ -22,8 +22,8 @@ namespace phi {
 template <typename T, typename Context>
 void ASGDKernel(const Context& dev_ctx,
                 const DenseTensor& param,
-                const DenseTensor& learning_rate,
                 const DenseTensor& grad,
+                const DenseTensor& learning_rate,
                 const DenseTensor& d,
                 const DenseTensor& y,
                 const DenseTensor& n,

@@ -139,8 +139,8 @@ void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaConfig config);
 
 void ASGDInferMeta(const MetaTensor& param,
-                   const MetaTensor& learning_rate,
                    const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
                    const MetaTensor& d,
                    const MetaTensor& y,
                    const MetaTensor& n,

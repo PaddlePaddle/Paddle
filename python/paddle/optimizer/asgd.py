@@ -224,8 +224,8 @@ class ASGD(Optimizer):
         if in_dynamic_or_pir_mode():
             _C_ops.asgd_(
                 param_and_grad[0],
-                lr,
                 param_and_grad[1],
+                lr,
                 d,
                 y,
                 paddle.fmin(m, self._n_tensor),
@@ -238,8 +238,8 @@ class ASGD(Optimizer):
             # create the optimize op
             inputs = {
                 "param": param_and_grad[0],
-                "learning_rate": lr,
                 "grad": param_and_grad[1],
+                "learning_rate": lr,
                 "d": d,
                 "y": y,
                 "n": paddle.fmin(m, self._n_tensor),
