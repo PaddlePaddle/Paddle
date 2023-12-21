@@ -340,13 +340,11 @@ def inverse_sort_op(ops):
         )
     change_list = []
     for op in reversed(sorted_list):
-        print("^^^^", op.name())
         if op.name() == 'pd_op.increment_':
             idx_1 = sorted_list.index(op)
             idx_2 = sorted_list.index(op)
 
             for op_in in reversed(sorted_list[: sorted_list.index(op)]):
-                print("&&&&", op_in.name())
                 if (
                     some_in_set(
                         op.operands_source(),
@@ -355,10 +353,9 @@ def inverse_sort_op(ops):
                     and op_in.name() != "cf.tuple_push"
                 ):
                     idx_2 = sorted_list.index(op_in)
-                    print("$$$$", idx_1, "   ", idx_2)
             if idx_1 != idx_2:
                 change_list.append((idx_1, idx_2))
-    print("change_list :", change_list)
+
     for idx_1, idx_2 in change_list:
         sorted_list[idx_1], sorted_list[idx_2] = (
             sorted_list[idx_2],
@@ -734,7 +731,6 @@ def append_backward_ops(
         if op.name() != "builtin.combine" and op.name() != "builtin.split":
             clear_effective_forward_ops.append(op)
     with bwd_block:
-        print([op.name() for op in clear_effective_forward_ops])
         for op in clear_effective_forward_ops:
             if paddle.framework.core.has_vjp(op):
                 # prepare output_grad
