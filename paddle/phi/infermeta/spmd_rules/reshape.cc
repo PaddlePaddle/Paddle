@@ -194,14 +194,14 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
 
   // Step3: Update the dist attributes of input
   // and output with the inferred dims mapping.
-  TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
   if (x_dist_attr_dst.dynamic_dims().size() !=
       x_dist_attr_dst.dims_mapping().size()) {
     VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
     x_dist_attr_dst.set_default_dynamic_dims(x_dist_attr_dst.dims_mapping());
   }
-  TensorDistAttr out_dist_attr(x_dist_attr_src);
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
   if (out_dist_attr.dynamic_dims().size() !=
       out_dist_attr.dims_mapping().size()) {
@@ -281,7 +281,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 
   // Step3: Update the dist attributes of input
   // and output with the inferred dims mapping
-  TensorDistAttr out_dist_attr_dst(out_dist_attr_src);
+  TensorDistAttr out_dist_attr_dst =
+      CopyTensorDistAttrForOutput(out_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
   if (out_dist_attr_dst.dynamic_dims().size() !=
       out_dist_attr_dst.dims_mapping().size()) {
@@ -289,7 +290,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
     out_dist_attr_dst.set_default_dynamic_dims(
         out_dist_attr_dst.dims_mapping());
   }
-  TensorDistAttr x_dist_attr(x.dist_attr());
+  TensorDistAttr x_dist_attr = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
   if (x_dist_attr.dynamic_dims().size() != x_dist_attr.dims_mapping().size()) {
     VLOG(3) << "Reshape InferSPMD change input dist attr dynamic dims";
