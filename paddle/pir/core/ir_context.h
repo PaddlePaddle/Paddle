@@ -41,7 +41,7 @@ using OpInfoMap = std::unordered_map<std::string, OpInfo>;
 /// \brief IrContext is a global parameterless class used to store and manage
 /// Type, Attribute and other related data structures.
 ///
-class TEST_API IrContext {
+class IR_API IrContext {
  public:
   ///
   /// \brief Initializes a new instance of IrContext.
@@ -49,7 +49,7 @@ class TEST_API IrContext {
 
   IrContext();
   ~IrContext();
-  static IrContext *Instance();
+  static TEST_API IrContext *Instance();
   ///
   /// \brief Get an instance of IrContextImpl, a private member of IrContext.
   /// For the specific definition of IrContextImpl, see ir_context.cc.
@@ -78,7 +78,7 @@ class TEST_API IrContext {
   ///
   /// \brief Get registered AbstractType from IrContext.
   ///
-  AbstractType *GetRegisteredAbstractType(TypeId id);
+  TEST_API AbstractType *GetRegisteredAbstractType(TypeId id);
 
   ///
   /// \brief Register an AbstractAttribute to IrContext
