@@ -260,7 +260,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
 
             weight_np, bias_np = None, None
             for i in range(n):
-                feed_dict = {'x' : x_np}
+                feed_dict = {'x':x_np}
                 weight_np, bias_np = exe.run(
                     main_prog, feed=feed_dict, fetch_list=[weight, bias]
                 )
