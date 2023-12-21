@@ -402,17 +402,6 @@
     func : elementwise_pow
   backward : elementwise_pow_grad
 
-
-- op : elementwise_sub
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-    spmd_rule: ElementwiseBinaryInferSpmd
-  kernel :
-    func : elementwise_sub
-  backward : elementwise_sub_grad
-
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor
