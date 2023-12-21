@@ -2650,7 +2650,7 @@ struct MatrixRankOpTranscriber : public OpTranscriber {
           "or "
           "pd_op.matrix_rank_tol.");
     }
-        return op_info;
+    return op_info;
   }
 };
 
