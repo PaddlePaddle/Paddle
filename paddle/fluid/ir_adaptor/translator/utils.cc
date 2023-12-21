@@ -105,5 +105,36 @@ std::vector<std::string> CheckUnregisteredOperation(
   return unregistered_ops;
 }
 
+phi::DataType PirTypeToPhiDType(pir::Type type) {
+  if (type.isa<pir::UInt8Type>()) {
+    return phi::DataType::UINT8;
+  } else if (type.isa<pir::Int8Type>()) {
+    return phi::DataType::INT8;
+  } else if (type.isa<pir::Int16Type>()) {
+    return phi::DataType::INT16;
+  } else if (type.isa<pir::Int32Type>()) {
+    return phi::DataType::INT32;
+  } else if (type.isa<pir::Int64Type>()) {
+    return phi::DataType::INT64;
+  } else if (type.isa<pir::Float32Type>()) {
+    return phi::DataType::FLOAT32;
+  } else if (type.isa<pir::Float64Type>()) {
+    return phi::DataType::FLOAT64;
+  } else if (type.isa<pir::BoolType>()) {
+    return phi::DataType::BOOL;
+  } else if (type.isa<pir::Float16Type>()) {
+    return phi::DataType::FLOAT16;
+  } else if (type.isa<pir::BFloat16Type>()) {
+    return phi::DataType::BFLOAT16;
+  } else if (type.isa<pir::Complex64Type>()) {
+    return phi::DataType::COMPLEX64;
+  } else if (type.isa<pir::Complex128Type>()) {
+    return phi::DataType::COMPLEX128;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported pirType `%s` when casting it into phi::DataType.", type));
+  }
+}
+
 }  // namespace translator
 }  // namespace paddle
