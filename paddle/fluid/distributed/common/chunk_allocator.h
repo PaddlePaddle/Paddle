@@ -14,6 +14,7 @@
 
 #pragma once
 #include <glog/logging.h>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -83,7 +84,7 @@ class ChunkAllocator {
                                alloc_size);
     PADDLE_ENFORCE_EQ(error,
                       0,
-                      platform::errors::ResourceExhausted(
+                      paddle::platform::errors::ResourceExhausted(
                           "Fail to alloc memory of %ld size, error code is %d.",
                           alloc_size,
                           error));
