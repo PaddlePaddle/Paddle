@@ -20,7 +20,8 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::ArrayLengthOp, paddle::dialect::ArrayReadOp,
     paddle::dialect::ArrayWrite_Op, paddle::dialect::SliceArrayOp,
     paddle::dialect::SliceArrayDenseOp, paddle::dialect::AssignArray_Op,
-    paddle::dialect::ArrayToTensorOp, paddle::dialect::SelectInputOp
+    paddle::dialect::ArrayToTensorOp, paddle::dialect::SelectInputOp,
+    paddle::dialect::IncrementOp, paddle::dialect::Increment_Op
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"

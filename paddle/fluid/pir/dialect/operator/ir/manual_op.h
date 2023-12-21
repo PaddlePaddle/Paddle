@@ -426,12 +426,12 @@ class IncrementOp
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value x_,
+                    pir::Value x_,                     // NOLINT
                     float value = 1.0);
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value x_,
+                    pir::Value x_,                     // NOLINT
                     pir::AttributeMap attributes);
 
   void VerifySig();
@@ -468,12 +468,12 @@ class Increment_Op
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value x_,
+                    pir::Value x_,                     // NOLINT
                     float value = 1.0);
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value x_,
+                    pir::Value x_,                     // NOLINT
                     pir::AttributeMap attributes);
 
   void VerifySig();

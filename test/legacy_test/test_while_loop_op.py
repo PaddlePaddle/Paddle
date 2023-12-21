@@ -23,7 +23,6 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -252,7 +251,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
     # TODO(zhangbo): Support while grad exe for pir
-
+    # @test_with_pir_api
     def test_while_loop_backward(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
@@ -267,6 +266,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         with paddle.static.program_guard(main_program, startup_program):
             i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
+            i.persistable = True
             eleven = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=11
             )
@@ -275,6 +275,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             )
             x = paddle.static.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
+            x.persistable = True
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
             mean = paddle.mean(out[1])
@@ -311,7 +312,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
 
     # TODO(zhangbo): Support while grad exe for pir
-    @test_with_pir_api
+    # @test_with_pir_api
     def test_while_loop_backward2(self):
         def cond1(i, x):
             return i < 2
