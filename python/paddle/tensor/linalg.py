@@ -2172,48 +2172,76 @@ def bmm(x, y, name=None):
         return out
 
 
-def histogram(input, bins=100, min=0, max=0, name=None):
+def histogram(
+    input, weight=None, bins=100, min=0, max=0, density=False, name=None
+):
     """
-    Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
-    If min and max are both zero, the minimum and maximum values of the data are used.
+        Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
+        If min and max are both zero, the minimum and maximum values of the data are used.
 
-    Args:
-        input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
-            should be float32, float64, int32, int64.
-        bins (int, optional): number of histogram bins. Default: 100.
-        min (int, optional): lower end of the range (inclusive). Default: 0.
-        max (int, optional): upper end of the range (inclusive). Default: 0.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        Args:
+            input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+                should be float32, float64, int32, int64.
+    <<<<<<< HEAD
+            bins (int, optional): number of histogram bins. Default: 100.
+            min (int, optional): lower end of the range (inclusive). Default: 0.
+            max (int, optional): upper end of the range (inclusive). Default: 0.
+    =======
+            weight (Tensor, optional): Weight for each value in the input tensor. Should have the same shape and data type as input.
+                Default is None.
+            bins (int, optional): number of histogram bins.
+            min (int, optional): lower end of the range (inclusive).
+            max (int, optional): upper end of the range (inclusive).
+            density (bool, optional): If False, the result will contain the count(or total weight) in each bin. If True, the result is the
+                value of the probability density function at the bin, normalized such that the integral over the range is 1.
+    >>>>>>> 66c0d607a1 (add weight and density parameter in histogram op && add histogram_bin_edges op)
+            name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
-    Returns:
-        Tensor: data type is int64, shape is (nbins,).
+        Returns:
+            Tensor: data type is float32, shape is (nbins,).
 
-    Examples:
-        .. code-block:: python
+        Examples:
+            .. code-block:: python
 
-            >>> import paddle
+                >>> import paddle
 
-            >>> inputs = paddle.to_tensor([1, 2, 1])
-            >>> result = paddle.histogram(inputs, bins=4, min=0, max=3)
-            >>> print(result)
-            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [0, 2, 1, 0])
+                >>> inputs = paddle.to_tensor([1, 2, 1])
+                >>> result = paddle.histogram(inputs, bins=4, min=0, max=3)
+                >>> print(result)
+                Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [0, 2, 1, 0])
     """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.histogram(input, bins, min, max)
+    if in_dynamic_mode():
+        return _C_ops.histogram(input, weight, bins, min, max, density)
     else:
         helper = LayerHelper('histogram', **locals())
         check_variable_and_dtype(
             input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram'
         )
-        out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
-        helper.append_op(
-            type='histogram',
-            inputs={'X': input},
-            outputs={'Out': out},
-            attrs={'bins': bins, 'min': min, 'max': max},
-        )
-        return out
+        if weight is not None:
+            check_variable_and_dtype(
+                weight,
+                'Weight',
+                ['int32', 'int64', 'float32', 'float64'],
+                'histogram',
+            )
+            if input.dtype != weight.dtype:
+                raise ValueError(
+                    "Only support input and weight have the same dtype."
+                )
+    check_type(bins, 'bins', int, 'histogram')
+    check_type(density, 'density', bool, 'histogram')
+    if density:
+        out = helper.create_variable_for_type_inference(VarDesc.VarType.FLOAT32)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='histogram',
+        inputs={'X': input, 'Weight': weight},
+        outputs={'Out': out},
+        attrs={'bins': bins, 'min': min, 'max': max, 'density': density},
+    )
+    return out
 
 
 def bincount(x, weights=None, minlength=0, name=None):

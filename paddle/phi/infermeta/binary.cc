@@ -1929,6 +1929,60 @@ void GridSampleBaseInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t bins,
+                        int min,
+                        int max,
+                        bool density,
+                        MetaTensor* out) {
+  auto input_dim = input.dims();
+  if (weight) {
+    auto weight_dim = weight.dims();
+    PADDLE_ENFORCE_EQ(
+        weight_dim,
+        input_dim,
+        phi::errors::InvalidArgument(
+            "The 'shape' of Input(Weight) must be equal to the 'shape' of "
+            "Input(X)."
+            "But received: the 'shape' of Input(Weight) is [%s],"
+            "the 'shape' of Input(X) is [%s]",
+            weight_dim,
+            input_dim));
+    PADDLE_ENFORCE_EQ(
+        input.dtype() == weight.dtype(),
+        true,
+        phi::errors::InvalidArgument(
+            "The 'dtpye' of Input(Weight) must be equal to the 'dtype' of "
+            "Input(X)."
+            "But received: the 'dtype' of Input(Weight) is [%s],"
+            "the 'dtype' of Input(X) is [%s]",
+            weight.dtype(),
+            input.dtype()));
+  }
+  PADDLE_ENFORCE_GE(bins,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The bins should be greater than or equal to 1."
+                        "But received nbins is %d",
+                        bins));
+  PADDLE_ENFORCE_GE(
+      max,
+      min,
+      phi::errors::InvalidArgument("max must be larger or equal to min."
+                                   "But received max is %d, min is %d",
+                                   max,
+                                   min));
+
+  out->set_dims({bins});
+  out->share_lod(input);
+  if (density) {
+    out->set_dtype(DataType::FLOAT32);
+  } else {
+    out->set_dtype(input.dtype());
+  }
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,

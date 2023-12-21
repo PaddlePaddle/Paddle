@@ -2922,3 +2922,50 @@ def geometric_(x, probs, name=None):
     x.uniform_(min=float(tiny), max=float(1))
     x.log_().divide_(paddle.log1p(-(probs)))
     return x
+
+
+def histogram_bin_edges(input, bins=100, range=None, weight=None, name=None):
+    """
+    Computes only the edges of the bins used by the histogram function.
+
+    Args:
+        input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64.
+        bins (int, optional): number of histogram bins.
+        range (list | tuple):  The lower and upper range of the bins. If None, `range` is simply (input.min(), input.max()).
+            The first element of the range must be less than or equal to the second. Default: None.
+        weight (Tensor, optional): Weight for each value in the input tensor. Should have the same shape and data type as input.
+            This is currently not used by any of the bin estimators, but may be in the future. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: the values of the histogram and the bin edges. The output data type will be float32.
+            import paddle
+
+            inputs = paddle.to_tensor([1, 2, 1])
+            result = paddle.histogram_bin_edges(inputs, bins=4, range=(0, 3))
+            print(result) # [0., 0.75, 1.5, 2.25, 3.]
+
+    """
+    check_type(input, 'input', (Variable), 'histogram_bin_edges')
+    check_dtype(
+        input.dtype,
+        'input',
+        ['float32', 'float64', 'int32', 'int64'],
+        'histogram_bin_edges',
+    )
+    check_type(bins, 'bins', int, 'histogram_bin_edges')
+    if range is None:
+        start = paddle.max(input)
+        stop = paddle.min(input)
+    else:
+        check_type(range, 'range', (list, tuple), 'histogram_bin_edges')
+        if len(range) != 2:
+            raise ValueError("The length of range should be equal 2")
+        start, stop = range
+        if start > stop:
+            raise ValueError("max must be larger than min in range parameter")
+    if (stop - start) == 0:
+        start = start - 0.5
+        stop = stop + 0.5
+    return linspace(start, stop, bins + 1)
