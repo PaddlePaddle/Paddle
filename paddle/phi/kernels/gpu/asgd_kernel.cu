@@ -25,8 +25,8 @@ namespace phi {
 
 template <typename T, typename MT>
 __global__ void ASGDKernelGPUImpl(const T* param,
-                                  const T* learning_rate,
                                   const T* grad,
+                                  const T* learning_rate,
                                   const T* d,
                                   const T* y,
                                   const T* n,
@@ -58,8 +58,8 @@ __global__ void ASGDKernelGPUImpl(const T* param,
 template <typename T, typename Context>
 void ASGDKernel(const Context& dev_ctx,
                 const DenseTensor& param,
-                const DenseTensor& learning_rate,
                 const DenseTensor& grad,
+                const DenseTensor& learning_rate,
                 const DenseTensor& d,
                 const DenseTensor& y,
                 const DenseTensor& n,
@@ -81,8 +81,8 @@ void ASGDKernel(const Context& dev_ctx,
 
   ASGDKernelGPUImpl<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
       param.data<T>(),
-      learning_rate.data<T>(),
       grad.data<T>(),
+      learning_rate.data<T>(),
       d.data<T>(),
       y.data<T>(),
       n.data<T>(),
@@ -103,9 +103,4 @@ PD_REGISTER_KERNEL(asgd,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    float,
-                   double) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
-      kernel_key.dtype() == phi::DataType::BFLOAT16) {
-    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
-  }
-}
+                   double) {}

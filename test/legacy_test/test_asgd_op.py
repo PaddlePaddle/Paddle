@@ -29,8 +29,8 @@ paddle.enable_static()
 
 def asgd_wrapper(
     param,
-    learning_rate,
     grad,
+    learning_rate,
     d,
     y,
     n,
@@ -39,8 +39,8 @@ def asgd_wrapper(
 ):
     paddle._C_ops.asgd_(
         param,
-        learning_rate,
         grad,
+        learning_rate,
         d,
         y,
         n,
@@ -59,8 +59,8 @@ class TestASGDOpMixin:
 
         self.inputs = {
             "param": self.params,
-            "learning_rate": self.learning_rate,
             "grad": self.grads,
+            "learning_rate": self.learning_rate,
             "d": self.ds,
             "y": self.ys,
             "n": self.n,

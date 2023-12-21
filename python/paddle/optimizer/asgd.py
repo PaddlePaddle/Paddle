@@ -99,9 +99,9 @@ class ASGD(Optimizer):
         name=None,
     ):
         if learning_rate is None:
-            raise ValueError("learning_rate is not set")
+            raise ValueError("learning_rate should not be none")
         if batch_num is None:
-            raise ValueError("batch_num is not set")
+            raise ValueError("batch_num should not be none")
         if not 0 < batch_num:
             raise ValueError("batch_num should be greater than 0")
         super().__init__(
@@ -224,8 +224,8 @@ class ASGD(Optimizer):
         if in_dynamic_or_pir_mode():
             _C_ops.asgd_(
                 param_and_grad[0],
-                lr,
                 param_and_grad[1],
+                lr,
                 d,
                 y,
                 paddle.fmin(m, self._n_tensor),
@@ -238,8 +238,8 @@ class ASGD(Optimizer):
             # create the optimize op
             inputs = {
                 "param": param_and_grad[0],
-                "learning_rate": lr,
                 "grad": param_and_grad[1],
+                "learning_rate": lr,
                 "d": d,
                 "y": y,
                 "n": paddle.fmin(m, self._n_tensor),
