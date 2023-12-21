@@ -55,7 +55,7 @@ fi
 # check tensorrt installation
 TENSORRT_COMPILED=$(cat "${inference_install_dir}/version.txt" | grep "WITH_TENSORRT")
 USE_TENSORRT=OFF
-if [ -d "$TENSORRT_ROOT_DIR" ] && [ ! -z "$TENSORRT_COMPILED" ]  ; then
+if [ -d "$TENSORRT_ROOT_DIR" ] && [ ! -z "$TENSORRT_COMPILED" ] && [ $3 == ON ]; then
   USE_TENSORRT=ON
   test_suite_list="${test_suite_list}:tensorrt_tester*"
 fi
