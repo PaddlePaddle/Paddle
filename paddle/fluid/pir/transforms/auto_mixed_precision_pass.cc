@@ -72,11 +72,17 @@ class AutoMixedPrecisionPass : public pir::Pass {
     GetOpPrecision(block);
     LOG(INFO) << "===========Update Op Precision============" << std::endl;
     UpdateOpPrecision(block);
+
+    LOG(INFO) << "===========" << op_run_low_precision_.size() << " of "
+              << block->size() << " ops"
+              << " run low precision" << std::endl;
     pir::IrContext* ctx = pir::IrContext::Instance();
     pir::Builder builder = pir::Builder(ctx, block);
     LOG(INFO) << "===========Process Op Precision============" << std::endl;
 
     ProcessBlock(block, builder);
+    LOG(INFO) << "===========Insert Cast Op Num : " << insert_cast_op_num_
+              << "============" << std::endl;
     // pir::GreedyRewriteConfig cfg;
     // cfg.use_top_down_traversal = true;
     // cfg.max_iterations = 2;
@@ -103,6 +109,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
   mutable std::unordered_set<pir::Operation*> op_should_not_handle_;
   mutable std::unordered_map<pir::Value, paddle::dialect::CastOp>
       cached_cast_ops_;
+
+  mutable int insert_cast_op_num_ = 0;
 
   void SetDefaultBlacklist() {
     // black_list_.insert({
@@ -183,6 +191,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   }
 
   void UpdateOpPrecision(pir::Block* block) {
+    bool updated = false;
     // handle full like op
     for (auto& op_item : *block) {
       auto op = &op_item;
@@ -213,6 +222,12 @@ class AutoMixedPrecisionPass : public pir::Pass {
           }
         }
       }
+      // 输出的方式比较好
+      // 一个op和他的输出是绑定的
+      // op1 -> var1
+      // var1 -> op2
+      // var1 的精度
+
       // precision should be same as input
       // if (op->isa<paddle::dialect::ShareDataOp>()) {
       //   auto input_operation = GetDefiningOpForInput(op, 0);
@@ -221,6 +236,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
       //   }
       // }
     }
+    // builtin.combine -> vector type
+    // reshape op
+    // reshape -> vector_type
+
     for (auto& op_item : *block) {
       auto op = &op_item;
       for (size_t idx = 0; idx < op->num_operands(); ++idx) {
@@ -241,6 +260,9 @@ class AutoMixedPrecisionPass : public pir::Pass {
         }
       }
     }
+    // 产生(op1, op2)的跑在高精度
+    // (op1 -> var1, op2 -> var2) => combine => var3 是 op3(属性输入)
+
     // print if op run low precision
     for (auto& op_item : *block) {
       auto op = &op_item;
@@ -485,6 +507,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         builder.Build<paddle::dialect::CastOp>(value, precision);
     operand.set_source(cast_op->result(0));
     cached_cast_ops_[value] = cast_op;
+    insert_cast_op_num_++;
   }
 
   bool OpRunLowPrecision(pir::Operation* op) const {
