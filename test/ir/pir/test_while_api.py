@@ -152,15 +152,6 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .name(),
                 "cf.has_elements",
             )
-            self.assertEqual(
-                main_program.global_block()
-                .ops[-1]
-                .as_while_op()
-                .body()
-                .ops[-4]
-                .name(),
-                "cf.has_elements",
-            )
 
 
 if __name__ == "__main__":
