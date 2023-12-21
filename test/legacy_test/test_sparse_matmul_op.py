@@ -170,5 +170,86 @@ class TestMaskedMatmul(unittest.TestCase):
         )
 
 
+class TestMatmulSparseSparse(unittest.TestCase):
+    # x: sparse, y: sparse, out: sparse
+    def check_result(self, x_shape, y_shape, sparse):
+        mask = paddle.randint(0, 2, x_shape)
+        origin_x = paddle.rand(x_shape) * mask
+        origin_y = paddle.rand(y_shape)
+
+        dense_x = origin_x.detach()
+        dense_x.stop_gradient = False
+        dense_y = origin_y.detach()
+        dense_y.stop_gradient = False
+        dense_out = paddle.matmul(dense_x, dense_y)
+        if sparse == 'csr':
+            sp_x = origin_x.detach().to_sparse_csr()
+            # only support 32-bit index.
+            sp_x_crows = paddle.cast(sp_x.crows(), "int32")
+            sp_x_cols = paddle.cast(sp_x.cols(), "int32")
+            sp_x = paddle.sparse.sparse_csr_tensor(
+                sp_x_crows, sp_x_cols, sp_x.values(), sp_x.shape
+            )
+
+            sp_y = origin_y.detach().to_sparse_csr()
+            # only support 32-bit index.
+            sp_y_crows = paddle.cast(sp_y.crows(), "int32")
+            sp_y_cols = paddle.cast(sp_y.cols(), "int32")
+            sp_y = paddle.sparse.sparse_csr_tensor(
+                sp_y_crows, sp_y_cols, sp_y.values(), sp_y.shape
+            )
+        else:
+            sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+
+            # only support 32-bit index.
+            sp_x_indices = paddle.cast(sp_x.indices(), "int32")
+            sp_x = paddle.sparse.sparse_coo_tensor(
+                sp_x_indices, sp_x.values(), sp_x.shape
+            )
+
+            sp_y = origin_y.detach().to_sparse_coo(len(y_shape))
+            # only support 32-bit index.
+            sp_y_indices = paddle.cast(sp_y.indices(), "int32")
+            sp_y = paddle.sparse.sparse_coo_tensor(
+                sp_y_indices, sp_y.values(), sp_y.shape
+            )
+
+        sp_x.stop_gradient = False
+        sp_y.stop_gradient = False
+
+        sp_out = paddle.sparse.matmul(sp_x, sp_y)
+
+        np.testing.assert_allclose(
+            sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+        )
+
+        dense_out.backward()
+        sp_out.backward()
+        np.testing.assert_allclose(
+            sp_x.grad.to_dense().numpy(),
+            dense_x.grad.numpy(),
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            sp_y.grad.to_dense().numpy(), dense_y.grad.numpy(), rtol=1e-05
+        )
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        "only support cuda>=11.0",
+    )
+    def test_matmul_2d(self):
+        self.check_result([16, 12], [12, 10], 'csr')
+        self.check_result([16, 12], [12, 10], 'coo')
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        "only support cuda>=11.8",
+    )
+    def test_matmul_3d(self):
+        self.check_result([2, 16, 12], [2, 12, 10], 'csr')
+        self.check_result([2, 16, 12], [2, 12, 10], 'coo')
+
+
 if __name__ == "__main__":
     unittest.main()

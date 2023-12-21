@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -201,11 +202,11 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
 #endif
 }
 
-template <typename T, typename Context, typename TensorType>
-void MatmulKernelImpl(const Context& dev_ctx,
-                      const TensorType& x,
-                      const TensorType& y,
-                      TensorType* out) {
+template <typename T, typename Context>
+void MatmulCsrCsrKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const SparseCsrTensor& y,
+                        SparseCsrTensor* out) {
 #if CUDA_VERSION >= 11000
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
@@ -240,38 +241,39 @@ void MatmulKernelImpl(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
 
-  // InferMeta of DenseTensor 'out'
   std::vector<int64_t> out_dim_vec(ydim_vec);
   out_dim_vec[y_ndims - 2] = xdim_vec[x_ndims - 2];
   out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
 
   out->set_dims(common::make_ddim(out_dim_vec));
+  SparseCsrTensor x_tmp, y_tmp;
+  CastCsrKernel<T, Context>(
+      dev_ctx, x, phi::DATATYPE::INT32, x.values().dtype(), &x_tmp);
+  CastCsrKernel<T, Context>(
+      dev_ctx, y, phi::DATATYPE::INT32, y.values().dtype(), &y_tmp);
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
-      false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
+      false, false, static_cast<T>(1), x_tmp, y_tmp, static_cast<T>(0), out);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("forward of 'sparse.matmul' use cusparseSpMM, "
-                                 "which is supported from CUDA 11.0"));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "forward of 'sparse.matmul' use cusparseSpGEMM, "
+      "which is supported from CUDA 11.0"));
 #endif
 }
 
 template <typename T, typename Context>
-void MatmulCsrCsrKernel(const Context& dev_ctx,
-                        const SparseCsrTensor& x,
-                        const SparseCsrTensor& y,
-                        SparseCsrTensor* out) {
-  MatmulKernelImpl<T>(dev_ctx, x, y, out);
+void MatmulCooCooKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const SparseCooTensor& y,
+                        SparseCooTensor* out) {
+  SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
+  SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
+  SparseCsrTensor out_csr;
+  out_csr.set_dims(out->dims());
+  MatmulCsrCsrKernel<T, Context>(dev_ctx, x_csr, y_csr, &out_csr);
+  CsrToCooKernel<T>(dev_ctx, out_csr, out);
 }
-
-// template <typename T, typename Context>
-// void MatmulCooCooKernel(const Context& dev_ctx,
-//                           const SparseCooTensor& x,
-//                           const SparseCooTensor& y,
-//                           SparseCooTensor* out) {
-//   MatmulKernelImpl<T>(dev_ctx, x, y, out);
-// }
 
 }  // namespace sparse
 }  // namespace phi
@@ -311,12 +313,12 @@ PD_REGISTER_KERNEL(matmul_csr_csr,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-// PD_REGISTER_KERNEL(matmul_coo_coo,
-//                    GPU,
-//                    ALL_LAYOUT,
-//                    phi::sparse::MatmulCooCooKernel,
-//                    float,
-//                    double) {
-//   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-//   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
-// }
+PD_REGISTER_KERNEL(matmul_coo_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCooCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}

@@ -152,35 +152,71 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   // dx{SparseCsr} = dout{SparseCsr} * y'{SparseCsr}
   if (dx) {
     auto dims_numel = y.dims().size();
-    SparseCsrTensor tmp_y;
+    SparseCsrTensor transpose_y, tmp_dout, tmp_y;
     if (dims_numel == 2) {
-      tmp_y = TransposeCsr<T, Context>(dev_ctx, y, {1, 0});
+      TransposeCsrKernel<T, Context>(dev_ctx, y, {1, 0}, &transpose_y);
     } else {
-      tmp_y = TransposeCsr<T, Context>(dev_ctx, y, {0, 2, 1});
+      TransposeCsrKernel<T, Context>(dev_ctx, y, {0, 2, 1}, &transpose_y);
     }
+    CastCsrKernel<T, Context>(
+        dev_ctx, dout, phi::DATATYPE::INT32, dout.values().dtype(), &tmp_dout);
+    CastCsrKernel<T, Context>(
+        dev_ctx, transpose_y, phi::DATATYPE::INT32, y.values().dtype(), &tmp_y);
 
-    sparse_blas.SPMM(
-        false, false, static_cast<T>(1), dout, tmp_y, static_cast<T>(0), dx);
+    sparse_blas.SPMM(false,
+                     false,
+                     static_cast<T>(1),
+                     tmp_dout,
+                     tmp_y,
+                     static_cast<T>(0),
+                     dx);
   }
 
   // dy{SparseCsr} = x'{SparseCsr} * dout{SparseCsr}
   if (dy) {
     auto dims_numel = x.dims().size();
-    SparseCsrTensor tmp_x;
+    SparseCsrTensor transpose_x, tmp_dout, tmp_x;
     if (dims_numel == 2) {
-      tmp_x = TransposeCsr<T, Context>(dev_ctx, x, {1, 0});
+      TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0}, &transpose_x);
     } else {
-      tmp_x = TransposeCsr<T, Context>(dev_ctx, x, {0, 2, 1});
+      TransposeCsrKernel<T, Context>(dev_ctx, x, {0, 2, 1}, &transpose_x);
     }
-
-    sparse_blas.SPMM(
-        false, false, static_cast<T>(1), tmp_x, dout, static_cast<T>(0), dy);
+    CastCsrKernel<T, Context>(
+        dev_ctx, dout, phi::DATATYPE::INT32, dout.values().dtype(), &tmp_dout);
+    CastCsrKernel<T, Context>(
+        dev_ctx, transpose_x, phi::DATATYPE::INT32, x.values().dtype(), &tmp_x);
+    sparse_blas.SPMM(false,
+                     false,
+                     static_cast<T>(1),
+                     tmp_x,
+                     tmp_dout,
+                     static_cast<T>(0),
+                     dy);
   }
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
       "backward of 'sparse.matmul' use cusparseSPGEMM, which is supported from "
-      "CUDA 11.3"));
+      "CUDA 11.0"));
 #endif
+}
+
+template <typename T, typename Context>
+void MatmulCooCooGradKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const SparseCooTensor& y,
+                            const SparseCooTensor& dout,
+                            SparseCooTensor* dx,
+                            SparseCooTensor* dy) {
+  // 'cusparseSPGEMM' only support CSR now, so use COO->CSR->COO,
+  SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
+  SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
+  SparseCsrTensor dout_csr = CooToCsr<T, Context>(dev_ctx, dout);
+  SparseCsrTensor dx_csr, dy_csr;
+  dx_csr.set_dims(dx->dims());
+  dy_csr.set_dims(dy->dims());
+  MatmulCsrCsrGradKernel<T>(dev_ctx, x_csr, y_csr, dout_csr, &dx_csr, &dy_csr);
+  CsrToCooKernel<T>(dev_ctx, dx_csr, dx);
+  CsrToCooKernel<T>(dev_ctx, dy_csr, dy);
 }
 
 template <typename T, typename Context>
@@ -270,4 +306,14 @@ PD_REGISTER_KERNEL(matmul_csr_csr_grad,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+
+PD_REGISTER_KERNEL(matmul_coo_coo_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCooCooGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

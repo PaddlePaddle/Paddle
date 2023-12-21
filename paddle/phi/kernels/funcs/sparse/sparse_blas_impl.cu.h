@@ -90,6 +90,8 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
 
   int64_t batch_nnz = x.nnz() / batch_size;
   cudaDataType_t gpu_type = GetGpuDataType<T>();
+  cusparseIndexType_t index_type =
+      std::is_same<T, int32_t>::value ? CUSPARSE_INDEX_32I : CUSPARSE_INDEX_64I;
   dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseCreateCsr(descriptor,
                                     M,
@@ -98,8 +100,8 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                     const_cast<IntT*>(crows_data),
                                     const_cast<IntT*>(cols_data),
                                     const_cast<T*>(values_data),
-                                    CUSPARSE_INDEX_32I,
-                                    CUSPARSE_INDEX_32I,
+                                    index_type,
+                                    index_type,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
@@ -115,36 +117,6 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
         "supported from CUDA 11.8"));
 #endif
   }
-}
-
-template <typename T>
-inline void CreateOutCsrDescriptor(const phi::SparseCsrTensor& x,
-                                   const phi::GPUContext& dev_ctx,
-                                   cusparseSpMatDescr_t* descriptor) {
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
-  auto x_ndims = xdim_vec.size();
-  PADDLE_ENFORCE_GE(
-      x_ndims,
-      2,
-      phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
-                                   "greater than or eaqual to 2."));
-  int64_t M = xdim_vec[x_ndims - 2];
-  int64_t N = xdim_vec[x_ndims - 1];
-
-  cudaDataType_t gpu_type = GetGpuDataType<T>();
-  dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
-    phi::dynload::cusparseCreateCsr(descriptor,
-                                    M,
-                                    N,
-                                    0,
-                                    nullptr,
-                                    nullptr,
-                                    nullptr,
-                                    CUSPARSE_INDEX_32I,
-                                    CUSPARSE_INDEX_32I,
-                                    CUSPARSE_INDEX_BASE_ZERO,
-                                    gpu_type);
-  });
 }
 
 template <typename T, typename IntT>
@@ -200,30 +172,6 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 #endif
   }
 }
-
-template <typename T>
-class CuSparseOutSpMatDescriptor {
- public:
-  explicit CuSparseOutSpMatDescriptor(const phi::SparseCsrTensor& x,
-                                      const phi::GPUContext& dev_ctx)
-      : dev_ctx_(dev_ctx) {
-    CreateOutCsrDescriptor<T>(x, dev_ctx_, &descriptor_);
-    VLOG(6) << "Create csr cusparseSpMatDescr_t " << &descriptor_;
-  }
-
-  ~CuSparseOutSpMatDescriptor() {
-    dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
-      phi::dynload::cusparseDestroySpMat(descriptor_);
-    });
-    VLOG(6) << "Destroy cusparseSpMatDescr_t " << &descriptor_;
-  }
-
-  const cusparseSpMatDescr_t& descriptor() const { return descriptor_; }
-
- private:
-  const phi::GPUContext& dev_ctx_;
-  cusparseSpMatDescr_t descriptor_;
-};
 
 template <typename T>
 class CuSparseSpMatDescriptor {
@@ -505,9 +453,19 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                        const TensorType& mat_b,
                                        T beta,
                                        TensorType* mat_out) const {
+  auto dims = mat_out->dims();
+  DenseTensor* mat_out_crows = mat_out->mutable_crows();
+  MetaTensor meta_out_crows(mat_out_crows);
+  meta_out_crows.set_dtype(mat_a.crows().dtype());
+  meta_out_crows.set_dims(common::make_ddim({dims[dims.size() - 2] + 1}));
+  int* out_crows = dev_ctx_.template Alloc<int>(mat_out_crows);
+  DenseTensor* mat_out_cols = mat_out->mutable_cols();
+  MetaTensor meta_out_cols(mat_out_cols);
+  meta_out_cols.set_dtype(mat_a.cols().dtype());
+
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
-  auto out_descriptor = CuSparseOutSpMatDescriptor<T>(*mat_out, dev_ctx_);
+  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
   auto spgemm_descriptor = CuSparseSpGEMMDescriptor<T>(dev_ctx_);
 
   cudaDataType_t gpu_type = GetGpuDataType<T>();
@@ -593,29 +551,16 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
   });
 
   DenseTensor* mat_out_values = mat_out->mutable_values();
-  DenseTensor* mat_out_crows = mat_out->mutable_crows();
-  DenseTensor* mat_out_cols = mat_out->mutable_cols();
   MetaTensor meta_out_values(mat_out_values);
-  MetaTensor meta_out_crows(mat_out_crows);
-  MetaTensor meta_out_cols(mat_out_cols);
-  meta_out_crows.set_dtype(mat_a.crows().dtype());
-  meta_out_cols.set_dtype(mat_a.cols().dtype());
-  meta_out_crows.set_dims(common::make_ddim({C_num_rows1 + 1}));
   meta_out_cols.set_dims(common::make_ddim({C_nnz1}));
   meta_out_values.set_dtype(mat_a.values().dtype());
   meta_out_values.set_dims(common::make_ddim({C_nnz1}));
-  dev_ctx_.template Alloc<T>(mat_out_values);
-  dev_ctx_.template Alloc<int>(mat_out_cols);
-  dev_ctx_.template Alloc<int>(mat_out_crows);
+  T* out_values = dev_ctx_.template Alloc<T>(mat_out_values);
+  int* out_cols = dev_ctx_.template Alloc<int>(mat_out_cols);
 
-  T* out_values = mat_out_values->data<T>();
-  int* out_crows = mat_out_crows->data<int>();
-  int* out_cols = mat_out_cols->data<int>();
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
-    phi::dynload::cusparseCsrSetPointers(out_descriptor.descriptor(),
-                                         const_cast<int*>(out_crows),
-                                         const_cast<int*>(out_cols),
-                                         const_cast<T*>(out_values));
+    phi::dynload::cusparseCsrSetPointers(
+        out_descriptor.descriptor(), out_crows, out_cols, out_values);
   });
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
