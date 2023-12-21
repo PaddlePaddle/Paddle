@@ -1318,9 +1318,6 @@ class Completer:
             This function is temporary to support high order gradient, and will be removed in the future.
         """
 
-        if serial_main_program._appending_grad_times < 2:
-            return
-
         if serial_main_program is None:
             serial_main_program = self._dist_context.serial_main_program
         else:
@@ -1341,6 +1338,9 @@ class Completer:
         vars = serial_main_program.global_block().vars
         dist_op_context = self._dist_context.dist_op_context
         grad_var_to_var = dist_op_context.grad_var_to_var
+
+        if len(grad_var_to_var) < 2:
+            return
 
         appended_grad_times = 0
         for idx in range(0, len(ops)):

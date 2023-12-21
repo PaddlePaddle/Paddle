@@ -187,7 +187,7 @@ class TestVPPPass(unittest.TestCase):
             assert sum(bw_chunk_ids) == 13
         else:
             assert sum(fw_chunk_ids) == 12
-            assert sum(bw_chunk_ids) == 13
+            assert sum(bw_chunk_ids) == 18
 
 
 if __name__ == "__main__":

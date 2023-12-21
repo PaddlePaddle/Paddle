@@ -1164,7 +1164,7 @@ _name_struct = NameStruct()
 def name_struct(prefix=None):
     """
     Note: This should only used in Paddle/python/paddle/nn/layer/layers.py
-    for recard the call path for the operators in Static Graph of AutoParallel.
+    for record the call path for the operators in Static Graph of AutoParallel.
 
     Args:
         prefix(str, optional): prefix. Default is none.
@@ -3042,7 +3042,7 @@ class Operator:
 
             self._amp_options: AmpOptions = DEFAULT_AMP_OPTIONS
 
-            # recard the call path of op, only used in AutoParallel
+            # record the call path of op, only used in AutoParallel
             self._struct_name = _full_name_struct()
 
             op_maker = core.op_proto_and_checker_maker
