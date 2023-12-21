@@ -167,6 +167,7 @@ if(WITH_TENSORRT)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(split_layernorm_to_math_ops_pass inference)
   pass_library(trt_remove_amp_strategy_op_pass inference)
+  pass_library(set_subgraph_edge_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -269,6 +270,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape_unstack_concat_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(qk_qkv_attention_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})

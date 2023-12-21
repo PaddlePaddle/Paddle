@@ -965,7 +965,7 @@ class DictVariable(ContainerVariable):
         return temp_value
 
     def popitem(self):
-        key = self.keys().hold.get_py_value()[-1]
+        key = list(self.proxy.get_all().keys())[-1]
         value = Dispatcher.call(operator.getitem, self, key)
         # TODO: key, value should be VariableBase but key maybe a int
         # assert isinstance(key, VariableBase), key

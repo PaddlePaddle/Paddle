@@ -224,7 +224,8 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
-  return {{x_dist_attr}, {out_dist_attr_dst}};
+  return {{x_dist_attr},
+          {out_dist_attr_dst, CreateUnsqueezeXshape(x_dist_attr)}};
 }
 
 SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& xshape,

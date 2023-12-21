@@ -100,5 +100,7 @@ inline DataType VarTypeToDataType(
   }
 }
 
+phi::DataType PirTypeToPhiDType(pir::Type type);
+
 }  // namespace translator
 }  // namespace paddle

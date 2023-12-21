@@ -30,6 +30,28 @@ namespace primitive {
 namespace details {
 
 template <typename T>
+void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    by_pass<T>(out_grad, x_grad);
+  }
+}
+
+template <typename T>
+void cumsum_grad(const Tensor& x,
+                 const Tensor& out_grad,
+                 const Scalar& axis,
+                 bool flatten,
+                 bool exclusive,
+                 bool reverse,
+                 Tensor* x_grad) {
+  if (x_grad) {
+    auto grad = cumsum<T>(out_grad, axis, flatten, exclusive, !reverse);
+    grad = reshape<T>(grad, x.shape());
+    set_output<T>(grad, x_grad);
+  }
+}
+
+template <typename T>
 void divide_grad(const Tensor& x,
                  const Tensor& y,
                  const Tensor& out,
@@ -75,6 +97,15 @@ void divide_grad(const Tensor& x,
       set_output<T>(dx_res, dx);
     }
   }  // indicate we will compute dx
+}
+
+template <typename T>
+void floor_grad(const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto zero_tensor =
+        full<T>(common::vectorize(out_grad.dims()), 0.0, out_grad.dtype());
+    set_output<T>(zero_tensor, x_grad);
+  }
 }
 
 template <typename T>
@@ -229,6 +260,18 @@ void transpose_grad(const Tensor& grad_out,
     auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
     set_output<T>(grad_x_tmp, grad_x);
   }
+}
+
+template <typename T>
+void sin_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  auto x_grad_tmp = cos<T>(x) * out_grad;
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
+void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  auto x_grad_tmp = -sin<T>(x) * out_grad;
+  set_output<T>(x_grad_tmp, x_grad);
 }
 
 template <typename T>
@@ -988,6 +1031,28 @@ void sigmoid_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
     set_output<T>(out_grad * (out * (1 - out)), x_grad);
   }
 }
+
+template <typename T>
+void topk_grad(const Tensor& x,
+               const Tensor& indices,
+               const Tensor& out_grad,
+               const Scalar& k,
+               const int& axis,
+               const bool& largest,
+               const bool& sorted,
+               Tensor* x_grad) {
+  if (x_grad) {
+    // put_along_axis doesn't support zero dim
+    if (x.dims().size() == 0) {
+      by_pass<T>(out_grad, x_grad);
+      return;
+    }
+    auto zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+    auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
