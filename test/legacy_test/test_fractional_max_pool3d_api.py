@@ -451,7 +451,28 @@ class TestFractionalMaxPool3DAPIDtype(unittest.TestCase):
                 np.testing.assert_allclose(out.numpy(), res_np)
 
 
-class TestFractionalMaxPool3DAPIErrorRandomU(unittest.TestCase):
+class TestFractionalMaxPool3DAPIRandomU(unittest.TestCase):
+    def test_none_random_u(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place, device = (
+                (paddle.CUDAPlace(0), 'gpu')
+                if use_cuda
+                else (paddle.CPUPlace(), 'cpu')
+            )
+            paddle.disable_static(place=place)
+            paddle.set_device(device)
+
+            np.random.seed(2023)
+            x_np = paddle.to_tensor(np.random.random([2, 3, 7, 7, 7]))
+
+            res_np = paddle.nn.functional.fractional_max_pool3d(
+                x=x_np, output_size=[3, 3, 3], random_u=None
+            )
+
+            self.assertTrue(list(res_np.shape) == [2, 3, 3, 3, 3])
+
     def test_error_random_u(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -465,7 +486,7 @@ class TestFractionalMaxPool3DAPIErrorRandomU(unittest.TestCase):
             paddle.set_device(device)
 
             np.random.seed(2023)
-            x_np = np.random.random([2, 3, 7, 7, 7])
+            x_np = paddle.to_tensor(np.random.random([2, 3, 7, 7, 7]))
 
             # error random_u of `<0`
             with self.assertRaises(ValueError):
