@@ -18,7 +18,7 @@ import functools
 import inspect
 import logging
 import os
-import pdb
+import pdb  # noqa: T100
 import re
 from typing import Any, List
 

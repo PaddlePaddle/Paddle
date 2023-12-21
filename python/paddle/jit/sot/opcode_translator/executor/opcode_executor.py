@@ -556,7 +556,7 @@ class OpcodeExecutorBase:
         ):
             BreakpointManager().locate(self)
             print(log_message)
-            breakpoint()  # breakpoint for debug
+            breakpoint()  # noqa: T100 # breakpoint for debug
 
         with EventGuard(f"{instr.opname}", event_level=1):
             return getattr(self, instr.opname)(instr)  # run single step.
