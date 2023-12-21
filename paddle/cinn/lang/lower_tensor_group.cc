@@ -58,10 +58,13 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
   // 1. Generate function body
   std::vector<ir::Expr> func_bodies = GenerateFunctionBody(tensor_group_);
   for (ir::Expr& func_body : func_bodies) {
+    // std::cerr << "func body\n " << func_body << std::endl;
     func_body = ir::ScheduleBlockRealize::Make(
         {},
         ir::ScheduleBlock::Make(
             {}, {}, {}, cinn::common::UniqName("root"), func_body));
+      
+    // std::cerr << "func body\n " << func_body << std::endl;
     // 2. Assign buffer to tensors
     auto tensor_map = tensor_group_->AllocateBuffers();
     // copy the tensor(with buffer assigned) back to func's args.
