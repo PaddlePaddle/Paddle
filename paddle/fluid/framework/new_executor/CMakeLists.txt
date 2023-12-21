@@ -18,7 +18,7 @@ set(new_executor_deps
     framework_proto)
 
 if(WITH_CINN AND NOT CINN_ONLY)
-  set(new_executor_deps ${new_executor_deps} cinn_runtime_dialect
+  set(new_executor_deps ${new_executor_deps} cinn_runtime_dialect cinn_runtime
                         device_context op_registry ${DEVICE_EVENT_LIBS})
 endif()
 
