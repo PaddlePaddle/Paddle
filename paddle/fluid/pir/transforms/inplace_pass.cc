@@ -165,10 +165,12 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
 }
 
 static bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
-  if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-          0 ||
-      op->dialect()->name().compare(
-          paddle::dialect::OneDNNKernelDialect::name()) != 0) {
+  if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) != 0
+#ifdef PADDLE_WITH_DNNL
+      || op->dialect()->name().compare(
+             paddle::dialect::OneDNNKernelDialect::name()) != 0
+#endif
+  ) {
     VLOG(8) << op->name()
             << "is not a kernel_dialect op, no need buffer is false";
     return false;
@@ -200,9 +202,12 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
   std::unordered_set<pir::Value> skip_dels;
   for (auto& op : *block) {
     if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-            0 ||
-        op.dialect()->name().compare(
-            paddle::dialect::OneDNNKernelDialect::name()) != 0) {
+            0
+#ifdef PADDLE_WITH_DNNL
+        || op.dialect()->name().compare(
+               paddle::dialect::OneDNNKernelDialect::name()) != 0
+#endif
+    ) {
       continue;
     }
     IR_ENFORCE(op.attributes().count("op_name") > 0,
@@ -234,9 +239,12 @@ static void GetEagerDelValueOfOp(
   for (auto& op : *block) {
     std::string upper_op_name = op.name();
     if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
-            0 ||
-        op.dialect()->name().compare(
-            paddle::dialect::OneDNNKernelDialect::name()) != 0) {
+            0
+#ifdef PADDLE_WITH_DNNL
+        || op.dialect()->name().compare(
+               paddle::dialect::OneDNNKernelDialect::name()) != 0
+#endif
+    ) {
       IR_ENFORCE(op.attributes().count("op_name") > 0,
                  "kernel_dialect op should own an 'op_name' attribute.");
       upper_op_name = op.attributes()
@@ -307,9 +315,12 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
 
     if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-            0 ||
-        op.dialect()->name().compare(
-            paddle::dialect::OneDNNKernelDialect::name()) != 0) {
+            0
+#ifdef PADDLE_WITH_DNNL
+        || op.dialect()->name().compare(
+               paddle::dialect::OneDNNKernelDialect::name()) != 0
+#endif
+    ) {
       VLOG(6) << op.name()
               << "is not a kernel_dialect op, inplace only support "
                  "kernel_dialect operators";

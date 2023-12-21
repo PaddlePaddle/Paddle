@@ -122,6 +122,7 @@ void KernelDialect::PrintOperation(pir::Operation *op,
   }
 }
 
+#ifdef PADDLE_WITH_DNNL
 OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
     : pir::Dialect(name(), context, pir::TypeId::get<OneDNNKernelDialect>()) {
   initialize();
@@ -219,9 +220,12 @@ void OneDNNKernelDialect::PrintOperation(pir::Operation *op,
     printer.PrintGeneralOperation(op);
   }
 }
+#endif
 
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
+#ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
+#endif

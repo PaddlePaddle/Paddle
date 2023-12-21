@@ -219,9 +219,11 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
+#ifdef PADDLE_WITH_DNNL
 bool IsOneDNNLegacyOp(const std::string& name) {
   return OneDNNLegacyOpList.count(name);
 }
+#endif
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();

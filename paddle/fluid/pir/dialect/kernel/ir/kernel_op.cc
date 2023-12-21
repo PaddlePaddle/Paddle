@@ -98,6 +98,7 @@ phi::KernelKey LegacyKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
 }
 
+#ifdef PADDLE_WITH_DNNL
 const char* OneDNNPhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
     "op_name",
     "kernel_name",
@@ -217,12 +218,15 @@ std::string OneDNNLegacyKernelOp::kernel_name() {
 phi::KernelKey OneDNNLegacyKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
 }
+#endif
 
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
+#ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNPhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNMixedPhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNLegacyKernelOp)
+#endif

@@ -44,6 +44,7 @@ class LegacyKernelOp : public pir::Op<LegacyKernelOp> {
   void VerifySig();
 };
 
+#ifdef PADDLE_WITH_DNNL
 class OneDNNPhiKernelOp : public pir::Op<OneDNNPhiKernelOp> {
  public:
   using Op::Op;
@@ -79,12 +80,15 @@ class OneDNNLegacyKernelOp : public pir::Op<OneDNNLegacyKernelOp> {
   phi::KernelKey kernel_key();
   void VerifySig();
 };
+#endif
 
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
+#ifdef PADDLE_WITH_DNNL
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNPhiKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNMixedPhiKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNLegacyKernelOp)
+#endif

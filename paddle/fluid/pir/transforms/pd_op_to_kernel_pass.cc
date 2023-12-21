@@ -28,11 +28,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
-#include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -48,7 +46,9 @@
 #include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
 
 PHI_DECLARE_bool(print_ir);
@@ -308,6 +308,7 @@ static pir::OpResult AddPlaceTransferOp(pir::Value in,
   return new_in;
 }
 
+#ifdef PADDLE_WITH_DNNL
 static pir::OpResult AddOneDNN2PaddleLayoutTransferOp(
     pir::Value in, const phi::DataLayout& dst_layout, pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
@@ -348,6 +349,7 @@ static pir::OpResult AddOneDNN2PaddleLayoutTransferOp(
 
   return new_in;
 }
+#endif
 
 static bool NeedTransformDataType(const phi::DataType& l,
                                   const phi::DataType& r) {
@@ -718,6 +720,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
   return kernel_fn_str;
 }
 
+#ifdef PADDLE_WITH_DNNL
 bool SupportsMKLDNN(const std::string& kernel_name,
                     const phi::DataType data_type) {
   auto phi_kernels =
@@ -758,6 +761,7 @@ bool SupportsMKLDNN(const std::string& kernel_name,
     }
   }
 }
+#endif
 
 phi::KernelKey GetKernelKey(
     pir::Operation* op,
@@ -1908,9 +1912,9 @@ pir::Operation* BuildKernelOp(
   if (op_item->HasTrait<InplaceTrait>()) {
     op_attribute.emplace("is_inplace", pir::BoolAttribute::get(ctx, true));
   }
-#ifdef PADDLE_WITH_DNNL
-#endif
+
   pir::Operation* op = nullptr;
+#ifdef PADDLE_WITH_DNNL
   if (op_item->HasTrait<OneDNNTrait>()) {
     if (IsOneDNNLegacyOp(op_item->name())) {
       VLOG(4) << "choose OneDNNLegacyKernelOp";
@@ -1963,7 +1967,9 @@ pir::Operation* BuildKernelOp(
             vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
       }
     }
-  } else {
+  } else  // NOLINT
+#endif
+  {
     if (IsLegacyOp(op_item->name())) {
       pir::OpInfo legacy_kernel_op_info =
           ctx->GetRegisteredOpInfo(LegacyKernelOp::name());
@@ -2069,9 +2075,10 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<KernelDialect>();
+#ifdef PADDLE_WITH_DNNL
   ctx->GetOrRegisterDialect<OneDNNOperatorDialect>();
   ctx->GetOrRegisterDialect<OneDNNKernelDialect>();
-
+#endif
   std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
   std::unordered_map<pir::Value, pir::Value> map_value_pair;
 

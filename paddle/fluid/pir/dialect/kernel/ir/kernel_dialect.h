@@ -36,6 +36,7 @@ class KernelDialect : public pir::Dialect {
   void initialize();
 };
 
+#ifdef PADDLE_WITH_DNNL
 class OneDNNKernelDialect : public pir::Dialect {
  public:
   explicit OneDNNKernelDialect(pir::IrContext* context);
@@ -52,9 +53,12 @@ class OneDNNKernelDialect : public pir::Dialect {
  private:
   void initialize();
 };
+#endif
 
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
+#ifdef PADDLE_WITH_DNNL
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
+#endif
