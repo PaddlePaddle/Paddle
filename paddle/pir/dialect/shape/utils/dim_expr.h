@@ -21,9 +21,10 @@
 #include <variant>
 #include <vector>
 
-#include "paddle/utils/test_macros.h"
-
 #include "glog/logging.h"
+
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/init_phi.h"
 
 namespace symbol {
 
@@ -176,7 +177,7 @@ using DimExprBase = std::variant<std::int64_t,
                                  Min<DimExpr>,
                                  Broadcast<DimExpr>>;
 
-class TEST_API DimExpr : public DimExprBase {
+class DimExpr : public DimExprBase {
  public:
   using DimExprBase::DimExprBase;
 
@@ -218,7 +219,7 @@ using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
 // ShapeOrDataDimExprs = (tShape [DimExpr], tData (opt [DimExpr]))
 template <typename T>
-class TEST_API ShapeOrData {
+class ShapeOrData {
  public:
   explicit ShapeOrData(const std::vector<T>& shape)
       : shape_(shape), data_(std::nullopt) {}
