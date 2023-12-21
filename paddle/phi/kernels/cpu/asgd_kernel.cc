@@ -24,8 +24,8 @@ namespace phi {
 template <typename T, typename Context>
 void ASGDKernelCPUImpl(const Context& dev_ctx,
                        const DenseTensor& param,
-                       const DenseTensor& grad,
                        const DenseTensor& learning_rate,
+                       const DenseTensor& grad,
                        const DenseTensor& d,
                        const DenseTensor& y,
                        const DenseTensor& n,
@@ -50,8 +50,8 @@ void ASGDKernelCPUImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void ASGDKernel(const Context& dev_ctx,
                 const DenseTensor& param,
-                const DenseTensor& grad,
                 const DenseTensor& learning_rate,
+                const DenseTensor& grad,
                 const DenseTensor& d,
                 const DenseTensor& y,
                 const DenseTensor& n,
@@ -65,7 +65,7 @@ void ASGDKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(d_out);
   dev_ctx.template Alloc<T>(y_out);
   ASGDKernelCPUImpl<T, Context>(
-      dev_ctx, param, grad, learning_rate, d, y, n, param_out, d_out, y_out);
+      dev_ctx, param, learning_rate, grad, d, y, n, param_out, d_out, y_out);
 }
 
 }  // namespace phi
