@@ -92,8 +92,6 @@ namespace cpp = ::cinn::frontend::paddle::cpp;
     SET_DATA_TYPE_CASE_ITEM(FP16);
     SET_DATA_TYPE_CASE_ITEM(FP32);
     SET_DATA_TYPE_CASE_ITEM(FP64);
-    SET_DATA_TYPE_CASE_ITEM(COMPLEX64);
-    SET_DATA_TYPE_CASE_ITEM(COMPLEX128);
     default:
       PADDLE_THROW(platform::errors::NotFound("Cannot found var data type"));
   }
