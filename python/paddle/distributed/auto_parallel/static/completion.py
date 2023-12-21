@@ -1062,14 +1062,26 @@ class Completer:
                         tensor_dist_attr.chunk_id = op_dist_attr.chunk_id
                         var_to_chunk_id[var.name] = op_dist_attr.chunk_id
 
-        if not self._dist_context.strategy:
+        if (
+            not self._dist_context.strategy
+            or not self._dist_context.strategy.pipeline.enable
+        ):
             return
 
         pp_degree = get_pp_degree(self._dist_context)
         vpp_degree = self._dist_context.strategy.pipeline.vpp_degree
         seg_method = self._dist_context.strategy.pipeline.vpp_seg_method
+        schedule_mode = self._dist_context.strategy.pipeline.schedule_mode
 
-        if pp_degree < 2 or vpp_degree < 2 or not seg_method:
+        if pp_degree < 2 and vpp_degree > 1:
+            raise ValueError(
+                "VPP schedule mode only can be set in pipeline mode."
+            )
+        if vpp_degree > 1 and (not seg_method or schedule_mode != "VPP"):
+            raise ValueError(
+                "Please set right schedule_mode and vpp_seg_method for VPP."
+            )
+        if vpp_degree < 2:
             return
 
         block = serial_main_program.global_block()
