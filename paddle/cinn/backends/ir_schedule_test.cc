@@ -77,14 +77,21 @@ TEST(IrSchedule, split_and_fuse1) {
 
 void test_split_and_fuse1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
-  for (int32_t i_j_fused_i_j_fused_0_fused = 0; i_j_fused_i_j_fused_0_fused < 256; i_j_fused_i_j_fused_0_fused += 1) {
-    for (int32_t i_j_fused_i_j_fused_0_fused_0 = 0; i_j_fused_i_j_fused_0_fused_0 < 4; i_j_fused_i_j_fused_0_fused_0 += 1) {
-      B[(((i_j_fused_i_j_fused_0_fused / 8) * 32) + (((4 * i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31))] = A[(((i_j_fused_i_j_fused_0_fused / 8) * 32) + (((4 * i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31))];
+  for (int32_t i_j_fused_i_j_fused_0_fused = 0; i_j_fused_i_j_fused_0_fused <
+  256; i_j_fused_i_j_fused_0_fused += 1) {
+    for (int32_t i_j_fused_i_j_fused_0_fused_0 = 0;
+    i_j_fused_i_j_fused_0_fused_0 < 4; i_j_fused_i_j_fused_0_fused_0 += 1) {
+      B[(((i_j_fused_i_j_fused_0_fused / 8) * 32) + (((4 *
+      i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31))] =
+      A[(((i_j_fused_i_j_fused_0_fused / 8) * 32) + (((4 *
+      i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31))];
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -138,15 +145,18 @@ TEST(IrSchedule, split_and_fuse2) {
 
 void test_split_and_fuse2(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
   for (int32_t i_j_fused = 0; i_j_fused < 52; i_j_fused += 1) {
     for (int32_t i_j_fused_0 = 0; i_j_fused_0 < 20; i_j_fused_0 += 1) {
       if ((((20 * i_j_fused) + i_j_fused_0) < 1024)) {
-        B[((20 * i_j_fused) + i_j_fused_0)] = A[((20 * i_j_fused) + i_j_fused_0)];
+        B[((20 * i_j_fused) + i_j_fused_0)] = A[((20 * i_j_fused) +
+        i_j_fused_0)];
       };
     };
   };
@@ -243,8 +253,10 @@ TEST(IrSchedule, reorder1) {
 
 void test_reorder1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -253,7 +265,9 @@ void test_reorder1(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 16; j += 1) {
         for (int32_t j_0 = 0; j_0 < 2; j_0 += 1) {
           for (int32_t i = 0; i < 8; i += 1) {
-            B[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))] = A[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))];
+            B[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))]
+            = A[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) +
+            k))))];
           };
         };
       };
@@ -309,8 +323,10 @@ TEST(IrSchedule, reorder2) {
 
 void test_reorder2(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -319,7 +335,9 @@ void test_reorder2(void* _args, int32_t num_args)
       for (int32_t j_0 = 0; j_0 < 2; j_0 += 1) {
         for (int32_t i_0 = 0; i_0 < 4; i_0 += 1) {
           for (int32_t i = 0; i < 8; i += 1) {
-            B[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))] = A[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))];
+            B[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))]
+            = A[((4096 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) +
+            k))))];
           };
         };
       };
@@ -377,8 +395,10 @@ TEST(IrSchedule, reorder3) {
 
 void test_reorder3(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -388,7 +408,9 @@ void test_reorder3(void* _args, int32_t num_args)
         for (int32_t i = 0; i < 7; i += 1) {
           if ((((5 * i) + i_0) < 32)) {
             for (int32_t k = 0; k < 32; k += 1) {
-              B[((5120 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))] = A[((5120 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) + k))))];
+              B[((5120 * i) + ((1024 * i_0) + ((64 * j) + ((32 * j_0) +
+              k))))] = A[((5120 * i) + ((1024 * i_0) + ((64 * j) + ((32 *
+              j_0) + k))))];
             };
           };
         };
@@ -449,8 +471,10 @@ TEST(IrSchedule, reorder4) {
 
 void test_reorder4(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -461,7 +485,9 @@ void test_reorder4(void* _args, int32_t num_args)
           for (int32_t j_0 = 0; j_0 < 5; j_0 += 1) {
             if ((((5 * j) + j_0) < 32)) {
               for (int32_t k = 0; k < 32; k += 1) {
-                B[((10240 * i) + ((1024 * i_0) + ((160 * j) + ((32 * j_0) + k))))] = A[((10240 * i) + ((1024 * i_0) + ((160 * j) + ((32 * j_0) + k))))];
+                B[((10240 * i) + ((1024 * i_0) + ((160 * j) + ((32 * j_0) +
+                k))))] = A[((10240 * i) + ((1024 * i_0) + ((160 * j) + ((32 *
+                j_0) + k))))];
               };
             };
           };
@@ -515,8 +541,10 @@ TEST(IrSchedule, parallel) {
 
 void test_parallel(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -524,7 +552,8 @@ void test_parallel(void* _args, int32_t num_args)
   omp_set_num_threads(num_task);
   auto flambda = [=](int task_id, int num_task) -> int {
     int n_per_task = (((32 + num_task) - 1) / num_task);
-    for (int32_t i = (task_id * n_per_task); i < 32 && i < ((task_id + 1) * n_per_task); i += 1) {
+    for (int32_t i = (task_id * n_per_task); i < 32 && i < ((task_id + 1) *
+    n_per_task); i += 1) {
       for (int32_t j = 0; j < 32; j += 1) {
         B[((32 * i) + j)] = A[((32 * i) + j)];
       };
@@ -601,14 +630,17 @@ function test_vectorize (_A, _B)
 
 void test_vectorize(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 2; j += 1) {
-      B[StackVec<16,int32_t>::Ramp(((32 * i) + (16 * j)), 1, 16)] = StackedVec<float,16>::Load(A,((32 * i) + (16 * j)));
+      B[StackVec<16,int32_t>::Ramp(((32 * i) + (16 * j)), 1, 16)] =
+      StackedVec<float,16>::Load(A,((32 * i) + (16 * j)));
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -675,8 +707,10 @@ function test_unroll (_A, _B)
 
 void test_unroll(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -785,10 +819,12 @@ TEST(IrSchedule, simple_compute_at) {
 
 void test_simple_compute_at(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 128, 10 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 128, 10 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -796,8 +832,9 @@ void test_simple_compute_at(void* _args, int32_t num_args)
   for (int32_t i_j_fused_1 = 0; i_j_fused_1 < 2; i_j_fused_1 += 1) {
     for (int32_t i_j_fused_2 = 0; i_j_fused_2 < 1024; i_j_fused_2 += 1) {
       if ((((1024 * i_j_fused_1) + i_j_fused_2) < 1280)) {
-        B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) + i_j_fused_2)];
-        C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 * i_j_fused_1) + i_j_fused_2)];
+        B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) +
+        i_j_fused_2)]; C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 *
+        i_j_fused_1) + i_j_fused_2)];
       };
     };
   };
@@ -858,10 +895,12 @@ TEST(IrSchedule, compute_at0) {
 
 void test_compute_at0(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 128, 10 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 128, 10 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -869,8 +908,9 @@ void test_compute_at0(void* _args, int32_t num_args)
   for (int32_t i_j_fused_1 = 0; i_j_fused_1 < 2; i_j_fused_1 += 1) {
     for (int32_t i_j_fused_2 = 0; i_j_fused_2 < 1024; i_j_fused_2 += 1) {
       if ((((1024 * i_j_fused_1) + i_j_fused_2) < 1280)) {
-        B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) + i_j_fused_2)];
-        C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 * i_j_fused_1) + i_j_fused_2)];
+        B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) +
+        i_j_fused_2)]; C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 *
+        i_j_fused_1) + i_j_fused_2)];
       };
     };
   };
@@ -929,10 +969,12 @@ TEST(IrSchedule, compute_at1) {
 
 void test_compute_at1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 32, 32 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 32, 32 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -940,7 +982,8 @@ void test_compute_at1(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t ax0 = 0; ax0 < 32; ax0 += 1) {
-        B[((1024 * i) + ((32 * j) + ax0))] = A[((1024 * i) + ((32 * j) + ax0))];
+        B[((1024 * i) + ((32 * j) + ax0))] = A[((1024 * i) + ((32 * j) +
+        ax0))];
       };
       for (int32_t k = 0; k < 32; k += 1) {
         C[((1024 * i) + ((32 * j) + k))] = B[((1024 * i) + ((32 * j) + k))];
@@ -1001,10 +1044,12 @@ TEST(IrSchedule, compute_at2) {
 
 void test_compute_at2(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 64, 64 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 64, 64 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -1012,7 +1057,8 @@ void test_compute_at2(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t ax0 = 0; ax0 < 32; ax0 += 1) {
       for (int32_t ax1 = 0; ax1 < 32; ax1 += 1) {
-        B[((64 * ax0) + ((64 * i) + (ax1 + i)))] = A[((64 * ax0) + ((64 * i) + (ax1 + i)))];
+        B[((64 * ax0) + ((64 * i) + (ax1 + i)))] = A[((64 * ax0) + ((64 * i)
+        + (ax1 + i)))];
       };
     };
     for (int32_t j = 0; j < 32; j += 1) {
@@ -1079,10 +1125,12 @@ TEST(IrSchedule, compute_at3) {
 
 void test_compute_at3(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 64, 64 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 64, 64 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -1090,11 +1138,13 @@ void test_compute_at3(void* _args, int32_t num_args)
   for (int32_t i_j_fused = 0; i_j_fused < 32; i_j_fused += 1) {
     for (int32_t ax0 = 0; ax0 < 2; ax0 += 1) {
       for (int32_t ax1 = 0; ax1 < 64; ax1 += 1) {
-        B[((64 * ax0) + ((128 * i_j_fused) + ax1))] = A[((64 * ax0) + ((128 * i_j_fused) + ax1))];
+        B[((64 * ax0) + ((128 * i_j_fused) + ax1))] = A[((64 * ax0) + ((128 *
+        i_j_fused) + ax1))];
       };
     };
     for (int32_t i_j_fused_0 = 0; i_j_fused_0 < 128; i_j_fused_0 += 1) {
-      C[((128 * i_j_fused) + i_j_fused_0)] = B[((128 * i_j_fused) + i_j_fused_0)];
+      C[((128 * i_j_fused) + i_j_fused_0)] = B[((128 * i_j_fused) +
+      i_j_fused_0)];
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1156,7 +1206,8 @@ void test_compute_at4(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t ax0 = 0; ax0 < 32; ax0 += 1) {
-        B[((1024 * i) + ((32 * j) + ax0))] = A[((1024 * i) + ((32 * j) + ax0))];
+        B[((1024 * i) + ((32 * j) + ax0))] = A[((1024 * i) + ((32 * j) +
+        ax0))];
       };
       for (int32_t k = 0; k < 32; k += 1) {
         C[((1024 * i) + ((32 * j) + k))] = B[((1024 * i) + ((32 * j) + k))];
@@ -1286,8 +1337,9 @@ void test_compute_at6(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i_j_fused = 0; i_j_fused < 32; i_j_fused += 1) {
     for (int32_t i_j_fused_0 = 0; i_j_fused_0 < 128; i_j_fused_0 += 1) {
-      B[((128 * i_j_fused) + i_j_fused_0)] = A[((128 * i_j_fused) + i_j_fused_0)];
-      C[((128 * i_j_fused) + i_j_fused_0)] = B[((128 * i_j_fused) + i_j_fused_0)];
+      B[((128 * i_j_fused) + i_j_fused_0)] = A[((128 * i_j_fused) +
+      i_j_fused_0)]; C[((128 * i_j_fused) + i_j_fused_0)] = B[((128 *
+      i_j_fused) + i_j_fused_0)];
     };
   };
 }
@@ -1347,32 +1399,38 @@ TEST(IrSchedule, cache_read1) {
 
 void test_cache_read1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 32 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 32 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
   float* C = ((float*)(_C->memory));
   for (int32_t cache_ax0 = 0; cache_ax0 < 32; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      A_local_temp_buffer[((64 * cache_ax0) + cache_ax1)] = A[((64 * cache_ax0) + cache_ax1)];
+      A_local_temp_buffer[((64 * cache_ax0) + cache_ax1)] = A[((64 *
+      cache_ax0) + cache_ax1)];
     };
   };
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) + j)]);
+      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) +
+      j)]);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 16; cache_ax0_0 += 1) {
     for (int32_t cache_ax1_0 = 0; cache_ax1_0 < 16; cache_ax1_0 += 1) {
-      B_local_temp_buffer[((32 * cache_ax0_0) + cache_ax1_0)] = B[((32 * cache_ax0_0) + cache_ax1_0)];
+      B_local_temp_buffer[((32 * cache_ax0_0) + cache_ax1_0)] = B[((32 *
+      cache_ax0_0) + cache_ax1_0)];
     };
   };
   for (int32_t i = 0; i < 16; i += 1) {
     for (int32_t j = 0; j < 16; j += 1) {
-      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) + j)]);
+      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) +
+      j)]);
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1433,15 +1491,18 @@ TEST(IrSchedule, cache_read2) {
 
 void test_cache_read2(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       A_local_temp_buffer[((32 * i) + j)] = A[((32 * i) + j)];
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((32 * i) + j)]);
+      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((32 * i) +
+      j)]);
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1501,32 +1562,38 @@ TEST(IrSchedule, cache_write1) {
 
 void test_cache_write1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 64, 32 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 64, 32 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) +
+      j)]);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
+      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 *
+      cache_ax0) + cache_ax1)];
     };
   };
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) +
+      j)]);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 64; cache_ax0_0 += 1) {
     for (int32_t cache_ax1_0 = 0; cache_ax1_0 < 32; cache_ax1_0 += 1) {
-      C[((32 * cache_ax0_0) + cache_ax1_0)] = C_local_temp_buffer[((32 * cache_ax0_0) + cache_ax1_0)];
+      C[((32 * cache_ax0_0) + cache_ax1_0)] = C_local_temp_buffer[((32 *
+      cache_ax0_0) + cache_ax1_0)];
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1585,15 +1652,18 @@ TEST(IrSchedule, cache_write2) {
 
 void test_cache_write2(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)] = (2.00000000f * A[((32 * cache_ax0) + cache_ax1)]);
-      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
+      B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)] = (2.00000000f *
+      A[((32 * cache_ax0) + cache_ax1)]); B[((32 * cache_ax0) + cache_ax1)] =
+      B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1660,24 +1730,28 @@ void test_cache_read3(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t cache_ax0 = 0; cache_ax0 < 32; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      A_local_temp_buffer[((64 * cache_ax0) + cache_ax1)] = A[((64 * cache_ax0) + cache_ax1)];
+      A_local_temp_buffer[((64 * cache_ax0) + cache_ax1)] = A[((64 *
+      cache_ax0) + cache_ax1)];
     };
   };
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) + j)]);
+      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) +
+      j)]);
     };
     __syncthreads();
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 16; cache_ax0_0 += 1) {
     for (int32_t cache_ax1_0 = 0; cache_ax1_0 < 16; cache_ax1_0 += 1) {
-      B_local_temp_buffer[((32 * cache_ax0_0) + cache_ax1_0)] = B[((32 * cache_ax0_0) + cache_ax1_0)];
+      B_local_temp_buffer[((32 * cache_ax0_0) + cache_ax1_0)] = B[((32 *
+      cache_ax0_0) + cache_ax1_0)];
     };
   };
   for (int32_t i = 0; i < 16; i += 1) {
     __syncthreads();
     for (int32_t j = 0; j < 16; j += 1) {
-      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) + j)]);
+      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) +
+      j)]);
     };
   };
 }
@@ -1742,24 +1816,28 @@ void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) +
+      j)]);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
+      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 *
+      cache_ax0) + cache_ax1)];
     };
   };
   __syncthreads();
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) +
+      j)]);
     };
   };
   __syncthreads();
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 64; cache_ax0_0 += 1) {
     for (int32_t cache_ax1_0 = 0; cache_ax1_0 < 32; cache_ax1_0 += 1) {
-      C[((32 * cache_ax0_0) + cache_ax1_0)] = C_local_temp_buffer[((32 * cache_ax0_0) + cache_ax1_0)];
+      C[((32 * cache_ax0_0) + cache_ax1_0)] = C_local_temp_buffer[((32 *
+      cache_ax0_0) + cache_ax1_0)];
     };
   };
 }
@@ -1822,24 +1900,28 @@ void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) +
+      j)]);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
+      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 *
+      cache_ax0) + cache_ax1)];
       __syncthreads();
     };
   };
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) +
+      j)]);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 64; cache_ax0_0 += 1) {
     for (int32_t cache_ax1_0 = 0; cache_ax1_0 < 32; cache_ax1_0 += 1) {
       __syncthreads();
-      C[((32 * cache_ax0_0) + cache_ax1_0)] = C_local_temp_buffer[((32 * cache_ax0_0) + cache_ax1_0)];
+      C[((32 * cache_ax0_0) + cache_ax1_0)] = C_local_temp_buffer[((32 *
+      cache_ax0_0) + cache_ax1_0)];
     };
   };
 }
@@ -1899,8 +1981,10 @@ TEST(IrSchedule, cache_write4) {
 
 void test_cache_write4(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -1909,13 +1993,15 @@ void test_cache_write4(void* _args, int32_t num_args)
     for (int32_t j = 0; j < 32; j += 1) {
       B__reduce_init[((32 * i) + j)] = 0.00000000f;
       for (int32_t k0 = 0; k0 < 32; k0 += 1) {
-        B_local_temp_buffer[((32 * i) + j)] = (B_local_temp_buffer[((32 * i) + j)] + A[((1024 * i) + ((32 * j) + k0))]);
+        B_local_temp_buffer[((32 * i) + j)] = (B_local_temp_buffer[((32 * i)
+        + j)] + A[((1024 * i) + ((32 * j) + k0))]);
       };
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
+      B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 *
+      cache_ax0) + cache_ax1)];
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -2020,10 +2106,13 @@ function test_rfactor (_A, _B)
 
 void test_rfactor(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* rf__B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 16, 32 });
-  cinn_buffer_malloc((void*)(0), _B);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* rf__B =
+  cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), {
+  16, 32 }); cinn_buffer_malloc((void*)(0), _B);
   cinn_buffer_malloc((void*)(0), rf__B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -2034,7 +2123,8 @@ void test_rfactor(void* _args, int32_t num_args)
     for (int32_t i = 0; i < 32; i += 1) {
       rf_B__reduce_init[((32 * rf_k0) + i)] = 0.00000000f;
       for (int32_t j0 = 0; j0 < 2; j0 += 1) {
-        rf_B[((32 * rf_k0) + i)] = (rf_B[((32 * rf_k0) + i)] + A[((32 * i) + ((16 * j0) + rf_k0))]);
+        rf_B[((32 * rf_k0) + i)] = (rf_B[((32 * rf_k0) + i)] + A[((32 * i) +
+        ((16 * j0) + rf_k0))]);
       };
     };
   };
@@ -2148,10 +2238,13 @@ function test_rfactor (_A, _B)
 
 void test_rfactor(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* rf__B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 2 });
-  cinn_buffer_malloc((void*)(0), _B);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* rf__B =
+  cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), {
+  32, 2 }); cinn_buffer_malloc((void*)(0), _B);
   cinn_buffer_malloc((void*)(0), rf__B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -2162,7 +2255,8 @@ void test_rfactor(void* _args, int32_t num_args)
     for (int32_t rf_j0 = 0; rf_j0 < 2; rf_j0 += 1) {
       rf_B__reduce_init[((2 * i) + rf_j0)] = 0.00000000f;
       for (int32_t k0 = 0; k0 < 16; k0 += 1) {
-        rf_B[((2 * i) + rf_j0)] = (rf_B[((2 * i) + rf_j0)] + A[((32 * i) + ((16 * rf_j0) + k0))]);
+        rf_B[((2 * i) + rf_j0)] = (rf_B[((2 * i) + rf_j0)] + A[((32 * i) +
+        ((16 * rf_j0) + k0))]);
       };
     };
   };
@@ -2233,7 +2327,8 @@ function test_rfactor (_A, _B, _C)
             ScheduleBlock(rf_C)
             {
               i0_0, i1_0, i2 = axis.bind(i, j, rf_k0)
-              rf_C[i2, i0_0, i1_0] = (rf_C[i2, i0_0, i1_0] + (A[i0_0, i2] * B[i2, i1_0]))
+              rf_C[i2, i0_0, i1_0] = (rf_C[i2, i0_0, i1_0] + (A[i0_0, i2] *
+              B[i2, i1_0]))
             }
           }
         }
@@ -2277,11 +2372,15 @@ function test_rfactor (_A, _B, _C)
 
 void test_rfactor(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  const cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[2]));
-  cinn_buffer_t* rf__C = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 16, 32, 2 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0])); const
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[2]));
+  cinn_buffer_t* rf__C =
+  cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), {
+  16, 32, 2 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), rf__C);
   const float* A = ((const float*)(_A->memory));
   const float* B = ((const float*)(_B->memory));
@@ -2293,7 +2392,8 @@ void test_rfactor(void* _args, int32_t num_args)
     for (int32_t i = 0; i < 32; i += 1) {
       for (int32_t j = 0; j < 2; j += 1) {
         rf_C__reduce_init[((2 * i) + ((64 * rf_k0) + j))] = 0.00000000f;
-        rf_C[((2 * i) + ((64 * rf_k0) + j))] = fma(A[((16 * i) + rf_k0)], B[((2 * rf_k0) + j)], rf_C[((2 * i) + ((64 * rf_k0) + j))]);
+        rf_C[((2 * i) + ((64 * rf_k0) + j))] = fma(A[((16 * i) + rf_k0)],
+        B[((2 * rf_k0) + j)], rf_C[((2 * i) + ((64 * rf_k0) + j))]);
       };
     };
   };
@@ -2301,7 +2401,8 @@ void test_rfactor(void* _args, int32_t num_args)
     for (int32_t j = 0; j < 2; j += 1) {
       C__reduce_init[((2 * i) + j)] = 0.00000000f;
       for (int32_t k0 = 0; k0 < 16; k0 += 1) {
-        C[((2 * i) + j)] = (C[((2 * i) + j)] + rf_C[((2 * i) + ((64 * k0) + j))]);
+        C[((2 * i) + j)] = (C[((2 * i) + j)] + rf_C[((2 * i) + ((64 * k0) +
+        j))]);
       };
     };
   };
@@ -2549,7 +2650,8 @@ function test_factorize_reduction (_A, _B)
             ScheduleBlock(B_rf)
             {
               vj0, i0_0, vj0_0 = axis.bind(j0, i, j0_0)
-              B_rf[i0_0, vj0] = (B_rf[i0_0, vj0] + A[i0_0, ((5 * vj0) + vj0_0)])
+              B_rf[i0_0, vj0] = (B_rf[i0_0, vj0] + A[i0_0, ((5 * vj0) +
+              vj0_0)])
             }
           }
         }
@@ -2625,10 +2727,12 @@ TEST(IrSchedule, compute_inline1) {
 
 void test_compute_inline1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 32, 32 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 32, 32 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -2636,7 +2740,8 @@ void test_compute_inline1(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((32 * i) + ((1024 * j) + k))], 2.00000000f);
+        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((32 * i) +
+        ((1024 * j) + k))], 2.00000000f);
       };
     };
   };
@@ -2699,10 +2804,12 @@ TEST(IrSchedule, compute_inline2) {
 
 void test_compute_inline2(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 32, 32 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 32, 32 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -2710,7 +2817,8 @@ void test_compute_inline2(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((1024 * i) + ((32 * j) + k))], 2.00000000f);
+        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((1024 * i) +
+        ((32 * j) + k))], 2.00000000f);
       };
     };
   };
@@ -2775,7 +2883,8 @@ void test_compute_inline3(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f * A[((32 * i) + ((1024 * j) + k))]));
+        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f *
+        A[((32 * i) + ((1024 * j) + k))]));
       };
     };
   };
@@ -2837,7 +2946,8 @@ void test_compute_inline4(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f * A[((1024 * i) + ((32 * j) + k))]));
+        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f *
+        A[((1024 * i) + ((32 * j) + k))]));
       };
     };
   };
@@ -2889,10 +2999,12 @@ TEST(IrSchedule, reverse_compute_inline1) {
 
 void test_compute_inline1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 64 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 64 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -2956,10 +3068,12 @@ TEST(IrSchedule, reverse_compute_inline2) {
 
 void test_compute_inline1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 32, 32 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 32, 32 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -2967,7 +3081,8 @@ void test_compute_inline1(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((32 * i) + ((1024 * j) + k))] = fma(2.00000000f, A[((1024 * i) + ((32 * j) + k))], 2.00000000f);
+        C[((32 * i) + ((1024 * j) + k))] = fma(2.00000000f, A[((1024 * i) +
+        ((32 * j) + k))], 2.00000000f);
       };
     };
   };
@@ -3032,10 +3147,12 @@ TEST(IrSchedule, copytransform1) {
 
 void test_copytransform1(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 32, 32 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 32, 32 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -3045,7 +3162,9 @@ void test_copytransform1(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 32; k += 1) {
-            B[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (1.00000000f + A[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))]);
+            B[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))]
+            = (1.00000000f + A[((8192 * i) + ((1024 * i_0) + ((128 * j) +
+            ((32 * j_0) + k))))]);
           };
         };
       };
@@ -3056,7 +3175,9 @@ void test_copytransform1(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 32; k += 1) {
-            C[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (2.00000000f * B[((256 * i) + ((32 * i_0) + ((4096 * j) + ((1024 * j_0) + k))))]);
+            C[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))]
+            = (2.00000000f * B[((256 * i) + ((32 * i_0) + ((4096 * j) +
+            ((1024 * j_0) + k))))]);
           };
         };
       };
@@ -3122,10 +3243,12 @@ TEST(IrSchedule, copytransform2) {
 
 void test_copytransform2(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _C = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
-  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/, cinn_float32_t(), { 32, 64, 128 });
-  cinn_buffer_malloc((void*)(0), _C);
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _C =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  cinn_buffer_t* _B = cinn_buffer_t::new_((cinn_device_kind_t)(0)/*target*/,
+  cinn_float32_t(), { 32, 64, 128 }); cinn_buffer_malloc((void*)(0), _C);
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -3134,7 +3257,8 @@ void test_copytransform2(void* _args, int32_t num_args)
     for (int32_t i_0 = 0; i_0 < 8; i_0 += 1) {
       for (int32_t j = 0; j < 64; j += 1) {
         for (int32_t k = 0; k < 128; k += 1) {
-          B[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] = (1.00000000f + A[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))]);
+          B[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] = (1.00000000f
+          + A[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))]);
         };
       };
     };
@@ -3144,7 +3268,9 @@ void test_copytransform2(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 128; k += 1) {
-            C[((32768 * i) + ((4096 * i_0) + ((512 * j) + ((128 * j_0) + k))))] = (2.00000000f * B[((65536 * i) + ((8192 * i_0) + ((512 * j) + ((128 * j_0) + k))))]);
+            C[((32768 * i) + ((4096 * i_0) + ((512 * j) + ((128 * j_0) +
+            k))))] = (2.00000000f * B[((65536 * i) + ((8192 * i_0) + ((512 *
+            j) + ((128 * j_0) + k))))]);
           };
         };
       };
@@ -3327,8 +3453,10 @@ TEST(IrSchedule, ComplexIndices) {
 
 void TestIrSchedule_ReduceSum(void* _args, int32_t num_args)
 {
-  const cinn_buffer_t* _A = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
-  cinn_buffer_t* _B = cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
+  const cinn_buffer_t* _A =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[0]));
+  cinn_buffer_t* _B =
+  cinn_pod_value_to_buffer_p(&(((cinn_pod_value_t*)(_args))[1]));
   cinn_buffer_malloc((void*)(0), _B);
   const float* A = ((const float*)(_A->memory));
   float* B = ((float*)(_B->memory));
@@ -3341,13 +3469,17 @@ void TestIrSchedule_ReduceSum(void* _args, int32_t num_args)
   for (int32_t reduce_axis_k = 0; reduce_axis_k < 32; reduce_axis_k += 1) {
     for (int32_t ax0 = 0; ax0 < 32; ax0 += 1) {
       for (int32_t ax1 = 0; ax1 < 2; ax1 += 1) {
-        A_shared_temp_buffer[((64 * ax0) + ((2 * reduce_axis_k) + ax1))] = A[((64 * ax0) + ((2 * reduce_axis_k) + ax1))];
+        A_shared_temp_buffer[((64 * ax0) + ((2 * reduce_axis_k) + ax1))] =
+        A[((64 * ax0) + ((2 * reduce_axis_k) + ax1))];
       };
     };
     for (int32_t i = 0; i < 8; i += 1) {
-      for (int32_t reduce_axis_k_0 = 0; reduce_axis_k_0 < 2; reduce_axis_k_0 += 1) {
+      for (int32_t reduce_axis_k_0 = 0; reduce_axis_k_0 < 2; reduce_axis_k_0
+      += 1) {
         for (int32_t i_0 = 0; i_0 < 4; i_0 += 1) {
-          B_local_temp_buffer[((4 * i) + i_0)] = (B_local_temp_buffer[((4 * i) + i_0)] + A_shared_temp_buffer[((256 * i) + ((64 * i_0) + ((2 * reduce_axis_k) + reduce_axis_k_0)))]);
+          B_local_temp_buffer[((4 * i) + i_0)] = (B_local_temp_buffer[((4 *
+          i) + i_0)] + A_shared_temp_buffer[((256 * i) + ((64 * i_0) + ((2 *
+          reduce_axis_k) + reduce_axis_k_0)))]);
         };
       };
       for (int32_t ax0_0 = 0; ax0_0 < 4; ax0_0 += 1) {
