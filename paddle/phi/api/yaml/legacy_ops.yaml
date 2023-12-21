@@ -904,7 +904,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReadFileInferMeta
-    param : [filename]
+    param : [filename, dtype]
   kernel :
     func : read_file
     param : [filename]
