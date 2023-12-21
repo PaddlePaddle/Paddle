@@ -46,7 +46,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("multiclass_nms");
 #endif
 #if IS_TRT_VERSION_GE(7000)
-    // use TensorRT plugin
     teller_set.insert("tile");
     int8_teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
@@ -140,7 +139,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         for (auto var_name : iter.second) {
           auto* block = desc.Block();
           if (block) {
-            auto* var_desc = block->FindVar(var_name);
+            auto* var_desc = block->FindVarRecursive(var_name);
             // Can't get feed op's TensorDesc
             if (op_type != "feed" && var_desc && !var_desc->Persistable()) {
               const auto shape = var_desc->GetShape();
@@ -167,7 +166,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if !IS_TRT_VERSION_GE(8600)
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.empty() && unary_list.find(op_type) != unary_list.end()) {
         VLOG(3) << op_type
@@ -326,7 +325,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
       auto* block = desc.Block();
       if (block) {
-        auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
+        auto* filter_var_desc =
+            block->FindVarRecursive(desc.Input("Filter")[0]);
         if (!filter_var_desc->Persistable()) {
 #if IS_TRT_VERSION_GE(8600)
 #else
@@ -345,7 +345,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       auto* block = desc.Block();
       auto input_name = desc.Input("Input")[0];
-      auto* input_desc = block->FindVar(input_name);
+      auto* input_desc = block->FindVarRecursive(input_name);
       const auto input_shape = input_desc->GetShape();
 
       if (input_shape.size() != 4) {
@@ -355,7 +355,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       auto filter_name = desc.Input("Filter")[0];
-      auto* filter_desc = block->FindVar(filter_name);
+      auto* filter_desc = block->FindVarRecursive(filter_name);
       const auto filter_shape = filter_desc->GetShape();
 
       int groups = PADDLE_GET_CONST(int, desc.GetAttr("groups"));
@@ -396,7 +396,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_LT(8400)
       auto* block = desc.Block();
       auto start_var_name = desc.Input("Start")[0];
-      auto* start_var_desc = block->FindVar(start_var_name);
+      auto* start_var_desc = block->FindVarRecursive(start_var_name);
       auto start_dtype = start_var_desc->GetDataType();
       if (start_dtype == framework::proto::VarType::FP32 ||
           start_dtype == framework::proto::VarType::FP64) {
@@ -437,7 +437,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
 
       if (with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
@@ -497,7 +497,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (axis.size() != x_shape.size()) return false;
       int dims = x_shape.size();
@@ -550,7 +550,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                      "the pass.";
           return false;
         }
-        auto* x_var_desc = block->FindVar(x_var_name);
+        auto* x_var_desc = block->FindVarRecursive(x_var_name);
         const auto x_shape = x_var_desc->GetShape();
         int dims = x_shape.size();
         if (dims == 0) {
@@ -594,7 +594,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
 #if !IS_TRT_VERSION_GE(7000)
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
         const auto x_shape = x_var_desc->GetShape();
         if (x_shape.size() == 1) {
           VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
@@ -616,9 +616,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #if IS_TRT_VERSION_LT(8200)
       auto index_var_name = desc.Input("Index")[0];
-      auto* index_var_desc = block->FindVar(index_var_name);
+      auto* index_var_desc = block->FindVarRecursive(index_var_name);
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto index_shape = index_var_desc->GetShape();
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() <= 2) {
@@ -651,7 +651,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
 
         auto index_var_name = desc.Input("Index")[0];
-        auto* index_var_desc = block->FindVar(index_var_name);
+        auto* index_var_desc = block->FindVarRecursive(index_var_name);
 
         // The index input must be int32 or int64 datatype.
         if (index_var_desc->GetDataType() !=
@@ -670,8 +670,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* block = desc.Block();
       auto input_var_name = desc.Input("Input")[0];
       auto index_var_name = desc.Input("Index")[0];
-      auto* input_var_desc = block->FindVar(input_var_name);
-      auto* index_var_desc = block->FindVar(index_var_name);
+      auto* input_var_desc = block->FindVarRecursive(input_var_name);
+      auto* index_var_desc = block->FindVarRecursive(index_var_name);
 
       const auto input_shape = input_var_desc->GetShape();
       const auto index_shape = index_var_desc->GetShape();
@@ -721,7 +721,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       auto x_dtype = x_var_desc->GetDataType();
 
       if (!(x_dtype == framework::proto::VarType::FP32 ||
@@ -756,7 +756,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 2) {
         return false;
@@ -780,7 +780,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       for (auto& param_name : multiclass_nms_inputs) {
         for (auto& var_name : param_name.second) {
-          auto* var_desc = block->FindVar(var_name);
+          auto* var_desc = block->FindVarRecursive(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() != 3) {
             VLOG(3) << "multiclass_nms op dims != 3 not supported in tensorrt, "
@@ -1004,7 +1004,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         auto* block = desc.Block();
         if (block) {
           auto input_var_name = desc.Input("X")[0];
-          auto* input_var_desc = block->FindVar(input_var_name);
+          auto* input_var_desc = block->FindVarRecursive(input_var_name);
           const auto input_shape = input_var_desc->GetShape();
           for (int s : input_shape) {
             if (s == -1) {
@@ -1084,7 +1084,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
     }
 
@@ -1126,7 +1126,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       size_t output_num = desc.Output("Out").size();
       std::vector<int> output_lengths;
@@ -1192,7 +1192,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
       if (!with_dynamic_shape) {
@@ -1282,7 +1282,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("Input")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       auto dtype = x_var_desc->GetDataType();
       // At present, only support float32 into trt.
       if (dtype != 5) {
@@ -1299,7 +1299,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : -1;
       auto* block = desc.Block();
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
       auto input_type = x_var_desc->GetDataType();
 #if IS_TRT_VERSION_GE(8400)
       if (dtype == 0 ||
@@ -1414,8 +1414,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto* block = desc.Block();
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+      auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
+      auto* y_var_desc = block->FindVarRecursive(desc.Input("Y")[0]);
       auto x_dtype = x_var_desc->GetDataType();
       auto y_dtype = y_var_desc->GetDataType();
       if (op_type == "logical_or" || op_type == "logical_xor" ||
@@ -1471,8 +1471,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+      auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
+      auto* y_var_desc = block->FindVarRecursive(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
 
@@ -1526,7 +1526,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
 
       // the same as `elementwise_pow`.
       if (x_var_desc->GetDataType() ==
@@ -1555,7 +1555,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       int rank = x_shape.size();
       int axis = desc.HasAttr("axis")
@@ -1709,7 +1709,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() != 4) {
         VLOG(3) << "The instance_norm op only support 4-dimensional input in "
@@ -1736,7 +1736,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       for (auto& param_name : desc.Inputs()) {
         for (auto& var_name : param_name.second) {
-          auto* var_desc = block->FindVar(var_name);
+          auto* var_desc = block->FindVarRecursive(var_name);
           shape = var_desc->GetShape();
         }
       }
@@ -1775,8 +1775,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto* y_var_desc = block->FindVar(y_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
+      auto* y_var_desc = block->FindVarRecursive(y_var_name);
       auto x_dtype = x_var_desc->GetDataType();
       auto y_dtype = y_var_desc->GetDataType();
       if (x_dtype != framework::proto::VarType::BOOL ||
@@ -1804,8 +1804,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto* y_var_desc = block->FindVar(y_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
+      auto* y_var_desc = block->FindVarRecursive(y_var_name);
       auto x_dtype = x_var_desc->GetDataType();
       auto y_dtype = y_var_desc->GetDataType();
       if (x_dtype != framework::proto::VarType::BOOL ||
@@ -1872,7 +1872,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* alpha_var = block->FindVar(desc.Input("Alpha")[0]);
+      auto* alpha_var = block->FindVarRecursive(desc.Input("Alpha")[0]);
       if (!alpha_var) {
         VLOG(3) << "Variable Alpha of prelu TRT converter not found.";
         return false;
@@ -1962,7 +1962,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "bitwise_not") {
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       auto dtype = x_var_desc->GetDataType();
       if (dtype == framework::proto::VarType::INT8 ||
           dtype == framework::proto::VarType::UINT8) {
@@ -2059,14 +2059,15 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* input_desc = block->FindVar(desc.Input("Input").front());
+      auto* input_desc = block->FindVarRecursive(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
           PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
       auto inputs = desc.Inputs();
       bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
       if (has_bias_qk) {
-        auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+        auto* biasqk_desc =
+            block->FindVarRecursive(desc.Input("BiasQK").front());
         const auto biasqk_shape = biasqk_desc->GetShape();
         // The BiasQK's shape requires to be
         // [batch, 1, 1, length] or [batch, head, length, length].
@@ -2118,14 +2119,15 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* input_desc = block->FindVar(desc.Input("Input").front());
+      auto* input_desc = block->FindVarRecursive(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
           PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
       auto inputs = desc.Inputs();
       bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
       if (has_bias_qk) {
-        auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+        auto* biasqk_desc =
+            block->FindVarRecursive(desc.Input("BiasQK").front());
         const auto biasqk_shape = biasqk_desc->GetShape();
         // The BiasQK's shape requires to be
         // [batch, 1, 1, length] or [batch, head, length, length].
@@ -2183,7 +2185,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         } else {
           auto* block = desc.Block();
           auto x_var_name = desc.Input("X")[0];
-          auto* x_var_desc = block->FindVar(x_var_name);
+          auto* x_var_desc = block->FindVarRecursive(x_var_name);
           const auto x_shape = x_var_desc->GetShape();
           int input_num = std::accumulate(
               x_shape.begin() + 1, x_shape.end(), 1, std::multiplies<int>());
@@ -2219,7 +2221,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
         VLOG(3) << op_type
@@ -2257,7 +2259,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       // The batch size dimension cannot be reduced if it's not dynamic shape.
-      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
       if (!with_dynamic_shape) {
         if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
@@ -2431,7 +2433,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
         VLOG(3) << op_type
@@ -2638,7 +2640,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
 #if IS_TRT_VERSION_LT(8000)
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 0) {
         return false;  // not supported 0 dim.
@@ -2672,11 +2674,11 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto input_name = desc.Input("X")[0];
-      auto* input_desc = block->FindVar(input_name);
+      auto* input_desc = block->FindVarRecursive(input_name);
       const auto input_shape = input_desc->GetShape();
 
       auto grid_name = desc.Input("Grid")[0];
-      auto* grid_desc = block->FindVar(grid_name);
+      auto* grid_desc = block->FindVarRecursive(grid_name);
       const auto grid_shape = grid_desc->GetShape();
 
       if (input_shape.size() != 4 || grid_shape.size() != 4) {
@@ -2748,7 +2750,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       auto input_name = desc.Input("X")[0];
-      auto* input_desc = block->FindVar(input_name);
+      auto* input_desc = block->FindVarRecursive(input_name);
       const auto input_shape = input_desc->GetShape();
 
       if (input_shape.size() != 4) {
