@@ -96,6 +96,8 @@ function(set_pit_tests_properties)
        PIR_OP_TESTS)
   foreach(IR_OP_TEST ${PIR_OP_TESTS})
     if(TEST ${IR_OP_TEST})
+      message("test set Flags FLAGS_PIR_OPTEST_WHITE_LIST=True")
+      message(${IR_OP_TEST})
       set_tests_properties(
         ${IR_OP_TEST} PROPERTIES ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
     endif()
