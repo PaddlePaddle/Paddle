@@ -252,7 +252,7 @@ class TestExponentialSample(unittest.TestCase):
         )
 
     def test_rsample_backpropagation(self):
-        sample_shape = (1000,)
+        sample_shape = (1000, 2)
         with paddle.base.dygraph.guard(self.place):
             self._paddle_expon.rate.stop_gradient = False
             samples = self._paddle_expon.rsample(sample_shape)
@@ -260,8 +260,9 @@ class TestExponentialSample(unittest.TestCase):
             self.assertEqual(len(grads), 1)
             self.assertEqual(grads[0].dtype, self._paddle_expon.rate.dtype)
             self.assertEqual(grads[0].shape, self._paddle_expon.rate.shape)
+            axis = list(range(len(sample_shape)))
             np.testing.assert_allclose(
-                -samples.sum() / self._paddle_expon.rate,
+                -samples.sum(axis) / self._paddle_expon.rate,
                 grads[0],
                 rtol=config.RTOL.get(
                     str(self._paddle_expon.rate.numpy().dtype)
