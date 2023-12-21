@@ -38,7 +38,7 @@ from .pass_base import PassBase, register_pass
 logger = get_logger(logging.INFO, "MasterGradPass")
 
 
-def assert_output_in_varlist(op, var_names) -> List[str]:
+def get_output_in_varlist(op, var_names) -> List[str]:
     grad_names = []
     for output_name in op.output_arg_names:
         if output_name in var_names:
@@ -79,7 +79,7 @@ class MasterGradPass(PassBase):
             if is_optimize_op(op):
                 break
             elif is_backward_op(op):
-                var_names = assert_output_in_varlist(op, grad_names)
+                var_names = get_output_in_varlist(op, grad_names)
                 for var_name in var_names:
                     if var_name not in grad_first_ids:
                         grad_first_ids[var_name] = idx
@@ -107,6 +107,7 @@ class MasterGradPass(PassBase):
                 ), "The output should be distributed"
                 ref_mesh = ref_output_dist_attr.process_mesh
                 ref_dims_mapping = ref_output_dist_attr.dims_mapping
+                ref_chunk_id = product_op_dist_attr.chunk_id
                 grad_low_precision_name = (
                     grad_name + '@tmp_f16'
                     if is_fp16
@@ -120,7 +121,11 @@ class MasterGradPass(PassBase):
                     stop_gradient=False,
                 )
                 set_var_dist_attr(
-                    dist_context, grad_low_precision, ref_dims_mapping, ref_mesh
+                    dist_context,
+                    grad_low_precision,
+                    ref_dims_mapping,
+                    ref_mesh,
+                    chunk_id=ref_chunk_id,
                 )
                 product_op._rename_output(grad_name, grad_low_precision.name)
                 grad_var.desc.set_dtype(core.VarDesc.VarType.FP32)
@@ -136,7 +141,11 @@ class MasterGradPass(PassBase):
                 )
                 cast_op._set_attr(OP_ROLE_KEY, OpRole.Backward)
                 naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                    cast_op, ref_mesh, ref_dims_mapping, dist_context
+                    cast_op,
+                    ref_mesh,
+                    ref_dims_mapping,
+                    dist_context,
+                    chunk_id=ref_chunk_id,
                 )
         cur_block._sync_with_cpp()
 
@@ -154,17 +163,13 @@ class MasterGradPass(PassBase):
         main_ops_len = len(main_ops)
         first_optimize_idx = main_ops_len - 1
         for idx, op in enumerate(main_ops):
-            if (
-                is_optimize_op(op)
-                and op.type == "update_loss_scaling"
-                and main_ops[idx + 1].type == "squared_l2_norm"
-            ):
+            if is_optimize_op(op) and main_ops[idx].type == "squared_l2_norm":
                 first_optimize_idx = idx
                 break
         to_delete_tem_var_names = []
         to_delete_persis_var_names = []
         reserved_var_names = []
-        for idx in range(main_ops_len - 1, first_optimize_idx, -1):
+        for idx in range(main_ops_len - 1, first_optimize_idx + 1, -1):
             op = main_ops[idx]
             inout_arg_names = op.input_arg_names + op.output_arg_names
             if op.type in _supported_optimizer_type:
