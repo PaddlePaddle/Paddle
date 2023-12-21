@@ -1044,7 +1044,6 @@ set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 if(NOT WITH_COVERAGE)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 endif()
-
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_paddlescience PROPERTIES TIMEOUT 120)
