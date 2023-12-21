@@ -112,7 +112,7 @@ class TestNpairLossOp(unittest.TestCase):
                     'pos': embeddings_positive,
                     'lab': row_labels,
                 },
-                fetch_list=[npair_loss_op.name],
+                fetch_list=[npair_loss_op],
             )
 
             self.__assert_close(
