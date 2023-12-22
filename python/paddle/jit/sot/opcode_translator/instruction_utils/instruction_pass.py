@@ -27,6 +27,7 @@ def apply_instr_pass(instrs, code_options):
         remove_duplicate_resume,
         check_precall_followed_by_call,
     )
+    supported_passes = ()
 
     for instr_pass in supported_passes:
         instr_pass(instrs, code_options)

@@ -255,10 +255,13 @@ class FunctionGraph:
                 self._pycode_gen.gen_load(self._store_var_info[var.id])
 
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
+        is_precall = origin_instrs[instr_idx].opname == "PRECALL"
+        current_idx = instr_idx
+        next_idx = instr_idx + (2 if is_precall else 1)
 
-        restore_instrs = origin_instrs[:instr_idx]
+        restore_instrs = origin_instrs[:current_idx]
         restore_instr_names = [
-            instr.opname for instr in restore_instrs[:instr_idx]
+            instr.opname for instr in restore_instrs[:current_idx]
         ]
         # NOTE(SigureMo): Trailing KW_NAMES or PRECALL is no need to restore in Python 3.11+
         if restore_instr_names[-1:] == ["PRECALL"]:
@@ -272,12 +275,12 @@ class FunctionGraph:
         nop = self.pycode_gen._add_instr("NOP")
 
         for instr in origin_instrs:
-            if instr.jump_to == origin_instrs[instr_idx]:
+            if instr.jump_to == origin_instrs[current_idx]:
                 instr.jump_to = nop
 
         self.pycode_gen.hooks.append(
             lambda: self.pycode_gen.extend_instrs(
-                iter(origin_instrs[instr_idx + 1 :])
+                iter(origin_instrs[next_idx:])
             )
         )
 
@@ -286,10 +289,20 @@ class FunctionGraph:
         name_gen = NameGenerator("__start_compile_saved_orig_")
 
         for var in stack_vars[::-1]:
-            store_var_info[var.id] = name_gen.next()
+            name = name_gen.next()
+            print("[VAR]", name, var)
+            store_var_info[var.id] = name
             self.pycode_gen.gen_store_fast(store_var_info[var.id])
 
-        return VariableLoader(store_var_info, self.pycode_gen)
+        loader = VariableLoader(store_var_info, self.pycode_gen)
+
+        for var in stack_vars:
+            self.pycode_gen.gen_load_global("print", push_null=True)
+            loader.load(var)
+            self.pycode_gen.gen_call_function(1)
+            self.pycode_gen.gen_pop_top()
+
+        return loader
 
     def _build_compile_fn_with_name_store(self, ret_vars, to_store_vars):
         class VariableLoader:
