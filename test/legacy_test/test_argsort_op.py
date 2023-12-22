@@ -73,6 +73,7 @@ class TestArgsortOpCPU(unittest.TestCase):
         self.init_place()
 
     def setUp(self):
+        paddle.enable_static()
         self.init_axis()
         self.init_datatype()
         self.init_direction()
