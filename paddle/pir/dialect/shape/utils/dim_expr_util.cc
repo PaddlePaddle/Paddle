@@ -204,5 +204,119 @@ std::optional<DimExpr> ConvertAttributeToDimExpr(::pir::Attribute attribute) {
   return std::nullopt;
 }
 
+class SubstituteDimExprHelper final {
+ using DimExpr4SymbolNameT =
+  std::function<std::optional<DimExpr>(const std::string& symbol_name)>;
+ 
+ explicit SubstituteDimExprHelper(const DimExpr4SymbolNameT& DimExpr4SymbolName)
+    : DimExpr4SymbolName_(DimExpr4SymbolName) {}
+
+  std::optional<DimExpr> Substitute(const DimExpr& dim_expr) {
+    return std::visit([&](const auto& impl) {
+      return SubstituteImpl(impl);
+    }, dim_expr.variant());
+  }
+
+ private:
+  std::optional<DimExpr> SubstituteImpl(const std::int64_t& dim_expr) {
+    return dim_expr;
+  }
+  std::optional<DimExpr> SubstituteImpl(const std::string& dim_expr) {
+    return DimExpr4SymbolName_(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Negative<DimExpr>& dim_expr) {
+    return SubstituteUnary(dim_expr);
+  }
+  std::optional<DimExpr> SubstituteImpl(const Reciprocal<DimExpr>& dim_expr) {
+    return SubstituteUnary(dim_expr);
+  }
+
+  template <typename T>
+  std::optional<DimExpr> SubstituteUnary(const T& dim_expr) {
+    const auto& [operand] = *dim_expr;
+    const auto& substituted_operand = Substitute(operand);
+    if (!substituted_operand.has_value()) {
+      return std::nullopt;
+    }
+    return T{substituted_operand.value()};
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Add<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Mul<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Max<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Min<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  std::optional<DimExpr> SubstituteImpl(const Broadcast<DimExpr>& dim_expr) {
+    return SubstituteVariadic(dim_expr);
+  }
+
+  template <typename T>
+  std::optional<DimExpr> SubstituteVariadic(const T& dim_expr) {
+    const auto& [operands] = *dim_expr;
+    List<DimExpr> substituted_operands{};
+    for (const auto& operand : operands) {
+      const auto& substituted_operand = Substitute(operand);
+      if (!substituted_operand.has_value()) {
+        return std::nullopt;
+      }
+      substituted_operands.push_back(substituted_operand.has_value());
+    }
+    return T{substituted_operands};
+  }
+
+  DimExpr4SymbolNameT DimExpr4SymbolName_;
+};
+
+std::optional<DimExpr> SubstituteDimExpr(
+    const DimExpr& dim_expr,
+    const std::function<std::optional<DimExpr>(const std::string& symbol_name)>& DimExpr4SymbolName) {
+  return SubstituteDimExprHelper(DimExpr4SymbolName).Substitute(dim_expr);
+}
+
+std::function<std::optional<DimExpr>(const std::string& symbol_name)>
+MakeGetterDimExpr4SymbolName(
+    const std::vector<std::tuple<std::string/*symbol_name*/, int/*in_tensor_idx*/, int/*in_tensor_dim_idx*/>>& symbol_bindings,
+    const std::function<std::optional<DimExpr>(int in_tensor_idx, int in_tensor_dim_idx)>& DimExpr4InputDim) {
+  std::unordered_map<std::string, std::vector<std::pair<int, int>>> symbol_name2in_tensor_dim_pos;
+  for (const auto& tuple : symbol_bindings) {
+    const auto& [symbol_name, in_tensor_idx, in_tensor_dim_idx] = tuple;
+    symbol_name2in_tensor_dim_pos[symbol_name].emplace_back(std::pair{in_tensor_idx, in_tensor_dim_idx});
+  }
+  return [map=std::move(symbol_name2in_tensor_dim_pos), DimExpr4InputDim](const std::string& symbol_name) {
+    const auto& iter = map.find(symbol_name);
+    if (iter == map.end()) {
+      return std::nullopt;
+    }
+    const auto& positions = iter->second;
+    std::optional<DimExpr> ret = std::nullopt;
+    for (const auto& [in_tensor_idx, in_tensor_dim_idx] : positions) {
+      const auto& current = DimExpr4InputDim(in_tensor_idx, in_tensor_dim_idx);
+      if (!current.has_value()) {
+        return std::nullopt;
+      }
+      if (ret.has_value()) {
+        // Same names, same DimExprs.
+        if (ret.value() != current.value()) {
+          return std::nullopt;
+        }
+      } else {
+        ret = current;
+      }
+    }
+    return ret;
+  };
+}
 
 }
