@@ -1698,10 +1698,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # gen call resume fn opcode
         # NOTE(SigureMo): In Python 3.11，we need generate KW_NAMES if the call shape is not None.
         self._graph.pycode_gen.gen_kw_names(self._call_shape)
-        # if instr.opname == "CALL":
-        #     self._graph.pycode_gen.gen_call_function(instr.arg)
-        # else:
-        #     self._graph.pycode_gen.extend_instrs([instr])
         self._graph.pycode_gen.extend_instrs(
             self._instructions[index:next_index]
         )
