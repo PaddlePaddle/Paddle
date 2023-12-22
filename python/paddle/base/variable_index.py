@@ -292,6 +292,8 @@ def parse_index(x, indices):
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
                 end = MAX_INTEGER if step > 0 else -1
+            if x.shape[dim] != -1 and end >= x.shape[dim]:
+                end = MAX_INTEGER
 
         elif isinstance(slice_item, (list, tuple)):
             advanced_index[estimated_dim] = (
@@ -355,7 +357,10 @@ def parse_index(x, indices):
                     slice_item
                 )
             )
-        if not (start is None or end is None or step is None):
+        if not (
+            (start is None or end is None or step is None)
+            or (start == 0 and end == MAX_INTEGER and step == 1)
+        ):
             starts.append(start)
             ends.append(end)
             steps.append(step)
