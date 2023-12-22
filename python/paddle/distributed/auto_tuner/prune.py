@@ -593,3 +593,99 @@ def prune_by_sharding_overlap(tuner_cfg, cur_cfg, history_cfgs=[]):
         if not result[tuner_cfg['metric_cfg']['name']]:
             return True
     return False
+
+
+def is_invalid(cur_cfg, invalid_strategy):
+    mapping = {
+        "dp_degree": "dp",
+        "mp_degree": "mp",
+        "pp_degree": "pp",
+        "vpp_degree": "vpp",
+        "micro_batch_size": "mbs",
+        "sharding_degree": "sharding",
+        "sharding_stage": "stage",
+        "use_recompute": "recompute",
+        "recompute_granularity": "granularity",
+    }
+    granularity_mapping = {0: "full", 1: "full_attn", 2: "core_attn"}
+    reversed_mapping = {}
+    for key in mapping:
+        reversed_mapping[mapping[key]] = key
+
+    for strategy in invalid_strategy:
+        assert isinstance(strategy, str)
+        dims = strategy.split("_")
+        has_matched = 0
+        for dim in dims:
+            matched = None
+            for key in reversed_mapping:
+                if dim.startswith(key):
+                    matched = key
+                    break
+            if matched:
+                value = dim[len(matched)]
+                # * means this strategy turned on
+                if matched in ["dp", "mp", "pp", "vpp", "sharding"]:
+                    if value == "*":
+                        if cur_cfg[reversed_mapping[matched]] != 1:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = int(value)
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "recompute":
+                    if value == "*":
+                        if cur_cfg[reversed_mapping[matched]]:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = bool(int(value))
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "stage":
+                    if value == "*":
+                        if cur_cfg[reversed_mapping["sharding"]] != 1:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = int(value)
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "mbs":
+                    if value == "*":
+                        has_matched += 1
+                        continue
+                    else:
+                        value = int(value)
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "granularity":
+                    if value == "*":
+                        if cur_cfg[reversed_mapping["use_recompute"]]:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = int(value)
+                        granularity = granularity_mapping[value]
+                        if cur_cfg[reversed_mapping[matched]] == granularity:
+                            has_matched += 1
+                            continue
+    if has_matched == len(dims):
+        return True
+    return False
+
+
+@register_prune
+def prune_by_invalid_strategy(tuner_cfg, cur_cfg, history_cfgs=[]):
+    if tuner_cfg.get("invalid_strategy", None):
+        invalid_strategy = tuner_cfg["invalid_strategy"]
+        assert isinstance(invalid_strategy, list)
+        if is_invalid(cur_cfg, invalid_strategy):
+            return True
+
+    return False
