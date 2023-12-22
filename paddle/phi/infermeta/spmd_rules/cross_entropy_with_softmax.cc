@@ -382,8 +382,8 @@ SpmdInfo CrossEntropyWithSoftmaxGradInferSpmd(const DistMetaTensor& label,
       GetDimsMappingForAxes(loss_grad_axes, axis_to_dim_map, true);
   loss_grad_dist_attr_dst.set_dims_mapping(loss_grad_dims_mapping_dst);
 
-  auto x_grad = CopyTensorDistAttrForOutput(softmax_dist_attr_src);
-  x_grad.set_dims_mapping(softmax_dims_mapping_dst);
+  auto x_grad = CopyTensorDistAttrForOutput(label_dist_attr_dst);
+  x_grad.set_dims_mapping(label_dims_mapping_dst);
 
   LOG_SPMD_INPUT(label);
   LOG_SPMD_INPUT(softmax);
