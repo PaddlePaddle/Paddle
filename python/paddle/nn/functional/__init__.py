@@ -263,6 +263,7 @@ __all__ = [
     'batch_norm',
     'layer_norm',
     'instance_norm',
+    'group_norm',
     'class_center_sample',
     'sparse_attention',
     'fold',
