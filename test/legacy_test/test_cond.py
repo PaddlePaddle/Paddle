@@ -696,8 +696,6 @@ class TestCondBackward(unittest.TestCase):
         Helper function that compares calculated backward value is close to dy/dx
         """
         paddle.enable_static()
-        if not paddle.framework.in_pir_mode():
-            pass
         main_program = paddle.static.Program()
         main_program.random_seed = 123
         startup_program = paddle.static.Program()
@@ -754,15 +752,29 @@ class TestCondBackward(unittest.TestCase):
             feed_img_delta = np.copy(feed_img)
             for j in range(9):
                 feed_img_delta[0][j] = feed_img[0][j] + delta
-                loss_delta = exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img_delta,
-                        'label': feed_label,
-                    },
-                    fetch_list=[loss],
-                )
+                if paddle.framework.in_pir_mode():
+                    for p, g in grad_list:
+                        if p.is_same(img):
+                            dimg = g
+                    _, loss_delta = exe.run(
+                        main_program,
+                        feed={
+                            'i': np.full((1), feed_i, np.int32),
+                            'image': feed_img_delta,
+                            'label': feed_label,
+                        },
+                        fetch_list=[dimg, loss],
+                    )
+                else:
+                    loss_delta = exe.run(
+                        main_program,
+                        feed={
+                            'i': np.full((1), feed_i, np.int32),
+                            'image': feed_img_delta,
+                            'label': feed_label,
+                        },
+                        fetch_list=[loss],
+                    )
                 numerical_grad[0][j] = (loss_delta - loss_value) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             np.testing.assert_allclose(
