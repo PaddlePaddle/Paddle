@@ -351,6 +351,13 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             bool keep_dim,
                             MetaTensor* x_grad);
 
+void NceGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& bias,
+                      const MetaTensor& weight,
+                      MetaTensor* input_grad,
+                      MetaTensor* bias_grad,
+                      MetaTensor* weight_grad);
+
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,
                           const MetaTensor& weight,
@@ -499,12 +506,5 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            const MetaTensor& values,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
-
-void NceGradInferMeta(const MetaTensor& input,
-                      const MetaTensor& bias,
-                      const MetaTensor& weight,
-                      MetaTensor* input_grad,
-                      MetaTensor* bias_grad,
-                      MetaTensor* weight_grad);
 
 }  // namespace phi

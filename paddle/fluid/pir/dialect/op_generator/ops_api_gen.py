@@ -125,6 +125,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
+    'nce',
     'recv_v2',
     'rnn_',
     'row_conv',
@@ -134,7 +135,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'sparse_momentum',
     'soft_relu',
     'uniform_random_batch_size_like',
-    'nce',
 ]
 
 

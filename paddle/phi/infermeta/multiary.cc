@@ -3181,6 +3181,97 @@ void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
   out->set_dtype(ins[0]->dtype());
 }
 
+void NceInferMeta(const MetaTensor& input,
+                  const MetaTensor& label,
+                  const MetaTensor& weight,
+                  const MetaTensor& bias,
+                  const MetaTensor& sample_weight,
+                  const MetaTensor& custom_dist_probs,
+                  const MetaTensor& custom_dist_alias,
+                  const MetaTensor& custom_dist_alias_probs,
+                  int num_total_classes,
+                  const std::vector<int>& custom_neg_classes,
+                  int num_neg_samples,
+                  int sampler,
+                  int seed,
+                  bool is_sparse,
+                  bool remote_prefetch,
+                  bool is_test,
+                  MetaTensor* cost,
+                  MetaTensor* sample_logits,
+                  MetaTensor* sample_labels,
+                  MetaConfig config) {
+  auto x_dims = input.dims();
+  auto label_dims = label.dims();
+  if (config.is_runtime || (x_dims[0] > 0 && label_dims[0] > 0)) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0],
+        label_dims[0],
+        phi::errors::InvalidArgument(
+            "The first dimension of Input(Input) and Input(Label) should be "
+            "equal in runtime. But received: Input(Input)'s shape = [%s] "
+            "with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st dim = "
+            "%d.",
+            x_dims,
+            x_dims[0],
+            label_dims,
+            label_dims[0]));
+  }
+  int num_true_classes =
+      static_cast<int>(label_dims.size() == 2 ? label_dims[1] : 1);
+  if (bias) {
+    PADDLE_ENFORCE_EQ(
+        weight.dims()[0],
+        bias.dims()[0],
+        phi::errors::InvalidArgument(
+            "The first dimension of Input(Weight) and Input(Bias) "
+            "should be equal. But received: Input(Weight)'s shape = [%s] "
+            "with 1st dim = %d, and Input(Bias)'s shape = [%s] with 1st dim "
+            "= %d.",
+            weight.dims(),
+            weight.dims()[0],
+            bias.dims(),
+            bias.dims()[0]));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      num_total_classes,
+      weight.dims()[0],
+      phi::errors::InvalidArgument(
+          "The number of total classes should be equal to the first "
+          "dimension of Input(Weight). But received: Attr(num_total_classes) "
+          "= %d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
+          num_total_classes,
+          weight.dims(),
+          weight.dims()[0]));
+  if (custom_neg_classes.size() > 0) {
+    PADDLE_ENFORCE_EQ(
+        custom_neg_classes.size(),
+        static_cast<size_t>(num_neg_samples),
+        phi::errors::InvalidArgument(
+            "The size of Attr(custom_neg_classes) should be equal "
+            "to the number of negative samples. But received: "
+            "custom_neg_classes.size() = %d, num_neg_samples = %d.",
+            custom_neg_classes.size(),
+            num_neg_samples));
+  }
+  // set dims of output(Out)
+  std::vector<int64_t> out_dims;
+  out_dims.push_back(x_dims[0]);
+  out_dims.push_back(1);
+  cost->set_dims(common::make_ddim(out_dims));
+
+  if (!is_test) {
+    // set dims of output(SampleOut)
+    std::vector<int64_t> sample_out_dims;
+    sample_out_dims.push_back(x_dims[0]);
+    sample_out_dims.push_back(
+        (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
+    sample_logits->set_dims(common::make_ddim(sample_out_dims));
+    sample_labels->set_dims(common::make_ddim(sample_out_dims));
+  }
+}
+
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
                         const MetaTensor& rois_num,
@@ -4510,97 +4601,6 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              MetaTensor* out) {
   out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
   out->set_dtype(dtype);
-}
-
-void NceInferMeta(const MetaTensor& input,
-                  const MetaTensor& label,
-                  const MetaTensor& weight,
-                  const MetaTensor& bias,
-                  const MetaTensor& sample_weight,
-                  const MetaTensor& custom_dist_probs,
-                  const MetaTensor& custom_dist_alias,
-                  const MetaTensor& custom_dist_alias_probs,
-                  int num_total_classes,
-                  const std::vector<int>& custom_neg_classes,
-                  int num_neg_samples,
-                  int sampler,
-                  int seed,
-                  bool is_sparse,
-                  bool remote_prefetch,
-                  bool is_test,
-                  MetaTensor* cost,
-                  MetaTensor* sample_logits,
-                  MetaTensor* sample_labels,
-                  MetaConfig config) {
-  auto x_dims = input.dims();
-  auto label_dims = label.dims();
-  if (config.is_runtime || (x_dims[0] > 0 && label_dims[0] > 0)) {
-    PADDLE_ENFORCE_EQ(
-        x_dims[0],
-        label_dims[0],
-        phi::errors::InvalidArgument(
-            "The first dimension of Input(Input) and Input(Label) should be "
-            "equal in runtime. But received: Input(Input)'s shape = [%s] "
-            "with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st dim = "
-            "%d.",
-            x_dims,
-            x_dims[0],
-            label_dims,
-            label_dims[0]));
-  }
-  int num_true_classes =
-      static_cast<int>(label_dims.size() == 2 ? label_dims[1] : 1);
-  if (bias) {
-    PADDLE_ENFORCE_EQ(
-        weight.dims()[0],
-        bias.dims()[0],
-        phi::errors::InvalidArgument(
-            "The first dimension of Input(Weight) and Input(Bias) "
-            "should be equal. But received: Input(Weight)'s shape = [%s] "
-            "with 1st dim = %d, and Input(Bias)'s shape = [%s] with 1st dim "
-            "= %d.",
-            weight.dims(),
-            weight.dims()[0],
-            bias.dims(),
-            bias.dims()[0]));
-  }
-
-  PADDLE_ENFORCE_EQ(
-      num_total_classes,
-      weight.dims()[0],
-      phi::errors::InvalidArgument(
-          "The number of total classes should be equal to the first "
-          "dimension of Input(Weight). But received: Attr(num_total_classes) "
-          "= %d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
-          num_total_classes,
-          weight.dims(),
-          weight.dims()[0]));
-  if (custom_neg_classes.size() > 0) {
-    PADDLE_ENFORCE_EQ(
-        custom_neg_classes.size(),
-        static_cast<size_t>(num_neg_samples),
-        phi::errors::InvalidArgument(
-            "The size of Attr(custom_neg_classes) should be equal "
-            "to the number of negative samples. But received: "
-            "custom_neg_classes.size() = %d, num_neg_samples = %d.",
-            custom_neg_classes.size(),
-            num_neg_samples));
-  }
-  // set dims of output(Out)
-  std::vector<int64_t> out_dims;
-  out_dims.push_back(x_dims[0]);
-  out_dims.push_back(1);
-  cost->set_dims(common::make_ddim(out_dims));
-
-  if (!is_test) {
-    // set dims of output(SampleOut)
-    std::vector<int64_t> sample_out_dims;
-    sample_out_dims.push_back(x_dims[0]);
-    sample_out_dims.push_back(
-        (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
-    sample_logits->set_dims(common::make_ddim(sample_out_dims));
-    sample_labels->set_dims(common::make_ddim(sample_out_dims));
-  }
 }
 
 }  // namespace phi
