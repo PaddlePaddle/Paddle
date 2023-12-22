@@ -191,6 +191,7 @@ test_lu_op
 test_lu_unpack_op
 test_margin_cross_entropy_op
 test_masked_select_op
+test_match_matrix_tensor_op
 test_matmul_bf16_mkldnn_op
 test_matmul_mkldnn_op
 test_matmul_v2_op

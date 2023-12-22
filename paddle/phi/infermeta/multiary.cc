@@ -2856,6 +2856,144 @@ void LogspaceInferMeta(const MetaTensor& start,
   out->set_dtype(dtype);
 }
 
+void MatchMatrixTensorInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& w,
+                                int dim_t,
+                                MetaTensor* out,
+                                MetaTensor* tmp,
+                                MetaConfig config) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(X) should be equal to 2, "
+                        "but received %d.",
+                        x_dims.size()));
+
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(y_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Y) should be equal to 2, "
+                        "but received %d.",
+                        y_dims.size()));
+
+  auto w_dims = w.dims();
+  PADDLE_ENFORCE_EQ(w_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(W) should be equal to 3, "
+                        "but received %d.",
+                        w_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      w_dims[0],
+      x_dims[1],
+      phi::errors::InvalidArgument(
+          "The first dimension of Input(W) should be equal to the second "
+          "dimension of Input(X). But received the first dimension of Input(W) "
+          "is %d, the second dimension of Input(X) is %d.",
+          w_dims[0],
+          x_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1],
+      dim_t,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(W) should be equal to 'dim_t', but "
+          "received the second dimension of Input(W) is %d, 'dim_t' is %d.",
+          w_dims[1],
+          dim_t));
+  PADDLE_ENFORCE_EQ(
+      w_dims[2],
+      y_dims[1],
+      phi::errors::InvalidArgument(
+          "The last dimension of Input(W) should be equal to "
+          "the second dimension of Input(Y). But received the last dimension "
+          "of Input(W) is %d, the second dimension of Input(Y) is %d.",
+          w_dims[2],
+          y_dims[1]));
+
+  int64_t out_dim_0 = -1;
+  int64_t tmp_dim_0 = -1;
+  if (config.is_runtime) {
+    const auto& x_lod = x.lod();
+    PADDLE_ENFORCE_EQ(x_lod.empty(),
+                      false,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) should hold LoD information, but "
+                          "received Input(X).lod() is empty."));
+    const auto& x_lod_0 = x_lod[0];
+    PADDLE_ENFORCE_GE(x_lod_0.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The dimensions of Input(X)'s LoD data should be "
+                          "equal to 2, but received %d.",
+                          x_lod_0.size()));
+    PADDLE_ENFORCE_EQ(x_dims[0],
+                      static_cast<int64_t>(x_lod_0.back()),
+                      phi::errors::InvalidArgument(
+                          "The last element of Input(X)'s LoD data should be "
+                          "equal to the first dimension of Input(X). "
+                          "But received the last element of Input(X)'s LoD "
+                          "data is %d, the first dimension of Input(X) is %d.",
+                          x_lod_0.back(),
+                          x_dims[0]));
+
+    const auto& y_lod = y.lod();
+    PADDLE_ENFORCE_EQ(y_lod.empty(),
+                      false,
+                      phi::errors::InvalidArgument(
+                          "The Input(Y) should hold LoD information, but "
+                          "received Input(Y).lod() is empty."));
+    const auto& y_lod_0 = y_lod[0];
+    PADDLE_ENFORCE_GE(y_lod_0.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The dimensions of Input(Y)'s LoD data should be "
+                          "equal to 2, but received %d.",
+                          y_lod_0.size()));
+    PADDLE_ENFORCE_EQ(y_dims[0],
+                      static_cast<int64_t>(y_lod_0.back()),
+                      phi::errors::InvalidArgument(
+                          "The last element of Input(Y)'s LoD data should be "
+                          "equal to the first dimension of Input(Y). "
+                          "But received the last element of Input(Y)'s LoD "
+                          "data is %d, the first dimension of Input(Y) is %d.",
+                          y_lod_0.back(),
+                          y_dims[0]));
+
+    PADDLE_ENFORCE_EQ(x_lod_0.size(),
+                      y_lod_0.size(),
+                      phi::errors::InvalidArgument(
+                          "The dimensions of Input(X)'s and Input(Y)'s LoD "
+                          "data should be equal. "
+                          "But received the dimensions of Input(X)'s LoD is "
+                          "%d, the dimensions of Input(Y)'s LoD is %d.",
+                          x_lod_0.size(),
+                          y_lod_0.size()));
+
+    out_dim_0 = 0;
+    for (size_t i = 1; i < x_lod_0.size(); i++) {
+      int64_t x_len = x_lod_0[i] - x_lod_0[i - 1];
+      int64_t y_len = y_lod_0[i] - y_lod_0[i - 1];
+      out_dim_0 += (x_len * y_len);
+    }
+    out_dim_0 *= dim_t;
+
+    tmp_dim_0 = x_dims[0] * dim_t * x_dims[1];
+  } else {
+    out->share_lod(x);
+  }
+
+  std::vector<int64_t> out_dims_vec{out_dim_0};
+  out_dims_vec.push_back(1);
+  std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
+  tmp_dims_vec.push_back(1);
+  out->set_dims(common::make_ddim(out_dims_vec));
+  tmp->set_dims(common::make_ddim(tmp_dims_vec));
+}
+
 void MergedAdamInferMeta(
     const std::vector<const MetaTensor*>& param,
     const std::vector<const MetaTensor*>& grad,
@@ -4510,144 +4648,6 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              MetaTensor* out) {
   out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
   out->set_dtype(dtype);
-}
-
-void MatchMatrixTensorInferMeta(const MetaTensor& x,
-                                const MetaTensor& y,
-                                const MetaTensor& w,
-                                int dim_t,
-                                MetaTensor* out,
-                                MetaTensor* tmp,
-                                MetaConfig config) {
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(x_dims.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "The dimensions of Input(X) should be equal to 2, "
-                        "but received %d.",
-                        x_dims.size()));
-
-  auto y_dims = y.dims();
-  PADDLE_ENFORCE_EQ(y_dims.size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "The dimensions of Input(Y) should be equal to 2, "
-                        "but received %d.",
-                        y_dims.size()));
-
-  auto w_dims = w.dims();
-  PADDLE_ENFORCE_EQ(w_dims.size(),
-                    3,
-                    phi::errors::InvalidArgument(
-                        "The dimensions of Input(W) should be equal to 3, "
-                        "but received %d.",
-                        w_dims.size()));
-
-  PADDLE_ENFORCE_EQ(
-      w_dims[0],
-      x_dims[1],
-      phi::errors::InvalidArgument(
-          "The first dimension of Input(W) should be equal to the second "
-          "dimension of Input(X). But received the first dimension of Input(W) "
-          "is %d, the second dimension of Input(X) is %d.",
-          w_dims[0],
-          x_dims[1]));
-  PADDLE_ENFORCE_EQ(
-      w_dims[1],
-      dim_t,
-      phi::errors::InvalidArgument(
-          "The second dimension of Input(W) should be equal to 'dim_t', but "
-          "received the second dimension of Input(W) is %d, 'dim_t' is %d.",
-          w_dims[1],
-          dim_t));
-  PADDLE_ENFORCE_EQ(
-      w_dims[2],
-      y_dims[1],
-      phi::errors::InvalidArgument(
-          "The last dimension of Input(W) should be equal to "
-          "the second dimension of Input(Y). But received the last dimension "
-          "of Input(W) is %d, the second dimension of Input(Y) is %d.",
-          w_dims[2],
-          y_dims[1]));
-
-  int64_t out_dim_0 = -1;
-  int64_t tmp_dim_0 = -1;
-  if (config.is_runtime) {
-    const auto& x_lod = x.lod();
-    PADDLE_ENFORCE_EQ(x_lod.empty(),
-                      false,
-                      phi::errors::InvalidArgument(
-                          "The Input(X) should hold LoD information, but "
-                          "received Input(X).lod() is empty."));
-    const auto& x_lod_0 = x_lod[0];
-    PADDLE_ENFORCE_GE(x_lod_0.size(),
-                      2,
-                      phi::errors::InvalidArgument(
-                          "The dimensions of Input(X)'s LoD data should be "
-                          "equal to 2, but received %d.",
-                          x_lod_0.size()));
-    PADDLE_ENFORCE_EQ(x_dims[0],
-                      static_cast<int64_t>(x_lod_0.back()),
-                      phi::errors::InvalidArgument(
-                          "The last element of Input(X)'s LoD data should be "
-                          "equal to the first dimension of Input(X). "
-                          "But received the last element of Input(X)'s LoD "
-                          "data is %d, the first dimension of Input(X) is %d.",
-                          x_lod_0.back(),
-                          x_dims[0]));
-
-    const auto& y_lod = y.lod();
-    PADDLE_ENFORCE_EQ(y_lod.empty(),
-                      false,
-                      phi::errors::InvalidArgument(
-                          "The Input(Y) should hold LoD information, but "
-                          "received Input(Y).lod() is empty."));
-    const auto& y_lod_0 = y_lod[0];
-    PADDLE_ENFORCE_GE(y_lod_0.size(),
-                      2,
-                      phi::errors::InvalidArgument(
-                          "The dimensions of Input(Y)'s LoD data should be "
-                          "equal to 2, but received %d.",
-                          y_lod_0.size()));
-    PADDLE_ENFORCE_EQ(y_dims[0],
-                      static_cast<int64_t>(y_lod_0.back()),
-                      phi::errors::InvalidArgument(
-                          "The last element of Input(Y)'s LoD data should be "
-                          "equal to the first dimension of Input(Y). "
-                          "But received the last element of Input(Y)'s LoD "
-                          "data is %d, the first dimension of Input(Y) is %d.",
-                          y_lod_0.back(),
-                          y_dims[0]));
-
-    PADDLE_ENFORCE_EQ(x_lod_0.size(),
-                      y_lod_0.size(),
-                      phi::errors::InvalidArgument(
-                          "The dimensions of Input(X)'s and Input(Y)'s LoD "
-                          "data should be equal. "
-                          "But received the dimensions of Input(X)'s LoD is "
-                          "%d, the dimensions of Input(Y)'s LoD is %d.",
-                          x_lod_0.size(),
-                          y_lod_0.size()));
-
-    out_dim_0 = 0;
-    for (size_t i = 1; i < x_lod_0.size(); i++) {
-      int64_t x_len = x_lod_0[i] - x_lod_0[i - 1];
-      int64_t y_len = y_lod_0[i] - y_lod_0[i - 1];
-      out_dim_0 += (x_len * y_len);
-    }
-    out_dim_0 *= dim_t;
-
-    tmp_dim_0 = x_dims[0] * dim_t * x_dims[1];
-  } else {
-    out->share_lod(x);
-  }
-
-  std::vector<int64_t> out_dims_vec{out_dim_0};
-  out_dims_vec.push_back(1);
-  std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
-  tmp_dims_vec.push_back(1);
-  out->set_dims(common::make_ddim(out_dims_vec));
-  tmp->set_dims(common::make_ddim(tmp_dims_vec));
 }
 
 }  // namespace phi

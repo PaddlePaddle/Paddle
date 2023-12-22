@@ -650,6 +650,28 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+void MatchMatrixTensorGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& w,
+                                    const MetaTensor& tmp,
+                                    const MetaTensor& out_grad,
+                                    int dim_t,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* w_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x.dims());
+    x_grad->share_lod(x);
+  }
+  if (y_grad != nullptr) {
+    y_grad->set_dims(y.dims());
+    y_grad->share_lod(y);
+  }
+  if (w_grad != nullptr) {
+    w_grad->set_dims(w.dims());
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
@@ -1297,27 +1319,4 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     value_grad->share_lod(values);
   }
 }
-
-void MatchMatrixTensorGradInferMeta(const MetaTensor& x,
-                                    const MetaTensor& y,
-                                    const MetaTensor& w,
-                                    const MetaTensor& tmp,
-                                    const MetaTensor& out_grad,
-                                    int dim_t,
-                                    MetaTensor* x_grad,
-                                    MetaTensor* y_grad,
-                                    MetaTensor* w_grad) {
-  if (x_grad != nullptr) {
-    x_grad->set_dims(x.dims());
-    x_grad->share_lod(x);
-  }
-  if (y_grad != nullptr) {
-    y_grad->set_dims(y.dims());
-    y_grad->share_lod(y);
-  }
-  if (w_grad != nullptr) {
-    w_grad->set_dims(w.dims());
-  }
-}
-
 }  // namespace phi

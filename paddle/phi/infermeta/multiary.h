@@ -489,6 +489,14 @@ void LogspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out);
 
+void MatchMatrixTensorInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& w,
+                                int dim_t,
+                                MetaTensor* out,
+                                MetaTensor* tmp,
+                                MetaConfig config = MetaConfig());
+
 void MergedAdamInferMeta(
     const std::vector<const MetaTensor*>& param,
     const std::vector<const MetaTensor*>& grad,
@@ -869,13 +877,5 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
 void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
-
-void MatchMatrixTensorInferMeta(const MetaTensor& x,
-                                const MetaTensor& y,
-                                const MetaTensor& w,
-                                int dim_t,
-                                MetaTensor* out,
-                                MetaTensor* tmp,
-                                MetaConfig config = MetaConfig());
 
 }  // namespace phi
