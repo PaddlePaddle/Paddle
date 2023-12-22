@@ -71,6 +71,9 @@ std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces);
 CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
                                     const std::vector<int64_t>& process_ids);
 
+std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
+                                        std::vector<int64_t> out_process_ids);
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define RESHARD_FUNCTOR_IMPL(dev_ctx, fn_name, dtype, ...)            \
   do {                                                                \
