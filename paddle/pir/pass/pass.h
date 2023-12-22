@@ -17,10 +17,13 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <map>
 
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/common/enforce.h"
+#include "paddle/utils/any.h"
 
 namespace pir {
 
@@ -82,6 +85,71 @@ class IR_API Pass {
 
   const detail::PassInfo& pass_info() const { return pass_info_; }
 
+  // Get a reference to the attributed previously set.
+  template <typename AttrType>
+  AttrType &Get(const std::string &attr_name) const {
+    IR_ENFORCE(attrs_.find(attr_name) != attrs_.end(),
+               "Attribute %s not registered for pass.", attr_name);
+    try {
+      return *paddle::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (paddle::bad_any_cast &) {
+      auto TypeToString = [](const std::type_info &info) -> std::string {
+        if (std::type_index(info) == std::type_index(typeid(bool *))) {
+          return "bool";
+        } else if (std::type_index(info) == std::type_index(typeid(int *))) {
+          return "int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(const int *))) {
+          return "const int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(std::string *))) {
+          return "std::string";
+        }
+        return info.name();
+      };
+
+      IR_THROW("Invalid type for attritube %s, expected: %s, actual: %s.", attr_name,
+               TypeToString(typeid(AttrType *)),
+               TypeToString(attrs_.at(attr_name).type()));
+    }
+  }
+
+  bool Has(const std::string &attr_name) const {
+    return attrs_.count(attr_name) > 0;
+  }
+
+  void Erase(const std::string &attr_name) {
+    if (!Has(attr_name)) {
+      return;
+    }
+    if (attr_dels_.find(attr_name) != attr_dels_.end()) {
+      attr_dels_[attr_name]();
+      attr_dels_.erase(attr_name);
+    }
+    attrs_.erase(attr_name);
+  }
+
+  // Set a pointer to the attribute. Pass takes ownership of the attribute.
+  template <typename AttrType>
+  void Set(const std::string &attr_name, AttrType *attr) {
+    VLOG(3) << "Setting the attribute " << attr_name << " for the pass "
+            << name();
+    attrs_[attr_name] = attr;
+    attr_dels_[attr_name] = [attr, attr_name]() {
+      VLOG(8) << "deleting " << attr_name;
+      delete attr;
+    };
+  }
+
+  // Set a pointer to the attribute. Pass doesn't take ownership. Caller
+  // should delete the attribute.
+  template <typename AttrType>
+  void SetNotOwned(const std::string &attr_name, AttrType *attr) {
+    IR_ENFORCE(0 == attrs_.count(attr_name),
+               "Attribute %s already set in the pass.", attr_name);
+    attrs_[attr_name] = attr;
+  }
+
  protected:
   virtual void Run(Operation* op) = 0;
 
@@ -108,6 +176,9 @@ class IR_API Pass {
 
   friend class PassManager;
   friend class detail::PassAdaptor;
+
+  std::map<std::string, paddle::any> attrs_;
+  std::map<std::string, std::function<void(void)>> attr_dels_;
 };
 
 class PatternRewritePass : public Pass {

@@ -808,7 +808,10 @@ bool AnalysisPredictor::PrepareExecutor() {
         // Basic pass required by the framework
         gpu_pm.AddPass(
             ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
-        gpu_pm.AddPass(::pir::CreateConstantFoldingPass(place_, sub_scope_));
+        std::unique_ptr<pir::Pass> constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned("_place_", &place_);
+        constant_folding_pass->SetNotOwned("_scope_", sub_scope_);
+        gpu_pm.AddPass(std::move(constant_folding_pass));
         gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//

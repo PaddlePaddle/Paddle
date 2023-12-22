@@ -400,8 +400,10 @@ TEST(pattern_rewrite, Patterns) {
   pm.AddPass(pir::CreateConv2dBnFusePass());
   pm.AddPass(pir::CreateConv2dAddActFusePass());
   pm.AddPass(pir::CreateConv2dAddFusePass());
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass = pir::CreateConstantFoldingPass();
+  constant_folding_pass->Set("_place_", new phi::CPUPlace());
+  constant_folding_pass->Set("_scope_", new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
@@ -473,7 +475,10 @@ TEST(constant_folding, ConstantFolding) {
   BuildConstantFoldingProgram(&program, ctx, &scope);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass = pir::CreateConstantFoldingPass();
+  constant_folding_pass->Set("_place_", new phi::CPUPlace());
+  constant_folding_pass->SetNotOwned("_scope_", &scope);
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
@@ -535,8 +540,10 @@ TEST(constant_folding, ConstantFolding_Combine) {
   BuildConcatProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass = pir::CreateConstantFoldingPass();
+  constant_folding_pass->Set("_place_", new phi::CPUPlace());
+  constant_folding_pass->Set("_scope_", new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
@@ -571,8 +578,10 @@ TEST(constant_folding, ConstantFolding_MultiOutput) {
   BuildMultiOutputProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass = pir::CreateConstantFoldingPass();
+  constant_folding_pass->Set("_place_", new phi::CPUPlace());
+  constant_folding_pass->Set("_scope_", new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
