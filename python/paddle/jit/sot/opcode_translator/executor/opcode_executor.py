@@ -1676,7 +1676,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         push_n = push_n(instr.arg) if callable(push_n) else push_n
         is_precall = instr.opname == "PRECALL"
         index = self.indexof(instr)
+        # Use CALL instead of PRECALL to calculate the real stack effect
         call_instr = self._instructions[index + int(is_precall)]
+        # skip CALL if current instr is PRECALL
         next_index = index + 1 + int(is_precall)
         self.stack = origin_stack
 

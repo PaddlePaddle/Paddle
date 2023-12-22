@@ -257,6 +257,7 @@ class FunctionGraph:
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
         is_precall = origin_instrs[instr_idx].opname == "PRECALL"
         current_idx = instr_idx
+        # skip CALL if current instr is PRECALL
         next_idx = instr_idx + 1 + int(is_precall)
 
         restore_instrs = origin_instrs[:current_idx]
