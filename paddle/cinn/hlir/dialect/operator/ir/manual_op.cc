@@ -17,10 +17,14 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 
 namespace cinn {
 namespace dialect {
@@ -177,9 +181,81 @@ void SplitOp::Build(pir::Builder &builder,             // NOLINT
       "axis", pir::Int32Attribute::get(pir::IrContext::Instance(), axis));
 }
 
+const char *GenerateShapeOp::attributes_name[attributes_num] = {
+  "output_dim_exprs",
+  "symbol_bindings"};
+
+void GenerateShapeOp::Build(pir::Builder &builder,
+                            pir::OperationArgument& argument,
+                            const std::vector<pir::Value>& inputs,
+                            const std::vector<pir::Attribute>& output_dim_exprs,
+                            const GenerateShapeOp::SymbolBindings& symbol_bindings) {
+  CHECK(!inputs.empty());
+  argument.AddInputs(inputs);
+  argument.AddAttribute("output_dim_exprs", builder.array_attr(output_dim_exprs));
+  argument.AddAttribute("symbol_bindings", ConvertSymbolBindingsToAttribute(builder, symbol_bindings));
+  argument.AddOutputs({[&](){
+    auto* ctx = pir::IrContext::Instance();
+    auto type = pir::Int64Type::get(ctx);
+    auto dim = ::common::make_ddim({static_cast<int64_t>(output_dim_exprs.size())});
+    return paddle::dialect::DenseTensorType::get(ctx, type, dim);
+  }()});
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+pir::Attribute GenerateShapeOp::ConvertSymbolBindingsToAttribute(pir::Builder &builder, const GenerateShapeOp::SymbolBindings& symbol_bindings) {
+  const auto& ConvertSymbolBindingToAttr = [&](const SymbolBinding& binding) {
+    const auto& [symbol_name, input_tensor_idx, input_tensor_dim_idx] = binding;
+    return builder.array_attr({
+      builder.str_attr(symbol_name),
+      builder.int64_attr(input_tensor_idx),
+      builder.int64_attr(input_tensor_dim_idx),
+    });
+  };
+  std::vector<pir::Attribute> bindings_attr{};
+  for (const auto& symbol_binding : symbol_bindings) {
+    bindings_attr.push_back(ConvertSymbolBindingToAttr(symbol_binding));
+  }
+  return builder.array_attr(bindings_attr);
+}
+
+std::optional<GenerateShapeOp::SymbolBindings> GenerateShapeOp::ConvertAttributeToSymbolBindings(const pir::Attribute& symbol_bindings) {
+  if (!symbol_bindings.isa<pir::ArrayAttribute>()) {
+    return std::nullopt;
+  }
+  const auto& symbol_bindings_array_attr = symbol_bindings.dyn_cast<pir::ArrayAttribute>();
+  GenerateShapeOp::SymbolBindings ret{GenerateShapeOp::SymbolBindings{}};
+  for (int i = 0; i < symbol_bindings_array_attr.size(); ++i) {
+    const auto& symbol_binding = symbol_bindings_array_attr.at(i);
+    if (!symbol_binding.isa<pir::ArrayAttribute>()) {
+      return std::nullopt;
+    }
+    const auto& symbol_binding_array_attr = symbol_binding.dyn_cast<pir::ArrayAttribute>();
+    if (symbol_binding_array_attr.size() != 3) {
+      return std::nullopt;
+    }
+    if (!symbol_binding_array_attr.at(0).isa<pir::StrAttribute>()) {
+      return std::nullopt;
+    }
+    if (!symbol_binding_array_attr.at(1).isa<pir::Int64Attribute>()) {
+      return std::nullopt;
+    }
+    if (!symbol_binding_array_attr.at(2).isa<pir::Int64Attribute>()) {
+      return std::nullopt;
+    }
+    ret.emplace_back(std::tuple{
+      symbol_binding_array_attr.at(0).dyn_cast<pir::StrAttribute>().AsString(),
+      symbol_binding_array_attr.at(1).dyn_cast<pir::Int64Attribute>().data(),
+      symbol_binding_array_attr.at(2).dyn_cast<pir::Int64Attribute>().data(),
+    });
+  }
+  return std::move(ret);
+}
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

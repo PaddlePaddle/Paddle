@@ -81,9 +81,37 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
   void VerifySig() const {}
 };
 
+class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cinn_op.generate_shape"; }
+  static constexpr uint32_t attributes_num = 2;
+  static const char *attributes_name[attributes_num];
+
+  using SymbolBinding = std::tuple</*symbol_name*/std::string,
+                                   /*input_tensor_idx*/int,
+                                   /*input_tensor_dim_idx*/int>;
+  using SymbolBindings = std::vector<SymbolBinding>;
+
+  static void Build(pir::Builder &builder,
+                    pir::OperationArgument& argument,
+                    const std::vector<pir::Value>& inputs,
+                    const std::vector<pir::Attribute>& output_dim_exprs,
+                    const SymbolBindings& symbol_bindings);
+  
+  void VerifySig() {}
+
+  pir::OpResult out() { return result(0); }
+
+  static pir::Attribute ConvertSymbolBindingsToAttribute(pir::Builder &builder, const SymbolBindings& symbol_bindings);
+  static std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(const pir::Attribute& symbol_bindings);
+
+};
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

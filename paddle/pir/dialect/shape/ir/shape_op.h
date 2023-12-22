@@ -258,30 +258,6 @@ class IR_API IndexCastOp : public Op<IndexCastOp> {
   void VerifySig() {}
 };
 
-
-class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "shape.generate_shape"; }
-  static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
-
-  using SymbolBinding = std::tuple</*symbol_name*/std::string,
-                                   /*input_tensor_idx*/int,
-                                   /*input_tensor_dim_idx*/int>;
-  using SymbolBindings = std::vector<SymbolBinding>;
-
-  static void Build(pir::Builder &builder,
-                    OperationArgument& argument,
-                    const std::vector<Attribute>& output_dim_exprs,
-                    const SymbolBindings& symbol_bindings);
-  
-  void VerifySig() {}
-
-  pir::OpResult out() { return result(0); }
-
-};
-
 }  // namespace pir::shape
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::SymbolicDimOp);
@@ -295,4 +271,3 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::FromElementsOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ExtractOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ConstantIndexOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::IndexCastOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::GenerateShapeOp);
