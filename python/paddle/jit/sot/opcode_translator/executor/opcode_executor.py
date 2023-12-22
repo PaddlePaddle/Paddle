@@ -1676,19 +1676,20 @@ class OpcodeExecutor(OpcodeExecutorBase):
         push_n = push_n(instr.arg) if callable(push_n) else push_n
         is_precall = instr.opname == "PRECALL"
         index = self.indexof(instr)
-        next_index = index + (2 if is_precall else 1)
+        call_instr = self._instructions[index + int(is_precall)]
+        next_index = index + 1 + int(is_precall)
         self.stack = origin_stack
 
         # gen call static fn opcode
 
-        resume_input_name = analysis_inputs(self._instructions, index + 1)
+        resume_input_name = analysis_inputs(self._instructions, next_index)
 
         var_loader = self.gen_compute_in_break_with_name_store(
-            resume_input_name, self.indexof(instr)
+            resume_input_name, index
         )
 
         # gen graph break call fn opcode
-        stack_effect = calc_stack_effect(instr)
+        stack_effect = calc_stack_effect(call_instr)
         pop_n = push_n - stack_effect
 
         for i, stack_arg in enumerate(self.stack):

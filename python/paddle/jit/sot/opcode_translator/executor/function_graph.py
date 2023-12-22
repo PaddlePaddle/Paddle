@@ -257,16 +257,13 @@ class FunctionGraph:
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
         is_precall = origin_instrs[instr_idx].opname == "PRECALL"
         current_idx = instr_idx
-        next_idx = instr_idx + (2 if is_precall else 1)
+        next_idx = instr_idx + 1 + int(is_precall)
 
         restore_instrs = origin_instrs[:current_idx]
         restore_instr_names = [
             instr.opname for instr in restore_instrs[:current_idx]
         ]
-        # NOTE(SigureMo): Trailing KW_NAMES or PRECALL is no need to restore in Python 3.11+
-        if restore_instr_names[-1:] == ["PRECALL"]:
-            restore_instrs = restore_instrs[:-1]
-            restore_instr_names = restore_instr_names[:-1]
+        # NOTE(SigureMo): Trailing KW_NAMES is no need to restore in Python 3.11+
         if restore_instr_names[-1:] == ["KW_NAMES"]:
             restore_instrs = restore_instrs[:-1]
             restore_instr_names = restore_instr_names[:-1]
