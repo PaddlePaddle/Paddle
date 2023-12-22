@@ -124,6 +124,7 @@ class TestIdentityLossAPI(unittest.TestCase):
         else:
             return input
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
