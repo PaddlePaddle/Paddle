@@ -20,6 +20,7 @@ from op_test import convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle.base import core
 from paddle.base.variable_index import _getitem_static
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestGetitemInDygraph(unittest.TestCase):
@@ -793,6 +794,7 @@ class TestGetitemInStatic(unittest.TestCase):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
 
+    @test_with_pir_api
     def test_combined_index_1(self):
         # int tensor + slice (without decreasing axes)
         np_data = np.random.randn(3, 4, 5, 6)
@@ -802,10 +804,11 @@ class TestGetitemInStatic(unittest.TestCase):
         ):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(x, ([0, 1], slice(None, None, None), [1, 2]))
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_2(self):
         # int tensor + slice (with decreasing axes)
         np_data = np.random.randn(3, 4, 5, 6)
@@ -815,10 +818,11 @@ class TestGetitemInStatic(unittest.TestCase):
         ):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(x, (slice(None, None, None), 1, [1, 2], 0))
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_3(self):
         # multiple int tensors, with one int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -830,10 +834,11 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, ([1, 0], slice(None, None, None), [1, 4], slice(1, 5, 2), 4)
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_4(self):
         # multiple not adjacent int tensors, with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -845,10 +850,11 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, (slice(None, None, None), [1, 0], slice(0, 4, 2), [2, 3], 4)
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_5(self):
         # multiple adjacent int tensors, with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -860,10 +866,11 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, (slice(None, None, 2), [1, 0], [2, 3], slice(0, 4, 2))
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_6(self):
         # multiple adjacent and not adjacent int tensors, with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -876,10 +883,11 @@ class TestGetitemInStatic(unittest.TestCase):
                 x,
                 (slice(None, None, 2), [1, 0], [2, 3], slice(0, 4, 2), [4, 6]),
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_7(self):
         # multiple adjacent and not adjacent int tensors (rank > 1d), with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -898,10 +906,11 @@ class TestGetitemInStatic(unittest.TestCase):
                     [[4, 6]],
                 ),
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_8(self):
         # multiple adjacent and not adjacent int tensors (rank > 1d), with int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -921,10 +930,11 @@ class TestGetitemInStatic(unittest.TestCase):
                     [[3, 5], [4, 2]],
                 ),
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_9(self):
         # multiple int tensors, with broadcast.
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -936,10 +946,11 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, ([[1, 0]], [1, 0], slice(0, 4, 2), [[3, 5], [4, 2]])
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_10(self):
         # only one bool tensor with basic-index
         np_data = np.random.randn(3, 4, 5, 6)
@@ -951,10 +962,11 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, (slice(None, None, None), [True, False, True, False], 4)
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_combined_index_11(self):
         # only one bool tensor with all False
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -966,10 +978,11 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, (slice(None, None, None), [False, False, False, False], 4)
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_index_has_range(self):
         # only one bool tensor with all False
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -979,10 +992,11 @@ class TestGetitemInStatic(unittest.TestCase):
         ):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(x, (slice(None, None, None), range(3), 4))
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_indexing_with_bool_list1(self):
         # test bool-list indexing when axes num less than x.rank
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -995,10 +1009,11 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, ([True, False, True], [False, False, False, True])
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_indexing_with_bool_list2(self):
         # test bool-list indexing when axes num less than x.rank
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -1019,10 +1034,11 @@ class TestGetitemInStatic(unittest.TestCase):
                     [True, False, False, True, False],
                 ),
             )
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -1036,11 +1052,12 @@ class TestGetitemInStatic(unittest.TestCase):
                 x, paddle.to_tensor([[2, 3, 4], [1, 2, 5]])
             )
 
-            res = self.exe.run(fetch_list=[y.name, y_index_tensor.name])
+            res = self.exe.run(fetch_list=[y, y_index_tensor])
 
         np.testing.assert_allclose(res[0], np_res)
         np.testing.assert_allclose(res[1], np_res)
 
+    @test_with_pir_api
     def test_indexing_is_boolean_true(self):
         # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -1052,10 +1069,11 @@ class TestGetitemInStatic(unittest.TestCase):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(x, True)
 
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
+    @test_with_pir_api
     def test_indexing_is_boolean_false(self):
         # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -1067,7 +1085,7 @@ class TestGetitemInStatic(unittest.TestCase):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(x, (1, False, 0))
 
-            res = self.exe.run(fetch_list=[y.name])
+            res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
 
@@ -1146,3 +1164,7 @@ class TestGetItemErrorCase(unittest.TestCase):
         x = paddle.randn((4, 3, 2))
         with self.assertRaises(IndexError):
             y = _getitem_static(x, (1, paddle.to_tensor([True, False]), [0, 1]))
+
+
+if __name__ == '__main__':
+    unittest.main()

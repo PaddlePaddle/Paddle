@@ -777,6 +777,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : TileGradInferSpmd
   kernel :
     func : tile_grad
   no_need_buffer : x

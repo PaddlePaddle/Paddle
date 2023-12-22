@@ -873,7 +873,7 @@ def deform_conv2d(
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.deformable_conv(
             x,
             offset,

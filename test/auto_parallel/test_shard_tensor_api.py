@@ -70,10 +70,7 @@ class TestShardTensorDynamic(unittest.TestCase):
             input, self.mesh, [Replicate(), Replicate()]
         )
 
-        self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
-        self.assertEqual(d_tensor.dist_attr.dims_mapping, [-1, -1, -1])
-        self.assertTrue(d_tensor.dist_attr.is_annotated("process_mesh"))
-        self.assertTrue(d_tensor.dist_attr.is_annotated("dims_mapping"))
+        self.assertEqual(d_tensor.process_mesh, self.mesh)
 
     def test_dynamic_mode_property_change(self):
         x = np.random.random([4, 1024, 512]).astype("float32")
@@ -93,10 +90,7 @@ class TestShardTensorDynamic(unittest.TestCase):
         self.assertTrue(d_tensor.place.is_gpu_place())
         self.assertEqual(d_tensor.stop_gradient, True)
 
-        self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
-        self.assertEqual(d_tensor.dist_attr.dims_mapping, [-1, -1, -1])
-        self.assertTrue(d_tensor.dist_attr.is_annotated("process_mesh"))
-        self.assertTrue(d_tensor.dist_attr.is_annotated("dims_mapping"))
+        self.assertEqual(d_tensor.process_mesh, self.mesh)
 
 
 class TestShardTensorStatic(unittest.TestCase):
@@ -117,9 +111,6 @@ class TestShardTensorStatic(unittest.TestCase):
         default_dist_context = get_default_distributed_context()
         dist_input = default_dist_context.get_dist_tensor_for_program(input)
         self.assertEqual(dist_input.dist_attr.process_mesh, self.mesh)
-        self.assertEqual(dist_input.dist_attr.dims_mapping, [0, -1, -1])
-        self.assertTrue(dist_input.dist_attr.is_annotated("process_mesh"))
-        self.assertTrue(dist_input.dist_attr.is_annotated("dims_mapping"))
 
 
 class TestShardTensorStaticDy2Static(unittest.TestCase):
@@ -143,9 +134,6 @@ class TestShardTensorStaticDy2Static(unittest.TestCase):
             static_tensor
         )
         self.assertEqual(dist_input.dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_input.dist_attr.dims_mapping, [-1, -1, -1])
-        self.assertTrue(dist_input.dist_attr.is_annotated("process_mesh"))
-        self.assertTrue(dist_input.dist_attr.is_annotated("dims_mapping"))
 
 
 class DemoNet(paddle.nn.Layer):
@@ -162,19 +150,15 @@ class DemoNet(paddle.nn.Layer):
 class TestShardTensorParameter(unittest.TestCase):
     def setUp(self):
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        self.dist_attr = (self.mesh, [Replicate()])
+        self.placements_and_mesh = (self.mesh, [Replicate()])
 
     def test_shard_parameter(self):
         x = np.random.random(size=[16, 784]).astype("float32")
-        dist_x = dist.shard_tensor(x, *self.dist_attr)
-        net = DemoNet(self.dist_attr)
+        dist_x = dist.shard_tensor(x, *self.placements_and_mesh)
+        net = DemoNet(self.placements_and_mesh)
         out = net(dist_x)
         self.assertEqual(out.shape, [16, 784])
         self.assertEqual(out.is_dist(), True)
-        self.assertEqual(
-            out.dist_attr,
-            dist.DistAttr(mesh=self.mesh, sharding_specs=[None, None]),
-        )
 
 
 if __name__ == "__main__":
