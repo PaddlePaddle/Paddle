@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    staticgraph_executor_statistics
+    standalone_executor
     executor
     fleet_wrapper
     box_wrapper
@@ -39,7 +39,6 @@ set(PYBIND_DEPS
     phi_utils
     phi
     op_dialect_vjp
-    pir_adaptor
     program_translator
     pir_transforms
     new_profiler
@@ -499,8 +498,6 @@ if(WITH_PYTHON)
     add_custom_target(eager_legacy_op_function_generator_cmd ALL
                       DEPENDS ${eager_impl_file})
   endif()
-
-  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})

@@ -530,7 +530,6 @@ set(NAIVE_EXECUTOR_DEPS
     lod_rank_table
     feed_fetch_method
     graph_to_program_pass
-    standalone_executor
     variable_helper)
 
 if(TENSORRT_FOUND)
@@ -888,7 +887,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor pir_transforms pir)
+  DEPS parallel_executor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
