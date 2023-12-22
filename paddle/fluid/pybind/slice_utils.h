@@ -484,13 +484,15 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     i++;
   }
 
-  auto bool_2_idx = nonzero_ad_func(bool_index);
-
   const phi::distributed::ProcessMesh* mesh = nullptr;
-  if (InputsContainDistTensor(&mesh, tensor, bool_2_idx)) {
-    ConvertAllInputsToDistTensor(mesh, tensor, bool_2_idx);
+  if (InputsContainDistTensor(&mesh, tensor, bool_index)) {
+    ConvertAllInputsToDistTensor(mesh, tensor, bool_index);
   }
 
+  if (bool_index.shape().size() == tensor_shape.size()) {
+    return masked_select_ad_func(tensor, bool_index);
+  }
+  auto bool_2_idx = nonzero_ad_func(bool_index);
   return gather_nd_ad_func(tensor, bool_2_idx);
 }
 
