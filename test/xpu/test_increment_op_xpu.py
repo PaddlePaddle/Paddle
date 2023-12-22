@@ -41,7 +41,7 @@ class XPUTestIncrementOP(XPUOpTestWrapper):
             self.initTestCase()
 
             x = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            output = x + np.asarray(self.step, dtype=self.dtype)
+            output = x + np.asarray(self.step).astype(self.dtype)
             output = output.astype(self.dtype)
 
             self.inputs = {'X': x}

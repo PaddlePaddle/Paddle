@@ -70,7 +70,8 @@ class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
                     static.default_main_program(), fetch_list=res_list
                 )
                 self.assertEqual(
-                    out1, np.asarray(self.rng1.random(), dtype=np.int32)
+                    out1,
+                    np.asarray(self.rng1.random()).astype(np.int32),
                 )
 
     def test_static(self):
