@@ -291,15 +291,7 @@ class FunctionGraph:
             store_var_info[var.id] = name
             self.pycode_gen.gen_store_fast(store_var_info[var.id])
 
-        loader = VariableLoader(store_var_info, self.pycode_gen)
-
-        for var in stack_vars:
-            self.pycode_gen.gen_load_global("print", push_null=True)
-            loader.load(var)
-            self.pycode_gen.gen_call_function(1)
-            self.pycode_gen.gen_pop_top()
-
-        return loader
+        return VariableLoader(store_var_info, self.pycode_gen)
 
     def _build_compile_fn_with_name_store(self, ret_vars, to_store_vars):
         class VariableLoader:
