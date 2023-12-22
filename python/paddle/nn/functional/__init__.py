@@ -127,6 +127,7 @@ from .norm import (
     layer_norm,
     local_response_norm,
     normalize,
+    group_norm,
 )
 from .pooling import (
     adaptive_avg_pool1d,

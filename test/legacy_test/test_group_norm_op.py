@@ -75,8 +75,8 @@ def group_norm_wrapper(
 ):
     if data_format == "AnyLayout":
         data_format = "NCDHW"
-    return paddle._C_ops.group_norm(
-        input, weight, bias, epsilon, num_groups, data_format
+    return paddle.nn.functional.group_norm(
+        input, num_groups, weight, bias, epsilon, data_format
     )
 
 
@@ -524,6 +524,18 @@ class TestGroupNormException(unittest.TestCase):
                 )
 
             self.assertRaises(ValueError, attr_data_format)
+
+    def test_func_dataformat_exception(self):
+        paddle.disable_static()
+        data = paddle.rand([1, 3, 3, 4], dtype="float64")
+
+        def func_data_format():
+            out = paddle.nn.functional.group_norm(
+                data, 2, None, None, 1e-5, data_format="NDHW"
+            )
+
+        self.assertRaises(ValueError, func_data_format)
+        paddle.enable_static()
 
 
 class TestGroupNormEager(unittest.TestCase):

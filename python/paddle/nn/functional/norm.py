@@ -633,3 +633,58 @@ def local_response_norm(
     div = paddle.pow(div, beta)
     res = paddle.divide(x, div, name=name)
     return res
+
+
+def group_norm(
+    x,
+    num_groups,
+    weight=None,
+    bias=None,
+    epsilon=1e-05,
+    data_format="NCHW",
+    name=None,
+):
+    if data_format not in ['NCHW', 'NHWC']:
+        raise ValueError("unsupported data layout:" + data_format)
+    if in_dynamic_or_pir_mode():
+        return _C_ops.group_norm(
+            x,
+            weight,
+            bias,
+            epsilon,
+            num_groups,
+            data_format,
+        )
+    helper = LayerHelper('group_norm', **locals())
+    mean_out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True
+    )
+    variance_out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True
+    )
+
+    inputs = {'X': x}
+    if bias is not None:
+        inputs['Bias'] = bias
+    if weight is not None:
+        inputs['Scale'] = weight
+
+    # create output
+    group_norm_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="group_norm",
+        inputs=inputs,
+        outputs={
+            "Y": group_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={
+            "epsilon": epsilon,
+            "groups": num_groups,
+            "data_layout": data_format,
+        },
+    )
+
+    return helper.append_activation(group_norm_out)
