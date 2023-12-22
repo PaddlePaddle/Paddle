@@ -76,7 +76,7 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
 
   // Step2.3 get new dist attribute for input. the splitted
   // cannot be sharded, if it is sharded, set it to replicated.
-  TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dims_mapping[axis] = -1;
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
@@ -168,13 +168,16 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   // the split axis in input is set to -1.
   x_dims_mapping = GetDimsMappingForAxes(x_axes, axis_to_dim_map, true);
   x_dims_mapping[axis] = -1;
-  x_dist_attr.set_dims_mapping(x_dims_mapping);
+
+  auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
   // step2.3 get new dist attribute for output. the splitted
   // cannot be sharded, if it is sharded, set it to replicated.
   std::vector<TensorDistAttr> out_dist_attrs;
   for (int i = 0; i < nouts; i++) {
-    out_dist_attrs.emplace_back(outs[i]->dist_attr());
+    out_dist_attrs.emplace_back(
+        CopyTensorDistAttrForOutput(outs[i]->dist_attr()));
     std::vector<int64_t> out_dims_mapping =
         GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
     out_dims_mapping[axis] = -1;
@@ -197,7 +200,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
   // TODO(liuzhenhai): remedy this
   // return {{x_dist_attr}, {out_dist_attrs}};
-  return {{x_dist_attr}, ToArgDistAttr(out_dist_attrs)};
+  return {{x_dist_attr_dst}, ToArgDistAttr(out_dist_attrs)};
 }
 
 SpmdInfo SplitInferSpmd(const DistMetaTensor& x,
