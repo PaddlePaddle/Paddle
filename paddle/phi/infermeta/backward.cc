@@ -1298,4 +1298,28 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void NceGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& bias,
+                      const MetaTensor& weight,
+                      MetaTensor* input_grad,
+                      MetaTensor* bias_grad,
+                      MetaTensor* weight_grad
+
+) {
+  auto x_dims = input.dims();
+  if (input_grad != nullptr) {
+    input_grad->set_dims(x_dims);
+  }
+
+  auto w_dims = weight.dims();
+  if (weight_grad) {
+    weight_grad->set_dims(w_dims);
+  }
+
+  auto bias_dims = bias.dims();
+  if (bias_grad) {
+    bias_grad->set_dims(bias_dims);
+  }
+}
+
 }  // namespace phi

@@ -211,6 +211,7 @@ test_multinomial_op
 test_multiplex_op
 test_mv_op
 test_nanmedian
+test_nce
 test_nearest_interp_mkldnn_op
 test_nearest_interp_v2_op
 test_nextafter_op

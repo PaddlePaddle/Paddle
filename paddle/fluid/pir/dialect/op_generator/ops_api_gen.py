@@ -134,6 +134,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'sparse_momentum',
     'soft_relu',
     'uniform_random_batch_size_like',
+    'nce',
 ]
 
 

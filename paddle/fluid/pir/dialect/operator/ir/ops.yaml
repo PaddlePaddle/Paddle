@@ -1432,6 +1432,16 @@
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
 
+- op: nce
+  args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
+  output: Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
+  infer_meta:
+    func: NceInferMeta
+  kernel:
+    func: nce
+    data_type: input
+  optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
+
 - op: number_count
   args: (Tensor numbers, int upper_range)
   output: Tensor(out)
