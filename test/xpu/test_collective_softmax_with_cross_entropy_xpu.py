@@ -95,7 +95,7 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             self,
             model_file,
             col_type,
-            dtype,
+            dtype=None,
             check_error_log=False,
             need_envs={},
         ):
@@ -105,8 +105,9 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
                 "PYTHONPATH": os.getenv("PYTHONPATH", ""),
                 "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
                 "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-                "GLOG_v": "0",
+                "GLOG_v": "3",
                 "DTYPE": dtype,
+                "FLAGS_dynamic_static_unified_comm": "0",
             }
             required_envs.update(need_envs)
             if check_error_log:

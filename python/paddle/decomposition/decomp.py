@@ -12,24 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 import typing
 import warnings
 
 import paddle
 from paddle import pir
 from paddle.autograd import ir_backward
-from paddle.base import log_helper
+from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.base.core import (
     call_decomp,
     decomp_ops_contain_unused_output,
     has_decomp,
 )
 from paddle.base.libpaddle.pir import Block, Operation, Program
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import core
 
 from . import register
 
-logger = log_helper.get_logger(__name__, logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
+# For sinking decomp in c++. In future, sinking decomp will be implemented in c++ by default and then this api will be removed.
+@signature_safe_contextmanager
+def sink_decomp_guard():
+    sink_decomp = core._enable_sink_decomp()
+    try:
+        if not sink_decomp:
+            os.environ['FLAGS_sink_decomp'] = 'true'
+        yield
+    finally:
+        if not sink_decomp:
+            os.environ['FLAGS_sink_decomp'] = 'false'
 
 
 def _build_tensor_tuple(xs):
@@ -151,7 +166,7 @@ def _check_op_results(
             continue
         elif new_out is not None:
             if orig_vars is not None and dst_vars is not None:
-                if orig_out in orig_vars.keys():
+                if orig_out in orig_vars:
                     dst_vars[orig_vars[orig_out]] = new_out
             orig_dtype = orig_out.dtype
             new_dtype = new_out.dtype
@@ -201,6 +216,10 @@ def decompose(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    # flag default status: True
+    if core._enable_sink_decomp():
+        blacklist = core.prim_config["forward_blacklist"] | blacklist
+        return core.sinking_decomp(program, src_vars, blacklist, whitelist)
     if not core._is_fwd_prim_enabled():
         return src_vars
     if not isinstance(program, Program):
@@ -219,9 +238,11 @@ def decompose(
     blacklist = core.prim_config["forward_blacklist"] | blacklist
 
     logger.debug(
-        f'Lowering source program {program} into primitive program, the blacklist which will be ignored in lowering {blacklist}, \
-                  and the whitelist which will be processed in lowering {whitelist}. \
-                  The finally set that will be decomposed is: (ops & ops have decomposite rule & whitelist) - blacklist'
+        f'Lowering source program into primitive program. Source program is: \n \
+{program}\n \
+The finally set that will be decomposed is: (ops & ops have decomposite rule & whitelist) - blacklist.\n \
+The blacklist which will be ignored in lowering is: {blacklist},\n \
+and the whitelist which will be processed in lowering is: {whitelist}.'
     )
 
     if len(blacklist) > 0 and len(whitelist) > 0:
@@ -235,7 +256,7 @@ def decompose(
     else:
         op_filter = lambda x: True
     dst_vars = [None] * len(src_vars)
-    dst_vars_dct = {}
+    dst_vars_dct = ValueDict()
     for idx, item in enumerate(src_vars):
         if not isinstance(item, pir.Value):
             raise TypeError(
@@ -361,8 +382,9 @@ def _check_combine_inputs(input1, input2):
     else:
         for i in range(builtin_combine_op1.num_operands()):
             if not (
-                builtin_combine_op1.operand_source(i)
-                == builtin_combine_op2.operand_source(i)
+                builtin_combine_op1.operand_source(i).is_same(
+                    builtin_combine_op2.operand_source(i)
+                )
             ):
                 return False
     return True
@@ -409,8 +431,8 @@ def _check_op(
                 return False
         else:  # for pir::VectorType<paddle::dialect::DenseTensorType>
             if not (
-                operand in fwd_inputs
-                or operand in fwd_outputs
+                operand in ValueSet(fwd_inputs)
+                or operand in ValueSet(fwd_outputs)
                 or operand.get_defining_op().name() in inserted_op_name_list
             ):
                 return False
@@ -424,7 +446,7 @@ def _get_fwd_op(bwd_op, grad_var_to_var):
     for idx, input_name in enumerate(bwd_op_input_names):
         if input_name in out_grad_name:
             out_grad = bwd_op.operand(idx).source()
-            if out_grad in grad_var_to_var.keys():
+            if out_grad in grad_var_to_var:
                 out = grad_var_to_var[out_grad]
                 fwd_op = out.get_defining_op()
                 return fwd_op
@@ -553,7 +575,7 @@ def _prepare_grad_outputs(fwd_op, bwd_op):
     ]
     grad_outputs = []
     grad_output_names = []
-    for bwd_input in bwd_inputs:
+    for i, bwd_input in enumerate(bwd_inputs):
         if (
             bwd_input.initialized()
             and bwd_input.get_defining_op().name() == "builtin.combine"
@@ -565,17 +587,14 @@ def _prepare_grad_outputs(fwd_op, bwd_op):
                     break
             if not in_fwd:
                 grad_outputs.append([bwd_input])
-                grad_output_names.append(
-                    bwd_input_names[bwd_inputs.index(bwd_input)]
-                )
+                grad_output_names.append(bwd_input_names[i])
         else:
             if not (
-                bwd_input in fwd_inputs or bwd_input in fwd_outputs
+                bwd_input in ValueSet(fwd_inputs)
+                or bwd_input in ValueSet(fwd_outputs)
             ):  # for paddle::dialect::DenseTensorType
                 grad_outputs.append([bwd_input])
-                grad_output_names.append(
-                    bwd_input_names[bwd_inputs.index(bwd_input)]
-                )
+                grad_output_names.append(bwd_input_names[i])
 
     # add fake grads for forward op's outputs which are not used in backward op
     # this is necessary for the call_vjp(), which ensures that len(out_grads) must be equal to len(outputs)
@@ -611,14 +630,15 @@ def _upgrade_grad_var_to_var(
     assert grad_var_to_var is not None, "grad_var_to_var should not be None"
     if orig_grads is not None and new_grads is not None:
         for idx, grad_input in enumerate(orig_grads):
-            if grad_input in grad_var_to_var.keys():
+            if grad_input in grad_var_to_var:
                 grad_var_to_var[new_grads[idx]] = grad_var_to_var.pop(
                     grad_input
                 )
     if orig_outs is not None and new_outs is not None:
         for grad_var, var in grad_var_to_var.items():
-            if var in orig_outs:
-                grad_var_to_var[grad_var] = new_outs[orig_outs.index(var)]
+            for i, orin_var in enumerate(orig_outs):
+                if var.is_same(orin_var):
+                    grad_var_to_var[grad_var] = new_outs[i]
 
 
 def _decomp_bwd_with_vjp(
@@ -684,7 +704,7 @@ def _decomp_bwd_without_vjp(
     block: Block,
     bwd_op: pir.Operation,
     grad_var_to_var: dict,
-    fwd_inputs: dict,
+    fwd_inputs: list,
     fwd_outputs_after_decompose: tuple,
 ) -> tuple:
     '''
@@ -705,7 +725,8 @@ def _decomp_bwd_without_vjp(
         bwd_input
         for bwd_input in bwd_inputs
         if not (
-            bwd_input in fwd_inputs or bwd_input in fwd_outputs_after_decompose
+            bwd_input in ValueSet(fwd_inputs)
+            or bwd_input in ValueSet(fwd_outputs_after_decompose)
         )
     )
     fwd_outputs_ = tuple(
@@ -864,7 +885,7 @@ def _reset_prim_state(state):
 
 def _translate_gradvartovar_to_pir(param_mapping, grad_var_to_var):
     '''translate grad_var_to_var (mapping VarDesc->VarDesc) to pir_grad_var_to_var (mapping OpResult->OpResult)'''
-    pir_grad_var_to_var = {}
+    pir_grad_var_to_var = ValueDict()
     for grad_var, var in grad_var_to_var.items():
         if grad_var in param_mapping.keys() and var in param_mapping.keys():
             if (

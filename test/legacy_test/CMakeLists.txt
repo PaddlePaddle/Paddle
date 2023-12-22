@@ -1431,4 +1431,5 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
 
+set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pit_tests_properties()

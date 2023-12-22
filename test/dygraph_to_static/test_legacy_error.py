@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.jit.dy2static import error
-from paddle.jit.dy2static.origin_info import unwrap
 
 
 def inner_func():
@@ -55,14 +54,14 @@ def func_error_in_runtime(x):
     return x
 
 
-@unwrap
+@inspect.unwrap
 @paddle.jit.to_static(full_graph=True)
 def func_decorated_by_other_1():
     return 1
 
 
 @paddle.jit.to_static(full_graph=True)
-@unwrap
+@inspect.unwrap
 def func_decorated_by_other_2():
     return 1
 
@@ -172,7 +171,7 @@ class TestErrorBase(unittest.TestCase):
         self.set_input()
         self.set_func()
         self.set_func_call()
-        self.filepath = inspect.getfile(unwrap(self.func_call))
+        self.filepath = inspect.getfile(inspect.unwrap(self.func_call))
         self.set_exception_type()
         self.set_message()
 
@@ -297,7 +296,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
     def setUp(self):
         self.reset_flags_to_default()
         self.set_func_call()
-        self.filepath = inspect.getfile(unwrap(self.func_call))
+        self.filepath = inspect.getfile(inspect.unwrap(self.func_call))
         self.set_exception_type()
         self.set_message()
 
@@ -354,7 +353,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
     def setUp(self):
         self.reset_flags_to_default()
         self.set_func_call()
-        self.filepath = inspect.getfile(unwrap(self.func_call))
+        self.filepath = inspect.getfile(inspect.unwrap(self.func_call))
         self.set_exception_type()
         self.set_message()
 

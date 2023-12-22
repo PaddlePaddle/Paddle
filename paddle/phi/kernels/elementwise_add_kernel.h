@@ -35,4 +35,14 @@ DenseTensor Add(const Context& dev_ctx,
   return dense_out;
 }
 
+template <typename T, typename Context>
+void Add(const Context& dev_ctx,
+         const DenseTensor& x,
+         const DenseTensor& y,
+         DenseTensor* dense_out) {
+  MetaTensor meta_out(dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  AddKernel<T, Context>(dev_ctx, x, y, dense_out);
+}
+
 }  // namespace phi

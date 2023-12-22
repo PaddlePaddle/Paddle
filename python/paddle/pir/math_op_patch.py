@@ -281,6 +281,9 @@ def monkey_patch_value():
     def _scalar_div_(var, value):
         return paddle.scale(var, 1.0 / value, 0.0)
 
+    def _scalar_neg_(var):
+        return paddle.scale(var, -1.0, 0.0)
+
     def _binary_creator_(
         method_name,
         python_api,
@@ -493,6 +496,9 @@ def monkey_patch_value():
                 "Currently, we can only set shape for dense and selected_row tensor"
             )
 
+    def value_hash(self):
+        raise NotImplementedError('In python Value can not hash!')
+
     import paddle
 
     value_methods = [
@@ -509,6 +515,8 @@ def monkey_patch_value():
         ('clear_gradient', clear_gradient),
         ('append', append),
         ('set_shape', set_shape),
+        ('__hash__', value_hash),
+        # For basic operators
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
@@ -587,12 +595,12 @@ def monkey_patch_value():
             '__matmul__',
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
-        #  for logical compare
-        # TODO(gouzil): Open after deleting c++ logic
-        # (
-        #     '__eq__',
-        #     _binary_creator_('__eq__', paddle.tensor.equal, False, None),
-        # ),
+        ('__neg__', _scalar_neg_),
+        # For compare opeartors
+        (
+            '__eq__',
+            _binary_creator_('__eq__', paddle.tensor.equal, False, None),
+        ),
         (
             '__ne__',
             _binary_creator_('__ne__', paddle.tensor.not_equal, False, None),
@@ -641,8 +649,9 @@ def monkey_patch_value():
                 setattr(Value, magic_method, impl)
 
         # Handling __getitem__
-        from ..base.variable_index import _getitem_static
+        from ..base.variable_index import _getitem_static, _setitem_static
 
         Value.__getitem__ = _getitem_static
+        Value.__setitem__ = _setitem_static
 
         _already_patch_value = True
