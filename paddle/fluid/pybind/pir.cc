@@ -581,55 +581,6 @@ const phi::DDim &GetValueDims(Value value) {
   }
 }
 
-#define OVERRIDE_OPERATOR(operator, api, other_type)      \
-  value.def(#operator, [](Value self, other_type other) { \
-    return paddle::dialect::api(self, other);             \
-  });
-
-#define OVERRIDE_OPERATOR_WITH_SCALE(operator,            \
-                                     other_type,          \
-                                     scale_value,         \
-                                     bias_value,          \
-                                     bias_after_scale)    \
-  value.def(#operator, [](Value self, other_type other) { \
-    return paddle::dialect::scale(                        \
-        self, scale_value, bias_value, bias_after_scale); \
-  });
-
-#define OVERRIDE_OPERATOR_FOR_EACH(operator,         \
-                                   api,              \
-                                   scale_value,      \
-                                   bias_value,       \
-                                   bias_after_scale) \
-  OVERRIDE_OPERATOR(operator, api, Value)            \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               int,                  \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               float,                \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               double,               \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)
-
-#define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)         \
-  value.def(#operator, [](Value self, other_type other) {                \
-    auto rhs =                                                           \
-        paddle::dialect::full(/*shape=*/{}, other, GetValueDtype(self)); \
-    return paddle::dialect::api(self, rhs);                              \
-  });
-
-#define OVERRIDE_COMPARE_OP_FOR_EACH(operator, api)   \
-  OVERRIDE_OPERATOR(operator, api, Value)             \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, int)   \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, float) \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, double)
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -787,23 +738,9 @@ void BindValue(py::module *m) {
              print_stream << ")";
              return print_stream.str();
            })
-      .def("__neg__",
-           [](Value self) {
-             return paddle::dialect::scale(self, -1.0, 0.0, true);
-           })
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
-  // For basaic operators
-  OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__sub__, subtract, 1.0, -1.0 * other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__mul__, multiply, other, 0.0, false);
-  OVERRIDE_OPERATOR_FOR_EACH(__truediv__, divide, 1.0 / other, 0.0, false);
-  // For compare opeartors
-  OVERRIDE_COMPARE_OP_FOR_EACH(__lt__, less_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__le__, less_equal);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
 }
 
 void BindOpOperand(py::module *m) {
