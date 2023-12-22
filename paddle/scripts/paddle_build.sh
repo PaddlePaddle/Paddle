@@ -4286,13 +4286,13 @@ function main() {
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       cicheck_sot)
-        check_run_sot_ci
         export WITH_SHARED_PHI=ON
         PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
         # check python syntax
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             python$PY_VERSION tools/codestyle/check_new_python_syntax.py $(git diff --name-only upstream/develop | grep '.py$')
         done
+        check_run_sot_ci
         
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
