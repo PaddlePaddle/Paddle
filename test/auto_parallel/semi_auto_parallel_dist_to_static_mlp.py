@@ -116,19 +116,13 @@ class TestSimpleNetForSemiAutoParallel:
         loader = DataLoader(dataset, batch_size=BATCH_SIZE)
         return loader
 
-    def run_dy2static(self, layer, opt, data_loader, is_recompute=False):
+    def run_dy2static(self, layer, opt, data_loader):
         # create loss
         loss_fn = nn.MSELoss()
 
-        # create strategy
-        strategy = None
-        if is_recompute:
-            strategy = dist.Strategy()
-            strategy.recompute.enable = True
-
         # static training
         dist_model, dist_loader = dist.to_static(
-            layer, data_loader, loss_fn, opt, strategy
+            layer, data_loader, loss_fn, opt
         )
         loss_list = []
         dist_model.train()
@@ -285,7 +279,7 @@ class TestSimpleNetForSemiAutoParallel:
             dy_layer, dy_opt, data_loader, is_recompute=True
         )
         dy2static_losses, dist_model = self.run_dy2static(
-            dy2static_layer, dy2static_opt, data_loader, is_recompute=True
+            dy2static_layer, dy2static_opt, data_loader
         )
 
         # check recompute op num

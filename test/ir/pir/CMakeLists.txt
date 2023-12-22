@@ -8,6 +8,7 @@ set(TEST_IR_SYSTEM_CASES
     test_build_model
     test_if_api
     test_while_api
+    test_assert_api
     test_lr_scheduler_in_pir
     test_pd_inplace_pass
     test_symbol_overload

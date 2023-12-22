@@ -148,12 +148,12 @@ def monkey_patch_tensor():
         else:
             static_var = Variable(**attr_kwargs)
 
-        if self.dist_attr is not None:  # import for shard tensor api
+        if self.placements is not None:  # import for shard tensor api
             import paddle.distributed as dist
 
             static_var = dist.shard_tensor(
                 static_var,
-                self.dist_attr.process_mesh,
+                self.process_mesh,
                 self.placements,
                 stop_gradient=static_var.stop_gradient,
             )
