@@ -286,9 +286,7 @@ class FunctionGraph:
         name_gen = NameGenerator("__start_compile_saved_orig_")
 
         for var in stack_vars[::-1]:
-            name = name_gen.next()
-            print("[VAR]", name, var)
-            store_var_info[var.id] = name
+            store_var_info[var.id] = name_gen.next()
             self.pycode_gen.gen_store_fast(store_var_info[var.id])
 
         return VariableLoader(store_var_info, self.pycode_gen)
