@@ -3474,6 +3474,13 @@
   attrs:
     pivot : pivots
 
+- op: match_matrix_tensor
+  backward: match_matrix_tensor_grad
+  inputs:
+    {x : X, y : Y, w : W}
+  outputs:
+    {out : Out, tmp : Tmp}
+
 - op: memcpy
   inputs:
     x: X

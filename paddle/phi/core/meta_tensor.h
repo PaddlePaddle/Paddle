@@ -98,14 +98,15 @@ class MetaTensor {
 
   virtual bool operator!() const { return tensor_ == nullptr; }
 
- protected:
-  static void unspecified_bool_true() {}
-
- protected:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
   const LoD& lod(int64_t index) const;
+
+ protected:
+  static void unspecified_bool_true() {}
+
+ protected:
   TensorBase* tensor() const;
 
   TensorBase* tensor_ = nullptr;
