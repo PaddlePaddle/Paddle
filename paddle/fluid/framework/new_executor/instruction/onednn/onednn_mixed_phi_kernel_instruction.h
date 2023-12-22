@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
 
 namespace pir {
 class Operation;
@@ -28,54 +28,14 @@ class ValueExecutionInfo;
 using RuntimeAttribute = phi::Attribute;
 using PIRAttribute = pir::Attribute;
 
-class OneDNNMixedPhiKernelInstruction : public InstructionBase {
+class OneDNNMixedPhiKernelInstruction : public OneDNNPhiKernelInstruction {
  public:
   OneDNNMixedPhiKernelInstruction(size_t id,
                                   const platform::Place& place,
                                   ::pir::Operation* op,
                                   const ValueExecutionInfo* value_exec_info);
 
-  ~OneDNNMixedPhiKernelInstruction();
-
-  phi::Kernel* PhiKernel() const { return phi_kernel_; }
-
-  const phi::KernelContext& KernelContext() const { return kernel_context_; }
-
-  const phi::InferMetaContext& InferMetaContext() const {
-    return infer_meta_context_;
-  }
-
-  paddle::dialect::InferMetaInterface::Concept* InferMetaInterface() const {
-    return infer_meta_interface_;
-  }
-
-  ::pir::Operation* Operation() const override { return op_; }
-
   void Run() override;
-
-  const std::string& Name() const override { return phi_op_name_; }
-
- private:
-  paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
-      nullptr};  // not owned
-
-  phi::InferMetaContext infer_meta_context_;
-
-  phi::KernelContext kernel_context_;
-
-  phi::Kernel* phi_kernel_{nullptr};  // not owned
-
-  std::string phi_op_name_;
-
-  ::pir::Operation* op_{nullptr};  // not owned
-
-  const ValueExecutionInfo* value_exec_info_;  // not owned
-
-  std::set<int> layout_transform_inputs_{};
-  phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
-  std::map<std::string, RuntimeAttribute> extra_attr_{};
-  std::map<std::string, std::vector<std::string>> inputs_{};
-  std::map<std::string, std::vector<std::string>> outputs_{};
 };
 
 }  // namespace framework
