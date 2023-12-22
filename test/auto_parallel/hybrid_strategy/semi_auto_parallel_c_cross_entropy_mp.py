@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import random
-import unittest
 
 import numpy as np
 
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed import fleet
+from paddle.distributed import Shard, fleet
 from paddle.distributed.fleet import auto
 
 
@@ -28,7 +27,6 @@ def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     paddle.seed(seed)
-    # fleet.meta_parallel.model_parallel_random_seed(seed)
 
 
 def dygraph_parallel_cross_entropy(data, label):
@@ -56,19 +54,21 @@ class MyDataset(paddle.io.Dataset):
 
 
 class MyMLP(nn.Layer):
-    def __init__(self, process_mesh, shard_specs):
+    def __init__(self, process_mesh, placements):
         super().__init__()
         self.process_mesh = process_mesh
-        self.shard_specs = shard_specs
+        self.placements = placements
 
     def forward(self, x):
-        auto.shard_tensor(x, self.process_mesh, self.shard_specs)
+        dist.shard_tensor(
+            x, self.process_mesh, self.placements, stop_gradient=False
+        )
         return x
 
 
-def auto_parallel_cross_entropy(data, label, process_mesh, shard_specs):
+def auto_parallel_cross_entropy(data, label, process_mesh, placements):
     with paddle.LazyGuard():
-        model = MyMLP(process_mesh, shard_specs)
+        model = MyMLP(process_mesh, placements)
         loss_layer = paddle.nn.CrossEntropyLoss()
         auto.fetch("input0@GRAD", "logits_grad", logging=False)
         auto.fetch(
@@ -88,13 +88,13 @@ def auto_parallel_cross_entropy(data, label, process_mesh, shard_specs):
     return loss, logit_grad
 
 
-class TestMpDistTraining(unittest.TestCase):
-    def setUp(self):
+class TestMpDistTraining:
+    def __init__(self):
         self.nsample = 40
         self.nclass = 20
         self.seed = 100
 
-    def test_mp_parallel_cross_entropy_op(self):
+    def run_test_case(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
         strategy.hybrid_configs = {
@@ -115,63 +115,60 @@ class TestMpDistTraining(unittest.TestCase):
         random.seed(seed)
         np.random.seed(seed)
         check_group = dist.new_group(list(range(self.model_parallel_size)))
-        process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
+        process_mesh = dist.ProcessMesh(mesh=[0, 1], dim_names=["x"])
 
-        for _ in range(5):
-            np_label = np.random.randint(0, nclass, (nsample, 1))
-            label = paddle.to_tensor(np_label, dtype="int64")
+        np_label = np.random.randint(0, nclass, (nsample, 1))
+        label = paddle.to_tensor(np_label, dtype="int64")
 
-            data = paddle.randn(
-                shape=[nsample, nclass // self.model_parallel_size],
-                dtype='float32',
-            )
-            data.stop_gradient = False
+        data = paddle.randn(
+            shape=[nsample, nclass // self.model_parallel_size],
+            dtype='float32',
+        )
+        data.stop_gradient = False
 
-            integral_data = []
-            partial_data = data.clone().detach()
-            paddle.distributed.all_gather(
-                integral_data, partial_data, group=check_group
-            )
-            integral_data = paddle.concat(integral_data, axis=-1)
-            integral_data = integral_data.detach().clone()
-            integral_data.stop_gradient = False
+        integral_data = []
+        partial_data = data.clone().detach()
+        paddle.distributed.all_gather(
+            integral_data, partial_data, group=check_group
+        )
+        integral_data = paddle.concat(integral_data, axis=-1)
+        integral_data = integral_data.detach().clone()
+        integral_data.stop_gradient = False
 
-            loss_dygraph_parallel = dygraph_parallel_cross_entropy(data, label)
-            loss_auto, auto_grad = auto_parallel_cross_entropy(
-                data.numpy(), np_label, process_mesh, [None, "x"]
-            )
-            print(loss_dygraph_parallel.shape, loss_auto.shape)
+        loss_dygraph_parallel = dygraph_parallel_cross_entropy(data, label)
+        loss_auto, auto_grad = auto_parallel_cross_entropy(
+            data.numpy(), np_label, process_mesh, [Shard(1)]
+        )
 
-            np.testing.assert_allclose(
-                loss_dygraph_parallel.numpy(), loss_auto, rtol=1e-6
-            )
+        np.testing.assert_allclose(
+            loss_dygraph_parallel.numpy(), loss_auto, rtol=1e-6
+        )
 
-            loss_dygraph_parallel.backward()
+        loss_dygraph_parallel.backward()
 
-            integral_grad = []
-            partial_grad = data.grad.clone().detach()
-            paddle.distributed.all_gather(
-                integral_grad, partial_grad, group=check_group
-            )
-            integral_grad = paddle.concat(integral_grad, axis=-1)
+        integral_grad = []
+        partial_grad = data.grad.clone().detach()
+        paddle.distributed.all_gather(
+            integral_grad, partial_grad, group=check_group
+        )
+        integral_grad = paddle.concat(integral_grad, axis=-1)
 
-            print(partial_grad.shape, auto_grad.shape)
-            integral_auto_grad = []
-            paddle.distributed.all_gather(
-                integral_auto_grad,
-                paddle.to_tensor(auto_grad),
-                group=check_group,
-            )
-            integral_auto_grad = paddle.concat(integral_auto_grad, axis=-1)
+        integral_auto_grad = []
+        paddle.distributed.all_gather(
+            integral_auto_grad,
+            paddle.to_tensor(auto_grad),
+            group=check_group,
+        )
+        integral_auto_grad = paddle.concat(integral_auto_grad, axis=-1)
 
-            parallel_grad = integral_grad.numpy()
-            auto_grad = integral_auto_grad.numpy()
-            np.testing.assert_allclose(
-                parallel_grad,
-                auto_grad,
-                rtol=1e-6,
-            )
+        parallel_grad = integral_grad.numpy()
+        auto_grad = integral_auto_grad.numpy()
+        np.testing.assert_allclose(
+            parallel_grad,
+            auto_grad,
+            rtol=1e-6,
+        )
 
 
 if __name__ == '__main__':
-    unittest.main()
+    TestMpDistTraining().run_test_case()

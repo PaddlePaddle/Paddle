@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import logging
 import os
 from abc import ABC, abstractmethod
 
@@ -23,6 +24,8 @@ from .utils import (
     search_all,
     search_by_dp_estimation,
 )
+
+logger = logging.getLogger('auto_tuner')
 
 
 class SearchAlgo(ABC):
@@ -64,6 +67,11 @@ class DpEstimationSearch(SearchAlgo):
     def __init__(self, tuner_cfg):
         super().__init__(tuner_cfg)
         self.idx = 0
+        if tuner_cfg["candidates"]["dp_degree"] != [1]:
+            logger.warning(
+                "dp_degree should be [1] in dp estimation search mode. Modify it to [1] automatically."
+            )
+            tuner_cfg["candidates"]["dp_degree"] = [1]
         self.all_tasks = search_by_dp_estimation(tuner_cfg)
         assert (
             len(self.all_tasks) > 0

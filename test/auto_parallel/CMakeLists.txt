@@ -120,6 +120,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_p_to_r MODULES test_reshard_p_to_r)
   set_tests_properties(test_reshard_p_to_r
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_x_to_r MODULES test_reshard_x_to_r)
+  set_tests_properties(test_reshard_x_to_r
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_reshard_nd_mesh MODULES test_reshard_nd_mesh)
   set_tests_properties(test_reshard_nd_mesh
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -275,6 +278,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_auto_conditional_block MODULES
                   test_auto_conditional_block)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
+  py_test_modules(test_dist_concat MODULES test_dist_concat)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
