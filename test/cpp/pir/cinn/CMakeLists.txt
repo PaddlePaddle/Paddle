@@ -10,7 +10,7 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(test_add_broadcast_to_elementwise SRCS
               add_broadcast_to_elementwise_test.cc)
 
-  paddle_test(test_sub_graph_extract SRCS sub_graph_extract_test.cc)
+  paddle_test(test_sub_graph_extract SRCS sub_graph_extract_test.cc DEPS pir)
 
   paddle_test(test_ir_op_fusion SRCS ir_op_fusion_test.cc)
 
