@@ -13,7 +13,6 @@
 # limitations under the License.
 import copy
 from collections import defaultdict
-
 from typing import Callable
 
 import numpy as np
@@ -1426,3 +1425,65 @@ def to_static(
     dist_loader = dist_model.dist_loader
 
     return dist_model, dist_loader
+
+
+def unshard_dtensor(dist_tensor):
+    """
+    Converts a distributed tensor to its original dense tensor. ``unshard_dtensor``
+    can be treated as a reverse operation of ``shard_tensor``.
+
+    Args:
+        dist_tensor (paddle.Tensor): The distributed tensor which is constructed
+            from a dense tensor with ``shard_tensor``.
+
+    Returns:
+        paddle.Tensor: The original dense tensor of the input ``dist_tensor``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed import Replicate, Shard
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> original_tensor = paddle.rand([4, 1024, 512])
+            >>> dist_tensor = dist.shard_tensor(original_tensor, mesh, [Shard(0)])
+            >>> # dense_tensor's shape is the same as original_tensor
+            >>> dense_tensor = dist.unshard_dtensor(dist_tensor)
+    """
+    if paddle.in_dynamic_mode():
+        # if the input is not a distributed
+        # tensor, return it directly
+        if dist_tensor.is_dist() is False:
+            return dist_tensor
+
+        mesh = dist_tensor.process_mesh
+        placements = dist_tensor.placements
+        replicate_placements = [dist.Replicate()] * len(placements)
+
+        r_dist_tensor = reshard(dist_tensor, mesh, replicate_placements)
+        return paddle.Tensor(r_dist_tensor._local_value())
+
+    else:
+        assert isinstance(
+            dist_tensor, Variable
+        ), "the input type of 'unshard_dtensor' should be Variable, but got [{}]".format(
+            dist_tensor
+        )
+        # in static mode, 'distributed tensor' and 'dense tensor' are all
+        # Varialble type, the distributed attribute is a property of the Varibale.
+        # So, it's no need to convert the distributed tensor to a dense tensor.
+        # We only need to modify its distributed attribute.
+        empty_dist_attr = (
+            dist.auto_parallel.static.dist_attribute.TensorDistAttr()
+        )
+        dist_tensor.dist_attr = empty_dist_attr
+
+        # remove the distributed tensor from dist_context
+        default_dist_ctx = get_default_distributed_context()
+        serial_tensor_id = dist_tensor.desc.original_id()
+        default_dist_ctx._dist_tensors_for_program.pop(serial_tensor_id, None)
+
+        return dist_tensor
