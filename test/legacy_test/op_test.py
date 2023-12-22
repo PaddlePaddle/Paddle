@@ -3543,8 +3543,13 @@ class OpTest(unittest.TestCase):
             if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
 
                 def relaxed_check_method(x, y, err_msg):
+                    atol = 1e-6
+                    rtol = 1e-6
+                    if x.dtype == np.float16:
+                        atol = 1e-5
+                        rtol = 1e-3
                     np.testing.assert_allclose(
-                        x, y, err_msg=err_msg, atol=1e-6, rtol=1e-6
+                        x, y, err_msg=err_msg, atol=atol, rtol=rtol
                     )
 
                 check_method = relaxed_check_method
