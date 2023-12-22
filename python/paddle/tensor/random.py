@@ -1724,9 +1724,9 @@ def log_normal_(x, mean=0.0, std=1.0, name=None):
 
     """
     if not isinstance(mean, Variable) or not isinstance(mean, float):
-        mean = paddle.to_tensor(mean)
+        mean = paddle.to_tensor(mean, dtype=paddle.float64)
     if not isinstance(std, Variable) or not isinstance(std, float):
-        std = paddle.to_tensor(std)
+        std = paddle.to_tensor(std, dtype=paddle.float64)
 
     n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
     n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
