@@ -4289,6 +4289,11 @@ function main() {
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
         PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
+        # check python syntax
+        for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
+            python$PY_VERSION tools/codestyle/check_new_python_syntax.py $(git diff --name-only upstream/develop | grep '.py$')
+        done
+        
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
