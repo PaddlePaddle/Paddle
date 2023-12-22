@@ -109,7 +109,6 @@ from .framework import (  # noqa: F401
     is_compiled_with_rocm,
     is_compiled_with_xpu,
     name_scope,
-    name_struct,
     program_guard,
     require_version,
     set_flags,

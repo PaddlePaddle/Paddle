@@ -1164,7 +1164,7 @@ _name_struct = NameStruct()
 def name_struct(prefix=None):
     """
     Note: This should only used in Paddle/python/paddle/nn/layer/layers.py
-    for record the call path for the operators in Static Graph of AutoParallel.
+    to record the call path for the operators in Static Graph of AutoParallel.
 
     Args:
         prefix(str, optional): prefix. Default is none.

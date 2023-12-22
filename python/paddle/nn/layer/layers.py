@@ -41,6 +41,7 @@ from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
+    name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -1401,7 +1402,7 @@ class Layer:
             ):
                 outputs = self.forward(*inputs, **kwargs)
         else:
-            with paddle.static.name_struct(self.__class__.__name__):
+            with name_struct(self.__class__.__name__):
                 outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
