@@ -60,7 +60,6 @@ TEST(CrossEntropyInferSpmd, Ctor) {
             << std::endl;
   }
 
-  
   // backward
   {
     std::vector<int64_t> loss_shape = {32, 1};
@@ -95,7 +94,6 @@ TEST(CrossEntropyInferSpmd, Ctor) {
         << std::endl
         << std::endl;
   }
-
 }
 
 }  // namespace auto_parallel

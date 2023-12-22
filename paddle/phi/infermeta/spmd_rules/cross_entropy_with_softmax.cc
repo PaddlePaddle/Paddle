@@ -324,7 +324,7 @@ void GetCrossEntropyGradNotations(int loss_ndim,
   if (!soft_label) {
     (*label_axes)[axis] = '1';
   }
-  
+
   *loss_grad_axes = x_axes;
   (*loss_grad_axes)[axis] = '1';
   // optional output
