@@ -1441,6 +1441,7 @@
     func: nce
     data_type: input
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
+  backward: nce_grad
 
 - op: number_count
   args: (Tensor numbers, int upper_range)
