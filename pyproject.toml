@@ -32,6 +32,9 @@ select = [
     # Comprehensions
     "C4",
 
+    # Debugger
+    "T100",
+
     # Pyupgrade
     "UP",
 
