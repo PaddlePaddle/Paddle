@@ -78,7 +78,7 @@ cc_test_old(
 paddle_test(type_interface_test SRCS type_interface_test.cc DEPS test_dialect
             gtest)
 
-cc_test_old(block_operand_test SRCS block_operand_test.cc DEPS test_dialect
+paddle_test(block_operand_test SRCS block_operand_test.cc DEPS test_dialect
             gtest)
 
 paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect)
