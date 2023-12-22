@@ -228,6 +228,7 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
         self._changeable_envs = {
             "backend": ["gpu"],
             "use_sp": ["true", "false"],
+            "use_param_group": ["false", "true"],
             # TODO(Yuang Liu): add recompute ut to pp after fixing pp probs
             # "recompute": ["true", "false"],
             # "recompute_granularity": ["full", "full_attn", "core_attn"],
