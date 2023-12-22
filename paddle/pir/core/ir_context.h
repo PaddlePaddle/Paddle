@@ -46,11 +46,10 @@ class IR_API IrContext {
   ///
   /// \brief Initializes a new instance of IrContext.
   ///
-  static IrContext *Instance();
 
   IrContext();
   ~IrContext();
-
+  static TEST_API IrContext *Instance();
   ///
   /// \brief Get an instance of IrContextImpl, a private member of IrContext.
   /// For the specific definition of IrContextImpl, see ir_context.cc.
@@ -79,7 +78,7 @@ class IR_API IrContext {
   ///
   /// \brief Get registered AbstractType from IrContext.
   ///
-  AbstractType *GetRegisteredAbstractType(TypeId id);
+  TEST_API AbstractType *GetRegisteredAbstractType(TypeId id);
 
   ///
   /// \brief Register an AbstractAttribute to IrContext
