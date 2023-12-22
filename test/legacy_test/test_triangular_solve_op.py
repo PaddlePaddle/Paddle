@@ -280,11 +280,13 @@ class TestTriangularSolveOpCp643b3(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -308,11 +310,13 @@ class TestTriangularSolveOpCp6422Up(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
             max_relative_error=0.02,
         )
@@ -337,11 +341,13 @@ class TestTriangularSolveOpCp6423T(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -365,6 +371,9 @@ class TestTriangularSolveOpCp6422Un(TestTriangularSolveOp):
         np.fill_diagonal(x, 1.0 + 0j)
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -392,11 +401,13 @@ class TestTriangularSolveOpCp644b4b(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
             max_relative_error=0.008,
         )
@@ -421,11 +432,13 @@ class TestTriangularSolveOpCp643b4bUp(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -449,11 +462,13 @@ class TestTriangularSolveOpCp643b5(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -477,11 +492,13 @@ class TestTriangularSolveOpCp6454b(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.matmul(np.linalg.inv(x), y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -505,11 +522,13 @@ class TestTriangularSolveOpCp1283b3(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -533,11 +552,13 @@ class TestTriangularSolveOpCp12822Up(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -561,11 +582,13 @@ class TestTriangularSolveOpCp12823T(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -589,6 +612,9 @@ class TestTriangularSolveOpCp12822Un(TestTriangularSolveOp):
         np.fill_diagonal(x, 1.0 + 0j)
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -616,11 +642,13 @@ class TestTriangularSolveOpCp1284b4b(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -644,11 +672,13 @@ class TestTriangularSolveOpCp1283b4bUp(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -672,11 +702,13 @@ class TestTriangularSolveOpCp1283b5(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
@@ -700,11 +732,13 @@ class TestTriangularSolveOpCp12854b(TestTriangularSolveOp):
         y = self.inputs['Y']
         self.output = np.matmul(np.linalg.inv(x), y)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_cinn=True,
             check_pir=True,
         )
 
