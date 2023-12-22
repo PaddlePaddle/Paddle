@@ -46,7 +46,7 @@ class TestReadFileWithDynamic(unittest.TestCase):
         np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
 
 
-class TestReadFileWithStatic(unittest.TestLoader):
+class TestReadFileWithStatic(unittest.TestCase):
     def setUp(self):
         fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
         self.temp_dir = tempfile.TemporaryDirectory()
