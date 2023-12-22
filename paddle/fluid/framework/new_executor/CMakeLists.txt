@@ -1,11 +1,11 @@
-file(GLOB_RECURSE new_executor_srcs "*.cc")
+file(GLOB_RECURSE standalone_executor_srcs "*.cc")
 
 if(NOT (WITH_CINN AND NOT CINN_ONLY))
-  list(REMOVE_ITEM new_executor_srcs
+  list(REMOVE_ITEM standalone_executor_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
 endif()
 
-set(new_executor_deps
+set(standalone_executor_deps
     pir
     program_translator
     op_dialect_vjp
@@ -18,8 +18,8 @@ set(new_executor_deps
     framework_proto)
 
 if(WITH_CINN AND NOT CINN_ONLY)
-  set(new_executor_deps
-      ${new_executor_deps}
+  set(standalone_executor_deps
+      ${standalone_executor_deps}
       cinn_runtime_dialect
       phi
       common
@@ -30,20 +30,21 @@ if(WITH_CINN AND NOT CINN_ONLY)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
-  set(new_executor_deps ${new_executor_deps} device_event_custom_device)
+  set(standalone_executor_deps ${standalone_executor_deps}
+                               device_event_custom_device)
 endif()
 
 if(WITH_GPU)
-  set(new_executor_deps ${new_executor_deps} device_event_gpu)
+  set(standalone_executor_deps ${standalone_executor_deps} device_event_gpu)
 endif()
 
 cc_library(
-  new_executor
-  SRCS ${new_executor_srcs}
-  DEPS ${new_executor_deps})
+  standalone_executor
+  SRCS ${standalone_executor_srcs}
+  DEPS ${standalone_executor_deps})
 
-add_dependencies(new_executor xxhash framework_proto)
+add_dependencies(standalone_executor xxhash framework_proto)
 
 if(WITH_MKLDNN)
-  add_dependencies(new_executor mkldnn)
+  add_dependencies(standalone_executor mkldnn)
 endif()

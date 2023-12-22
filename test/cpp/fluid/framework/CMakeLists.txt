@@ -345,4 +345,4 @@ endif()
 cc_test(
   workqueue_test
   SRCS new_executor/workqueue_test.cc
-  DEPS new_executor)
+  DEPS standalone_executor)

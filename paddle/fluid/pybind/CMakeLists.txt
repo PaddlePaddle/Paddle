@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    new_executor
+    standalone_executor
     executor
     fleet_wrapper
     box_wrapper
