@@ -612,7 +612,6 @@ def append_backward_ops(
                     input.get_defining_op(),
                     input_grads[i],
                     input.get_defining_op().operands_source(),
-                    [],
                 )
             else:
                 input_grad = input_grads[i]
