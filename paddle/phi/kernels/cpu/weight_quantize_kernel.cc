@@ -84,7 +84,6 @@ void quant_compute(const DeviceContext& dev_ctx,
                      bits == 8 ? 127.0f : 7.0f,
                      static_cast<size_t>(group_size));
 
-    // VLOG(1) << "scale after generate:" << *scale;
     group_wise_quant<T, bits>(x_int_data, x_data, scale_data, m, n, group_size);
   }
   if (algo == "llm.int8") {

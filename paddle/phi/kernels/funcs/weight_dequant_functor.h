@@ -261,7 +261,6 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
   output += row_id * k;
 
   scales += row_id;
-  // float scale = static_cast<float>(scale_list[row_id]);
 #pragma unroll
   for (int i = lane_id * 16; i < k * 2; i += 16 * 32) {
     int scale_offset = i / 2 / group_size;
@@ -321,7 +320,6 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
   weight += tile_id * k / 2 * 4;
   output += row_id * k;
   scales += row_id;
-  // float scale = static_cast<float>(scales[row_id]);
 #pragma unroll
   for (int i = lane_id * 32; i < k * 4; i += 32 * 32) {
     Load<uint8_t, 16>(&weight[i / 2], &vec_weight);
