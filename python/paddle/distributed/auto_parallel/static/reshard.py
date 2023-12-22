@@ -2305,6 +2305,9 @@ class Resharder:
                                 self.dist_context.set_op_dist_attr_for_program(
                                     op, op_dist_attr
                                 )
+                                self.dist_context.set_tensor_dist_attr_for_program(
+                                    target_tensor, op_input_dist_attr
+                                )
                                 if op.type == "while":
                                     while_op_X_append.append(new_name)
                                 continue

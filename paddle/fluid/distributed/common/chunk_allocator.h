@@ -14,6 +14,7 @@
 
 #pragma once
 #include <glog/logging.h>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -77,9 +78,16 @@ class ChunkAllocator {
 
   void create_new_chunk() {
     Chunk* chunk;
-    posix_memalign(reinterpret_cast<void**>(&chunk),
-                   std::max<size_t>(sizeof(void*), alignof(Chunk)),
-                   sizeof(Chunk) + sizeof(Node) * _chunk_size);
+    size_t alloc_size = sizeof(Chunk) + sizeof(Node) * _chunk_size;
+    int error = posix_memalign(reinterpret_cast<void**>(&chunk),
+                               std::max<size_t>(sizeof(void*), alignof(Chunk)),
+                               alloc_size);
+    PADDLE_ENFORCE_EQ(error,
+                      0,
+                      paddle::platform::errors::ResourceExhausted(
+                          "Fail to alloc memory of %ld size, error code is %d.",
+                          alloc_size,
+                          error));
     chunk->next = _chunks;
     _chunks = chunk;
 
