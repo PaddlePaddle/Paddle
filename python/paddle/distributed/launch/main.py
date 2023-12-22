@@ -1016,6 +1016,7 @@ def launch():
             cur_best_cfgs, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                mode=mode,
             )
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
