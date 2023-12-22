@@ -51,7 +51,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   T* out_data = out->data<T>();
   const auto x_dims = x.dims();
   const auto w_dims = weight.dims();
-  int n = weight_scale.dims()[0];
+  int n = group_size > 0 ? weight_scale.dims()[1] : weight_scale.dims()[0];
   int k = w_dims[1];
   int m = x.numel() / k;
 
@@ -158,36 +158,38 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
     PADDLE_THROW(phi::errors::Unimplemented(
         "Please compile with cutlass to make cutlass available"));
 #endif
-  } else {  // m < 1: gemv
+  } else {  // m <= 3: gemv
     if (weight_dtype == "int8") {
-      WeightOnlyGemvWrapper<T, Context>(dev_ctx,
-                                        x_data,
-                                        weight_data,
-                                        bias_data,
-                                        weight_scale_data,
-                                        m,
-                                        n,
-                                        k,
-                                        group_size,
-                                        "int8",
-                                        "per_channel",
-                                        "None",
-                                        out->data<T>());
+      WeightOnlyGemvWrapper<T, Context>(
+          dev_ctx,
+          x_data,
+          weight_data,
+          bias_data,
+          weight_scale_data,
+          m,
+          n,
+          k,
+          group_size,
+          "int8",
+          group_size > 0 ? "group_wise" : "per_channel",
+          "None",
+          out->data<T>());
 
     } else if (weight_dtype == "int4") {
-      WeightOnlyGemvWrapper<T, Context>(dev_ctx,
-                                        x_data,
-                                        weight_data,
-                                        bias_data,
-                                        weight_scale_data,
-                                        m,
-                                        n,
-                                        k,
-                                        group_size,
-                                        "int4",
-                                        "per_channel",
-                                        "None",
-                                        out->data<T>());
+      WeightOnlyGemvWrapper<T, Context>(
+          dev_ctx,
+          x_data,
+          weight_data,
+          bias_data,
+          weight_scale_data,
+          m,
+          n,
+          k,
+          group_size,
+          "int4",
+          group_size > 0 ? "group_wise" : "per_channel",
+          "None",
+          out->data<T>());
     }
   }
 }

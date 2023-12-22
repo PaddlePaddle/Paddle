@@ -958,18 +958,12 @@ __global__ void weight_only_batched_gemv_multi_warp(const T* in,
     for (int idx = 0; idx < NPerBlock; ++idx) {
       // Load quantized weight and scales/zeros
       int8_t weights_quantized[Details::kBytePerThread];
-      // *reinterpret_cast<int4*>(weights_quantized) =
-      //     *reinterpret_cast<const int4*>(
-      //         qweight + idx * Interleave * k / Details::kElemsPerByte +
-      //         local_k / Details::kElemsPerByte);
       load<AccType>(weights_quantized,
                     qweight + idx * Interleave * k / Details::kElemsPerByte +
                         local_k / Details::kElemsPerByte);
       scale_loader.load(scale + idx, zero + idx, idx);
-      T weights_vec[Details::kElemsPerThread];  // int8 16
-                                                // 128 bit
-                                                // int8: 32
-                                                // int4: 16
+      T weights_vec[Details::kElemsPerThread];
+
 #pragma unroll
       for (int i = 0; i < Details::kConvertIters; ++i) {
         // Use cutlass::FastInterleavedAndBiasedNumericArrayConverter for I2F
@@ -1007,7 +1001,7 @@ __global__ void weight_only_batched_gemv_multi_warp(const T* in,
               *reinterpret_cast<HALF_2_TYPE*>(in_v + y),
               v);
         }
-        accumulator[b] += static_cast<T>(v.x + v.y);
+        accumulator[b] += ConvertDstFunc<T>::apply(v.x + v.y);
       } else {
 #pragma unroll
         for (int x = 0; x < NPerBlock / 2; ++x) {
@@ -1280,6 +1274,11 @@ void WeightOnlyGemvWrapper(const Context& dev_ctx,
                            T* output) {
   using DataType = typename PDDataTypeTraits<T>::DataType;
   if (weight_only_type == "per_channel") {
+    PADDLE_ENFORCE_EQ(group_size,
+                      -1,
+                      phi::errors::InvalidArgument(
+                          "group size must be -1 in per-channel mode."));
+
     weight_only_batched_gemv_launcher<DataType, WeightOnlyPerChannel>(
         reinterpret_cast<const DataType*>(input),
         reinterpret_cast<const int8_t*>(weight),
