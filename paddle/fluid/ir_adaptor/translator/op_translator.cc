@@ -231,9 +231,22 @@ inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
 
 inline std::string GetPrefix(const OpDesc& op_desc) {
 #ifdef PADDLE_WITH_DNNL
-  return op_desc.GetAttrIfExists<bool>("use_mkldnn")
-             ? kOneDNNTargetDialectPrefix
-             : kTargetDialectPrefix;
+  if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+    std::string target_op_name =
+        kOneDNNTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
+    if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
+      target_op_name += "_";
+    }
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      VLOG(3) << op_desc.Type()
+              << "'s use_mkldnn == True, but PIR not support OneDNN for this "
+                 "op right now.";
+      return kTargetDialectPrefix
+    } else {
+      return kOneDNNTargetDialectPrefix;
+    }
+  }
 #else
   return kTargetDialectPrefix;
 #endif
