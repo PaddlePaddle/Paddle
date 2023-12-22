@@ -657,6 +657,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
     # @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
