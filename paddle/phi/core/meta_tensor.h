@@ -106,7 +106,6 @@ class MetaTensor {
  protected:
   static void unspecified_bool_true() {}
 
- protected:
   TensorBase* tensor() const;
 
   TensorBase* tensor_ = nullptr;
