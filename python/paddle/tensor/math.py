@@ -7057,14 +7057,13 @@ def copysign(x, y, name=None):
     r"""
     Create a new floating-point tensor with the magnitude of input and the sign of other, elementwise.
 
-    .. math::
-         out_{i}=
-            \left\{
-                \begin{array}{lcl}
-                -|input_{i}|&ifother_{i}\le-0.0 \\
-                |input_{i}|&ifother_{i}\ge0.0\
-                \end{array}
-            \right.
+    Equation:
+        .. math::
+
+            copysign(x,y)=\left\{\begin{matrix}
+            & -|(input_{i})| & if other_{i} <= 0.0\\
+            & |(input_{i})| & if other_{i} > 0.0
+            \end{matrix}\right.
 
     Args:
         x (Tensor): The input Tensor, magnitudes, the data type is float32, float64, int32 or int64.
