@@ -454,14 +454,18 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                        T beta,
                                        TensorType* mat_out) const {
   auto dims = mat_out->dims();
-  DenseTensor* mat_out_crows = mat_out->mutable_crows();
-  MetaTensor meta_out_crows(mat_out_crows);
+  DenseTensor *mat_out_crows = mat_out->mutable_crows(),
+              *mat_out_cols = mat_out->mutable_cols(),
+              *mat_out_values = mat_out->mutable_values();
+  MetaTensor meta_out_crows(mat_out_crows), meta_out_cols(mat_out_cols),
+      meta_out_values(mat_out_values);
   meta_out_crows.set_dtype(mat_a.crows().dtype());
+  meta_out_cols.set_dtype(mat_a.cols().dtype());
+  meta_out_values.set_dtype(mat_a.values().dtype());
   meta_out_crows.set_dims(common::make_ddim({dims[dims.size() - 2] + 1}));
   int* out_crows = dev_ctx_.template Alloc<int>(mat_out_crows);
-  DenseTensor* mat_out_cols = mat_out->mutable_cols();
-  MetaTensor meta_out_cols(mat_out_cols);
-  meta_out_cols.set_dtype(mat_a.cols().dtype());
+  dev_ctx_.template Alloc<int>(mat_out_cols);
+  dev_ctx_.template Alloc<T>(mat_out_values);
 
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
@@ -550,10 +554,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
         out_descriptor.descriptor(), &C_num_rows1, &C_num_cols1, &C_nnz1);
   });
 
-  DenseTensor* mat_out_values = mat_out->mutable_values();
-  MetaTensor meta_out_values(mat_out_values);
   meta_out_cols.set_dims(common::make_ddim({C_nnz1}));
-  meta_out_values.set_dtype(mat_a.values().dtype());
   meta_out_values.set_dims(common::make_ddim({C_nnz1}));
   T* out_values = dev_ctx_.template Alloc<T>(mat_out_values);
   int* out_cols = dev_ctx_.template Alloc<int>(mat_out_cols);
