@@ -667,9 +667,9 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
             i += 1
             return z, i
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = paddle.tensor.fill_constant([], 'int32', 0)
             x_shape = paddle.shape(x)
