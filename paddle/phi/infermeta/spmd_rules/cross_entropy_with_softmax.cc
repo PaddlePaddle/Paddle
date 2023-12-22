@@ -318,16 +318,18 @@ void GetCrossEntropyGradNotations(int loss_ndim,
                                   std::string* loss_grad_axes) {
   std::string alphabet =
       "abcdefghijlmnopqrstuvwxyz";  // k for softmax_normalize axis
-  *label_axes = alphabet.substr(0, loss_ndim);
+  auto x_axes = alphabet.substr(0, loss_ndim);
+  x_axes[axis] = 'k';
+  *label_axes = x_axes;
   if (!soft_label) {
     (*label_axes)[axis] = '1';
   }
-
-  *loss_grad_axes = *label_axes;
-  loss_grad_axes[axis] = '1';
+  
+  *loss_grad_axes = x_axes;
+  (*loss_grad_axes)[axis] = '1';
   // optional output
   if (use_softmax) {
-    *softmax_axes = *label_axes;
+    *softmax_axes = x_axes;
   } else {
     *softmax_axes = "";
   }
@@ -365,19 +367,19 @@ SpmdInfo CrossEntropyWithSoftmaxGradInferSpmd(const DistMetaTensor& label,
 
   auto label_dist_attr_dst = CopyTensorDistAttrForOutput(label_dist_attr_src);
   auto label_dims_mapping_dst =
-      GetDimsMappingForAxes(label_axes, axis_to_dim_map);
+      GetDimsMappingForAxes(label_axes, axis_to_dim_map, true);
   label_dist_attr_dst.set_dims_mapping(label_dims_mapping_dst);
 
   auto softmax_dist_attr_dst =
       CopyTensorDistAttrForOutput(softmax_dist_attr_src);
   auto softmax_dims_mapping_dst =
-      GetDimsMappingForAxes(softmax_axes, axis_to_dim_map);
+      GetDimsMappingForAxes(softmax_axes, axis_to_dim_map, true);
   softmax_dist_attr_dst.set_dims_mapping(softmax_dims_mapping_dst);
 
   auto loss_grad_dist_attr_dst =
       CopyTensorDistAttrForOutput(loss_grad_dist_attr_src);
   auto loss_grad_dims_mapping_dst =
-      GetDimsMappingForAxes(loss_grad_axes, axis_to_dim_map);
+      GetDimsMappingForAxes(loss_grad_axes, axis_to_dim_map, true);
   loss_grad_dist_attr_dst.set_dims_mapping(loss_grad_dims_mapping_dst);
 
   auto x_grad = CopyTensorDistAttrForOutput(softmax_dist_attr_src);

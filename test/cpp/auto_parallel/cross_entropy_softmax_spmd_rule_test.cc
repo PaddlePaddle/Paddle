@@ -48,10 +48,10 @@ TEST(CrossEntropyInferSpmd, Ctor) {
 
     EXPECT_EQ(spmdinfo.first.size(), 2UL);
     EXPECT_EQ(spmdinfo.second.size(), 2UL);
-    check_dim_mapping(spmdinfo.first[0], {1, -1});
-    check_dim_mapping(spmdinfo.first[1], {1, -1});
-    check_dim_mapping(spmdinfo.second[0], {1, -1});
-    check_dim_mapping(spmdinfo.second[1], {1, -1});
+    check_dim_mapping(spmdinfo.first[0], {0, -1});
+    check_dim_mapping(spmdinfo.first[1], {0, -1});
+    check_dim_mapping(spmdinfo.second[0], {0, -1});
+    check_dim_mapping(spmdinfo.second[1], {0, -1});
     check_partial_dims(spmdinfo.second[0], {});
 
     VLOG(4) << "Test CrossEntropyWithSoftmaxInferSpmd sharding on other axes."
@@ -59,6 +59,8 @@ TEST(CrossEntropyInferSpmd, Ctor) {
             << std::endl
             << std::endl;
   }
+
+  
   // backward
   {
     std::vector<int64_t> loss_shape = {32, 1};
@@ -77,10 +79,10 @@ TEST(CrossEntropyInferSpmd, Ctor) {
 
     int axis = 1;
     auto spmdinfo = CrossEntropyWithSoftmaxGradInferSpmd(
-        label, softmax, loss_grad, false, true, true, 1, axis);
+        label, softmax, loss_grad, true, true, true, 1, axis);
 
     EXPECT_EQ(spmdinfo.first.size(), 3UL);
-    EXPECT_EQ(spmdinfo.second.size(), 3UL);
+    EXPECT_EQ(spmdinfo.second.size(), 1UL);
     check_dim_mapping(spmdinfo.first[0], {0, 1});
     check_dim_mapping(spmdinfo.first[1], {0, 1});
     check_dim_mapping(spmdinfo.first[2], {0, -1});
@@ -93,6 +95,7 @@ TEST(CrossEntropyInferSpmd, Ctor) {
         << std::endl
         << std::endl;
   }
+
 }
 
 }  // namespace auto_parallel
