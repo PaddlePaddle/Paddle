@@ -16,6 +16,7 @@ import numbers
 
 import paddle
 from paddle import distribution
+from paddle.base import framework
 from paddle.distribution import exponential_family
 
 
@@ -32,11 +33,11 @@ class Gamma(exponential_family.ExponentialFamily):
         \Gamma(\alpha)=\int_{0}^{\infty} x^{\alpha-1} e^{-x} \mathrm{~d} x, (\alpha>0)
 
     Args:
-        concentration (float|Tensor): Concentration parameter. It supports broadcast semantics.
+        concentration (int|float|Tensor): Concentration parameter. It supports broadcast semantics.
             The value of concentration must be positive. When the parameter is a tensor,
             it represents multiple independent distribution with
             a batch_shape(refer to ``Distribution`` ).
-        rate (float|Tensor): Rate parameter. It supports broadcast semantics.
+        rate (int|float|Tensor): Rate parameter. It supports broadcast semantics.
             The value of rate must be positive. When the parameter is tensor,
             it represent multiple independent distribution with
             a batch_shape(refer to ``Distribution`` ).
@@ -70,6 +71,16 @@ class Gamma(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, concentration, rate):
+        if not isinstance(concentration, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of concentration is Real|Variable, but got {type(concentration)}"
+            )
+
+        if not isinstance(rate, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of rate is Real|Variable, but got {type(rate)}"
+            )
+
         if isinstance(concentration, numbers.Real):
             concentration = paddle.full(shape=[], fill_value=concentration)
 

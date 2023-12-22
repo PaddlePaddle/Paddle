@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import distribution
+from paddle.base import framework
 from paddle.distribution import exponential_family
 
 
@@ -36,7 +37,7 @@ class Exponential(exponential_family.ExponentialFamily):
     * :math:`rate = \theta`: is the rate parameter.
 
     Args:
-        rate (float|Tensor): Rate parameter. The value of rate must be positive.
+        rate (int|float|Tensor): Rate parameter. The value of rate must be positive.
 
     Example:
         .. code-block:: python
@@ -55,6 +56,11 @@ class Exponential(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, rate):
+        if not isinstance(rate, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of rate is Real|Variable, but got {type(rate)}"
+            )
+
         if isinstance(rate, numbers.Real):
             rate = paddle.full(shape=(), fill_value=rate, dtype=paddle.float32)
         self.rate = rate
