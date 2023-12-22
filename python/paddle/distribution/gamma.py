@@ -41,7 +41,7 @@ class Gamma(exponential_family.ExponentialFamily):
             it represent multiple independent distribution with
             a batch_shape(refer to ``Distribution`` ).
 
-    Example::
+    Example:
         .. code-block:: python
 
             >>> import paddle
