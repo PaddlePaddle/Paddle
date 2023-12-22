@@ -236,9 +236,9 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   auto kernel_key = op_attributes.at("kernel_key")
                         .dyn_cast<paddle::dialect::KernelAttribute>()
                         .data();
-  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      kernel_name, kernel_key);
-  phi_kernel_ = new phi::Kernel(kernel_result.kernel);
+
+  phi_kernel_ = new phi::Kernel(
+      phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key));
   PADDLE_ENFORCE_EQ(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
