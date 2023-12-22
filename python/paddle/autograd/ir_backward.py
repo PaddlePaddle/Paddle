@@ -327,7 +327,6 @@ def inverse_sort_op(ops):
     while queue:
         op = queue.popleft()
         sorted_list.append(op)
-        # why reverse: tuple_push's input order is fwd op's order
         for x in get_real_op_inputs(op):
             x_op = x.get_defining_op()
             pending_count[x_op] -= 1
@@ -355,7 +354,6 @@ def inverse_sort_op(ops):
                     idx_2 = sorted_list.index(op_in)
             if idx_1 != idx_2:
                 change_list.append((idx_1, idx_2))
-
     for idx_1, idx_2 in change_list:
         sorted_list[idx_1], sorted_list[idx_2] = (
             sorted_list[idx_2],
@@ -599,10 +597,10 @@ def append_backward_ops(
 
         return inputs, input_grad_stopgradients
 
-    def update_input_grad_map(op, input_grads, origin_inputs, external_inputs):
+    def update_input_grad_map(op, input_grads, origin_inputs):
         i = 0
         for input, grad_semantic in zip(
-            origin_inputs, get_grad_semantic_info(op)[: len(origin_inputs) + 1]
+            origin_inputs, get_grad_semantic_info(op)
         ):
             if not grad_semantic:
                 continue
@@ -731,6 +729,7 @@ def append_backward_ops(
         if op.name() != "builtin.combine" and op.name() != "builtin.split":
             clear_effective_forward_ops.append(op)
     with bwd_block:
+        print([op.name() for op in clear_effective_forward_ops])
         for op in clear_effective_forward_ops:
             if paddle.framework.core.has_vjp(op):
                 # prepare output_grad
@@ -753,6 +752,7 @@ def append_backward_ops(
                             output_grads,
                             input_grad_stopgradients,
                         )
+
                     pop_op = bwd_block.ops[-1]
                     bwd_ops = [pop_op]
                     tmp_inputs = (
@@ -821,9 +821,7 @@ def append_backward_ops(
                                 sub_bwd_block_argument_to_value_map,
                             )
                         # update input_grad map
-                        update_input_grad_map(
-                            op, input_grads, op.operands_source(), []
-                        )
+                        update_input_grad_map(op, input_grads, origin_inputs)
                     else:
                         # create grad_op
                         before_ops_num = len(bwd_block.ops)
@@ -845,7 +843,7 @@ def append_backward_ops(
 
                         # update input_grad map
                         update_input_grad_map(
-                            op, input_grads, op.operands_source(), []
+                            op, input_grads, op.operands_source()
                         )
 
                 update_bwdop_structure(
