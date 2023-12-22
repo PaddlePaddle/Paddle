@@ -833,5 +833,17 @@ def parse_bool_and_broadcast_indices(indices):
         ):
             indices[i] = paddle.nonzero(indice)[:, 0]
     if len(indices) > 1:
-        indices = paddle.broadcast_tensors(indices)
+        need_broadcast = False
+        common_shape = indices[0].shape
+        for i in range(1, len(indices)):
+            if indices[i].shape != common_shape:
+                need_broadcast = True
+                common_shape = paddle.broadcast_shapes(
+                    indices[i].shape, common_shape
+                )
+
+        if need_broadcast:
+            for i in range(len(indices)):
+                if indices[i].shape != common_shape:
+                    indices[i] = paddle.broadcast_to(indices[i], common_shape)
     return indices

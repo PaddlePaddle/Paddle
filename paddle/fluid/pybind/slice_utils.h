@@ -25,6 +25,7 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -504,10 +505,30 @@ static void ParseBoolAndBroadcastIndices(
     }
   }
   if (advanced_index->size() > 1) {
-    // Here advanced_index has been checked ContainDistTensor
-    // and transed in dealWithAdvancedIndex
-    auto broadcasted_index = broadcast_tensors_ad_func(*advanced_index);
-    advanced_index->assign(broadcasted_index.begin(), broadcasted_index.end());
+    bool need_broadcast = false;
+    common::DDim common_shape = common::make_ddim((*advanced_index)[0].shape());
+    for (size_t i = 1; i < advanced_index->size(); ++i) {
+      common::DDim current_shape =
+          common::make_ddim((*advanced_index)[i].shape());
+      if (current_shape != common_shape) {
+        need_broadcast = true;
+        common_shape = operators::details::BroadcastTwoDims(
+            current_shape, common_shape, -1);
+      }
+    }
+
+    if (need_broadcast) {
+      // Here advanced_index has been checked ContainDistTensor
+      // and transed in dealWithAdvancedIndex
+      auto common_shape_vec = common::vectorize<int64_t>(common_shape);
+      for (size_t i = 0; i < advanced_index->size(); ++i) {
+        auto current_shape = (*advanced_index)[i].shape();
+        if (current_shape != common_shape_vec) {
+          (*advanced_index)[i] =
+              expand_ad_func((*advanced_index)[i], common_shape_vec);
+        }
+      }
+    }
   }
 }
 
