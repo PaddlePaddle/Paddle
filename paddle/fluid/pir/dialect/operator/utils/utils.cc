@@ -16,6 +16,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -52,6 +53,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     ShareDataOp::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
+    RowConvOp::name(),
+    RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name()};
 
@@ -270,8 +273,8 @@ std::string GetValueDataType(const pir::Value& value) {
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
   } else {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("Currently, we can only get dtype for "
-                                     "DenseTensorType and SelectedRowsType."));
+        phi::errors::InvalidType("Currently, we can only get dtype for "
+                                 "DenseTensorType and SelectedRowsType."));
   }
 }
 
@@ -285,7 +288,7 @@ void DoValueCheck(const pir::Value& value,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidType(
         "Check data type error for op: %s, input: %s, %s.dtype: %s, and "
         "expected_dtype: %s",
         op_name,
@@ -327,7 +330,7 @@ void CheckDataType(const phi::DataType& dtype,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidType(
         "Check data type error for op: %s, dtype: %s, and "
         "expected_dtype: %s",
         op_name,

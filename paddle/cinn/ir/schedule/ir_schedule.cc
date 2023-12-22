@@ -382,15 +382,11 @@ Expr IRSchedule::GetBlock(const std::string& block_name) const {
 
 std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<int>& factors) {
+  if (IsDynamicShape()) return impl_->Split(loop, factors);
   std::vector<Expr> decision = SamplePerfectTile(
       loop, factors.size(), loop.As<ir::For>()->extent.as_int32(), factors);
   auto results = Split(loop, decision);
   return results;
-}
-
-std::vector<Expr> IRSchedule::DySplit(const Expr& loop,
-                                      const std::vector<int>& factors) {
-  return impl_->Split(loop, factors);
 }
 
 std::vector<Expr> IRSchedule::Split(const std::string& block_name,

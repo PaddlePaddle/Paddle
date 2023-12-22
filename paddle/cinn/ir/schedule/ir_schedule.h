@@ -46,11 +46,11 @@ class IRSchedule {
                       bool debug_flag = false,
                       utils::ErrorMessageLevel err_msg_level =
                           utils::ErrorMessageLevel::kGeneral,
-                      bool is_dynamic = false);
+                      bool is_dynamic_shape = false);
   IRSchedule(ir::ModuleExpr&& mod_expr,
              ScheduleDesc&& trace,
              utils::LinearRandomEngine::StateType rand_seed = -1,
-             bool is_dynamic = false);
+             bool is_dynamic_shape = false);
   IRSchedule(const IRSchedule& other);
   IRSchedule& operator=(const IRSchedule& src);
   IRSchedule(IRSchedule&& other);
@@ -107,8 +107,6 @@ class IRSchedule {
    * @return The splited loops.
    */
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
-
-  std::vector<Expr> DySplit(const Expr& loop, const std::vector<int>& factors);
 
   /**
    * \brief Split a for loop into multiple loops, based on the factors.

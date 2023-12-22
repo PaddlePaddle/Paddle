@@ -789,6 +789,10 @@ void UnStackInferMeta(const MetaTensor& x,
                       int num,
                       std::vector<MetaTensor*> outs);
 
+void NumberCountInferMeta(const MetaTensor& x,
+                          int upper_range,
+                          MetaTensor* out);
+
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
 }  // namespace phi

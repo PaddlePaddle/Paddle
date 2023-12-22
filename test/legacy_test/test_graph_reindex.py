@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestGraphReindex(unittest.TestCase):
@@ -448,6 +449,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
             )
             np.testing.assert_allclose(self.out_nodes, out_nodes_2, rtol=1e-05)
 
+    @test_with_pir_api
     def test_heter_reindex_result_static(self):
         paddle.enable_static()
         np_x = np.arange(5).astype("int64")

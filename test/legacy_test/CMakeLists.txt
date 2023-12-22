@@ -510,6 +510,7 @@ if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
   list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
+  list(REMOVE_ITEM TEST_OPS test_fuse_resunit_pass)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -918,6 +919,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
@@ -1196,6 +1198,10 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
 endif()
 
+if(WITH_CUDNN_FRONTEND)
+  set_tests_properties(test_fuse_resunit_pass PROPERTIES TIMEOUT 300)
+endif()
+
 set(TEST_CINN_OPS
     test_softmax_op
     test_expand_v2_op
@@ -1414,4 +1420,5 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
 
+set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pit_tests_properties()

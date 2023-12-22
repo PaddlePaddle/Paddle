@@ -56,10 +56,12 @@ __skip_dims_mapping_op__ = [
 ]
 
 _skip_propagation_prefix = "Auto_Parallel_Completion_Skipped"
+_max_propagation_step = 500
 
 
 def mark_as_sharding_propagation_skip_op(op):
-    op._set_attr('op_namescope', '/' + _skip_propagation_prefix)
+    prefix = op.attr("op_namescope") if op.has_attr("op_namescope") else '/'
+    op._set_attr('op_namescope', prefix + _skip_propagation_prefix)
 
 
 def is_sharding_propagation_skip_op(op):
@@ -156,6 +158,7 @@ def _can_apply_infer_spmd_rule(dist_op):
 
     # TODO remove me. ops to be adapted: squeeze2
     __adapted_ops__ = [
+        "fused_rotary_position_embedding",
         "matmul_v2",
         "elementwise_div",
         "gelu",
@@ -173,6 +176,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "split",
         "unsqueeze2",
         "silu",
+        "concat",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
@@ -502,9 +506,10 @@ class Completer:
 
     def _update_dims_mapping(self):
         # Complete dims_mapping for each node
+        step = 0
         reach_fix_point = False
 
-        while not reach_fix_point:
+        while (not reach_fix_point) and (step < _max_propagation_step):
             changed = False
             for is_fwd in [True, False]:
                 all_nodes = (
@@ -533,7 +538,14 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+            step += 1
         # NOTE: this will be removed after changing the reshard rule
+
+        if step >= _max_propagation_step:
+            _logger.debug(
+                "Sharding Propagation reach the Max Step and is NOT Converge! The Sharding Propagation Iteration is Terminated."
+            )
+
         self._update_dims_mapping_for_special()
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
@@ -1733,7 +1745,7 @@ class Completer:
 
             # grad ops that have not a corresponding mapping in grad_op_id_to_op_id
             else:
-                if grad_op.type == 'sum':
+                if grad_op.type in ['sum', 'grad_add']:
                     assert all(map(_is_grad_var_name, grad_op.input_arg_names))
                     output_name = grad_op.output_arg_names[0]
                     assert (

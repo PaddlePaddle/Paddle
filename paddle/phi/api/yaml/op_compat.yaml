@@ -2445,7 +2445,7 @@
   outputs :
     out : Result
   attrs :
-    {axis : Axis, reduce : Reduce}
+    {axis : Axis, reduce : Reduce, include_self: Include_self}
 
 - op : pylayer
   backward : pylayer_grad
@@ -2632,6 +2632,13 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : row_conv
+  backward : row_conv_grad
+  inputs :
+    {x : X, filter : Filter}
+  outputs :
+    {out : Out}
 
 - op : rsqrt
   backward : rsqrt_grad, rsqrt_double_grad (rsqrt_grad_grad)
@@ -3393,6 +3400,14 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: distribute_fpn_proposals
+  inputs :
+    {fpn_rois: FpnRois, rois_num: RoisNum}
+  outputs :
+    multi_fpn_rois : MultiFpnRois
+    multi_level_rois_num: MultiLevelRoIsNum
+    restore_index: RestoreIndex
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3432,6 +3447,12 @@
   outputs :
     out : Out
 
+- op: identity_loss
+  inputs :
+    x: X
+  outputs :
+    out : Out
+
 - op: lod_array_length
   inputs :
     {x: X}
@@ -3462,6 +3483,12 @@
 - op: memcpy_d2h
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: number_count
+  inputs :
+    {numbers: numbers}
   outputs :
     out : Out
 

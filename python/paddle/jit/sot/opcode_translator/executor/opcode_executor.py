@@ -556,7 +556,7 @@ class OpcodeExecutorBase:
         ):
             BreakpointManager().locate(self)
             print(log_message)
-            breakpoint()  # breakpoint for debug
+            breakpoint()  # noqa: T100
 
         with EventGuard(f"{instr.opname}", event_level=1):
             return getattr(self, instr.opname)(instr)  # run single step.
@@ -1535,10 +1535,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         instr_idx:
             the index for branch 1 to find the boundary and copy origin opcode
         """
-        if (
-            self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get()
-            and sys.version_info < (3, 11)
-        ):
+        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             store_var_info = {}
             for name in restore_names:
                 _var = self.get_var(name)
@@ -2038,7 +2035,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._inline_call_for_loop(iterator, instr)
             self._lasti = self.indexof(instr.jump_to)
         except BreakGraphError as e:
-            log(3, f"[FOR_ITER] sim for loop failed for: {e}\n")
+            log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
             if backup_iter_idx:
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)

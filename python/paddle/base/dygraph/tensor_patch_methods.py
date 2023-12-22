@@ -148,12 +148,12 @@ def monkey_patch_tensor():
         else:
             static_var = Variable(**attr_kwargs)
 
-        if self.dist_attr is not None:  # import for shard tensor api
+        if self.placements is not None:  # import for shard tensor api
             import paddle.distributed as dist
 
             static_var = dist.shard_tensor(
                 static_var,
-                self.dist_attr.process_mesh,
+                self.process_mesh,
                 self.placements,
                 stop_gradient=static_var.stop_gradient,
             )
@@ -229,10 +229,22 @@ def monkey_patch_tensor():
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
             if self.is_dist():
-                # calling set method bound for DistTensor
-                value = paddle.distributed.shard_tensor(
-                    value, self.value().process_mesh, self.value().placements
-                )
+                if isinstance(value, paddle.Tensor) and value.is_dist():
+                    from paddle.distributed.auto_parallel.placement_type import (
+                        check_placements_equal,
+                    )
+
+                    # TODO: support reshard later
+                    assert value.process_mesh == self.value().process_mesh or check_placements_equal(
+                        value.placements, self.value().placements
+                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
+                else:
+                    # calling set method bound for DistTensor
+                    value = paddle.distributed.shard_tensor(
+                        value,
+                        self.value().process_mesh,
+                        self.value().placements,
+                    )
                 self.value().get_tensor().set(value.get_tensor())
                 return
             self.value().get_tensor().set(

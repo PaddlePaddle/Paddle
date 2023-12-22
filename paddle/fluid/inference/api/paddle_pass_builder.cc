@@ -88,7 +88,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "trt_remove_amp_strategy_op_pass",                              //
+  "set_subgraph_edge_pass",                                       //
+      "trt_remove_amp_strategy_op_pass",                          //
       "trt_support_nhwc_pass",                                    //
       "adaptive_pool2d_convert_global_pass",                      //
       "trt_map_ops_to_matrix_multiply_pass",                      //
@@ -536,6 +537,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
+      "qk_qkv_attention_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
