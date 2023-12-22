@@ -150,8 +150,8 @@ IntSet Evaluate(Expr expr,
       common::AutoSimplify(copy_for_lower_bound, var_intervals);
   ir::Expr upper_bound =
       common::AutoSimplify(copy_for_upper_bound, var_intervals);
-  lower_bound = common::EnhancedSimplify(lower_bound, var_intervals);
-  upper_bound = common::EnhancedSimplify(upper_bound, var_intervals);
+  lower_bound = common::EnhancedSimplifyModExpr(lower_bound, var_intervals);
+  upper_bound = common::EnhancedSimplifyModExpr(upper_bound, var_intervals);
   return IntSet(lower_bound, upper_bound, var_intervals);
 }
 

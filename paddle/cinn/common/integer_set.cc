@@ -79,30 +79,11 @@ std::optional<bool> SymbolicExprAnalyzer::ProveEQ(const ir::Expr& lhs,
 
 std::optional<bool> SymbolicExprAnalyzer::ProveNE(const ir::Expr& lhs,
                                                   const ir::Expr& rhs) const {
-  if (lhs == rhs) {
-    return false;
+  std::optional<bool> prove_eq = ProveEQ(lhs, rhs);
+  if (!prove_eq.has_value()) {
+    return std::nullopt;
   }
-  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
-  if (diff.is_constant()) {
-    return diff.get_constant() != 0;
-  }
-  ir::Expr diff_lower_bound = LowerBound(diff);
-  VLOG(6) << "lower bound of " << diff << " = " << diff_lower_bound;
-  ir::Expr diff_upper_bound = UpperBound(diff);
-  VLOG(6) << "upper bound of " << diff << " = " << diff_upper_bound;
-  if (diff_lower_bound.is_constant() && diff_upper_bound.is_constant() &&
-      diff_lower_bound.get_constant() == diff_upper_bound.get_constant()) {
-    return diff_lower_bound.get_constant() != 0;
-  }
-  std::optional<bool> prove_gt = ProveGT(lhs, rhs);
-  if (prove_gt.has_value() && prove_gt.value()) {
-    return true;
-  }
-  std::optional<bool> prove_lt = ProveLT(lhs, rhs);
-  if (prove_lt.has_value() && prove_lt.value()) {
-    return true;
-  }
-  return std::nullopt;
+  return !prove_eq.value();
 }
 
 std::optional<bool> SymbolicExprAnalyzer::ProveGE(const ir::Expr& lhs,
@@ -472,7 +453,7 @@ std::optional<bool> SingleIntervalIntSet::ProveSuperSet(
   return std::nullopt;
 }
 
-ir::Expr EnhancedSimplify(
+ir::Expr EnhancedSimplifyModExpr(
     ir::Expr e,
     const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
   struct Mutator : public ir::IRMutator<ir::Expr*> {

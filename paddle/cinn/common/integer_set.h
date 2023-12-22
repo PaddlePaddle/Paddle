@@ -102,7 +102,7 @@ std::optional<SingleIntervalIntSet> ProvedIntersect(
 cas_intervals_t MergeVarIntervals(const SingleIntervalIntSet& a,
                                   const SingleIntervalIntSet& b);
 
-ir::Expr EnhancedSimplify(
+ir::Expr EnhancedSimplifyModExpr(
     ir::Expr e,
     const absl::flat_hash_map<std::string, CasInterval>& var_intervals);
 
