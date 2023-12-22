@@ -23,31 +23,29 @@ class TEST_API DimExprBuilder {
   explicit DimExprBuilder(std::vector<DimExprConstraint>* constraints)
       : constraints_(constraints) {}
 
-  TEST_API DimExpr ConstSize(std::int64_t dim);
-  TEST_API DimExpr Symbol(const std::string& symbol_name);
-  TEST_API DimExpr Add(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API DimExpr Any(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API DimExpr Mul(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API DimExpr Div(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API DimExpr Max(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API DimExpr Min(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API DimExpr Broadcast(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API std::vector<DimExpr> ConstShape(
-      const std::vector<std::int64_t>& dims);
+  DimExpr ConstSize(std::int64_t dim);
+  DimExpr Symbol(const std::string& symbol_name);
+  DimExpr Add(const DimExpr& lhs, const DimExpr& rhs);
+  DimExpr Any(const DimExpr& lhs, const DimExpr& rhs);
+  DimExpr Mul(const DimExpr& lhs, const DimExpr& rhs);
+  DimExpr Div(const DimExpr& lhs, const DimExpr& rhs);
+  DimExpr Max(const DimExpr& lhs, const DimExpr& rhs);
+  DimExpr Min(const DimExpr& lhs, const DimExpr& rhs);
+  DimExpr Broadcast(const DimExpr& lhs, const DimExpr& rhs);
+  std::vector<DimExpr> ConstShape(const std::vector<std::int64_t>& dims);
 
-  TEST_API void CstrBroadcastable(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API void CstrBroadcastable(const std::vector<DimExpr>& lhs,
-                                  const std::vector<DimExpr>& rhs);
-  TEST_API void CstrEq(const DimExpr& lhs, const DimExpr& rhs);
-  TEST_API void CstrEq(const std::vector<DimExpr>& lhs,
-                       const std::vector<DimExpr>& rhs);
+  void CstrBroadcastable(const DimExpr& lhs, const DimExpr& rhs);
+  void CstrBroadcastable(const std::vector<DimExpr>& lhs,
+                         const std::vector<DimExpr>& rhs);
+  void CstrEq(const DimExpr& lhs, const DimExpr& rhs);
+  void CstrEq(const std::vector<DimExpr>& lhs, const std::vector<DimExpr>& rhs);
 
-  TEST_API std::vector<DimExpr> Concat(const std::vector<DimExpr>& lhs,
-                                       const std::vector<DimExpr>& rhs);
-  TEST_API std::pair<std::vector<DimExpr>, std::vector<DimExpr>> SplitAt(
+  std::vector<DimExpr> Concat(const std::vector<DimExpr>& lhs,
+                              const std::vector<DimExpr>& rhs);
+  std::pair<std::vector<DimExpr>, std::vector<DimExpr>> SplitAt(
       const std::vector<DimExpr>, int index);
 
-  TEST_API const std::vector<DimExprConstraint>& constaints() const;
+  const std::vector<DimExprConstraint>& constaints() const;
 
  private:
   std::vector<DimExprConstraint>* constraints_;

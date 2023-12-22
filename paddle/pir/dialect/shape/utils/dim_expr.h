@@ -204,12 +204,12 @@ class TEST_API DimExpr : public DimExprBase {
     return static_cast<const DimExprBase&>(*this);
   }
 
-  TEST_API DimExpr operator+(const DimExpr& other) const;
-  TEST_API DimExpr operator-(const DimExpr& other) const;
-  TEST_API DimExpr operator*(const DimExpr& other) const;
-  TEST_API DimExpr operator/(const DimExpr& other) const;
-  TEST_API bool operator==(const DimExpr& other) const;
-  TEST_API bool operator!=(const DimExpr& other) const;
+  DimExpr operator+(const DimExpr& other) const;
+  DimExpr operator-(const DimExpr& other) const;
+  DimExpr operator*(const DimExpr& other) const;
+  DimExpr operator/(const DimExpr& other) const;
+  bool operator==(const DimExpr& other) const;
+  bool operator!=(const DimExpr& other) const;
 };
 
 // DimExprConstraint = Equal DimExpr
