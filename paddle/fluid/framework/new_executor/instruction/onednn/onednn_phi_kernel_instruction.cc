@@ -323,10 +323,7 @@ OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
 }
 
 void OneDNNPhiKernelInstruction::Run() {
-  // Step1. Mixed Dynamic Choose Kernel
-  // todo if (input_tensor.layout() != phi::DataLayout::ONEDNN)
-
-  // Step2. TransLayout
+  // Step1. TransLayout
   auto inputs = kernel_context_.InputsBetween<phi::DenseTensor>(
       size_t(0), kernel_context_.InputsSize());
   for (size_t i = 0; i < inputs.size(); ++i) {
@@ -358,7 +355,7 @@ void OneDNNPhiKernelInstruction::Run() {
     }
   }
 
-  // Step3. Append extra information into ctx
+  // Step2. Append extra information into ctx
   // SetDnnAttrIntoDeviceContext
   // SetInputsName SetOutputsName
   auto one_dnn_ctx = const_cast<phi::OneDNNContext*>(
@@ -369,17 +366,17 @@ void OneDNNPhiKernelInstruction::Run() {
   one_dnn_ctx->SetInputsName(inputs_);
   one_dnn_ctx->SetOutputsName(outputs_);
 
-  // Step4. InferMeta
+  // Step3. InferMeta
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
 
-  // Step5. Run kernel
+  // Step4. Run kernel
   VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
 
-  // Step6. ClearDnnAttr
+  // Step5. ClearDnnAttr
   one_dnn_ctx->ClearDnnAttr();
 }
 
