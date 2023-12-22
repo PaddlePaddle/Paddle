@@ -638,9 +638,6 @@ void BuildOpFuncList(const platform::Place& place,
       if (op->Type() == "while") {
         op->SetInputHooks(input_hookfuncs);
         op->SetOutputHooks(output_hookfuncs);
-        auto runtime_attrs = op->RuntimeAttrs();
-        runtime_attrs.insert(std::make_pair("used_for_inference", true));
-        op->SetRuntimeAttributeMap(runtime_attrs);
       }
     }
 
