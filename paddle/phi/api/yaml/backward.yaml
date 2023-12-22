@@ -1097,6 +1097,17 @@
   kernel :
     func : i1e_grad
 
+- backward_op : identity_loss_grad
+  forward : identity_loss (Tensor x, int reduction) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int reduction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : IdentityLossGradInferMeta
+  kernel :
+    func : identity_loss_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)

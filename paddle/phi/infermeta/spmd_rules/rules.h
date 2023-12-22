@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/flash_attention.h"
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/full_like.h"
+#include "paddle/phi/infermeta/spmd_rules/fused_linear_param_grad_add.h"
 #include "paddle/phi/infermeta/spmd_rules/fused_rope.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
@@ -618,10 +619,18 @@ PD_REGISTER_SPMD_RULE(
     cross_entropy_with_softmax,
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     softmax_with_cross_entropy,
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
+
+// fused_linear_param_grad_add got no reverse infer spmd rule
+PD_REGISTER_SPMD_RULE(
+    fused_linear_param_grad_add,
+    PD_INFER_SPMD(phi::distributed::FusedLinearParamGradAddInferSpmd),
+    PD_INFER_SPMD(
+        phi::distributed::FusedLinearParamGradAddInferSpmdFakeReverse));
 
 }  // namespace distributed
 }  // namespace phi

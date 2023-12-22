@@ -986,6 +986,7 @@ class TestLayer(LayerTest):
 
         _test_errors()
 
+    @test_with_pir_api
     def test_spectral_norm(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)

@@ -23,9 +23,12 @@ cc_library(
   instruction_base
   SRCS ${instruction_base_srcs}
   DEPS framework_proto)
+
+add_dependencies(instruction_base xxhash framework_proto)
 if(WITH_MKLDNN)
   add_dependencies(instruction_base mkldnn)
 endif()
+
 if(WITH_CINN AND NOT CINN_ONLY)
   cc_library(
     cinn_jit_instruction NOT_FOR_INFER

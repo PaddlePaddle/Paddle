@@ -3409,6 +3409,14 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: distribute_fpn_proposals
+  inputs :
+    {fpn_rois: FpnRois, rois_num: RoisNum}
+  outputs :
+    multi_fpn_rois : MultiFpnRois
+    multi_level_rois_num: MultiLevelRoIsNum
+    restore_index: RestoreIndex
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3445,6 +3453,12 @@
 - op: get_tensor_from_selected_rows
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: identity_loss
+  inputs :
+    x: X
   outputs :
     out : Out
 
