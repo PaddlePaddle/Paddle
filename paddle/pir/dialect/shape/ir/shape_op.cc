@@ -363,6 +363,33 @@ void IndexCastOp::Build(Builder &builder,             // NOLINT
   argument.output_types.emplace_back(out);
 }
 
+const char *GenerateShapeOp::attributes_name[attributes_num] = {
+  "output_dim_exprs",
+  "symbol_bindings"};
+
+void GenerateShapeOp::Build(pir::Builder &builder,
+                            OperationArgument& argument,
+                            const std::vector<Attribute>& output_dim_exprs,
+                            const GenerateShapeOp::SymbolBindings& symbol_bindings) {
+  const auto& ConvertSymbolBindingToAttr = [&](const SymbolBinding& binding) {
+    const auto& [symbol_name, input_tensor_idx, input_tensor_dim_idx] = binding;
+    return builder.array_attr({
+      builder.str_attr(symbol_name),
+      builder.int64_attr(input_tensor_idx),
+      builder.int64_attr(input_tensor_dim_idx),
+    });
+  };
+
+  argument.AddAttribute("output_dim_exprs", builder.array_attr(output_dim_exprs));
+  argument.AddAttribute("symbol_bindings", [&]() {
+    std::vector<Attribute> bindings_attr{};
+    for (const auto& symbol_binding : symbol_bindings) {
+      bindings_attr.push_back(ConvertSymbolBindingToAttr(symbol_binding));
+    }
+    return builder.array_attr(bindings_attr);
+  }());
+}
+
 }  // namespace pir::shape
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::SymbolicDimOp)
@@ -376,3 +403,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::FromElementsOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::ExtractOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::ConstantIndexOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::IndexCastOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::GenerateShapeOp);
