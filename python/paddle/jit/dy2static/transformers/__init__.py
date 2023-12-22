@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from .transform import DygraphToStaticAst  # noqa: F401
-from .utils import ast_to_source_code  # noqa: F401
