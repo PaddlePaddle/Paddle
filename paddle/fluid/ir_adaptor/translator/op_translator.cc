@@ -246,6 +246,8 @@ inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
     } else {
       return kOneDNNTargetDialectPrefix;
     }
+  } else {
+    return kTargetDialectPrefix;
   }
 #else
   return kTargetDialectPrefix;
