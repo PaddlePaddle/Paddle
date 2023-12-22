@@ -51,7 +51,7 @@ class TestReshardRToX:
         out_shape = list(self._shape)
         if out_shape[self._shard] % 2 == 0:
             out_shape[self._shard] = out_shape[self._shard] // 2
-            np.testing.assert_equal(out.numpy(), input_tensor.numpy())
+            np.testing.assert_equal(out.numpy(), a.numpy())
         else:
             out_shape[self._shard] = (
                 out_shape[self._shard] // 2

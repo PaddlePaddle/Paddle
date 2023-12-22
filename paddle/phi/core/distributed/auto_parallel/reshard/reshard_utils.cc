@@ -27,6 +27,15 @@ namespace phi {
 namespace distributed {
 
 namespace {
+std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
+  std::string unique_comm_key = "ReshardGroup";
+  for (const auto& id : process_ids) {
+    unique_comm_key += "/" + std::to_string(id);
+  }
+  return unique_comm_key;
+}
+}  // namespace
+
 std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
                                         std::vector<int64_t> out_process_ids) {
   std::vector<int64_t> result;
@@ -39,15 +48,6 @@ std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
                  std::back_inserter(result));
   return result;
 }
-
-std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
-  std::string unique_comm_key = "ReshardGroup";
-  for (const auto& id : process_ids) {
-    unique_comm_key += "/" + std::to_string(id);
-  }
-  return unique_comm_key;
-}
-}  // namespace
 
 int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
                                   int64_t global_rank) {
