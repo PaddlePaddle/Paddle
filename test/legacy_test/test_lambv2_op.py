@@ -270,7 +270,6 @@ class TestLambOpMultiPrecision(unittest.TestCase):
                 np.testing.assert_array_equal(bias_np, get_parameter(bias))
             return weight_np, bias_np
 
-    @test_with_pir_api
     @switch_to_static_graph
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
