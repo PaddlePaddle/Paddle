@@ -1330,6 +1330,56 @@ void HandleForSpecialOp(
   VLOG(6) << "Deep copy a new special op: " << op_item->name();
 }
 
+void PushBackOutputTypes(pir::IrContext* ctx,
+                         pir::Operation* op_item,
+                         const phi::KernelKey& kernel_key,
+                         std::vector<pir::Type>* op_output_types,
+                         size_t index) {
+  phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
+  auto result_type = op_item->result(index).type();
+  if (!result_type) {
+    op_output_types->push_back(result_type);
+  } else if (result_type.isa<DenseTensorType>() ||
+             result_type.isa<SelectedRowsType>() ||
+             result_type.isa<DenseTensorArrayType>()) {
+    op_output_types->push_back(BuildOutputType(result_type, out_place, ctx));
+  } else if (result_type.isa<pir::VectorType>()) {
+    std::vector<pir::Type> vec_inner_types;
+    auto base_types = result_type.dyn_cast<pir::VectorType>().data();
+    for (auto& base_type : base_types) {
+      if (base_type) {
+        if (base_type.isa<DenseTensorType>() ||
+            base_type.isa<SelectedRowsType>()) {
+          vec_inner_types.push_back(BuildOutputType(base_type, out_place, ctx));
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "only support dense tensor and selected rows in vector type "
+              "for now"));
+        }
+      } else {
+        // NOTE(phlrain), kernel not support a nullptr in output
+        pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+        phi::DDim dims = {};
+        phi::DataLayout data_layout = phi::DataLayout::NCHW;
+        phi::LoD lod = {{}};
+        size_t offset = 0;
+        auto dense_tensor_dtype = DenseTensorType::get(
+            ctx, fp32_dtype, dims, data_layout, lod, offset);
+        auto allocated_dense_tensor_dtype =
+            AllocatedDenseTensorType::get(ctx, out_place, dense_tensor_dtype);
+        vec_inner_types.push_back(allocated_dense_tensor_dtype);
+      }
+    }
+
+    pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
+    op_output_types->push_back(t1);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Result type only support DenseTensorType, SelectedRowType and "
+        "VectorType"));
+  }
+}
+
 void HandleForCustomOp(
     pir::IrContext* ctx,
     pir::Operation* op_item,
@@ -1343,48 +1393,7 @@ void HandleForCustomOp(
   std::vector<pir::Type> op_output_types;
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
-    phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
-    auto result_type = op_item->result(i).type();
-
-    if (!result_type) {
-      op_output_types.push_back(result_type);
-    } else if (result_type.isa<DenseTensorType>()) {
-      op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
-    } else if (result_type.isa<pir::VectorType>()) {
-      std::vector<pir::Type> vec_inner_types;
-      auto base_types = result_type.dyn_cast<pir::VectorType>().data();
-      for (auto& base_type : base_types) {
-        if (base_type) {
-          if (base_type.isa<DenseTensorType>()) {
-            vec_inner_types.push_back(
-                BuildOutputType(base_type, out_place, ctx));
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor and selected rows in vector type "
-                "for now"));
-          }
-        } else {
-          // NOTE(phlrain), kernel not support a nullptr in output
-          pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-          phi::DDim dims = {};
-          phi::DataLayout data_layout = phi::DataLayout::NCHW;
-          phi::LoD lod = {{}};
-          size_t offset = 0;
-          auto dense_tensor_dtype = DenseTensorType::get(
-              ctx, fp32_dtype, dims, data_layout, lod, offset);
-          auto allocated_dense_tensor_dtype =
-              AllocatedDenseTensorType::get(ctx, out_place, dense_tensor_dtype);
-          vec_inner_types.push_back(allocated_dense_tensor_dtype);
-        }
-      }
-
-      pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
-      op_output_types.push_back(t1);
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Result type only support DenseTensorType, SelectedRowType and "
-          "VectorType"));
-    }
+    PushBackOutputTypes(ctx, op_item, kernel_key, &op_output_types, i);
   }
 
   // Prepare input
@@ -1499,50 +1508,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
         (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
       out_place = phi::TransToPhiPlace(output_defs[i].backend);
     }
-
-    auto result_type = op_item->result(i).type();
-    if (!result_type) {
-      op_output_types.push_back(result_type);
-    } else if (result_type.isa<DenseTensorType>() ||
-               result_type.isa<SelectedRowsType>() ||
-               result_type.isa<DenseTensorArrayType>()) {
-      op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
-    } else if (result_type.isa<pir::VectorType>()) {
-      std::vector<pir::Type> vec_inner_types;
-      auto base_types = result_type.dyn_cast<pir::VectorType>().data();
-      for (auto& base_type : base_types) {
-        if (base_type) {
-          if (base_type.isa<DenseTensorType>() ||
-              base_type.isa<SelectedRowsType>()) {
-            vec_inner_types.push_back(
-                BuildOutputType(base_type, out_place, ctx));
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor and selected rows in vector type "
-                "for now"));
-          }
-        } else {
-          // NOTE(phlrain), kernel not support a nullptr in output
-          pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-          phi::DDim dims = {};
-          phi::DataLayout data_layout = phi::DataLayout::NCHW;
-          phi::LoD lod = {{}};
-          size_t offset = 0;
-          auto dense_tensor_dtype = DenseTensorType::get(
-              ctx, fp32_dtype, dims, data_layout, lod, offset);
-          auto allocated_dense_tensor_dtype =
-              AllocatedDenseTensorType::get(ctx, out_place, dense_tensor_dtype);
-          vec_inner_types.push_back(allocated_dense_tensor_dtype);
-        }
-      }
-
-      pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
-      op_output_types.push_back(t1);
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Result type only support DenseTensorType, SelectedRowType and "
-          "VectorType"));
-    }
+    PushBackOutputTypes(ctx, op_item, kernel_key, &op_output_types, i);
   }
 
   return op_output_types;
