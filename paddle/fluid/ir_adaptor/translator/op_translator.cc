@@ -229,7 +229,7 @@ inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
   return create_array_op.operation();
 }
 
-inline std::string GetPrefix(const OpDesc& op_desc) {
+inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
 #ifdef PADDLE_WITH_DNNL
   if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
     std::string target_op_name =
@@ -242,10 +242,12 @@ inline std::string GetPrefix(const OpDesc& op_desc) {
       VLOG(3) << op_desc.Type()
               << "'s use_mkldnn == True, but PIR not support OneDNN for this "
                  "op right now.";
-      return kTargetDialectPrefix
+      return kTargetDialectPrefix;
     } else {
       return kOneDNNTargetDialectPrefix;
     }
+  } else {
+    return kTargetDialectPrefix;
   }
 #else
   return kTargetDialectPrefix;
@@ -256,7 +258,7 @@ inline std::string GetPrefix(const OpDesc& op_desc) {
 pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
                                          const OpDesc& op_desc) {
   std::string target_op_name =
-      GetPrefix(op_desc) + OpNameCompatibleMapping(op_desc.Type());
+      GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
@@ -349,7 +351,7 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
              op_desc.Type(),
              target_op_name);
 
-  target_op_name = GetPrefix(op_desc) + target_op_name;
+  target_op_name = GetPrefix(ctx, op_desc) + target_op_name;
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
@@ -1070,7 +1072,7 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
     std::string target_op_name =
-        GetPrefix(op_desc) + OpNameCompatibleMapping(op_desc.Type());
+        GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
 
     bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
 
@@ -1323,7 +1325,7 @@ struct AddNOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
     std::string target_op_name =
-        GetPrefix(op_desc) + OpNameCompatibleMapping(op_desc.Type());
+        GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
     if (IsInplace(op_desc)) {
       target_op_name += "_";
     } else {
