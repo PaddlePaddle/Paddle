@@ -111,8 +111,6 @@ void TrilIndicesInferMeta(
 void TriuIndicesInferMeta(
     int row, int col, int offset, DataType dtype, MetaTensor* out);
 
-void ReadFileInferMeta(const std::string& filename,
-                       DataType dtype,
-                       MetaTensor* out);
+void ReadFileInferMeta(const std::string& filename, MetaTensor* out);
 
 }  // namespace phi
