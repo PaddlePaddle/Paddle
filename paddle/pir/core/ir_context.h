@@ -15,6 +15,7 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -109,11 +110,12 @@ class IR_API IrContext {
   void RegisterOpInfo(Dialect *dialect,
                       TypeId op_id,
                       const char *name,
-                      std::vector<InterfaceValue> &&interface_map,
+                      std::set<InterfaceValue> &&interface_set,
                       const std::vector<TypeId> &trait_set,
                       size_t attributes_num,
                       const char **attributes_name,
-                      void (*verify)(Operation *));
+                      void (*verify_sig)(Operation *),
+                      void (*verify_region)(Operation *));
 
   ///
   /// \brief Get registered operaiton infomation.

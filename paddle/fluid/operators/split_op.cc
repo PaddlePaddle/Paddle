@@ -65,12 +65,12 @@ class SplitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
-      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
+      axis_final = framework::MakePhiScalarFromVar(*var);
     } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
-      axis_final = std::move(phi::Scalar(-1));
+      axis_final = phi::Scalar(-1);
       axis_final.SetFromTensor(true);
     } else {
-      axis_final = std::move(phi::Scalar(axis));
+      axis_final = phi::Scalar(axis);
     }
 
     // Construct sections_final
@@ -196,14 +196,6 @@ Example:
                  "(int, default 0) "
                  "The axis which the input will be split on.")
         .SetDefault(0);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16", "int8", "uint8"});
   }
 };
 

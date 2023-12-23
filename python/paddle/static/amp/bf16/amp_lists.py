@@ -17,9 +17,11 @@ import copy
 from paddle.amp.amp_lists import BF16_WHITE_LIST
 from paddle.base import core
 
-from ..fp16_lists import black_list as black_list_fp16
-from ..fp16_lists import gray_list as gray_list_fp16
-from ..fp16_lists import white_list as white_list_fp16
+from ..fp16_lists import (
+    black_list as black_list_fp16,
+    gray_list as gray_list_fp16,
+    white_list as white_list_fp16,
+)
 
 
 class AutoMixedPrecisionListsBF16:

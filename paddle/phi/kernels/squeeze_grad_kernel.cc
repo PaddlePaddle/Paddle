@@ -26,7 +26,7 @@ void SqueezeGradKernel(const Context& dev_ctx,
                        const IntArray& axes UNUSED,
                        DenseTensor* dx) {
   auto xshape_dims = xshape.dims();
-  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
   dev_ctx.template Alloc<T>(dx);
   phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
@@ -40,12 +40,14 @@ PD_REGISTER_KERNEL(squeeze_grad,
                    phi::SqueezeGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
                    bool,
                    int,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -62,6 +64,7 @@ PD_REGISTER_KERNEL(squeeze_grad,
                    int,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
@@ -76,6 +79,7 @@ PD_REGISTER_KERNEL(squeeze_grad,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    bool,
                    int,
                    uint8_t,

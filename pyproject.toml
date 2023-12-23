@@ -8,31 +8,32 @@ extend-exclude = '''
 )
 '''
 
-[tool.isort]
-profile = "black"
-line_length = 80
-known_first_party = ["paddle"]
-skip = ["build", "third_party", "__init__.py"]
-extend_skip_glob = [
-    # These files do not need to be formatted,
-    # see .flake8 for more details
-    "python/paddle/utils/gast/**",
-    "python/paddle/base/framework.py",
-]
-
 [tool.ruff]
 exclude = [
     "./build",
     "third_party",
     "./python/paddle/utils/gast/**",
 ]
-target-version = "py37"
+line-length = 80
+target-version = "py38"
+
+[tool.ruff.lint]
 select = [
+    # Pycodestyle
+    "E",
+    "W",
+
     # Pyflakes
     "F",
 
+    # Isort
+    "I",
+
     # Comprehensions
     "C4",
+
+    # Debugger
+    "T100",
 
     # Pyupgrade
     "UP",
@@ -73,11 +74,28 @@ select = [
     "PLR1711",
     "PLR1722",
     "PLW3301",
+
+    # Pygrep-hooks
+    "PGH004",
 ]
 unfixable = [
     "NPY001"
 ]
 ignore = [
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    "E203",
+    # Module level import not at top of file
+    "E402",
+    # Line too long (82 > 79 characters)
+    "E501",
+    # Do not compare types, use `isinstance()`
+    "E721",
+    # Do not use bare except, specify exception instead
+    "E722",
+    # Do not assign a lambda expression, use a def
+    "E731",
+    # Do not use variables named ‘l’, ‘O’, or ‘I’
+    "E741",
     # `name` may be undefined, or defined from star imports: `module`
     "F405",
     # Local variable name is assigned to but never used
@@ -88,9 +106,15 @@ ignore = [
     "UP038",
 ]
 
-[tool.ruff.per-file-ignores]
-# Ignore unused imports in __init__.py
-"__init__.py" = ["F401"]
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["paddle"]
+
+[tool.ruff.lint.per-file-ignores]
+# These files need tabs for testing.
+"test/dygraph_to_static/test_legacy_error.py" = ["E101", "W191"]
+# Ignore compare with True in sot unittest
+"test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
@@ -102,24 +126,21 @@ ignore = [
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
 
-# Temporarily ignored
-"python/paddle/base/**" = [
-    "C408",
-    "UP030",
-    "C405",
-    "B019", # Confirmation required
-    "C416",
-    "F821",
-    "PLC0414",
-]
+# temp ignore unused imports in all distributed files
+"python/paddle/incubate/distributed/fleet/parameter_server/distribute_transpiler/__init__.py" = ["F401", "I001"]
+"python/paddle/incubate/distributed/models/moe/gate/__init__.py" = ["F401", "I001"]
+"python/paddle/incubate/distributed/models/moe/__init__.py" = ["F401", "I001"]
+"python/paddle/incubate/distributed/utils/io/__init__.py" = ["F401", "I001"]
+"python/paddle/distributed/fleet/elastic/__init__.py" = ["F401", "I001"]
 
-# B017
-"test/auto_parallel/spmd_rules/test_reshape_rule.py" = ["B017"]
-"test/dygraph_to_static/test_assert.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_eigvals_op.py" = ["B017"]
-"test/legacy_test/test_tensordot.py" = ["B017"]
-"test/legacy_test/test_top_k_v2_op.py" = ["B017"]
+# temp ignore isort
+"python/paddle/amp/__init__.py" = ["I001"]
+"python/paddle/distributed/__init__.py" = ["I001"]
+"python/paddle/distributed/communication/stream/__init__.py" = ["I001"]
+"python/paddle/distributed/launch/context/__init__.py" = ["I001"]
+"python/paddle/distributed/launch/controllers/__init__.py" = ["I001"]
+"python/paddle/distributed/passes/__init__.py" = ["I001"]
+"python/paddle/distributed/rpc/__init__.py" = ["I001"]
+"python/paddle/distribution/__init__.py" = ["I001"]
+"python/paddle/incubate/distributed/fleet/__init__.py" = ["I001"]
+"python/paddle/incubate/distributed/fleet/parameter_server/pslib/__init__.py" = ["I001"]

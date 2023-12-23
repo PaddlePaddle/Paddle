@@ -1,32 +1,16 @@
-/*
- * Copyright (c) 2022-2023, NVIDIA CORPORATION.  All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -136,7 +120,7 @@ struct FastWeightOnlyHalfConverter<__nv_bfloat16, 4> {
 
 template <typename T>
 __global__ void int8_weight_only_dequant(const uint8_t* weight,
-                                         const float* scale_list,
+                                         const T* scale_list,
                                          T* output,
                                          const int n,
                                          const int k) {
@@ -161,7 +145,7 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
   int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
   weight += tile_id * k * 2;
   output += row_id * k;
-  float scale = scale_list[row_id];
+  float scale = static_cast<float>(scale_list[row_id]);
 #pragma unroll
   for (int i = lane_id * 16; i < k * 2; i += 16 * 32) {
     Load<uint8_t, 16>(&weight[i], &vec_weight);
@@ -191,7 +175,7 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
 
 template <typename T>
 __global__ void int4_weight_only_dequant(const uint8_t* weight,
-                                         const float* scale_list,
+                                         const T* scale_list,
                                          T* output,
                                          const int n,
                                          const int k) {
@@ -217,7 +201,7 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
   int row_id = tile_id * 4 + ((lane_id % 8) / 2);
   weight += tile_id * k / 2 * 4;
   output += row_id * k;
-  float scale = scale_list[row_id];
+  float scale = static_cast<float>(scale_list[row_id]);
 #pragma unroll
   for (int i = lane_id * 32; i < k * 4; i += 32 * 32) {
     Load<uint8_t, 16>(&weight[i / 2], &vec_weight);
@@ -265,7 +249,7 @@ void WeightDequantize(const Context& dev_ctx,
   if (algo == "weight_only_int8") {
     int8_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
         reinterpret_cast<const uint8_t*>(x.data<int8_t>()),
-        scale.data<float>(),
+        reinterpret_cast<const DataType*>(scale.data<T>()),
         reinterpret_cast<DataType*>(out->data<T>()),
         n,
         k);
@@ -273,7 +257,7 @@ void WeightDequantize(const Context& dev_ctx,
     grid.x /= 2;
     int4_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
         reinterpret_cast<const uint8_t*>(x.data<int8_t>()),
-        scale.data<float>(),
+        reinterpret_cast<const DataType*>(scale.data<T>()),
         reinterpret_cast<DataType*>(out->data<T>()),
         n,
         k);

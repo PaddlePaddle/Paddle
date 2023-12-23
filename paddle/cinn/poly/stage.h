@@ -529,7 +529,7 @@ inline std::string OuterName(const std::string& name);
 inline std::string OuterName(const Iterator& iterator);
 
 inline Iterator DefaultIterator(int i) {
-  return Iterator(common::axis_name(i));
+  return Iterator(cinn::common::axis_name(i));
 }
 
 /**

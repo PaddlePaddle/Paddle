@@ -28,5 +28,12 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
 SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  const std::vector<int64_t>& shape);
+
+SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
+                                 const std::vector<int64_t>& shape);
+
+SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+                              const DistMetaTensor& out_grad);
+
 }  // namespace distributed
 }  // namespace phi

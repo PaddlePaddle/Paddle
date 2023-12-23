@@ -24,7 +24,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -106,14 +106,14 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   }
 
   void* scratchpad() const override {
-    if (scratch_ == NULL) {
+    if (scratch_ == nullptr) {
       scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
-    if (semaphore_ == NULL) {
+    if (semaphore_ == nullptr) {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
@@ -686,7 +686,7 @@ struct GPUContext::Impl {
   void AddStreamCallback(const std::function<void()>& callback) const {
     // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
     // launch too many threads and result in thread oversubscription.
-    auto* callback_func = new std::function<void()>(std::move(callback));
+    auto* callback_func = new std::function<void()>(callback);
     auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
       VLOG(4) << "Stream callback";
@@ -919,17 +919,17 @@ ncclComm_t GPUContext::nccl_comm() const { return impl_->GetNcclComm(); }
 void GPUContext::set_nccl_comm(ncclComm_t comm) { impl_->SetNcclComm(comm); }
 
 void GPUContext::Init() {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->Init();
 }
 
 void GPUContext::SetStream(gpuStream_t stream) {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetStream(stream);
 }
 
 void GPUContext::SetCUDAStream(CUDAStream* stream, bool clear) {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetCUDAStream(stream, clear);
 }
 
@@ -1006,7 +1006,7 @@ void GPUContext::PartialInitWithoutAllocator(int stream_priority) {
 }
 
 void GPUContext::PartialInitWithAllocator() {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->PartialInitWithAllocator();
 }
 

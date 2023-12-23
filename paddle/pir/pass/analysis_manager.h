@@ -305,4 +305,5 @@ class AnalysisManagerHolder {
 
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::detail::PreservedAnalyses::AllAnalysesType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(
+    pir::detail::PreservedAnalyses::AllAnalysesType)

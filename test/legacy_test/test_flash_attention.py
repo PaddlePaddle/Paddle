@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import re
 import unittest
@@ -27,6 +28,8 @@ from paddle.nn.functional.flash_attention import (
     flash_attn_unpadded,
     scaled_dot_product_attention,
 )
+
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def get_cuda_version():
@@ -84,10 +87,18 @@ is_sm90 = (
 is_sm_supported = is_sm8x or is_sm90
 
 
+def is_flashattn_supported():
+    if (
+        not core.is_compiled_with_cuda()
+        or get_cuda_version() < 11040
+        or not is_sm_supported
+    ):
+        return False
+    return True
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11040
-    or not is_sm_supported,
+    not is_flashattn_supported(),
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
@@ -309,9 +320,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11040
-    or not is_sm_supported,
+    not is_flashattn_supported(),
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 7.5 or 8.x",
 )
@@ -458,6 +467,73 @@ class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 7.5 or 8.x",
+)
+class TestFlashAttentionNoKVGrad(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 128, 8, 16)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = True
+        self.return_softmax = False
+        self.enable_math = False
+        self.enable_flash = True
+        self.enable_mem_efficient = False
+
+    def _init_tensor_from_numpy(self, array, stop_gradient):
+        t = paddle.to_tensor(
+            array,
+            place=self.place,
+            dtype=self.dtype,
+            stop_gradient=stop_gradient,
+        )
+        return t
+
+    def test_all(self):
+        logging.info(
+            f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+        )
+        # test dynamic
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q = self._init_tensor_from_numpy(query, stop_gradient=False)
+        k = self._init_tensor_from_numpy(key, stop_gradient=True)
+        v = self._init_tensor_from_numpy(value, stop_gradient=True)
+
+        q_ = self._init_tensor_from_numpy(query, stop_gradient=False)
+        k_ = self._init_tensor_from_numpy(key, stop_gradient=True)
+        v_ = self._init_tensor_from_numpy(value, stop_gradient=True)
+
+        with paddle.nn.functional.sdp_kernel(
+            enable_math=self.enable_math,
+            enable_flash=self.enable_flash,
+            enable_mem_efficient=self.enable_mem_efficient,
+        ):
+            out = scaled_dot_product_attention(
+                q, k, v, None, self.dropout, self.causal
+            )
+
+        out_ = attention_naive(q_, k_, v_, self.causal)
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+
+        out.backward()
+        out_.backward()
+
+        self.assertEqual(q.grad.shape, q.shape)
+        self.assertEqual(q_.grad.shape, q.shape)
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
+        )
 
 
 if __name__ == '__main__':

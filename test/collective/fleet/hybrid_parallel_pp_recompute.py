@@ -98,6 +98,7 @@ class TransformerNetPipe(TransformerNet):
     def forward(self, tensors):
         if framework.in_dynamic_mode():
             stable, x = tensors
+            stable = paddle.assign(stable)
             output = super().forward(x)
             return stable, output
         else:

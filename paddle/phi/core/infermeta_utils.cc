@@ -16,9 +16,7 @@ limitations under the License. */
 
 namespace phi {
 
-void InferMetaContext::SetMetaConfig(MetaConfig config) {
-  config_ = std::move(config);
-}
+void InferMetaContext::SetMetaConfig(MetaConfig config) { config_ = config; }
 
 void InferMetaContext::EmplaceBackInput(MetaTensor input) {
   int index = static_cast<int>(inputs_.size());
@@ -96,7 +94,7 @@ InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<std::vector<const MetaTensor*>>(std::move(result));
+    return paddle::optional<std::vector<const MetaTensor*>>(result);
   }
   return paddle::none;
 }

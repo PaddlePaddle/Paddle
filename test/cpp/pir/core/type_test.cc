@@ -24,14 +24,16 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/type_base.h"
 #include "paddle/pir/core/type_name.h"
+#include "paddle/pir/core/type_util.h"
 #include "paddle/pir/core/utils.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 class TypeA {};
-IR_DECLARE_EXPLICIT_TYPE_ID(TypeA)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeA)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeA)
 
 class TypeB {};
-IR_DECLARE_EXPLICIT_TYPE_ID(TypeB)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeB)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeB)
 
 TEST(type_test, type_id) {
@@ -58,19 +60,18 @@ struct FakeDialect : pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<FakeDialect>()) {}
   static const char *name() { return "fake"; }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(FakeDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
 
 TEST(type_test, type_base) {
   // Test 1: Test the function of IrContext to register Dialect.
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
-  std::vector<pir::InterfaceValue> interface_map;
 
   // Test 2: Test the get method of AbstractType.
   pir::TypeId a_id = pir::TypeId::get<TypeA>();
   pir::AbstractType abstract_type_a =
-      pir::AbstractType::get(a_id, *fake_dialect, std::move(interface_map));
+      pir::AbstractType::get(a_id, *fake_dialect, {});
   EXPECT_EQ(abstract_type_a.type_id(), a_id);
 
   // Test 3: Test the constructor of TypeStorage.
@@ -94,6 +95,7 @@ TEST(type_test, built_in_type) {
 
   pir::Type index_1 = pir::IndexType::get(ctx);
   pir::Type index_2 = pir::IndexType::get(ctx);
+  EXPECT_TRUE(index_1.IsIndex());
   EXPECT_EQ(index_1, index_2);
   EXPECT_EQ(index_1.type_id(), index_2.type_id());
   EXPECT_EQ(&index_1.abstract_type(),
@@ -196,7 +198,7 @@ class IntegerType
  public:
   using Base::Base;
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(IntegerType)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(IntegerType)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerType)
 
 // Customize a Dialect IntegerDialect, registration type of IntegerType.
@@ -207,7 +209,7 @@ struct IntegerDialect : pir::Dialect {
   }
   static const char *name() { return "integer"; }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(IntegerDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(IntegerDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {
@@ -230,7 +232,7 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(int8.dialect().id(), pir::TypeId::get<IntegerDialect>());
 
   std::vector<pir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
-  EXPECT_EQ(dialect_list.size() == 4, 1);  // integer, builtin, fake
+  EXPECT_EQ(dialect_list.size() == 5, 1);  // integer, builtin, fake
 
   pir::Dialect *dialect_builtin1 = ctx->GetRegisteredDialect("builtin");
   pir::Dialect *dialect_builtin2 =
@@ -258,6 +260,36 @@ TEST(type_test, pd_op_dialect) {
   EXPECT_EQ(select_rows_dtype.data_layout(), data_layout);
   EXPECT_EQ(select_rows_dtype.lod(), lod);
   EXPECT_EQ(select_rows_dtype.offset(), offset);
+}
+
+TEST(type_test, type_util) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims1 = {2, 2};
+  phi::DDim dims2 = {2, 2, 3};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  paddle::dialect::SelectedRowsType select_rows_dtype1 =
+      paddle::dialect::SelectedRowsType::get(
+          ctx, fp32_dtype, dims1, data_layout, lod, offset);
+
+  paddle::dialect::SelectedRowsType select_rows_dtype2 =
+      paddle::dialect::SelectedRowsType::get(
+          ctx, fp32_dtype, dims2, data_layout, lod, offset);
+
+  std::vector<pir::Type> types1 = {
+      select_rows_dtype1, select_rows_dtype1, select_rows_dtype1};
+  std::vector<pir::Type> types2 = {
+      select_rows_dtype1, select_rows_dtype1, select_rows_dtype1};
+  std::vector<pir::Type> types3 = {
+      select_rows_dtype2, select_rows_dtype2, select_rows_dtype2};
+
+  EXPECT_TRUE(pir::VerifyCompatibleShapes(types1, types2));
+  EXPECT_FALSE(pir::VerifyCompatibleShapes(types1, types3));
 }
 
 namespace TestNamespace {

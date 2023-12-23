@@ -1305,9 +1305,7 @@ class ReduceLROnPlateau(Callback):
                     return
             except Exception as e:
                 warnings.warn(
-                    'There are something wrong when get learning_rate from optimizer: {}.'.format(
-                        e
-                    )
+                    f'There are something wrong when get learning_rate from optimizer: {e}.'
                 )
                 return
 

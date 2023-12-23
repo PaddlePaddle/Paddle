@@ -23,7 +23,8 @@ class OpYamlInfoParser {
  public:
   OpYamlInfoParser() = delete;
 
-  explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple);
+  explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
+                            bool is_legacy_op = false);
 
   bool IsTensorAttribute(size_t index) const;
   size_t InputTensorNumber() const;
@@ -65,6 +66,8 @@ class OpYamlInfoParser {
 
   const std::string& GetOriginOpName() const;
 
+  int GetTensorParamIndexByArgsName(const std::string& args_name) const;
+
  private:
   void parse();
   inline const std::vector<OpInputInfo>& InputInfo() const {
@@ -72,6 +75,7 @@ class OpYamlInfoParser {
   }
 
   OpInfoTuple op_info_tuple_;
+  bool is_legacy_op_;
 
   // input info
   std::map<std::string, uint32_t> input_name2id_;

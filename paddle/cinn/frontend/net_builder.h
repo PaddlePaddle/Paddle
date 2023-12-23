@@ -396,7 +396,7 @@ class NetBuilder {
    * @param id_hint The input variable's name. Default is None.
    * @return The new input.
    */
-  Placeholder CreateInput(const common::Type& type,
+  Placeholder CreateInput(const cinn::common::Type& type,
                           const cinn::utils::ShapeType& shape,
                           const std::string& id_hint = "");
 
@@ -411,8 +411,9 @@ class NetBuilder {
       const T& value,
       const std::string& name = "",
       const std::string& dtype = "") {
-    auto true_dtype =
-        dtype.empty() ? common::Type2Str(common::type_of<T>()) : dtype;
+    auto true_dtype = dtype.empty()
+                          ? cinn::common::Type2Str(cinn::common::type_of<T>())
+                          : dtype;
     auto out =
         CustomInstr(
             "const_scalar", {}, {{"value", value}, {"dtype", true_dtype}})
@@ -441,7 +442,8 @@ class NetBuilder {
 
     using TYPE = typename decltype(all_datas)::value_type;
     auto true_dtype =
-        dtype.empty() ? common::Type2Str(common::type_of<TYPE>()) : dtype;
+        dtype.empty() ? cinn::common::Type2Str(cinn::common::type_of<TYPE>())
+                      : dtype;
 
     const auto& real_shape = GetVectorShape(value);
 
@@ -526,8 +528,11 @@ class NetBuilder {
                         T value,
                         const std::string& name = "",
                         bool force_cpu = false) {
-    return FillConstant<T>(
-        shape, value, name, common::Type2Str(common::type_of<T>()), force_cpu);
+    return FillConstant<T>(shape,
+                           value,
+                           name,
+                           cinn::common::Type2Str(cinn::common::type_of<T>()),
+                           force_cpu);
   }
 
   /**

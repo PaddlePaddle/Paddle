@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -25,6 +26,7 @@
 
 namespace pir {
 class Dialect;
+class InterfaceValue;
 
 ///
 /// \brief OpInfoImpl class.
@@ -38,18 +40,21 @@ class OpInfoImpl {
   static OpInfo Create(Dialect *dialect,
                        TypeId op_id,
                        const char *op_name,
-                       std::vector<InterfaceValue> &&interface_map,
+                       std::set<InterfaceValue> &&interface_set,
                        const std::vector<TypeId> &trait_set,
                        size_t attributes_num,
                        const char *attributes_name[],
-                       VerifyPtr verify);
+                       VerifyPtr verify_sig,
+                       VerifyPtr verify_region);
   static void Destroy(OpInfo info);
 
   TypeId id() const { return op_id_; }
 
   Dialect *dialect() const { return dialect_; }
 
-  VerifyPtr verify() const { return verify_; }
+  VerifyPtr VerifySig() const { return verify_sig_; }
+
+  VerifyPtr VerifyRegion() const { return verify_region_; }
 
   IrContext *ir_context() const;
 
@@ -57,6 +62,8 @@ class OpInfoImpl {
   bool HasTrait(TypeId trait_id) const;
 
   bool HasInterface(TypeId interface_id) const;
+
+  void AttachInterface(InterfaceValue &&interface_value);
 
   void *GetInterfaceImpl(TypeId interface_id) const;
 
@@ -69,23 +76,19 @@ class OpInfoImpl {
   }
 
  private:
-  OpInfoImpl(pir::Dialect *dialect,
+  OpInfoImpl(std::set<InterfaceValue> &&interface_set,
+             pir::Dialect *dialect,
              TypeId op_id,
              const char *op_name,
-             uint32_t num_interfaces,
              uint32_t num_traits,
              uint32_t num_attributes,
              const char **p_attributes,
-             VerifyPtr verify)
-      : dialect_(dialect),
-        op_id_(op_id),
-        op_name_(op_name),
-        num_interfaces_(num_interfaces),
-        num_traits_(num_traits),
-        num_attributes_(num_attributes),
-        p_attributes_(p_attributes),
-        verify_(verify) {}
+             VerifyPtr verify_sig,
+             VerifyPtr verify_region);
+  ~OpInfoImpl() = default;
   void Destroy();
+
+  std::set<InterfaceValue> interface_set_;
 
   /// The dialect of this Op belong to.
   Dialect *dialect_;
@@ -96,9 +99,6 @@ class OpInfoImpl {
   /// The name of this Op.
   const char *op_name_;
 
-  /// Interface will be recorded by std::pair<TypeId, void*>.
-  uint32_t num_interfaces_ = 0;
-
   /// Trait will be recorded by TypeId.
   uint32_t num_traits_ = 0;
 
@@ -108,7 +108,9 @@ class OpInfoImpl {
   /// Attributes array address.
   const char **p_attributes_{nullptr};
 
-  VerifyPtr verify_{nullptr};
+  VerifyPtr verify_sig_{nullptr};
+
+  VerifyPtr verify_region_{nullptr};
 };
 
 }  // namespace pir

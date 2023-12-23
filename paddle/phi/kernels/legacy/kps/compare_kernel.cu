@@ -32,27 +32,14 @@
 
 namespace phi {
 
-template <typename T>
-struct BitwiseAdd {
-  // Bitwise add operator, returns <tt>a + b</tt>
-  inline T initial() { return static_cast<T>(true); }
-
-  __host__ __device__ __forceinline__ T operator()(const T& a,
-                                                   const T& b) const {
-    return a & b;
-  }
-};
-
-template <typename T,
-          typename Context,
-          typename Functor,
-          typename InverseFunctor>
-inline void CompareCudaRawKernelImpl(const Context& ctx,
-                                     const DenseTensor& x,
-                                     const DenseTensor& y,
-                                     int axis,
-                                     DenseTensor* out) {
+template <typename T, typename Context, typename Functor>
+inline void CompareRawKernelImpl(const Context& ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 int axis,
+                                 DenseTensor* out) {
   ctx.template Alloc<bool>(out);
+  out->set_type(phi::DataType::BOOL);
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{out};
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
@@ -64,10 +51,8 @@ void LessThanRawKernel(const Context& ctx,
                        const DenseTensor& y,
                        int axis,
                        DenseTensor* out) {
-  CompareCudaRawKernelImpl<T,
-                           Context,
-                           funcs::LessThanFunctor<T>,
-                           funcs::GreaterThanFunctor<T>>(ctx, x, y, axis, out);
+  CompareRawKernelImpl<T, Context, funcs::LessThanFunctor<T>>(
+      ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -76,10 +61,8 @@ void LessEqualRawKernel(const Context& ctx,
                         const DenseTensor& y,
                         int axis,
                         DenseTensor* out) {
-  CompareCudaRawKernelImpl<T,
-                           Context,
-                           funcs::LessEqualFunctor<T>,
-                           funcs::GreaterEqualFunctor<T>>(ctx, x, y, axis, out);
+  CompareRawKernelImpl<T, Context, funcs::LessEqualFunctor<T>>(
+      ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -88,43 +71,38 @@ void GreaterThanRawKernel(const Context& ctx,
                           const DenseTensor& y,
                           int axis,
                           DenseTensor* out) {
-  CompareCudaRawKernelImpl<T,
-                           Context,
-                           funcs::GreaterThanFunctor<T>,
-                           funcs::LessThanFunctor<T>>(ctx, x, y, axis, out);
+  CompareRawKernelImpl<T, Context, funcs::GreaterThanFunctor<T>>(
+      ctx, x, y, axis, out);
 }
+
 template <typename T, typename Context>
 void GreaterEqualRawKernel(const Context& ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
                            int axis,
                            DenseTensor* out) {
-  CompareCudaRawKernelImpl<T,
-                           Context,
-                           funcs::GreaterEqualFunctor<T>,
-                           funcs::LessEqualFunctor<T>>(ctx, x, y, axis, out);
+  CompareRawKernelImpl<T, Context, funcs::GreaterEqualFunctor<T>>(
+      ctx, x, y, axis, out);
 }
+
 template <typename T, typename Context>
 void EqualRawKernel(const Context& ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out) {
-  CompareCudaRawKernelImpl<T,
-                           Context,
-                           funcs::EqualFunctor<T>,
-                           funcs::EqualFunctor<T>>(ctx, x, y, axis, out);
+  CompareRawKernelImpl<T, Context, funcs::EqualFunctor<T>>(
+      ctx, x, y, axis, out);
 }
+
 template <typename T, typename Context>
 void NotEqualRawKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        int axis,
                        DenseTensor* out) {
-  CompareCudaRawKernelImpl<T,
-                           Context,
-                           funcs::NotEqualFunctor<T>,
-                           funcs::NotEqualFunctor<T>>(ctx, x, y, axis, out);
+  CompareRawKernelImpl<T, Context, funcs::NotEqualFunctor<T>>(
+      ctx, x, y, axis, out);
 }
 
 }  // namespace phi
@@ -161,6 +139,8 @@ PD_REGISTER_KERNEL(less_than_raw,
                    ALL_LAYOUT,
                    phi::LessThanRawKernel,
                    bool,
+                   uint8_t,
+                   int8_t,
                    int16_t,
                    int,
                    int64_t,
@@ -177,8 +157,10 @@ PD_REGISTER_KERNEL(less_than_raw,
                      ALL_LAYOUT,                          \
                      phi::func##RawKernel,                \
                      bool,                                \
+                     uint8_t,                             \
                      int16_t,                             \
                      int,                                 \
+                     int8_t,                              \
                      int64_t,                             \
                      float,                               \
                      double,                              \

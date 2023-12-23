@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/lang/lower.h"
 
@@ -34,13 +35,13 @@ TEST(AutoUnroll, Init) {
       {M, N}, [&](Var i, Var j) { return A(i, j) * B(i, j); }, "C");
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
-  auto stages = CreateStages({C});
-  auto funcs = cinn::lang::LowerVec(
-      "test_init", stages, {A, B, C}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({C});
+  auto funcs =
+      cinn::lang::LowerToAstVec("test_init", {A, B, C}, &tensor_group, target);
 
   auto ast_expr = funcs[0]->body;
   ir::IRSchedule init_schedule(ir::ModuleExpr({ast_expr}));
@@ -64,9 +65,9 @@ TEST(AutoUnroll, UnrollableApply) {
       "C");
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   auto stages = CreateStages({C});
   auto funcs = cinn::lang::LowerVec(

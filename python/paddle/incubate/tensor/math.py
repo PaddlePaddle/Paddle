@@ -15,7 +15,7 @@
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
 
 __all__ = []
@@ -66,7 +66,7 @@ def segment_sum(data, segment_ids, name=None):
              [4., 5., 6.]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
@@ -135,7 +135,7 @@ def segment_mean(data, segment_ids, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.segment_pool(data, segment_ids, "MEAN")
 
     check_variable_and_dtype(
@@ -203,7 +203,7 @@ def segment_min(data, segment_ids, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.segment_pool(data, segment_ids, "MIN")
 
     check_variable_and_dtype(
@@ -271,7 +271,7 @@ def segment_max(data, segment_ids, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.segment_pool(data, segment_ids, "MAX")
         return out
 

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import random
 import unittest
 
 import numpy as np
 
 import paddle
+from paddle.base.framework import EagerParamBase
 from paddle.distributed.fleet.utils import recompute
 
 
@@ -54,6 +56,8 @@ class Model(paddle.nn.Layer):
         if pos is None:
             return self.block(x)
         else:
+            if isinstance(pos, tuple):
+                pos = pos[0]
             return self.block(x) + pos
 
 
@@ -70,12 +74,14 @@ class Naive_fc_net(paddle.nn.Layer):
         segments=1,
         use_raw_recompute=False,
         recompute_kwargs={},
+        raise_value_error=False,
     ):
         super().__init__()
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
         self.use_fleet_sq = use_fleet_sq
         self.use_raw_recompute = use_raw_recompute
+        self.raise_value_error = raise_value_error
         self.segments = segments
 
         self.runfunc0 = get_fc_block(0, input_size, is_last=False)
@@ -120,13 +126,20 @@ class Naive_fc_net(paddle.nn.Layer):
             inputs = recompute(self.layers[0], inputs)
             return self.layers[1](inputs)
 
+        recompute_kwargs = copy.deepcopy(self.recompute_kwargs)
+
+        pos = (
+            recompute_kwargs.pop("pos", None)
+            if not self.raise_value_error
+            else None
+        )
         for i in range(len(self.layers)):
             if i in self.recompute_blocks:
                 inputs = recompute(
-                    self.layers[i], inputs, **self.recompute_kwargs
+                    self.layers[i], inputs, pos, **recompute_kwargs
                 )
             else:
-                inputs = self.layers[i](inputs)
+                inputs = self.layers[i](inputs, pos)
 
         return inputs
 
@@ -134,6 +147,7 @@ class Naive_fc_net(paddle.nn.Layer):
 def run_model(
     recompute_block=[],
     recompute_kwargs={},
+    raise_value_error=False,
     use_fleet_sq=False,
     use_raw_recompute=False,
     segments=1,
@@ -153,6 +167,7 @@ def run_model(
         use_raw_recompute=use_raw_recompute,
         segments=segments,
         recompute_kwargs=recompute_kwargs,
+        raise_value_error=raise_value_error,
     )
 
     if pure_fp16:
@@ -302,13 +317,57 @@ class TestRecompute(unittest.TestCase):
         kwargs = {"pos": pos, "use_reentrant": True}
         with self.assertRaises(ValueError):
             loss_ref, param_ref, grad_ref = run_model(
-                recompute_block=[2], recompute_kwargs=kwargs
+                recompute_block=[2],
+                recompute_kwargs=kwargs,
+                raise_value_error=True,
             )
 
         kwargs = {"pos": pos, "use_reentrant": False}
         loss_ref, param_ref, grad_ref = run_model(
             recompute_block=[2], recompute_kwargs=kwargs
         )
+
+    def test_recompute_inputs_with_param(self):
+        pos = paddle.randn(shape=[10, 10], dtype="float32")
+        new_pos = EagerParamBase(
+            shape=pos.shape, dtype=pos.dtype, name=pos.name
+        )
+        pos._share_buffer_to(new_pos)
+        new_pos.stop_gradient = False
+
+        loss, param, grad = run_model(
+            recompute_block=[], recompute_kwargs={"pos": new_pos}
+        )
+
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[1, 2, 3], recompute_kwargs={"pos": new_pos}
+        )
+
+        self.assertEqual(loss_ref, loss)
+        self.assertEqual(param_ref, param)
+        self.assertEqual(grad_ref, grad)
+
+    def test_recompute_inputs_with_tuple(self):
+        pos = paddle.randn(shape=[10, 10], dtype="float32")
+        new_pos = EagerParamBase(
+            shape=pos.shape, dtype=pos.dtype, name=pos.name
+        )
+        pos._share_buffer_to(new_pos)
+        pos.stop_gradient = False
+        new_pos.stop_gradient = False
+
+        loss, param, grad = run_model(
+            recompute_block=[2, 4], recompute_kwargs={"pos": (pos,)}
+        )
+
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[1, 2, 3],
+            recompute_kwargs={"pos": (new_pos,)},
+        )
+
+        self.assertEqual(loss_ref, loss)
+        self.assertEqual(param_ref, param)
+        self.assertEqual(grad_ref, grad)
 
 
 if __name__ == '__main__':

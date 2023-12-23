@@ -78,6 +78,44 @@ class Model(paddle.nn.Layer):
         return x
 
 
+class LayerNorm2D(paddle.nn.LayerNorm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(args, *kwargs)
+
+    def forward(self, x):
+        x = x.transpose([0, 2, 3, 1])
+        x = super().forward(x)
+        return x.transpose([0, 3, 1, 2])
+
+
+class CustomLayer(paddle.nn.Layer):
+    def __init__(
+        self, input_channel, hidden_size, fp16_conv=True, fp16_linear=True
+    ):
+        super().__init__()
+        self.conv = ConvBNLayer(input_channel, 8, 3)
+        self.linear = paddle.nn.Linear(8, hidden_size)
+        self.layernorm = paddle.nn.Sequential(
+            LayerNorm2D(hidden_size),
+            LayerNorm2D(hidden_size),
+        )
+        self.fp16_conv = fp16_conv
+        self.fp16_linear = fp16_linear
+
+    def forward(self, inputs):
+        with paddle.amp.auto_cast(enable=self.fp16_conv):
+            if not self.fp16_conv:
+                inputs = inputs.astype('float32')
+            x = self.conv(inputs)
+        with paddle.amp.auto_cast(enable=self.fp16_linear):
+            if not self.fp16_linear:
+                x = x.astype('float32')
+            x = self.linear(x)
+        x = F.relu(x)
+        x = self.layernorm(x)
+        return x
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or paddle.device.cuda.get_device_capability()[0] < 7.0,
@@ -165,6 +203,22 @@ class TestAMPDecorate(unittest.TestCase):
         self.check_results(
             fp32_layers=[model.layernorm, model.conv._batch_norm],
             fp16_layers=[model.conv._conv, model.linear],
+        )
+
+    def test_excluded_layers_custom_layer(self):
+        if not paddle.amp.is_float16_supported():
+            return
+        model = CustomLayer(4, 8)
+        model = paddle.amp.decorate(
+            models=model,
+            level='O2',
+            dtype='bfloat16',
+            excluded_layers=[paddle.nn.LayerNorm, paddle.nn.BatchNorm],
+        )
+        with paddle.amp.auto_cast(level='O2'):
+            out = model(paddle.rand(shape=[2, 4, 8, 8], dtype='float32'))
+        self.check_results(
+            fp32_layers=[model.layernorm, model.conv._batch_norm],
         )
 
 

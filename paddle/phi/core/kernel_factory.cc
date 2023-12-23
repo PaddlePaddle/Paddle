@@ -526,7 +526,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   std::unordered_set<std::string> dtype_set;
 
   // Record all kernel information of kernel_name
-  for (auto iter : KernelFactory::Instance().kernels()[kernel_name]) {
+  for (auto const& iter : KernelFactory::Instance().kernels()[kernel_name]) {
     KernelKey kernel_key = iter.first;
     if (kernel_key.backend() == target_key.backend()) {
       support_backend = true;
@@ -538,7 +538,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
     backend_set.insert(
         paddle::experimental::BackendToString(kernel_key.backend()));
     all_kernel_key[paddle::experimental::BackendToString(kernel_key.backend()) +
-                   ", " + phi::DataLayoutToString(kernel_key.layout())]
+                   ", " + common::DataLayoutToString(kernel_key.layout())]
         .push_back(DataTypeToString(kernel_key.dtype()));
   }
   // 1. If target_key not supports target backend, output "Selected wrong

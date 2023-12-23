@@ -348,7 +348,7 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(
         platform::errors::Fatal("Operator %s raises an %s exception.\n"

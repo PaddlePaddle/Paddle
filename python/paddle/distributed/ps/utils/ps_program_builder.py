@@ -280,10 +280,11 @@ class GpuPsProgramBuilder(PsProgramBuilder):
         ps_gpu_pass = new_pass("ps_gpu_pass", self.attrs)
         ps_gpu_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
-        ps_transpile_pass = new_pass("ps_transpile_pass", self.attrs)
-        ps_transpile_pass.apply(
-            [self.cloned_main], [self.cloned_startup], self.pass_ctx
-        )
+        if not getattr(self.attrs['user_defined_strategy'], "sharding", False):
+            ps_transpile_pass = new_pass("ps_transpile_pass", self.attrs)
+            ps_transpile_pass.apply(
+                [self.cloned_main], [self.cloned_startup], self.pass_ctx
+            )
 
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup

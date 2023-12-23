@@ -1240,10 +1240,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            dataset = paddle.distributed.InMemoryDataset()
-            dataset._set_fea_eval(1000000, True)
+                >>> import paddle
+                >>> paddle.enable_static()
+                >>> dataset = paddle.distributed.InMemoryDataset()
+                >>> dataset._set_fea_eval(1000000, True)
 
         """
         if fea_eval:
@@ -1299,11 +1299,10 @@ class QueueDataset(DatasetBase):
     QueueDataset, it will process data streamly.
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
-
-    import paddle
-    dataset = paddle.distributed.QueueDataset()
+            >>> import paddle
+            >>> dataset = paddle.distributed.QueueDataset()
 
     """
 
@@ -1510,6 +1509,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         End Pass
         Notify BoxPS that current pass ended
+
         Examples:
             .. code-block:: python
 
@@ -1523,6 +1523,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         Wait async preload done
         Wait Until Feed Pass Done
+
         Examples:
             .. code-block:: python
 
@@ -1539,6 +1540,7 @@ class BoxPSDataset(InMemoryDataset):
     def load_into_memory(self):
         """
         Load next pass into memory and notify boxps to fetch its emb from SSD
+
         Examples:
             .. code-block:: python
 
@@ -1555,6 +1557,7 @@ class BoxPSDataset(InMemoryDataset):
     def preload_into_memory(self):
         """
         Begin async preload next pass while current pass may be training
+
         Examples:
             .. code-block:: python
 
@@ -1588,11 +1591,13 @@ class BoxPSDataset(InMemoryDataset):
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
         Examples:
-            import paddle
-            dataset = paddle.distributed.fleet.BoxPSDataset()
-            dataset.set_merge_by_lineid()
-            #suppose there is a slot 0
-            dataset.slots_shuffle(['0'])
+            .. code-block:: python
+
+                >>> import paddle
+                >>> dataset = paddle.distributed.fleet.BoxPSDataset()
+                >>> dataset._set_merge_by_lineid()
+                >>> #suppose there is a slot 0
+                >>> dataset.slots_shuffle(['0'])
         """
         slots_set = set(slots)
         self.boxps.slots_shuffle(slots_set)

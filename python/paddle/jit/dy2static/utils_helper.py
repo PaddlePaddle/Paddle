@@ -18,10 +18,9 @@ import inspect
 import astor
 import numpy as np  # noqa: F401
 
-import paddle  # noqa: F401
+import paddle
 from paddle import base  # noqa: F401
-from paddle.base import dygraph  # noqa: F401
-from paddle.base import layers  # noqa: F401
+from paddle.base import dygraph, layers  # noqa: F401
 from paddle.base.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
@@ -184,3 +183,18 @@ class NodeVarType:
         # raise warning if not found
         warn("Currently we don't support annotation: %s" % annotation_str)
         return NodeVarType.UNKNOWN
+
+
+def set_dynamic_shape(variable, shape_list):
+    if paddle.base.dygraph.base.in_to_static_mode():
+        if isinstance(variable, paddle.base.framework.Variable):
+            variable.desc.set_shape(shape_list)
+        elif isinstance(variable, paddle.pir.Value):
+            variable.set_shape(shape_list)
+        else:
+            raise TypeError(
+                "In to_static mode, variable must be a Variable or Value"
+            )
+    else:
+        # in dygraph mode, dynamic shape is not needed, just do nothing.
+        return

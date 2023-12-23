@@ -16,9 +16,22 @@ import warnings
 from functools import partial, reduce
 
 import paddle
+from paddle import _C_ops
 from paddle.base import core
 from paddle.base.backward import _infer_var_data_type_shape_
-from paddle.base.framework import Operator, Program, Variable, static_only
+from paddle.base.framework import (
+    Operator,
+    Program,
+    Variable,
+    in_pir_mode,
+    static_only,
+)
+from paddle.base.libpaddle.pir import (
+    build_assert_op,
+    build_if_op,
+    build_while_op,
+    cf_yield,
+)
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -95,6 +108,11 @@ def Assert(cond, data=None, summarize=20, name=None):
     )
     check_type(summarize, "summarize", int, "static.nn.control_flow.Assert")
     check_type(name, "name", (str, type(None)), "static.nn.control_flow.Assert")
+
+    if in_pir_mode():
+        input_data = [] if data is None else list(data)
+        assert_op = build_assert_op(cond, input_data, summarize)
+        return
 
     layer_name = name if name else ('assert_' + cond.name)
     helper = LayerHelper(layer_name, **locals())
@@ -647,8 +665,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             ...     print(res)
             [array([10], dtype=int64)]
     """
-    helper = LayerHelper('while_loop', **locals())
-
     if not callable(cond):
         raise TypeError("cond in while_loop should be callable")
     if not callable(body):
@@ -658,6 +674,17 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
+
+    if in_pir_mode():
+        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        with while_op.body() as cur_block:
+            args = cur_block.args()
+            next_var = body(*args)
+            next_cond = cond(*next_var)
+            next_cond.stop_gradient = True
+            cf_yield([next_cond, *next_var])
+        return while_op.as_operation().results()
+
     check_variable_and_dtype(
         pre_cond, 'var of cond returned', ['bool'], 'static.nn.while_loop'
     )
@@ -1037,9 +1064,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             if key in keys_of_fns:
                 raise ValueError(
-                    "The key in 'branch_fns' must be unique, but '{}' appears more than once.".format(
-                        key
-                    )
+                    f"The key in 'branch_fns' must be unique, but '{key}' appears more than once."
                 )
             else:
                 keys_of_fns.append(key)
@@ -1206,43 +1231,65 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     )
                 return false_fn()
         return None
-
-    check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-    check_type(name, "name", (str, type(None)), "base.layers.cond")
-    helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
-    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
-    if true_fn is not None:
-        if not callable(true_fn):
-            raise TypeError(
-                "The true_fn in cond must be callable, but received {}".format(
-                    type(true_fn).__name__
+    if in_pir_mode():
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
+        if_op = build_if_op(pred)
+        if true_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn in cond must be callable, but received {}".format(
+                        type(true_fn).__name__
+                    )
                 )
+            with if_op.true_block():
+                true_output = true_fn()
+        if false_fn is not None:
+            if not callable(false_fn):
+                raise TypeError(
+                    "The false_fn in cond must be callable, but received {}".format(
+                        type(false_fn).__name__
+                    )
+                )
+            with if_op.false_block():
+                false_output = false_fn()
+    else:
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
+        helper = LayerHelper('cond', **locals())
+        copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
+        if true_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn in cond must be callable, but received {}".format(
+                        type(true_fn).__name__
+                    )
+                )
+            true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
+            with true_cond_block.block():
+                origin_true_output = true_fn()
+                if origin_true_output is not None:
+                    true_output = map_structure(
+                        copy_to_parent_func, origin_true_output
+                    )
+        if false_fn is not None:
+            if not callable(false_fn):
+                raise TypeError(
+                    "The false_fn in cond must be callable, but received {}".format(
+                        type(false_fn).__name__
+                    )
+                )
+            false_cond_block = ConditionalBlock(
+                [paddle.logical_not(pred)], is_scalar_condition=True
             )
-        true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
-        with true_cond_block.block():
-            origin_true_output = true_fn()
-            if origin_true_output is not None:
-                true_output = map_structure(
-                    copy_to_parent_func, origin_true_output
-                )
-    if false_fn is not None:
-        if not callable(false_fn):
-            raise TypeError(
-                "The false_fn in cond must be callable, but received {}".format(
-                    type(false_fn).__name__
-                )
-            )
-        false_cond_block = ConditionalBlock(
-            [paddle.logical_not(pred)], is_scalar_condition=True
-        )
-        with false_cond_block.block():
-            origin_false_output = false_fn()
-            if origin_false_output is not None:
-                false_output = map_structure(
-                    copy_to_parent_func, origin_false_output
-                )
+            with false_cond_block.block():
+                origin_false_output = false_fn()
+                if origin_false_output is not None:
+                    false_output = map_structure(
+                        copy_to_parent_func, origin_false_output
+                    )
 
     if true_output is None and false_output is None:
         return None
@@ -1334,6 +1381,14 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             true_output, false_output
         )
 
+    if in_pir_mode():
+        with if_op.true_block():
+            cf_yield(flatten(true_output))
+        with if_op.false_block():
+            cf_yield(flatten(false_output))
+        if_op.update_output()
+        return pack_sequence_as(true_output, flatten(if_op.results()))
+
     mask = paddle.cast(pred, dtype='int32')
     merge_func = (
         lambda name, false_var, true_var: select_input_with_buildin_type(
@@ -1344,7 +1399,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     def merge_every_var_list(false_vars, true_vars, name):
         return map_structure(partial(merge_func, name), false_vars, true_vars)
 
-    merged_output = list(
+    merged_output_fns = list(
         map(
             merge_every_var_list,
             _to_sequence_except_dict(false_output),
@@ -1352,6 +1407,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             _to_sequence_except_dict(return_names),
         )
     )
+    merged_output = map_structure(lambda fn: fn(), merged_output_fns)
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
@@ -1469,13 +1525,7 @@ def select_input_with_buildin_type(inputs, mask, name):
 
     false_var, true_var = inputs
 
-    if isinstance(false_var, UndefinedVar) and isinstance(
-        true_var, UndefinedVar
-    ):
-        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
-        return None
-
-    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+    def start_select_input():
         try:
             return select_input(inputs, mask)
         except Exception as e:
@@ -1483,11 +1533,20 @@ def select_input_with_buildin_type(inputs, mask, name):
                 f"Exceptions throwed while doing select_input on {name}:\n{e}"
             )
 
+    if isinstance(false_var, UndefinedVar) and isinstance(
+        true_var, UndefinedVar
+    ):
+        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
+        return lambda: None
+
+    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+        return start_select_input
+
     elif isinstance(false_var, support_ret_buildin_type) and isinstance(
         false_var, type(true_var)
     ):
         if false_var == true_var:
-            return false_var
+            return lambda: false_var
         else:
             inputs = [
                 to_static_variable(false_var),
@@ -1514,12 +1573,6 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable,) + support_ret_buildin_type)
     ):
-
-        def create_var_if_not_undefined_var(a):
-            if isinstance(a, UndefinedVar):
-                return a
-            return to_static_variable(a)
-
         true_var, false_var = to_static_variable(true_var), to_static_variable(
             false_var
         )
@@ -1531,12 +1584,7 @@ def select_input_with_buildin_type(inputs, mask, name):
                 type(false_var), type(true_var)
             )
         )
-    try:
-        return select_input(inputs, mask)
-    except Exception as e:
-        raise RuntimeError(
-            f"Exceptions throwed while doing select_input on {name}:\n{e}"
-        )
+    return start_select_input
 
 
 def _is_sequence_except_dict(x):
@@ -1711,11 +1759,27 @@ def Print(
     check_variable_and_dtype(
         input,
         'input',
-        ['float32', 'float64', 'int32', 'int64', 'bool'],
+        ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         'paddle.static.Print',
     )
+    message = message or ""
+    helper = LayerHelper('print', **locals())
 
-    helper = LayerHelper('print' + "_" + input.name, **locals())
+    if in_pir_mode():
+        return _C_ops.print(
+            input,
+            first_n,
+            message,
+            summarize,
+            print_tensor_name,
+            print_tensor_type,
+            print_tensor_shape,
+            print_tensor_layout,
+            print_tensor_lod,
+            print_phase.upper(),
+            True,
+        )
+
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',

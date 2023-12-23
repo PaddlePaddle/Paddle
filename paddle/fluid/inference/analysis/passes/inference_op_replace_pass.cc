@@ -16,11 +16,17 @@
 
 #include "paddle/fluid/inference/analysis/argument.h"
 
+PHI_DECLARE_bool(enable_pir_in_executor);
+
 namespace paddle {
 namespace inference {
 namespace analysis {
 
 void InferenceOpReplacePass::RunImpl(Argument* argument) {
+  if (FLAGS_enable_pir_in_executor) {
+    return;
+  }
+
   std::unordered_map<std::string, std::string> replaced_map{
       {"conditional_block", "conditional_block_infer"},
       {"merge_lod_tensor", "merge_lod_tensor_infer"},

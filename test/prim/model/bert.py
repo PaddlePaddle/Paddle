@@ -251,7 +251,7 @@ class BertModel(nn.Layer):
                 if enable_cinn:
                     build_strategy.build_cinn_pass = True
                 self.encoder = paddle.jit.to_static(
-                    self.encoder, None, build_strategy
+                    self.encoder, None, build_strategy, full_graph=True
                 )
         self.pooler = BertPooler(config)
         # self.apply(self.init_weights)

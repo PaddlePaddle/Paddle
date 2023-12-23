@@ -123,6 +123,7 @@ class ReferenceCountPassTestHelper {
   std::vector<OperatorBase *> LastLivedOps(const std::string &name) const {
     auto &ops = last_live_ops_of_vars_[0].at(name).ops();
     std::vector<OperatorBase *> ret;
+    ret.reserve(ops.size());
     for (auto *op : ops) {
       ret.emplace_back(op->GetOp());
     }

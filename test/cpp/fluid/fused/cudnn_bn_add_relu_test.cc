@@ -44,7 +44,7 @@ template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
                       phi::DenseTensor *cpu_out) {
   T *cpu_out_ptr =
-      cpu_out->mutable_data<T>(phi::make_ddim(dims), platform::CPUPlace());
+      cpu_out->mutable_data<T>(common::make_ddim(dims), platform::CPUPlace());
   std::default_random_engine random(0);
   std::uniform_real_distribution<float> dis(-1.0, 1.0);
   for (int i = 0; i < cpu_out->numel(); ++i) {
@@ -57,7 +57,7 @@ void InitConstantTensor(const std::vector<int64_t> &dims,
                         T value,
                         phi::DenseTensor *cpu_out) {
   T *cpu_out_ptr =
-      cpu_out->mutable_data<T>(phi::make_ddim(dims), platform::CPUPlace());
+      cpu_out->mutable_data<T>(common::make_ddim(dims), platform::CPUPlace());
   for (int i = 0; i < cpu_out->numel(); ++i) {
     cpu_out_ptr[i] = value;
   }
@@ -652,7 +652,7 @@ class CudnnBNAddReluTester {
     saved_mean->Resize({1, 1, 1, channels_});
     saved_var->Resize({1, 1, 1, channels_});
 
-    auto param_shape = phi::vectorize<int>(bn_scale->dims());
+    auto param_shape = common::vectorize<int>(bn_scale->dims());
     op::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
     bn_op.Forward(ctx,
                   *sum,
@@ -759,17 +759,17 @@ class CudnnBNAddReluTester {
                                   &equiv_bias_z);
     }
 
-    y.Resize(phi::make_ddim({batch_size_, height_, width_, channels_}));
+    y.Resize(common::make_ddim({batch_size_, height_, width_, channels_}));
 
     int c = channels_;
     int64_t nhw = ele_count_;
     int32_t c_int32_elems = ((c + 63) & ~63) / 32;
     int32_t nhw_int32_elems = (nhw + 31) & ~31;
-    bitmask.Resize(phi::make_ddim({nhw_int32_elems, c_int32_elems, 1}));
+    bitmask.Resize(common::make_ddim({nhw_int32_elems, c_int32_elems, 1}));
 
-    auto data_shape = phi::vectorize<int>(x.dims());
-    auto param_shape = phi::vectorize<int>(bn_scale_x.dims());
-    auto bitmask_shape = phi::vectorize<int>(bitmask.dims());
+    auto data_shape = common::vectorize<int>(x.dims());
+    auto param_shape = common::vectorize<int>(bn_scale_x.dims());
+    auto bitmask_shape = common::vectorize<int>(bitmask.dims());
 
     // 2. Scale Bias + Relu
     op::CudnnScaleBiasAddRelu<T> sbar_op(ctx,
@@ -841,14 +841,14 @@ class CudnnBNAddReluTester {
     saved_mean.Resize({1, 1, 1, channels_});
     saved_var.Resize({1, 1, 1, channels_});
 
-    dx.Resize(phi::make_ddim({batch_size_, height_, width_, channels_}));
-    dz.Resize(phi::make_ddim({batch_size_, height_, width_, channels_}));
-    dscale.Resize(phi::make_ddim({1, 1, 1, channels_}));
-    dbias.Resize(phi::make_ddim({1, 1, 1, channels_}));
+    dx.Resize(common::make_ddim({batch_size_, height_, width_, channels_}));
+    dz.Resize(common::make_ddim({batch_size_, height_, width_, channels_}));
+    dscale.Resize(common::make_ddim({1, 1, 1, channels_}));
+    dbias.Resize(common::make_ddim({1, 1, 1, channels_}));
 
-    auto data_shape = phi::vectorize<int>(x.dims());
-    auto param_shape = phi::vectorize<int>(bn_scale.dims());
-    auto bitmask_shape = phi::vectorize<int>(bitmask.dims());
+    auto data_shape = common::vectorize<int>(x.dims());
+    auto param_shape = common::vectorize<int>(bn_scale.dims());
+    auto bitmask_shape = common::vectorize<int>(bitmask.dims());
 
     std::string act_type = "relu";
     op::CudnnScaleBiasAddRelu<T> sbar_op(

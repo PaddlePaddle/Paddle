@@ -227,10 +227,13 @@ class LBFGS(Optimizer):
         return loss, flat_grad
 
     def step(self, closure):
-        """Performs a single optimization step.
+        """
+        Performs a single optimization step.
+
         Args:
             closure (callable): A closure that reevaluates the model
                 and returns the loss.
+
         """
 
         with paddle.no_grad():

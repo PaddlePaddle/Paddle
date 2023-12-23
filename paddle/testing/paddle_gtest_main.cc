@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/framework/init_default_kernel_signature_map.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/flags.h"

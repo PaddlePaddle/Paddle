@@ -18,8 +18,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_int32(search_cache_max_number);

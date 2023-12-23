@@ -29,18 +29,27 @@ class AutoTuner:
         self.cur_task_id = 1
         self.task_limit = tuner_cfg.get("task_limit", 100)
 
-        search_algo = tuner_cfg.get("search_algo", "grid")
+        search_algo = tuner_cfg.get("search_algo", {"name": "grid"})["name"]
 
         if search_algo == "grid":
             from .search import GridSearch
 
             tuner_cfg["candidates"] = default_candidates(tuner_cfg)
             self.algo = GridSearch(tuner_cfg)
+        elif search_algo == "dp_estimation":
+            from .search import DpEstimationSearch
+
+            tuner_cfg["candidates"] = default_candidates(tuner_cfg)
+            self.algo = DpEstimationSearch(tuner_cfg)
         elif search_algo == "gbs":
             from .search import GBSSearch
 
             tuner_cfg["candidates"] = gbs_default_candidates(tuner_cfg)
             self.algo = GBSSearch(tuner_cfg)
+        elif search_algo == "customize":
+            from .search import CustomizeSearch
+
+            self.algo = CustomizeSearch(tuner_cfg)
         else:
             raise NotImplementedError()
 

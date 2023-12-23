@@ -25,7 +25,7 @@ from paddle.distribution import (
     variable,
 )
 
-__all__ = [  # noqa
+__all__ = [
     'Transform',
     'AbsTransform',
     'AffineTransform',
