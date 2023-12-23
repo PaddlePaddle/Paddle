@@ -1021,7 +1021,7 @@ void MultiSlotDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1423,7 +1423,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1523,7 +1523,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1568,7 +1568,7 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
               use_slots_[i].c_str(),
               total_dims,
               total_instance));
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 }
@@ -1808,7 +1808,7 @@ int PaddleBoxDataFeed::Next() {
       output_pv_channel_->Get(pv_instance);
       pv_vec.push_back(pv_instance);
       ++index;
-      consume_pv_channel_->Put(std::move(pv_instance));
+      consume_pv_channel_->Put(pv_instance);
     }
     this->batch_size_ = index;
     VLOG(3) << "pv_batch_size_=" << this->batch_size_
@@ -1998,7 +1998,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -2448,9 +2448,9 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
     }
     // parse_logkey
     std::string log_key = std::string(str + pos, len);
-    uint64_t search_id;
-    uint32_t cmatch;
-    uint32_t rank;
+    uint64_t search_id = 0;
+    uint32_t cmatch = 0;
+    uint32_t rank = 0;
     parser_log_key(log_key, &search_id, &cmatch, &rank);
 
     rec->ins_id_ = log_key;
@@ -2615,7 +2615,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
         info.local_shape[info.inductive_shape_index] =
             total_instance / info.total_dims_without_inductive;
       }
-      feed->Resize(phi::make_ddim(info.local_shape));
+      feed->Resize(common::make_ddim(info.local_shape));
     } else {
       LoD data_lod{slot_offset};
       feed_vec_[j]->set_lod(data_lod);
@@ -2738,6 +2738,8 @@ bool SlotRecordInMemoryDataFeed::Start() {
 #endif
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+  // adapt for dense feature
+  gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
 #endif
   return true;
 }
@@ -2811,6 +2813,15 @@ void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
   std::string path =
       string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
   gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#endif
+}
+
+void SlotRecordInMemoryDataFeed::DumpSampleNeighbors(std::string dump_path) {
+  VLOG(1) << "INTO SlotRecordInMemoryDataFeed::DumpSampleNeighbors";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  std::string path =
+      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+  gpu_graph_data_generator_.DumpSampleNeighbors(path);
 #endif
 }
 
@@ -2987,7 +2998,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
         info.local_shape[info.inductive_shape_index] =
             total_instance / info.total_dims_without_inductive;
       }
-      feed->Resize(phi::make_ddim(info.local_shape));
+      feed->Resize(common::make_ddim(info.local_shape));
     } else {
       LoD& lod = (*feed->mutable_lod());
       lod.resize(1);

@@ -15,13 +15,16 @@
 #pragma once
 #include <type_traits>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_support.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/utils.h"
 
 namespace pir {
+class Builder;
+class IrPrinter;
+class Block;
 
 class IR_API OpBase {
  public:
@@ -44,24 +47,37 @@ class IR_API OpBase {
 
   uint32_t num_operands() const { return operation()->num_operands(); }
 
+  Block *parent() const { return operation()->GetParent(); }
+
+  // Attribtue related interfaces
   const AttributeMap &attributes() const { return operation()->attributes(); }
+  Attribute attribute(const std::string &key) const {
+    return operation()->attribute(key);
+  }
+  template <typename T>
+  T attribute(const std::string &key) const {
+    return operation()->attribute<T>(key);
+  }
 
   Value operand_source(uint32_t index) const {
     return operation()->operand_source(index);
   }
+  Type operand_type(uint32_t index) const {
+    return operation()->operand_type(index);
+  }
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
 
-  pir::Attribute attribute(const std::string &name) {
-    return operation()->attribute(name);
+  template <typename T = Type>
+  T result_type(uint32_t index) const {
+    return operation()->result_type<T>(index);
   }
 
-  template <typename T>
-  T attribute(const std::string &name) {
-    return operation()->attribute<T>(name);
-  }
+  void VerifySig() {}
 
- private:
+  void VerifyRegion() {}
+
+ protected:
   Operation *operation_;  // Not owned
 };
 
@@ -71,6 +87,7 @@ class IR_API OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
+  using Base = OpTraitBase<ConcreteTrait>;
   explicit OpTraitBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
@@ -91,8 +108,17 @@ class OpInterfaceBase : public OpBase {
  public:
   explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
 
-  // Accessor for the ID of this interface.
+  ///
+  /// \brief Accessor for the ID of this interface.
+  ///
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+
+  ///
+  /// \brief Checking if the given object defines the concrete interface.
+  ///
+  static bool classof(Operation *op) {
+    return op->HasInterface<ConcreteInterface>();
+  }
 
   static ConcreteInterface dyn_cast(Operation *op) {
     if (op && op->HasInterface<ConcreteInterface>()) {
@@ -126,6 +152,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
@@ -137,8 +164,8 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<InterfaceValue> GetInterfaceMap() {
-    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
@@ -151,13 +178,20 @@ class Op : public OpBase {
     class EmptyOp : public Op<EmptyOp, TraitOrInterface...> {};
     return sizeof(ConcreteOp) == sizeof(EmptyOp);
   }
-  // Implementation of `VerifyInvariantsFn` OperationName hook.
-  static void VerifyInvariants(Operation *op) {
+
+  // Implementation of `VerifySigInvariantsFn` OperationName hook.
+  static void VerifySigInvariants(Operation *op) {
     static_assert(HasNoDataMembers(),
                   "Op class shouldn't define new data members");
-    op->dyn_cast<ConcreteOp>().Verify();
+    op->dyn_cast<ConcreteOp>().VerifySig();
     (void)std::initializer_list<int>{
         0, (VerifyTraitOrInterface<TraitOrInterface>::call(op), 0)...};
+  }
+
+  static void VerifyRegionInvariants(Operation *op) {
+    static_assert(HasNoDataMembers(),
+                  "Op class shouldn't define new data members");
+    op->dyn_cast<ConcreteOp>().VerifyRegion();
   }
 };
 

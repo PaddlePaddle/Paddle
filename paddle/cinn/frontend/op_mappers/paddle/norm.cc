@@ -41,10 +41,11 @@ struct NormHelper {
 
   // std_square_sum = sqrt(square_sum + epsilon)
   Variable StdSquareSum(Variable square_sum, float epsilon) {
-    auto epsilon_1d = builder->FillConstant(square_sum->shape,
-                                            epsilon,
-                                            common::UniqName("norm_epsilon"),
-                                            common::Type2Str(square_sum->type));
+    auto epsilon_1d =
+        builder->FillConstant(square_sum->shape,
+                              epsilon,
+                              cinn::common::UniqName("norm_epsilon"),
+                              cinn::common::Type2Str(square_sum->type));
     auto std_square_sum = builder->Sqrt(builder->Add(square_sum, epsilon_1d));
     return std_square_sum;
   }
@@ -99,14 +100,14 @@ void NormOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto square_sum = helper.SquareSum(x);
   auto std_square_sum = helper.StdSquareSum(square_sum, epsilon);
   auto normalized = ctx.Builder()->Divide(x, std_square_sum);
-  auto y = ctx.Builder()->Cast(normalized, common::Type2Str(in_type));
+  auto y = ctx.Builder()->Cast(normalized, cinn::common::Type2Str(in_type));
 
   ctx.AddVar(out_name, y);
   ctx.AddVarModelToProgram(out_name, y->id);
 
   if (!norm_name.empty()) {
     auto norm_grad =
-        ctx.Builder()->Cast(std_square_sum, common::Type2Str(in_type));
+        ctx.Builder()->Cast(std_square_sum, cinn::common::Type2Str(in_type));
     ctx.AddVar(norm_name, norm_grad);
     ctx.AddVarModelToProgram(norm_name, norm_grad->id);
   }

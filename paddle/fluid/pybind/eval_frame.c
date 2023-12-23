@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eval_frame.h"
+#include "paddle/fluid/pybind/eval_frame_tools.h"
 
 #include <Python.h>
 #include <frameobject.h>
@@ -51,6 +52,14 @@ static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
                                          int opcode,
                                          int oparg);
 int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame);
+PyFrameObject *Internal_PyFrame_New_NoTrack(PyCodeObject *code);
+PyFrameObject *Internal_PyFrame_MakeAndSetFrameObject(
+    _PyInterpreterFrame *frame);
+static inline PyFrameObject *Internal_PyFrame_GetFrameObject(
+    _PyInterpreterFrame *frame);
+static void Internal_take_ownership(PyFrameObject *f,
+                                    _PyInterpreterFrame *frame);
+void Internal_PyFrame_Clear(_PyInterpreterFrame *frame);
 
 // clang-format off
 // Define a proxy PyObject to access _PyInterpreterFrame's properties.
@@ -176,8 +185,13 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   if (lasti < 0 && _Py_OPCODE(_PyCode_CODE(co)[0]) == COPY_FREE_VARS) {
     /* Free vars have not been initialized -- Do that */
     PyCodeObject *co = frame->f_code;
+#if PY_VERSION_HEX >= 0x030c0000
+    PyObject *closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
+    int offset = co->co_nlocals + co->co_ncellvars;
+#else
     PyObject *closure = frame->f_func->func_closure;
     int offset = co->co_nlocals + co->co_nplaincellvars;
+#endif
     for (int i = 0; i < co->co_nfreevars; ++i) {
       PyObject *o = PyTuple_GET_ITEM(closure, i);
       Py_INCREF(o);
@@ -245,6 +259,144 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   return 0;
 }
 
+PyFrameObject *Internal_PyFrame_New_NoTrack(PyCodeObject *code) {
+  CALL_STAT_INC(frame_objects_created);
+  int slots = code->co_nlocalsplus + code->co_stacksize;
+  PyFrameObject *f = PyObject_GC_NewVar(PyFrameObject, &PyFrame_Type, slots);
+  if (f == NULL) {
+    return NULL;
+  }
+  f->f_back = NULL;
+  f->f_trace = NULL;
+  f->f_trace_lines = 1;
+  f->f_trace_opcodes = 0;
+  f->f_fast_as_locals = 0;
+  f->f_lineno = 0;
+  return f;
+}
+
+#if PY_VERSION_HEX < 0x030c0000
+
+PyFrameObject *Internal_PyFrame_MakeAndSetFrameObject(
+    _PyInterpreterFrame *frame) {
+  assert(frame->frame_obj == NULL);
+  PyObject *error_type, *error_value, *error_traceback;
+  PyErr_Fetch(&error_type, &error_value, &error_traceback);
+
+  PyFrameObject *f = Internal_PyFrame_New_NoTrack(frame->f_code);
+  if (f == NULL) {
+    Py_XDECREF(error_type);
+    Py_XDECREF(error_value);
+    Py_XDECREF(error_traceback);
+    return NULL;
+  }
+  PyErr_Restore(error_type, error_value, error_traceback);
+  if (frame->frame_obj) {
+    // GH-97002: How did we get into this horrible situation? Most likely,
+    // allocating f triggered a GC collection, which ran some code that
+    // *also* created the same frame... while we were in the middle of
+    // creating it! See test_sneaky_frame_object in test_frame.py for a
+    // concrete example.
+    //
+    // Regardless, just throw f away and use that frame instead, since it's
+    // already been exposed to user code. It's actually a bit tricky to do
+    // this, since we aren't backed by a real _PyInterpreterFrame anymore.
+    // Just pretend that we have an owned, cleared frame so frame_dealloc
+    // doesn't make the situation worse:
+    f->f_frame = (_PyInterpreterFrame *)f->_f_frame_data;
+    f->f_frame->owner = FRAME_CLEARED;
+    f->f_frame->frame_obj = f;
+    Py_DECREF(f);
+    return frame->frame_obj;
+  }
+  assert(frame->owner != FRAME_OWNED_BY_FRAME_OBJECT);
+  assert(frame->owner != FRAME_CLEARED);
+  f->f_frame = frame;
+  frame->frame_obj = f;
+  return f;
+}
+
+static inline PyFrameObject *Internal_PyFrame_GetFrameObject(
+    _PyInterpreterFrame *frame) {
+  assert(!_PyFrame_IsIncomplete(frame));
+  PyFrameObject *res = frame->frame_obj;
+  if (res != NULL) {
+    return res;
+  }
+  return Internal_PyFrame_MakeAndSetFrameObject(frame);
+}
+
+static void Internal_take_ownership(PyFrameObject *f,
+                                    _PyInterpreterFrame *frame) {
+  assert(frame->owner != FRAME_OWNED_BY_FRAME_OBJECT);
+  assert(frame->owner != FRAME_CLEARED);
+  Py_ssize_t size =
+      ((char *)&frame->localsplus[frame->stacktop]) - (char *)frame;
+  memcpy((_PyInterpreterFrame *)f->_f_frame_data, frame, size);
+  frame = (_PyInterpreterFrame *)f->_f_frame_data;
+  f->f_frame = frame;
+  frame->owner = FRAME_OWNED_BY_FRAME_OBJECT;
+  if (_PyFrame_IsIncomplete(frame)) {
+    // This may be a newly-created generator or coroutine frame. Since it's
+    // dead anyways, just pretend that the first RESUME ran:
+    PyCodeObject *code = frame->f_code;
+    frame->prev_instr = _PyCode_CODE(code) + code->_co_firsttraceable;
+  }
+  assert(!_PyFrame_IsIncomplete(frame));
+  assert(f->f_back == NULL);
+  _PyInterpreterFrame *prev = frame->previous;
+  while (prev && _PyFrame_IsIncomplete(prev)) {
+    prev = prev->previous;
+  }
+  if (prev) {
+    /* Link PyFrameObjects.f_back and remove link through
+     * _PyInterpreterFrame.previous */
+    PyFrameObject *back = Internal_PyFrame_GetFrameObject(prev);
+    if (back == NULL) {
+      /* Memory error here. */
+      assert(PyErr_ExceptionMatches(PyExc_MemoryError));
+      /* Nothing we can do about it */
+      PyErr_Clear();
+    } else {
+      f->f_back = (PyFrameObject *)Py_NewRef(back);
+    }
+    frame->previous = NULL;
+  }
+  if (!PyObject_GC_IsTracked((PyObject *)f)) {
+    PyObject_GC_Track((PyObject *)f);
+  }
+}
+
+void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
+  /* It is the responsibility of the owning generator/coroutine
+   * to have cleared the enclosing generator, if any. */
+  assert(frame->owner != FRAME_OWNED_BY_GENERATOR ||
+         _PyFrame_GetGenerator(frame)->gi_frame_state == FRAME_CLEARED);
+  // GH-99729: Clearing this frame can expose the stack (via finalizers). It's
+  // crucial that this frame has been unlinked, and is no longer visible:
+  assert(_PyThreadState_GET()->cframe->current_frame != frame);
+  if (frame->frame_obj) {
+    PyFrameObject *f = frame->frame_obj;
+    frame->frame_obj = NULL;
+    if (Py_REFCNT(f) > 1) {
+      Internal_take_ownership(f, frame);
+      Py_DECREF(f);
+      return;
+    }
+    Py_DECREF(f);
+  }
+  assert(frame->stacktop >= 0);
+  for (int i = 0; i < frame->stacktop; i++) {
+    Py_XDECREF(frame->localsplus[i]);
+  }
+  Py_XDECREF(frame->frame_obj);
+  Py_XDECREF(frame->f_locals);
+  Py_DECREF(frame->f_func);
+  Py_DECREF(frame->f_code);
+}
+
+#endif
+
 #else
 typedef PyFrameObject FrameObject;
 #endif
@@ -307,9 +459,12 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   // Create a new function object from code object. Refer to MAKE_FUNCTION.
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
+  Py_INCREF(func);
+#if PY_VERSION_HEX < 0x030c0000
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
   _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
+#endif
 
   PyObject **fastlocals_old = frame->localsplus;
   PyObject **fastlocals_new = shadow->localsplus;
@@ -341,7 +496,11 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
+#if PY_VERSION_HEX < 0x030c0000
+  Internal_PyFrame_Clear(shadow);
+#endif
   free(shadow);
+  Py_DECREF(func);
   Py_DECREF(namemap);
   return result;
 }
@@ -402,10 +561,19 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
                                     FrameObject *frame,
                                     int throw_flag,
                                     PyObject *callback) {
+  PyObject *out;
+  eval_frame_callback_set(Py_None);
+
 // https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
 // https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
 #if PY_VERSION_HEX >= 0x030b0000
   if (frame->owner == FRAME_OWNED_BY_GENERATOR) {
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
+    return out;
+  }
+  if (PyBytes_GET_SIZE(frame->f_code->co_exceptiontable)) {
+    eval_frame_callback_set(callback);
     return eval_frame_default(tstate, frame, throw_flag);
   }
   // PyFrame_FastToLocalsWithError receives a PyFrameObject, but if we created a
@@ -414,8 +582,17 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy many code from CPython project into our project.
-  if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
+#if PY_VERSION_HEX >= 0x030c0000
+  if (true) {
 #else
+  if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
+#endif
+#else
+  if (frame->f_code->co_flags & 0x20) {
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
+    return out;
+  }
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
     return NULL;
@@ -432,58 +609,70 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   //                  # <--- which Cause the PyObject_CallObject raise
   //                  SystemError.
   if (PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
-    return eval_frame_default(tstate, frame, throw_flag);
-  }
-
-  // We don't run the current custom_eval_frame behavior for guards.
-  // So we temporarily set the callback to Py_None to drive the correct behavior
-  // in the shim.
-  eval_frame_callback_set(Py_None);
-
-#if PY_VERSION_HEX >= 0x030b0000
-  PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
-#else
-  PyObject *args = Py_BuildValue("(O)", frame);
-#endif
-  PyObject *result = PyObject_CallObject(callback, args);
-  Py_DECREF(args);
-  // VLOG(7) << "After call eval_frame_function and decrease frame.";
-  // class CustomCode(Protocal):
-  //     code: CodeType | None
-  //     disable_eval_frame: bool
-  // result: CustomCode
-  if (result == NULL) {
-    // internal exception
-    // VLOG(7) << "Error happened.";
-    return NULL;
-  } else {
-    //  NOTE: Cache is not supported now
-    PyCodeObject *code = (PyCodeObject *)PyObject_GetAttrString(result, "code");
-    PyObject *disable_eval_frame =
-        PyObject_GetAttrString(result, "disable_eval_frame");
-    PyObject *out;
-    // VLOG(7) << "Start eval new frame and code.";
-    if (disable_eval_frame != Py_True) {
-      // Re-enable custom behavior
-      eval_frame_callback_set(callback);
-      if ((PyObject *)code != Py_None) {
-        out = eval_custom_code(tstate, frame, code, throw_flag);
-      } else {
-        out = eval_frame_default(tstate, frame, throw_flag);
-      }
-    } else {
-      if ((PyObject *)code != Py_None) {
-        out = eval_custom_code(tstate, frame, code, throw_flag);
-      } else {
-        out = eval_frame_default(tstate, frame, throw_flag);
-      }
-      // Re-enable custom behavior
-      eval_frame_callback_set(callback);
-    }
-    Py_DECREF(result);
-    Py_DECREF(code);
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
     return out;
   }
+
+  PyObject *code;
+  PyObject *disable_eval_frame;
+
+  // get code & disable_eval_frame
+  if (need_skip(frame)) {
+    Py_INCREF(Py_None);
+    code = Py_None;
+    Py_INCREF(Py_False);
+    disable_eval_frame = Py_False;
+  } else {
+    /* should calculate guards here if we want */
+#if PY_VERSION_HEX >= 0x030b0000
+    PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
+#else
+    PyObject *args = Py_BuildValue("(O)", frame);
+#endif
+    PyObject *result = PyObject_CallObject(callback, args);
+    Py_DECREF(args);
+    if (result == NULL) {
+      return NULL;
+    }
+    code = PyObject_GetAttrString(result, "code");
+    disable_eval_frame = PyObject_GetAttrString(result, "disable_eval_frame");
+    Py_DECREF(result);
+  }
+
+  // code status
+  if (is_code_without_graph(code == Py_None ? frame->f_code
+                                            : (PyCodeObject *)code) &&
+      disable_eval_frame == Py_False) {
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
+    Py_DECREF(code);
+    Py_DECREF(disable_eval_frame);
+    return out;
+  }
+
+  // run code
+  if (disable_eval_frame != Py_True) {
+    // Re-enable custom behavior
+    eval_frame_callback_set(callback);
+    if (code != Py_None) {
+      out = eval_custom_code(tstate, frame, (PyCodeObject *)code, throw_flag);
+    } else {
+      out = eval_frame_default(tstate, frame, throw_flag);
+    }
+  } else {
+    if (code != Py_None) {
+      out = eval_custom_code(tstate, frame, (PyCodeObject *)code, throw_flag);
+    } else {
+      out = eval_frame_default(tstate, frame, throw_flag);
+    }
+    // Re-enable custom behavior
+    eval_frame_callback_set(callback);
+  }
+
+  Py_DECREF(code);
+  Py_DECREF(disable_eval_frame);
+  return out;
 }
 
 static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,

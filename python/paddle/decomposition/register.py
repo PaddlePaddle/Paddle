@@ -50,13 +50,14 @@ def register_decomp(op_type):
 
     Examples:
         .. code-block:: python
-            @register_decomp('softmax')
-            def softmax(x, axis):
-                molecular = exp(x)
-                denominator = broadcast_to(sum(molecular, axis=axis, keepdim=True), x.shape)
-                res = divide(molecular, denominator)
-                return res
 
+            >>> from paddle.decomposition import register
+            >>> @register.register_decomp('softmax')
+            >>> def softmax(x, axis):
+            ...     molecular = exp(x)
+            ...     denominator = broadcast_to(sum(molecular, axis=axis, keepdim=True), x.shape)
+            ...     res = divide(molecular, denominator)
+            ...     return res
     """
     if not isinstance(op_type, str):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')

@@ -22,14 +22,14 @@
 #include <utility>
 
 #include "paddle/cinn/common/axis.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_replace.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -227,8 +227,8 @@ std::tuple<Iterator, Iterator, Iterator, Iterator>  //
 Stage::Tile(int level0, int level1, int factor0, int factor1) {
   AssertAxisIsNotLocked(level0);
   AssertAxisIsNotLocked(level1);
-  Iterator i0(common::axis_name(level0));
-  Iterator i1(common::axis_name(level1));
+  Iterator i0(cinn::common::axis_name(level0));
+  Iterator i1(cinn::common::axis_name(level1));
   return Tile(i0, i1, factor0, factor1);
 }
 
@@ -291,7 +291,7 @@ void Stage::ChangeIndex(Stage *other) {
   }
   this->tensor()->new_indices = indices[0];
 
-  std::vector<Var> axis_var = common::GenDefaultAxis(indices[0].size());
+  std::vector<Var> axis_var = cinn::common::GenDefaultAxis(indices[0].size());
   for (int i = 0; i < axis_var.size(); i++) {
     optim::ReplaceVarWithExpr(&(this->expr_), axis_var[i], indices[0][i]);
   }
@@ -325,7 +325,7 @@ void Stage::AddForLoopInTransform(std::vector<std::vector<Expr>> &indices) {
     int int_range = GetRange(indices, i);
     if (int_range == 0) continue;
 
-    std::string dim_name = common::axis_name(i) + "_at";
+    std::string dim_name = cinn::common::axis_name(i) + "_at";
     Var dim_var(dim_name);
     indices[0][i] = ir::Add::Make(indices[0][i], Expr(dim_var));
     std::string this_domain = isl_set_to_str(domain_.get());

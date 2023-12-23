@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 import paddle.nn.functional as F
@@ -22,11 +23,14 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestApiWhileLoop(unittest.TestCase):
+    @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_tuple(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -34,9 +38,9 @@ class TestApiWhileLoop(unittest.TestCase):
         def body(i):
             return paddle.add(x=i, y=one)
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             ten = paddle.tensor.fill_constant(
@@ -55,6 +59,8 @@ class TestApiWhileLoop(unittest.TestCase):
             np.asarray(res[0]), np.full(1, 10, np.int64), rtol=1e-05
         )
 
+    @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_list(self):
         def cond(i, mem):
             return paddle.less_than(i, ten)
@@ -64,9 +70,9 @@ class TestApiWhileLoop(unittest.TestCase):
             i = paddle.increment(i)
             return [i, mem]
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -91,6 +97,7 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.add(data, data_one)
         np.testing.assert_allclose(np.asarray(res[1]), data, rtol=1e-05)
 
+    @compare_legacy_with_pt
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
             return paddle.less_than(i, ten)
@@ -175,6 +182,8 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
+    @test_with_pir_api
+    @compare_legacy_with_pt
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
             return paddle.less_than(i, loop_len1)
@@ -199,9 +208,9 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             i = paddle.increment(i)
             return [i, j, init, sums]
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             j = paddle.zeros(shape=[1], dtype='int64')
             init = paddle.static.data(
@@ -245,6 +254,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
+    # TODO(zhangbo): Support while grad exe for pir
     def test_while_loop_backward(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
@@ -292,6 +302,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
 
+    # TODO(zhangbo): Support while grad exe for pir
     def test_while_loop_backward2(self):
         def cond(i, x):
             return i < 3
@@ -337,6 +348,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
+    # TODO(zhangbo): Support while grad exe for pir
     def test_nested_net_with_backward_and_lodtensor(self):
         def external_cond(i, j, x, mem_array):
             return paddle.less_than(i, array_len)
@@ -425,6 +437,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
+    @compare_legacy_with_pt
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -474,6 +487,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
 
 
 class TestApiWhileLoop_Error(unittest.TestCase):
+    @compare_legacy_with_pt
     def test_error(self):
         def cond_returns_constant(i):
             return 1
@@ -642,6 +656,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
+    # @compare_legacy_with_pt
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]

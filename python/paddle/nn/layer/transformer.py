@@ -278,9 +278,9 @@ class MultiHeadAttention(Layer):
                 should be float32 or float64.
 
         Returns:
-            tuple: A tuple including transformed keys and values. Their shapes \
-                both are `[batch_size, num_heads, sequence_length, embed_dim // num_heads]`, \
-                and their data types are same as inputs.
+            Tuple. A tuple including transformed keys and values. Their shapes
+            both are `[batch_size, num_heads, sequence_length, embed_dim // num_heads]`,
+            and their data types are same as inputs.
         """
         k = self.k_proj(key)
         v = self.v_proj(value)
@@ -393,16 +393,16 @@ class MultiHeadAttention(Layer):
                 Default None.
 
         Returns:
-            Tensor|tuple: It is a tensor that has the same shape and data type \
-                as `query`, representing attention output. Or a tuple if \
-                `need_weights` is True or `cache` is not None. If `need_weights` \
-                is True, except for attention output, the tuple also includes \
-                the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`. \
-                If `cache` is not None, the tuple then includes the new cache \
-                having the same type as `cache`, and if it is `StaticCache`, it \
-                is same as the input `cache`, if it is `Cache`, the new cache \
-                reserves tensors concatanating raw tensors with intermediate \
-                results of current query.
+            Tensor|tuple. It is a tensor that has the same shape and data type
+            as `query`, representing attention output. Or a tuple if
+            `need_weights` is True or `cache` is not None. If `need_weights`
+            is True, except for attention output, the tuple also includes
+            the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`.
+            If `cache` is not None, the tuple then includes the new cache
+            having the same type as `cache`, and if it is `StaticCache`, it
+            is same as the input `cache`, if it is `Cache`, the new cache
+            reserves tensors concatanating raw tensors with intermediate
+            results of current query.
         """
         key = query if key is None else key
         value = query if value is None else value
@@ -806,6 +806,7 @@ class TransformerDecoderLayer(Layer):
             corresponding layer would not have trainable bias parameter. See
             usage for details in :code:`ParamAttr` . Default: None,which means
             the default bias parameter property is used.
+        layer_norm_eps: the eps value in layer normalization components. Default=1e-5.
 
     Examples:
 
@@ -843,6 +844,7 @@ class TransformerDecoderLayer(Layer):
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        layer_norm_eps=1e-5,
     ):
         self._config = locals()
         self._config.pop("self")
@@ -889,9 +891,9 @@ class TransformerDecoderLayer(Layer):
         self.linear2 = Linear(
             dim_feedforward, d_model, weight_attrs[2], bias_attr=bias_attrs[2]
         )
-        self.norm1 = LayerNorm(d_model)
-        self.norm2 = LayerNorm(d_model)
-        self.norm3 = LayerNorm(d_model)
+        self.norm1 = LayerNorm(d_model, layer_norm_eps)
+        self.norm2 = LayerNorm(d_model, layer_norm_eps)
+        self.norm3 = LayerNorm(d_model, layer_norm_eps)
         self.dropout1 = Dropout(dropout, mode="upscale_in_train")
         self.dropout2 = Dropout(dropout, mode="upscale_in_train")
         self.dropout3 = Dropout(dropout, mode="upscale_in_train")

@@ -23,7 +23,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/context.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -62,7 +62,7 @@ std::string Domain::__str__() const {
 
 isl::set Domain::to_isl() const {
   VLOG(3) << "isl::set " << __str__();
-  isl::set x(common::Context::isl_ctx(), __str__());
+  isl::set x(cinn::common::Context::isl_ctx(), __str__());
   return x;
 }
 

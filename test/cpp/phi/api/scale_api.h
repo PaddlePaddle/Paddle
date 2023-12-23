@@ -31,10 +31,10 @@ PHI_DECLARE_int32(low_precision_op_list);
 namespace paddle {
 namespace experimental {
 
-PADDLE_API Tensor scale_kernel_context(const Tensor& x,
-                                       const Scalar& scale,
-                                       float bias,
-                                       bool bias_after_scale) {
+Tensor scale_kernel_context(const Tensor& x,
+                            const Scalar& scale,
+                            float bias,
+                            bool bias_after_scale) {
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;

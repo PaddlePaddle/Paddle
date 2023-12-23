@@ -61,22 +61,23 @@ class ExternalApiRegistry : public Registry<ExternalApiInfo> {
   }
 
   ExternalApiInfo& Register(const std::string& op_name,
-                            const common::Target& target);
+                            const cinn::common::Target& target);
 
-  bool Has(const std::string& op_name, const common::Target& target) {
+  bool Has(const std::string& op_name, const cinn::common::Target& target) {
     return nullptr != Registry<ExternalApiInfo>::Find(GenKey(op_name, target));
   }
 
   // return the api name on the specified target
   std::string GetExternalApi(const framework::Node* op_node,
-                             const common::Target& target);
+                             const cinn::common::Target& target);
 
  private:
   ExternalApiRegistry() = default;
   CINN_DISALLOW_COPY_AND_ASSIGN(ExternalApiRegistry);
 
   // the registered key consist of the name of op and the specified target
-  std::string GenKey(const std::string& op_name, const common::Target& target);
+  std::string GenKey(const std::string& op_name,
+                     const cinn::common::Target& target);
 };
 
 }  // namespace op

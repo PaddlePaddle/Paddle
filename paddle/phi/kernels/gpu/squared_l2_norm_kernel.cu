@@ -30,7 +30,7 @@ void SquaredL2NormKernel(const Context& dev_ctx,
     origin_reduce_dims.push_back(i);
   }
   phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::SquareFunctor<T, T>>(
-      dev_ctx, x, out, kps::SquareFunctor<T, T>(), origin_reduce_dims, false);
+      dev_ctx, x, out, kps::SquareFunctor<T, T>(), origin_reduce_dims);
 }
 
 }  // namespace phi

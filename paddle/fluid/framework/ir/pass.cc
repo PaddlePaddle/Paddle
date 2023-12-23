@@ -39,6 +39,10 @@ namespace ir {
 static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
 static const std::vector<std::string> support_subgraph_passes = {
+    "feed_fetch_subgraph_pass",
+    "set_subgraph_edge_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
+    "tensorrt_subgraph_pass",
     "simplify_with_basic_ops_pass",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -65,9 +69,11 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
     "multi_encoder_xpu_slice_fuse_pass",
     "fused_multi_transformer_cachekv_layout_trans_pass",
+    "fused_multi_transformer_int8_cachekv_layout_trans_pass",
     "one_beam_size_fuse_pass",
     "stack_fuse_pass",
     "fused_multi_transformer_xpu_pass",
+    "fused_multi_transformer_int8_xpu_quant_pass",
     "xpu_delete_cast_op_pass",
     "fc_xpu_fuse_pass",
     "link_xpu_op_max_pass",
@@ -126,7 +132,8 @@ Graph *Pass::Apply(Graph *graph) const {
   } else {
     subgraph_passes = support_subgraph_passes;
   }
-  if (graph->IsMainGraph() &&
+  if (FLAGS_all_blocks_convert_trt && FLAGS_convert_all_blocks &&
+      graph->IsMainGraph() &&
       (std::count(subgraph_passes.begin(), subgraph_passes.end(), Type()) ||
        std::count(support_subgraph_generate_passes.begin(),
                   support_subgraph_generate_passes.end(),

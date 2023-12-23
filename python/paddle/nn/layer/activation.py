@@ -117,6 +117,55 @@ class ELU(Layer):
         return f'alpha={self._alpha}{name_str}'
 
 
+class GLU(Layer):
+    r"""
+    GLU Activation.
+
+    .. math::
+
+        GLU(a, b) = a \otimes \sigma(b) where :math:`a` is the first half of the input matrices and :math:`b` is the second half.
+
+    Parameters:
+        axis (int, optional): The axis along which split the input tensor. It
+            should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` < 0, it works the same way as :math:`axis + D` .
+            Default is -1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor which the size of the given aixs is even.
+        - output: Tensor which the size of the given aixs is halved.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor(
+            ...     [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
+            ...         [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+            ... )
+            >>> m = paddle.nn.GLU()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15216254, -0.90048921],
+            [-1.05778778, -0.46985325]])
+    """
+
+    def __init__(self, axis=-1, name=None):
+        super().__init__()
+        self._axis = axis
+        self._name = name
+
+    def forward(self, x):
+        return F.glu(x, self._axis, self._name)
+
+    def extra_repr(self):
+        name_str = f', name={self._name}' if self._name else ''
+        return f'axis={self._axis}{name_str}'
+
+
 class GELU(Layer):
     r"""
     GELU Activation.

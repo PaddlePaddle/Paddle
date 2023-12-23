@@ -145,9 +145,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-            import paddle.base as base
-            dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_fea_eval(1000000, True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_fea_eval(1000000, True)
 
         """
         if fea_eval:
@@ -977,6 +977,9 @@ class InMemoryDataset(DatasetBase):
     def get_epoch_finish(self):
         return self.dataset.get_epoch_finish()
 
+    def clear_sample_state(self):
+        self.dataset.clear_sample_state()
+
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.get_memory_data_size",
@@ -1089,7 +1092,6 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
                 >>> import paddle.base as base
                 >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -1140,6 +1142,16 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.get_degree = config.get(
             "get_degree", False
         )
+        self.proto_desc.graph_config.weighted_sample = config.get(
+            "weighted_sample", False
+        )
+        self.proto_desc.graph_config.return_weight = config.get(
+            "return_weight", False
+        )
+        self.proto_desc.graph_config.pair_label = config.get("pair_label", "")
+        self.proto_desc.graph_config.accumulate_num = config.get(
+            "accumulate_num", 1
+        )
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):
@@ -1181,6 +1193,12 @@ class InMemoryDataset(DatasetBase):
         dump_walk_path
         """
         self.dataset.dump_walk_path(path, dump_rate)
+
+    def dump_sample_neighbors(self, path):
+        """
+        dump_sample_neighbors
+        """
+        self.dataset.dump_sample_neighbors(path)
 
 
 class QueueDataset(DatasetBase):
@@ -1441,7 +1459,7 @@ class BoxPSDataset(InMemoryDataset):
             .. code-block:: python
 
                 >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
                 >>> dataset.set_merge_by_lineid()
                 >>> #suppose there is a slot 0
                 >>> dataset.slots_shuffle(['0'])

@@ -52,22 +52,28 @@ class IR_API VectorType
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-class DenseTensorType : public Type::TypeBase<DenseTensorType,
-                                              Type,
-                                              DenseTensorTypeStorage,
-                                              ShapedTypeInterface> {
+class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
+                                                     Type,
+                                                     DenseTensorTypeStorage,
+                                                     ShapedTypeInterface> {
  public:
   using Base::Base;
+  using Dim = DenseTensorTypeStorage::Dim;
+  using LoD = DenseTensorTypeStorage::LoD;
 
-  const Type &dtype() const;
-
-  const DenseTensorTypeStorage::Dim &dims() const;
-
-  const DenseTensorTypeStorage::DataLayout &data_layout() const;
-
-  const DenseTensorTypeStorage::LoD &lod() const;
-
-  const size_t &offset() const;
+  Type dtype() const;
+  const Dim &dims() const;
+  DataLayout data_layout() const;
+  const LoD &lod() const;
+  size_t offset() const;
+  static DenseTensorType get(IrContext *ctx,
+                             Type dtype,
+                             const Dim &dims,
+                             DataLayout layout = DataLayout::kNCHW,
+                             const LoD &lod = {},
+                             size_t offset = 0u) {
+    return Base::get(ctx, dtype, dims, layout, lod, offset);
+  }
 };
 
 #define DECLARE_BUILTIN_TYPE(__name)                                       \

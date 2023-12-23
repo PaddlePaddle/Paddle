@@ -157,7 +157,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         // output of ops with unsigned input must be unsigned
         is_unsigned = true;
         double min_scale = std::numeric_limits<double>::max();
-        for (auto input_var_name : op->Input("X")) {
+        for (auto const& input_var_name : op->Input("X")) {
           PADDLE_ENFORCE_NE(
               scales_.find(input_var_name),
               scales_.end(),
@@ -428,7 +428,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
 
   auto dims = var_tensor.dims();
   constexpr int num_col_dims = 1;
-  auto flattened_dims = phi::flatten_to_2d(dims, num_col_dims);
+  auto flattened_dims = common::flatten_to_2d(dims, num_col_dims);
   ConstEigenMatrixArrayMap eigen_tensor_mat{
       var_tensor.data<float>(), flattened_dims[0], flattened_dims[1]};
 
@@ -577,7 +577,7 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
     ++hist[bin];
   }
 
-  return std::make_pair(std::move(hist), std::move(bin_width));
+  return std::make_pair(std::move(hist), bin_width);
 }
 
 void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {

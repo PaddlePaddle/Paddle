@@ -35,7 +35,7 @@ StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
                  underlying_allocation->size(),
                  underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
-      owning_stream_(std::move(owning_stream)),
+      owning_stream_(owning_stream),
       allocator_(allocator->shared_from_this()) {}
 
 void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
@@ -57,6 +57,12 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 
   RecordStreamWithNoGraphCapturing(stream);
   RecordGraphCapturingStreams();
+}
+
+void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
+  VLOG(8) << "Try remove stream " << stream << " for address " << ptr();
+  std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
+  outstanding_event_map_.erase(stream);
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
@@ -148,8 +154,8 @@ StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     gpuStream_t default_stream,
     bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
-      place_(std::move(place)),
-      default_stream_(std::move(default_stream)),
+      place_(place),
+      default_stream_(default_stream),
       in_cuda_graph_capturing_(in_cuda_graph_capturing) {
   if (LIKELY(!in_cuda_graph_capturing)) {
     std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);

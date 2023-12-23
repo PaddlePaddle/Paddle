@@ -31,17 +31,17 @@ float GetAbsMax(const Context& dev_ctx,
                 const float* input,
                 float* buffer_xpu,
                 int64_t numel) {
-  float buffer_cpu[6];
+  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  std::vector<float> buffer_cpu(max_ptr_size);
   // int findmax(Context* ctx, const T* x, float* maxptr, int64_t len);
   int r = xpu::findmax<float>(dev_ctx.x_context(), input, buffer_xpu, numel);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "findmax");
   memory_utils::Copy(CPUPlace(),
-                     static_cast<void*>(buffer_cpu),
+                     static_cast<void*>(buffer_cpu.data()),
                      dev_ctx.GetPlace(),
                      static_cast<void*>(buffer_xpu),
-                     sizeof(float) * 6);
-  float* max_value = std::max_element(buffer_cpu, buffer_cpu + 6);
-  return *max_value;
+                     sizeof(float) * max_ptr_size);
+  return *std::max_element(buffer_cpu.begin(), buffer_cpu.end());
 }
 
 template <typename T, typename Context>
@@ -136,28 +136,38 @@ void AdamwDenseKernel(const Context& dev_ctx,
         moment2.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment2 from fp16 to float");
 
-    // de-scale using meta's scale_value
+    // acquire xpu_scale_value
+    float moment1_scale_value = XPUStorageProperties::default_xpu_scale_value;
+    if (moment1.storage_properties_initialized()) {
+      moment1_scale_value =
+          moment1.storage_properties<XPUStorageProperties>().xpu_scale_value;
+    }
+    float moment2_scale_value = XPUStorageProperties::default_xpu_scale_value;
+    if (moment2.storage_properties_initialized()) {
+      moment2_scale_value =
+          moment2.storage_properties<XPUStorageProperties>().xpu_scale_value;
+    }
+
+    // de-scale using scale_value
     // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
-    phi::DenseTensorMeta moment1_meta = moment1.meta();
-    if (moment1_meta.scale_value > 0) {
+    if (moment1_scale_value > 0) {
       r = xpu::scale<float>(dev_ctx.x_context(),
                             moment1_input_for_xdnn,
                             moment1_input_for_xdnn,
                             moment1.numel(),
                             false,
-                            1.0f / moment1_meta.scale_value,
+                            1.0f / moment1_scale_value,
                             0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "de-scale for moment1");
     }
-    phi::DenseTensorMeta moment2_meta = moment2.meta();
-    if (moment2_meta.scale_value > 0) {
+    if (moment2_scale_value > 0) {
       r = xpu::scale<float>(dev_ctx.x_context(),
                             moment2_input_for_xdnn,
                             moment2_input_for_xdnn,
                             moment2.numel(),
                             false,
-                            1.0f / moment2_meta.scale_value,
+                            1.0f / moment2_scale_value,
                             0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "de-scale for moment2");
     }
@@ -248,7 +258,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
     using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
-    float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(6);
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
 
     // for moment1
     float moment1_max = GetAbsMax<Context>(dev_ctx,
@@ -267,10 +278,10 @@ void AdamwDenseKernel(const Context& dev_ctx,
                           0.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(
         r, "scale before convert to fp16, for moment1_output_for_xdnn");
-    // write to meta info
-    phi::DenseTensorMeta moment1_out_meta = moment1_out->meta();
-    moment1_out_meta.scale_value = moment1_scale_value;
-    moment1_out->set_meta(moment1_out_meta);
+    // write to moment1_out
+    std::unique_ptr<phi::StorageProperties> moment1_out_sp =
+        std::make_unique<phi::XPUStorageProperties>(moment1_scale_value);
+    moment1_out->set_storage_properties(std::move(moment1_out_sp));
 
     // for moment2
     float moment2_max = GetAbsMax<Context>(dev_ctx,
@@ -289,10 +300,10 @@ void AdamwDenseKernel(const Context& dev_ctx,
                           0.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(
         r, "scale before convert to fp16, for moment2_output_for_xdnn");
-    // write to meta info
-    phi::DenseTensorMeta moment2_out_meta = moment2_out->meta();
-    moment2_out_meta.scale_value = moment2_scale_value;
-    moment2_out->set_meta(moment2_out_meta);
+    // write to moment2_out
+    std::unique_ptr<phi::StorageProperties> moment2_out_sp =
+        std::make_unique<phi::XPUStorageProperties>(moment2_scale_value);
+    moment2_out->set_storage_properties(std::move(moment2_out_sp));
 
     // cast moment1 and moment2 output, from fp32 to fp16
     // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
@@ -347,8 +358,13 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    adamw, XPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, phi::dtype::float16) {
+PD_REGISTER_KERNEL(adamw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AdamwDenseKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

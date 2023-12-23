@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import unittest
+from collections import OrderedDict
 
-from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
+from paddle.framework import core
 
 
 class TestEmbeddingSPMDRule(unittest.TestCase):
     def setUp(self):
-        self.rule1 = get_spmd_rule("lookup_table_v2")
+        self.rule1 = core.get_phi_spmd_rule("lookup_table_v2")
 
     def test_embedding_infer_forward(self):
         # forward setup
@@ -42,16 +43,16 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
             table_shape, table_tensor_dist_attr
         )
 
-        self.attrs = {
-            'padding_idx': -1,
-            'sparse': False,
-        }
+        self.attrs = OrderedDict([('padding_idx', -1), ('sparse', False)])
 
         # data parallel
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.table_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec, self.table_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec,
+            self.table_dist_tensor_spec,
+            self.attrs['padding_idx'],
+            self.attrs['sparse'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -68,7 +69,10 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.table_dist_tensor_spec.set_dims_mapping([-1, 0])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec, self.table_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec,
+            self.table_dist_tensor_spec,
+            self.attrs['padding_idx'],
+            self.attrs['sparse'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -81,7 +85,10 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.table_dist_tensor_spec.set_dims_mapping([0, -1])
         result_dist_attrs = self.rule1.infer_forward(
-            [self.x_dist_tensor_spec, self.table_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec,
+            self.table_dist_tensor_spec,
+            self.attrs['padding_idx'],
+            self.attrs['sparse'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -109,8 +116,10 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         self.attrs['sparse'] = True
         with self.assertRaises(ValueError):
             result_dist_attrs = self.rule1.infer_forward(
-                [self.x_dist_tensor_spec, self.table_dist_tensor_spec],
-                self.attrs,
+                self.x_dist_tensor_spec,
+                self.table_dist_tensor_spec,
+                self.attrs['padding_idx'],
+                self.attrs['sparse'],
             )
 
     def test_embedding_infer_backward(self):
@@ -141,17 +150,16 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
             out_shape, out_tensor_dist_attr
         )
 
-        self.attrs = {
-            'padding_idx': -1,
-            'sparse': False,
-        }
+        self.attrs = OrderedDict([('padding_idx', -1), ('sparse', False)])
 
         # data parallel
         self.out_dist_tensor_spec.set_dims_mapping([1, -1, -1])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec, self.table_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.table_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['padding_idx'],
+            self.attrs['sparse'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -167,9 +175,11 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # table col-wise parallel & dp
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, 1])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec, self.table_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.table_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['padding_idx'],
+            self.attrs['sparse'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -182,9 +192,11 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([1, 0, -1])
 
         result_dist_attrs = self.rule1.infer_backward(
-            [self.x_dist_tensor_spec, self.table_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.table_dist_tensor_spec,
+            self.out_dist_tensor_spec,
+            self.attrs['padding_idx'],
+            self.attrs['sparse'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]

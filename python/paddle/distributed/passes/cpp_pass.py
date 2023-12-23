@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.framework import _apply_pass as _apply_cpp_pass
-from paddle.framework import core
+from paddle.framework import (
+    _apply_pass as _apply_cpp_pass,
+    core,
+)
 from paddle.static import Executor
 
 from .pass_base import CPPPassWrapper, PassType, register_pass
@@ -123,6 +125,19 @@ class FuseAdamWPass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fuse_dot_product_attention")
+class FuseDotProductAttentionPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_dot_product_attention_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_optimizer")
 class FuseOptimizerPass(CPPPassWrapper):
     def __init__(self):
@@ -151,6 +166,19 @@ class InplaceAddtoOpPass(CPPPassWrapper):
 
     def _type(self):
         return PassType.CALC_OPT
+
+
+@register_pass("fuse_resunit")
+class FuseResUnitPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_resunit_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
 
 
 def _set_cinn_op_flag(flag_name, extra_ops):

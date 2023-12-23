@@ -37,8 +37,7 @@ elseif(WITH_CINN)
   nv_test(
     test_tensorrt_engine
     SRCS test_engine.cc test_dynamic_engine.cc
-    DEPS fleet_executor cinn_compiler dynload_cuda tensorrt_engine
-         tensorrt_plugin python)
+    DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin python)
 else()
   nv_test(
     test_tensorrt_engine

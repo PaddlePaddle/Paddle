@@ -25,7 +25,8 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(new_ir_apply_inplace_pass);
+PHI_DECLARE_bool(pir_apply_inplace_pass);
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace framework {
@@ -208,6 +209,11 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
 // C++11 removes the need for manual locking. Concurrent execution shall wait if
 // a static local variable is already being initialized.
 // https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
+
+int64_t hash_with_seed(int64_t value, int64_t seed) {
+  return value + 0x9e3779b9 + (value << 6) + (seed >> 2);
+}
+
 ExecutorInfoCache &ExecutorInfoCache::Instance() {
   static ExecutorInfoCache g_exe_cache_info_map;
   return g_exe_cache_info_map;
@@ -301,13 +307,14 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const platform::Place &place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope *scope) {
+    framework::Scope *scope,
+    const std::vector<int64_t> &seeds) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
-    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
-               "all cache!";
-    interpretercore_info_cache.Finalize();
+  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cached info size has exceeded max_cached_size: 256000, "
+        "which will cause error. "));
   }
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
@@ -319,23 +326,24 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
       place, program_desc.Block(0), scope, execution_config));
 
   auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
+      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
   cached_value.core_ = core;
   return core;
 }
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_program,
     const platform::Place &place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope *scope) {
+    framework::Scope *scope,
+    const std::vector<int64_t> &seeds) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
-    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
-               "all cache!";
-    interpretercore_info_cache.Finalize();
+  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cached info size has exceeded max_cached_size: 256000, "
+        "which will cause error. "));
   }
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
@@ -347,10 +355,32 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
       place, {}, ir_program->block(), scope, execution_config));
 
   auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
+      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;
+}
+
+bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
+  return t1.name() < t2.name();
+}
+
+std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
+                                            phi::Place place) {
+  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
+
+  if (FLAGS_pir_apply_inplace_pass) {
+    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+    pm.AddPass(::pir::CreateInplacePass());
+    pm.Run(ir_res.get());
+
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *ir_res << std::endl;
+    }
+  }
+
+  return ir_res;
 }
 
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
@@ -398,7 +428,9 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   }
 
   std::set<std::string> input_param_names;
-  for (auto &param : params) {
+  auto sorted_params = params;
+  std::sort(sorted_params.begin(), sorted_params.end(), TensorSortHelper);
+  for (auto &param : sorted_params) {
     auto &name = param.name();
     auto p = param.place().GetType();
 
@@ -449,16 +481,7 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
                                                            program.get());
 
   program_translator.Translate();
-
-  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
-  if (FLAGS_new_ir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-    pm.AddPass(::pir::CreateInplacePass());
-    pm.Run(ir_res.get());
-  }
-
-  return ir_res;
+  return ApplyIrPass(program.get(), place);
 }
 
 std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
@@ -515,6 +538,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   for (auto &t : x_grad) {
     param_grad_names.push_back(t->name());
   }
+
+  std::sort(param_grad_names.begin(), param_grad_names.end());
   for (auto &name : param_grad_names) {
     if (name == "@EMPTY@") {
       continue;
@@ -532,10 +557,17 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-  if (FLAGS_new_ir_apply_inplace_pass) {
+  if (FLAGS_pir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
+    if (VLOG_IS_ON(6)) {
+      pm.EnableIRPrinting();
+    }
     pm.Run(res.get());
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *res << std::endl;
+    }
   }
 
   return res;

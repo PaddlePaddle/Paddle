@@ -14,16 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
 #include <limits>
 #include <string>
 #include <utility>
-
+#include "paddle/common/layout.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/backend_set.h"
 #include "paddle/phi/api/lib/data_type_set.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -52,7 +52,7 @@ enum class KernelType {
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {
   BackendSet backend_set{Backend::UNDEFINED};
-  DataLayout layout{DataLayout::UNDEFINED};
+  phi::DataLayout layout{phi::DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
@@ -99,11 +99,13 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
+    VLOG(8) << "Get BackendSet from tensor";
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
     if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
       disable_gpudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
+      VLOG(8) << "Disable kernel backend: GPUDNN";
     }
     // assign DataLayout
     phi::DataLayout tensor_layout = tensor.layout();
@@ -115,6 +117,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
+      VLOG(8) << "promote kernel DataType:" << promote_result;
     }
   }
 
@@ -171,20 +174,22 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
-  bool result = true;
+  bool result = false;
 
-  void operator()(const Tensor& x) { result &= x.is_dist_tensor(); }
+  bool short_circuit() { return result; }
+
+  void operator()(const Tensor& x) { result = x.is_dist_tensor(); }
 
   void operator()(const paddle::optional<Tensor>& x) {
     if (x) {
-      result &= x.get_ptr()->is_dist_tensor();
+      result = x.get_ptr()->is_dist_tensor();
     }
   }
 
   void operator()(const std::vector<Tensor>& x) {
     if (!x.empty()) {
       for (auto& t : x) {
-        result &= t.is_dist_tensor();
+        result = t.is_dist_tensor();
       }
     }
   }
@@ -193,7 +198,7 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
     if (x) {
       if (!(x.get_ptr()->empty())) {
         for (auto& t : *(x.get_ptr())) {
-          result &= t.is_dist_tensor();
+          result = t.is_dist_tensor();
         }
       }
     }
@@ -234,9 +239,10 @@ Backend ParseBackend(T t, Args... args) {
 }
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
-DataLayout ParseLayout(DataLayout layout);
-DataLayout ParseLayout(const Tensor& tensor);
-DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
+phi::DataLayout ParseLayout(phi::DataLayout layout);
+phi::DataLayout ParseLayout(const Tensor& tensor);
+phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
+                                          const Tensor& tensor);
 
 template <typename... Args>
 bool AllInputsAreDistTensor(const Args&... args) {

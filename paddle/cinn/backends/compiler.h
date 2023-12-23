@@ -121,6 +121,8 @@ class Compiler final {
    */
   void* Lookup(absl::string_view fn_name);
 
+  std::vector<void*> GetFnPtr() const { return fn_ptr_; }
+
  private:
   void CompileCudaModule(const ir::Module& module,
                          const std::string& code = "");
@@ -136,6 +138,7 @@ class Compiler final {
   Target target_;
   std::unique_ptr<ExecutionEngine> engine_;
 
+  std::vector<void*> fn_ptr_;
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
 #endif

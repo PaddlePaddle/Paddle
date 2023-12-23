@@ -51,7 +51,7 @@ void TestElementwisePE(const std::string &fn_name,
 
   stages[A_out[0]]->Parallel(0);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   Module::Builder builder("module0", target);
   for (auto &tensor : A_out) {
     stages->InsertLazily(tensor);
@@ -70,15 +70,15 @@ void TestElementwisePE(const std::string &fn_name,
 
   cinn_buffer_t *A_buf;
   if (set_value != 0) {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    A_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_val(set_value)
                 .Build();
   } else {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    A_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_random()
                 .Build();
   }
-  auto *B_buf = common::BufferBuilder(type, {M.as_int32(), N.as_int32()})
+  auto *B_buf = cinn::common::BufferBuilder(type, {M.as_int32(), N.as_int32()})
                     .set_align(type.bits())
                     .Build();
 

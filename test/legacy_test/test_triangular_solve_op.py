@@ -64,10 +64,10 @@ class TestTriangularSolveOp(OpTest):
         self.outputs = {'Out': self.output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_cinn=True)
+        self.check_grad(['X', 'Y'], 'Out', check_cinn=True, check_pir=True)
 
 
 # 2D(broadcast) + 3D, test 'transpose'

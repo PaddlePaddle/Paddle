@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/type.h"
-#include "paddle/pir/core/use_iterator.h"
 
 namespace pir {
 class Operation;
@@ -43,6 +44,8 @@ class IR_API Value {
 
   bool operator!() const;
 
+  bool operator<(const Value &other) const;
+
   explicit operator bool() const;
 
   template <typename U>
@@ -56,6 +59,16 @@ class IR_API Value {
   }
 
   Type type() const;
+
+  /// If this value is the result of an operation, return the operation that
+  /// defines it, else return nullptr;
+  Operation *defining_op() const;
+
+  template <typename OpTy>
+  OpTy defining_op() const {
+    /// It is safety even if defining_op() return nullptr.
+    return OpTy::dyn_cast(defining_op());
+  }
 
   void set_type(Type type);
 
@@ -88,10 +101,22 @@ class IR_API Value {
   void ReplaceAllUsesWith(Value new_value) const;
   detail::ValueImpl *impl() const { return impl_; }
 
+  ///
+  /// \brief attribute related public interfaces
+  ///
+  // return nullptr if value is null or attribute not found.
+  Attribute attribute(const std::string &key) const;
+
+  template <typename T>
+  T attribute(const std::string &name) const {
+    return attribute(name).dyn_cast<T>();
+  }
+
+  void set_attribute(const std::string &key, Attribute value);
+
  protected:
   detail::ValueImpl *impl_{nullptr};
 };
-
 }  // namespace pir
 
 namespace std {

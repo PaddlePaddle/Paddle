@@ -35,24 +35,37 @@ void OperatorDialect::initialize() {
   // paddle/cinn/hlir/dialect/CMakeLists.txt.
   RegisterOps<
 #define GET_OP_LIST
-#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"  // NOLINT
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op_info.cc"  // NOLINT
       >();
   RegisterOp<GroupOp>();
+  RegisterOp<ConcatOp>();
+  RegisterOp<SplitOp>();
   RegisterAttribute<GroupInfoAttribute>();
+  RegisterAttribute<CINNKernelInfoAttribute>();
 }
 
 void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {}
 
 void OperatorDialect::PrintAttribute(pir::Attribute attr,
                                      std::ostream &os) const {
-  os << "(" << attr.dialect().name();
-  os << '.';
-  if (auto group_info_attr = attr.dyn_cast<GroupInfoAttribute>()) {
-    const GroupInfo &data = group_info_attr.data();
-    os << "GroupInfo)"
-       << "[" << data.fn_name << "]";
+  if (attr.isa<GroupInfoAttribute>()) {
+    os << "(" << attr.dialect().name();
+    os << '.';
+    if (auto group_info_attr = attr.dyn_cast<GroupInfoAttribute>()) {
+      const GroupInfo &data = group_info_attr.data();
+      os << "GroupInfo)"
+         << "[" << data.fn_name << "]";
+    }
+    { os << "<#AttrNotImplemented>"; }
+  } else if (attr.isa<CINNKernelInfoAttribute>()) {
+    auto cinn_kernel_info = attr.dyn_cast<CINNKernelInfoAttribute>();
+
+    os << "(" << cinn_kernel_info.data().fn_ptr;
+    os << ')';
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "cinn dialect only support GroupInfo and CINNKernelInfo"));
   }
-  { os << "<#AttrNotImplemented>"; }
 }
 
 void OperatorDialect::PrintOperation(pir::Operation *op,

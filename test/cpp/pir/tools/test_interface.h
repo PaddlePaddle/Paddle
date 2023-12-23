@@ -15,18 +15,19 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/region.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 namespace test {
 /// \brief Define built-in Interface, derived from OpInterfaceBase. Concepts and
@@ -62,4 +63,4 @@ class InferShapeInterface : public pir::OpInterfaceBase<InferShapeInterface> {
 };
 
 }  // namespace test
-IR_DECLARE_EXPLICIT_TYPE_ID(test::InferShapeInterface)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::InferShapeInterface)

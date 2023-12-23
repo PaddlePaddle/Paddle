@@ -164,9 +164,6 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrDebug();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-  if (FLAGS_zero_copy) {
-    cfg->SwitchUseFeedFetchOps(false);
-  }
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
   }

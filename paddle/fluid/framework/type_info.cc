@@ -16,7 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
-#include "paddle/fluid/pir/dialect/operator/ir/meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 
@@ -45,6 +46,7 @@ template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::primitive::LazyTensor>;
 template class TypeInfoTraits<phi::TensorBase,
                               paddle::framework::VariableRefArray>;
-template class TypeInfoTraits<phi::TensorBase, paddle::dialect::IrMetaTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::dialect::IrTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::dialect::IrSelectedRows>;
 
 }  // namespace phi

@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "paddle/cinn/common/ir_util.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
@@ -48,7 +48,7 @@ struct CallArgListToPodValueMutator : ir::IRMutator<> {
       auto new_call = ir::Call::Make(
           Void(),
           op->name,
-          {pod_array_var, common::make_const(Int(32), args.size())},
+          {pod_array_var, cinn::common::make_const(Int(32), args.size())},
           {},
           ir::CallType::CINN,
           op->func,

@@ -21,8 +21,8 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -33,7 +33,7 @@ TEST(RemovescheduleBlock, basic) {
   Context::Global().ResetNameId();
   Placeholder<float> A("A", {Expr(100), Expr(20)});
   Placeholder<float> B("B", {Expr(20), Expr(50)});
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   Module::Builder builder("matmul", target);
   // C = A * B
   Var k(20, "k0");

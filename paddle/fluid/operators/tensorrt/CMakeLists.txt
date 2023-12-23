@@ -8,6 +8,7 @@ if(NOT WIN32)
     SRCS tensorrt_engine_op_test.cc
     DEPS tensorrt_engine_op analysis fleet_executor python)
 else()
+  get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
   nv_test(
     test_tensorrt_engine_op
     SRCS tensorrt_engine_op_test.cc

@@ -19,7 +19,7 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace common {
@@ -51,7 +51,7 @@ TEST(CINNValue, Expr) {
 
   {
     CINNValue copied = CINNValue(a);
-    ASSERT_TRUE(copied == common::make_const(1));
+    ASSERT_TRUE(copied == cinn::common::make_const(1));
   }
 }
 

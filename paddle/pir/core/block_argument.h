@@ -31,7 +31,10 @@ class IR_API BlockArgument : public Value {
  public:
   BlockArgument() = default;
   Block *owner() const;
-  uint32_t arg_index() const;
+  uint32_t index() const;
+
+  Attribute attribute(const std::string &key) const;
+  void set_attribute(const std::string &key, Attribute value);
 
  private:
   /// constructor
@@ -42,7 +45,7 @@ class IR_API BlockArgument : public Value {
   /// Destroy the argument.
   void Destroy();
   /// set the position in the block argument list.
-  void set_arg_index(uint32_t index);
+  void set_index(uint32_t index);
   // Access create annd destroy.
   friend Block;
 

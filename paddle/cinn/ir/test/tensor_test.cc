@@ -20,8 +20,8 @@
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/lower.h"
@@ -95,10 +95,10 @@ TEST(Tensor, Reshape) {
 
   auto func = lang::Lower("fn", stages, {A, B});
 
-  ir::Module::Builder builder("some_modue", common::DefaultHostTarget());
+  ir::Module::Builder builder("some_modue", cinn::common::DefaultHostTarget());
   builder.AddFunction(func);
 
-  backends::CodeGenC codegenc(common::DefaultHostTarget());
+  backends::CodeGenC codegenc(cinn::common::DefaultHostTarget());
   codegenc.SetInlineBuiltinCodes(false);
   auto source = codegenc.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
   LOG(INFO) << "source:\n" << source;
@@ -144,10 +144,10 @@ TEST(Tensor, ReshapeCopied) {
 
   stages->InsertLazily(B);
 
-  ir::Module::Builder builder("some_modue", common::DefaultHostTarget());
+  ir::Module::Builder builder("some_modue", cinn::common::DefaultHostTarget());
   auto func = lang::Lower("fn", stages, {A, B}, {}, {}, &builder);
 
-  backends::CodeGenC codegenc(common::DefaultHostTarget());
+  backends::CodeGenC codegenc(cinn::common::DefaultHostTarget());
   codegenc.SetInlineBuiltinCodes(false);
   auto source = codegenc.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
   LOG(INFO) << "source:\n" << source;

@@ -20,90 +20,26 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {
-
-// Self-defined operator to support std::set<Expr>
-struct CompExpr {
-  bool operator()(const Expr& left, const Expr& right) const {
-    return utils::GetStreamCnt(left) < utils::GetStreamCnt(right);
-  }
-};
-
-// Self-defined operator to support std::set<Var>
-struct CompVar {
-  bool operator()(const Var& left, const Var& right) const {
-    return left->name < right->name;
-  }
-};
-
-struct MappingVarToExprMutator : public ir::IRMutator<> {
-  explicit MappingVarToExprMutator(
-      const std::map<Var, Expr, CompVar>& replacing_map)
-      : replacing_map_(replacing_map) {}
-
-  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
-
- private:
-  void Visit(const ir::_Var_* expr, Expr* op) override {
-    if (replacing_map_.count(op->as_var_ref())) {
-      *op = replacing_map_.at(op->as_var_ref());
-    }
-  }
-
- private:
-  const std::map<Var, Expr, CompVar>& replacing_map_;
-};
-
-struct FindLoopsVisitor {
-  explicit FindLoopsVisitor(const Expr& block) : block_(block) {}
-
-  std::vector<Expr> operator()(const Expr* expr) {
-    CHECK(block_.As<ir::ScheduleBlockRealize>());
-    visit_end = false;
-    Visit(expr);
-    return result;
-  }
-
- private:
-  void Visit(const Expr* expr) {
-    if (visit_end || !expr->defined()) return;
-    if (expr->As<ir::For>()) {
-      father_loops.emplace_back(*expr);
-      Visit(&(expr->As<ir::For>()->body));
-      father_loops.pop_back();
-    } else if (expr->As<ir::ScheduleBlockRealize>()) {
-      if (!expr->As<ir::ScheduleBlockRealize>()->iter_values.empty() &&
-          (*expr == block_)) {
-        result = father_loops;
-        visit_end = true;
-        return;
-      } else {
-        Visit(&(expr->As<ir::ScheduleBlockRealize>()->schedule_block));
-      }
-    } else if (expr->As<ir::ScheduleBlock>()) {
-      Visit(&(expr->As<ir::ScheduleBlock>()->body));
-    } else if (expr->As<ir::Block>()) {
-      for (auto& n : expr->As<ir::Block>()->stmts) Visit(&n);
-    } else if (expr->As<ir::IfThenElse>()) {
-      Visit(&(expr->As<ir::IfThenElse>()->true_case));
-      Visit(&(expr->As<ir::IfThenElse>()->false_case));
-    }
-  }
-
-  std::vector<Expr> father_loops{};
-  std::vector<Expr> result{};
-  bool visit_end{false};
-  const Expr& block_;
-};
+struct IterRange;
+struct CacheBlockInfo;
+struct CompVar;
+struct CompExpr;
 
 /**
  * \brief Given a ScheduleBlockRealize node, return the Store tensor in its
@@ -112,69 +48,6 @@ struct FindLoopsVisitor {
  * @return The Store tensor in block
  */
 Tensor GetTensor(const Expr& block);
-
-struct FindBlocksVisitor {
-  explicit FindBlocksVisitor(const std::string& block_name = "")
-      : block_name_(block_name) {}
-
-  std::vector<Expr> operator()(const Expr* expr) {
-    Visit(expr);
-    return result;
-  }
-
- private:
-  void Visit(const Expr* expr) {
-    if (!expr->defined()) return;
-    if (!block_name_.empty() && !result.empty()) return;
-    if (expr->As<ir::For>()) {
-      Visit(&(expr->As<ir::For>()->body));
-    } else if (expr->As<ir::ScheduleBlockRealize>()) {
-      if (!expr->As<ir::ScheduleBlockRealize>()->iter_values.empty()) {
-        auto* schedule_block = expr->As<ir::ScheduleBlockRealize>()
-                                   ->schedule_block.As<ir::ScheduleBlock>();
-        if (block_name_.empty() || schedule_block->name == block_name_) {
-          result.emplace_back(*expr);
-        }
-      } else {
-        Visit(&(expr->As<ir::ScheduleBlockRealize>()->schedule_block));
-      }
-    } else if (expr->As<ir::ScheduleBlock>()) {
-      Visit(&(expr->As<ir::ScheduleBlock>()->body));
-    } else if (expr->As<ir::Block>()) {
-      for (auto& n : expr->As<ir::Block>()->stmts) Visit(&n);
-    } else if (expr->As<ir::IfThenElse>()) {
-      Visit(&(expr->As<ir::IfThenElse>()->true_case));
-      Visit(&(expr->As<ir::IfThenElse>()->false_case));
-    }
-  }
-  std::string block_name_;
-  std::vector<Expr> result{};
-};
-
-struct CacheBlockInfo {
-  /*! \brief The tensor to be read. */
-  Tensor read_tensor;
-  /*! \brief The tensor to be written. */
-  Tensor write_tensor;
-  /*! \brief The tensor allocation to be inserted into the block signature. */
-  Tensor alloc;
-  /*! \brief The AST node whose body is where the cache stage should be
-   * inserted. */
-  Expr loc_block;
-  /*! \brief The index to insert the cache_read/cache_write stage. */
-  int loc_pos;
-  /*! \brief The cache_read/cache_write stage to be inserted. */
-  Expr cache_block;
-};
-
-// a struct to present the min value and the extent of a iterable range,
-// where it is represented as a semi-closed interval, i.e [min, min + extent)
-struct IterRange {
-  IterRange(Expr begin, Expr length) : min(begin), extent(length) {}
-
-  Expr min;
-  Expr extent;
-};
 
 /**
  * \brief Given a ScheduleBlockRealize node, return the index-th Load tensor in
@@ -193,7 +66,7 @@ Tensor GetReadTensor(const Expr& block, int index);
 int GetLoopExtent(const Expr& loop);
 
 /**
- * \brief Given a vector of Exors, return whether they contain a var with
+ * \brief Given a vector of Exprs, return whether they contain a var with
  * specific name.
  * @param exprs The given vector of Exprs
  * @param var_name The name of specific var
@@ -240,6 +113,15 @@ std::vector<Expr> GetIfThenElseInRange(const Expr& top, const Expr& bottom);
 void ReplaceExpr(Expr* source,
                  const std::vector<Var>& replaced,
                  const std::vector<Expr>& candidates);
+
+/**
+ * Replace Vars in replaced to Exprs in candidates in source.
+ * @param source The Expr we will implement the change.
+ * @param replacing_map The one-to-one corresponded Vars -> Exprs to be
+ * replaced.
+ */
+void ReplaceExpr(Expr* source,
+                 const std::map<Var, Expr, CompVar>& replacing_map);
 
 /**
  * Validate the factors param of Split. We will check if factors are validate
@@ -427,9 +309,11 @@ IterRange RangeUnion(const IterRange& range1, const IterRange& range2);
  * \param loop The loop where we will insert the block under it
  * @param root The root of the whole AST.
  * \param required_blocks vector of ScheduleBlockRealize nodes that require the
- * block \param is_store_provided Whether Store nodes of the block provide the
+ * block
+ * \param is_store_provided Whether Store nodes of the block provide the
  * tensor, true means it is in compute_at case, otherwise false means in
- * reverse_compuate_at case \return Each index's range of block's tensor.
+ * reverse_compuate_at case
+ * \return Each index's range and can_keep_loop flag of block's tensor.
  * Indicating the buffer region being required.
  */
 std::vector<IterRange> CalculateRequiredRegions(
@@ -473,5 +357,875 @@ std::unordered_map<int, int> PrimeFactorize(int n);
 std::vector<int> SampleTile(utils::LinearRandomEngine::StateType* rand_seed,
                             int n,
                             int dividend);
+
+// a struct to present the min value and the extent of a iterable range,
+// where it is represented as a semi-closed interval, i.e [min, min + extent)
+struct IterRange {
+  IterRange(Expr begin, Expr length) : min(begin), extent(length) {}
+
+  Expr min;
+  Expr extent;
+};
+
+struct CacheBlockInfo {
+  /*! \brief The tensor to be read. */
+  Tensor read_tensor;
+  /*! \brief The tensor to be written. */
+  Tensor write_tensor;
+  /*! \brief The tensor allocation to be inserted into the block signature. */
+  Tensor alloc;
+  /*! \brief The AST node whose body is where the cache stage should be
+   * inserted. */
+  Expr loc_block;
+  /*! \brief The index to insert the cache_read/cache_write stage. */
+  int loc_pos;
+  /*! \brief The cache_read/cache_write stage to be inserted. */
+  Expr cache_block;
+};
+
+// The struct used to mutate new rfactor forloop and its' schedule block.
+struct RfMutator : public ir::IRMutator<> {
+ public:
+  RfMutator(const Expr& rf_loop, const int& rf_axis)
+      : rf_loop_(rf_loop), rf_axis_(rf_axis) {}
+  void operator()(Expr* expr) {
+    auto* rf_for = rf_loop_.As<For>();
+    CHECK(rf_for);
+    old_rf_loop_var_ = rf_for->loop_var;
+    new_rf_loop_var_ = Var("rf_" + old_rf_loop_var_->name);
+    IRMutator::Visit(expr, expr);
+  }
+
+  Tensor GetNewRfTensor() { return new_rf_tensor_; }
+
+  void Visit(const ScheduleBlockRealize* op, Expr* expr) override {
+    // modify iter_vars and iter_values
+    auto* node = expr->As<ScheduleBlockRealize>();
+    CHECK(node);
+    auto* schedule_block = node->schedule_block.As<ScheduleBlock>();
+    CHECK(schedule_block);
+    old_output_name_ = schedule_block->name;
+    find_tensor_ = false;
+    auto& block_vars = schedule_block->iter_vars;
+    auto& iter_values = node->iter_values;
+    CHECK(old_rf_loop_var_.defined());
+    CHECK(new_rf_loop_var_.defined());
+    CHECK_EQ(iter_values.size(), block_vars.size());
+    int rf_index = -1;
+    for (int i = 0; i < iter_values.size(); ++i) {
+      // substitute the old rfactor loop var to new rfactor loop var
+      if (ContainVar({iter_values[i]}, old_rf_loop_var_->name)) {
+        CHECK_EQ(rf_index, -1)
+            << "only one block var can bind the rfactor loop var";
+        CHECK(iter_values[i].As<_Var_>())
+            << "rfactor loop var not support composite bindings";
+        rf_index = i;
+        optim::ReplaceVarWithExpr(
+            &iter_values[i], old_rf_loop_var_, new_rf_loop_var_);
+        new_rf_itervar_ = block_vars[i];
+      }
+    }
+    // create new rfactor block var if not exist
+    if (rf_index == -1) {
+      new_rf_itervar_ =
+          Var(cinn::UniqName("i" + std::to_string(block_vars.size())));
+      iter_values.push_back(new_rf_loop_var_);
+      block_vars.push_back(new_rf_itervar_);
+    }
+    IRMutator::Visit(&node->schedule_block, &node->schedule_block);
+    CHECK(find_tensor_)
+        << "not find the store tensor with the schedule block name "
+        << old_output_name_;
+    schedule_block->name = "rf_" + old_output_name_;
+  }
+
+  void Visit(const Load* op, Expr* expr) override {
+    // insert the new rfactor indice if not exist
+    auto* node = expr->As<Load>();
+    CHECK(node);
+    auto* tensor = node->tensor.As<_Tensor_>();
+    CHECK(tensor);
+    if (tensor->name == "rf_" + old_output_name_) {
+      int size = node->indices.size();
+      CHECK_LE(rf_axis_, size)
+          << "rf_axis should not be greater than indice size " << size;
+      CHECK(new_rf_itervar_.defined());
+      CHECK(!ContainVar(node->indices, new_rf_itervar_->name))
+          << "original output tensor " << old_output_name_
+          << " should not have the new rfactor index " << new_rf_itervar_;
+      node->indices.insert(node->indices.begin() + rf_axis_, new_rf_itervar_);
+    }
+  }
+
+  void Visit(const Store* op, Expr* expr) override {
+    // insert the new rfactor indice if not exist
+    auto* node = expr->As<Store>();
+    CHECK(node);
+    auto* tensor = node->tensor.As<_Tensor_>();
+    CHECK(tensor);
+    if (tensor->name == old_output_name_) {
+      find_tensor_ = true;
+      tensor->name = "rf_" + tensor->name;
+      int size = node->indices.size();
+      CHECK_LE(rf_axis_, size)
+          << "rf_axis should not be greater than indice size " << size;
+      CHECK(!ContainVar(node->indices, new_rf_itervar_->name))
+          << "original output tensor " << old_output_name_
+          << " should not have the new rfactor index " << new_rf_itervar_;
+      node->indices.insert(node->indices.begin() + rf_axis_, new_rf_itervar_);
+      auto* rf_for = rf_loop_.As<For>();
+      CHECK(rf_for);
+      CHECK(is_zero(rf_for->min)) << "rfactor loop's min should be zero";
+      auto extent = cinn::common::AutoSimplify(rf_for->extent);
+      auto& shape = tensor->shape;
+      auto& domain = tensor->domain;
+      CHECK_LE(rf_axis_, shape.size())
+          << "rf_axis should not be greater than tensor shape size "
+          << shape.size();
+      CHECK_LE(rf_axis_, domain.size())
+          << "rf_axis should not be greater than tensor domain size "
+          << domain.size();
+      shape.insert(shape.begin() + rf_axis_, extent);
+      domain.insert(domain.begin() + rf_axis_, extent);
+      if (tensor->buffer.defined()) {
+        if (tensor->buffer->name.find_first_of("rf") == std::string::npos) {
+          tensor->buffer->name = "rf_" + tensor->buffer->name;
+          tensor->buffer->shape = shape;
+        }
+      }
+      new_rf_tensor_ = Tensor(tensor);
+    }
+    IRMutator::Visit(&node->value, &node->value);
+  }
+
+  void Visit(const For* op, Expr* expr) override {
+    auto* node = expr->As<For>();
+    CHECK(node);
+    depth++;
+    auto* rf_for = rf_loop_.As<For>();
+    CHECK(rf_for);
+    // erase the original rfactor forloop
+    if (node->loop_var->name == old_rf_loop_var_->name) {
+      auto body = node->body.As<Block>();
+      if (body && body->stmts.size() == 1) {
+        *expr = body->stmts[0];
+      } else {
+        *expr = node->body;
+      }
+      IRMutator::Visit(expr, expr);
+    } else {
+      IRMutator::Visit(&node->body, &node->body);
+    }
+    if (rf_axis_ == 0 && depth == rf_axis_) {
+      // insert new rfactor forloop in the rf_axis as serial loop
+      *expr = For::Make(new_rf_loop_var_,
+                        rf_for->min,
+                        rf_for->extent,
+                        ForType::Serial,
+                        rf_for->device_api,
+                        Block::Make({*expr}));
+    } else if (depth == rf_axis_ - 1) {
+      // insert new rfactor forloop in the rf_axis as serial loop
+      node->body = Block::Make({For::Make(new_rf_loop_var_,
+                                          rf_for->min,
+                                          rf_for->extent,
+                                          ForType::Serial,
+                                          rf_for->device_api,
+                                          node->body)});
+    }
+    depth--;
+  }
+
+ private:
+  Expr rf_loop_;
+  Var old_rf_loop_var_;
+  Var new_rf_loop_var_;
+  int rf_axis_;
+  int depth = -1;
+  bool find_tensor_ = false;
+  std::string old_output_name_;
+  Var new_rf_itervar_;
+  Tensor new_rf_tensor_;
+};
+
+// The struct used to reconstruct the new For node to replace the old For node.
+struct LoopReconstructor : public ir::IRMutator<> {
+ public:
+  explicit LoopReconstructor(const Expr& root,
+                             const Expr& block,
+                             const Expr& loop)
+      : root_(root), block_(block), loop_(loop) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+  /* \param inserted_pos The position index of the new_loop_ body `stmts` to be
+   * inserted:
+   *        - `index = -1` means inserted into the tail
+   *        - otherwise, it should be a index between [0, stmts size)
+   */
+  std::string MakeNewLoop(const std::vector<IterRange>& iter_ranges,
+                          bool keep_unit_loops,
+                          int inserted_pos = -1) {
+    int n_iters = iter_ranges.size();
+    std::vector<Var> loop_vars;
+    std::vector<Expr> loop_extents;
+    std::vector<Expr> iter_values;
+    loop_vars.reserve(n_iters);
+    loop_extents.reserve(n_iters);
+    iter_values.reserve(n_iters);
+    std::vector<std::string> new_var_names;
+    for (int i = 0; i < n_iters; ++i) {
+      const auto& range = iter_ranges[i];
+      if (keep_unit_loops || range.extent != Expr(1)) {
+        std::string var_name =
+            cinn::common::UniqName("ax" + std::to_string(loop_vars.size()));
+        new_var_names.push_back(var_name);
+        Var var(var_name, Int(32));
+        loop_vars.push_back(var);
+        loop_extents.push_back(range.extent);
+        iter_values.push_back(cinn::common::AutoSimplify(range.min) + var);
+      } else {
+        iter_values.push_back(cinn::common::AutoSimplify(range.min));
+      }
+    }
+    auto schedule_block_node =
+        block_.As<ir::ScheduleBlockRealize>()->schedule_block;
+    new_block_ = ScheduleBlockRealize::Make(std::move(iter_values),
+                                            std::move(schedule_block_node));
+    Expr loop_body = new_block_;
+    for (int i = static_cast<int>(loop_vars.size()) - 1; i >= 0; --i) {
+      auto loop_var = loop_vars[i];
+      auto loop_extent = loop_extents[i];
+      if (!loop_body.As<ir::Block>()) loop_body = Block::Make({loop_body});
+      loop_body = For::Make(loop_var,
+                            Expr(0),
+                            loop_extent,
+                            ForType::Serial,
+                            loop_.As<ir::For>()->device_api,
+                            std::move(loop_body));
+    }
+    new_loop_ = ir::ir_utils::IRCopy(loop_);
+
+    // Replace the copied Tensor object with the original Tensor object,
+    // to ensure that the same Tensor in a AST is the same object.
+    std::unordered_map<std::string, ir::Expr> tensors_map;
+    ir::ir_utils::CollectIRNodesWithoutTensor(
+        loop_, [&tensors_map](const Expr* x) {
+          if (x->as_tensor()) {
+            tensors_map.insert({x->as_tensor()->name, *x});
+            return true;
+          }
+          return false;
+        });
+    auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
+        new_loop_, [](const Expr* x) { return x->As<ir::Store>(); });
+    for (auto store : find_store) {
+      store.As<ir::Store>()->tensor =
+          tensors_map.at(store.As<ir::Store>()->tensor.as_tensor()->name);
+    }
+    auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+        new_loop_, [](const Expr* x) { return x->As<ir::Load>(); });
+    for (auto load : find_load) {
+      load.As<ir::Load>()->tensor =
+          tensors_map.at(load.As<ir::Load>()->tensor.as_tensor()->name);
+    }
+
+    InsertBlock(new_loop_, loop_body, inserted_pos);
+    return utils::Join(new_var_names, ",");
+  }
+
+ public:
+  /*! \brief The root block */
+  Expr root_;
+  /*! \brief The given block to be moved */
+  Expr block_;
+  /*! \brief The given loop the block and its loop nest to be put under */
+  Expr loop_;
+  /*! \brief The new loop to replace the original loop */
+  Expr new_loop_{nullptr};
+  /*! \brief The new block realize to the moved block */
+  Expr new_block_{nullptr};
+  /*! \brief The plan to remove the given block by replacing this loop/block in
+   * the AST */
+  Expr source_expr{nullptr};
+  /*! \brief The plan to remove the given block by replacing to this loop/block
+   * in the AST */
+  Expr target_expr{nullptr};
+};
+
+// The struct used to mutate final write-back forloop and schedule block.
+struct FinalMutator : public ir::IRMutator<> {
+ public:
+  FinalMutator(const Expr& rf_loop,
+               const int& rf_axis,
+               const Tensor& new_rf_tensor)
+      : rf_loop_(rf_loop), rf_axis_(rf_axis), new_rf_tensor_(new_rf_tensor) {}
+  void operator()(Expr* expr) {
+    auto* rf_for = rf_loop_.As<For>();
+    CHECK(rf_for);
+    old_rf_loop_var_ = rf_for->loop_var;
+    IRMutator::Visit(expr, expr);
+  }
+
+  void Visit(const ScheduleBlockRealize* op, Expr* expr) override {
+    auto* node = expr->As<ScheduleBlockRealize>();
+    CHECK(node);
+    auto* schedule_block = node->schedule_block.As<ScheduleBlock>();
+    CHECK(schedule_block);
+    auto& iter_vars = schedule_block->iter_vars;
+    auto& iter_values = node->iter_values;
+    output_name_ = schedule_block->name;
+    visit_init_block_ = output_name_.rfind("_init") != std::string::npos;
+    if (!visit_init_block_) {
+      for (int i = 0; i < iter_values.size(); ++i) {
+        if (ContainVar({iter_values[i]}, old_rf_loop_var_->name)) {
+          // record the rfactor loop var's block var
+          CHECK(iter_values[i].As<_Var_>())
+              << "not support complex reduce bindings: " << iter_values[i];
+          old_rf_iter_var_ = iter_vars[i];
+          break;
+        }
+      }
+    }
+    IRMutator::Visit(&node->schedule_block, &node->schedule_block);
+    // modify iter_vars and iter_values, erase other reduce block vars and
+    // values
+    for (auto it = iter_values.begin(); it != iter_values.end(); ++it) {
+      for (auto erase_var : erase_reduce_loopvars_) {
+        if (ContainVar({*it}, erase_var)) {
+          CHECK((*it).As<_Var_>())
+              << "not support complex reduce bindings: " << *it;
+          iter_vars.erase(it - iter_values.begin() + iter_vars.begin());
+          iter_values.erase(it);
+          --it;
+          break;
+        }
+      }
+    }
+  }
+
+  // currently only support reduce_sum, reduce_mul, reduce_min and reduce_max
+  void Visit(const Add* op, Expr* expr) override {
+    auto* node = expr->As<Add>();
+    CHECK(node);
+    auto& oper_b = node->b();
+    oper_b = Load::Make(new_rf_tensor_, new_rf_indice_);
+  }
+
+  void Visit(const Mul* op, Expr* expr) override {
+    auto* node = expr->As<Mul>();
+    CHECK(node);
+    auto& oper_b = node->b();
+    oper_b = Load::Make(new_rf_tensor_, new_rf_indice_);
+  }
+
+  void Visit(const Min* op, Expr* expr) override {
+    auto* node = expr->As<Min>();
+    CHECK(node);
+    auto& oper_b = node->b();
+    oper_b = Load::Make(new_rf_tensor_, new_rf_indice_);
+  }
+
+  void Visit(const Max* op, Expr* expr) override {
+    auto* node = expr->As<Max>();
+    CHECK(node);
+    auto& oper_b = node->b();
+    oper_b = Load::Make(new_rf_tensor_, new_rf_indice_);
+  }
+
+  void Visit(const Store* op, Expr* expr) override {
+    // insert the new rfactor indice if not exist
+    auto* node = expr->As<Store>();
+    CHECK(node);
+    auto* tensor = node->tensor.As<_Tensor_>();
+    CHECK(tensor);
+    CHECK_EQ(tensor->name, output_name_)
+        << "store name should be same with the schedule block name";
+    if (!visit_init_block_) {
+      new_rf_indice_ = node->indices;
+      CHECK_LE(rf_axis_, new_rf_indice_.size())
+          << "rf_axis_ should not be greater than tensor indice size "
+          << new_rf_indice_.size();
+      CHECK(old_rf_iter_var_.defined());
+      new_rf_indice_.insert(new_rf_indice_.begin() + rf_axis_,
+                            old_rf_iter_var_);
+      IRMutator::Visit(&node->value, &node->value);
+    }
+  }
+
+  void Visit(const For* op, Expr* expr) override {
+    auto* node = expr->As<For>();
+    CHECK(node);
+    auto* rf_for = rf_loop_.As<For>();
+    // erase the reduce forloops after the init block except the rfactor loop
+    if (visit_init_block_ && node->loop_var->name != old_rf_loop_var_->name) {
+      erase_reduce_loopvars_.insert(node->loop_var->name);
+      auto body = node->body.As<Block>();
+      if (body && body->stmts.size() == 1) {
+        *expr = body->stmts[0];
+      } else {
+        *expr = node->body;
+      }
+      IRMutator::Visit(expr, expr);
+    } else {
+      IRMutator::Visit(&node->body, &node->body);
+    }
+  }
+
+ private:
+  Expr rf_loop_;
+  int rf_axis_;
+  Var old_rf_loop_var_;
+  Var old_rf_iter_var_;
+  std::string output_name_;
+  // collect reduce loop vars except rfactor loop var
+  std::set<std::string> erase_reduce_loopvars_;
+  bool visit_init_block_ = false;
+  Tensor new_rf_tensor_;
+  std::vector<Expr> new_rf_indice_;
+};
+
+//! Visit all ScheduleBlock and change its body to ir::Block if it is not.
+struct ChangeBodyToBlock : public ir::IRMutator<> {
+ public:
+  static void Change(Expr* expr) {
+    ChangeBodyToBlock mutator;
+    mutator(expr);
+  }
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::ScheduleBlock* expr, Expr* op) override {
+    if (!op->As<ScheduleBlock>()->body.As<Block>()) {
+      op->As<ScheduleBlock>()->body =
+          Block::Make({op->As<ScheduleBlock>()->body});
+    }
+    IRMutator::Visit(expr, op);
+  }
+};
+
+struct CacheReadRewriter : public ir::IRMutator<> {
+ public:
+  static Expr Rewrite(const Expr& root, CacheBlockInfo* info) {
+    CacheReadRewriter rewriter(root, info);
+    Expr new_root = ir::ir_utils::IRCopy(root);
+    rewriter(&new_root);
+    return new_root;
+  }
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  explicit CacheReadRewriter(const Expr& root, CacheBlockInfo* info)
+      : root_(root), info_(info) {}
+
+  void Visit(const ir::Block* expr, Expr* op) override {
+    if (*op == info_->loc_block) {
+      IRMutator::Visit(expr, op);
+      op->As<Block>()->stmts.insert(
+          op->As<Block>()->stmts.begin() + info_->loc_pos, info_->cache_block);
+    } else {
+      IRMutator::Visit(expr, op);
+    }
+  }
+
+  void Visit(const ir::Load* expr, Expr* op) override {
+    if (expr->tensor == Expr(info_->read_tensor)) {
+      IRMutator::Visit(expr, op);
+      op->As<Load>()->tensor = Expr(info_->write_tensor);
+    } else {
+      IRMutator::Visit(expr, op);
+    }
+  }
+
+ private:
+  /*! \brief The parent scope of the insertion */
+  const Expr& root_;
+  /*! \brief The info for inserting cache stage */
+  CacheBlockInfo* info_;
+};
+
+struct CacheWriteRewriter : public ir::IRMutator<> {
+ public:
+  static Expr Rewrite(const Expr& root, CacheBlockInfo* info) {
+    CacheWriteRewriter rewriter(root, info);
+    Expr new_root = ir::ir_utils::IRCopy(root);
+    rewriter.mutate_cache_block = true;
+    rewriter(&info->cache_block);
+    rewriter.mutate_cache_block = false;
+    rewriter(&new_root);
+    auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
+        new_root,
+        [&](const Expr* x) {
+          return x->As<Store>() &&
+                 (x->As<Store>()->tensor == Expr(info->read_tensor));
+        },
+        true);
+    if (!find_tensor.empty()) {
+      auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
+          (*find_tensor.begin()), [&](const Expr* x) {
+            return x->As<Load>() &&
+                   (x->As<Load>()->tensor == Expr(info->write_tensor));
+          });
+      for (auto load_ir : find_store) {
+        load_ir.As<Load>()->tensor = Expr(info->read_tensor);
+      }
+    }
+    return new_root;
+  }
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  explicit CacheWriteRewriter(const Expr& root, CacheBlockInfo* info)
+      : root_(root), info_(info) {}
+
+  void Visit(const ir::Block* expr, Expr* op) override {
+    if (*op == info_->loc_block) {
+      IRMutator::Visit(expr, op);
+      op->As<Block>()->stmts.insert(
+          op->As<Block>()->stmts.begin() + info_->loc_pos, info_->cache_block);
+    } else {
+      IRMutator::Visit(expr, op);
+    }
+  }
+
+  void Visit(const ir::ScheduleBlock* expr, Expr* op) override {
+    if (op->As<ScheduleBlock>()->name == info_->write_tensor->name) {
+      op->As<ScheduleBlock>()->name = info_->read_tensor->name;
+    } else if (op->As<ScheduleBlock>()->name == info_->read_tensor->name) {
+      op->As<ScheduleBlock>()->name = info_->write_tensor->name;
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  void Visit(const ir::Load* expr, Expr* op) override {
+    IRMutator::Visit(expr, op);
+    if (op->As<Load>()->tensor == Expr(info_->write_tensor) &&
+        mutate_cache_block) {
+      op->As<Load>()->tensor = Expr(info_->read_tensor);
+    } else if (op->As<Load>()->tensor == Expr(info_->read_tensor) &&
+               mutate_cache_block) {
+      op->As<Load>()->tensor = Expr(info_->write_tensor);
+    }
+  }
+
+  void Visit(const ir::Store* expr, Expr* op) override {
+    IRMutator::Visit(expr, op);
+    if (op->As<Store>()->tensor == Expr(info_->write_tensor)) {
+      op->As<Store>()->tensor = Expr(info_->read_tensor);
+    } else if (op->As<Store>()->tensor == Expr(info_->read_tensor) &&
+               mutate_cache_block) {
+      op->As<Store>()->tensor = Expr(info_->write_tensor);
+    }
+  }
+
+ private:
+  /*! \brief The parent scope of the insertion */
+  const Expr& root_;
+  /*! \brief The info for inserting cache stage */
+  CacheBlockInfo* info_;
+  /*! \brief Are we mutating the cache tensor's block */
+  bool mutate_cache_block{true};
+};
+
+struct FixLocalBufferSize : public ir::IRMutator<> {
+ public:
+  explicit FixLocalBufferSize(const std::string& tensor_name)
+      : tensor_name_(tensor_name) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Store* expr, Expr* op) override {
+    if (op->As<Store>()->tensor.As<_Tensor_>()->name == tensor_name_) {
+      op->As<Store>()->tensor.As<_Tensor_>()->shape = {Expr(1)};
+      op->As<Store>()->tensor.As<_Tensor_>()->domain = {Expr(1)};
+      op->As<Store>()->tensor.As<_Tensor_>()->buffer->shape = {Expr(1)};
+      op->As<Store>()->indices = {Expr(0)};
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  void Visit(const ir::Load* expr, Expr* op) override {
+    if (op->As<Load>()->tensor.As<_Tensor_>()->name == tensor_name_) {
+      op->As<Load>()->tensor.As<_Tensor_>()->shape = {Expr(1)};
+      op->As<Load>()->tensor.As<_Tensor_>()->domain = {Expr(1)};
+      op->As<Load>()->tensor.As<_Tensor_>()->buffer->shape = {Expr(1)};
+      op->As<Load>()->indices = {Expr(0)};
+    }
+    IRMutator::Visit(expr, op);
+  }
+  std::string tensor_name_;
+};
+
+struct InsertExpr : public ir::IRMutator<> {
+ public:
+  static void Insert(const Expr& ir_node,
+                     const Expr& insert_node,
+                     bool after_node,
+                     Expr* expr) {
+    InsertExpr mutator(ir_node, insert_node, after_node);
+    mutator(expr);
+  }
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  explicit InsertExpr(const Expr& ir_node,
+                      const Expr& insert_node,
+                      bool after_node)
+      : ir_node_(ir_node), insert_node_(insert_node), after_node_(after_node) {}
+
+  void Visit(const ir::Block* expr, Expr* op) override {
+    for (int i = 0; i < expr->stmts.size(); i++) {
+      if (expr->stmts[i] == ir_node_) {
+        if (after_node_) {
+          op->As<ir::Block>()->stmts.insert(
+              op->As<ir::Block>()->stmts.begin() + i + 1, insert_node_);
+        } else {
+          op->As<ir::Block>()->stmts.insert(
+              op->As<ir::Block>()->stmts.begin() + i, insert_node_);
+        }
+        return;
+      }
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  void Visit(const ir::For* expr, Expr* op) override {
+    if (expr->body == ir_node_) {
+      if (after_node_)
+        op->As<ir::For>()->body =
+            ir::Block::Make({op->As<ir::For>()->body, insert_node_});
+      else
+        op->As<ir::For>()->body =
+            ir::Block::Make({insert_node_, op->As<ir::For>()->body});
+      return;
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+ private:
+  const Expr& ir_node_;
+  const Expr& insert_node_;
+  bool after_node_;
+};
+
+// Self-defined operator to support std::set<Expr>
+struct CompExpr {
+  bool operator()(const Expr& left, const Expr& right) const {
+    return utils::GetStreamCnt(left) < utils::GetStreamCnt(right);
+  }
+};
+
+// Self-defined operator to support std::set<Var>
+struct CompVar {
+  bool operator()(const Var& left, const Var& right) const {
+    return left->name < right->name;
+  }
+};
+
+struct MappingVarToExprMutator : public ir::IRMutator<> {
+  explicit MappingVarToExprMutator(
+      const std::map<Var, Expr, CompVar>& replacing_map)
+      : replacing_map_(replacing_map) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::_Var_* expr, Expr* op) override {
+    if (replacing_map_.count(op->as_var_ref())) {
+      *op = replacing_map_.at(op->as_var_ref());
+    }
+  }
+
+ private:
+  const std::map<Var, Expr, CompVar>& replacing_map_;
+};
+
+struct FindBlocksVisitor {
+  explicit FindBlocksVisitor(const std::string& block_name = "")
+      : block_name_(block_name) {}
+
+  std::vector<Expr> operator()(const Expr* expr) {
+    Visit(expr);
+    return result;
+  }
+
+ private:
+  void Visit(const Expr* expr) {
+    if (!expr->defined()) return;
+    if (!block_name_.empty() && !result.empty()) return;
+    if (expr->As<ir::For>()) {
+      Visit(&(expr->As<ir::For>()->body));
+    } else if (expr->As<ir::ScheduleBlockRealize>()) {
+      if (expr->As<ir::ScheduleBlockRealize>()
+              ->schedule_block.As<ScheduleBlock>()
+              ->name.substr(0, 4) != "root") {
+        auto* schedule_block = expr->As<ir::ScheduleBlockRealize>()
+                                   ->schedule_block.As<ir::ScheduleBlock>();
+        if (block_name_.empty() || schedule_block->name == block_name_) {
+          result.emplace_back(*expr);
+        }
+      } else {
+        Visit(&(expr->As<ir::ScheduleBlockRealize>()->schedule_block));
+      }
+    } else if (expr->As<ir::ScheduleBlock>()) {
+      Visit(&(expr->As<ir::ScheduleBlock>()->body));
+    } else if (expr->As<ir::Block>()) {
+      for (auto& n : expr->As<ir::Block>()->stmts) Visit(&n);
+    } else if (expr->As<ir::IfThenElse>()) {
+      Visit(&(expr->As<ir::IfThenElse>()->true_case));
+      Visit(&(expr->As<ir::IfThenElse>()->false_case));
+    }
+  }
+  std::string block_name_;
+  std::vector<Expr> result{};
+};
+
+struct FindLoopsVisitor {
+  explicit FindLoopsVisitor(const Expr& block) : block_(block) {}
+
+  std::vector<Expr> operator()(const Expr* expr) {
+    CHECK(block_.As<ir::ScheduleBlockRealize>());
+    visit_end = false;
+    Visit(expr);
+    return result;
+  }
+
+ private:
+  void Visit(const Expr* expr) {
+    if (visit_end || !expr->defined()) return;
+    if (expr->As<ir::For>()) {
+      father_loops.emplace_back(*expr);
+      Visit(&(expr->As<ir::For>()->body));
+      father_loops.pop_back();
+    } else if (expr->As<ir::ScheduleBlockRealize>()) {
+      if (!expr->As<ir::ScheduleBlockRealize>()->iter_values.empty() &&
+          (*expr == block_)) {
+        result = father_loops;
+        visit_end = true;
+        return;
+      } else {
+        Visit(&(expr->As<ir::ScheduleBlockRealize>()->schedule_block));
+      }
+    } else if (expr->As<ir::ScheduleBlock>()) {
+      Visit(&(expr->As<ir::ScheduleBlock>()->body));
+    } else if (expr->As<ir::Block>()) {
+      for (auto& n : expr->As<ir::Block>()->stmts) Visit(&n);
+    } else if (expr->As<ir::IfThenElse>()) {
+      Visit(&(expr->As<ir::IfThenElse>()->true_case));
+      Visit(&(expr->As<ir::IfThenElse>()->false_case));
+    }
+  }
+
+  std::vector<Expr> father_loops{};
+  std::vector<Expr> result{};
+  bool visit_end{false};
+  const Expr& block_;
+};
+
+struct FindBlockParent : public ir::IRMutator<> {
+ public:
+  explicit FindBlockParent(const std::string& block_name)
+      : block_name_(block_name) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Block* expr, Expr* op) override {
+    if (target_) return;
+    for (auto& stmt : expr->stmts) {
+      if (stmt.As<ir::ScheduleBlockRealize>()) {
+        if (stmt.As<ir::ScheduleBlockRealize>()
+                ->schedule_block.As<ir::ScheduleBlock>()
+                ->name == block_name_) {
+          target_ = op;
+          return;
+        }
+      }
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  void Visit(const ir::For* expr, Expr* op) override {
+    if (target_) return;
+    if (expr->body.As<ir::ScheduleBlockRealize>()) {
+      if (expr->body.As<ir::ScheduleBlockRealize>()
+              ->schedule_block.As<ir::ScheduleBlock>()
+              ->name == block_name_) {
+        target_ = op;
+        return;
+      }
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  void Visit(const ir::ScheduleBlock* expr, Expr* op) override {
+    if (target_) return;
+    if (expr->body.As<ir::ScheduleBlockRealize>()) {
+      if (expr->body.As<ir::ScheduleBlockRealize>()
+              ->schedule_block.As<ir::ScheduleBlock>()
+              ->name == block_name_) {
+        target_ = op;
+        return;
+      }
+    }
+    IRMutator::Visit(expr, op);
+  }
+
+  std::string block_name_;
+
+ public:
+  ir::Expr* target_{nullptr};
+};
+
+// The struct used to create all stmts after rfactor transformation.
+struct RfCreater : public ir::IRMutator<> {
+ public:
+  RfCreater(const Expr& root, const Expr& rf_loop, const int& rf_axis)
+      : root_(root), rf_loop_(rf_loop), rf_axis_(rf_axis) {}
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+  Expr CreateRfAllStmts() {
+    auto root_realize = root_.As<ScheduleBlockRealize>();
+    CHECK(root_realize);
+    auto root_block = root_realize->schedule_block.As<ScheduleBlock>();
+    CHECK(root_block);
+    Expr root_loop = ir::ir_utils::IRCopy(root_block->body);
+    if (auto block = root_loop.As<Block>()) {
+      CHECK_EQ(block->stmts.size(), 1U)
+          << "rfactor root should only have one block stmt";
+      root_loop = block->stmts[0];
+    }
+    auto* root_for = root_loop.As<For>();
+    CHECK(root_for);
+    auto rf_for = rf_loop_.As<For>();
+    CHECK(rf_for);
+    // create new rfactor forloops
+    Expr new_rf_forloop = ir::ir_utils::IRCopy(root_loop);
+    RfMutator rf_mutator(rf_loop_, rf_axis_);
+    rf_mutator(&new_rf_forloop);
+    VLOG(3) << "After RfMutator, new rf_forloop is\n" << new_rf_forloop;
+    auto new_rf_tensor = rf_mutator.GetNewRfTensor();
+    // create final write-back forloops
+    Expr final_forloop = ir::ir_utils::IRCopy(root_loop);
+    FinalMutator final_mutator(rf_loop_, rf_axis_, new_rf_tensor);
+    final_mutator(&final_forloop);
+    VLOG(3) << "After FinalMuator, final write-back forloop is\n"
+            << final_forloop;
+    // combine the new created rfactor forloops with the final write-back
+    // forloops and replace
+    root_block->body = Block::Make({new_rf_forloop, final_forloop});
+    return new_rf_tensor;
+  }
+
+  Expr root_;
+  Expr rf_loop_;
+  int rf_axis_;
+};
+
 }  // namespace ir
 }  // namespace cinn

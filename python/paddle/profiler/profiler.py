@@ -98,7 +98,7 @@ class ProfilerState(Enum):
 
 class ProfilerTarget(Enum):
     r"""
-    ProfilerTarget is used to specify target device for :ref:`profiling <api_paddle_profiler_Profiler>` . Only CPU, GPU and XPU are supported currently.
+    ProfilerTarget is used to specify target device for :ref:`Profiler <api_paddle_profiler_Profiler>` . Only CPU, GPU and XPU are supported currently.
 
     The meaning of each ProfilerState is as following
 
@@ -123,7 +123,7 @@ def make_scheduler(
     skip_first: int = 0,
 ) -> Callable:
     r"""
-    Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
+    Return a scheduler function, which scheduler the :ref:`ProfilerState <api_paddle_profiler_ProfilerState>` according to the setting.
     The state transform confirms to:
 
     .. code-block:: text

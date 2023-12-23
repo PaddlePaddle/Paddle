@@ -33,7 +33,22 @@ class GroupInfoAttribute : public pir::Attribute {
   const GroupInfo& data() const;
 };
 
+class CINNKernelInfoAttribute : public pir::Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(CINNKernelInfoAttribute,
+                                    CINNKernelInfoAttributeStorage);
+
+  bool operator<(const CINNKernelInfoAttribute& right) const {
+    return storage() < right.storage();
+  }
+
+  const cinn::hlir::framework::pir::CINNKernelInfo& data() const;
+};
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::CINNKernelInfoAttribute)

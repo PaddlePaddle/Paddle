@@ -19,8 +19,8 @@
 #include <numeric>
 #include <string>
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -40,7 +40,7 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
@@ -91,7 +91,7 @@ void GroupNormKernel(const Context& dev_ctx,
 
       if (data_layout == DataLayout::kNCHW) {
         for (int cid = 0; cid < number; cid++) {
-          int imid;
+          int imid = 0;
           for (imid = 0; imid < imsize - (imsize % M);
                imid += M, iter_x_data += M) {
             // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used
@@ -128,7 +128,7 @@ void GroupNormKernel(const Context& dev_ctx,
       } else {
         for (int cid = 0; cid < number; cid++) {
           iter_x_data = tmp_x + cid;
-          int imid;
+          int imid = 0;
           for (imid = 0; imid < imsize - (imsize % M);
                imid += M, iter_x_data += M * C) {
             // TODO(gaoxiang): Because AVX/AVX2/AVX512 can not directly used

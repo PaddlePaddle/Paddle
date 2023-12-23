@@ -24,6 +24,7 @@ from type_mapping import (
     input_types_map,
     opmaker_attr_types_map,
     optional_input_types_map,
+    optional_output_type_map,
     output_type_map,
     phi_attr_types_map,
     sr_output_types_map,
@@ -154,7 +155,9 @@ def delete_last_underline(op_name):
 
 
 # ------------------------------ output  ----------------------------------
-def to_paddle_output_type(s):
+def to_paddle_output_type(s, optional=False):
+    if optional:
+        return optional_output_type_map[s]
     return output_type_map[s]
 
 

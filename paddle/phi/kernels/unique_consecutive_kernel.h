@@ -26,7 +26,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              bool return_inverse,
                              bool return_counts,
                              const std::vector<int>& axis,
-                             int dtype,
+                             DataType dtype,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts);

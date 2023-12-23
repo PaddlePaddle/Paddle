@@ -17,7 +17,7 @@
 #include <regex>
 
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {
@@ -386,6 +386,13 @@ bool IrEqualVisitor::Visit(const ScheduleBlockRealize* lhs, const Expr* other) {
   auto* rhs = other->As<ScheduleBlockRealize>();
   return Compare(lhs->iter_values, rhs->iter_values) &&
          Compare(lhs->schedule_block, rhs->schedule_block);
+}
+
+bool IrEqualVisitor::Visit(const _Dim_* lhs, const Expr* other) {
+  auto* rhs = other->As<_Dim_>();
+  return lhs->name == rhs->name &&
+         lhs->GetSymbolName() == rhs->GetSymbolName() &&
+         lhs->GetRealDimSize() == rhs->GetRealDimSize();
 }
 
 bool IRCompare(const Expr& lhs, const Expr& rhs, bool allow_name_suffix_diff) {

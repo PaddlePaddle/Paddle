@@ -21,8 +21,15 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult
-from . import compiler, core, framework, get_flags, set_flags, unique_name
+from paddle import pir
+
+from ..pir import (
+    Program as PirProgram,
+    Value,
+    translate_to_pir,
+    translate_to_pir_with_param_map,
+)
+from . import compiler, core, framework, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
     Operator,
@@ -31,8 +38,10 @@ from .framework import (
     _apply_pass,
     convert_np_dtype_to_dtype_,
     default_main_program,
+    get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
+    set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
@@ -58,11 +67,11 @@ def global_scope():
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy
+            >>> import paddle
+            >>> import numpy
 
-          paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
-          numpy.array(paddle.static.global_scope().find_var("data").get_tensor())
+            >>> paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+            >>> numpy.array(paddle.static.global_scope().find_var("data").get_tensor())
     """
     return g_scope
 
@@ -98,14 +107,16 @@ def scope_guard(scope):
 
         .. code-block:: python
 
-            import paddle
-            import numpy
-            paddle.enable_static()
+            >>> import paddle
+            >>> import numpy
+            >>> paddle.enable_static()
 
-            new_scope = paddle.static.Scope()
-            with paddle.static.scope_guard(new_scope):
-                 paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
-            numpy.array(new_scope.find_var("data").get_tensor())
+            >>> new_scope = paddle.static.Scope()
+            >>> with paddle.static.scope_guard(new_scope):
+            ...         paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+            >>> numpy.array(new_scope.find_var("data").get_tensor())
+            array([[1., 1.],
+                   [1., 1.]])
     """
 
     ex = _switch_scope(scope)
@@ -123,14 +134,14 @@ def as_numpy(tensor, copy=False):
     Examples:
         .. code-block:: python
 
-          import paddle.base as base
-          import numpy
+            >>> import paddle.base as base
+            >>> import numpy
 
-          new_scope = base.Scope()
-          with base.scope_guard(new_scope):
-              base.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), base.CPUPlace())
-          tensor = new_scope.find_var("data").get_tensor()
-          base.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
+            >>> new_scope = base.Scope()
+            >>> with base.scope_guard(new_scope):
+            ...     base.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), base.CPUPlace())
+            >>> tensor = new_scope.find_var("data").get_tensor()
+            >>> base.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
 
     Args:
        tensor(Variable): a instance of Tensor
@@ -256,8 +267,9 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable %r must be %r, but received %r'
-                % (var.name, var_dtype_format, feed_dtype_format)
+                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                    var.name, var_dtype_format, feed_dtype_format
+                )
             )
     return True
 
@@ -305,8 +317,9 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             else feed._dtype()
         )
         raise ValueError(
-            'The data type of fed Variable %r must be %r, but received %r'
-            % (name, var_dtype_format, feed_dtype_format)
+            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                name, var_dtype_format, feed_dtype_format
+            )
         )
     return True
 
@@ -416,21 +429,25 @@ def has_fetch_operations(
         A boolean value that indicates whether a block has fetch operators
         that match the info contained in fetch_targets.
     """
+    from paddle.autograd.backward_utils import ValueSet
 
-    fetch_count = 0
+    fetch_info = [[], []]
     for op in block.ops:
         if op.name() == fetch_op:
-            fetch_count += 1
-            if op.operand_source(0) not in fetch_targets:
-                raise Exception(
-                    "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
-                )
+            fetch_info[0].append(op.operand_source(0))
+            fetch_info[1].append(op.attrs()["name"])
 
-    if fetch_count > 0 and fetch_count != len(fetch_targets):
-        raise Exception(
-            "Fetch operations in program do not match 'fetch_targets'"
-        )
-    return fetch_count > 0
+    need_fetch_info = []
+    for i, fetch_var in enumerate(fetch_targets):
+        if isinstance(fetch_var, str):
+            if fetch_var not in fetch_info[1]:
+                raise Exception(
+                    f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
+                )
+        elif fetch_var not in ValueSet(fetch_info[0]):
+            need_fetch_info.append(fetch_var)
+
+    return need_fetch_info
 
 
 def _add_feed_fetch_ops(
@@ -487,7 +504,7 @@ def _add_feed_fetch_ops(
         for i, var in enumerate(fetch_list):
             assert isinstance(
                 var, (Variable, str)
-            ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+            ), f"Wrong type for fetch_list[{i}]: {type(var)}"
             global_block.append_op(
                 type=fetch_op,
                 inputs={'X': [var]},
@@ -503,15 +520,19 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    if not has_fetch_operations(
+    need_fetch_info = has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
-    ):
+    )
+    if need_fetch_info:
         with paddle.static.program_guard(program):
-            for i, fetch_input in enumerate(fetch_list):
+            for i, fetch_input in enumerate(need_fetch_info):
                 assert isinstance(
-                    fetch_input, OpResult
-                ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
-                paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+                    fetch_input, Value
+                ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
+                out = paddle._pir_ops.fetch(
+                    fetch_input, fetch_var_name + str(i), i
+                )
+                out.persistable = True
 
 
 def _merge_tensors(tensor, micro_batch_num):
@@ -590,6 +611,10 @@ def _to_name_str(var):
             return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
+        elif isinstance(var, Value):
+            return str(var)
+        elif isinstance(var, Value):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -624,11 +649,18 @@ def _prepare_fleet_executor():
 
 
 def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
-    return (
-        program.desc.cached_hash_str()
-        + str(scope.raw_address())
-        + _get_program_cache_key(feed, fetch_list)
-    )
+    if isinstance(program, PirProgram):
+        return (
+            str(program)
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
+    else:
+        return (
+            program.desc.cached_hash_str()
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -668,12 +700,15 @@ def _as_lodtensor(data, place, dtype=None):
     For higher dimensional sequence data, please use LoDTensor directly.
 
     Examples:
-        >>> import paddle.base as base
-        >>> place = base.CPUPlace()
-        >>> exe = base.executor(place)
-        >>> data = np.array(size=(100, 200, 300))
-        >>> np_outs = map(lambda x: base.executor._as_lodtensor(x, place), data)
-        >>>     ...
+
+        .. code-block:: python
+
+            >>> import numpy as np
+            >>> import paddle.base as base
+            >>> place = base.CPUPlace()
+            >>> exe = base.Executor(place)
+            >>> data = np.array((100, 200, 300))
+            >>> np_outs = map(lambda x: base.executor._as_lodtensor(x, place), data)
 
     Args:
         data(numpy.ndarray|list|tuple|scalar): a instance of array, scalar, list or tuple
@@ -737,6 +772,11 @@ def _can_use_interpreter_core(program, place):
     return True
 
 
+@lru_cache
+def _warning_once(msg):
+    logging.warning(msg)
+
+
 class FetchHandler:
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict is not None
@@ -773,7 +813,9 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, return_numpy=True):
+    def run(
+        self, feed_names, return_numpy=True, enable_job_schedule_profiler=False
+    ):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -783,10 +825,16 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        tensors = self._new_exe.run(feed_names)._move_to_list()
+        tensors = self._new_exe.run(
+            feed_names, enable_job_schedule_profiler
+        )._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
-            return _merge_tensors(tensors, self._plan.micro_batch_num())
+            if not get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
+            ]:
+                return _merge_tensors(tensors, self._plan.micro_batch_num())
+            return tensors
         else:
             if self._plan.micro_batch_num() > 1:
                 raise RuntimeError(
@@ -794,9 +842,12 @@ class _StandaloneExecutor:
                 )
             return tensors
 
+    def run_profile(self, feed_names) -> core.ProgramDesc:
+        program_desc = self._new_exe.run_profile(feed_names)
+        return program_desc
+
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
-
         return new_exe
 
 
@@ -859,6 +910,9 @@ class _ExecutorCache:
         # the Executor instance deleted
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor
+        )
+        self._get_cached_program_and_executor_pir_mode = lru_cache(maxsize=8)(
+            self._get_pir_program_and_executor
         )
 
     def clear(self):
@@ -964,7 +1018,9 @@ class _ExecutorCache:
             else False
         )
 
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+        if get_flags('FLAGS_enable_pir_in_executor')[
+            'FLAGS_enable_pir_in_executor'
+        ]:
             # todo(phlrain), skip inplace add addto pass in new IR
             enable_inplace = False
             enable_addto = False
@@ -992,8 +1048,50 @@ class _ExecutorCache:
             )
         else:
             default_job = core.Job("default")
-            type_to_program = {"default": new_program.desc}
+            if get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
+            ]:
+                # if enables distributed training with prim mechanism (prim is behind of distributed)
+                # step 1: translate program to pir program.
+                # step 2: decompose PHI ops in pir program into prim ops.
+                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding correpsonding forward op.
+                if (
+                    os.getenv("FLAGS_enable_prim_after_distribute")
+                    in ['True', 'true', '1']
+                    and new_program._need_decomp
+                ):
+                    (
+                        pir_program,
+                        param_mapping,
+                    ) = translate_to_pir_with_param_map(new_program.desc)
+
+                    from paddle.decomposition import decomp
+
+                    decomp.decompose_pir_program(
+                        pir_program, param_mapping, new_program._grad_var_to_var
+                    )
+
+                    type_to_program = {"default": pir_program}
+
+                else:
+                    type_to_program = {
+                        "default": translate_to_pir(new_program.desc)
+                    }
+            else:
+                type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
+
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
+            for p in new_program._pass_opt['pass_list']:
+                pm.add_pass(p)
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm.run(ir_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
@@ -1008,6 +1106,27 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        return self._get_cached_program_and_executor_pir_mode(
+            self._CachedData(
+                program,
+                feed,
+                fetch_list,
+                feed_var_name,
+                fetch_var_name,
+                place,
+                scope,
+            )
+        )
+
+    def _get_pir_program_and_executor(self, cached_data):
+        program = cached_data.program
+        feed = cached_data.feed
+        fetch_list = cached_data.fetch_list
+        feed_var_name = cached_data.feed_var_name
+        fetch_var_name = cached_data.fetch_var_name
+        place = cached_data.place
+        scope = cached_data.scope
+
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
@@ -1017,7 +1136,17 @@ class _ExecutorCache:
         plan = core.Plan([default_job], type_to_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
-        return program, new_exe
+
+        data_op_infos = []
+        global_block = program.global_block()
+        for op in global_block.ops:
+            if op.name() == 'pd_op.data':
+                feed_target_name = op.attrs()["name"]
+                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
+                var_shape = op.attrs()["shape"]
+                tup = (feed_target_name, var_type, var_shape)
+                data_op_infos.append(tup)
+        return program, new_exe, data_op_infos
 
 
 class Executor:
@@ -1042,65 +1171,66 @@ class Executor:
         Executor
 
     Examples:
+
         .. code-block:: python
 
-            import paddle
-            import numpy
-            import os
+            >>> import paddle
+            >>> import numpy
+            >>> import os
 
-            # Executor is only used in static graph mode
-            paddle.enable_static()
+            >>> # Executor is only used in static graph mode
+            >>> paddle.enable_static()
 
-            # Set place explicitly.
-            # use_cuda = True
-            # place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-            # exe = paddle.static.Executor(place)
+            >>> # Set place explicitly.
+            >>> # use_cuda = True
+            >>> # place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            >>> # exe = paddle.static.Executor(place)
 
-            # If you don't set place, PaddlePaddle sets the default device.
-            exe = paddle.static.Executor()
+            >>> # If you don't set place, PaddlePaddle sets the default device.
+            >>> exe = paddle.static.Executor()
 
-            train_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
-            with paddle.static.program_guard(train_program, startup_program):
-                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = paddle.static.nn.fc(data, 10)
-                loss = paddle.mean(hidden)
-                paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            >>> train_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.static.program_guard(train_program, startup_program):
+            ...     data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+            ...     hidden = paddle.static.nn.fc(data, 10)
+            ...     loss = paddle.mean(hidden)
+            ...     paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            ...
+            >>> # Run the startup program once and only once.
+            >>> # Not need to optimize/compile the startup program.
+            >>> exe.run(startup_program)
 
-            # Run the startup program once and only once.
-            # Not need to optimize/compile the startup program.
-            exe.run(startup_program)
+            >>> # Run the main program directly without compile.
+            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+            >>> loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
 
-            # Run the main program directly without compile.
-            x = numpy.random.random(size=(10, 1)).astype('float32')
-            loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
-
-            # Or, compiled the program and run. See `CompiledProgram`
-            # for more details.
-            compiled_prog = paddle.static.CompiledProgram(
-                train_program)
-            loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
+            >>> # Or, compiled the program and run. See `CompiledProgram`
+            >>> # for more details.
+            >>> compiled_prog = paddle.static.CompiledProgram(
+            ...     train_program)
+            >>> loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
 
     """
 
     def __init__(self, place=None):
         if place is None:
-            expected_place = framework._current_expected_place()
+            expected_place = framework._current_expected_place_()
             self.place = expected_place
         else:
             self.place = framework._get_paddle_place(place)
-        self.program_caches = dict()
-        self.ctx_caches = dict()
-        self.trainer_caches = dict()
-        self.scope_caches = dict()
-        self.micro_scope_cache = dict()
-        self.var_caches = dict()
-        self.pruned_program_caches = dict()
+        self.program_caches = {}
+        self.ctx_caches = {}
+        self.trainer_caches = {}
+        self.scope_caches = {}
+        self.micro_scope_cache = {}
+        self.var_caches = {}
+        self.pruned_program_caches = {}
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
-        self.pruned_program_scope_caches = dict()
+        self.pruned_program_scope_caches = {}
         self._prepare_to_run_called = False
 
         self._auto_checkpoint_name = unique_name.generate(
@@ -1116,6 +1246,8 @@ class Executor:
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
+        self.enable_job_schedule_profiler = False
+
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
             op.all_attrs()[self.op_role_key]
@@ -1125,6 +1257,7 @@ class Executor:
         # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache
         # may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor),
         # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
+        self.close()
         self._executor_cache.clear()
 
     def _get_scope_cache(self, program_cache_key):
@@ -1169,10 +1302,8 @@ class Executor:
     def _get_micro_scopes_cache(self, program_cache_key):
         return self.micro_scope_cache.get(program_cache_key, None)
 
-    # just for testing, will be removed later
-    @lru_cache()
     def _log_force_set_program_cache(self, use_program_cache):
-        logging.warning(
+        _warning_once(
             f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
         )
 
@@ -1191,7 +1322,7 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                pir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                pir_flag_name = 'FLAGS_enable_pir_in_executor'
                 if get_flags(pir_flag_name)[pir_flag_name]:
                     core.set_feed_variable(
                         scope, cur_feed, feed_target_name, idx
@@ -1232,24 +1363,32 @@ class Executor:
             else:
                 break
 
-    def _pir_feed_data(self, program, feed, scope):
+    def _pir_feed_data(self, program, feed, scope, data_op_infos):
         # feed var to framework
-        global_block = program.global_block()
-        for op in global_block.ops:
-            if op.name() == 'pd_op.data':
-                feed_target_name = op.attrs()["name"]
-                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
-                var_shape = op.attrs()["shape"]
-                cur_feed = feed[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
-                pir_check_feed_shape_type(
-                    cur_feed, feed_target_name, var_shape, var_type
+        feed_target_names = set()
+        for data_op_info in data_op_infos:
+            feed_target_name = data_op_info[0]
+            feed_target_names.add(feed_target_name)
+            var_type = data_op_info[1]
+            var_shape = data_op_info[2]
+
+            cur_feed = feed[feed_target_name]
+            if not isinstance(cur_feed, core.LoDTensor):
+                cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
+            pir_check_feed_shape_type(
+                cur_feed, feed_target_name, var_shape, var_type
+            )
+            # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
+            core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
+
+        # pop variable which is not found in program
+        for feed_name in list(feed.keys()):
+            if feed_name not in feed_target_names:
+                feed.pop(feed_name)
+                warnings.warn(
+                    "The value %s is not found in program. It is not declared or is pruned."
+                    % feed_name
                 )
-                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
-                core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
-            else:
-                break
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
@@ -1438,14 +1577,15 @@ class Executor:
             None
 
         Examples:
+
             .. code-block:: python
 
-              import paddle
+                >>> import paddle
 
-              cpu = paddle.CPUPlace()
-              exe = paddle.static.Executor(cpu)
-              # execute training or testing
-              exe.close()
+                >>> cpu = paddle.CPUPlace()
+                >>> exe = paddle.static.Executor(cpu)
+                >>> # execute training or testing
+                >>> exe.close()
         """
         if not self._closed:
             self._closed = True
@@ -1453,6 +1593,17 @@ class Executor:
                 self._default_executor.release_trainer(trainer_instance)
                 del trainer_instance
             self._default_executor.close()
+
+    def flush(self):
+        """
+        flush all trainer param to root_scope
+        """
+        if self._closed:
+            return
+        for _, trainer_instance in self.trainer_caches.items():
+            self._default_executor.release_trainer(trainer_instance)
+            del trainer_instance
+        self.trainer_caches.clear()
 
     def run(
         self,
@@ -1517,78 +1668,82 @@ class Executor:
             List: The fetched result list.
 
         Examples:
+
             .. code-block:: python
                 :name: code-example-1
 
-                import paddle
-                import numpy
+                >>> import paddle
+                >>> import numpy
 
-                # First create the Executor.
-                paddle.enable_static()
-                place = paddle.CPUPlace()  # paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
+                >>> # First create the Executor.
+                >>> paddle.enable_static()
+                >>> place = paddle.CPUPlace()  # paddle.CUDAPlace(0)
+                >>> exe = paddle.static.Executor(place)
 
-                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = paddle.static.nn.fc(data, 10)
-                loss = paddle.mean(hidden)
-                adam = paddle.optimizer.Adam()
-                adam.minimize(loss)
-                i = paddle.zeros(shape=[1], dtype='int64')
-                array = paddle.tensor.array_write(x=loss, i=i)
+                >>> data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                >>> hidden = paddle.static.nn.fc(data, 10)
+                >>> loss = paddle.mean(hidden)
+                >>> adam = paddle.optimizer.Adam()
+                >>> adam.minimize(loss)
+                >>> i = paddle.zeros(shape=[1], dtype='int64')
+                >>> array = paddle.tensor.array_write(x=loss, i=i)
 
-                # Run the startup program once and only once.
-                exe.run(paddle.static.default_startup_program())
+                >>> # Run the startup program once and only once.
+                >>> exe.run(paddle.static.default_startup_program())
 
-                x = numpy.random.random(size=(10, 1)).astype('float32')
-                loss_val, array_val = exe.run(feed={'X': x},
-                                              fetch_list=[loss.name, array.name])
-                print(array_val)
-                # [array([0.02153828], dtype=float32)]
+                >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+                >>> loss_val, array_val = exe.run(feed={'X': x},
+                ...                                 fetch_list=[loss.name, array.name])
+                >>> print(array_val)
+                >>> # doctest: +SKIP("Random output")
+                [array(0.16870381, dtype=float32)]
+                >>> # doctest: -SKIP
 
             .. code-block:: python
                 :name: code-example-2
 
-                # required: gpu
-                import paddle
-                import numpy as np
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+                >>> import numpy as np
 
-                # First create the Executor.
-                paddle.enable_static()
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
+                >>> # First create the Executor.
+                >>> paddle.enable_static()
+                >>> place = paddle.CUDAPlace(0)
+                >>> exe = paddle.static.Executor(place)
 
-                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
-                class_dim = 2
-                prediction = paddle.static.nn.fc(data, class_dim)
-                loss = paddle.mean(prediction)
-                adam = paddle.optimizer.Adam()
-                adam.minimize(loss)
+                >>> data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                >>> class_dim = 2
+                >>> prediction = paddle.static.nn.fc(data, class_dim)
+                >>> loss = paddle.mean(prediction)
+                >>> adam = paddle.optimizer.Adam()
+                >>> adam.minimize(loss)
 
-                # Run the startup program once and only once.
-                exe.run(paddle.static.default_startup_program())
-                build_strategy = paddle.static.BuildStrategy()
-                binary = paddle.static.CompiledProgram(
-                    paddle.static.default_main_program(), build_strategy=build_strategy)
-                batch_size = 6
-                x = np.random.random(size=(batch_size, 1)).astype('float32')
+                >>> # Run the startup program once and only once.
+                >>> exe.run(paddle.static.default_startup_program())
+                >>> build_strategy = paddle.static.BuildStrategy()
+                >>> binary = paddle.static.CompiledProgram(
+                ...     paddle.static.default_main_program(), build_strategy=build_strategy)
+                >>> batch_size = 6
+                >>> x = np.random.random(size=(batch_size, 1)).astype('float32')
 
-                prediction, = exe.run(binary,
-                                      feed={'X': x},
-                                    fetch_list=[prediction.name])
-                # If the user uses two GPU cards to run this python code, the printed result will be
-                # (6, class_dim). The first dimension value of the printed result is the batch_size.
-                print("The prediction shape: {}".format(
-                    np.array(prediction).shape))
-                print(prediction)
+                >>> prediction, = exe.run(binary,
+                ...                         feed={'X': x},
+                ...                     fetch_list=[prediction.name])
+                >>> # If the user uses two GPU cards to run this python code, the printed result will be
+                >>> # (6, class_dim). The first dimension value of the printed result is the batch_size.
+                >>> print("The prediction shape: {}".format(
+                ...     np.array(prediction).shape))
+                The prediction shape: (6, 2)
 
-                # Out:
-                # The prediction shape: (6, 2)
-                # [[-0.37789783 -0.19921964]
-                #  [-0.3577645  -0.18863106]
-                #  [-0.24274671 -0.12814042]
-                #  [-0.24635398 -0.13003758]
-                #  [-0.49232286 -0.25939852]
-                #  [-0.44514108 -0.2345845 ]]
+                >>> print(prediction)
+                >>> # doctest: +SKIP("Random output")
+                [[-0.37789783 -0.19921964]
+                 [-0.3577645  -0.18863106]
+                 [-0.24274671 -0.12814042]
+                 [-0.24635398 -0.13003758]
+                 [-0.49232286 -0.25939852]
+                 [-0.44514108 -0.2345845 ]]
+                >>> # doctest: -SKIP
 
         """
         # Temporary FLAGS, just for testing the performance of program cache
@@ -1682,7 +1837,7 @@ class Executor:
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
             #    program._heter_pipeline_opt))
-            ## change default executor
+            # change default executor
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
@@ -1797,7 +1952,6 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
-
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
@@ -1822,7 +1976,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(list(feed.keys()), return_numpy)
+            ret = new_exe.run(
+                list(feed.keys()),
+                return_numpy,
+                self.enable_job_schedule_profiler,
+            )
             set_flags(stored_flag)
             return ret
 
@@ -1839,12 +1997,12 @@ class Executor:
                 varobj = global_block.vars[varname]
 
                 if (
-                    vardesc.persistable() == False
+                    vardesc.persistable() is False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    and vardesc.need_check_feed() == True
-                    and varobj.stop_gradient == True
-                    and varobj.is_data == True
-                    and varobj.belong_to_optimizer == False
+                    and vardesc.need_check_feed() is True
+                    and varobj.stop_gradient is True
+                    and varobj.is_data is True
+                    and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
                     raise ValueError('Need feed data for variable %s' % varname)
@@ -1892,13 +2050,7 @@ class Executor:
                     "Please ensure you create model correctly or you can pass "
                     "the Program or the CompiledProgram manually."
                 )
-            else:
-                error_info = (
-                    "There are no operators in the program to be executed. "
-                    "If you pass Program manually, please use base.program_guard "
-                    "to ensure the current Program is being used."
-                )
-            warnings.warn(error_info)
+                warnings.warn(error_info)
 
         if scope is None:
             scope = global_scope()
@@ -1914,7 +2066,11 @@ class Executor:
                 % (type(feed))
             )
 
-        program, new_exe = self._executor_cache.get_pir_program_and_executor(
+        (
+            program,
+            new_exe,
+            data_op_infos,
+        ) = self._executor_cache.get_pir_program_and_executor(
             program,
             feed,
             fetch_list,
@@ -1924,7 +2080,35 @@ class Executor:
             scope,
         )
 
-        self._pir_feed_data(program, feed, scope)
+        self._pir_feed_data(program, feed, scope, data_op_infos)
+
+        if hasattr(program, 'lr_scheduler'):
+            from paddle.optimizer.lr import LRScheduler
+
+            assert isinstance(
+                program.lr_scheduler, LRScheduler
+            ), "must be LRScheduler"
+
+            lr_scheduler = program.lr_scheduler
+            lr_value = lr_scheduler()
+            lr_var = program.lr_var
+
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(
+                global_scope(), lr_scheduler._var_name
+            )
+            # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+            cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+            if core.is_cuda_graph_capturing():
+                warnings.warn(
+                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                    "take any effect! Please set the learning rate manually before each batch!"
+                )
+            elif core.is_compiled_with_ipu():
+                # for ipu, tensor is allocated on cpu
+                tensor._copy_from(cpu_tensor, tensor._place())
+            else:
+                tensor._copy_from(cpu_tensor, self.place)
 
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret
@@ -1933,7 +2117,7 @@ class Executor:
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(var, (Variable, str, OpResult))
+        is_fetch_var = lambda var: isinstance(var, (Variable, str, Value))
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None:
@@ -1959,7 +2143,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".format(
+                    "Require fetch_list[{}] 's type shall be one of (Value, str), but received {}.".format(
                         i, type(var).__name__
                     )
                 )
@@ -2136,7 +2320,7 @@ class Executor:
     ):
         is_heter = 0
         use_ps_gpu = 0
-        if not program._fleet_opt is None:
+        if program._fleet_opt is not None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
@@ -2262,7 +2446,7 @@ class Executor:
                     raise RuntimeError(
                         "dataset is need and should be initialized"
                     )
-            ## change default executor
+            # change default executor
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
             p.set_place(heter_place)
@@ -2323,7 +2507,12 @@ class Executor:
 
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        if program._heter_pipeline_opt is None:
+        reused_trainer = program._heter_pipeline_opt is not None or (
+            program._fleet_opt is not None
+            and program._fleet_opt.get("use_ps_gpu", True)
+        )
+
+        if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset
                     program.desc, trainer._desc(), scope, dataset.dataset
@@ -2350,11 +2539,11 @@ class Executor:
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()
-            if program._heter_pipeline_opt is None:
+            if reused_trainer is False:
                 self._default_executor.release_trainer(trainer_instance)
         else:
             self._default_executor.run_from_dataset(trainer_instance)
-            if program._heter_pipeline_opt is None:
+            if reused_trainer is False:
                 self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
@@ -2695,6 +2884,7 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
+
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate
             # multiple queries at the same time. Each query will in separate scope in order
@@ -2715,7 +2905,7 @@ class Executor:
                         if return_numpy:
                             tensor = as_numpy(tensor)
                         else:
-                            tensor = [t for t in tensor]
+                            tensor = list(tensor)
 
                     if tensor:
                         scope_result_list.append(tensor)
@@ -2792,7 +2982,7 @@ class Executor:
             for i, var in enumerate(fetch_list):
                 assert isinstance(
                     var, (Variable, str)
-                ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+                ), f"Wrong type for fetch_list[{i}]: {type(var)}"
                 global_block.append_op(
                     type=fetch_op,
                     inputs={'X': [var]},
@@ -2913,23 +3103,22 @@ class Executor:
 
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                paddle.enable_static()
-                place = paddle.CPUPlace()  # you can set place = paddle.CUDAPlace(0) to use gpu
-                exe = paddle.static.Executor(place)
-                x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
-                y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-                dataset = paddle.base.DatasetFactory().create_dataset()
-                dataset.set_use_var([x, y])
-                dataset.set_thread(1)
-                # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                filelist = []
-                dataset.set_filelist(filelist)
-                exe.run(paddle.static.default_startup_program())
-                exe.infer_from_dataset(program=paddle.static.default_main_program(),
-                                       dataset=dataset)
-
+                >>> paddle.enable_static()
+                >>> place = paddle.CPUPlace()  # you can set place = paddle.CUDAPlace(0) to use gpu
+                >>> exe = paddle.static.Executor(place)
+                >>> x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+                >>> y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+                >>> dataset = paddle.base.DatasetFactory().create_dataset()
+                >>> dataset.set_use_var([x, y])
+                >>> dataset.set_thread(1)
+                >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                >>> filelist = []
+                >>> dataset.set_filelist(filelist)
+                >>> exe.run(paddle.static.default_startup_program())
+                >>> exe.infer_from_dataset(program=paddle.static.default_main_program(),
+                ...                         dataset=dataset)
         """
         return self._run_from_dataset(
             program,
@@ -3036,23 +3225,22 @@ class Executor:
 
             .. code-block:: python
 
-              import paddle
+                >>> import paddle
 
-              paddle.enable_static()
-              place = paddle.CPUPlace() # you can set place = paddle.CUDAPlace(0) to use gpu
-              exe = paddle.static.Executor(place)
-              x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
-              y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-              dataset = paddle.base.DatasetFactory().create_dataset()
-              dataset.set_use_var([x, y])
-              dataset.set_thread(1)
-              # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-              filelist = []
-              dataset.set_filelist(filelist)
-              exe.run(paddle.static.default_startup_program())
-              exe.train_from_dataset(program=paddle.static.default_main_program(),
-                                     dataset=dataset)
-
+                >>> paddle.enable_static()
+                >>> place = paddle.CPUPlace() # you can set place = paddle.CUDAPlace(0) to use gpu
+                >>> exe = paddle.static.Executor(place)
+                >>> x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+                >>> y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+                >>> dataset = paddle.base.DatasetFactory().create_dataset()
+                >>> dataset.set_use_var([x, y])
+                >>> dataset.set_thread(1)
+                >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                >>> filelist = []
+                >>> dataset.set_filelist(filelist)
+                >>> exe.run(paddle.static.default_startup_program())
+                >>> exe.train_from_dataset(program=paddle.static.default_main_program(),
+                ...                         dataset=dataset)
         """
         return self._run_from_dataset(
             program,

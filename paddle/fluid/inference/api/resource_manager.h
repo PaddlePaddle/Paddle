@@ -23,6 +23,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/utils/test_macros.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -53,7 +54,7 @@ class CPUContextResource {
 class GPUContextResource {
  public:
   explicit GPUContextResource(const phi::Place& place, void* stream);
-  ~GPUContextResource();
+  TEST_API ~GPUContextResource();
   phi::Place Place() const;
 
   std::function<phi::dnnHandle_t()> GetDnnHandleCreator();
@@ -127,10 +128,7 @@ class GPUContextResource {
 class ResourceManager {
  public:
   ResourceManager() = default;
-  static ResourceManager& Instance() {
-    static ResourceManager* resource_manager = new ResourceManager;
-    return *resource_manager;
-  }
+  TEST_API static ResourceManager& Instance();
 
   // CPU Resource
  public:
@@ -146,8 +144,8 @@ class ResourceManager {
  public:
   void* InitGPUResource(const phi::Place& place, void* stream);
   void DestroyGPUResource(void* stream);
-  GPUContextResource* GetGPUResource(void* stream) const;
-  int RefCount(void* stream) const;
+  TEST_API GPUContextResource* GetGPUResource(void* stream) const;
+  TEST_API int RefCount(void* stream) const;
   void GpuResourceSwitchStream(void* old_stream, void* new_stream);
 
  private:

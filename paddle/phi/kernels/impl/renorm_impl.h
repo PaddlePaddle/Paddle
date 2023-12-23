@@ -280,8 +280,8 @@ void RenormFunc(const phi::GPUContext& ctx,
   int64_t dim_divisor = 1, pre_mul = 1;
   for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
   for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
-  pow_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
-  dim_value.Resize(phi::make_ddim({dimension_each}));
+  pow_value.Resize(common::make_ddim({pre_mul, dimension_each, dim_divisor}));
+  dim_value.Resize(common::make_ddim({dimension_each}));
   T* pow_value_data = ctx.template Alloc<T>(&pow_value);
   T* dim_value_data = ctx.template Alloc<T>(&dim_value);
   auto stream = ctx.stream();
@@ -317,11 +317,11 @@ void RenormGradFunc(const phi::GPUContext& ctx,
   for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
   for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
   DenseTensor pow_value, mul_value, dim_value, dim_power_sum, weight_derivative;
-  pow_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
-  mul_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
-  dim_value.Resize(phi::make_ddim({dimension_each}));
-  dim_power_sum.Resize(phi::make_ddim({dimension_each}));
-  weight_derivative.Resize(phi::make_ddim({dimension_each}));
+  pow_value.Resize(common::make_ddim({pre_mul, dimension_each, dim_divisor}));
+  mul_value.Resize(common::make_ddim({pre_mul, dimension_each, dim_divisor}));
+  dim_value.Resize(common::make_ddim({dimension_each}));
+  dim_power_sum.Resize(common::make_ddim({dimension_each}));
+  weight_derivative.Resize(common::make_ddim({dimension_each}));
   auto stream = ctx.stream();
   int block = std::min(numel, static_cast<int64_t>(256));
   int grid = (numel + block - 1) / block;

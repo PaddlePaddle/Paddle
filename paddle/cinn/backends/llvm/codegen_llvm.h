@@ -32,9 +32,9 @@
 #include "paddle/cinn/backends/llvm/ir_builder_mixin.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 namespace cinn {
 namespace backends {
@@ -118,7 +118,7 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
       llvm::Module *m,
       llvm::IRBuilder<> *b,
       const std::shared_ptr<SymbolTable> &symbol_table = nullptr,
-      const Target &target = common::DefaultHostTarget());
+      const Target &target = cinn::common::DefaultHostTarget());
 
   // Common llvm types
   // @{

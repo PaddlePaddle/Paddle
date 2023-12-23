@@ -20,9 +20,9 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -32,7 +32,8 @@ namespace auto_schedule {
 SearchState::SearchState(ir::IRSchedule ir_sch,
                          float cost,
                          const std::vector<AutoGenRule*>& rules)
-    : common::Shared<_SearchState_>(common::make_shared<_SearchState_>()) {
+    : cinn::common::Shared<_SearchState_>(
+          cinn::common::make_shared<_SearchState_>()) {
   auto* state = get();
   state->ir_schedule = std::move(ir_sch);
   state->applicable_rules = rules;

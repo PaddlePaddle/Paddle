@@ -15,10 +15,9 @@
 import inspect
 import warnings
 
-from paddle.base.dygraph.base import in_to_static_mode
-
 from .. import core
-from ..framework import Variable, static_only, unique_name
+from ..dygraph.base import in_to_static_mode
+from ..framework import Variable, default_main_program, static_only
 from .layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
@@ -31,6 +30,15 @@ _supported_int_dtype_ = [
 ]
 
 compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
+
+SUPPORT_PROMOTION_OPS = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+]
 
 EXPRESSION_MAP = {
     "__add__": "A + B",
@@ -61,7 +69,7 @@ _already_patch_variable = False
 
 def monkey_patch_variable():
     def unique_tmp_name():
-        return unique_name.generate("tmp")
+        return default_main_program()._name_generator.generate("tmp")
 
     def safe_get_dtype(var):
         try:
@@ -241,7 +249,7 @@ def monkey_patch_variable():
     def astype(self, dtype):
         """
         **Notes**:
-            **The variable must be a** :ref:`api_base_Tensor`
+            **The variable must be a** :ref:`api_paddle_Tensor`
 
         Cast a variable to a specified data type.
 
@@ -302,8 +310,9 @@ def monkey_patch_variable():
     @static_only
     def append(self, var):
         """
-        **Notes**:
-           **The type variable must be LoD Tensor Array.
+
+        Note:
+           The type variable must be LoD Tensor Array.
 
         """
         if not isinstance(var, Variable):
@@ -355,7 +364,7 @@ def monkey_patch_variable():
 
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {}".format(
                     self.type
                 )
             )
@@ -376,7 +385,7 @@ def monkey_patch_variable():
         return _scalar_op_(var, -1.0, 0.0)
 
     @property
-    def _ndim_(self):
+    def _ndim(self):
         """
         Returns the dimension of current Variable
 
@@ -393,7 +402,7 @@ def monkey_patch_variable():
                 >>> # create a static Variable
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
                 >>> # print the dimension of the Variable
-                >>> print(x.ndim())
+                >>> print(x.ndim)
                 3
         """
         return len(self.shape)
@@ -519,10 +528,33 @@ def monkey_patch_variable():
                         current_block(self), value=other_var, dtype=lhs_dtype
                     )
 
-            # 3. unify right var type to left var
+            # 3. type promotion
             rhs_dtype = safe_get_dtype(other_var)
+
             if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+                if method_name in SUPPORT_PROMOTION_OPS:
+                    if core.need_type_promotion(lhs_dtype, rhs_dtype):
+                        common_dtype = core.get_promote_dtype(
+                            op_type, lhs_dtype, rhs_dtype
+                        )
+                        warnings.warn(
+                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted to {common_dtype}"
+                        )
+                        warnings.filterwarnings(
+                            "ignore", message="The input dtypes of OP"
+                        )
+                        if rhs_dtype != common_dtype:
+                            other_var = astype(other_var, common_dtype)
+                        if lhs_dtype != common_dtype:
+                            self = astype(self, common_dtype)
+                    else:
+                        # NOTE(zoooo0820): Currently, we still keep the old illogical \
+                        # logic for compatibility reasons
+                        other_var = astype(other_var, lhs_dtype)
+
+                else:
+                    other_var = astype(other_var, lhs_dtype)
+
             if reverse:
                 tmp = self
                 self = other_var
@@ -548,10 +580,9 @@ def monkey_patch_variable():
                 file_name = stack[1]
                 line_num = stack[2]
                 warnings.warn(
-                    "%s:%s\nThe behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
+                    "{}:{}\nThe behavior of expression {} has been unified with {}(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
-                    "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
-                    % (
+                    "{}(X, Y, axis=0) instead of {}. This transitional warning will be dropped in the future.".format(
                         file_name,
                         line_num,
                         EXPRESSION_MAP[method_name],
@@ -628,7 +659,7 @@ def monkey_patch_variable():
         ('pop', pop),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),

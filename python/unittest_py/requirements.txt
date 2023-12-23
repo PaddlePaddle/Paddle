@@ -2,8 +2,8 @@ PyGithub
 coverage==5.5
 pycrypto ; platform_system != "Windows"
 mock
-gym==0.25.2
-pygame==2.1.0
+gym==0.26.2
+pygame==2.5.2
 hypothesis
 opencv-python<=4.2.0.32
 visualdl==2.5.3
@@ -13,9 +13,9 @@ prettytable
 distro
 numpy>=1.20
 autograd==1.4
-librosa==0.8.1
+librosa==0.8.1 ; python_version<"3.12"
 parameterized
-wandb>=0.13
+wandb>=0.13 ; python_version<"3.12"
 xlsxwriter==3.0.9
-xdoctest
-ubelt # just for xdoctest
+xdoctest==1.1.1
+ubelt==1.3.3 # just for xdoctest

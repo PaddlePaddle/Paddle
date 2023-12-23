@@ -21,9 +21,9 @@
 #include <string>
 
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -125,7 +125,7 @@ GiNaC::ex ExprToGinacConverter::BuildHelper(ir::Expr expr) {
 }
 
 GiNaC::ex ExprToGinacConverter::operator()(Expr expr) {
-  // TODO(Superjomn) Replace this with common::IsPureMath(
+  // TODO(Superjomn) Replace this with cinn::common::IsPureMath(
   auto complex_nodes = ir::ir_utils::CollectIRNodes(expr, [](const Expr* n) {
     return n->As<Block>() ||    //
            n->As<PolyFor>() ||  //

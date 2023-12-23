@@ -112,7 +112,7 @@ void BasicEngine::Init(
     if (grad_tensor == nullptr) {
       grad_var->Resize(fwd_var.dims());
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
-      phi::funcs::set_constant(*dev_ctx, grad_var, 1.0);
+      phi::funcs::set_constant(*dev_ctx, grad_var, 1.0f);
     } else {
       paddle::framework::TensorCopy(grad_tensor->Var().Get<phi::DenseTensor>(),
                                     fwd_var.place(),
@@ -168,7 +168,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
   }
@@ -605,7 +605,7 @@ void BasicEngine::Execute() {
           }
         } catch (platform::EnforceNotMet& exception) {
           Clear();
-          throw std::move(exception);
+          throw exception;
         } catch (std::exception& ex) {
           Clear();
           PADDLE_THROW(platform::errors::External("%s", ex.what()));
@@ -620,7 +620,7 @@ void BasicEngine::Execute() {
       }
 
       for (auto& pair : inplace_output_grad_var_list_) {
-        *pair.first = std::move(*pair.second);
+        *pair.first = *pair.second;
       }
 
       // Step 2: Sum Gradient of This graph

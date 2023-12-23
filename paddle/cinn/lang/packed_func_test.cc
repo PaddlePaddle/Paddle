@@ -16,8 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -78,12 +78,13 @@ TEST(Function, ReturnMultiValue) {
     int c = a + b;
     int d = a - b;
 
-    *ret = common::CINNValuePack{{common::CINNValue(c), common::CINNValue(d)}};
+    *ret = cinn::common::CINNValuePack{
+        {cinn::common::CINNValue(c), cinn::common::CINNValue(d)}};
   };
 
   PackedFunc func(body);
 
-  common::CINNValuePack ret = func(1, 2);
+  cinn::common::CINNValuePack ret = func(1, 2);
   int c = ret[0];
   int d = ret[1];
 

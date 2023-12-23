@@ -23,12 +23,12 @@
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/optimize.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -144,7 +144,7 @@ bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize) {
   return total_unused_iter_vars >= 1;
 }
 
-ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
+ir::LoweredFunc UpdateFuncWithNewBody(const cinn::common::Target& target,
                                       const ir::LoweredFunc& old_func,
                                       ir::Expr& body) {  // NOLINT
   ir::ModuleExpr mod_expr(std::vector<ir::Expr>({body}));
@@ -179,7 +179,7 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
   ir::LoweredFunc new_func = ir::_LoweredFunc_::Make(
       old_func->name, old_func->args, updated_body, new_temp_bufs);
 #ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target == cinn::common::DefaultNVGPUTarget()) {
     new_func->PrepareCudaAxisInfoFromBody();
   }
 #endif
@@ -188,6 +188,41 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
   new_func->PrepareBufferCastExprs(/*with_expr_gen_tensor = */ false);
 
   return new_func;
+}
+
+std::unordered_set<std::string> GetReduceLoopVarNames(const ir::Expr block) {
+  const ir::ScheduleBlockRealize* block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  const ir::ScheduleBlock* block_node =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(block_node);
+  std::vector<ir::Expr> iter_values = block_realize->iter_values;
+  std::vector<ir::Var> iter_vars = block_node->iter_vars;
+
+  std::unordered_set<std::string> reduce_loop_var;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(
+          iter_values[i], [&](const ir::Expr* x) {
+            if (x->as_var()) {
+              reduce_loop_var.insert(x->as_var_ref()->name);
+            }
+            return false;
+          });
+    }
+  }
+  return reduce_loop_var;
+}
+
+std::string GetBlockName(const ir::Expr block) {
+  const ir::ScheduleBlockRealize* block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  const ir::ScheduleBlock* block_node =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(block_node);
+  return block_node->name;
 }
 
 }  // namespace auto_schedule

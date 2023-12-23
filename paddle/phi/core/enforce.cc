@@ -99,7 +99,7 @@ using NameTensorMap = NameVarMap<egr::EagerVariable>;
 namespace phi {
 namespace enforce {
 
-int GetCallStackLevel() { return FLAGS_call_stack_level; }
+TEST_API int GetCallStackLevel() { return FLAGS_call_stack_level; }
 
 template <typename T>
 static std::string ReplaceComplexTypeStr(std::string str,
@@ -131,7 +131,7 @@ static std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
-std::string GetCurrentTraceBackString(bool for_signal) {
+TEST_API std::string GetCurrentTraceBackString(bool for_signal) {
   std::ostringstream sout;
 
   if (!for_signal) {
@@ -174,7 +174,7 @@ void ThrowWarnInternal(const std::string& msg) {
   LOG(WARNING) << "WARNING :" << msg;
 }
 
-std::string SimplifyErrorTypeFormat(const std::string& str) {
+TEST_API std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
   size_t type_end_pos = str.find(':', 0);
   if (type_end_pos == std::string::npos) {

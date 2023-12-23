@@ -64,6 +64,7 @@ def _create_out(var):
         var_desc.type(),
         False,
     )
+    out.stop_gradient = False
     return out
 
 
@@ -112,9 +113,6 @@ class TestRunProgram(unittest.TestCase):
         y_t.name = "y"
         y_t.stop_gradient = False
 
-        fake_var = paddle.zeros([1])
-        fake_var.name = 'Fake_var'
-
         out_t = _create_out(out)
 
         scope = core.Scope()
@@ -130,7 +128,7 @@ class TestRunProgram(unittest.TestCase):
             'program_id',
             paddle.utils._hash_with_id(program),
             'param_grad_names',
-            ['Fake_var@GRAD'],
+            [],
             'out_grad_names',
             [out.name + '@GRAD'],
             'x_grad_names',
@@ -152,7 +150,7 @@ class TestRunProgram(unittest.TestCase):
             )
 
         _legacy_C_ops.run_program(
-            [x_t, y_t], [fake_var], [out_t], [scope], [fake_var], None, *attrs
+            [x_t, y_t], None, [out_t], [scope], None, *attrs
         )
 
         loss = paddle.mean(out_t)

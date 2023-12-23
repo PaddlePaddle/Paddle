@@ -157,7 +157,7 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
       continue;
     }
     // If contains dispensable input, we should override the
-    // OpArgumentMapping method self in phi/ops/compat dir
+    // OpArgumentMapping method self in fluid/operators/ops_signature dir
     if (in.has_dispensable() && in.dispensable()) {
       continue;
     }

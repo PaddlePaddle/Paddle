@@ -29,7 +29,7 @@ class PhiKernelOp : public pir::Op<PhiKernelOp> {
   std::string op_name();
   std::string kernel_name();
   phi::KernelKey kernel_key();
-  void Verify();
+  void VerifySig();
 };
 
 class LegacyKernelOp : public pir::Op<LegacyKernelOp> {
@@ -41,7 +41,7 @@ class LegacyKernelOp : public pir::Op<LegacyKernelOp> {
   std::string op_name();
   std::string kernel_name();
   phi::KernelKey kernel_key();
-  void Verify();
+  void VerifySig();
 };
 
 }  // namespace dialect

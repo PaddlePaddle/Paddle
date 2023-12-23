@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
-from paddle.base.framework import _global_flags
+from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
+from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
@@ -102,9 +102,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
         padding = convert_to_list(padding, num_dims, 'padding')
     if not all(p >= 0 for p in padding):
         raise ValueError(
-            "Invalid padding, all value should be larger than or equal to 0, but received: {}".format(
-                padding
-            )
+            f"Invalid padding, all value should be larger than or equal to 0, but received: {padding}"
         )
     return padding, padding_algorithm
 
@@ -122,11 +120,10 @@ def _conv_nd(
     channel_dim=1,
     op_type="conv2d",
     use_cudnn=True,
-    use_mkldnn=False,
     name=None,
 ):
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    if in_dynamic_mode() and op_type == "conv2d":
+    if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
             weight,
@@ -155,7 +152,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dynamic_mode() and op_type == "depthwise_conv2d":
+    if in_dynamic_or_pir_mode() and op_type == "depthwise_conv2d":
         pre_bias = _C_ops.depthwise_conv2d(
             x,
             weight,
@@ -174,7 +171,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dynamic_mode() and op_type == "conv3d":
+    if in_dynamic_or_pir_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
             x,
             weight,
@@ -205,8 +202,6 @@ def _conv_nd(
             groups,
             'use_cudnn',
             use_cudnn,
-            'use_mkldnn',
-            use_mkldnn,
             'fuse_relu_before_depthwise_conv',
             False,
             "padding_algorithm",
@@ -227,7 +222,6 @@ def _conv_nd(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
@@ -251,7 +245,7 @@ def _conv_nd(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                    attrs={'axis': -1},
                 )
             else:
                 assert len(x_shape) > len(
@@ -266,7 +260,7 @@ def _conv_nd(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                    attrs={'axis': -1},
                 )
         else:
             out = pre_bias
@@ -437,9 +431,7 @@ def conv1d(
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimension should be 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
         )
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
@@ -463,7 +455,7 @@ def conv1d(
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
                 x,
@@ -500,7 +492,6 @@ def conv1d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": conv2d_data_format,
@@ -737,8 +728,6 @@ def conv2d(
             else:
                 return pre_bias
 
-    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-
     if (
         is_compiled_with_cuda()
         and get_flags("FLAGS_conv2d_disable_cudnn")[
@@ -760,7 +749,6 @@ def conv2d(
         channel_dim,
         l_type,
         use_cudnn,
-        use_mkldnn,
         name,
     )
 
@@ -918,9 +906,7 @@ def conv1d_transpose(
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv1d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv1d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -1067,7 +1053,7 @@ def conv2d_transpose(
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
-    See more detail in :ref:`api_nn_conv_ConvTranspose2d` .
+    See more detail in :ref:`api_paddle_nn_Conv2DTranspose` .
 
     For each input :math:`X`, the equation is:
 
@@ -1202,9 +1188,7 @@ def conv2d_transpose(
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv2d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv2d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -1241,7 +1225,7 @@ def conv2d_transpose(
                 output_size = convert_to_list(output_size, 2, 'output_size')
         elif isinstance(output_size, int):
             output_size = convert_to_list(output_size, 2, 'output_size')
-        elif isinstance(output_size, Variable):
+        elif isinstance(output_size, (Variable, pir.Value)):
             check_dtype(
                 output_size.dtype,
                 'output_size',
@@ -1273,7 +1257,7 @@ def conv2d_transpose(
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         op = (
             _C_ops.conv2d_transpose
             if op_type == 'conv2d_transpose'
@@ -1330,7 +1314,7 @@ def conv2d_transpose(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
+                    attrs={'axis': -1},
                 )
             else:
                 assert len(x_shape) > len(
@@ -1344,7 +1328,7 @@ def conv2d_transpose(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
+                    attrs={'axis': -1},
                 )
         else:
             out = pre_bias
@@ -1525,7 +1509,6 @@ def conv3d(
         channel_dim,
         op_type,
         use_cudnn,
-        False,
         name,
     )
 
@@ -1555,7 +1538,7 @@ def conv3d_transpose(
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
-    See more detail in :ref:`api_nn_conv_ConvTranspose3d` .
+    See more detail in :ref:`api_paddle_nn_Conv3DTranspose` .
 
     For each input :math:`X`, the equation is:
 
@@ -1699,9 +1682,7 @@ def conv3d_transpose(
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -1744,7 +1725,7 @@ def conv3d_transpose(
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.conv3d_transpose(
             x,
             weight,

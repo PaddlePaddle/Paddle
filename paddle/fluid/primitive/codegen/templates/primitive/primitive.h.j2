@@ -13,7 +13,7 @@ using Tensor = paddle::Tensor;
 using IntArray = paddle::experimental::IntArray;
 
 {% for api in apis %}
-{%- if api.is_prim and api.name in backend_white_list and api.name[-1] !=  '_' -%}
+{%- if api.is_prim and api.name not in backend_black_list and api.name[-1] !=  '_' -%}
   {%- set input_names = [] -%}
   {%- for i in api.inputs -%} {%- do input_names.append(i.name) -%} {%- endfor -%}
   {%- set attr_names = [] -%}

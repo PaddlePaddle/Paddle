@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 
 namespace pir {
 
@@ -26,18 +25,8 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
   VLOG(4) << "Builder construction stop gradient for OpResults.";
   bool stop_gradient = true;
   for (auto value : argument.inputs) {
-    auto input = value.dyn_cast<OpResult>();
-    if (!input) continue;
-    auto *defining_op = input.owner();
-    bool input_stop_gradient = true;
-    if (defining_op->HasAttribute(kStopGradientAttrName)) {
-      auto attrs = defining_op->attribute(kStopGradientAttrName)
-                       .dyn_cast<pir::ArrayAttribute>()
-                       .AsVector();
-      input_stop_gradient =
-          attrs[input.index()].dyn_cast<pir::BoolAttribute>().data();
-    }
-    if (!input_stop_gradient) {
+    auto attr = value.attribute<BoolAttribute>(kStopGradientAttrName);
+    if (attr && !attr.data()) {
       stop_gradient = false;
       break;
     }
@@ -50,6 +39,22 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
+void RefreshStopGradientsDefaultly(Operation *op) {
+  bool stop_gradient = true;
+  for (auto value : op->operands_source()) {
+    auto attr = value.attribute<BoolAttribute>(kStopGradientAttrName);
+    if (attr && !attr.data()) {
+      stop_gradient = false;
+      break;
+    }
+  }
+  std::vector<pir::Attribute> outs_stop_gradient(
+      op->results().size(),
+      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+  op->set_attribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
 Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
   auto iter = attr.find("program");
@@ -58,19 +63,21 @@ Program *ModuleOp::program() {
       iter->second.dyn_cast<PointerAttribute>().data());
 }
 
-Block *ModuleOp::block() {
-  assert(operation() != nullptr);
-  assert(operation()->num_regions() == 1);
-  assert(operation()->region(0).size() == 1);
-  return operation()->region(0).front();
+Block &ModuleOp::block() {
+  IR_ENFORCE(operation()->num_regions(),
+             "The region size of ModuleOp must be equal to 1.");
+  auto &region = (*this)->region(0);
+  IR_ENFORCE(region.size() == 1,
+             "The region size of ModuleOp must be equal to 1.");
+  return region.front();
 }
 
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   pir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  Operation *op = Operation::Create(argument);
+  Operation *op = Operation::Create(std::move(argument));
   op->region(0).emplace_back();
   return ModuleOp(op);
 }
@@ -82,7 +89,7 @@ void ModuleOp::Destroy() {
   }
 }
 
-void ModuleOp::Verify() const {
+void ModuleOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
@@ -97,20 +104,20 @@ void ModuleOp::Verify() const {
   IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
 }
 
-const char *GetParameterOp::attributes_name[attributes_num] = {  // NOLINT
+const char *ParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
-void GetParameterOp::Build(Builder &builder,
-                           OperationArgument &argument,
-                           const std::string &name,
-                           Type type) {
+void ParameterOp::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const std::string &name,
+                        Type type) {
   argument.attributes[attributes_name[0]] =
       pir::StrAttribute::get(builder.ir_context(), name);
   argument.output_types.emplace_back(type);
   PassStopGradients(argument);
 }
 
-void GetParameterOp::PassStopGradients(OperationArgument &argument) {
+void ParameterOp::PassStopGradients(OperationArgument &argument) {
   std::vector<pir::Attribute> outs_stop_gradient(
       1, pir::BoolAttribute::get(pir::IrContext::Instance(), false));
   argument.AddAttribute(
@@ -118,8 +125,11 @@ void GetParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void GetParameterOp::Verify() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
+std::string ParameterOp::param_name() const {
+  return attribute<StrAttribute>("parameter_name").AsString();
+}
+void ParameterOp::VerifySig() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
 
@@ -144,7 +154,7 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
   argument.AddAttribute(attributes_name[0],
                         pir::StrAttribute::get(builder.ir_context(), name));
 }
-void SetParameterOp::Verify() const {
+void SetParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
@@ -154,6 +164,32 @@ void SetParameterOp::Verify() const {
   auto iter = attributes.find("parameter_name");
   IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
              "Type of attribute: parameter_name is not right.");
+
+  // Verify outputs:
+  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+}
+
+const char *ShadowOutputOp::attributes_name[attributes_num] = {  // NOLINT
+    "output_name"};
+
+void ShadowOutputOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           Value parameter,
+                           const std::string &name) {
+  argument.AddInput(parameter);
+  argument.AddAttribute(attributes_name[0],
+                        pir::StrAttribute::get(builder.ir_context(), name));
+}
+void ShadowOutputOp::VerifySig() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
+
+  // Verify attributes:
+  auto &attributes = this->attributes();
+  auto iter = attributes.find("output_name");
+  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
+             "Type of attribute: output_name is not right.");
 
   // Verify outputs:
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
@@ -172,7 +208,7 @@ void CombineOp::Build(Builder &builder,
   PassStopGradientsDefaultly(argument);
 }
 
-void CombineOp::Verify() const {
+void CombineOp::VerifySig() const {
   // outputs.size() == 1
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 
@@ -212,6 +248,9 @@ void SliceOp::Build(Builder &builder,
                                          .dyn_cast<pir::VectorType>()
                                          .data()[static_cast<size_t>(index)]);
   PassStopGradients(argument, index);
+
+  argument.AddAttribute(
+      "index", pir::Int32Attribute::get(pir::IrContext::Instance(), index));
 }
 
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
@@ -234,7 +273,27 @@ void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void SliceOp::Verify() const {
+void SliceOp::RefreshStopGradients() {
+  std::vector<pir::Attribute> outs_stop_gradient(
+      1, pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+  auto index = attribute("index").dyn_cast<pir::Int32Attribute>().data();
+  if (auto input = (*this)->operand_source(0).dyn_cast<pir::OpResult>()) {
+    auto *defining_op = input.owner();
+    if (defining_op && defining_op->isa<CombineOp>()) {
+      IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
+                 "Required CombineOp must have attribute %s",
+                 kStopGradientAttrName);
+      auto attr = defining_op->attribute(kStopGradientAttrName)
+                      .dyn_cast<pir::ArrayAttribute>();
+      outs_stop_gradient[0] = attr.at(static_cast<size_t>(index));
+    }
+  }
+  (*this)->set_attribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
+
+void SliceOp::VerifySig() const {
   // inputs.size() == 1
   auto input_size = num_operands();
   IR_ENFORCE(
@@ -304,23 +363,18 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
                  argument.output_types.size(),
                  defining_op->num_operands());
       for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
-        auto value = defining_op->operand_source(i);
-        if (!value) continue;
-        auto *oprand_defining_op = value.dyn_cast<OpResult>().owner();
-        if (oprand_defining_op->HasAttribute(kStopGradientAttrName)) {
-          auto attrs = oprand_defining_op->attribute(kStopGradientAttrName)
-                           .dyn_cast<pir::ArrayAttribute>()
-                           .AsVector();
-          defaut_stop_gradients[i] = attrs[value.dyn_cast<OpResult>().index()]
-                                         .dyn_cast<pir::BoolAttribute>()
-                                         .data();
+        auto attr =
+            defining_op->operand_source(i).attribute<pir::BoolAttribute>(
+                kStopGradientAttrName);
+        if (attr) {
+          defaut_stop_gradients[i] = attr.data();
         }
       }
     } else if (defining_op &&
                defining_op->HasAttribute(kStopGradientAttrName)) {
       bool stop_gradient = defining_op->attribute(kStopGradientAttrName)
                                .dyn_cast<pir::ArrayAttribute>()
-                               .AsVector()[0]
+                               .at(0)
                                .dyn_cast<pir::BoolAttribute>()
                                .data();
       defaut_stop_gradients.assign(defaut_stop_gradients.size(), stop_gradient);
@@ -338,7 +392,54 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void SplitOp::Verify() const {
+void SplitOp::RefreshStopGradients() {
+  std::vector<bool> default_stop_gradients((*this)->num_results(), true);
+  if (auto input = (*this)->operand_source(0).dyn_cast<OpResult>()) {
+    auto *defining_op = input.owner();
+    if (defining_op && defining_op->isa<CombineOp>()) {
+      IR_ENFORCE((*this)->num_results(),
+                 defining_op->num_operands(),
+                 "Required SplitOp.output.size() == CombineOp.input.size(), "
+                 "but received %d != %d",
+                 (*this)->num_results(),
+                 defining_op->num_operands());
+      for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
+        auto value = defining_op->operand_source(i);
+        if (!value) continue;
+        auto *operand_defining_op = value.dyn_cast<OpResult>().owner();
+        if (operand_defining_op->HasAttribute(kStopGradientAttrName)) {
+          auto attrs = operand_defining_op->attribute(kStopGradientAttrName)
+                           .dyn_cast<pir::ArrayAttribute>()
+                           .AsVector();
+          default_stop_gradients[i] = attrs[value.dyn_cast<OpResult>().index()]
+                                          .dyn_cast<pir::BoolAttribute>()
+                                          .data();
+        }
+      }
+    } else if (defining_op &&
+               defining_op->HasAttribute(kStopGradientAttrName)) {
+      bool stop_gradient = defining_op->attribute(kStopGradientAttrName)
+                               .dyn_cast<pir::ArrayAttribute>()
+                               .AsVector()[0]
+                               .dyn_cast<pir::BoolAttribute>()
+                               .data();
+      default_stop_gradients.assign(default_stop_gradients.size(),
+                                    stop_gradient);
+    }
+  }
+
+  std::vector<pir::Attribute> outs_stop_gradient;
+  outs_stop_gradient.reserve(num_results());
+  for (auto stop_gradient : default_stop_gradients) {
+    outs_stop_gradient.push_back(
+        pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+  }
+  (*this)->set_attribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
+
+void SplitOp::VerifySig() const {
   // inputs.size() == 1
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must be equal to 1.");
 
@@ -354,16 +455,7 @@ void SplitOp::Verify() const {
              input_type.size());
 
   // for all i in outputs.size(): outputs[i].type == inputs[0][i].type
-  for (size_t i = 0; i < output_num; ++i) {
-    auto type = (*this)->result(i).type();
-    IR_ENFORCE(input_type[i] == type,
-               "The type %s of inputs[0][%d] must be "
-               "equal to type %s of outputs[%d].",
-               input_type[i],
-               i,
-               type,
-               i);
-  }
+  // TODO(@xiongkun) consult zhangbo to check what to do with null type.
 }
 
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT
@@ -376,7 +468,7 @@ void ConstantOp::Build(Builder &builder,
   argument.output_types.push_back(output_type);
 }
 
-void ConstantOp::Verify() const {
+void ConstantOp::VerifySig() const {
   IR_ENFORCE(num_operands() == 0, "The size of inputs must be equal to 0.");
   IR_ENFORCE(num_results() == 1, "The size of outputs must be equal to 1.");
   IR_ENFORCE(attributes().count("value") > 0, "must has value attribute");
@@ -384,13 +476,34 @@ void ConstantOp::Verify() const {
 
 Attribute ConstantOp::value() const { return attributes().at("value"); }
 
+void ConstantTensorOp::VerifySig() const {
+  ConstantOp::VerifySig();
+  IR_ENFORCE(value().isa<pir::TensorNameAttribute>(),
+             "Type of value must be strattribute");
+}
+
+ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
+  if (ConstantTensorOp::classof(op)) return ConstantTensorOp(op);
+  return ConstantTensorOp(nullptr);
+}
+
+bool ConstantTensorOp::classof(const Operation *op) {
+  return ConstantOp::classof(op) && op &&
+         op->attribute("value").isa<TensorNameAttribute>();
+}
+
+std::string ConstantTensorOp::tensor_name() {
+  return value().dyn_cast<pir::TensorNameAttribute>().data();
+}
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::CombineOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

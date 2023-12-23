@@ -16,12 +16,15 @@
 
 #include <ostream>
 #include <vector>
+
+#include "paddle/common/enforce.h"
+#include "paddle/common/macros.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/enforce.h"
-#include "paddle/pir/core/macros.h"
+#include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/type.h"
+#include "paddle/pir/core/visitors.h"
 
 namespace pir {
 class OpBase;
@@ -34,7 +37,8 @@ class OpResultImpl;
 class OpOperendImpl;
 }  // namespace detail
 
-class IR_API alignas(8) Operation final {
+class IR_API alignas(8) Operation final
+    : public DoubleLevelContainer<Operation> {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -48,7 +52,7 @@ class IR_API alignas(8) Operation final {
                            pir::OpInfo op_info,
                            size_t num_regions = 0,
                            const std::vector<Block *> &successors = {});
-  static Operation *Create(const OperationArgument &op_argument);
+  static Operation *Create(OperationArgument &&op_argument);
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
@@ -58,18 +62,21 @@ class IR_API alignas(8) Operation final {
 
   Dialect *dialect() const;
 
+  bool operator==(const Operation &other) const { return this == &other; }
+
   ///
   /// \brief op attribute related public interfaces
   ///
-  Attribute attribute(const std::string &key) const {
-    return attributes_.at(key);
-  }
   const AttributeMap &attributes() const { return attributes_; }
+  // return nullptr if attribute not found.
+  Attribute attribute(const std::string &key) const {
+    auto iter = attributes_.find(key);
+    return iter == attributes_.end() ? nullptr : iter->second;
+  }
+
   template <typename T>
-  T attribute(const std::string &name) {
-    Attribute attr = attribute(name);
-    IR_ENFORCE(attr.isa<T>(), "Attribute (%s) type is not right.", name);
-    return attr.dyn_cast<T>();
+  T attribute(const std::string &key) const {
+    return attribute(key).dyn_cast<T>();
   }
   void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
@@ -82,17 +89,22 @@ class IR_API alignas(8) Operation final {
   /// \brief op ouput related public interfaces
   ///
   uint32_t num_results() const { return num_results_; }
-  OpResult result(uint32_t index) { return op_result_impl(index); }
+  OpResult result(uint32_t index) const { return op_result_impl(index); }
+  template <typename T = Type>
+  T result_type(uint32_t index) const {
+    return result(index).type().dyn_cast<T>();
+  }
   std::vector<OpResult> results();
 
   ///
   /// \brief op input related public interfaces
   ///
   uint32_t num_operands() const { return num_operands_; }
-  OpOperand operand(uint32_t index) { return op_operand_impl(index); }
+  OpOperand operand(uint32_t index) const { return op_operand_impl(index); }
   std::vector<OpOperand> operands();
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
+  Type operand_type(uint32_t index) const { return operand(index).type(); }
 
   ///
   /// \brief op successor related public interfaces
@@ -106,9 +118,20 @@ class IR_API alignas(8) Operation final {
   ///
   /// \brief region related public interfaces
   ///
+  using Element = Region;
+  using Iterator = Region *;
+  using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }
   Region &region(unsigned index);
   const Region &region(unsigned index) const;
+  ConstIterator begin() const { return regions_; }
+  ConstIterator end() const { return regions_ + num_regions_; }
+  Iterator begin() { return regions_; }
+  Iterator end() { return regions_ + num_regions_; }
+
+  /// \brief block related public interfaces
+  using BlockContainer = DoubleLevelContainer<Operation>;
+  BlockContainer &blocks() { return *this; }
 
   ///
   /// \brief parent related public interfaces
@@ -119,10 +142,29 @@ class IR_API alignas(8) Operation final {
   Program *GetParentProgram();
   operator Block::Iterator() { return position_; }
   operator Block::ConstIterator() const { return position_; }
+  void MoveTo(Block *block, Block::Iterator position);
 
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
   std::string name() const;
+
+  ///
+  /// \brief Operation Walkers
+  ///
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(FuncT &&callback) {
+    return detail::Walk<Order>(this, std::forward<FuncT>(callback));
+  }
+
+  ///
+  /// \brief Remove this operation from its parent block and delete it.
+  ///
+  void Erase();
+
+  ///
+  /// \brief Returns true if this operation has no uses.
+  ///
+  bool use_empty();
 
   template <typename T>
   T dyn_cast() {
@@ -155,6 +197,8 @@ class IR_API alignas(8) Operation final {
 
   void Verify();
 
+  uint64_t id() { return id_; }
+
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,
@@ -165,17 +209,15 @@ class IR_API alignas(8) Operation final {
             uint32_t num_successors);
 
   int32_t ComputeOpResultOffset(uint32_t index) const;
-  detail::OpResultImpl *op_result_impl(uint32_t index);
-  const detail::OpResultImpl *op_result_impl(uint32_t index) const;
+  detail::OpResultImpl *op_result_impl(uint32_t index) const;
 
   int32_t ComputeOpOperandOffset(uint32_t index) const;
-  detail::OpOperandImpl *op_operand_impl(uint32_t index);
-  const detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
+  detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
 
-  template <typename T, typename Enabler = void>
+  template <typename To, typename Enabler = void>
   struct CastUtil {
-    static T call(Operation *op) {
-      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
+    static To call(Operation *op) {
+      throw("Can't dyn_cast to To, To should be a Op or Trait or Interface");
     }
   };
 
@@ -183,21 +225,27 @@ class IR_API alignas(8) Operation final {
   friend class Block;
   void SetParent(Block *parent, const Block::Iterator &position);
 
-  template <typename T>
+  template <typename To>
   struct CastUtil<
-      T,
-      typename std::enable_if<std::is_base_of<OpBase, T>::value>::type> {
-    static T call(Operation *op) { return T::dyn_cast(op); }
+      To,
+      typename std::enable_if<std::is_base_of<OpBase, To>::value>::type> {
+    static To call(Operation *op) { return To::dyn_cast(op); }
   };
 
   AttributeMap attributes_;
 
   OpInfo info_;
 
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
+
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
   const uint32_t num_successors_ = 0;
+  const uint64_t id_ = 0;
 
   detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};

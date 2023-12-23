@@ -25,6 +25,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -81,10 +82,10 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
 bool XYNeedReduce(const DenseTensor& x,
                   const DenseTensor& y,
                   const DenseTensor& out) {
-  auto x_dims =
-      x.dims().size() ? x.dims() : make_ddim(std::vector<int64_t>(1, 1));
-  auto y_dims =
-      y.dims().size() ? y.dims() : make_ddim(std::vector<int64_t>(1, 1));
+  auto x_dims = x.dims().size() ? x.dims()
+                                : common::make_ddim(std::vector<int64_t>(1, 1));
+  auto y_dims = y.dims().size() ? y.dims()
+                                : common::make_ddim(std::vector<int64_t>(1, 1));
 
   auto out_dims = out.dims();
   if (out_dims.size() == 0) {
@@ -241,16 +242,15 @@ void LerpGradKernel(const Context& ctx,
                              x_grad_data,
                              y_grad_data);
 
-    auto zero_dim = make_ddim(std::vector<int64_t>(1, 1));
+    auto zero_dim = common::make_ddim(std::vector<int64_t>(1, 1));
     if (x_grad) {
       std::vector<int> reduce_axis_x =
           funcs::GetReduceDim(x_grad->dims().size() ? x_grad->dims() : zero_dim,
                               b_xgrad.dims(),
                               -1);
       if (!reduce_axis_x.empty()) {
-        phi::funcs::
-            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
+        phi::SumKernel<T, Context>(
+            ctx, b_xgrad, reduce_axis_x, b_xgrad.dtype(), false, x_grad);
       } else {
         x_grad->ShareDataWith(b_xgrad);
       }
@@ -262,9 +262,8 @@ void LerpGradKernel(const Context& ctx,
                               b_ygrad.dims(),
                               -1);
       if (!reduce_axis_y.empty()) {
-        phi::funcs::
-            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
+        phi::SumKernel<T, Context>(
+            ctx, b_ygrad, reduce_axis_y, b_ygrad.dtype(), false, y_grad);
       } else {
         y_grad->ShareDataWith(b_ygrad);
       }

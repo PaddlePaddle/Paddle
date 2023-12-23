@@ -48,7 +48,7 @@ class VOC2012(Dataset):
         download (bool, optional): Download dataset automatically if :attr:`data_file` is None. Default: True.
         backend (str, optional): Specifies which type of image to be returned:
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
-            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_paddle_vision_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
     Returns:

@@ -18,9 +18,9 @@
 #include <map>
 #include <type_traits>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/utils.h"
 
@@ -52,6 +52,7 @@ DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(BoolAttributeStorage, bool);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(FloatAttributeStorage, float);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(DoubleAttributeStorage, double);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int32AttributeStorage, int32_t);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(IndexAttributeStorage, int64_t);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int64AttributeStorage, int64_t);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(PointerAttributeStorage, void *);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(TypeAttributeStorage, Type);
@@ -141,6 +142,7 @@ struct ArrayAttributeStorage : public AttributeStorage {
                size_);
     return data_[index];
   }
+  Attribute operator[](size_t index) const { return data_[index]; }
 
  private:
   Attribute *data_;

@@ -102,7 +102,7 @@ bool PatternApplicator::MatchAndRewrite(
 
     if (can_apply && !can_apply(*best_pattern)) continue;
 
-    rewriter.SetInsertionPoint(op);
+    rewriter.set_insertion_point(op);
 
     const auto* pattern = static_cast<const RewritePattern*>(best_pattern);
     result = pattern->MatchAndRewrite(op, rewriter);

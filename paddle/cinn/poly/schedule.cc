@@ -19,9 +19,9 @@
 #include <sstream>
 
 #include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/poly/naive_scheduler.h"
 #include "paddle/cinn/poly/poly_scheduler.h"
 #include "paddle/cinn/utils/string.h"
@@ -184,7 +184,7 @@ void SchedulerBase::AddStage(const Stage &x) {
   std::string id = isl_map_get_tuple_name(x.transform().get(), isl_dim_in);
   schedule_graph_.RegisterNode(
       x.id(),
-      common::make_shared<ScheduleGraphNode>(
+      cinn::common::make_shared<ScheduleGraphNode>(
           id, isl_get_dim_names(x.transform(), isl_dim_out), &x));
 
   // record the longest dimensions.

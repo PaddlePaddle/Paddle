@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/hlir/op/op_util.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
 namespace cinn {
@@ -91,8 +91,8 @@ void MapExternCall(Expr *e, Target target) {
         return;
       }
 
-      std::string extern_func =
-          hlir::GetExternFuncName(common::DefaultNVGPUTarget(), dtype, name);
+      std::string extern_func = hlir::GetExternFuncName(
+          cinn::common::DefaultNVGPUTarget(), dtype, name);
       *expr = lang::CallExtern(extern_func, node->read_args, node->attrs);
     }
 

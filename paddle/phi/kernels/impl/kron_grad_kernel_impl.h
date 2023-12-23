@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/impl/kron_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -167,11 +168,11 @@ struct KronGradOpFunctor {
     const phi::DDim &dim_y = y.dims();
     const phi::DDim &dim_dout = dout.dims();
     const phi::DDim stride_x =
-        dim_x.size() == 0 ? phi::DDim(dim_x) : phi::stride(dim_x);
+        dim_x.size() == 0 ? phi::DDim(dim_x) : common::stride(dim_x);
     const phi::DDim stride_y =
-        dim_y.size() == 0 ? phi::DDim(dim_y) : phi::stride(dim_y);
+        dim_y.size() == 0 ? phi::DDim(dim_y) : common::stride(dim_y);
     const phi::DDim stride_dout =
-        dim_dout.size() == 0 ? phi::DDim(dim_dout) : phi::stride(dim_dout);
+        dim_dout.size() == 0 ? phi::DDim(dim_dout) : common::stride(dim_dout);
 
     const int64_t *p_stride_x = nullptr;
     const int64_t *p_stride_y = nullptr;
@@ -234,12 +235,12 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1});
+      phi::SumKernel<T, Context>(
+          dev_ctx, dout_x, {1}, dout_x.dtype(), false, dx);
     }
     if (dy) {
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, dout_y, dy, kps::IdentityFunctor<T>(), {1});
+      phi::SumKernel<T, Context>(
+          dev_ctx, dout_y, {1}, dout_y.dtype(), false, dy);
     }
 #else
     auto *place = dev_ctx.eigen_device();

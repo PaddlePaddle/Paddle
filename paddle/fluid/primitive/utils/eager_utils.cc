@@ -22,5 +22,10 @@ void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_autograd_meta(x_tmp.mutable_autograd_meta());
 }
 
+template <>
+void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
+  set_output<Tensor>(x, out);
+}
+
 }  // namespace primitive
 }  // namespace paddle

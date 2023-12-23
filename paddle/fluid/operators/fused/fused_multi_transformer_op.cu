@@ -109,13 +109,13 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
     // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
     // compute_bias as false.
-    auto qkv_compute = AttnMatMul<T>(dev_ctx,
-                                     false,
-                                     trans_qkvw,
-                                     token_num,
-                                     output_size,
-                                     input_size,
-                                     /*compute_bias=*/false);
+    auto qkv_compute = phi::fusion::AttnMatMul<T>(dev_ctx,
+                                                  false,
+                                                  trans_qkvw,
+                                                  token_num,
+                                                  output_size,
+                                                  input_size,
+                                                  /*compute_bias=*/false);
 
     phi::DenseTensor qkv_out;
     qkv_out.Resize({{token_num, 3, num_head, dim_head}});
@@ -219,7 +219,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
-    auto out_linear_compute = AttnMatMul<T>(
+    auto out_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
@@ -260,7 +260,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
 
-    auto ffn2_linear_compute = AttnMatMul<T>(
+    auto ffn2_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, dim_ffn, false);
 
     // 8. ffn2 Layernorm residual bias
@@ -775,13 +775,13 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
     // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we
     // set compute_bias as false.
-    auto qkv_compute = AttnMatMul<T>(dev_ctx,
-                                     false,
-                                     trans_qkvw,
-                                     token_num,
-                                     output_size,
-                                     input_size,
-                                     /*compute_bias=*/false);
+    auto qkv_compute = phi::fusion::AttnMatMul<T>(dev_ctx,
+                                                  false,
+                                                  trans_qkvw,
+                                                  token_num,
+                                                  output_size,
+                                                  input_size,
+                                                  /*compute_bias=*/false);
 
     phi::DenseTensor qkv_out;
     qkv_out.Resize({{token_num, 3, num_head, dim_head}});
@@ -885,7 +885,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
-    auto out_linear_compute = AttnMatMul<T>(
+    auto out_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
@@ -912,7 +912,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[1];
-    auto ffn1_linear_compute = AttnMatMul<T>(
+    auto ffn1_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_ffn, dim_embed, false);
     phi::DenseTensor ffn1_out;
     ffn1_out.Resize({{token_num, dim_ffn}});
@@ -934,7 +934,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
-    auto ffn2_linear_compute = AttnMatMul<T>(
+    auto ffn2_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, dim_ffn, false);
 
     // 9. ffn2 residual bias

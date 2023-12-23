@@ -33,8 +33,10 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -79,21 +81,6 @@ int64_t ComputeBlockSize(int64_t col) {
   else
     return 8;
 }
-
-template <typename Context,
-          template <typename T>
-          typename BinaryFunctor,
-          typename T>
-struct BinaryOperation {
-  void operator()(const Context& dev_ctx,
-                  const DenseTensor& lhs,
-                  const DenseTensor& rhs,
-                  DenseTensor* output) {
-    std::vector<const DenseTensor*> ins{&lhs, &rhs};
-    std::vector<DenseTensor*> outs{output};
-    phi::funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, BinaryFunctor<T>(), 0);
-  }
-};
 
 template <typename Context,
           template <typename InT, typename OutT>
@@ -201,7 +188,7 @@ struct GetMaxValue {
                   const DenseTensor& input,
                   T* max_value) {
     DenseTensor out_data;
-    out_data.Resize(phi::make_ddim({1}));
+    out_data.Resize(common::make_ddim({1}));
     dev_ctx.template Alloc<T>(&out_data);
     switch (ComputeBlockSize(input.numel())) {
       FIXED_BLOCK_DIM_CASE(
@@ -280,9 +267,9 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor alpha =
       float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
   DenseTensor zero = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &zero, 0);
+  int_functor(dev_ctx, &zero, static_cast<int64_t>(0));
   DenseTensor one = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &one, 1);
+  int_functor(dev_ctx, &one, static_cast<int64_t>(1));
   DenseTensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
   float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
   DenseTensor alpha_trn_sum =
@@ -314,47 +301,46 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   start_trans.Resize({1, n_labels});
   auto logit0 = input_exp.Slice(0, 1);
   logit0.Resize({batch_size, n_labels});
-  BinaryOperation<Context, phi::funcs::AddFunctor, T> AddFloat;
-  BinaryOperation<Context, phi::funcs::AddFunctor, int64_t> AddInt;
-  BinaryOperation<Context, phi::funcs::MultiplyFunctor, T> MulFloat;
-  BinaryOperation<Context, phi::funcs::MultiplyFunctor, int64_t> MulInt;
-  BinaryOperation<Context, phi::funcs::SubtractFunctor, T> SubFloat;
-  BinaryOperation<Context, phi::funcs::SubtractFunctor, int64_t> SubInt;
   if (include_bos_eos_tag) {
-    AddFloat(dev_ctx, logit0, start_trans, &alpha);
+    phi::AddKernel<T, Context>(dev_ctx, logit0, start_trans, &alpha);
     GetMask<Context, phi::funcs::EqualFunctor, T>()(
         dev_ctx, left_length, one, &float_mask);
-    MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
-    AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
+    phi::MultiplyKernel<T, Context>(
+        dev_ctx, stop_trans, float_mask, &alpha_nxt);
+    phi::AddKernel<T, Context>(dev_ctx, alpha, alpha_nxt, &alpha);
   } else {
     alpha = logit0;
   }
-  SubInt(dev_ctx, left_length, one, &left_length);
+  phi::SubtractKernel<int64_t, Context>(
+      dev_ctx, left_length, one, &left_length);
   Argmax<Context, T, int64_t> argmax;
   for (int64_t i = 1; i < max_seq_len; ++i) {
     DenseTensor logit = input_exp.Slice(i, i + 1);
     logit.Resize({batch_size, n_labels});
     DenseTensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
-    AddFloat(dev_ctx, alpha_exp, trans_exp, &alpha_trn_sum);
+    phi::AddKernel<T, Context>(dev_ctx, alpha_exp, trans_exp, &alpha_trn_sum);
     auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
     alpha_argmax_temp.Resize({batch_size, n_labels});
     argmax(dev_ctx, alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
     historys.emplace_back(alpha_argmax_temp);
-    AddFloat(dev_ctx, alpha_max, logit, &alpha_nxt);
+    phi::AddKernel<T, Context>(dev_ctx, alpha_max, logit, &alpha_nxt);
     alpha.Resize({batch_size, n_labels});
     GetMask<Context, phi::funcs::GreaterThanFunctor, T>()(
         dev_ctx, left_length, zero, &float_mask);
-    MulFloat(dev_ctx, alpha_nxt, float_mask, &alpha_nxt);
-    SubFloat(dev_ctx, float_one, float_mask, &float_mask);
-    MulFloat(dev_ctx, alpha, float_mask, &alpha);
-    AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
+    phi::MultiplyKernel<T, Context>(dev_ctx, alpha_nxt, float_mask, &alpha_nxt);
+    phi::SubtractKernel<T, Context>(
+        dev_ctx, float_one, float_mask, &float_mask);
+    phi::MultiplyKernel<T, Context>(dev_ctx, alpha, float_mask, &alpha);
+    phi::AddKernel<T, Context>(dev_ctx, alpha, alpha_nxt, &alpha);
     if (include_bos_eos_tag) {
       GetMask<Context, phi::funcs::EqualFunctor, T>()(
           dev_ctx, left_length, one, &float_mask);
-      MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
-      AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
+      phi::MultiplyKernel<T, Context>(
+          dev_ctx, stop_trans, float_mask, &alpha_nxt);
+      phi::AddKernel<T, Context>(dev_ctx, alpha, alpha_nxt, &alpha);
     }
-    SubInt(dev_ctx, left_length, one, &left_length);
+    phi::SubtractKernel<int64_t, Context>(
+        dev_ctx, left_length, one, &left_length);
   }
   argmax(dev_ctx, alpha, &last_ids, scores, 1);
   left_length.Resize({batch_size});
@@ -363,7 +349,8 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   // last_ids_update = last_ids * tag_mask
   int last_ids_index = 1;
   int actual_len = (std::min)(seq_len, static_cast<int>(max_seq_len));
-  MulInt(dev_ctx, last_ids, int_mask, &batch_path[actual_len - last_ids_index]);
+  phi::MultiplyKernel<int64_t, Context>(
+      dev_ctx, last_ids, int_mask, &batch_path[actual_len - last_ids_index]);
   // The algorithm below can refer to
   // https://github.com/PaddlePaddle/PaddleNLP/blob/develop/paddlenlp/layers/crf.py#L438
   ARange<Context> arange;
@@ -371,24 +358,32 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   Gather<Context, int64_t, int64_t> gather;
   for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
     ++last_ids_index;
-    AddInt(dev_ctx, left_length, one, &left_length);
-    AddInt(dev_ctx, batch_offset, last_ids, &gather_idx);
+    phi::AddKernel<int64_t, Context>(dev_ctx, left_length, one, &left_length);
+    phi::AddKernel<int64_t, Context>(
+        dev_ctx, batch_offset, last_ids, &gather_idx);
     DenseTensor& last_ids_update = batch_path[actual_len - last_ids_index];
     hist->Resize({batch_size * n_labels});
     gather(dev_ctx, *hist, gather_idx, &last_ids_update);
     GetMask<Context, phi::funcs::GreaterThanFunctor, int64_t>()(
         dev_ctx, left_length, zero, &int_mask);
-    MulInt(dev_ctx, last_ids_update, int_mask, &last_ids_update);
+    phi::MultiplyKernel<int64_t, Context>(
+        dev_ctx, last_ids_update, int_mask, &last_ids_update);
     GetMask<Context, phi::funcs::EqualFunctor, int64_t>()(
         dev_ctx, left_length, zero, &zero_len_mask);
-    MulInt(dev_ctx, last_ids, zero_len_mask, &last_ids_tmp);
-    SubInt(dev_ctx, one, zero_len_mask, &zero_len_mask);
-    MulInt(dev_ctx, last_ids_update, zero_len_mask, &last_ids_update);
-    AddInt(dev_ctx, last_ids_update, last_ids_tmp, &last_ids_update);
+    phi::MultiplyKernel<int64_t, Context>(
+        dev_ctx, last_ids, zero_len_mask, &last_ids_tmp);
+    phi::SubtractKernel<int64_t, Context>(
+        dev_ctx, one, zero_len_mask, &zero_len_mask);
+    phi::MultiplyKernel<int64_t, Context>(
+        dev_ctx, last_ids_update, zero_len_mask, &last_ids_update);
+    phi::AddKernel<int64_t, Context>(
+        dev_ctx, last_ids_update, last_ids_tmp, &last_ids_update);
     GetMask<Context, phi::funcs::LessThanFunctor, int64_t>()(
         dev_ctx, left_length, zero, &int_mask);
-    MulInt(dev_ctx, last_ids, int_mask, &last_ids);
-    AddInt(dev_ctx, last_ids_update, last_ids, &last_ids);
+    phi::MultiplyKernel<int64_t, Context>(
+        dev_ctx, last_ids, int_mask, &last_ids);
+    phi::AddKernel<int64_t, Context>(
+        dev_ctx, last_ids_update, last_ids, &last_ids);
   }
   TransposeKernel<int64_t, Context>(dev_ctx, tpath, {1, 0}, path);
 }

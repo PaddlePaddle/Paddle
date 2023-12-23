@@ -19,8 +19,8 @@ import numpy as np
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -113,37 +113,45 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3], pool_type="avg"
         )
 
+    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.static.data(
-                name="x", shape=[2, 3, 7, 7], dtype="float32"
-            )
 
-            out_1 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[3, 3]
-            )
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
-            out_2 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=5)
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name="x", shape=[2, 3, 7, 7], dtype="float32"
+                )
 
-            out_3 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[2, 5]
-            )
+                out_1 = paddle.nn.functional.adaptive_avg_pool2d(
+                    x=x, output_size=[3, 3]
+                )
 
-            out_4 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[3, 3], data_format="NHWC"
-            )
+                out_2 = paddle.nn.functional.adaptive_avg_pool2d(
+                    x=x, output_size=5
+                )
 
-            out_5 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[None, 3]
-            )
+                out_3 = paddle.nn.functional.adaptive_avg_pool2d(
+                    x=x, output_size=[2, 5]
+                )
+
+                out_4 = paddle.nn.functional.adaptive_avg_pool2d(
+                    x=x, output_size=[3, 3], data_format="NHWC"
+                )
+
+                out_5 = paddle.nn.functional.adaptive_avg_pool2d(
+                    x=x, output_size=[None, 3]
+                )
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                base.default_main_program(),
+                main_program,
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
@@ -232,38 +240,47 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3], pool_type="avg"
         )
 
+    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.static.data(
-                name="x", shape=[2, 3, 7, 7], dtype="float32"
-            )
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=[3, 3])
-            out_1 = adaptive_avg_pool(x=x)
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name="x", shape=[2, 3, 7, 7], dtype="float32"
+                )
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=5)
-            out_2 = adaptive_avg_pool(x=x)
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
+                    output_size=[3, 3]
+                )
+                out_1 = adaptive_avg_pool(x=x)
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=[2, 5])
-            out_3 = adaptive_avg_pool(x=x)
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=5)
+                out_2 = adaptive_avg_pool(x=x)
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
-                output_size=[3, 3], data_format="NHWC"
-            )
-            out_4 = adaptive_avg_pool(x=x)
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
+                    output_size=[2, 5]
+                )
+                out_3 = adaptive_avg_pool(x=x)
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
-                output_size=[None, 3]
-            )
-            out_5 = adaptive_avg_pool(x=x)
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
+                    output_size=[3, 3], data_format="NHWC"
+                )
+                out_4 = adaptive_avg_pool(x=x)
+
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
+                    output_size=[None, 3]
+                )
+                out_5 = adaptive_avg_pool(x=x)
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                base.default_main_program(),
+                main_program,
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )

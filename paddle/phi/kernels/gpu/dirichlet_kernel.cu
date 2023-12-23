@@ -16,12 +16,14 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <curand_kernel.h>
@@ -99,15 +101,14 @@ struct DirichletSampler<GPUContext, T> {
     gamma_sum.Resize(new_shape);
     dev_ctx.template Alloc<T>(&gamma_sum);
 
-    funcs::ReduceKernelImpl<GPUContext, T, T, funcs::SumFunctor>(
-        dev_ctx,
-        gamma_samples,
-        &gamma_sum,
-        {new_shape.size() - 1},
-        true,
-        false);
-    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
-        dev_ctx, gamma_samples, gamma_sum, funcs::DivideFunctor<T>(), out);
+    phi::SumRawKernel<T, GPUContext>(dev_ctx,
+                                     gamma_samples,
+                                     {new_shape.size() - 1},
+                                     true,
+                                     false,
+                                     gamma_sum.dtype(),
+                                     &gamma_sum);
+    phi::DivideKernel<T, GPUContext>(dev_ctx, gamma_samples, gamma_sum, out);
   }
 };
 }  // namespace phi

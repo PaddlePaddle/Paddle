@@ -20,10 +20,11 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <set>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -75,17 +76,18 @@ struct DefaultDeviceContextType<phi::CustomPlace> {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  static DeviceContextPool& Instance();
+  TEST_API static DeviceContextPool& Instance();
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<phi::Place>& places);
+  TEST_API static DeviceContextPool& Init(
+      const std::vector<phi::Place>& places);
 
-  static bool IsInitialized();
+  TEST_API static bool IsInitialized();
 
-  static void SetPool(DeviceContextPool* dev_pool);
+  TEST_API static void SetPool(DeviceContextPool* dev_pool);
 
   /*! \brief  Return handle of single device context. */
-  phi::DeviceContext* Get(const phi::Place& place);
+  TEST_API phi::DeviceContext* Get(const phi::Place& place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
@@ -94,12 +96,13 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
-  size_t Size() const;
+  TEST_API size_t Size() const;
 
-  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-  device_contexts() const;
+  TEST_API const
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+      device_contexts() const;
 
-  static void SetDeviceContexts(
+  TEST_API static void SetDeviceContexts(
       const std::map<Place,
                      std::shared_future<std::unique_ptr<DeviceContext>>>*);
 

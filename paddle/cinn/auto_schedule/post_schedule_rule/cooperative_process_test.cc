@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "test/cpp/cinn/program_builder.h"
 
 namespace cinn {
@@ -43,7 +43,7 @@ TEST_F(TestCooperativeProcess, Matmul) {
   int num_threads_x = 2;
   int steps_k = 8;
 
-  Initialize(common::DefaultNVGPUTarget());
+  Initialize(cinn::common::DefaultNVGPUTarget());
   frontend::Program matmul_op =
       tests::OpBuilder("matmul").Build({{"X", X_shape}, {"Y", Y_shape}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(matmul_op, fixed_rand_seed);
@@ -129,7 +129,7 @@ TEST_F(TestCooperativeProcess, Matmul) {
                   {
                     i0, i1 = axis.bind(((16 * i) + ((2 * i_0) + i_1)), ((16 * j) + ((8 * j_0) + j_1)))
                     {
-                      temp_matmul_out__reduce_init[((16 * i) + ((2 * i_0) + i_1)), ((16 * j) + ((8 * j_0) + j_1))] = 0.00000000f
+                      temp_matmul_out__reduce_init[i0, i1] = 0.00000000f
                     }
                   }
                 }
@@ -181,7 +181,7 @@ TEST_F(TestCooperativeProcess, Matmul) {
                   {
                     i0_0, i1_0, i2 = axis.bind(((2 * (i_0_j_0_fused / 2)) + ((16 * (i_j_fused / 2)) + i_1)), ((8 * (i_0_j_0_fused % 2)) + ((16 * (i_j_fused % 2)) + j_1)), ((4 * reduce_k_0) + reduce_k_1))
                     {
-                      temp_matmul_out[((2 * (i_0_j_0_fused / 2)) + ((16 * (i_j_fused / 2)) + i_1)), ((8 * (i_0_j_0_fused % 2)) + ((16 * (i_j_fused % 2)) + j_1))] = (temp_matmul_out[((2 * (i_0_j_0_fused / 2)) + ((16 * (i_j_fused / 2)) + i_1)), ((8 * (i_0_j_0_fused % 2)) + ((16 * (i_j_fused % 2)) + j_1))] + (X_reshape_shared_temp_buffer[((2 * (i_0_j_0_fused / 2)) + ((16 * (i_j_fused / 2)) + i_1)), ((4 * reduce_k_0) + reduce_k_1)] * Y_reshape_shared_temp_buffer[((4 * reduce_k_0) + reduce_k_1), ((8 * (i_0_j_0_fused % 2)) + ((16 * (i_j_fused % 2)) + j_1))]))
+                      temp_matmul_out[i0_0, i1_0] = (temp_matmul_out[i0_0, i1_0] + (X_reshape_shared_temp_buffer[i0_0, i2] * Y_reshape_shared_temp_buffer[i2, i1_0]))
                     }
                   }
                 }

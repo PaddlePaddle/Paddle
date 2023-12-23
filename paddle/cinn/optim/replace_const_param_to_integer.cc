@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 
-#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/poly/ast_gen.h"
 #include "paddle/cinn/utils/string.h"
 

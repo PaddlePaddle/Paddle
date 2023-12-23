@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/utils/test_macros.h"
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
  */
@@ -38,8 +40,8 @@ class DistTensor;
 /// arrays are used in math operators.
 /// During the entire life cycle of a DenseTensor, its device type and key
 /// metadata are set unchanged.
-class DenseTensor : public TensorBase,
-                    public TypeInfoTraits<TensorBase, DenseTensor> {
+class TEST_API DenseTensor : public TensorBase,
+                             public TypeInfoTraits<TensorBase, DenseTensor> {
  public:
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
@@ -74,7 +76,7 @@ class DenseTensor : public TensorBase,
   DenseTensor();
 
   /// \brief Destroy the tensor object and release exclusive resources.
-  virtual ~DenseTensor() = default;
+  virtual ~DenseTensor();
 
  public:
   /// \brief Returns the name of the class for type traits.

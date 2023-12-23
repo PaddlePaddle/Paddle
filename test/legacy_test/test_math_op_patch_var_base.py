@@ -16,6 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -35,6 +36,87 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
+    def test_type_promotion_add_F2_F4(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F2_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F4_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F2_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F4_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
+    def test_type_promotion_add_F8_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float64)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a + b
+            res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np + b_np)
+
     def test_sub(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
@@ -44,6 +126,87 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
 
+    def test_type_promotion_sub_F2_F4(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F2_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F4_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F2_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F4_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
+    def test_type_promotion_sub_F8_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float64)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a - b
+            res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res.numpy(), a_np - b_np)
+            np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
+
     def test_mul(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
@@ -51,6 +214,87 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = base.dygraph.to_variable(a_np)
             b = base.dygraph.to_variable(b_np)
             res = a * b
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F2_F4(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F2_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F4_F8(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float64)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F2_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F4_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
+    def test_type_promotion_mul_F8_BF(self):
+        a_np = np.random.random(self.shape).astype(np.float64)
+        b_np = np.random.random(self.shape).astype(np.float32)
+        b_np = convert_uint16_to_float(convert_float_to_uint16(b_np))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np).astype('bfloat16')
+            res = a * b
+            res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
+            np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
     def test_div(self):
@@ -576,7 +820,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.remainder))
         self.assertTrue(inspect.ismethod(a.floor_mod))
         self.assertTrue(inspect.ismethod(a.multiply))
-        self.assertTrue(inspect.ismethod(a.logsumexp))
         self.assertTrue(inspect.ismethod(a.inverse))
         self.assertTrue(inspect.ismethod(a.log1p))
         self.assertTrue(inspect.ismethod(a.erf))
@@ -608,6 +851,33 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.mean))
         self.assertTrue(inspect.ismethod(a.std))
         self.assertTrue(inspect.ismethod(a.numel))
+        self.assertTrue(inspect.ismethod(x.asin_))
+        self.assertTrue(inspect.ismethod(x.atan2))
+        self.assertTrue(inspect.ismethod(x.atanh_))
+        self.assertTrue(inspect.ismethod(x.coalesce))
+        self.assertTrue(inspect.ismethod(x.diagflat))
+        self.assertTrue(inspect.ismethod(x.multinomial))
+        self.assertTrue(inspect.ismethod(x.pinv))
+        self.assertTrue(inspect.ismethod(x.renorm))
+        self.assertTrue(inspect.ismethod(x.renorm_))
+        self.assertTrue(inspect.ismethod(x.tan))
+        self.assertTrue(inspect.ismethod(x.tan_))
+        self.assertTrue(inspect.ismethod(x.tril))
+        self.assertTrue(inspect.ismethod(x.tril_))
+        self.assertTrue(inspect.ismethod(x.triu))
+        self.assertTrue(inspect.ismethod(x.triu_))
+        self.assertTrue(inspect.ismethod(x.stft))
+        self.assertTrue(inspect.ismethod(x.istft))
+        self.assertTrue(inspect.ismethod(x.abs_))
+        self.assertTrue(inspect.ismethod(x.acos_))
+        self.assertTrue(inspect.ismethod(x.atan_))
+        self.assertTrue(inspect.ismethod(x.cos_))
+        self.assertTrue(inspect.ismethod(x.cosh_))
+        self.assertTrue(inspect.ismethod(x.sin_))
+        self.assertTrue(inspect.ismethod(x.sinh_))
+        self.assertTrue(inspect.ismethod(x.acosh_))
+        self.assertTrue(inspect.ismethod(x.asinh_))
+        self.assertTrue(inspect.ismethod(x.diag))
 
     def test_complex_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
@@ -626,6 +896,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             out = x @ y
             np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
+
+    def test_coalesce(self):
+        indices = [[0, 0, 1], [1, 1, 2]]
+        values = [1.0, 2.0, 3.0]
+        sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+        sp_x = sp_x.coalesce()
+        self.assertTrue(isinstance(sp_x, paddle.Tensor))
 
 
 if __name__ == '__main__':
