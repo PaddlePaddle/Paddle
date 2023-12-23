@@ -14,7 +14,7 @@
 
 import contextlib
 
-from paddle import static, base
+from paddle import base, static
 
 
 @contextlib.contextmanager
