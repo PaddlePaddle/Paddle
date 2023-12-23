@@ -46,7 +46,9 @@ def numpy_ref(_x, value, axes, starts, ends, strides):
             indices_x.append(ind_x)
             indices_v.append(ind_v)
 
-    for index_x, index_v in zip(itertools.product(*indices_x), itertools.product(*indices_v)):
+    for index_x, index_v in zip(
+        itertools.product(*indices_x), itertools.product(*indices_v)
+    ):
         x[index_x] = value[index_v]
 
     return x
@@ -59,8 +61,12 @@ class TestSliceScatterApi(unittest.TestCase):
         self.init_dtype()
         self.init_shape()
 
-        self.x_np = np.random.random(self.x_shape).astype('uint16' if self.dtype == 'bfloat16' else self.dtype)
-        self.value_np = np.random.random(self.value_shape).astype('uint16' if self.dtype == 'bfloat16' else self.dtype)
+        self.x_np = np.random.random(self.x_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
+        self.value_np = np.random.random(self.value_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
@@ -113,9 +119,7 @@ class TestSliceScatterApi(unittest.TestCase):
                 strides=self.strides,
             )
 
-            np.testing.assert_allclose(
-                res, out_ref
-            )
+            np.testing.assert_allclose(res, out_ref)
 
     def test_api_dygraph(self):
         for place in self.place:
@@ -139,13 +143,9 @@ class TestSliceScatterApi(unittest.TestCase):
                 strides=self.strides,
             )
 
-            np.testing.assert_allclose(
-                out.numpy(),
-                out_ref
-            )
+            np.testing.assert_allclose(out.numpy(), out_ref)
 
             paddle.enable_static()
-
 
 
 class TestSliceScatterApiIntComplex128(TestSliceScatterApi):
@@ -311,12 +311,10 @@ class TestSliceScatterTensorApi(unittest.TestCase):
         out = x.slice_scatter(value, axes, starts, ends, strides)
         out_ref = numpy_ref(_x, _value, axes, starts, ends, strides)
 
-        np.testing.assert_allclose(
-            out.numpy(),
-            out_ref
-        )
+        np.testing.assert_allclose(out.numpy(), out_ref)
 
         paddle.enable_static()
+
 
 class TestSliceScatterApiError(unittest.TestCase):
     def test_error_ndim(self):
@@ -324,19 +322,25 @@ class TestSliceScatterApiError(unittest.TestCase):
         with self.assertRaises(ValueError):
             x = paddle.to_tensor(np.random.rand(8, 6, 3))
             value = paddle.to_tensor(np.random.rand(8, 3))
-            _ = paddle.slice_scatter(x, value, axes=[0], starts=[0], ends=[8], strides=[1])
+            _ = paddle.slice_scatter(
+                x, value, axes=[0], starts=[0], ends=[8], strides=[1]
+            )
 
     def test_error_index(self):
         paddle.disable_static()
         with self.assertRaises(ValueError):
             x = paddle.to_tensor(np.random.rand(8, 6))
             value = paddle.to_tensor(np.random.rand(8, 3))
-            _ = paddle.slice_scatter(x, value, axes=[1], starts=[0], ends=[6], strides=[1])
+            _ = paddle.slice_scatter(
+                x, value, axes=[1], starts=[0], ends=[6], strides=[1]
+            )
 
         with self.assertRaises(ValueError):
             x = paddle.to_tensor(np.random.rand(8, 6))
             value = paddle.to_tensor(np.random.rand(2, 6))
-            _ = paddle.slice_scatter(x, value, axes=[0], starts=[0], ends=[8], strides=[1])
+            _ = paddle.slice_scatter(
+                x, value, axes=[0], starts=[0], ends=[8], strides=[1]
+            )
 
 
 if __name__ == '__main__':
