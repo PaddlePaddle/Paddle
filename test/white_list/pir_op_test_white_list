@@ -202,6 +202,7 @@ test_mean_op
 test_memcpy_op
 test_meshgrid_op
 test_mode_op
+test_momentum_op
 test_mul_int8_mkldnn_op
 test_mul_op
 test_multi_dot_op
