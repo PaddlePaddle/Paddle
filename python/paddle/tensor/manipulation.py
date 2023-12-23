@@ -6751,17 +6751,18 @@ def select_scatter(x, values, axis, index, name=None):
         return output
 
 
-def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
+def slice_scatter(x, value, axes, starts, ends, strides, name=None):
     """
-    Embeds the value tensor into x at the given axis. Returns a new tensor instead of a view.
+    Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
+    The size of `axes` must be equal to `starts` , `ends` and `strides`.
 
     Args:
         x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
         value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        axis (int) : the dimension to insert the value. Default is 0.
-        start (int, optional) : the start index of where to insert. Default is `None` which will be converted to `0`.
-        stop (int, optional) : the stop index of where to insert. Default is `None` which will be converted to `x.shape[axis]`.
-        step (int, optional) : the step for each insert. Default is 1.
+        axes (list|tuple) : the dimensions to insert the value.
+        starts (list|tuple) : the start indices of where to insert.
+        ends (list|tuple) : the stop indices of where to insert.
+        strids (list|tuple) : the steps for each insert.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:
@@ -6772,54 +6773,42 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
 
             >>> import paddle
 
-            >>> x = paddle.zeros((6, 9))
-            >>> value = paddle.ones((6, 2))
-            >>> res = paddle.slice_scatter(x, value, axis=1, start=2, stop=6, step=2)
+            >>> x = paddle.zeros((3, 9))
+            >>> value = paddle.ones((3, 2))
+            >>> res = paddle.slice_scatter(x, value, axes=[1], starts=[2], ends=[6], strides=[2])
             >>> print(res)
-            Tensor(shape=[6, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[3, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 0., 1., 0., 1., 0., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
              [0., 0., 1., 0., 1., 0., 0., 0., 0.],
              [0., 0., 1., 0., 1., 0., 0., 0., 0.]])
 
             >>> # broadcast `value` got the same result
-            >>> x = paddle.zeros((6, 9))
-            >>> value = paddle.ones((6, 1))
-            >>> res = paddle.slice_scatter(x, value, axis=1, start=2, stop=6, step=2)
+            >>> x = paddle.zeros((3, 9))
+            >>> value = paddle.ones((3, 1))
+            >>> res = paddle.slice_scatter(x, value, axes=[1], starts=[2], ends=[6], strides=[2])
             >>> print(res)
-            Tensor(shape=[6, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[3, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 0., 1., 0., 1., 0., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
-             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
              [0., 0., 1., 0., 1., 0., 0., 0., 0.],
              [0., 0., 1., 0., 1., 0., 0., 0., 0.]])
 
-            >>> # can only use start or stop
-            >>> x = paddle.zeros((6, 9))
-            >>> value = paddle.ones((2, 9))
-            >>> res = paddle.slice_scatter(x, value, stop=2)
+            >>> # broadcast `value` along multiple axes
+            >>> x = paddle.zeros((3, 3, 5))
+            >>> value = paddle.ones((1, 3, 1))
+            >>> res = paddle.slice_scatter(x, value, axes=[0, 2], starts=[1, 0], ends=[3, 4], strides=[1, 2])
             >>> print(res)
-            Tensor(shape=[6, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 1., 1., 1., 1., 1., 1., 1., 1.],
-             [1., 1., 1., 1., 1., 1., 1., 1., 1.],
-             [0., 0., 0., 0., 0., 0., 0., 0., 0.],
-             [0., 0., 0., 0., 0., 0., 0., 0., 0.],
-             [0., 0., 0., 0., 0., 0., 0., 0., 0.],
-             [0., 0., 0., 0., 0., 0., 0., 0., 0.]])
+            Tensor(shape=[3, 3, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0., 0., 0., 0., 0.],
+              [0., 0., 0., 0., 0.],
+              [0., 0., 0., 0., 0.]],
+             [[1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.]],
+             [[1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.]]])
 
     """
-    x_shape = x.shape
-
-    start = 0 if start is None else start
-    stop = x_shape[axis] if stop is None else stop
-
-    starts = [start]
-    ends = [stop]
-    steps = [step]
-    axes = [axis]
     none_axes = []
     decrease_axes = []
     dtype = x.dtype
@@ -6831,7 +6820,7 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
             value,
             starts,
             ends,
-            steps,
+            strides,
             axes,
             decrease_axes,
             none_axes,
@@ -6841,7 +6830,7 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
             'axes': axes,
             'starts': starts,
             'ends': ends,
-            'steps': steps,
+            'steps': strides,
             'decrease_axes': decrease_axes,
             'none_axes': none_axes,
             'dtype': dtype,

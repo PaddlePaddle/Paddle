@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -23,24 +24,34 @@ from paddle.pir_utils import test_with_pir_api
 paddle.enable_static()
 
 
-def numpy_ref(x, value, axis=0, start=None, stop=None, step=1):
-    _x = np.copy(x)
+def numpy_ref(_x, value, axes, starts, ends, strides):
+    x = np.copy(_x)
 
-    start = 0 if start is None else start
-    stop = _x.shape[axis] if stop is None else stop
+    try:
+        value = np.broadcast_to(value, x.shape)
+    except:
+        pass
 
-    index = range(start, stop, step)
-    exp_shape = [
-        *([1] * _x.ndim)[:axis],
-        len(index),
-        *([1] * _x.ndim)[axis + 1 :],
-    ]
+    indices_x = []
+    indices_v = []
+    for ndim_idx in range(x.ndim):
+        if ndim_idx not in axes:
+            ind = list(range(x.shape[ndim_idx]))
+            indices_x.append(ind)
+            indices_v.append(ind)
+        else:
+            _idx = list(axes).index(ndim_idx)
+            ind_x = list(range(starts[_idx], ends[_idx], strides[_idx]))
+            ind_v = list(range(len(ind_x)))
+            indices_x.append(ind_x)
+            indices_v.append(ind_v)
 
-    np.put_along_axis(
-        _x, np.arange(start, stop, step).reshape(exp_shape), value, axis=axis
-    )
+    for index_x, index_v in zip(
+        itertools.product(*indices_x), itertools.product(*indices_v)
+    ):
+        x[index_x] = value[index_v]
 
-    return _x
+    return x
 
 
 class TestSliceScatterApi(unittest.TestCase):
@@ -66,10 +77,10 @@ class TestSliceScatterApi(unittest.TestCase):
     def init_shape(self):
         self.x_shape = [8, 6]
         self.value_shape = [8, 2]
-        self.axis = 1
-        self.start = 2
-        self.stop = 6
-        self.step = 2
+        self.axes = [1]
+        self.starts = [2]
+        self.ends = [6]
+        self.strides = [2]
 
     @test_with_pir_api
     def test_api_static(self):
@@ -85,10 +96,10 @@ class TestSliceScatterApi(unittest.TestCase):
                 out = paddle.slice_scatter(
                     x,
                     value,
-                    axis=self.axis,
-                    start=self.start,
-                    stop=self.stop,
-                    step=self.step,
+                    axes=self.axes,
+                    starts=self.starts,
+                    ends=self.ends,
+                    strides=self.strides,
                 )
                 exe = paddle.static.Executor(place)
                 res = exe.run(
@@ -102,10 +113,10 @@ class TestSliceScatterApi(unittest.TestCase):
             out_ref = numpy_ref(
                 self.x_np,
                 self.value_np,
-                axis=self.axis,
-                start=self.start,
-                stop=self.stop,
-                step=self.step,
+                axes=self.axes,
+                starts=self.starts,
+                ends=self.ends,
+                strides=self.strides,
             )
 
             np.testing.assert_allclose(res, out_ref)
@@ -118,18 +129,18 @@ class TestSliceScatterApi(unittest.TestCase):
             out = paddle.slice_scatter(
                 x_tensor,
                 value_tensor,
-                axis=self.axis,
-                start=self.start,
-                stop=self.stop,
-                step=self.step,
+                axes=self.axes,
+                starts=self.starts,
+                ends=self.ends,
+                strides=self.strides,
             )
             out_ref = numpy_ref(
                 self.x_np,
                 self.value_np,
-                axis=self.axis,
-                start=self.start,
-                stop=self.stop,
-                step=self.step,
+                axes=self.axes,
+                starts=self.starts,
+                ends=self.ends,
+                strides=self.strides,
             )
 
             np.testing.assert_allclose(out.numpy(), out_ref)
@@ -208,24 +219,14 @@ class TestSliceScatterApiFloat32(TestSliceScatterApi):
         self.dtype = 'float32'
 
 
-class TestSliceScatterApiNoneStartStop(TestSliceScatterApi):
-    def init_shape(self):
-        self.x_shape = [6, 8]
-        self.value_shape = [2, 8]
-        self.axis = 0
-        self.start = None
-        self.stop = None
-        self.step = 3
-
-
 class TestSliceScatterApi3D(TestSliceScatterApi):
     def init_shape(self):
         self.x_shape = [8, 6, 3]
         self.value_shape = [8, 2, 3]
-        self.axis = 1
-        self.start = 2
-        self.stop = 6
-        self.step = 2
+        self.axes = [1]
+        self.starts = [2]
+        self.ends = [6]
+        self.strides = [2]
 
 
 class TestSliceScatterApi3DFloat32(TestSliceScatterApi3D):
@@ -237,10 +238,10 @@ class TestSliceScatterApi4D(TestSliceScatterApi):
     def init_shape(self):
         self.x_shape = [8, 6, 3, 5]
         self.value_shape = [8, 2, 3, 5]
-        self.axis = 1
-        self.start = 2
-        self.stop = 6
-        self.step = 2
+        self.axes = [1]
+        self.starts = [2]
+        self.ends = [6]
+        self.strides = [2]
 
 
 class TestSliceScatterApi4DFloat32(TestSliceScatterApi4D):
@@ -252,10 +253,10 @@ class TestSliceScatterApi4DAxis3(TestSliceScatterApi):
     def init_shape(self):
         self.x_shape = [8, 6, 3, 9]
         self.value_shape = [8, 6, 3, 2]
-        self.axis = 3
-        self.start = 2
-        self.stop = 6
-        self.step = 2
+        self.axes = [3]
+        self.starts = [2]
+        self.ends = [6]
+        self.strides = [2]
 
 
 class TestSliceScatterApi4DAxis3Float32(TestSliceScatterApi4DAxis3):
@@ -263,17 +264,32 @@ class TestSliceScatterApi4DAxis3Float32(TestSliceScatterApi4DAxis3):
         self.dtype = 'float32'
 
 
-class TestSliceScatterApiBroadcase(TestSliceScatterApi):
+class TestSliceScatterApiBroadcase2D(TestSliceScatterApi):
     def init_shape(self):
         self.x_shape = [8, 9]
         self.value_shape = [8, 1]
-        self.axis = 1
-        self.start = 2
-        self.stop = 6
-        self.step = 2
+        self.axes = [1]
+        self.starts = [2]
+        self.ends = [6]
+        self.strides = [2]
 
 
-class TestSliceScatterApiBroadcaseFloat32(TestSliceScatterApiBroadcase):
+class TestSliceScatterApiBroadcase2DFloat32(TestSliceScatterApiBroadcase2D):
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+
+class TestSliceScatterApiBroadcase3D(TestSliceScatterApi):
+    def init_shape(self):
+        self.x_shape = [8, 9, 6]
+        self.value_shape = [1, 9, 1]
+        self.axes = [0, 2]
+        self.starts = [2, 3]
+        self.ends = [7, 5]
+        self.strides = [3, 2]
+
+
+class TestSliceScatterApiBroadcase3DFloat32(TestSliceScatterApiBroadcase3D):
     def init_dtype(self):
         self.dtype = 'float32'
 
@@ -284,19 +300,25 @@ class TestSliceScatterApiError(unittest.TestCase):
         with self.assertRaises(ValueError):
             x = paddle.to_tensor(np.random.rand(8, 6, 3))
             value = paddle.to_tensor(np.random.rand(8, 3))
-            _ = paddle.slice_scatter(x, value)
+            _ = paddle.slice_scatter(
+                x, value, axes=[0], starts=[0], ends=[8], strides=[1]
+            )
 
     def test_error_index(self):
         paddle.disable_static()
         with self.assertRaises(ValueError):
             x = paddle.to_tensor(np.random.rand(8, 6))
             value = paddle.to_tensor(np.random.rand(8, 3))
-            _ = paddle.slice_scatter(x, value, axis=1, step=1)
+            _ = paddle.slice_scatter(
+                x, value, axes=[1], starts=[0], ends=[6], strides=[1]
+            )
 
         with self.assertRaises(ValueError):
             x = paddle.to_tensor(np.random.rand(8, 6))
             value = paddle.to_tensor(np.random.rand(2, 6))
-            _ = paddle.slice_scatter(x, value)
+            _ = paddle.slice_scatter(
+                x, value, axes=[0], starts=[0], ends=[8], strides=[1]
+            )
 
 
 if __name__ == '__main__':
