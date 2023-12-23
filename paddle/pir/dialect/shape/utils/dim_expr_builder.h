@@ -14,11 +14,12 @@
 
 #pragma once
 
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
 namespace symbol {
 
-class DimExprBuilder {
+class IR_API DimExprBuilder {
  public:
   explicit DimExprBuilder(std::vector<DimExprConstraint>* constraints)
       : constraints_(constraints) {}

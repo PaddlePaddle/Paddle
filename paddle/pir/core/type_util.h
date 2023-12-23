@@ -19,6 +19,7 @@
 
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
 ///
@@ -52,8 +53,8 @@ bool VerifyCompatibleDims(const std::vector<int64_t>& dims);
 /// \brief Returns true if the given two arrays have the same number of elements
 /// and each pair wise entries have compatible shape.
 ///
-bool VerifyCompatibleShapes(const std::vector<Type>& lhs_types,
-                            const std::vector<Type>& rhs_types);
+bool IR_API VerifyCompatibleShapes(const std::vector<Type>& lhs_types,
+                                   const std::vector<Type>& rhs_types);
 
 ///
 /// \brief Returns true if all given types have compatible shapes. That is,
@@ -61,5 +62,5 @@ bool VerifyCompatibleShapes(const std::vector<Type>& lhs_types,
 /// ranked shapes have compatible dimensions. Dimensions are compatible if all
 /// non-dynamic dims are equal. The element type does not matter.
 ///
-bool VerifyCompatibleShapes(const std::vector<Type>& types);
+bool IR_API VerifyCompatibleShapes(const std::vector<Type>& types);
 }  // namespace pir

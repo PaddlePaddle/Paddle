@@ -83,8 +83,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         continue;
       }
       // 2. inputs must come from parameter op or constant op
-      if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::ParameterOp>() ||
-            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>())) {
+      auto* prev_op = pir::GetDefiningOpForInput(op, i);
+      if (!prev_op || !(prev_op->isa<pir::ParameterOp>() ||
+                        prev_op->isa<pir::ConstantTensorOp>())) {
         return false;
       }
       // 3. inputs must be a dense tensor type
@@ -140,7 +141,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     core.Run({});
 
-    rewriter.SetInsertionPointToStart(rewriter.block());
+    // ParameterOp and ConstantTensorOp should be created in the top-level block
+    rewriter.SetInsertionPointToStart(
+        rewriter.block()->parent_program()->block());
 
     bool use_parameter_op = ReplaceResultByParameterOp(op);
 
@@ -168,14 +171,15 @@ class ConstantFoldingPattern : public pir::RewritePattern {
             paddle::framework::TensorCopySync(
                 temp_tensor, place_, output_tensor);
           }
-          auto parameter_op = rewriter.Build<pir::ParameterOp>(
-              output_var_name, op->result(i).type());
-          parameter_op->set_attribute(
-              kAttrIsPersisable,
-              rewriter.array_attr({rewriter.bool_attr(true)}));
-
-          rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
         }
+
+        auto parameter_op = rewriter.Build<pir::ParameterOp>(
+            output_var_name, op->result(i).type());
+        parameter_op->set_attribute(
+            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+        rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
+
       } else {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
@@ -334,11 +338,6 @@ class ConstantFoldingPass : public pir::Pass {
       paddle::memory::Release(place_);
     }
     paddle::memory::Release(phi::CPUPlace{});
-  }
-
-  bool CanApplyOn(pir::Operation* op) const override {
-    // TODO(liuyuanle): remove op->isa<::pir::ModuleOp>()
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
