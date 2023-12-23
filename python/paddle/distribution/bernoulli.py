@@ -175,34 +175,20 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> print(rv.sample([100, 2]).shape)
                 [100, 2, 2]
         """
-        name = self.name + '_sample'
-        if not in_dynamic_mode():
-            check_type(
-                shape,
-                'shape',
-                (np.ndarray, Variable, list, tuple),
-                name,
-            )
-
-        shape = shape if isinstance(shape, tuple) else tuple(shape)
-        shape = self._extend_shape(shape)
-
         with paddle.no_grad():
-            return paddle.bernoulli(self.probs.expand(shape), name=name)
+            return self.rsample(shape)
 
-    def rsample(self, shape, temperature=1.0):
+    def rsample(self, shape):
         """Sample from Bernoulli distribution (reparameterized).
 
         The `rsample` is a continuously approximate of Bernoulli distribution reparameterized sample method.
-        [1] Chris J. Maddison, Andriy Mnih, and Yee Whye Teh. The Concrete Distribution: A Continuous Relaxation of Discrete Random Variables. 2016.
-        [2] Eric Jang, Shixiang Gu, and Ben Poole. Categorical Reparameterization with Gumbel-Softmax. 2016.
 
         Note:
             `rsample` need to be followed by a `sigmoid`, which converts samples' value to unit interval (0, 1).
 
         Args:
             shape (Sequence[int]): Sample shape.
-            temperature (float): temperature for rsample, must be positive.
+
 
         Returns:
             Tensor: Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
@@ -254,7 +240,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 288.66418457)
         """
-        name = self.name + '_rsample'
+        name = self.name + '_sample'
         if not in_dynamic_mode():
             check_type(
                 shape,
@@ -262,29 +248,11 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 (np.ndarray, Variable, list, tuple),
                 name,
             )
-            check_type(
-                temperature,
-                'temperature',
-                (float,),
-                name,
-            )
 
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         shape = self._extend_shape(shape)
 
-        temperature = paddle.full(
-            shape=(), fill_value=temperature, dtype=self.dtype
-        )
-
-        probs = self.probs.expand(shape)
-        uniforms = paddle.rand(shape, dtype=self.dtype)
-        return paddle.divide(
-            paddle.add(
-                paddle.subtract(uniforms.log(), (-uniforms).log1p()),
-                paddle.subtract(probs.log(), (-probs).log1p()),
-            ),
-            temperature,
-        )
+        return paddle.bernoulli(self.probs.expand(shape))
 
     def cdf(self, value):
         r"""Cumulative distribution function(CDF) evaluated at value.

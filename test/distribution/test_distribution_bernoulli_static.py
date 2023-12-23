@@ -22,7 +22,7 @@ from parameterize import (
     parameterize_func,
     place,
 )
-from test_distribution_bernoulli import BernoulliNumpy, _kstest, _sigmoid
+from test_distribution_bernoulli import BernoulliNumpy, _kstest
 
 import paddle
 from paddle.distribution import Bernoulli
@@ -242,7 +242,7 @@ class BernoulliTestFeature(unittest.TestCase):
 
 @place(DEVICES)
 @parameterize_cls(
-    (TEST_CASE_NAME, 'probs', 'shape', 'temperature', 'expected_shape'),
+    (TEST_CASE_NAME, 'probs', 'shape', 'expected_shape'),
     [
         # 1-D probs
         (
@@ -251,7 +251,6 @@ class BernoulliTestFeature(unittest.TestCase):
             [
                 100,
             ],
-            0.1,
             [100, 1],
         ),
         # N-D probs
@@ -261,7 +260,6 @@ class BernoulliTestFeature(unittest.TestCase):
             [
                 100,
             ],
-            0.1,
             [100, 2],
         ),
     ],
@@ -273,13 +271,13 @@ class BernoulliTestSample(unittest.TestCase):
 
         with paddle.static.program_guard(self.program):
             self.init_numpy_data(self.probs, self.shape)
-            self.init_static_data(self.probs, self.shape, self.temperature)
+            self.init_static_data(self.probs, self.shape)
 
     def init_numpy_data(self, probs, shape):
         self.rv_np = BernoulliNumpy(probs)
         self.sample_np = self.rv_np.sample(shape)
 
-    def init_static_data(self, probs, shape, temperature):
+    def init_static_data(self, probs, shape):
         with paddle.static.program_guard(self.program):
             self.rv_paddle = Bernoulli(probs=paddle.to_tensor(probs))
 
@@ -288,7 +286,7 @@ class BernoulliTestSample(unittest.TestCase):
                 feed={},
                 fetch_list=[
                     self.rv_paddle.sample(shape),
-                    self.rv_paddle.rsample(shape, temperature),
+                    self.rv_paddle.rsample(shape),
                 ],
             )
 
@@ -317,10 +315,7 @@ class BernoulliTestSample(unittest.TestCase):
                 self.assertTrue(
                     _kstest(
                         self.sample_np[..., i].reshape(-1),
-                        (_sigmoid(self.rsample_paddle[..., i]) > 0.5).reshape(
-                            -1
-                        ),
-                        self.temperature,
+                        self.rsample_paddle[..., i].reshape(-1),
                     )
                 )
 
@@ -377,22 +372,6 @@ class BernoulliTestError(unittest.TestCase):
             with self.assertRaises(TypeError):
                 [_] = self.executor.run(
                     self.program, feed={}, fetch_list=[rv.rsample(shape)]
-                )
-
-    @parameterize_func(
-        [
-            (1,),  # int
-        ]
-    )
-    def test_bad_rsample_temperature_type(self, temperature):
-        with paddle.static.program_guard(self.program):
-            rv = Bernoulli(0.3)
-
-            with self.assertRaises(TypeError):
-                [_] = self.executor.run(
-                    self.program,
-                    feed={},
-                    fetch_list=[rv.rsample([100], temperature)],
                 )
 
     @parameterize_func(

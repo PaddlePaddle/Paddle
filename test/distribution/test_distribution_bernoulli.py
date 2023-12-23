@@ -51,10 +51,10 @@ def _sigmoid(z):
     return scipy.special.expit(z)
 
 
-def _kstest(samples_a, samples_b, temperature=1):
+def _kstest(samples_a, samples_b):
     """Uses the Kolmogorov-Smirnov test for goodness of fit."""
     _, p_value = scipy.stats.ks_2samp(samples_a, samples_b)
-    return not (p_value < 0.02 * (min(1, temperature)))
+    return not (p_value < 0.02)
 
 
 class BernoulliNumpy(DistributionNumpy):
@@ -482,8 +482,8 @@ class BernoulliTestFeature(BernoulliTest):
             paddle.to_tensor((0.3, 0.5)),
             'float32',
             'float32',
-            [100, 4, 3],
-            [100, 4, 3, 2],
+            [5000, 4, 3],
+            [5000, 4, 3, 2],
         ),
     ],
 )
@@ -512,17 +512,11 @@ class BernoulliTestSample(BernoulliTest):
                     )
                 )
 
-    @parameterize_func(
-        [
-            (1.0,),
-            (0.1,),
-        ]
-    )
-    def test_rsample(self, temperature):
+    def test_rsample(self):
         """Compare two samples from `rsample` method, one from scipy `sample` and another from paddle `rsample`."""
         with paddle.base.dygraph.guard(self.place):
             sample_np = self.rv_np.sample(self.shape)
-            rsample_paddle = self.rv_paddle.rsample(self.shape, temperature)
+            rsample_paddle = self.rv_paddle.rsample(self.shape)
 
             self.assertEqual(list(rsample_paddle.shape), self.expected_shape)
             self.assertEqual(rsample_paddle.dtype, self.rv_paddle.probs.dtype)
@@ -532,18 +526,14 @@ class BernoulliTestSample(BernoulliTest):
                     self.assertTrue(
                         _kstest(
                             sample_np[..., i].reshape(-1),
-                            (
-                                _sigmoid(rsample_paddle.numpy()[..., i]) > 0.5
-                            ).reshape(-1),
-                            temperature,
+                            rsample_paddle.numpy()[..., i].reshape(-1),
                         )
                     )
             else:
                 self.assertTrue(
                     _kstest(
                         sample_np.reshape(-1),
-                        (_sigmoid(rsample_paddle.numpy()) > 0.5).reshape(-1),
-                        temperature,
+                        rsample_paddle.numpy().reshape(-1),
                     )
                 )
 
@@ -551,7 +541,6 @@ class BernoulliTestSample(BernoulliTest):
         with paddle.base.dygraph.guard(self.place):
             self.rv_paddle.probs.stop_gradient = False
             rsample_paddle = self.rv_paddle.rsample(self.shape)
-            rsample_paddle = paddle.nn.functional.sigmoid(rsample_paddle)
             grads = paddle.grad([rsample_paddle], [self.rv_paddle.probs])
             self.assertEqual(len(grads), 1)
             self.assertEqual(grads[0].dtype, self.rv_paddle.probs.dtype)

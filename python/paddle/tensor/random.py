@@ -91,14 +91,13 @@ def bernoulli(x, name=None):
             x, "x", ["float32", "float64", "float16", "uint16"], "bernoulli"
         )
 
-        helper = LayerHelper("randint", **locals())
+        helper = LayerHelper("bernoulli", **locals())
         out = helper.create_variable_for_type_inference(
             dtype=x.dtype
         )  # maybe set out to int32 ?
         helper.append_op(
             type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={}
         )
-        out.stop_gradient = True
         return out
 
 

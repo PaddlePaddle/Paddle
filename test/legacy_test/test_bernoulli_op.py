@@ -32,18 +32,17 @@ def output_hist(out):
 class TestBernoulliOp(OpTest):
     def setUp(self):
         self.op_type = "bernoulli"
+        self.python_api = paddle.tensor.random.bernoulli
         self.init_dtype()
-        self.init_test_case()
-        self.inputs = {"X": self.x}
+        self.sample_shape = (1000, 784)
         self.attrs = {}
-        self.outputs = {"Out": self.out}
+        self.inputs = {
+            "X": np.random.uniform(size=self.sample_shape).astype(self.dtype)
+        }
+        self.outputs = {"Out": np.zeros(self.sample_shape, dtype=self.dtype)}
 
     def init_dtype(self):
-        self.dtype = np.float32
-
-    def init_test_case(self):
-        self.x = np.random.uniform(size=(1000, 784)).astype(self.dtype)
-        self.out = np.zeros((1000, 784)).astype(self.dtype)
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -52,13 +51,13 @@ class TestBernoulliOp(OpTest):
         hist, prob = output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    def test_check_grad_normal(self):
+    def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=[np.zeros([1000, 784], dtype=self.dtype)],
+            user_defined_grads=[np.zeros(self.sample_shape, dtype=self.dtype)],
             user_defined_grad_outputs=[
-                np.random.rand(1000, 784).astype(self.dtype)
+                np.random.rand(*self.sample_shape).astype(self.dtype)
             ],
         )
 
@@ -67,6 +66,7 @@ class TestBernoulliApi(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
         x = paddle.rand([1024, 1024])
+        x.stop_gradient = False
         out = paddle.bernoulli(x)
         out.backward()
         np.testing.assert_array_equal(np.zeros_like(x), x.gradient())
@@ -131,7 +131,25 @@ class TestBernoulliFP16Op(TestBernoulliOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestBernoulliBF16Op(TestBernoulliOp):
+class TestBernoulliBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "bernoulli"
+        self.python_api = paddle.tensor.random.bernoulli
+        self.__class__.op_type = self.op_type
+        self.init_dtype()
+        self.sample_shape = (1000, 784)
+        self.attrs = {}
+        self.inputs = {
+            "X": convert_float_to_uint16(
+                np.random.uniform(size=self.sample_shape).astype("float32")
+            )
+        }
+        self.outputs = {
+            "Out": convert_float_to_uint16(
+                np.zeros(self.sample_shape, dtype="float32")
+            )
+        }
+
     def init_dtype(self):
         self.dtype = np.uint16
 
@@ -139,17 +157,21 @@ class TestBernoulliBF16Op(TestBernoulliOp):
         place = core.CUDAPlace(0)
         self.check_output_with_place_customized(self.verify_output, place)
 
-    def init_test_case(self):
-        self.x = convert_float_to_uint16(
-            np.random.uniform(size=(1000, 784)).astype("float32")
-        )
-        self.out = convert_float_to_uint16(
-            np.zeros((1000, 784)).astype("float32")
-        )
-
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, atol=0.01)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            user_defined_grads=[np.zeros(self.sample_shape, dtype="float32")],
+            user_defined_grad_outputs=[
+                np.random.rand(*self.sample_shape).astype("float32")
+            ],
+        )
 
 
 if __name__ == "__main__":
