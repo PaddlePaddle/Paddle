@@ -179,16 +179,10 @@ class Bernoulli(exponential_family.ExponentialFamily):
             return self.rsample(shape)
 
     def rsample(self, shape):
-        """Sample from Bernoulli distribution (reparameterized).
-
-        The `rsample` is a continuously approximate of Bernoulli distribution reparameterized sample method.
-
-        Note:
-            `rsample` need to be followed by a `sigmoid`, which converts samples' value to unit interval (0, 1).
+        """Reparameterized sample from Bernoulli distribution.
 
         Args:
             shape (Sequence[int]): Sample shape.
-
 
         Returns:
             Tensor: Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
@@ -217,35 +211,19 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> print(rv.rsample([100, 2]).shape)
                 [100, 2, 2]
 
-                >>> # `rsample` has to be followed by a `sigmoid`
-                >>> rv = Bernoulli(0.3)
                 >>> rsample = rv.rsample([3, ])
-                >>> rsample_sigmoid = paddle.nn.functional.sigmoid(rsample)
                 >>> print(rsample)
-                Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [-1.46112013, -0.01239836, -1.32765460])
-                >>> print(rsample_sigmoid)
-                Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [0.18829606, 0.49690047, 0.20954758])
-
-                >>> # The smaller the `temperature`, the distribution of `rsample` closer to `sample`, with `probs` of 0.3.
-                >>> print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=1.0)).sum())
-                >>> # doctest: +SKIP('output will be different')
-                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                365.63122559)
-                >>> # doctest: -SKIP
-
-                >>> print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=0.1)).sum())
-                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                320.15057373)
+                Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [[0., 0.],
+                 [0., 0.],
+                 [1., 1.]])
         """
-        name = self.name + '_sample'
         if not in_dynamic_mode():
             check_type(
                 shape,
                 'shape',
                 (np.ndarray, Variable, list, tuple),
-                name,
+                'Bernoulli rsample',
             )
 
         shape = shape if isinstance(shape, tuple) else tuple(shape)
