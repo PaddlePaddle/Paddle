@@ -550,6 +550,8 @@ def _addup_repetitive_outputs_(
     var_device = collections.defaultdict(str)
 
     def _change_order_by_topo_order(var_name):
+        if topo_order_for_backward is None:
+            return
         origin_names = renamed_vars[var_name]
         origin_names.sort(key=lambda x: topo_order_for_grad_name[x])
 
@@ -1608,12 +1610,12 @@ def _append_backward_ops_(
             program._appending_grad_times
         ]
     # sum parameter's gradients' var given multiple var gradient
-    topo_order = _topo_order_map(block, target_vars)
     if os.environ.get("FLAGS_program_topo_reorder", "False") in [
         'True',
         '1',
         'true',
     ]:
+        topo_order = _topo_order_map(block, target_vars)
         topo_order_for_backward = _topo_bwd_order_map(
             topo_order, get_backward_op_desc
         )
@@ -2760,15 +2762,16 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         targets = _as_list(targets)
         inputs = _as_list(inputs)
         target_gradients = _as_list(target_gradients)
-        if no_grad_set is None:
-            no_grad_set = set()
-        elif no_grad_set is not set:
-            no_grad_set = set(no_grad_set)
-        else:
-            no_grad_set = no_grad_set
+
+        from paddle.autograd.backward_utils import ValueSet
         from paddle.autograd.ir_backward import (
             calc_gradient as pir_calc_gradient,
         )
+
+        if no_grad_set is None:
+            no_grad_set = ValueSet()
+        else:
+            no_grad_set = ValueSet(no_grad_set)
 
         input_grad = pir_calc_gradient(
             targets, inputs, target_gradients, no_grad_set

@@ -125,7 +125,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place memory data_type device_context phi common)
+  DEPS place fluid_memory data_type device_context phi common)
 
 cc_library(
   lod_tensor
@@ -135,7 +135,7 @@ cc_library(
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context memory phi common glog)
+  DEPS device_context allocator phi common glog)
 
 cc_library(
   reader
@@ -530,7 +530,6 @@ set(NAIVE_EXECUTOR_DEPS
     lod_rank_table
     feed_fetch_method
     graph_to_program_pass
-    standalone_executor
     variable_helper)
 
 if(TENSORRT_FOUND)
@@ -888,7 +887,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor pir_adaptor pir_transforms pir)
+  DEPS parallel_executor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
@@ -957,6 +956,7 @@ cc_library(
        layer)
 
 cc_library(type_info SRCS type_info.cc)
+target_link_libraries(type_info pir op_dialect)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
 if(WITH_MKLDNN)
   add_dependencies(type_info mkldnn)
@@ -964,7 +964,6 @@ endif()
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
-    memory
     lod_tensor
     executor
     data_feed_proto

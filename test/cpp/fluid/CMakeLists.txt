@@ -1,3 +1,4 @@
+add_subdirectory(memory)
 add_subdirectory(benchmark)
 add_subdirectory(framework)
 
@@ -121,21 +122,9 @@ cc_test(
   DEPS lod_tensor device_context generated_static_op)
 
 if(WITH_CINN)
-  paddle_test(
-    op_debug_string_test
-    SRCS
-    op_debug_string_test.cc
-    DEPS
-    executor
-    common
-    fleet_executor
-    recurrent_op_helper
-    recurrent_op
-    elementwise_add_op
-    ${COMMON_OP_DEPS}
-    python)
+  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 else()
-  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS common)
+  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 endif()
 
 if(WITH_GPU)

@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import (
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -68,7 +73,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                [ 0.03333333,  1.83333337],
                [-0.43333334,  2.23333335]]]])
     """
-    if not isinstance(theta, Variable):
+    if not isinstance(theta, (Variable, paddle.pir.Value)):
         raise ValueError("The theta should be a Tensor.")
 
     cudnn_version = get_cudnn_version()
@@ -102,29 +107,35 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             "use_cudnn",
             use_cudnn,
         )
-
-    helper = LayerHelper('affine_grid')
-    check_variable_and_dtype(
-        theta, 'theta', ['float32', 'float64'], 'affine_grid'
-    )
-    out = helper.create_variable_for_type_inference(theta.dtype)
-    ipts = {'Theta': theta}
-    attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
-    if isinstance(out_shape, Variable):
-        ipts['OutputShape'] = out_shape
-        check_variable_and_dtype(
-            out_shape, 'out_shape', ['int32'], 'affine_grid'
+    elif in_pir_mode():
+        return _C_ops.affine_grid(
+            theta,
+            out_shape,
+            align_corners,
         )
     else:
-        attrs['output_shape'] = out_shape
+        helper = LayerHelper('affine_grid', **locals())
+        check_variable_and_dtype(
+            theta, 'theta', ['float32', 'float64'], 'affine_grid'
+        )
+        out = helper.create_variable_for_type_inference(dtype=theta.dtype)
+        ipts = {'Theta': theta}
+        attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
+        if isinstance(out_shape, Variable):
+            ipts['OutputShape'] = out_shape
+            check_variable_and_dtype(
+                out_shape, 'out_shape', ['int32'], 'affine_grid'
+            )
+        else:
+            attrs['output_shape'] = out_shape
 
-    helper.append_op(
-        type='affine_grid',
-        inputs=ipts,
-        outputs={'Output': out},
-        attrs=None if len(attrs) == 0 else attrs,
-    )
-    return out
+        helper.append_op(
+            type='affine_grid',
+            inputs=ipts,
+            outputs={'Output': out},
+            attrs=None if len(attrs) == 0 else attrs,
+        )
+        return out
 
 
 def grid_sample(
@@ -298,7 +309,7 @@ def grid_sample(
     if len(grid.shape) == 5:
         use_cudnn = False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
     elif in_dynamic_mode():
         attrs = (

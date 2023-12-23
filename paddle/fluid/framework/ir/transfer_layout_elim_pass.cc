@@ -120,7 +120,10 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
   auto *new_transfer_layout_node =
       graph->CreateOpNode(&new_transfer_layout_desc);
 
-  for (auto other_op : var2->outputs) {
+  // must use a tmp variable var_out, because var2->outputs will be changed in
+  // loop.
+  auto var_out = var2->outputs;
+  for (auto other_op : var_out) {
     IR_NODE_UNLINK(var2, other_op);
     other_op->Op()->RenameInput(var2->Name(), var2_dot_name);
     IR_NODE_LINK_TO(var2_dot, other_op);
@@ -244,6 +247,9 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
     return "";
   };
 
+  int move_down_count = 0;
+  int elim_count = 0;
+
   while (true) {
     auto op_node_sorted = framework::ir::TopologyVarientSort(
         *graph, static_cast<framework::ir::SortKind>(0));
@@ -309,6 +315,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
           }
           op_node->Op()->SetAttr("axis", modify_axis);
           modify = true;
+          move_down_count++;
           break;
         }
         if (is_pool_like_op) {
@@ -318,21 +325,26 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
               transfer_format(
                   op_node->Op()->GetAttrIfExists<std::string>("data_format")));
           modify = true;
+          move_down_count++;
           break;
         }
         if (is_act_like_op) {
           PutTranferlayoutAfterOp(op_node, graph, nullptr);
           modify = true;
+          move_down_count++;
           break;
         }
         if (is_elim_op) {
           ElimTwoTranferlayout(op_node, graph, &modify);
+          elim_count++;
           break;
         }
       }
     }
     if (!modify) break;
   }
+  LOG(INFO) << "move down " << move_down_count << " transfer_layout";
+  LOG(INFO) << "eliminate " << elim_count << " pair of transfer_layout";
 }
 
 }  // namespace ir

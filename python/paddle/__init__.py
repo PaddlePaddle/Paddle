@@ -157,6 +157,9 @@ from .hapi import (
     flops,
     summary,
 )
+from .nn.functional.distance import (  # noqa: F401
+    pdist,
+)
 from .nn.initializer.lazy_init import LazyGuard
 from .tensor.attribute import (
     imag,
@@ -266,10 +269,12 @@ from .tensor.manipulation import (  # noqa: F401
     cast,
     cast_,
     chunk,
+    column_stack,
     concat,
     crop,
     diagonal_scatter,
     dsplit,
+    dstack,
     expand,
     expand_as,
     flatten,
@@ -278,6 +283,7 @@ from .tensor.manipulation import (  # noqa: F401
     gather,
     gather_nd,
     hsplit,
+    hstack,
     index_add,
     index_add_,
     index_fill,
@@ -286,31 +292,27 @@ from .tensor.manipulation import (  # noqa: F401
     index_put_,
     masked_fill,
     masked_fill_,
-    masked_scatter_,
     masked_scatter,
+    masked_scatter_,
     moveaxis,
     put_along_axis,
-    select_scatter,
     repeat_interleave,
     reshape,
     reshape_,
     roll,
     rot90,
+    row_stack,
     scatter,
     scatter_,
     scatter_nd,
     scatter_nd_add,
+    select_scatter,
     shard_index,
     slice,
     split,
     squeeze,
     squeeze_,
     stack,
-    hstack,
-    vstack,
-    dstack,
-    column_stack,
-    row_stack,
     strided_slice,
     take_along_axis,
     tensor_split,
@@ -328,6 +330,7 @@ from .tensor.manipulation import (  # noqa: F401
     view,
     view_as,
     vsplit,
+    vstack,
 )
 from .tensor.math import (  # noqa: F401
     abs,
@@ -467,6 +470,7 @@ from .tensor.math import (  # noqa: F401
     scale,
     sgn,
     sign,
+    signbit,
     sin,
     sin_,
     sinh,
@@ -489,8 +493,8 @@ from .tensor.math import (  # noqa: F401
     vander,
 )
 from .tensor.random import (
-    binomial,
     bernoulli,
+    binomial,
     check_shape,
     multinomial,
     normal,
@@ -531,10 +535,6 @@ from .tensor.stat import (
     quantile,
     std,
     var,
-)
-
-from .nn.functional.distance import (  # noqa: F401
-    pdist,
 )
 from .tensor.to_string import set_printoptions
 
@@ -948,4 +948,5 @@ __all__ = [
     "index_fill_",
     'diagonal_scatter',
     'combinations',
+    'signbit',
 ]

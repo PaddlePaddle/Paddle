@@ -60,4 +60,5 @@ from .iter import (  # noqa: F401
     MapVariable,
     SequenceIterVariable,
     UserDefinedIterVariable,
+    ZipVariable,
 )
