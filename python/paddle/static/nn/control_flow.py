@@ -690,7 +690,9 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             args = cur_block.args()
             next_var = body(*args)
             try:
-                assert_same_structure(next_var, loop_vars, check_types=False)
+                assert_same_structure(
+                    flatten(next_var), flatten(loop_vars), check_types=False
+                )
             except ValueError as e:
                 raise ValueError(
                     "body in while_loop should return the same arity "
