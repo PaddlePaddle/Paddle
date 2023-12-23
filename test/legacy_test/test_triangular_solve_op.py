@@ -376,10 +376,7 @@ class TestTriangularSolveOpCp6422Un(TestTriangularSolveOp):
         self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 # 4D(broadcast) + 4D(broadcast) complex64
