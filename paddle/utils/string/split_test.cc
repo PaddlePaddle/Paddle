@@ -21,7 +21,7 @@
 TEST(StringSplit, StringSplit) {
   std::string to_split = "0,1,2,3,4,5";
   int i = 0;
-  for (auto s : paddle::string::Split(to_split, ',')) {
+  for (auto const& s : paddle::string::Split(to_split, ',')) {
     EXPECT_EQ(atoi(s.c_str()), i);
     i++;
   }

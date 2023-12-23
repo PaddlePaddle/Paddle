@@ -3474,8 +3474,38 @@ function trt_convert_test() {
     fi
 }
 
+function clang-tidy_check() {
+    set +x
+    trap 'abort' 0
+    set -e
+    apt-get install -y libomp5 libomp-dev
+    dpkg -s libomp5 libomp-dev
+    current_branch=`git branch | grep \* | cut -d ' ' -f2`
+    echo "current_branch : $current_branch"
+    num_diff_files=$(git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)$' | wc -l)
+    commit_files=on
+    startTime_s=`date +%s`
+    for file_name in `git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)$' |awk '{print $NF}'`;do
+        if ! pre-commit run clang-tidy --files ${PADDLE_ROOT}/$file_name ; then
+            commit_files=off
+        fi
+    done
+    endTime_s=`date +%s`
+    [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
+    echo "File Count: $[ $num_diff_files ]"
+    echo "Check Time: $[ $endTime_s - $startTime_s ]s"
+    if [ $commit_files == 'off' ];then
+        echo "Your PR code style clang-tidy check failed."
+        exit 1
+    fi
+
+    trap : 0
+    set -x
+}
+
 function build_pr_and_develop() {
     run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+    clang-tidy_check
     if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         mkdir ${PADDLE_ROOT}/build/python/dist/
     fi
@@ -3511,8 +3541,7 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
 
-    generate_api_spec "$1" "DEV"
-
+    generate_api_spec "$1" "DEV" 
 }
 
 function build_develop() {

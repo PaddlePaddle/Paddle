@@ -75,7 +75,7 @@ void TestAllImpls(const typename KernelTuple::attr_type& attr,
                   const Tester& verifier,
                   const Args&... args) {
   auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
-  for (auto f : funcs) {
+  for (auto const& f : funcs) {
     VLOG(10) << "Test Kernel " << f.first;
     verifier(f.second, args...);
   }
