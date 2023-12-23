@@ -44,7 +44,7 @@ class TestBernoulliOp(OpTest):
         self.outputs = {"Out": np.zeros(self.sample_shape, dtype=self.dtype)}
 
     def init_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output, check_pir=True)
@@ -52,6 +52,11 @@ class TestBernoulliOp(OpTest):
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
+
+
+class TestBernoulliOp2(TestBernoulliOp):
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def test_check_grad(self):
         self.check_grad(
@@ -122,7 +127,7 @@ class TestRandomValue(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestBernoulliFP16Op(TestBernoulliOp):
+class TestBernoulliFP16Op(TestBernoulliOp2):
     def init_dtype(self):
         self.dtype = np.float16
 
