@@ -99,6 +99,7 @@ def bernoulli(x, name=None):
         helper.append_op(
             type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={}
         )
+        out.stop_gradient = True
         return out
 
 
