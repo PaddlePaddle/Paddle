@@ -27,9 +27,7 @@ class TestOpTranscriber(unittest.TestCase):
         self.main_program = paddle.static.Program()
 
     def build_model(self):
-        raise Exception(
-            'There is no default program, in order to test whether transltor can successfully translate the newly registered op, build a new program!'
-        )
+        raise Exception('Build a new program for the op to be tested!')
 
     def check(self):
         assert hasattr(self, "op_name"), "op_name should be specified!"
