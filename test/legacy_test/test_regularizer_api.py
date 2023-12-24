@@ -78,7 +78,7 @@ class TestRegularizer(unittest.TestCase):
         scope = base.core.Scope()
         with base.unique_name.guard():
             with base.scope_guard(scope):
-                with base.program_guard(main_prog, startup_prog):
+                with paddle.static.program_guard(main_prog, startup_prog):
                     yield
 
     def run_program(self, place, feed_list):

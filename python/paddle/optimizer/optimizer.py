@@ -1042,6 +1042,30 @@ class Optimizer:
                         )
                         break
 
+    def _update_param_device_map_pir(self, parameters_and_grads, target_block):
+        # skip because 'op_device' is not in pir.Operation.attrs()
+        return
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[0].stop_gradient is False:
+                param_name = param_and_grad[0].name
+                ops = target_block.ops
+                device_attr_name = (
+                    core.op_proto_and_checker_maker.kOpDeviceAttrName()
+                )
+                for op in ops:
+                    # input_arg_names = op.input_arg_names
+                    # if param_name in input_arg_names:
+                    #     self._param_device_map[param_name] = op.attr(
+                    #         device_attr_name
+                    #     )
+                    #     break
+                    input_arg_names = [val.name for val in op.operands_source()]
+                    if param_name in input_arg_names:
+                        self._param_device_map[param_name] = op.attrs()[
+                            device_attr_name
+                        ]
+                        break
+
     def _get_device_for_param(self, param_name):
         device = None
         if param_name in self._param_device_map:
@@ -1255,7 +1279,7 @@ class Optimizer:
             their internal state.
         """
 
-        global_block = framework.default_main_program().global_block()
+        global_block = paddle.static.default_main_program().global_block()
         target_block = global_block
 
         start = len(target_block.ops)
@@ -1267,7 +1291,7 @@ class Optimizer:
             if isinstance(parameters_and_grads, dict)
             else parameters_and_grads
         )
-        self._update_param_device_map(params_grads_device_map, target_block)
+        self._update_param_device_map_pir(params_grads_device_map, target_block)
 
         if isinstance(parameters_and_grads, list):
             self._create_accumulators(
