@@ -34,17 +34,19 @@ class TestBernoulliOp(OpTest):
     def setUp(self):
         self.python_api = paddle.bernoulli
         self.op_type = "bernoulli"
-        self.python_api = paddle.tensor.random.bernoulli
-        self.init_dtype()
         self.sample_shape = (1000, 784)
+        self.init_dtype()
+        self.init_test_case()
+        self.inputs = {"X": self.x}
         self.attrs = {}
-        self.inputs = {
-            "X": np.random.uniform(size=self.sample_shape).astype(self.dtype)
-        }
-        self.outputs = {"Out": np.zeros(self.sample_shape, dtype=self.dtype)}
+        self.outputs = {"Out": self.out}
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
+
+    def init_test_case(self):
+        self.x = np.random.uniform(size=self.sample_shape).astype(self.dtype)
+        self.out = np.zeros(self.sample_shape, dtype=self.dtype)
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output, check_pir=True)
@@ -52,11 +54,6 @@ class TestBernoulliOp(OpTest):
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
-
-
-class TestBernoulliOp2(TestBernoulliOp):
-    def init_dtype(self):
-        self.dtype = np.float64
 
     def test_check_grad(self):
         self.check_grad(
@@ -66,6 +63,7 @@ class TestBernoulliOp2(TestBernoulliOp):
             user_defined_grad_outputs=[
                 np.random.rand(*self.sample_shape).astype(self.dtype)
             ],
+            check_pir=True,
         )
 
 
@@ -127,7 +125,7 @@ class TestRandomValue(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestBernoulliFP16Op(TestBernoulliOp2):
+class TestBernoulliFP16Op(TestBernoulliOp):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -141,23 +139,23 @@ class TestBernoulliBF16Op(OpTest):
     def setUp(self):
         self.op_type = "bernoulli"
         self.python_api = paddle.tensor.random.bernoulli
-        self.__class__.op_type = self.op_type
-        self.init_dtype()
         self.sample_shape = (1000, 784)
+        self.init_dtype()
+        self.init_test_case()
+        self.inputs = {"X": self.x}
         self.attrs = {}
-        self.inputs = {
-            "X": convert_float_to_uint16(
-                np.random.uniform(size=self.sample_shape).astype("float32")
-            )
-        }
-        self.outputs = {
-            "Out": convert_float_to_uint16(
-                np.zeros(self.sample_shape, dtype="float32")
-            )
-        }
+        self.outputs = {"Out": self.out}
 
     def init_dtype(self):
         self.dtype = np.uint16
+
+    def init_test_case(self):
+        self.x = convert_float_to_uint16(
+            np.random.uniform(size=self.sample_shape).astype("float32")
+        )
+        self.out = convert_float_to_uint16(
+            np.zeros(self.sample_shape, dtype="float32")
+        )
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
