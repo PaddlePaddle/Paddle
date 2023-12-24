@@ -864,7 +864,9 @@ inline void RunProgramGradAPI(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
-    VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
+    VLOG(2) << "No interpretercore cahce, so create a new interpretercore"
+               "for program: "
+            << program_id;
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
     bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
@@ -1154,12 +1156,14 @@ inline void PirRunProgramGradAPI(
 class GradNodeRunProgram : public egr::GradNodeBase {
  public:
   GradNodeRunProgram(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
-      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
+    VLOG(4) << "GradNodeRunProgram";
+  }
 
   ~GradNodeRunProgram() override {
-    if (!executed_) {
+    if (!(*executed_)) {
       auto *out_scope_vec = &step_scope_;
-      VLOG(4) << "~GradNodeRunProgram";
+      VLOG(4) << "~GradNodeRunProgram: " << this;
       // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
@@ -1226,9 +1230,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       x_grad_ptr,
                       params_grad_ptr,
                       place_hash_key_);
-    VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
+    VLOG(3) << "End Eager Backward Node: GradNodeRunProgram: Ptr " << this;
 
-    executed_ = true;
+    *executed_ = true;
     egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&x_grad,
                                                         this->OutputMeta()[0]);
     egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&params_grad,
@@ -1332,7 +1336,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   int64_t place_hash_key_;
 
-  bool executed_{false};
+  // why use shared_ptr. because paddle.grad will copy GradNode, if
+  // we use bool, the copied node have different executed states.
+  std::shared_ptr<bool> executed_ = std::make_shared<bool>(false);
 };
 
 class PirGradNodeRunProgram : public egr::GradNodeBase {
@@ -1341,7 +1347,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
 
   ~PirGradNodeRunProgram() override {
-    if (!executed_) {
+    if (!(*executed_)) {
       auto *out_scope_vec = &step_scope_;
       VLOG(4) << "~PirGradNodeRunProgram";
       // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
@@ -1414,7 +1420,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
                          place_hash_key_);
     VLOG(3) << "End Eager Backward Node: PirGradNodeRunProgram";
 
-    executed_ = true;
+    *executed_ = true;
     return {x_grad, params_grad};
   }
 
@@ -1519,5 +1525,5 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
 
   int64_t place_hash_key_;
 
-  bool executed_{false};
+  std::shared_ptr<bool> executed_ = std::make_shared<bool>(false);
 };

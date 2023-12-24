@@ -46,7 +46,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
   }
 
   void Run(pir::Operation* op) override {
-    VLOG(6) << "apply ParamsSyncAmongDevicesPass";
+    VLOG(6) << "apply params_sync_among_devices_pass";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
