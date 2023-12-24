@@ -884,7 +884,7 @@ class TestDygraphInplaceIgamma(TestDygraphInplaceWithContinuous):
         self.input_var_numpy = (
             np.random.random(self.shape).astype(self.dtype) + 1
         )
-        self.a = paddle.randn(shape=self.shape, dtype=self.dtype) + 1
+        self.a = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
 
     def inplace_api_processing(self, var):
         return paddle.igamma_(var, a=self.a)
@@ -900,7 +900,7 @@ class TestDygraphInplaceIgammac(TestDygraphInplaceWithContinuous):
         self.input_var_numpy = (
             np.random.random(self.shape).astype(self.dtype) + 1
         )
-        self.a = paddle.randn(shape=self.shape, dtype=self.dtype) + 1
+        self.a = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
 
     def inplace_api_processing(self, var):
         return paddle.igammac_(var, a=self.a)
