@@ -5073,6 +5073,12 @@ def igamma(x, a, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1.        , 0.15729916, 0.00000774, 0.        , 0.        ])
     """
+    if not paddle.all(paddle.greater_equal(a, paddle.zeros_like(a))):
+        raise ValueError(
+            "The input argument a must be greater than or equal to 0."
+        )
+    if not paddle.all(paddle.greater_than(x, paddle.zeros_like(x))):
+        raise ValueError("The input argument x must be greater than 0.")
     if in_dynamic_or_pir_mode():
         return _C_ops.igamma(x, a)
     else:
@@ -5122,7 +5128,7 @@ def igammac(x, a, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.        , 0.84270084, 0.99999225, 1.        , 1.        ])
     """
-    return 1.0 - paddle.igamma(x, a)
+    return 1 - paddle.igamma(x, a)
 
 
 @inplace_apis_in_dygraph_only

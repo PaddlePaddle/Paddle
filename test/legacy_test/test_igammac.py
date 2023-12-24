@@ -44,7 +44,7 @@ class TestIgammacApi(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('x', self.x_np.shape, self.x_np.dtype)
-            a = paddle.static.data('a', self.a_np.shape, self.x_np.dtype)
+            a = paddle.static.data('a', self.a_np.shape, self.a_np.dtype)
             out = paddle.igammac(x, a)
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(
@@ -52,6 +52,7 @@ class TestIgammacApi(unittest.TestCase):
             )
         out_ref = ref_igammac(self.x_np, self.a_np)
         np.testing.assert_allclose(out_ref, res, rtol=1e-6, atol=1e-6)
+        self.assertEqual(out.dtype, x.dtype)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -60,6 +61,7 @@ class TestIgammacApi(unittest.TestCase):
         out = paddle.igammac(x, a)
         out_ref = ref_igammac(self.x_np, self.a_np)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-6, atol=1e-6)
+        self.assertEqual(out.dtype, x.dtype)
         paddle.enable_static()
 
 
