@@ -91,6 +91,23 @@ class TestSignbitAPI(unittest.TestCase):
             x = np.random.randint(-10, 10, size=[12, 20, 2]).astype('float32')
             x = paddle.signbit(x)
 
+    def test_Tensor_dtype(self):
+        def run(place):
+            paddle.disable_static(place)
+            if core.is_compiled_with_cuda():
+                support_dtypes = self.cuda_support_dtypes
+            else:
+                support_dtypes = self.cpu_support_dtypes
+
+            for dtype in support_dtypes:
+                x = paddle.to_tensor(
+                    np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
+                )
+                x.signbit()
+
+        for place in self.place:
+            run(place)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,6 +30,11 @@ namespace paddle {
 
 using Program = pir::Program;
 
+// some outputs like xshape will no longer used after decomp, and those outputs
+// will skip checking.
+std::unordered_set<std::string> decomp_op_contain_none = {
+    "pd_op.squeeze", "pd_op.unsqueeze", "pd_op.flatten", "pd_op.batch_norm"};
+
 static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
     return true;
@@ -114,43 +119,63 @@ void DecompProgram::check_decomp_outputs(
     const std::string& op_name,
     const std::vector<pir::OpResult>& orig_outs,
     const std::vector<pir::OpResult>& decomp_outs) {
+  bool skip_invalid_op_check =
+      decomp_op_contain_none.find(op_name) != decomp_op_contain_none.end();
   for (size_t i = 0; i < orig_outs.size(); i++) {
-    auto orig_dtype = GetValueDtype(orig_outs[i]);
-    auto decomp_dtype = GetValueDtype(decomp_outs[i]);
+    if (skip_invalid_op_check &&
+        paddle::dialect::IsEmptyValue(decomp_outs[i])) {
+      VLOG(0) << "[Prim] Decomp op skip check of output index " << i
+              << " of op " << op_name;
+    } else {
+      PADDLE_ENFORCE(
+          !paddle::dialect::IsEmptyValue(orig_outs[i]),
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, its origin output index %d is invalid",
+              op_name,
+              i));
+      PADDLE_ENFORCE(
+          !paddle::dialect::IsEmptyValue(decomp_outs[i]),
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, its decomp output index %d is invalid",
+              op_name,
+              i));
+      auto orig_dtype = GetValueDtype(orig_outs[i]);
+      auto decomp_dtype = GetValueDtype(decomp_outs[i]);
 
-    PADDLE_ENFORCE(
-        orig_dtype == decomp_dtype,
-        paddle::platform::errors::PreconditionNotMet(
-            "[Prim] For op %s, its origin output dtype %s is not equal to "
-            "decomp output dtype %s ",
-            op_name,
-            orig_dtype,
-            decomp_dtype));
+      PADDLE_ENFORCE(
+          orig_dtype == decomp_dtype,
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, its origin output dtype %s is not equal to "
+              "decomp output dtype %s ",
+              op_name,
+              orig_dtype,
+              decomp_dtype));
 
-    auto orig_dim = GetValueDims(orig_outs[i]);
-    auto decomp_dim = GetValueDims(decomp_outs[i]);
-    std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
-    if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
-      LOG(WARNING)
-          << "[Prim] Decomp op does not support dynamic shape -1, but got "
-             "shape ["
-          << orig_dim << "] in output of origin op " << op_name;
+      auto orig_dim = GetValueDims(orig_outs[i]);
+      auto decomp_dim = GetValueDims(decomp_outs[i]);
+      std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
+      if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
+        LOG(WARNING)
+            << "[Prim] Decomp op does not support dynamic shape -1, but got "
+               "shape ["
+            << orig_dim << "] in output of origin op " << op_name;
+      }
+      if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
+        LOG(WARNING)
+            << "[Prim] Decomp op does not support dynamic shape -1, but got "
+               "shape ["
+            << decomp_dim << "] in output of decomp op " << op_name;
+      }
+
+      PADDLE_ENFORCE(
+          orig_dim == decomp_dim,
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, its origin output shape [%s] is not equal to "
+              "decomp output shape [%s] ",
+              op_name,
+              orig_dim,
+              decomp_dim));
     }
-    if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
-      LOG(WARNING)
-          << "[Prim] Decomp op does not support dynamic shape -1, but got "
-             "shape ["
-          << decomp_dim << "] in output of decomp op " << op_name;
-    }
-
-    PADDLE_ENFORCE(
-        orig_dim == decomp_dim,
-        paddle::platform::errors::PreconditionNotMet(
-            "[Prim] For op %s, its origin output shape [%s] is not equal to "
-            "decomp output shape [%s] ",
-            op_name,
-            orig_dim,
-            decomp_dim));
   }
   return;
 }

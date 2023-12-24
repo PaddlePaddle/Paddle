@@ -35,6 +35,7 @@
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
+using paddle::dialect::AssertOp;
 using paddle::dialect::HasElementsOp;
 using paddle::dialect::IfOp;
 using paddle::dialect::WhileOp;
@@ -95,6 +96,21 @@ void BindWhileOp(py::module* m) {
            return_value_policy::reference);
 }
 
+void BindAssertOp(py::module* m) {
+  m->def("build_assert_op",
+         [](Value cond, const std::vector<Value>& data, int64_t summarize) {
+           auto data_combine_op =
+               ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(data);
+           return ApiBuilder::Instance().GetBuilder()->Build<AssertOp>(
+               cond, data_combine_op.out(), summarize);
+         });
+  py::class_<AssertOp> assert_op(*m, "AssertOp", R"DOC(
+    AssertOp in python api.
+  )DOC");
+  assert_op.def(
+      "as_operation", &AssertOp::operation, return_value_policy::reference);
+}
+
 void GetUsedExternalValueImpl(
     std::unordered_set<Value>& defined_values,  // NOLINT
     std::vector<Value>& used_values,            // NOLINT
@@ -127,6 +143,16 @@ std::vector<Value> GetUsedExternalValue(const Operation& op) {
   std::unordered_set<Value> defined_values{nullptr};
   std::vector<Value> used_values;
   GetUsedExternalValueImpl(defined_values, used_values, op);
+  return used_values;
+}
+
+std::vector<Value> GetUsedExternalValue(const Block& block) {
+  auto& args = block.args();
+  std::unordered_set<Value> defined_values(args.begin(), args.end());
+  std::vector<Value> used_values;
+  for (auto& op : block) {
+    GetUsedExternalValueImpl(defined_values, used_values, op);
+  }
   return used_values;
 }
 
@@ -219,7 +245,10 @@ void PyIfOp::UpdateOutput() {
 }
 
 void BindControlFlowApi(py::module* m) {
-  m->def("get_used_external_value", GetUsedExternalValue);
+  m->def("get_used_external_value",
+         [](const Operation& op) { return GetUsedExternalValue(op); });
+  m->def("get_used_external_value",
+         [](const Block& block) { return GetUsedExternalValue(block); });
   m->def("build_pipe_for_block", BuildPipeForBlock);
   m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {
@@ -231,6 +260,7 @@ void BindControlFlowApi(py::module* m) {
   });
   BindIfOp(m);
   BindWhileOp(m);
+  BindAssertOp(m);
 }
 
 }  // namespace pybind
