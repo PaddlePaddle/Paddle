@@ -30,9 +30,12 @@ class TestOpTranscriber(unittest.TestCase):
         raise Exception('Build a new program for the op to be tested!')
 
     def check(self):
-        assert hasattr(self, "op_name"), "op_name should be specified!"
+        assert hasattr(self, "op_name"), "Op_name should be specified!"
         self.build_model()
         l = pir.translate_to_pir(self.main_program.desc)
         assert self.op_name in str(l), (
-            self.op_name + " should be translated to pd_op." + self.op_name
+            self.op_name
+            + " should be translated to pd_op."
+            + self.op_name
+            + '!'
         )
