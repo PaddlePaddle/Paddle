@@ -14,23 +14,18 @@
 
 import unittest
 
+from test_op_transcriber import TestOpTranscriber
+
 import paddle
-from paddle import pir
-from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 
 paddle.enable_static()
 
 
-class TestCReduceMinOpTranscriber(unittest.TestCase):
-    def test_program(self):
-        place = core.Place()
-        place.set_place(paddle.CPUPlace())
-
-        new_scope = paddle.static.Scope()
-        main_program = paddle.static.Program()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
+class TestCReduceMinOpTranscriber(TestOpTranscriber):
+    def build_model(self):
+        with paddle.static.scope_guard(self.new_scope):
+            with paddle.static.program_guard(self.main_program):
                 x = paddle.ones(shape=(100, 2, 3), dtype='float32')
                 y = paddle.ones(shape=(100, 2, 3), dtype='float32')
                 attrs = {'ring_id': 0, 'root_id': 0, 'use_calc_stream': False}
@@ -41,10 +36,10 @@ class TestCReduceMinOpTranscriber(unittest.TestCase):
                     outputs={"Out": y},
                     attrs=attrs,
                 )
-        l = pir.translate_to_pir(main_program.desc)
-        assert (
-            l.global_block().ops[2].name() == "pd_op.c_reduce_min"
-        ), "c_reduce_min should be translated to c_reduce_min"
+
+    def test_translator(self):
+        self.op_name = "c_reduce_min"
+        self.check()
 
 
 if __name__ == "__main__":

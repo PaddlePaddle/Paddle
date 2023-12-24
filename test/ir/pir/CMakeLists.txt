@@ -40,6 +40,4 @@ py_test_modules(
 
 add_subdirectory(fused_pass)
 
-if(WITH_DISTRIBUTE)
-  add_subdirectory(translator)
-endif()
+add_subdirectory(translator)
