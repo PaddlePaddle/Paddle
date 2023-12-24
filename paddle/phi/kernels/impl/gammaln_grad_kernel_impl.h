@@ -66,7 +66,6 @@ struct GammalnGradFunctor {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_dout = static_cast<MT>(dout_[idx]);
     const MT mp_x = static_cast<MT>(x_[idx]);
-    const auto one = MT{1};
     output_[idx] = static_cast<T>(mp_dout * digamma<MT>(mp_x));
   }
 
