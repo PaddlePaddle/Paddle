@@ -218,28 +218,17 @@ def recompute(op):
             self._op = op
 
         def __call__(self, *args, **kwargs):
-            default_prog = paddle.static.default_main_program()
-            cur_block = default_prog.current_block()
-            op_size = len(cur_block.ops)
-            output = self._op(*args, **kwargs)
-            new_op_size = len(cur_block.ops)
-
-            for idx in range(op_size, new_op_size):
-                op = cur_block.ops[idx]
-                if op.has_attr(
-                    "op_namescope"
-                ) and 'auto_parallel/exclude_rc' in op.attr("op_namescope"):
-                    op._set_attr(
-                        'op_namescope',
-                        "/auto_parallel/rc_"
-                        + str(_g_recompute_idx)
-                        + "_exclude_rc",
+            with paddle.static.name_scope(
+                f'/auto_parallel/rc_{_g_recompute_idx}'
+            ):
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._op
+                        )(*args, **kwargs)
                     )
                 else:
-                    op._set_attr(
-                        'op_namescope',
-                        '/auto_parallel/rc_' + str(_g_recompute_idx),
-                    )
+                    output = self._op(*args, **kwargs)
 
             return output
 
@@ -262,15 +251,15 @@ def exclude_ops_in_recompute(run_function):
             self._run_function = run_function
 
         def __call__(self, *args, **kwargs):
-            default_prog = paddle.static.default_main_program()
-            cur_block = default_prog.current_block()
-            op_size = len(cur_block.ops)
-            output = self._run_function(*args, **kwargs)
-            new_op_size = len(cur_block.ops)
-
-            for idx in range(op_size, new_op_size):
-                op = cur_block.ops[idx]
-                op._set_attr('op_namescope', "/auto_parallel/exclude_rc")
+            with paddle.static.name_scope('/exclude_rc'):
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._run_function
+                        )(*args, **kwargs)
+                    )
+                else:
+                    output = self._run_function(*args, **kwargs)
 
             return output
 

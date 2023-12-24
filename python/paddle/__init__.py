@@ -474,6 +474,7 @@ from .tensor.math import (  # noqa: F401
     scale,
     sgn,
     sign,
+    signbit,
     sin,
     sin_,
     sinh,
@@ -953,4 +954,5 @@ __all__ = [
     "index_fill_",
     'diagonal_scatter',
     'combinations',
+    'signbit',
 ]

@@ -52,6 +52,7 @@ function make_ubuntu_trt7_dockerfile(){
 
 function make_ubuntu_trt7_dockerfile_temp_ues(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
+  sed "s#<baseimg>#nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   echo "FROM registry.baidubce.com/paddlepaddle/paddleqa:coverage-ci-temp-use" >> ${dockerfile_name}
   echo "RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPIC --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && cd ../ && rm -rf openssl-1.1.1v*" >> ${dockerfile_name}
   echo "ENV OPENSSL_ROOT_DIR=/usr/local/ssl" >> ${dockerfile_name}
@@ -150,6 +151,7 @@ function main() {
   make_ce_framework_dockcerfile
   make_unbuntu20_cu12_dockerfile
   make_ubuntu20_cu112_dockerfile
+  cp Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage Dockerfile.cuda102_cudnn8_gcc82_ubuntu16
 }
 
 main "$@"

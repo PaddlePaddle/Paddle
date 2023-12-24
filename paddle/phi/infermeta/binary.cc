@@ -1808,6 +1808,15 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void IdentityLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& out_grad,
+                               const int reduction,
+                               MetaTensor* x_grad) {
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,

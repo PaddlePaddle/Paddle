@@ -1229,6 +1229,48 @@ def read_log(
     return res_metric, res_memory, err_code
 
 
+def get_error_info(filename):
+    """
+    get error info from log file
+    return:
+        error_info: Specific error message
+    """
+    error_infos = []
+    error_pattern = r"Error"
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        last_lines = lines[-100:]
+        for line in last_lines:
+            error_info = re.findall(error_pattern, line, re.IGNORECASE)
+            if error_info:
+                if "Out of memory" in line:
+                    error_infos.append("Out of memory")
+                else:
+                    error_infos.append(line)
+    return list(set(error_infos))
+
+
+def find_error_from_log(path):
+    """
+    find error infos from log directory
+    return:
+        error_info: all error message on log directory
+    """
+    unique_error_info = ""
+    all_error_infos = []
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if not file.startswith("workerlog"):
+                continue
+            error_infos = get_error_info(path + "/" + file)
+            all_error_infos += error_infos
+    all_error_infos = list(set(all_error_infos))
+    for info in all_error_infos:
+        unique_error_info = unique_error_info + info + ","
+    unique_error_info = unique_error_info[:-1]
+    return unique_error_info
+
+
 def three_mul_combinations(target):
     """Return the combinations of three numbers which product is target."""
     results = []
