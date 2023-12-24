@@ -14,13 +14,49 @@
 
 #pragma once
 
-#include <unsupported/Eigen/SpecialFunctions>
-#include "unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsImpl.h"
-
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
+template <typename T>
+HOSTDEVICE T digamma(T x) {
+  static T c = T{8.5};
+  static T euler_mascheroni = T{0.57721566490153286060};
+  T r;
+  T value;
+  T x2;
+
+  if (x <= T{0.0}) {
+    value = T{0.0};
+    return value;
+  }
+
+  if (x <= T{0.000001}) {
+    value = -euler_mascheroni - T{1.0} / x + T{1.6449340668482264365} * x;
+    return value;
+  }
+
+  value = T{0.0};
+  x2 = x;
+  while (x2 < c) {
+    value = value - T{1.0} / x2;
+    x2 = x2 + T{1.0};
+  }
+
+  r = T{1.0} / x2;
+  value = value + std::log(x2) - T{0.5} * r;
+
+  r = r * r;
+
+  value = value -
+          r * (T{1.0} / T{12.0} -
+               r * (T{1.0} / T{120.0} -
+                    r * (T{1.0} / T{252.0} -
+                         r * (T{1.0} / T{240.0} - r * (T{1.0} / T{132.0})))));
+
+  return value;
+}
+
 template <typename T>
 struct GammalnGradFunctor {
   GammalnGradFunctor(const T* dout, const T* x, T* output, int64_t numel)
@@ -30,8 +66,8 @@ struct GammalnGradFunctor {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_dout = static_cast<MT>(dout_[idx]);
     const MT mp_x = static_cast<MT>(x_[idx]);
-    output_[idx] = static_cast<T>(
-        mp_dout * Eigen::numext::polygamma(static_cast<MT>(0), mp_x));
+    const auto one = MT{1};
+    output_[idx] = static_cast<T>(mp_dout * digamma<MT>(mp_x));
   }
 
  private:
