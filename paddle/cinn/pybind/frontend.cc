@@ -41,7 +41,7 @@
 #include "paddle/cinn/utils/timer.h"
 
 namespace cinn::pybind {
-using common::Type;
+using cinn::common::Type;
 using frontend::Placeholder;
 namespace py = pybind11;
 using namespace cinn::frontend;  // NOLINT
@@ -78,7 +78,8 @@ void BindFrontend(pybind11::module *m) {
       .def("id", [](Variable &self) { return self->id; })
       .def("name", [](Variable &self) { return self->id; })
       .def("shape", [](Variable &self) { return self->shape; })
-      .def("type", [](Variable &self) { return common::Type2Str(self->type); })
+      .def("type",
+           [](Variable &self) { return cinn::common::Type2Str(self->type); })
       .def("set_type",
            [](Variable &self, const Type &type) {
              self->type = type;
@@ -86,7 +87,7 @@ void BindFrontend(pybind11::module *m) {
            })
       .def("set_type",
            [](Variable &self, const std::string &type) {
-             self->type = common::Str2Type(type);
+             self->type = cinn::common::Str2Type(type);
              return self;
            })
       .def("set_shape", [](Variable &self, const std::vector<int> &shape) {
@@ -95,15 +96,16 @@ void BindFrontend(pybind11::module *m) {
       });
 
   py::class_<Placeholder>(*m, "Placeholder")  //
-      .def(py::init<const common::Type &,
+      .def(py::init<const cinn::common::Type &,
                     const std::vector<int> &,
                     absl::string_view>(),
            py::arg("type"),
            py::arg("shape"),
            py::arg("id") = "")
       .def("shape", &Placeholder::shape)
-      .def("type",
-           [](Placeholder &self) { return common::Type2Str(self.type()); })
+      .def(
+          "type",
+          [](Placeholder &self) { return cinn::common::Type2Str(self.type()); })
       .def("id", &Placeholder::id)
       .def("name", &Placeholder::id)
       .def("__str__", [](const Placeholder &self) { return self.id(); });
@@ -179,7 +181,7 @@ void BindFrontend(pybind11::module *m) {
       .def(
           "build_and_get_output",
           [](Program &self,
-             const common::Target &target,
+             const cinn::common::Target &target,
              const std::vector<Variable> &tensor_inputs,
              const std::vector<py::array> &input_data,
              const std::vector<Variable> &tensor_outputs,
@@ -263,7 +265,7 @@ void BindFrontend(pybind11::module *m) {
       .def("apply_pass",
            [](Program &self,
               const std::unordered_set<std::string> &fetch_ids,
-              const common::Target &target,
+              const cinn::common::Target &target,
               const std::vector<std::string> &passes = {}) {
              auto graph = Optimize(&self, fetch_ids, target, passes);
              return graph->fusion_groups.size();
@@ -294,7 +296,7 @@ void BindFrontend(pybind11::module *m) {
       .def(
           "test_benchmark",
           [](Program &self,
-             const common::Target &target,
+             const cinn::common::Target &target,
              const std::vector<Variable> &tensor_inputs,
              const std::vector<py::array> &input_data,
              const Variable &tensor_out,
@@ -340,7 +342,7 @@ void BindFrontend(pybind11::module *m) {
       .def(
           "test_benchmark_with_code",
           [](Program &self,
-             const common::Target &target,
+             const cinn::common::Target &target,
              const std::vector<Variable> &tensor_inputs,
              const std::vector<py::array> &input_data,
              const Variable &tensor_out,
@@ -485,7 +487,7 @@ void BindFrontend(pybind11::module *m) {
       // clang-format on
       .def(py::init<const std::string &>(), py::arg("name") = "")
       .def("create_input",
-           static_cast<Placeholder (NetBuilder::*)(const common::Type &,
+           static_cast<Placeholder (NetBuilder::*)(const cinn::common::Type &,
                                                    const std::vector<int> &,
                                                    const std::string &)>(
                &NetBuilder::CreateInput),
@@ -843,7 +845,7 @@ void BindFrontend(pybind11::module *m) {
       // used always
       .def_static(
           "build_and_compile",
-          [](const common::Target &target,
+          [](const cinn::common::Target &target,
              NetBuilder &builder,
              const CinnComputation::CompileOptions &options) {
             return CinnComputation::BuildAndCompile(target, builder, options);
@@ -853,7 +855,7 @@ void BindFrontend(pybind11::module *m) {
           py::arg("options") = CinnComputation::DefaultCompileOptions())
       .def_static(
           "compile",
-          [](const common::Target &target,
+          [](const cinn::common::Target &target,
              Program &program,
              const CinnComputation::CompileOptions &options) {
             return CinnComputation::Compile(target, program, options);
@@ -863,7 +865,7 @@ void BindFrontend(pybind11::module *m) {
           py::arg("options") = CinnComputation::DefaultCompileOptions())
       .def_static(
           "compile_paddle_model",
-          [](const common::Target &target,
+          [](const cinn::common::Target &target,
              const std::string &model_path,
              const std::vector<std::string> &input_names,
              const std::vector<hlir::framework::shape_t> &input_shapes,
@@ -888,7 +890,7 @@ void BindFrontend(pybind11::module *m) {
 
   py::class_<PaddleModelConvertor>(*m, "PaddleModelConvertor")
       .def(py::init<>())
-      .def(py::init<const common::Target &,
+      .def(py::init<const cinn::common::Target &,
                     std::shared_ptr<NetBuilder>,
                     std::shared_ptr<hlir::framework::Scope>>(),
            py::arg("target"),

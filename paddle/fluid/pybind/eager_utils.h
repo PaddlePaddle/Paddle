@@ -54,6 +54,18 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
+template <typename T>
+static T PyObjectCast(PyObject* obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s, the real type is %s",
+        typeid(T).name(),
+        obj->ob_type->tp_name));
+  }
+}
+
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
@@ -381,6 +393,10 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
+PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
+
+PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args);
+
 // end of Slice related methods
 
 std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
@@ -401,6 +417,19 @@ class eager_gil_scoped_release {
  private:
   PyThreadState* tstate{nullptr};
 };
+
+/* ------------------ for SetStaticOpArgPreCastHook ----------------------- */
+
+inline static PyObject* static_op_arg_pre_cast_hook_get();
+
+inline static void static_op_arg_pre_cast_hook_set(PyObject* obj);
+
+static PyObject* set_static_op_arg_pre_cast_hook(PyObject* new_callback,
+                                                 PyThreadState* tstate);
+
+PyObject* SetStaticOpArgPreCastHook(PyObject* callback);
+
+PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook();
 
 /* ------------------ for auto parallel ----------------------- */
 using paddle::experimental::detail::ArgsIterator;
@@ -468,5 +497,7 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 }
 
 void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh);
+void BindEagerUtils(PyObject* module);
+
 }  // namespace pybind
 }  // namespace paddle

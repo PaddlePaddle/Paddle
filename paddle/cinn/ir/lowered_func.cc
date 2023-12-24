@@ -33,8 +33,8 @@
 namespace cinn {
 namespace ir {
 
-using common::bfloat16;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::float16;
 
 const _LoweredFunc_* LoweredFunc::operator->() const {
   return As<_LoweredFunc_>();
@@ -171,7 +171,7 @@ std::vector<Expr> _LoweredFunc_::PrepareCreateTempBufferExprs() const {
       auto expr = ir::intrinsics::BufferCreate::Make(temp_buf);
       auto buffer_ptr_type =
           Type()
-              .set_customized_type(common::customized_type::kbuffer_t)
+              .set_customized_type(cinn::common::customized_type::kbuffer_t)
               .set_cpp_handle();
       Var variable = ir::_Var_::Make(temp_buf->name, buffer_ptr_type);
       expr = ir::Let::Make(variable, expr);
@@ -301,7 +301,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
   // type of `cinn_buffer_t*`
   auto buffer_ptr_type =
       Type()
-          .set_customized_type(common::customized_type::kbuffer_t)
+          .set_customized_type(cinn::common::customized_type::kbuffer_t)
           .set_cpp_handle();
   // type of `const cinn_buffer_t*`
   auto const_buffer_ptr_type = buffer_ptr_type.with_cpp_const();
@@ -309,13 +309,13 @@ void _LoweredFunc_::PrepareArgumentExprs() {
 
   Var args_passed_in("_args", type_of<void*>());
   auto pod_value_ptr =
-      common::CastIfNeeded(args_passed_in, type_of<cinn_pod_value_t*>());
+      cinn::common::CastIfNeeded(args_passed_in, type_of<cinn_pod_value_t*>());
 
   if (FLAGS_cinn_runtime_display_debug_info) {
     argument_prepare_exprs.push_back(runtime::IntrinsicCall(
         Void(),
         runtime::intrinsic::print_debug_args_repr,
-        {pod_value_ptr, common::make_const(Int(32), args.size())}));
+        {pod_value_ptr, cinn::common::make_const(Int(32), args.size())}));
   }
 
   /*
@@ -333,7 +333,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     // cast arg to cinn_pod_value_t*
 
     // something like `_args[0]`
-    Expr load_expr = Load::Make(pod_value_ptr, {common::make_const(i)});
+    Expr load_expr = Load::Make(pod_value_ptr, {cinn::common::make_const(i)});
     CHECK_EQ(load_expr.type(), type_of<cinn_pod_value_t>());
     load_expr = ir::intrinsics::GetAddr::Make(load_expr);
 

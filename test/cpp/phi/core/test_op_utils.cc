@@ -15,8 +15,8 @@ limitations under the License. */
 #include <iostream>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/operators/ops_signature/signatures.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/ops/compat/signatures.h"
 
 namespace phi {
 namespace tests {

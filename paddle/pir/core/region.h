@@ -20,15 +20,18 @@
 
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/iterator.h"
+#include "paddle/pir/core/visitors.h"
 
 namespace pir {
 
 class Block;
 class Operation;
 class IrContext;
+class Program;
 
 class IR_API Region {
  public:
+  using Element = Block;
   using Iterator = PointerListIterator<Block>;
   using ConstIterator = PointerListConstIterator<Block>;
   using ReverseIterator = std::reverse_iterator<Iterator>;
@@ -50,14 +53,23 @@ class IR_API Region {
   ConstReverseIterator rbegin() const { return blocks_.rbegin(); }
   ConstReverseIterator rend() const { return blocks_.rend(); }
 
-  Block *back() const { return blocks_.back(); }
-  Block *front() const { return blocks_.front(); }
+  Block &front() { return *blocks_.front(); }
+  Block &back() { return *blocks_.back(); }
+
+  const Block &front() const { return *blocks_.front(); }
+  const Block &back() const { return *blocks_.back(); }
+
   void push_back(Block *block);
-  Block *emplace_back();
+  Block &emplace_back();
   void push_front(Block *block);
   Iterator insert(ConstIterator position, Block *block);
   Iterator erase(ConstIterator position);
   void clear();
+
+  /// Operation Walkers, walk the operations in this region. The callback method
+  /// is called for each nested region, block or operation,
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(FuncT &&callback);
 
   // take the last block of region.
   // if region is empty, return nullptr;
@@ -66,6 +78,9 @@ class IR_API Region {
 
   Operation *GetParent() const { return parent_; }
   void set_parent(Operation *parent) { parent_ = parent; }
+  // return the program which contains this region.
+  // if region is not in a program, return nullptr.
+  Program *parent_program() const;
 
   IrContext *ir_context() const;
 

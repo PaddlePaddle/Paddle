@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/macros.h"  // import FLT_MAX
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"  // import FLT_MAX
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -427,7 +427,7 @@ inline void UpdatePadding(std::vector<T>* paddings,
                           const std::vector<T>& strides,
                           const std::vector<T>& kernel_size) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = vectorize<T>(data_dims);
+  auto data_shape = common::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);

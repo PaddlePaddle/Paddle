@@ -13,25 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
-
 #include "paddle/phi/infermeta/spmd_rules/cast.h"
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
+#include "paddle/phi/infermeta/spmd_rules/cross_entropy_with_softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
+#include "paddle/phi/infermeta/spmd_rules/flash_attention.h"
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
+#include "paddle/phi/infermeta/spmd_rules/full_like.h"
+#include "paddle/phi/infermeta/spmd_rules/fused_linear_param_grad_add.h"
+#include "paddle/phi/infermeta/spmd_rules/fused_rope.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/numel.h"
+#include "paddle/phi/infermeta/spmd_rules/optimizer.h"
+#include "paddle/phi/infermeta/spmd_rules/pow.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/scale.h"
 #include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
+#include "paddle/phi/infermeta/spmd_rules/squeeze.h"
 #include "paddle/phi/infermeta/spmd_rules/stack.h"
+#include "paddle/phi/infermeta/spmd_rules/tile.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
 #include "paddle/phi/infermeta/spmd_rules/triu.h"
 #include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
@@ -85,6 +93,12 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 
+// fused rope
+PD_REGISTER_SPMD_RULE(
+    fused_rotary_position_embedding,
+    PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::FusedRopeInferSpmdReverse));
+
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
     replicated,
@@ -94,6 +108,10 @@ PD_REGISTER_SPMD_RULE(
 // unsqueeze rule
 PD_REGISTER_SPMD_RULE(
     unsqueeze,
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    unsqueeze2,
     PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
     PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
 
@@ -449,6 +467,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    not_equal,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+
 // TODO(pkuzyc): add multiary elementwise rule
 
 // reduction rule
@@ -476,6 +499,12 @@ PD_REGISTER_SPMD_RULE(
     max,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    reduce_max,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     min,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
@@ -499,6 +528,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    flash_attention,
+    PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
+    PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdReverse));
+
 // reshape rule
 PD_REGISTER_SPMD_RULE(reshape,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
@@ -507,6 +541,10 @@ PD_REGISTER_SPMD_RULE(reshape2,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
 
+// squeeze rule
+PD_REGISTER_SPMD_RULE(squeeze,
+                      PD_INFER_SPMD(phi::distributed::SqueezeInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SqueezeInferSpmdReverse));
 // flatten rule
 PD_REGISTER_SPMD_RULE(flatten,
                       PD_INFER_SPMD(phi::distributed::FlattenInferSpmd),
@@ -571,6 +609,28 @@ PD_REGISTER_SPMD_RULE(
     tril_triu,
     PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmd),
     PD_INFER_SPMD(phi::distributed::TrilTriuInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(tile,
+                      PD_INFER_SPMD(phi::distributed::TileInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::TileInferSpmdReverse));
+
+// cross_entropy_with_softmax
+PD_REGISTER_SPMD_RULE(
+    cross_entropy_with_softmax,
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    softmax_with_cross_entropy,
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
+
+// fused_linear_param_grad_add got no reverse infer spmd rule
+PD_REGISTER_SPMD_RULE(
+    fused_linear_param_grad_add,
+    PD_INFER_SPMD(phi::distributed::FusedLinearParamGradAddInferSpmd),
+    PD_INFER_SPMD(
+        phi::distributed::FusedLinearParamGradAddInferSpmdFakeReverse));
 
 }  // namespace distributed
 }  // namespace phi

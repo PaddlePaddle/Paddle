@@ -23,9 +23,9 @@ from ..base.compiler import (
     IpuStrategy,
 )
 from ..base.executor import Executor, global_scope, scope_guard
-from ..base.framework import (  # noqa: F401
-    Operator,
-    Parameter,
+from ..base.framework import (
+    Operator,  # noqa: F401
+    Parameter,  # noqa: F401
     Program,
     Variable,
     cpu_places,
@@ -42,21 +42,25 @@ from ..base.framework import (  # noqa: F401
 from ..base.param_attr import WeightNormParamAttr
 from ..tensor.creation import create_global_var, create_parameter
 from . import amp, nn  # noqa: F401
-from .input import InputSpec, data, setitem  # noqa: F401
-from .io import (  # noqa: F401
+from .input import (
+    InputSpec,
+    data,
+    setitem,  # noqa: F401
+)
+from .io import (
     deserialize_persistables,
     deserialize_program,
-    is_persistable,
+    is_persistable,  # noqa: F401
     load,
     load_from_file,
     load_inference_model,
     load_program_state,
-    load_vars,
+    load_vars,  # noqa: F401
     normalize_program,
     save,
     save_inference_model,
     save_to_file,
-    save_vars,
+    save_vars,  # noqa: F401
     serialize_persistables,
     serialize_program,
     set_program_state,

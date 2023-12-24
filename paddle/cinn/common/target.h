@@ -113,10 +113,6 @@ int GetMaxThreads();
 
 int GetMaxBlocks();
 
-std::array<int, 3> GetCUDAMaxBlockDims();
-
-std::array<int, 3> GetCUDAMaxGridDims();
-
 std::ostream& operator<<(std::ostream& os, Target::Arch arch);
 
 }  // namespace common

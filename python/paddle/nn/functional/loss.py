@@ -17,13 +17,13 @@ import math
 # TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.framework import core
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.framework import (
     _current_expected_place,
+    core,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
@@ -350,10 +350,11 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
                     2.94269347)
 
     """
-    if anchor.size == 0:
-        raise ValueError("The dims of anchor should be greater than 0.")
-    if positive.size == 0:
-        raise ValueError("The dims of positive should be greater than 0.")
+    if in_dynamic_mode():
+        if anchor.size == 0:
+            raise ValueError("The dims of anchor should be greater than 0.")
+        if positive.size == 0:
+            raise ValueError("The dims of positive should be greater than 0.")
     check_variable_and_dtype(
         anchor, 'anchor', ['float32', 'float64'], 'npair_loss'
     )
@@ -800,7 +801,7 @@ def binary_cross_entropy_with_logits(
             % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         one = _C_ops.full(
             [1],
             1.0,
@@ -1197,11 +1198,11 @@ def margin_ranking_loss(
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.subtract(other, input)
         out = _C_ops.multiply(out, label)
         if margin != 0.0:
-            margin = base.dygraph.base.to_variable([margin], dtype=out.dtype)
+            margin = paddle.to_tensor([margin], dtype=out.dtype)
             out = _C_ops.add(out, margin)
         out = _C_ops.relu(out)
         if reduction == 'sum':
@@ -1440,7 +1441,7 @@ def nll_loss(
 
     n = input_shape[0]
     c = input_shape[1]
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if input_dims != 2 and input_dims != 4:
             input = _C_ops.reshape(input, [n, c, 1, -1])
             label = _C_ops.reshape(label, [n, 1, -1])
@@ -1893,7 +1894,7 @@ def ctc_loss(
         input_length=None,
         label_length=None,
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if input_length is None or label_length is None:
                 raise ValueError(
                     "input_length and label_length must not be None in dygraph mode!"
@@ -2017,7 +2018,7 @@ def rnnt_loss(
     def warprnnt(
         input, label, input_length, label_length, blank=0, fastemit_lambda=0.001
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             loss_out = _C_ops.warprnnt(
                 input,
                 label,

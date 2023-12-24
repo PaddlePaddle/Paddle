@@ -37,7 +37,6 @@
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
-
 template <typename T>
 inline T xabs(const T x) {
   return x < static_cast<T>(0.0) ? -x : x;
@@ -45,20 +44,22 @@ inline T xabs(const T x) {
 
 template <typename T>
 void per_channel_scale(
-    float* scale, const T* input, size_t m, size_t n, float bound) {
+    T* scale, const T* input, size_t m, size_t n, float bound) {
   for (size_t i = 0; i < n; ++i) {
-    T max = input[i];
+    float max = static_cast<float>(input[i]);
     for (size_t j = 0; j < m; ++j) {
-      max = xabs(input[j * n + i]) > max ? xabs(input[j * n + i]) : max;
+      max = static_cast<float>(xabs(input[j * n + i])) > max
+                ? static_cast<float>(xabs(input[j * n + i]))
+                : max;
     }
-    scale[i] = static_cast<float>(max) / bound;
+    scale[i] = static_cast<T>(max / bound);
   }
 }
 
 template <typename T, int quant_bit = 8>
 void per_channel_quant(int8_t* output,
                        const T* input,
-                       const float* scale,
+                       const T* scale,
                        size_t num_rows,
                        size_t num_cols) {
   size_t bytes_per_out_col = num_cols * quant_bit / 8;
@@ -67,7 +68,7 @@ void per_channel_quant(int8_t* output,
     const T* current_weight_row = input + ii * num_cols;
     for (size_t jj = 0; jj < bytes_per_out_col; ++jj) {
       if (quant_bit == 8) {
-        const float col_scale = scale[jj];
+        const float col_scale = static_cast<float>(scale[jj]);
         const float weight_elt = static_cast<float>(current_weight_row[jj]);
         const float scaled_weight = round(weight_elt / col_scale);
         const int8_t clipped_weight = static_cast<int8_t>(
@@ -79,7 +80,7 @@ void per_channel_quant(int8_t* output,
         for (int packed_idx = 0; packed_idx < 2; ++packed_idx) {
           const size_t input_idx = 2 * jj + packed_idx;
           if (input_idx < num_cols) {
-            const float col_scale = scale[input_idx];
+            const float col_scale = static_cast<float>(scale[input_idx]);
             const float weight_elt =
                 static_cast<float>(current_weight_row[input_idx]);
             const float scaled_weight = round(weight_elt / col_scale);
@@ -349,7 +350,6 @@ void interleave_column_major_tensor(int8_t* interleaved_quantized_tensor,
             interleave * base_vec_row +
             vec_rows_per_tile * (read_col % interleave) +
             vec_read_row % vec_rows_per_tile;
-
         const size_t read_offset =
             size_t(read_col) * num_vec_rows + vec_read_row;
         const size_t write_offset =

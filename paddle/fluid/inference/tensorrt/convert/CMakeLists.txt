@@ -85,6 +85,9 @@ list(
   rnn_op.cc
   fill_constant_batch_size_like_op.cc
   sum_op.cc
+  bitwise_and_op.cc
+  bitwise_or_op.cc
+  size_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
@@ -148,7 +151,8 @@ if(WIN32)
   nv_test(
     test_custom_plugin_creater
     SRCS test_custom_plugin_creater.cc
-    DEPS paddle_framework tensorrt_converter phi custom_operator init_phi)
+    DEPS paddle_framework tensorrt_converter phi common custom_operator
+         init_phi)
 elseif(WITH_CINN)
   nv_test(
     test_custom_plugin_creater
@@ -156,6 +160,7 @@ elseif(WITH_CINN)
     DEPS paddle_framework
          tensorrt_converter
          phi
+         common
          custom_operator
          init_phi
          fleet_executor
@@ -167,6 +172,7 @@ else()
     DEPS paddle_framework
          tensorrt_converter
          phi
+         common
          custom_operator
          init_phi
          fleet_executor

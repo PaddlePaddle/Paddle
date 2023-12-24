@@ -43,4 +43,12 @@ void ArrayWriteKernel(const Context& dev_ctx,
                       const Scalar& i,
                       TensorArray* out);
 
+template <typename T, typename Context>
+void ArrayToTensorKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         int axis,
+                         bool use_stack,
+                         DenseTensor* out,
+                         DenseTensor* out_index);
+
 }  // namespace phi

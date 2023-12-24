@@ -13,17 +13,19 @@
 # limitations under the License.
 
 # TODO: define the functions to manipulate devices
-import re
-import os
 import ctypes
+import os
+import re
+
 import paddle
-from paddle.base import core
-from paddle.base import framework
+from paddle.base import core, framework
 from paddle.base.framework import (
     is_compiled_with_cinn,
     is_compiled_with_cuda,
+    is_compiled_with_distribute,
     is_compiled_with_rocm,
 )
+
 from . import (  # noqa: F401
     cuda,
     xpu,
@@ -40,6 +42,7 @@ __all__ = [
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
+    'is_compiled_with_distribute',
     'is_compiled_with_custom_device',
     'get_all_device_type',
     'get_all_custom_device_type',

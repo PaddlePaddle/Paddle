@@ -13,21 +13,38 @@
 # limitations under the License.
 
 import functools
+import inspect
 import os
+import pathlib
 import random
 import struct
 import sys
 import unittest
 import warnings
 from collections import defaultdict
+from contextlib import contextmanager
 from copy import copy
 
 import numpy as np
+from auto_parallel_op_test import (
+    dump_test_info,
+    gen_auto_parallel_test_file,
+    get_subprocess_command,
+    get_subprocess_runtime_envs,
+    get_test_info_and_generated_test_path,
+    is_ban_auto_parallel_test,
+    run_subprocess,
+)
 from op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 
-sys.path.append("..")
+# Add test/legacy and test to sys.path
+legacy_test_dir = pathlib.Path(__file__).parent  # test/legacy_test
+test_dir = legacy_test_dir.parent  # test
+sys.path.append(str(legacy_test_dir.absolute()))
+sys.path.append(str(test_dir.absolute()))
+
 from utils import static_guard
 from white_list import (
     check_shape_white_list,
@@ -53,8 +70,6 @@ from paddle.base.framework import (
     set_flags,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 
 @signature_safe_contextmanager
@@ -376,6 +391,32 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
+@contextmanager
+def auto_parallel_test_guard(test_info_path, generated_test_file_path):
+    test_info_file, generated_test_file = None, None
+    if os.path.exists(test_info_path):
+        raise OSError(
+            f"{test_info_path} which stores test info should not exist. Please delete it firstly."
+        )
+    if os.path.exists(generated_test_file_path):
+        raise OSError(
+            f"{generated_test_file_path} which stores test code should not exist. Please delete it firstly."
+        )
+    test_info_file = open(test_info_path, "wb")
+    generated_test_file = open(generated_test_file_path, "wb")
+    try:
+        yield
+    finally:
+        if test_info_file is not None:
+            test_info_file.close()
+        if generated_test_file is not None:
+            generated_test_file.close()
+        if os.path.exists(test_info_path):
+            os.remove(test_info_path)
+        if os.path.exists(generated_test_file_path):
+            os.remove(generated_test_file_path)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -633,6 +674,8 @@ class OpTest(unittest.TestCase):
         input_dtype_set = set()
         infer_dtype(inputs, input_dtype_set)
         dtype_list = [
+            np.dtype(np.complex128),
+            np.dtype(np.complex64),
             np.dtype(np.float64),
             np.dtype(np.float32),
             np.dtype(np.float16),
@@ -1345,7 +1388,8 @@ class OpTest(unittest.TestCase):
                 fetch_list = getattr(self, "fetch_list", [])
                 # if the fetch_list is customized by user, we use it directly.
                 # if not, fill the fetch_list by the user configured outputs in test.
-
+                # filter ret_tuple
+                ret_to_check = []
                 if len(fetch_list) == 0:
                     if isinstance(ret_tuple, (tuple, list)):
                         assert len(ret_tuple) == len(outputs_sig)
@@ -1355,14 +1399,17 @@ class OpTest(unittest.TestCase):
                             if not self._need_fetch(sig_name):
                                 continue
                             if isinstance(var, list):
+                                ret_to_check.append(var)
                                 for v in var:
                                     fetch_list.append(v)
                             else:
+                                ret_to_check.append(var)
                                 fetch_list.append(var)
                     elif isinstance(
                         ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
+                        ret_to_check = ret_tuple
                     elif ret_tuple is None:
                         pass
                     else:
@@ -1375,19 +1422,27 @@ class OpTest(unittest.TestCase):
                 outs = executor.run(
                     ir_program, feed=feed, fetch_list=[fetch_list]
                 )
-
                 outputs_sig = [
                     sig_name
                     for sig_name in outputs_sig
                     if self._need_fetch(sig_name)
                 ]
+
+                if paddle.utils.is_sequence(
+                    ret_to_check
+                ) and paddle.utils.is_sequence(outs):
+                    outs = paddle.utils.pack_sequence_as(ret_to_check, outs)
+
                 result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
-                        for i in range(len(self.python_out_sig_sub_name[key])):
-                            result[key][0][
-                                i
-                            ].name = self.python_out_sig_sub_name[key][i]
+                        result[key][0] = {
+                            a: [b]
+                            for a, b in zip(
+                                self.python_out_sig_sub_name[key],
+                                result[key][0],
+                            )
+                        }
                 return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
@@ -1968,6 +2023,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2394,12 +2450,24 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
-            def find_imperative_actual(target_name, pir_outs, place):
+            def find_pir_actual(self, target_name, pir_outs, place):
                 for name in pir_outs:
                     if name == target_name:
                         return pir_outs[name][0]
 
-                    var_list = pir_outs[name]
+                    sub_dict = pir_outs[name][0]
+                    if isinstance(sub_dict, dict):
+                        for key, value in sub_dict.items():
+                            if key == target_name:
+                                return value[0]
+
+                raise AssertionError("No pir output named " + target_name)
+
+            def find_pir_expect(self, target_name, dygraph_outs, place):
+                for name in dygraph_outs:
+                    if name == target_name:
+                        return dygraph_outs[name][0]
+                    var_list = dygraph_outs[name]
                     for i, var in enumerate(var_list):
                         if isinstance(var, list):
                             for tensor in var:
@@ -2409,26 +2477,14 @@ class OpTest(unittest.TestCase):
                             isinstance(var, paddle.Tensor)
                             and var.name == target_name
                         ):
-                            return pir_outs[name][i]
-                    self.assertTrue(
-                        False,
-                        f"Found failed {pir_outs.keys()} {target_name}",
-                    )
-
-            def find_imperative_expect(self, target_name, pir_outs, place):
-                for name in pir_outs:
-                    if name == target_name:
-                        return pir_outs[name][0]
-                self.assertTrue(
-                    False,
-                    f"Found failed {pir_outs.keys()} {target_name}",
-                )
+                            return dygraph_outs[name][i]
+                raise AssertionError("No pir ref_output named " + target_name)
 
             def find_actual_value(self, target_name):
                 with paddle.pir.core.program_guard(
                     paddle.pir.core.default_main_program()
                 ):
-                    actual = find_imperative_actual(
+                    actual = self.find_pir_actual(
                         target_name, self.outputs, place
                     )
                     actual_t = np.array(actual)
@@ -2438,7 +2494,7 @@ class OpTest(unittest.TestCase):
                 with paddle.pir.core.program_guard(
                     paddle.pir.core.default_main_program()
                 ):
-                    expect = self.find_imperative_expect(
+                    expect = self.find_pir_expect(
                         target_name, self.ref_outputs, place
                     )
                     expect_t = np.array(expect)
@@ -2531,6 +2587,51 @@ class OpTest(unittest.TestCase):
                 self.__class__.op_type = self.op_type
         if only_check_prim:
             return
+
+        if check_auto_parallel:
+            if is_ban_auto_parallel_test(place):
+                pass
+            else:
+                (
+                    forward_test_info_path,
+                    generated_forward_test_path,
+                ) = get_test_info_and_generated_test_path(
+                    self.__class__.__name__, self.op_type, backward=False
+                )
+                with auto_parallel_test_guard(
+                    forward_test_info_path, generated_forward_test_path
+                ):
+                    dump_test_info(
+                        self, place, forward_test_info_path, backward=False
+                    )
+                    python_api_info = {
+                        "api_name": self.python_api.__name__,
+                        "api_module": inspect.getmodule(
+                            self.python_api
+                        ).__name__
+                        if inspect.getmodule(
+                            self.python_api
+                        ).__name__.startswith("paddle")
+                        else pathlib.Path(
+                            inspect.getmodule(self.python_api).__file__
+                        ).stem,
+                    }
+                    # code gen for auto parallel forward test
+                    gen_auto_parallel_test_file(
+                        check_grad=False,
+                        test_info_path=forward_test_info_path,
+                        test_file_path=generated_forward_test_path,
+                        python_api_info=python_api_info,
+                    )
+                    runtime_envs = get_subprocess_runtime_envs(place)
+                    start_command = get_subprocess_command(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"],
+                        generated_forward_test_path,
+                        log_dir=self.log_dir
+                        if hasattr(self, "log_dir")
+                        else None,
+                    )
+                    run_subprocess(start_command, runtime_envs, timeout=120)
 
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
@@ -2660,6 +2761,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         only_check_prim=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2686,6 +2788,7 @@ class OpTest(unittest.TestCase):
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
                 check_pir=check_pir,
+                check_auto_parallel=check_auto_parallel,
             )
             if not res and only_check_prim:
                 continue
@@ -2870,6 +2973,7 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
         check_cinn=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2894,6 +2998,7 @@ class OpTest(unittest.TestCase):
                 atol=atol,
                 check_cinn=check_cinn,
                 check_pir=check_pir,
+                check_auto_parallel=check_auto_parallel,
             )
 
     def check_grad_with_place(
@@ -2915,6 +3020,7 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
         check_cinn=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2955,11 +3061,68 @@ class OpTest(unittest.TestCase):
 
         if only_check_prim:
             return
+
+        if check_auto_parallel:
+            if is_ban_auto_parallel_test(place):
+                pass
+            else:
+                (
+                    grad_test_info_path,
+                    generated_grad_test_path,
+                ) = get_test_info_and_generated_test_path(
+                    self.__class__.__name__, self.op_type, backward=True
+                )
+                with auto_parallel_test_guard(
+                    grad_test_info_path, generated_grad_test_path
+                ):
+                    backward_extra_test_info = {}
+                    backward_extra_test_info[
+                        "inputs_to_check"
+                    ] = inputs_to_check
+                    backward_extra_test_info["output_names"] = output_names
+                    backward_extra_test_info["no_grad_set"] = no_grad_set
+                    backward_extra_test_info[
+                        "user_defined_grad_outputs"
+                    ] = user_defined_grad_outputs
+                    dump_test_info(
+                        self,
+                        place,
+                        grad_test_info_path,
+                        backward=True,
+                        backward_extra_test_info=backward_extra_test_info,
+                    )
+                    python_api_info = {
+                        "api_name": self.python_api.__name__,
+                        "api_module": inspect.getmodule(
+                            self.python_api
+                        ).__name__
+                        if inspect.getmodule(
+                            self.python_api
+                        ).__name__.startswith("paddle")
+                        else pathlib.Path(
+                            inspect.getmodule(self.python_api).__file__
+                        ).stem,
+                    }
+                    # code gen for auto parallel grad test
+                    gen_auto_parallel_test_file(
+                        check_grad=False,
+                        test_info_path=grad_test_info_path,
+                        test_file_path=generated_grad_test_path,
+                        python_api_info=python_api_info,
+                    )
+                    runtime_envs = get_subprocess_runtime_envs(place)
+                    start_command = get_subprocess_command(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"],
+                        generated_grad_test_path,
+                        log_dir=self.log_dir
+                        if hasattr(self, "log_dir")
+                        else None,
+                    )
+                    run_subprocess(start_command, runtime_envs, timeout=120)
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
         op_outputs = self.outputs if hasattr(self, "outputs") else {}
         op_attrs = self.attrs if hasattr(self, "attrs") else {}
-
         self._check_grad_helper()
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
@@ -3025,7 +3188,7 @@ class OpTest(unittest.TestCase):
             if tensor_ndim > 0 and tensor_size < 100:
                 self.__class__.input_shape_is_large = False
 
-        if not type(output_names) is list:
+        if type(output_names) is not list:
             output_names = [output_names]
 
         if numeric_place is None:
@@ -3526,10 +3689,19 @@ class OpTest(unittest.TestCase):
 
         return res
 
-    def _find_var_in_pir(self, output_vars, name):
-        if name in output_vars:
-            return output_vars[name]
-        raise AssertionError(name, " not in outputs:", output_vars.keys())
+    def _find_var_in_pir(self, output_vars, target_name):
+        for name in output_vars:
+            if name == target_name:
+                return output_vars[name]
+
+            sub_dict = output_vars[name][0]
+            if isinstance(sub_dict, dict):
+                for key, value in sub_dict.items():
+                    if key == target_name:
+                        return value
+        raise AssertionError(
+            target_name, " not in outputs:", output_vars.keys()
+        )
 
     def _get_ir_gradient(
         self,
@@ -3603,10 +3775,13 @@ class OpTest(unittest.TestCase):
                 )
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
-                        for i in range(len(self.python_out_sig_sub_name[key])):
-                            outputs[key][0][
-                                i
-                            ].name = self.python_out_sig_sub_name[key][i]
+                        outputs[key][0] = {
+                            a: [b]
+                            for a, b in zip(
+                                self.python_out_sig_sub_name[key],
+                                outputs[key][0],
+                            )
+                        }
                 fetch_list = getattr(self, "fetch_list", [])
 
                 # cast outputs
@@ -3676,7 +3851,7 @@ class OpTest(unittest.TestCase):
                     )
                 fetch_list = list(grad_inputs)
                 # executor run
-                executor = paddle.static.Executor()
+                executor = paddle.static.Executor(place)
                 outs = executor.run(
                     ir_program,
                     feed=feed,

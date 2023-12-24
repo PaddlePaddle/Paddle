@@ -77,7 +77,7 @@ void NumberCountKernel(const Context& ctx,
                        DenseTensor* out) {
   int64_t batch_size = numbers.numel();
 
-  DDim out_dims = phi::make_ddim({upper_range});
+  DDim out_dims = common::make_ddim({upper_range});
   out->Resize(out_dims);
   auto out_data = ctx.template Alloc<T>(out);
   const T* gate_data = numbers.data<T>();

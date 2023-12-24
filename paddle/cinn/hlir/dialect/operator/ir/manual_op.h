@@ -62,8 +62,28 @@ class IR_API ConcatOp : public pir::Op<ConcatOp> {
   void VerifySig() const {}
 };
 
+class IR_API SplitOp : public pir::Op<SplitOp> {
+ public:
+  using Op::Op;
+
+  static const char *name() { return "cinn_op.split"; }
+
+  static constexpr uint32_t attributes_num = 2;
+
+  static const char *attributes_name[attributes_num];
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    const std::vector<int> &sections,
+                    int axis);
+
+  void VerifySig() const {}
+};
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)

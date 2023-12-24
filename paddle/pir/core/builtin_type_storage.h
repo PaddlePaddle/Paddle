@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/dim.h"
+#include "paddle/common/layout.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/type_base.h"
 #include "paddle/pir/core/utils.h"
@@ -50,13 +51,13 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using DataLayout = phi::DataLayout;
-  using Dim = phi::DDim;
+  using Dim = pir::DDim;
+  using DataLayout = pir::DataLayout;
   using LoD = std::vector<std::vector<size_t>>;
-  using ParamKey = std::tuple<Type, Dim, DataLayout, LoD, size_t>;
+  using ParamKey = std::tuple<Type, pir::DDim, DataLayout, LoD, size_t>;
 
   DenseTensorTypeStorage(Type dtype,
-                         const Dim& dims,
+                         const pir::DDim& dims,
                          DataLayout layout,
                          const LoD& lod,
                          size_t offset)
@@ -88,7 +89,7 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
         pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
     hash_value =
-        pir::hash_combine(hash_value, std::hash<Dim>()(std::get<1>(key)));
+        pir::hash_combine(hash_value, std::hash<pir::DDim>()(std::get<1>(key)));
     // hash layout
     hash_value = pir::hash_combine(
         hash_value,
@@ -120,7 +121,7 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   /// layout, lod, offset.
   ///
   pir::Type dtype_;
-  Dim dims_;
+  pir::DDim dims_;
   DataLayout layout_;
   LoD lod_;
   size_t offset_;

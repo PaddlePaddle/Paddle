@@ -58,7 +58,6 @@ world_process_group = get_world_process_group()
 __amp_skip_ops__ = [
     'create_py_reader',
     'create_double_buffer_reader',
-    'cast',
     'while',
 ]
 
@@ -147,6 +146,8 @@ class AMPLists:
             return _is_in_fp32_varnames(op, self._amp_list)
 
     def _op_keep_fp32_input(self, op, in_name):
+        if not op.amp_options.enable:
+            return True
         if self._is_float16:
             return _keep_fp32_input(op, in_name)
         else:
@@ -157,6 +158,8 @@ class AMPLists:
             return False
 
     def _op_keep_fp32_output(self, op, out_name):
+        if not op.amp_options.enable:
+            return True
         if self._is_float16:
             return _keep_fp32_output(op, out_name)
         else:
@@ -317,10 +320,7 @@ class AMPState:
                     )
                 elif self._is_fp16_op(op.desc.original_id()) is True:
                     if self.amp_dtype == "bfloat16":
-                        if op.has_attr('use_mkldnn'):
-                            op._set_attr('use_mkldnn', True)
-                            op._set_attr('mkldnn_data_type', 'bfloat16')
-                        elif (
+                        if (
                             op.has_attr('dtype')
                             and op.attr('dtype') == core.VarDesc.VarType.FP32
                         ):
@@ -361,10 +361,7 @@ class AMPState:
                         self._is_fp16_op(op.desc.original_id()) is True
                     ):  # fp16/bf16
                         if self.amp_dtype == "bfloat16":
-                            if op.has_attr('use_mkldnn'):
-                                op._set_attr('use_mkldnn', True)
-                                op._set_attr('mkldnn_data_type', 'bfloat16')
-                            elif (
+                            if (
                                 op.has_attr('dtype')
                                 and op.attr('dtype')
                                 == core.VarDesc.VarType.FP32
@@ -408,6 +405,14 @@ class AMPState:
         """
         num_cast_ops = 0
         var_name_dict = {}
+
+        if op.type == "cast":
+            in_var = block._find_var_recursive(op.input('X')[0])
+            out_var = block._find_var_recursive(op.output('Out')[0])
+            op._set_attr('in_dtype', in_var.dtype)
+            out_var.desc.set_dtype(paddle.dtype(op.attr('out_dtype')))
+            return num_cast_ops
+
         for in_name in op.input_names:
             if (
                 src_dtype == core.VarDesc.VarType.FP32
@@ -437,6 +442,9 @@ class AMPState:
                         assert in_var_dist_attr is not None
                         ref_mesh = in_var_dist_attr.process_mesh
                         ref_mapping = in_var_dist_attr.dims_mapping
+                        ref_chunk_id = consume_op_attr.chunk_id
+
+                        in_var_dist_attr.chunk_id = ref_chunk_id
                         consume_op_attr.set_input_dist_attr(
                             cast_name, in_var_dist_attr
                         )
@@ -448,7 +456,11 @@ class AMPState:
                             stop_gradient=in_var.stop_gradient,
                         )
                         set_var_dist_attr(
-                            dist_context, cast_var, ref_mapping, ref_mesh
+                            dist_context,
+                            cast_var,
+                            ref_mapping,
+                            ref_mesh,
+                            chunk_id=ref_chunk_id,
                         )
 
                         op_namescope = "/"
@@ -468,7 +480,11 @@ class AMPState:
                             'op_namescope', op_namescope
                         )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                            cast_op, ref_mesh, ref_mapping, dist_context
+                            cast_op,
+                            ref_mesh,
+                            ref_mapping,
+                            dist_context,
+                            chunk_id=ref_chunk_id,
                         )
                         num_cast_ops += 1
                     else:
@@ -531,6 +547,21 @@ class AMPState:
         original_id = op.desc.original_id()
         dist_op_context = dist_context.dist_op_context
         fwd_op_id = self.grad_op_to_op_map[original_id]
+
+        if op.type == "cast":
+            in_name = op.input('X')[0]
+            out_name = op.output('Out')[0]
+            in_var = block._find_var_recursive(in_name)
+            out_var = block._find_var_recursive(out_name)
+            in_var_fw = block._find_var_recursive(in_name[: in_name.find("@")])
+            out_var_fw = block._find_var_recursive(
+                out_name[: out_name.find("@")]
+            )
+            op._set_attr('in_dtype', in_var_fw.dtype)
+            op._set_attr('out_dtype', out_var_fw.dtype)
+            in_var.desc.set_dtype(in_var_fw.dtype)
+            out_var.desc.set_dtype(out_var_fw.dtype)
+            return num_cast_ops
 
         for in_name in op.input_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
@@ -613,6 +644,9 @@ class AMPState:
                             )
                             ref_mesh = out_var_dist_attr.process_mesh
                             ref_mapping = out_var_dist_attr.dims_mapping
+                            ref_chunk_id = consume_op_attr.chunk_id
+
+                            out_var_dist_attr.chunk_id = ref_chunk_id
                             consume_op_attr.set_output_dist_attr(
                                 cast_name, out_var_dist_attr
                             )
@@ -625,7 +659,11 @@ class AMPState:
                                 stop_gradient=out_var.stop_gradient,
                             )
                             set_var_dist_attr(
-                                dist_context, cast_var, ref_mapping, ref_mesh
+                                dist_context,
+                                cast_var,
+                                ref_mapping,
+                                ref_mesh,
+                                chunk_id=ref_chunk_id,
                             )
                             dist_op_context.grad_var_to_var[
                                 appended_grad_times
@@ -646,7 +684,11 @@ class AMPState:
                             cast_op._remove_attr("op_namescope")
                             cast_op._remove_attr("with_quant_attr")
                             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                                cast_op, ref_mesh, ref_mapping, dist_context
+                                cast_op,
+                                ref_mesh,
+                                ref_mapping,
+                                dist_context,
+                                chunk_id=ref_chunk_id,
                             )
                             num_cast_ops += 1
                 else:
@@ -794,10 +836,12 @@ class AMPPass(PassBase):
                     param_dist_attr.process_mesh,
                     param_dist_attr.dims_mapping,
                     self.dist_context,
+                    chunk_id=param_dist_attr.chunk_id,
                 )
 
                 output_dist_attr.process_mesh = param_dist_attr.process_mesh
                 output_dist_attr.dims_mapping = param_dist_attr.dims_mapping
+                output_dist_attr.chunk_id = param_dist_attr.chunk_id
 
                 op_idx = find_op_index(main_block.desc, op.desc)
                 if op_idx == -1:
@@ -831,7 +875,11 @@ class AMPPass(PassBase):
             stop_gradient=False,
         )
         set_var_dist_attr(
-            self.dist_context, found_inf, [-1], world_process_group.ranks
+            self.dist_context,
+            found_inf,
+            [-1],
+            world_process_group.ranks,
+            chunk_id=0,
         )
 
         inputs = {'X': grads, 'Scale': self._loss_scaling}
@@ -849,6 +897,7 @@ class AMPPass(PassBase):
         new_op_dist_attr = OperatorDistAttr(new_op.desc)
         new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
         new_op_dist_attr.impl_idx = 0
+        new_op_dist_attr.chunk_id = 0
         if len(world_process_group.ranks) > 1:
             new_op_dist_attr.impl_type = "check_finite_and_unscale"
         for g in grads:
@@ -876,6 +925,7 @@ class AMPPass(PassBase):
             self._loss_scaling,
             [-1],
             world_process_group.ranks,
+            chunk_id=0,
         )
 
         if self.get_attr("use_dynamic_loss_scaling"):
@@ -891,6 +941,7 @@ class AMPPass(PassBase):
                 self._num_good_steps,
                 [-1],
                 world_process_group.ranks,
+                chunk_id=0,
             )
 
             self._num_bad_steps = paddle.static.create_global_var(
@@ -905,6 +956,7 @@ class AMPPass(PassBase):
                 self._num_bad_steps,
                 [-1],
                 world_process_group.ranks,
+                chunk_id=0,
             )
 
     def _cast_loss(self, target_dtype):
@@ -927,6 +979,9 @@ class AMPPass(PassBase):
                 loss
             )
             ref_mesh = loss_op_dist_attr.process_mesh
+            ref_chunk_id = loss_op_dist_attr.chunk_id
+
+            loss_dist_attr.chunk_id = ref_chunk_id
             self.dist_context.set_tensor_dist_attr_for_program(
                 cast_loss, loss_dist_attr
             )
@@ -947,7 +1002,11 @@ class AMPPass(PassBase):
 
             loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                cast_op, ref_mesh, [-1 for i in loss.shape], self.dist_context
+                cast_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
+                chunk_id=ref_chunk_id,
             )
 
             # backward
@@ -972,8 +1031,9 @@ class AMPPass(PassBase):
             set_var_dist_attr(
                 self.dist_context,
                 cast_loss_grad,
-                [-1 for i in loss.shape],
+                [-1] * len(loss.shape),
                 ref_mesh,
+                chunk_id=ref_chunk_id,
             )
 
             pre_grad_name = first_backward_op.output_arg_names[0]
@@ -981,8 +1041,9 @@ class AMPPass(PassBase):
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 first_backward_op,
                 ref_mesh,
-                [-1 for i in loss.shape],
+                [-1] * len(loss.shape),
                 self.dist_context,
+                chunk_id=ref_chunk_id,
             )
             cast_grad_op = main_block._insert_op(
                 loss_op_idx + insert_op_offset,
@@ -1000,6 +1061,7 @@ class AMPPass(PassBase):
                 ref_mesh,
                 [-1 for i in loss.shape],
                 self.dist_context,
+                chunk_id=ref_chunk_id,
             )
             loss_op = cast_op
             loss = cast_loss
@@ -1024,6 +1086,8 @@ class AMPPass(PassBase):
 
             # forward
             ref_mesh = loss_op_dist_attr.process_mesh
+            ref_chunk_id = loss_op_dist_attr.chunk_id
+
             scaled_loss = main_block.create_var(
                 name=unique_name.generate("scaled_loss"),
                 shape=loss.shape,
@@ -1035,6 +1099,7 @@ class AMPPass(PassBase):
                 scaled_loss,
                 [-1 for i in loss.shape],
                 ref_mesh,
+                chunk_id=ref_chunk_id,
             )
 
             elementwise_mul_op = main_block._insert_op(
@@ -1052,6 +1117,7 @@ class AMPPass(PassBase):
                 ref_mesh,
                 [-1 for i in loss.shape],
                 self.dist_context,
+                chunk_id=ref_chunk_id,
             )
 
             # backward
@@ -1074,8 +1140,9 @@ class AMPPass(PassBase):
             set_var_dist_attr(
                 self.dist_context,
                 scaled_loss_grad,
-                [-1 for i in loss.shape],
+                [-1] * len(loss.shape),
                 ref_mesh,
+                chunk_id=ref_chunk_id,
             )
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(
@@ -1084,8 +1151,9 @@ class AMPPass(PassBase):
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 first_backward_op,
                 ref_mesh,
-                [-1 for i in loss.shape],
+                [-1] * len(loss.shape),
                 self.dist_context,
+                chunk_id=ref_chunk_id,
             )
             scaled_loss_grad.op = first_backward_op
             # FIXME(JZ-LIANG) a trick to insert backward op
@@ -1117,6 +1185,7 @@ class AMPPass(PassBase):
                 ref_mesh,
                 [-1 for i in loss.shape],
                 self.dist_context,
+                chunk_id=ref_chunk_id,
             )
         else:
             scaled_loss = loss
@@ -1183,6 +1252,7 @@ class AMPPass(PassBase):
         new_op_dist_attr = OperatorDistAttr(new_op.desc)
         new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
         new_op_dist_attr.impl_idx = 0
+        new_op_dist_attr.chunk_id = 0
         if len(world_process_group.ranks) > 1:
             new_op_dist_attr.impl_type = "update_loss_scaling"
         for g in grads:

@@ -49,13 +49,13 @@ bool CompareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
 }
 
 SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
-  for (auto& op : *(m.block())) {
+  for (auto& op : m.block()) {
     if (op.isa<shape::FuncOp>()) {
       symbol_table_ = SymbolTable(&op);
       return;
     }
   }
-  Builder builder = Builder(m_.ir_context(), m_.block(), m_.block()->begin());
+  Builder builder = Builder(m_.ir_context(), &m_.block(), m_.block().begin());
   shape::FuncOp func = builder.Build<shape::FuncOp>();
   symbol_table_ = SymbolTable(func);
 }
@@ -473,7 +473,7 @@ bool SymbolicDimMgr::Save() {
   };
 
   // TODO(zhangbopd): update attributes attached in DenseTensorType
-  for (auto& op : *(m_.block())) {
+  for (auto& op : m_.block()) {
     if (!op.HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
     auto attrs =
         op.attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
@@ -499,7 +499,7 @@ bool SymbolicDimMgr::Save() {
         used_symbol_names.push_back(sym.GetSymName());
     }
   };
-  for (auto& op : *(m_.block())) {
+  for (auto& op : m_.block()) {
     if (!op.HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
     auto attrs =
         op.attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());
@@ -559,7 +559,7 @@ bool SymbolicDimMgr::Save() {
     name_to_symbol[name] = op;
   }
 
-  for (auto& op : *(m_.block())) {
+  for (auto& op : m_.block()) {
     if (!op.HasAttribute(SymbolicDimOp::GetSymbolicDimAttrName())) continue;
     auto attrs =
         op.attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName());

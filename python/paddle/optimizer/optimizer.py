@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -20,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
-from paddle._pir_ops import get_parameter, set_parameter
+from paddle._pir_ops import parameter, set_parameter
 from paddle.base import core
 from paddle.base.framework import (
     Variable,
@@ -41,6 +42,10 @@ from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 __all__ = []
+
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
 
 
 @framework.static_only
@@ -277,6 +282,7 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        self._master_weights = {}
         # create master gradients' states
         self._create_master_grad_states()
 
@@ -478,7 +484,7 @@ class Optimizer:
                     if not isinstance(lr_var, paddle.pir.OpResult):
                         self._learning_rate._var_name = lr_name
                         with paddle.static.program_guard(main_program):
-                            param = get_parameter(lr_name, _lr_dtype, [])
+                            param = parameter(lr_name, _lr_dtype, [])
                         param.stop_gradient = True
                         param.persistable = True
                         main_program.lr_scheduler = self._learning_rate
@@ -527,11 +533,14 @@ class Optimizer:
                             )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
-                        ] = paddle._pir_ops.full(
-                            [],
-                            self._learning_rate,
-                            _lr_dtype,
-                            place,
+                        ] = paddle.pir.core.create_parameter(
+                            dtype=_lr_dtype,
+                            shape=[],
+                            name=unique_name.generate("learning_rate"),
+                            trainable=False,
+                            initializer=paddle.nn.initializer.ConstantInitializer(
+                                value=float(self._learning_rate)
+                            ),
                         )
                 else:
                     if isinstance(lr, framework.Variable):
@@ -1470,6 +1479,10 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
+
+        if framework.in_dygraph_mode() and g_shard_bypass_dygraph_optimizer:
+            return
+
         if in_dynamic_or_pir_mode():
             with paddle.static.program_guard(
                 paddle.static.default_main_program(),

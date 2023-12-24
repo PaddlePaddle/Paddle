@@ -86,6 +86,9 @@ def apply_build_strategy(
     if build_strategy.fuse_relu_depthwise_conv and use_cuda:
         apply_pass("fuse_relu_depthwise_conv_pass")
         build_strategy.fuse_relu_depthwise_conv = False
+    if build_strategy.fuse_resunit:
+        apply_pass("fuse_resunit_pass")
+        build_strategy.fuse_resunit = False
     if build_strategy.fuse_bn_act_ops and use_cuda:
         apply_pass("fuse_bn_act_pass")
         build_strategy.fuse_bn_act_ops = False
@@ -98,6 +101,9 @@ def apply_build_strategy(
     if build_strategy.fuse_gemm_epilogue:
         apply_pass("fuse_gemm_epilogue_pass")
         build_strategy.fuse_gemm_epilogue = False
+    if build_strategy.fuse_dot_product_attention:
+        apply_pass("fuse_dot_product_attention_pass")
+        build_strategy.fuse_dot_product_attention = False
     if build_strategy.fuse_elewise_add_act_ops:
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False

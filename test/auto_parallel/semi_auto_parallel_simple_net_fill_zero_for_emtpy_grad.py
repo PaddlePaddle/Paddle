@@ -41,19 +41,9 @@ class TestSimpleNetWithEmtpyGradForSemiAutoParallel(
         # run forward and backward
         image, label = self.init_input_data()
         if shard_input:
-            image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
-                ),
-            )
+            image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
 
-            label = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
-                ),
-            )
+            label = dist.shard_tensor(image, self.mesh, [dist.Shard(0)])
 
         out = layer(image)
         out = paddle.split(out, 2)[0]

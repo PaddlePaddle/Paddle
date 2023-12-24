@@ -40,7 +40,7 @@ PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
     const platform::Place& place,
     pir::Operation* op,
-    const ValueExecutionInfo& value_exec_info)
+    const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
@@ -51,33 +51,49 @@ PhiKernelInstruction::PhiKernelInstruction(
   phi_op_name_ = op_name;
   VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
 
-  // Todo: support paddle::dialect::DistAttribute
-  //   if (op_attributes.count("dist_attr") != 0) {
-  //     if (op_attributes.count("execution_stream") != 0) {
-  //         SetExecutionStream(op_attributes.at("execution_stream")
-  //                             .dyn_cast<pir::StrAttribute>()
-  //                             .data());
-  //     }
-  //     if (op_attributes.count("stream_priority") != 0) {
-  //         SetStreamPriority(op_attributes.at("stream_priority")
-  //                             .dyn_cast<pir::Int32Attribute>()
-  //                             .data());
-  //     }
-  //     if (op_attributes.count("scheduling_priority") != 0) {
-  //         SetSchedulingPriority(op_attributes.at("scheduling_priority")
-  //                                 .dyn_cast<pir::Int64Attribute>()
-  //                                 .data());
-  //     }
-  //   } else {
-  //     if (interpreter::IsCommunicationOp(op)) {
-  //       // NOTE(Ruibiao): Dispatching computation before communication
-  //       improves
-  //       // multi-stream overlap when the time cost of communication less than
-  //       // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
-  //       // training).
-  //       op_func_node.scheduling_priority_ = 1;
-  //     }
-  //   }
+  if (op_attributes.count("execution_stream") != 0) {
+    SetExecutionStream(op_attributes.at("execution_stream")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString());
+  }
+  if (op_attributes.count("stream_priority") != 0) {
+    SetStreamPriority(op_attributes.at("stream_priority")
+                          .dyn_cast<pir::Int32Attribute>()
+                          .data());
+  }
+  if (op_attributes.count("scheduling_priority") != 0) {
+    SetSchedulingPriority(op_attributes.at("scheduling_priority")
+                              .dyn_cast<pir::Int64Attribute>()
+                              .data());
+  } else {
+    if (interpreter::IsCommunicationOp(op_)) {
+      // NOTE(Ruibiao): Dispatching computation before communication improves
+      // multi-stream overlap when the time cost of communication less than
+      // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
+      // training).
+      SetSchedulingPriority(1);
+    }
+  }
+  if (op_attributes.count("force_record_event") != 0) {
+    SetForceRecordEvent(op_attributes.at("force_record_event")
+                            .dyn_cast<pir::BoolAttribute>()
+                            .data());
+  }
+  if (op_attributes.count("event_to_record") != 0) {
+    SetEventToRecordInfo(op_attributes.at("event_to_record")
+                             .dyn_cast<pir::StrAttribute>()
+                             .AsString());
+  }
+  if (op_attributes.count("events_to_wait") != 0) {
+    std::vector<std::string> events_to_wait;
+    auto array_attr = op_attributes.at("events_to_wait")
+                          .dyn_cast<pir::ArrayAttribute>()
+                          .AsVector();
+    for (auto& attr : array_attr) {
+      events_to_wait.push_back(attr.dyn_cast<pir::StrAttribute>().AsString());
+    }
+    SetEventsToWaitInfo(events_to_wait);
+  }
   VLOG(6) << "finish process dist attributes";
 
   SetKernelType(AnalyseOpFuncType(op, place));
@@ -104,7 +120,7 @@ PhiKernelInstruction::PhiKernelInstruction(
         phi::MetaTensor,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        false>(op, value_exec_info_, yaml_info_parser, &infer_meta_context_);
+        false>(op, *value_exec_info_, yaml_info_parser, &infer_meta_context_);
   }
   VLOG(6) << "finish process infer meta context";
 
@@ -126,7 +142,7 @@ PhiKernelInstruction::PhiKernelInstruction(
                   paddle::small_vector<const phi::TensorBase*>,
                   paddle::small_vector<phi::TensorBase*>,
                   true>(
-      op, value_exec_info_, yaml_info_parser, &kernel_context_);
+      op, *value_exec_info_, yaml_info_parser, &kernel_context_);
 
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
@@ -141,7 +157,7 @@ PhiKernelInstruction::PhiKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
-  InitInputsOutputsIds(op, value_exec_info);
+  InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();

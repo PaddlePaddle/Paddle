@@ -59,4 +59,5 @@ PD_REGISTER_KERNEL(squared_l2_norm,
                    ALL_LAYOUT,
                    phi::SquaredL2NormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

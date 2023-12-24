@@ -26,10 +26,28 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
+std::vector<int64_t> BuildOutputAxisToInputAxisMap(
+    const std::vector<int64_t>& decrease_axis, int input_ndim) {
+  std::vector<int64_t> output_axis_to_input_axis(input_ndim -
+                                                 decrease_axis.size());
+  int index = 0;
+  for (int i = 0; i < input_ndim; ++i) {
+    if (std::find(decrease_axis.begin(), decrease_axis.end(), i) ==
+        decrease_axis.end()) {
+      output_axis_to_input_axis[index] = i;
+      ++index;
+    }
+  }
+  return output_axis_to_input_axis;
+}
+
 SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
-                            const std::vector<int64_t>& axes) {
-  auto input_shape = phi::vectorize(input.dims());
+                            const std::vector<int64_t>& axes,
+                            const std::vector<int64_t>& decrease_axis) {
+  // Step0: Verify input args based on slice logic
+  auto input_shape = common::vectorize(input.dims());
   int input_ndim = input_shape.size();
+  int output_ndim = input_ndim - static_cast<int>(decrease_axis.size());
   auto input_dist_attr_src = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -40,42 +58,44 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
                                    input_ndim,
                                    input_dims_mapping.size()));
 
+  // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+
+  // get einsum notation for input
   std::string input_axes = alphabet.substr(0, input_ndim);
-  std::string special_axes = alphabet.substr(input_ndim);
 
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
-    input_axes[axis] = special_axes[i];
+  auto output_input_axis_mapping =
+      BuildOutputAxisToInputAxisMap(decrease_axis, input_ndim);
+  // get einsum notation for output
+  std::string out_axes = alphabet.substr(0, output_ndim);
+  for (int i = 0; i < output_ndim; i++) {
+    auto input_axis = output_input_axis_mapping[i];
+    out_axes[i] = input_axes[input_axis];
   }
 
-  std::string out_axes(input_axes);
-
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
-    out_axes[axis] = '1';
-  }
-
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({{input_axes, input_dims_mapping}});
-
-  std::vector<int64_t> out_dims_mapping =
-      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
-
-  TensorDistAttr out_dist_attr =
+  // Step2.3 get new dist attribute for input. the sliced
+  // cannot be sharded, if it is sharded, set it to replicated.
+  TensorDistAttr input_dist_attr_dst =
       CopyTensorDistAttrForOutput(input_dist_attr_src);
-  out_dist_attr.set_dims_mapping(out_dims_mapping);
-
-  TensorDistAttr input_dist_attr_dst(input_dist_attr_src);
   for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     input_dims_mapping[axis] = -1;
   }
   input_dist_attr_dst.set_dims_mapping(input_dims_mapping);
 
+  std::vector<int64_t> out_dims_mapping(output_ndim);
+  for (int i = 0; i < output_ndim; i++) {
+    auto input_axis = output_input_axis_mapping[i];
+    out_dims_mapping[i] = input_dims_mapping[input_axis];
+  }
+  TensorDistAttr out_dist_attr =
+      CopyTensorDistAttrForOutput(input_dist_attr_src);
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+
   VLOG(4) << "SliceInferSpmd:";
   VLOG(4) << "Einsum Notation: " << input_axes << "-->" << out_axes;
   VLOG(4) << "Input shape: [" << str_join(input_shape) << "] "
+          << "axes: [" << str_join(axes) << "] "
           << "src_dims_mapping: ["
           << str_join(input_dist_attr_src.dims_mapping()) << "] "
           << "dst_dims_mapping: [" << str_join(input_dims_mapping) << "]";
@@ -92,24 +112,29 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
                         const std::vector<int>& ends,
                         const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis) {
-  return SliceInferSpmdBase(input, axes);
+  // starts, ends, infer_flags and decrease_axis have no impact on the
+  // derivation, only to align with the definition in phi api
+  return SliceInferSpmdBase(input, axes, {});
 }
 
 SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
                                    const DistMetaTensor& output,
-                                   const std::vector<int64_t>& axes) {
-  auto output_shape = phi::vectorize(output.dims());
+                                   const std::vector<int64_t>& axes,
+                                   const std::vector<int64_t>& decrease_axis) {
+  auto output_shape = common::vectorize(output.dims());
   int out_ndim = output_shape.size();
   auto out_dist_attr = output.dist_attr();
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
-  auto input_shape = phi::vectorize(input.dims());
+  auto input_shape = common::vectorize(input.dims());
   int input_ndim = input_shape.size();
   auto input_dist_attr = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
 
+  int decrease_axis_num = decrease_axis.size();
+
   PADDLE_ENFORCE_EQ(
       input_ndim,
-      out_ndim,
+      out_ndim + decrease_axis_num,
       phi::errors::InvalidArgument("The Tensor Input's rank [%d] is not equal "
                                    "to the Tensor Output's rank [%d]",
                                    input_ndim,
@@ -123,17 +148,30 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
                                    out_ndim,
                                    out_dims_mapping_size));
 
+  // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+
+  // get einsum notation for input
   std::string input_axes = alphabet.substr(0, input_ndim);
-  std::string special_axes = alphabet.substr(input_ndim);
+
+  auto output_input_axis_mapping =
+      BuildOutputAxisToInputAxisMap(decrease_axis, input_ndim);
+  // get einsum notation for output
+  std::string out_axes = alphabet.substr(0, out_ndim);
+  for (int i = 0; i < out_ndim; i++) {
+    auto input_axis = output_input_axis_mapping[i];
+    out_axes[i] = input_axes[input_axis];
+  }
 
   for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
-    input_axes[axis] = special_axes[i];
+    // the sliced axis cannot be sharded, set its notation
+    // with the special '1' to set its dim mapping to -1.
+    input_axes[axis] = '1';
   }
 
-  std::string out_axes(input_axes);
-
+  // Step2: Sharding Propogation
+  // Step2.1: merge output shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::vector<int64_t> out_dims_mapping = output.dist_attr().dims_mapping();
   axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
@@ -141,31 +179,36 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
+  // Step2.2: infer input dims mapping from output dims mapping. the sliced
+  // cannot be sharded, if it is sharded, set it to replicated.
   input_dims_mapping = GetDimsMappingForAxes(input_axes, axis_to_dim_map, true);
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
-    input_dims_mapping[axis] = -1;
-  }
-  input_dist_attr.set_dims_mapping(input_dims_mapping);
+
+  auto input_dist_attr_dst = CopyTensorDistAttrForOutput(input_dist_attr);
+  input_dist_attr_dst.set_dims_mapping(input_dims_mapping);
+
+  // step2.3 get new dist attribute for output. the sliced
+  // cannot be sharded, if it is sharded, set it to replicated.
   out_dims_mapping = GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
   for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     out_dims_mapping[axis] = -1;
   }
-  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   VLOG(4) << "SliceInferSpmdReverse:";
   VLOG(4) << "Einsum Notation: " << input_axes << "-->" << out_axes;
   VLOG(4) << "Output"
-          << " shape: [" << str_join(phi::vectorize(output.dims())) << "] "
+          << " shape: [" << str_join(common::vectorize(output.dims())) << "] "
+          << "axes: [" << str_join(axes) << "] "
           << "src_dims_mapping: ["
           << str_join(output.dist_attr().dims_mapping()) << "] "
-          << "dst_dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
+          << "dst_dims_mapping: [" << str_join(out_dist_attr_dst.dims_mapping())
           << "]";
   VLOG(4) << "Input shape: [" << str_join(input_shape) << "] "
           << "dims_mapping: [" << str_join(input_dims_mapping) << "]\n\n";
 
-  return {{input_dist_attr}, {out_dist_attr}};
+  return {{input_dist_attr_dst}, {out_dist_attr_dst}};
 }
 
 SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
@@ -175,7 +218,9 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
                                const std::vector<int>& ends,
                                const std::vector<int64_t>& infer_flags,
                                const std::vector<int64_t>& decrease_axis) {
-  return SliceInferSpmdReverseBase(input, output, axes);
+  // starts, ends, infer_flags and decrease_axis have no impact on the
+  // derivation, only to align with the definition in phi api
+  return SliceInferSpmdReverseBase(input, output, axes, {});
 }
 
 SpmdInfo SliceInferSpmdDynamic(const DistMetaTensor& input,
@@ -184,29 +229,50 @@ SpmdInfo SliceInferSpmdDynamic(const DistMetaTensor& input,
                                const IntArray& ends,
                                const std::vector<int64_t>& infer_flags,
                                const std::vector<int64_t>& decrease_axis) {
+  // starts, ends, infer_flags and decrease_axis have no impact on the
+  // derivation, only to align with the definition in phi api
   std::vector<int> start_indexes(starts.GetData().begin(),
                                  starts.GetData().end());
   std::vector<int> end_indexes(ends.GetData().begin(), ends.GetData().end());
-  return SliceInferSpmdBase(input, axes);
+  return SliceInferSpmdBase(input, axes, decrease_axis);
 }
 
 SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
                             const DistMetaTensor& out_grad,
-                            const std::vector<int64_t>& axes) {
+                            const std::vector<int64_t>& axes,
+                            const std::vector<int64_t>& decrease_axis) {
+  // Step0: Verify input args based on slice logic
+  auto input_shape = common::vectorize(input.dims());
+  int input_ndim = input_shape.size();
   auto input_dist_attr = input.dist_attr();
-  auto out_dist_attr = out_grad.dist_attr();
+
   input_dist_attr = UnShardTensorDims(input_dist_attr, axes);
-  out_dist_attr = UnShardTensorDims(out_dist_attr, axes);
-  auto output_shape = phi::vectorize(out_grad.dims());
+  std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
+
+  auto output_axis_to_input_axis_mapping =
+      BuildOutputAxisToInputAxisMap(decrease_axis, input_ndim);
+  std::unordered_map<int, int> reverse_output_axis_to_input_axis_mapping;
+  for (size_t i = 0; i < output_axis_to_input_axis_mapping.size(); ++i) {
+    reverse_output_axis_to_input_axis_mapping
+        [output_axis_to_input_axis_mapping[i]] = i;
+  }
+  std::vector<int64_t> mapped_axes;
+  for (size_t i = 0; i < axes.size(); ++i) {
+    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+    if (reverse_output_axis_to_input_axis_mapping.count(axis) > 0) {
+      mapped_axes.push_back(reverse_output_axis_to_input_axis_mapping[axis]);
+    }
+  }
+  auto out_dist_attr = out_grad.dist_attr();
+  out_dist_attr = UnShardTensorDims(out_dist_attr, mapped_axes);
+  auto output_shape = common::vectorize(out_grad.dims());
   int out_ndim = output_shape.size();
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
-  auto input_shape = phi::vectorize(input.dims());
-  int input_ndim = input_shape.size();
-  std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
+  int decrease_axis_num = decrease_axis.size();
 
   PADDLE_ENFORCE_EQ(
       input_ndim,
-      out_ndim,
+      out_ndim + decrease_axis_num,
       phi::errors::InvalidArgument("The Tensor Input's rank [%d] is not equal "
                                    "to the Tensor Output's rank [%d]",
                                    input_ndim,
@@ -220,17 +286,20 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
                                    out_ndim,
                                    out_dims_mapping_size));
 
+  // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
-  std::string align_axes = alphabet.substr(0, input_ndim);
-  std::string input_axes = align_axes;
-  std::string special_axes = alphabet.substr(input_ndim);
 
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
-    input_axes[axis] = special_axes[i];
+  // get einsum notation for input
+  std::string input_axes = alphabet.substr(0, input_ndim);
+
+  // get einsum notation for output
+  std::string out_axes(out_ndim, ' ');
+  for (int i = 0; i < out_ndim; ++i) {
+    out_axes[i] = input_axes[output_axis_to_input_axis_mapping[i]];
   }
-  std::string out_axes(input_axes);
 
+  // Step2: Sharding Propogation
+  // Step2.1: merge input shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   axes_sharding_info.emplace_back(
       std::make_pair(out_axes, out_dist_attr.dims_mapping()));
@@ -238,12 +307,19 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
       std::make_pair(input_axes, input_dist_attr.dims_mapping()));
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
-  auto aligned_dim_mapping =
-      GetDimsMappingForAxes(align_axes, axis_to_dim_map, true);
-  TensorDistAttr aligned_dist_attr = CopyTensorDistAttrForOutput(out_dist_attr);
-  input_dist_attr.set_dims_mapping(aligned_dim_mapping);
-  out_dist_attr.set_dims_mapping(aligned_dim_mapping);
-  aligned_dist_attr.set_dims_mapping(aligned_dim_mapping);
+
+  // Step2.2: infer output dims mapping from merged input dims mapping
+  auto input_dim_mapping_dst =
+      GetDimsMappingForAxes(input_axes, axis_to_dim_map, true);
+
+  // get the dist attributes for output
+  TensorDistAttr input_grad = CopyTensorDistAttrForOutput(input_dist_attr);
+  input_dist_attr.set_dims_mapping(input_dim_mapping_dst);
+  input_grad.set_dims_mapping(input_dim_mapping_dst);
+
+  auto out_grad_dims_mapping =
+      GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
+  out_dist_attr.set_dims_mapping(out_grad_dims_mapping);
 
   VLOG(4) << "SliceGradInfer:";
 
@@ -263,10 +339,9 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
 
   VLOG(4) << "input Grad"
           << " shape: [" << str_join(output_shape) << "] "
-          << "dims_mapping: [" << str_join(aligned_dist_attr.dims_mapping())
-          << "] ";
+          << "dims_mapping: [" << str_join(input_grad.dims_mapping()) << "] ";
 
-  return {{input_dist_attr, out_dist_attr}, {aligned_dist_attr}};
+  return {{input_dist_attr, out_dist_attr}, {input_grad}};
 }
 
 SpmdInfo SliceGradInferSpmdDynamic(const DistMetaTensor& input,
@@ -276,7 +351,9 @@ SpmdInfo SliceGradInferSpmdDynamic(const DistMetaTensor& input,
                                    const IntArray& ends,
                                    const std::vector<int64_t>& infer_flags,
                                    const std::vector<int64_t>& decrease_axis) {
-  return SliceGradInferBase(input, out_grad, axes);
+  // starts, ends, infer_flags and decrease_axis have no impact on the
+  // derivation, only to align with the definition in phi api
+  return SliceGradInferBase(input, out_grad, axes, decrease_axis);
 }
 
 SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
@@ -284,8 +361,10 @@ SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
                                       const IntArray& starts,
                                       const IntArray& ends,
                                       const IntArray& strides) {
+  // starts, ends and strides have no impact on the derivation,
+  // only to align with the definition in phi api
   std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
-  return SliceInferSpmdBase(input, axes_bridge);
+  return SliceInferSpmdBase(input, axes_bridge, {});
 }
 
 SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
@@ -294,8 +373,10 @@ SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
                                           const IntArray& starts,
                                           const IntArray& ends,
                                           const IntArray& strides) {
+  // starts, ends and strides have no impact on the derivation,
+  // only to align with the definition in phi api
   std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
-  return SliceGradInferBase(input, out_grad, axes_bridge);
+  return SliceGradInferBase(input, out_grad, axes_bridge, {});
 }
 
 }  // namespace distributed
