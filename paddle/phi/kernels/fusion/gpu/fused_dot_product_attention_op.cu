@@ -249,7 +249,7 @@ void FusedDotProductAttentionGradKernel(const Context &dev_ctx,
                                   tensor_dtype,
                                   dev_ctx.stream(),
                                   handle,
-                                  false);
+                                  true);
 }
 
 }  // namespace fusion
