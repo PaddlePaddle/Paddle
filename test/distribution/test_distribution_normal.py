@@ -29,6 +29,29 @@ from paddle.pir_utils import test_with_pir_api
 np.random.seed(2022)
 
 
+class InitDataContextManager:
+    def __init__(self, in_pir, prog):
+        self.in_pir = in_pir
+        self.prog = prog
+
+    def __enter__(self):
+        if self.in_pir:
+            self.guard = paddle.pir_utils.IrGuard()
+            self.guard.__enter__()
+            self.program_guard = paddle.static.program_guard(self.prog)
+            self.program_guard.__enter__()
+        else:
+            self.program_guard = base.program_guard(self.prog)
+            self.program_guard.__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.in_pir:
+            self.program_guard.__exit__(exc_type, exc_value, traceback)
+            self.guard.__exit__(exc_type, exc_value, traceback)
+        else:
+            self.program_guard.__exit__(exc_type, exc_value, traceback)
+
+
 class NormalNumpy(DistributionNumpy):
     def __init__(self, loc, scale):
         self.loc = np.array(loc)
@@ -81,15 +104,19 @@ class NormalTest(unittest.TestCase):
             self.place = base.CUDAPlace(0)
             self.gpu_id = 0
 
-        self.init_numpy_data(batch_size, dims)
+        self.batch_size = batch_size
+        self.dims = dims
+        self.init_numpy_data(self.batch_size, self.dims)
 
         paddle.disable_static(self.place)
-        self.init_dynamic_data(batch_size, dims)
+        self.init_dynamic_data(self.batch_size, self.dims)
 
         paddle.enable_static()
-        self.test_program = paddle.static.Program()
+        self.test_program = base.Program()
+        with paddle.pir_utils.IrGuard():
+            self.test_pir_program = paddle.static.Program()
+
         self.executor = base.Executor(self.place)
-        self.init_static_data(batch_size, dims)
 
     def init_numpy_data(self, batch_size, dims):
         # loc ans scale are 'float'
@@ -111,12 +138,15 @@ class NormalTest(unittest.TestCase):
         self.dynamic_other_scale = self.other_scale_np
         self.dynamic_values = paddle.to_tensor(self.values_np)
 
-    def init_static_data(self, batch_size, dims):
+    def init_static_data(self, batch_size, dims, in_pir=False):
         self.static_loc = self.loc_np
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with paddle.static.program_guard(self.test_program):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_values = paddle.static.data(
                 name='values', shape=[-1], dtype='float32'
             )
@@ -166,10 +196,8 @@ class NormalTest(unittest.TestCase):
         fetch_list = [sample, entropy, log_prob, probs, kl]
         self.compare_with_numpy(fetch_list)
 
-    @test_with_pir_api
-    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
-        paddle.enable_static()
-        with paddle.static.program_guard(self.test_program):
+    def run_old_ir_normal_distribution_static(self, sample_shape):
+        with base.program_guard(self.test_program, paddle.static.Program()):
             normal = Normal(self.static_loc, self.static_scale)
 
             sample = normal.sample([sample_shape])
@@ -183,20 +211,62 @@ class NormalTest(unittest.TestCase):
 
             fetch_list = [sample, entropy, log_prob, probs, kl]
 
-        feed_vars = {
-            'loc': self.loc_np,
-            'scale': self.scale_np,
-            'values': self.values_np,
-            'other_loc': self.other_loc_np,
-            'other_scale': self.other_scale_np,
-        }
+            feed_vars = {
+                'loc': self.loc_np,
+                'scale': self.scale_np,
+                'values': self.values_np,
+                'other_loc': self.other_loc_np,
+                'other_scale': self.other_scale_np,
+            }
 
-        self.executor.run(base.default_startup_program())
-        fetch_list = self.executor.run(
-            program=self.test_program, feed=feed_vars, fetch_list=fetch_list
-        )
+            self.executor.run(base.default_startup_program())
+            fetch_list = self.executor.run(
+                program=self.test_program, feed=feed_vars, fetch_list=fetch_list
+            )
 
-        self.compare_with_numpy(fetch_list)
+            self.compare_with_numpy(fetch_list)
+
+    def run_pir_normal_distribution_static(self, sample_shape):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(
+                self.test_pir_program, paddle.static.Program()
+            ):
+                normal = Normal(self.static_loc, self.static_scale)
+
+                sample = normal.sample([sample_shape])
+                entropy = normal.entropy()
+                log_prob = normal.log_prob(self.static_values)
+                probs = normal.probs(self.static_values)
+                other_normal = Normal(
+                    self.static_other_loc, self.static_other_scale
+                )
+                kl = normal.kl_divergence(other_normal)
+
+                fetch_list = [sample, entropy, log_prob, probs, kl]
+
+                feed_vars = {
+                    'loc': self.loc_np,
+                    'scale': self.scale_np,
+                    'values': self.values_np,
+                    'other_loc': self.other_loc_np,
+                    'other_scale': self.other_scale_np,
+                }
+                self.executor.run(paddle.static.default_startup_program())
+                fetch_list = self.executor.run(
+                    program=self.test_pir_program,
+                    feed=feed_vars,
+                    fetch_list=fetch_list,
+                )
+
+            self.compare_with_numpy(fetch_list)
+
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        paddle.enable_static()
+        self.init_static_data(self.batch_size, self.dims, in_pir=False)
+        self.run_old_ir_normal_distribution_static(sample_shape)
+
+        self.init_static_data(self.batch_size, self.dims, in_pir=True)
+        self.run_pir_normal_distribution_static(sample_shape)
 
 
 class NormalTest2(NormalTest):
@@ -232,12 +302,15 @@ class NormalTest3(NormalTest):
                 'float32'
             )
 
-    def init_static_data(self, batch_size, dims):
+    def init_static_data(self, batch_size, dims, in_pir=False):
         self.static_loc = self.loc_np
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with paddle.static.program_guard(self.test_program):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -261,12 +334,15 @@ class NormalTest4(NormalTest):
                 'float32'
             )
 
-    def init_static_data(self, batch_size, dims):
+    def init_static_data(self, batch_size, dims, in_pir=False):
         self.static_loc = self.loc_np
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with paddle.static.program_guard(self.test_program):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -297,12 +373,16 @@ class NormalTest5(NormalTest):
         self.dynamic_other_scale = self.other_scale_np
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
 
-    def init_static_data(self, batch_size, dims):
+    def init_static_data(self, batch_size, dims, in_pir=False):
         self.static_loc = self.loc_np
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with paddle.static.program_guard(self.test_program):
+
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float64'
             )
@@ -333,8 +413,11 @@ class NormalTest6(NormalTest):
         self.dynamic_other_loc = paddle.to_tensor(self.other_loc_np)
         self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np)
 
-    def init_static_data(self, batch_size, dims):
-        with paddle.static.program_guard(self.test_program):
+    def init_static_data(self, batch_size, dims, in_pir=False):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float32'
             )
@@ -381,8 +464,11 @@ class NormalTest7(NormalTest):
             self.other_scale_np, dtype='float64'
         )
 
-    def init_static_data(self, batch_size, dims):
-        with paddle.static.program_guard(self.test_program):
+    def init_static_data(self, batch_size, dims, in_pir=False):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float64'
             )
@@ -429,8 +515,11 @@ class NormalTest8(NormalTest):
             self.other_scale_np, dtype='float64'
         )
 
-    def init_static_data(self, batch_size, dims):
-        with paddle.static.program_guard(self.test_program):
+    def init_static_data(self, batch_size, dims, in_pir=False):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float64'
             )
@@ -472,12 +561,15 @@ class NormalTest9(NormalTest):
             )
         self.other_scale_np = self.other_scale_np.tolist()
 
-    def init_static_data(self, batch_size, dims):
+    def init_static_data(self, batch_size, dims, in_pir=False):
         self.static_loc = self.loc_np
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with paddle.static.program_guard(self.test_program):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -507,12 +599,15 @@ class NormalTest10(NormalTest):
             )
         self.other_scale_np = tuple(self.other_scale_np.tolist())
 
-    def init_static_data(self, batch_size, dims):
+    def init_static_data(self, batch_size, dims, in_pir=False):
         self.static_loc = self.loc_np
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with paddle.static.program_guard(self.test_program):
+        manager = InitDataContextManager(
+            in_pir, self.test_pir_program if in_pir else self.test_program
+        )
+        with manager as mgr:
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
