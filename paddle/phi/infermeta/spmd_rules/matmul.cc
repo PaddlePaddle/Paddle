@@ -119,8 +119,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
                          bool trans_x,
                          bool trans_y) {
   // Step0: verify input args based on matmul logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto y_shape = phi::vectorize(y.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto y_shape = common::vectorize(y.dims());
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
   auto x_dist_attr_src = x.dist_attr();
@@ -226,11 +226,11 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& out,
                                 bool trans_x,
                                 bool trans_y) {
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
 
-  auto x_shape = phi::vectorize(x.dims());
-  auto y_shape = phi::vectorize(y.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto y_shape = common::vectorize(y.dims());
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
   int max_ndim = std::max(x_ndim, y_ndim);
@@ -334,8 +334,18 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
   // so it cannot be handled correctly in the backward for the time being
   // For this case, we uniformly transition the input to the Replicated state.
   auto fwd_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
-  if (x.dist_attr() != get_attr(fwd_spmd_info.first[0]) ||
-      y.dist_attr() != get_attr(fwd_spmd_info.first[1])) {
+  auto infer_x_dist_attr = get_attr(fwd_spmd_info.first[0]);
+  auto infer_y_dist_attr = get_attr(fwd_spmd_info.first[1]);
+  auto is_dist_attr_equal = [&](const TensorDistAttr& dist_attr,
+                                const ArgDistAttr& arg_dist_attr) -> bool {
+    auto infer_dist_attr = get_attr(arg_dist_attr);
+    return (dist_attr.process_mesh() != infer_dist_attr.process_mesh() ||
+            dist_attr.dims_mapping() != infer_dist_attr.dims_mapping() ||
+            dist_attr.partial_status() != infer_dist_attr.partial_status());
+  };
+
+  if (is_dist_attr_equal(x.dist_attr(), fwd_spmd_info.first[0]) ||
+      is_dist_attr_equal(y.dist_attr(), fwd_spmd_info.first[1])) {
     auto x_r_dist_attr = GetReplicatedDistAttr(x.dist_attr());
     auto y_r_dist_attr = GetReplicatedDistAttr(y.dist_attr());
     return {{x_r_dist_attr,
@@ -359,9 +369,13 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[0], out_grad, "trans x&y: dy-out_grad");
       confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans x&y: dy-x");
+      auto x_grad =
+          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
+      auto y_grad =
+          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
       return {
           {dy_spmd_info.first[1], dx_spmd_info.first[0], dx_spmd_info.first[1]},
-          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+          {x_grad, y_grad}};
     } else {
       // X'Y: dX = YG', dY = XG
       dx_spmd_info =
@@ -374,9 +388,13 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
       confirm_dist_attr_same_fn(dy_spmd_info.first[0], x, "trans x: dy-x");
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[1], out_grad, "trans x: dy-out_grad");
+      auto x_grad =
+          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
+      auto y_grad =
+          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
       return {
           {dy_spmd_info.first[0], dx_spmd_info.first[0], dx_spmd_info.first[1]},
-          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+          {x_grad, y_grad}};
     }
   } else {
     if (trans_y) {
@@ -391,9 +409,13 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[0], out_grad, "trans y: dy-out_grad");
       confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans y: dy-x");
+      auto x_grad =
+          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
+      auto y_grad =
+          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
       return {
           {dy_spmd_info.first[1], dx_spmd_info.first[1], dx_spmd_info.first[0]},
-          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+          {x_grad, y_grad}};
     } else {
       // XY: dX = GY', dY = X'G
       dx_spmd_info =
@@ -405,9 +427,13 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
       confirm_dist_attr_with_arg_same_fn(dx_spmd_info.first[0],
                                          dy_spmd_info.first[1],
                                          "no trans: dy-out_grad");
+      auto x_grad =
+          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
+      auto y_grad =
+          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
       return {
           {dy_spmd_info.first[0], dx_spmd_info.first[1], dx_spmd_info.first[0]},
-          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+          {x_grad, y_grad}};
     }
   }
 }

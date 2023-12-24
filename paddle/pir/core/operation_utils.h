@@ -17,6 +17,7 @@
 #include <initializer_list>
 #include <memory>
 #include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/region.h"
@@ -33,7 +34,7 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 // This represents an operation arguments in an combined form, suitable for use
 // with the builder APIs.
-struct OperationArgument {
+struct IR_API OperationArgument {
   std::vector<Value> inputs;
   AttributeMap attributes;
   std::vector<Type> output_types;
@@ -54,6 +55,9 @@ struct OperationArgument {
         output_types(types),
         info(info),
         successors(successors) {}
+
+  OperationArgument& operator=(const OperationArgument&) = delete;
+  OperationArgument(const OperationArgument&) = delete;
 
   void AddInput(Value input) { inputs.emplace_back(input); }
 
@@ -104,7 +108,7 @@ struct OperationArgument {
   /// Create a region that should be attached to the operation.  These regions
   /// can be filled in immediately without waiting for Operation to be
   /// created.  When it is, the region bodies will be transferred.
-  Region* AddRegion();
+  Region& AddRegion();
 
   /// Take a region that should be attached to the Operation.  The body of the
   /// region will be transferred when the Operation is created.  If the

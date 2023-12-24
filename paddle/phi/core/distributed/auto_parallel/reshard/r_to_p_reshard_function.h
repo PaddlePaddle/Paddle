@@ -28,6 +28,21 @@ class RToPReshardFunction final : public ReshardFunction {
             const DistTensor& in,
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
+
+  std::string Name() override { return "RToPReshard"; }
+};
+
+class RToPReshardFunctionCrossMesh final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+
+  std::string Name() override { return "RToPReshardCrossMesh"; }
 };
 
 }  // namespace distributed

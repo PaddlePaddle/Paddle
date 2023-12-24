@@ -71,6 +71,13 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    } else if (backend_key == Backend::GPU &&
+               phi::distributed::DistTensor::classof(&t) &&
+               static_cast<const phi::distributed::DistTensor&>(t)
+                   .value()
+                   .meta()
+                   .use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
     return backend_set;
   }
@@ -167,11 +174,12 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
              : ParseBackend(tensor);
 }
 
-DataLayout ParseLayout(DataLayout layout) { return layout; }
-DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+phi::DataLayout ParseLayout(phi::DataLayout layout) { return layout; }
+phi::DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
 
-DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
-  return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
+phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
+                                          const Tensor& tensor) {
+  return layout != phi::DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
 }
 
 }  // namespace experimental

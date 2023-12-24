@@ -241,6 +241,7 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -272,6 +273,7 @@ class TestScaleTripleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

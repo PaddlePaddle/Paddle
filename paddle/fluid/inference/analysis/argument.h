@@ -333,6 +333,10 @@ struct Argument {
                       XpuFcAutotuneFileWriteback,
                       bool);
   DECL_ARGUMENT_FIELD(xpu_gemm_compute_precision, XpuGemmComputePrecision, int);
+  using quant_post_type = std::map<std::string, int>;
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_methods,
+                      XpuQuantPostDynamicWeightMethods,
+                      quant_post_type);
   DECL_ARGUMENT_FIELD(xpu_transformer_softmax_optimize_level,
                       XpuTransformerSoftmaxOptimizeLevel,
                       int);

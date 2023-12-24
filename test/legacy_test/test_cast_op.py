@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def cast_wrapper(x, out_dtype=None):
@@ -223,6 +224,7 @@ class TestCastDoubleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -254,6 +256,7 @@ class TestCastTripleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -279,6 +282,21 @@ class TestCastTripleGradCheck(unittest.TestCase):
             places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestCastInplaceContinuous(unittest.TestCase):
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
+            target = x.cast("uint8")
+            x.cast_("uint8")
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+            target = x.cast("float32")
+            x.cast_("float32")
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+
+        run(paddle.CPUPlace())
 
 
 if __name__ == '__main__':

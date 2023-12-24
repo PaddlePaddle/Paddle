@@ -26,6 +26,11 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
+    def check_placements(self, output, expected_placements):
+        assert (
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
+
     def test_concat_forward(self):
         shapes = [[16, 4, 4], [64, 4, 4]]
         specs = [[None, None, 'x'], [None, None, 'x']]
@@ -33,9 +38,10 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=paddle.concat,
-            with_backward=False,
+            with_backward=True,
             axis=0,
         )
+        self.check_placements(outputs, [dist.Shard(2)])
 
     def test_concat_forward_reshard(self):
         shapes = [[16, 4, 4], [64, 4, 4]]
@@ -44,9 +50,46 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=paddle.concat,
-            with_backward=False,
+            with_backward=True,
             axis=0,
         )
+        self.check_placements(outputs, [dist.Shard(2)])
+
+    def test_stack_forward(self):
+        shapes = [[16, 4, 4], [16, 4, 4]]
+        specs = [[None, None, 'x'], [None, None, 'x']]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.stack,
+            with_backward=True,
+            axis=0,
+        )
+        self.check_placements(outputs, [dist.Shard(3)])
+
+    def test_stack_forward_0d(self):
+        shapes = []
+        specs = []
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.stack,
+            with_backward=True,
+            axis=0,
+        )
+        self.check_placements(outputs, [dist.Replicate()])
+
+    def test_stack_forward_reshard(self):
+        shapes = [[16, 4, 4], [16, 4, 4]]
+        specs = [['x', None, None], [None, None, 'x']]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.stack,
+            with_backward=True,
+            axis=0,
+        )
+        self.check_placements(outputs, [dist.Shard(1)])
 
     def test_slice(self):
         shapes = [64, 4, 4]
@@ -60,6 +103,34 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             starts=[1, 1],
             ends=[3, 3],
         )
+
+    def test_decrease_axes_slice_shard(self):
+        def decrease_axes_slice(x):
+            return x[0]
+
+        shapes = [64, 4, 4]
+        specs = ["x", None, None]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=decrease_axes_slice,
+            with_backward=True,
+        )
+        self.check_placements(outputs, [dist.Replicate()])
+
+    def test_decrease_axes_slice(self):
+        def decrease_axes_slice(x):
+            return x[0]
+
+        shapes = [64, 4, 4]
+        specs = [None, None, 'x']
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=decrease_axes_slice,
+            with_backward=True,
+        )
+        self.check_placements(outputs, [dist.Shard(1)])
 
     def test_slice_reshard(self):
         shapes = [64, 4, 4]
@@ -111,13 +182,17 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             raise ValueError("Only support cpu or gpu backend.")
 
         self.test_concat_forward()
+        self.test_stack_forward()
         self.test_slice()
         self.test_stride_slice()
+        self.test_decrease_axes_slice()
         # all to all is not supported yet for cpu
         if self._backend == "gpu":
             self.test_concat_forward_reshard()
             self.test_slice_reshard()
             self.test_stride_slice_reshard()
+            self.test_stack_forward_reshard()
+            self.test_decrease_axes_slice_shard()
 
 
 if __name__ == '__main__':

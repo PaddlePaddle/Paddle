@@ -16,7 +16,7 @@
 
 #include <cstddef>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
@@ -95,6 +95,18 @@ void Value::ReplaceAllUsesWith(Value new_value) const {
   for (auto it = use_begin(); it != use_end();) {
     (it++)->set_source(new_value);
   }
+}
+
+Attribute Value::attribute(const std::string &key) const {
+  auto op_result = dyn_cast<OpResult>();
+  if (op_result) return op_result.attribute(key);
+  return dyn_cast<BlockArgument>().attribute(key);
+}
+
+void Value::set_attribute(const std::string &key, Attribute value) {
+  auto op_result = dyn_cast<OpResult>();
+  if (op_result) return op_result.set_attribute(key, value);
+  return dyn_cast<BlockArgument>().set_attribute(key, value);
 }
 
 }  // namespace pir

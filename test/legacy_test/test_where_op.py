@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -456,6 +456,189 @@ class TestWhereDygraphAPI(unittest.TestCase):
         a_shape = [2, 2, 1]
         b_shape = [2, 2, 1]
         self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
+
+    def test_where_type_promotion_f2_f4(self):
+        with base.dygraph.guard():
+            cond = np.array([False, False, True, True]).astype('bool')
+            x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float16')
+            y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
+            np.testing.assert_equal(
+                paddle.float32,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, x, y),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).numpy(),
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, y, x),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(y),
+                    paddle.to_tensor(x),
+                ).numpy(),
+            )
+
+    def test_where_type_promotion_f2_f8(self):
+        with base.dygraph.guard():
+            cond = np.array([False, False, True, True]).astype('bool')
+            x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float16')
+            y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float64')
+            np.testing.assert_equal(
+                paddle.float64,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, x, y),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).numpy(),
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, y, x),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(y),
+                    paddle.to_tensor(x),
+                ).numpy(),
+            )
+
+    def test_where_type_promotion_f4_f8(self):
+        with base.dygraph.guard():
+            cond = np.array([False, False, True, True]).astype('bool')
+            x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float32')
+            y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float64')
+            np.testing.assert_equal(
+                paddle.float64,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, x, y),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).numpy(),
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, y, x),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(y),
+                    paddle.to_tensor(x),
+                ).numpy(),
+            )
+
+    def test_where_type_promotion_f2_bf(self):
+        with base.dygraph.guard():
+            cond = np.array([False, False, True, True]).astype('bool')
+            x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float16')
+            y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
+            y = convert_uint16_to_float(convert_float_to_uint16(y))
+            np.testing.assert_equal(
+                paddle.float32,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, x, y),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).numpy(),
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, y, x),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(y),
+                    paddle.to_tensor(x),
+                ).numpy(),
+            )
+
+    def test_where_type_promotion_f4_bf(self):
+        with base.dygraph.guard():
+            cond = np.array([False, False, True, True]).astype('bool')
+            x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float32')
+            y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
+            y = convert_uint16_to_float(convert_float_to_uint16(y))
+            np.testing.assert_equal(
+                paddle.float32,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, x, y),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).numpy(),
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, y, x),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(y),
+                    paddle.to_tensor(x),
+                ),
+            )
+
+    def test_where_type_promotion_f8_bf(self):
+        with base.dygraph.guard():
+            cond = np.array([False, False, True, True]).astype('bool')
+            x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float64')
+            y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
+            y = convert_uint16_to_float(convert_float_to_uint16(y))
+            np.testing.assert_equal(
+                paddle.float64,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, x, y),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).numpy(),
+            )
+            np.testing.assert_array_equal(
+                np.where(cond, y, x),
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(y),
+                    paddle.to_tensor(x),
+                ).numpy(),
+            )
 
     def test_where_condition(self):
         data = np.array([[True, False], [False, True]])

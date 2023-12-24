@@ -4,7 +4,7 @@ if(WITH_PYTHON OR NOT ON_INFER)
   cc_library(
     primitive_backend_eager_experimental
     SRCS ${eager_backend_files}
-    DEPS final_dygraph_function eager_utils phi)
+    DEPS final_dygraph_function eager_utils phi common)
 endif()
 set(static_backend_files
     ${CMAKE_CURRENT_SOURCE_DIR}/generated/generated_static_backend.cc

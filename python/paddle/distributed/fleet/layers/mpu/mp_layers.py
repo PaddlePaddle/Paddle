@@ -134,6 +134,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         self._size = [per_part_size, embedding_dim]
         self._weight_attr = weight_attr
         self._name = name
+        self.num_embeddings = num_embeddings
 
         if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
@@ -161,6 +162,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
                 self.weight,
                 x,
                 start_index=self.vocab_start_index,
+                vocab_size=self.num_embeddings,
                 name=self._name,
             )
             output = mp_ops._mp_allreduce(
@@ -217,7 +219,12 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def backward(ctx, dy):
         x, weight, bias = ctx.saved_tensor()
-        dx = paddle.matmul(dy, weight, transpose_y=True)
+        if dy.dtype == weight.dtype:
+            dx = paddle.matmul(dy, weight, transpose_y=True)
+        else:
+            dx = paddle.matmul(
+                dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
+            )
         op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
         task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False

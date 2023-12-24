@@ -44,9 +44,9 @@ TEST(MultiLevelTile, SampleSplitTwo) {
   srand(0);
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   MultiLevelTiling multi_level_tiling(
@@ -66,9 +66,9 @@ TEST(MultiLevelTile, SampleTileSplit) {
   srand(0);
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   MultiLevelTiling multi_level_tiling(
@@ -93,9 +93,9 @@ TEST(MultiLevelTile, SimpleLoops) {
   srand(0);
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   Expr M(32);
@@ -148,9 +148,9 @@ TEST(MulitLevelTile, MatrixMultiply) {
   srand(0);
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   Expr M(32);
@@ -214,7 +214,7 @@ TEST_F(TestMultiLevelTiling, Matmul) {
   std::vector<int32_t> Y_shape = {32, 32};
   std::vector<int32_t> out_shape = {32, 32};
 
-  Initialize(common::DefaultNVGPUTarget());
+  Initialize(cinn::common::DefaultNVGPUTarget());
   frontend::Program matmul_op =
       tests::OpBuilder("matmul").Build({{"X", X_shape}, {"Y", Y_shape}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(matmul_op, fixed_rand_seed);
@@ -365,7 +365,7 @@ TEST_F(TestMultiLevelTiling, ReduceSum) {
   std::vector<int32_t> out_shape = {1, 16, 1};
   std::vector<int32_t> reduce_dim = {2};
 
-  Initialize(common::DefaultNVGPUTarget());
+  Initialize(cinn::common::DefaultNVGPUTarget());
   frontend::Program reduce_sum_op =
       tests::OpBuilder("reduce_sum")
           .Build({{"X", X_shape}}, {{"dim", reduce_dim}, {"keep_dim", false}});
@@ -408,7 +408,7 @@ TEST_F(TestMultiLevelTiling, Pool2d) {
        {"adaptive", adaptive},
        {"padding_algorithm", padding_algorithm}});
 
-  Initialize(common::DefaultNVGPUTarget());
+  Initialize(cinn::common::DefaultNVGPUTarget());
   ir::IRSchedule ir_schedule = MakeIRSchedule(pool2d_program, fixed_rand_seed);
   SearchState state(ir_schedule);
   VLOG(6) << "Original state:\n" << state->DebugString();

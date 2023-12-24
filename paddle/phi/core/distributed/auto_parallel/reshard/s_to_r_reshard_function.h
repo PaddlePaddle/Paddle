@@ -31,6 +31,8 @@ class SToRReshardFunction final : public ReshardFunction {
             const DistTensor& in,
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
+
+  std::string Name() override { return "SToRReshard"; }
 };
 
 class SToRReshardFunctionCrossMesh final : public ReshardFunction {
@@ -42,6 +44,8 @@ class SToRReshardFunctionCrossMesh final : public ReshardFunction {
             const DistTensor& in,
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
+
+  std::string Name() override { return "SToRReshardCrossMesh"; }
 };
 
 }  // namespace distributed

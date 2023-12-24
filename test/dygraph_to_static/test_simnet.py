@@ -17,11 +17,15 @@ import random
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 from simnet_dygraph_model import BOW, HingeLoss
 
 import paddle
-from paddle import base
+from paddle.base.framework import unique_name
 
 SEED = 102
 random.seed(SEED)
@@ -121,26 +125,24 @@ simnet_process = FakeReaderProcessor(
 )
 
 
-def train(conf_dict, to_static):
+def train(conf_dict):
     """
     train process
     """
-    paddle.jit.enable_to_static(to_static)
+    with unique_name.guard():
+        # Get device
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        else:
+            place = paddle.CPUPlace()
 
-    # Get device
-    if base.is_compiled_with_cuda():
-        place = base.CUDAPlace(0)
-    else:
-        place = base.CPUPlace()
-
-    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         conf_dict['dict_size'] = len(vocab)
         conf_dict['seq_len'] = args.seq_len
 
-        net = BOW(conf_dict)
+        net = paddle.jit.to_static(BOW(conf_dict))
         loss = HingeLoss(conf_dict)
         optimizer = paddle.optimizer.Adam(
             learning_rate=0.001,
@@ -177,13 +179,15 @@ def train(conf_dict, to_static):
 
 
 class TestSimnet(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
-        if base.is_compiled_with_cuda():
-            base.set_flags({"FLAGS_cudnn_deterministic": True})
+        if paddle.is_compiled_with_cuda():
+            paddle.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
-        dygraph_loss = train(conf_dict, to_static=False)
-        static_loss = train(conf_dict, to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_loss = train(conf_dict)
+
+        static_loss = train(conf_dict)
 
         self.assertEqual(len(dygraph_loss), len(static_loss))
         for i in range(len(dygraph_loss)):

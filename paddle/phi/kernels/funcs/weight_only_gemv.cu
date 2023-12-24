@@ -30,9 +30,25 @@ namespace {
 
 #ifdef PADDLE_WITH_CUDA
 constexpr int kWarpSize = 32;
-constexpr int kPerBlockWarpNum = 16;
+constexpr int kPerBlockWarpNum = 8;
 
 /////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct CUDA_HALF_2_TYPE_TARIS {};
+
+template <>
+struct CUDA_HALF_2_TYPE_TARIS<half> {
+  using type = half2;
+};
+
+#ifdef PADDLE_CUDA_BF16
+template <>
+struct CUDA_HALF_2_TYPE_TARIS<__nv_bfloat16> {
+  using type = __nv_bfloat162;
+};
+#endif
+
 template <typename T>
 __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
     T halves[4], int8_t signed_chars[4]) {
@@ -166,6 +182,11 @@ struct ConvertFloatFunc<__nv_bfloat16> {
 #endif
 
 template <typename T>
+struct ConvertDstFunc_2 {
+  static __device__ __forceinline__ T apply(const float& val) { assert(false); }
+};
+
+template <typename T>
 struct ConvertDstFunc {
   static __device__ __forceinline__ T apply(const float& val) { assert(false); }
 };
@@ -177,11 +198,46 @@ struct ConvertDstFunc<half> {
   }
 };
 
+template <>
+struct ConvertDstFunc<half2> {
+  static __device__ __forceinline__ half2 apply(const float& val) {
+    return __float2half2_rn(val);
+  }
+};
+
+template <>
+struct ConvertDstFunc_2<half2> {
+  static __device__ __forceinline__ half2 apply(const half& val) {
+    return __half2half2(val);
+  }
+};
 #ifdef PADDLE_CUDA_BF16
 template <>
 struct ConvertDstFunc<__nv_bfloat16> {
   static __device__ __forceinline__ __nv_bfloat16 apply(const float& val) {
     return __float2bfloat16_rn(val);
+  }
+};
+
+template <>
+struct ConvertDstFunc<__nv_bfloat162> {
+  static __device__ __forceinline__ __nv_bfloat162 apply(const float& val) {
+    return __float2bfloat162_rn(val);
+  }
+};
+
+template <>
+struct ConvertDstFunc_2<__nv_bfloat162> {
+  static __device__ __forceinline__ __nv_bfloat162
+  apply(const __nv_bfloat16& val) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
+    __nv_bfloat162 val2;
+    val2.x = val;
+    val2.y = val;
+    return val2;
+#else
+    return __bfloat162bfloat162(val);
+#endif
   }
 };
 #endif
@@ -198,6 +254,19 @@ struct HalfMul {
   }
 };
 
+template <typename T>
+struct HalfMulAdd {
+  static __device__ __forceinline__ T apply(const T& x,
+                                            const T& y,
+                                            const T& z) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+    return __hfma2(x, y, z);
+#else
+    assert(0 && "HalfMulAdd cuda version error");
+#endif
+  }
+};
+
 #ifdef PADDLE_CUDA_BF16
 template <>
 struct HalfMul<__nv_bfloat16> {
@@ -207,6 +276,20 @@ struct HalfMul<__nv_bfloat16> {
     return __hmul(x, y);
 #else
     return __float2bfloat16_rn(__bfloat162float(x) * __bfloat162float(y));
+#endif
+  }
+};
+
+template <>
+struct HalfMulAdd<__nv_bfloat162> {
+  static __device__ __forceinline__ __nv_bfloat162
+  apply(const __nv_bfloat162& x,
+        const __nv_bfloat162& y,
+        const __nv_bfloat162& z) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+    return __hfma2(x, y, z);
+#else
+    assert(0 && "HalfMulAdd cuda version error");
 #endif
   }
 };
@@ -221,7 +304,7 @@ Each Warp Process: 1 x k matmul 1 x k
 template <typename T, bool Bias, bool Gelu>
 __global__ void int8_weight_only_gemv(const T* input,
                                       const int8_t* weight,
-                                      const float* scale_list,
+                                      const T* scale_list,
                                       const T* bias,
                                       T* output,
                                       const int k,
@@ -238,7 +321,7 @@ __global__ void int8_weight_only_gemv(const T* input,
   const int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
   weight += tile_id * k * 2;
 
-  float v = 0.f, scale = scale_list[row_id], v_bias;
+  float v = 0.f, scale = static_cast<float>(scale_list[row_id]), v_bias;
 
   if (Bias) {
     v_bias = ConvertFloatFunc<T>::apply(bias[row_id]);
@@ -246,11 +329,15 @@ __global__ void int8_weight_only_gemv(const T* input,
 
 #pragma unroll
   for (int i = lane_id * kVecSize; i < k * 2; i += kVecSize * kWarpSize) {
-    *(int4*)vec_weight = *(int4*)(weight + i);            // NOLINT
-    *(float4*)vec_input =                                 // NOLINT
-        *(float4*)(input + i / 128 * 64 + (i % 64));      // NOLINT
-    *(float4*)(vec_input + 8) =                           // NOLINT
-        *(float4*)(input + i / 128 * 64 + (i % 64) + 8);  // NOLINT
+    *reinterpret_cast<int4*>(vec_weight) =
+        *reinterpret_cast<const int4*>(weight + i);  // NOLINT
+    *reinterpret_cast<float4*>(vec_input) =          // NOLINT
+        *reinterpret_cast<const float4*>(input + i / 128 * 64 +
+                                         (i % 64));  // NOLINT
+    *reinterpret_cast<float4*>(vec_input + 8) =      // NOLINT
+        *reinterpret_cast<const float4*>(input + i / 128 * 64 + (i % 64) +
+                                         8);  // NOLINT
+
 #pragma unroll
     for (int p = 0; p < kVecSize; p += 4) {
       fast_cvt_4_packed_signed_i8s_to_2_half2s<T>(vec_weight_f16 + p,
@@ -277,12 +364,430 @@ __global__ void int8_weight_only_gemv(const T* input,
     }
   }
 }
+
+enum class WeightOnlyQuantType { Int4b, Int8b };
+
+template <WeightOnlyQuantType QType>
+struct WeightLayoutDetails;
+
+template <>
+struct WeightLayoutDetails<WeightOnlyQuantType::Int4b> {
+  // Every four rows of the original weights are interleaved into a row with
+  // stride of 64, so if each thread processes 32 elements(for int4, we can use
+  // ldg.128 to load weights), then every group of two adjacent threads will
+  // alternately process four different row weights for example every 256
+  // consecutive int4 elements [256*i, 256*(i+1)-1] of row N under interleave
+  // layout, the first 64 are from [64*i, 64*(i+1)-1] of row 4N before
+  // interleaving, and the second 64 are from [64*i, 64*(i+1)-1] of row 4N+1
+  // before interleaving, and so on. So if each thread loads 32 int4 elements,
+  // then the elements of each 2 adjacent threads of each 8 consecutive threads
+  // will come from row 4N ~ 4N+3 respectively before interleaving.
+  static constexpr int kElemBits = 4;
+  static constexpr int kInterleave = 4;
+  static constexpr int kStride = 64;
+
+  // The index remapping here is to counteracts the effect of
+  // cutlass::permute_B_rows_for_mixed_gemm input 0 1 2 3 4 5 6 7 8 9 10 11 12
+  // 13 14 15 ... 31 weight 0 1 8 9 16 17 24 25 2 3 10 11 18 19 26 27 4 5 12 13
+  // 20 21 28 29 6 7 14 15 22 23 30 31
+  static constexpr int kShuffleSize = 32;
+  static constexpr int kShuffleBasicTile = 2;
+  static constexpr int kShuffleContinous = 4;
+  static constexpr int kShuffleStrided = 4;
+
+  // The rearrangement here counteracts the effect of
+  // cutlass::add_bias_and_interleave_int4s_inplace Input int8 data layout
+  //      [elt_7  elt_5  elt_3  elt_1  elt_6  elt_4  elt_2  elt_0] (each elt
+  //      occupies 4 bits)
+  //
+  // Converted fp16 data layout
+  //      [elt_7  elt_6  elt_5  elt_4  elt_3  elt_2  elt_1  elt_0] (each elt
+  //      occupies 16 bits)
+  static constexpr int kConvertCount = 8;
+  // using Converter
+  //     =
+  //     cutlass::FastInterleavedAndBiasedNumericArrayConverter<cutlass::half_t,
+  //     cutlass::uint4b_t, kConvertCount>;
+
+  // Each warp completes the internal reduce and writes the [Batch * NPerBlock *
+  // Interleave] results to the corresponding address in shared memory
+  template <int Num, int WarpSize>
+  __device__ __forceinline__ static void sync(float* res,
+                                              float (*sm)[Num * kInterleave]) {
+#pragma unroll
+    for (int i = 0; i < Num; ++i) {
+      res[i] += __shfl_xor_sync(~0, res[i], 16);
+      res[i] += __shfl_xor_sync(~0, res[i], 8);
+      res[i] += __shfl_xor_sync(~0, res[i], 1);
+    }
+    __syncthreads();
+    int warp = threadIdx.x / WarpSize, lane = threadIdx.x % WarpSize;
+    if (lane == 0 || lane == 2 || lane == 4 || lane == 6) {
+#pragma unroll
+      for (int i = 0; i < Num; ++i) {
+        sm[warp][i * kInterleave + lane / 2] = res[i];
+      }
+    }
+    __syncthreads();
+  }
+};
+
+template <>
+struct WeightLayoutDetails<WeightOnlyQuantType::Int8b> {
+  // Every two rows of the original weights are interleaved into a row with
+  // stride of 64, so if each thread processes 16 elements(for int8, we can use
+  // ldg.128 to load weights), then every group of four adjacent threads will
+  // alternately process two different row weights for example every 128
+  // consecutive int8 elements [128*i, 128*(i+1)-1] of row N under interleave
+  // layout, the first 64 are from [64*i, 64*(i+1)-1] of row 2N before
+  // interleaving, and the last 64 are from [64*i, 64*(i+1)-1] of row 2N+1
+  // before interleaving. So if each thread loads 16 int8 elements, then the
+  // elements of the first four and last four threads of each 8 consecutive
+  // threads will come from row 2N and row 2N+1 respectively before
+  // interleaving.
+  static constexpr int kElemBits = 8;
+  static constexpr int kInterleave = 2;
+  static constexpr int kStride = 64;
+
+  // The index remapping here is to counteracts the effect of
+  // cutlass::permute_B_rows_for_mixed_gemm input 0 1 2 3 4 5 6 7 8 9 10 11 12
+  // 13 14 15 weight 0 1 8 9 2 3 10 11 4 5 12 13 6 7 14 15
+  static constexpr int kShuffleSize = 16;
+  static constexpr int kShuffleBasicTile = 2;
+  static constexpr int kShuffleContinous = 2;
+  static constexpr int kShuffleStrided = 4;
+
+  // The rearrangement here counteracts the effect of
+  // cutlass::add_bias_and_interleave_int8s_inplace Input int8 data layout
+  //      [elt_3  elt_1  elt_2  elt_0] (each elt occupies 8 bits)
+  //
+  // Converted fp16 data layout
+  //      [elt_3  elt_2  elt_1  elt_0] (each elt occupies 16 bits)
+  static constexpr int kConvertCount = 4;
+  // using Converter =
+  // cutlass::FastInterleavedAndBiasedNumericArrayConverter<cutlass::half_t,
+  // uint8_t, kConvertCount>;
+
+  // Each warp completes the internal reduce and writes the [Batch * NPerBlock *
+  // Interleave] results to the corresponding address in shared memory
+  template <int Num, int WarpSize>
+  __device__ __forceinline__ static void sync(float* res,
+                                              float (*sm)[Num * kInterleave]) {
+#pragma unroll
+    for (int i = 0; i < Num; ++i) {
+      res[i] += __shfl_xor_sync(~0, res[i], 16);
+      res[i] += __shfl_xor_sync(~0, res[i], 8);
+      res[i] += __shfl_xor_sync(~0, res[i], 2);
+      res[i] += __shfl_xor_sync(~0, res[i], 1);
+    }
+    __syncthreads();
+    int warp = threadIdx.x / WarpSize, lane = threadIdx.x % WarpSize;
+    if (lane == 0 || lane == 4) {
+#pragma unroll
+      for (int i = 0; i < Num; ++i) {
+        sm[warp][i * kInterleave + lane / 4] = res[i];
+      }
+    }
+    __syncthreads();
+  }
+};
+
+template <WeightOnlyQuantType QType>
+struct WeightOnlyKernelDetails {
+  using Layout = WeightLayoutDetails<QType>;
+
+  static constexpr int kElemBits = Layout::kElemBits;
+  static constexpr int kInterleave = Layout::kInterleave;
+  static constexpr int kStride = Layout::kStride;
+
+  static constexpr int kShuffleSize = Layout::kShuffleSize;
+  static constexpr int kShuffleBasicTile = Layout::kShuffleBasicTile;
+  static constexpr int kShuffleContinous = Layout::kShuffleContinous;
+  static constexpr int kShuffleStrided = Layout::kShuffleStrided;
+
+  // using Converter = typename Layout::Converter;
+  static constexpr int kConvertCount = Layout::kConvertCount;
+
+  // Use ldg128 load data from global memory
+  static constexpr int kAccessSize = 128;
+  using AccessType = uint4;
+
+  static constexpr int kElemsPerByte = 8 / kElemBits;
+  static constexpr int kElemsPerThread = kAccessSize / kElemBits;
+  static constexpr int kBytePerThread = kElemsPerThread / kElemsPerByte;
+  static constexpr int kThreadsNumPerTile = kStride / kElemsPerThread;
+  static constexpr int kThreadsNumPerInterleave =
+      kThreadsNumPerTile * kInterleave;
+
+  static constexpr int kConvertIters = kElemsPerThread / kConvertCount;
+
+  // Each thread loads 16(int8b)/32(int4b) quantized weight elements each time
+  // through ldg128 So more times of ldg128 are needed to load the same number
+  // of fp16 activation elements.
+  static constexpr int kActivationElemNumPerAccess =
+      kAccessSize / (sizeof(half) * 8);
+  static constexpr int kActivationAccessNum =
+      kElemsPerThread / kActivationElemNumPerAccess;
+};
+
+enum class WeightOnlyType { PerChannel, GroupWise };
+
+struct WeightOnlyPerChannel;
+template <int GS>
+struct WeightOnlyGroupWise;
+
+template <typename WeightOnlyFlag>
+struct WeightOnlyProperties;
+
+template <>
+struct WeightOnlyProperties<WeightOnlyPerChannel> {
+  static constexpr bool kIsFineGrained = false;
+  static constexpr int kGroupSize = 0;
+};
+
+template <int GS>
+struct WeightOnlyProperties<WeightOnlyGroupWise<GS>> {
+  static constexpr bool kIsFineGrained = true;
+  static constexpr int kGroupSize = GS;
+};
+
+template <WeightOnlyQuantType QType,
+          typename WeightOnlyFlag,
+          bool Zero,
+          int BlockSize,
+          typename T>
+struct WeightOnlyScaleLoader {
+  using ElemType = T;
+  using Details = WeightOnlyKernelDetails<QType>;
+  static constexpr bool kIsFineGrained =
+      WeightOnlyProperties<WeightOnlyFlag>::kIsFineGrained;
+  static constexpr int kGroupSize =
+      WeightOnlyProperties<WeightOnlyFlag>::kGroupSize;
+
+ private:
+  const ElemType* _scales;
+  const ElemType* _zeros;
+  int _stride;
+  int _offset;
+
+ public:
+  __device__ __forceinline__ WeightOnlyScaleLoader(const ElemType* scales,
+                                                   const ElemType* zeros,
+                                                   int initial_offset,
+                                                   int stride)
+      : _scales(scales), _zeros(zeros), _stride(stride) {
+    _scales += initial_offset;
+#ifndef WIN32
+    // linux
+    if constexpr (Zero) {
+#else
+    // windows
+    if (Zero) {
+#endif
+      _zeros += initial_offset;
+    }
+    // Calculate the k dimension index of the element processed by the current
+    // thread of layout before interleave Used to load scales and zeros in
+    // groupwise weight only quant
+    _offset =
+        threadIdx.x / Details::kThreadsNumPerInterleave * Details::kStride +
+        (threadIdx.x % Details::kThreadsNumPerTile) * Details::kElemsPerThread;
+  }
+
+  __device__ __forceinline__ void load(ElemType& scale,  // NOLINT
+                                       ElemType& zero,   // NOLINT
+                                       int nid) {
+    int offset = nid * Details::kInterleave;
+#ifndef WIN32
+    if constexpr (kIsFineGrained) {
+#else
+    if (kIsFineGrained) {
+#endif
+      offset += _offset / kGroupSize * _stride;
+    }
+    scale = _scales[offset];
+#ifndef WIN32
+    if constexpr (Zero) {
+#else
+    if (Zero) {
+#endif
+      zero = _zeros[offset];
+    } else {
+      zero = static_cast<ElemType>(0.f);
+    }
+  }
+
+  __device__ __forceinline__ void advance() {
+    _offset += BlockSize * Details::kElemsPerThread / Details::kInterleave;
+  }
+
+  __device__ __forceinline__ int offset() { return _offset; }
+};  // NOLINT
+
+template <typename T,
+          WeightOnlyQuantType QType,
+          typename WeightOnlyFlag,
+          bool Gelu,
+          bool Zero,
+          bool Bias,
+          int NPerBlock,
+          int Batch,
+          int BlockSize>
+__global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight,
+                                                    const T* scales,
+                                                    const T* zeros,
+                                                    const T* in,
+                                                    const T* bias,
+                                                    T* out,
+                                                    const int n,
+                                                    const int k) {
+  static_assert(NPerBlock == 1 || (NPerBlock % 2 == 0),
+                "NPerBlock must be 1 or even in gemv multi warp kernel. ");
+  using Details = WeightOnlyKernelDetails<QType>;
+
+  // using Converter = typename Details::Converter;
+  using AccType = typename Details::AccessType;
+  using CvtSrcType = int8_t;
+  using CvtResType = T;
+  using ScaleLoader =
+      WeightOnlyScaleLoader<QType, WeightOnlyFlag, Zero, BlockSize, T>;
+  extern __shared__ int8_t shmem[];
+  constexpr int Interleave = Details::kInterleave;
+  constexpr int WarpSize = 32;
+  constexpr int Num = Batch * NPerBlock;
+  const int tid = threadIdx.x;
+  const int bid = blockIdx.x;
+  const int n_start_id = bid * NPerBlock * Interleave;
+  using HALF_2_TYPE = typename CUDA_HALF_2_TYPE_TARIS<T>::type;
+  // Calculate the n-dimensional index of the data processed by the current
+  // thread in the interleave tile
+  const int interleave_n_id = (tid / Details::kThreadsNumPerTile) % Interleave;
+
+  qweight += n_start_id * k / Details::kElemsPerByte;
+  ScaleLoader scale_loader(scales, zeros, n_start_id + interleave_n_id, n);
+
+  float(*sm)[Num * Interleave] =
+      reinterpret_cast<float(*)[Num * Interleave]>(shmem);
+
+  // In order to take advantage of hfma2, we use fp16 for accumulation within
+  // threads and fp32 for accumulation between threads.
+  T accumulator[Num];
+  for (int i = 0; i < Num; ++i) {
+    accumulator[i] = ConvertFloatFunc<T>::apply(0.f);
+  }
+
+  // Iteration in k dimensions
+  for (int local_k = tid * Details::kElemsPerThread; local_k < k * Interleave;
+       local_k += BlockSize * Details::kElemsPerThread) {
+    T weights_f16[Details::kElemsPerThread * NPerBlock];  // 16 * 2 = 32
+    T scale[NPerBlock], zero[NPerBlock];
+#pragma unroll
+    for (int idx = 0; idx < NPerBlock; ++idx) {
+      // Load quantized weight and scales/zeros
+      int8_t weights_quantized[Details::kBytePerThread];
+      *reinterpret_cast<int4*>(weights_quantized) =
+          *reinterpret_cast<const int4*>(
+              qweight + idx * Interleave * k / Details::kElemsPerByte +
+              local_k / Details::kElemsPerByte);
+      scale_loader.load(scale[idx], zero[idx], idx);
+      T weights_vec[Details::kElemsPerThread];
+#pragma unroll
+      for (int i = 0; i < Details::kConvertIters; ++i) {
+        // Use cutlass::FastInterleavedAndBiasedNumericArrayConverter for I2F
+        // type conversion
+        fast_cvt_4_packed_signed_i8s_to_2_half2s<T>(
+            weights_vec + i * Details::kConvertCount,
+            weights_quantized +
+                i * Details::kConvertCount / Details::kElemsPerByte);
+      }
+      // TODO(wangbojun) no zero support here
+#pragma unroll
+      for (int p = 0; p < 16; ++p) {
+        weights_f16[p * NPerBlock + idx] =
+            weights_vec[p / 8 + (p % 8) * 2] * scale[idx];
+      }
+    }
+#pragma unroll
+    for (int b = 0; b < Batch; ++b) {
+      T in_v[Details::kElemsPerThread];
+      // load activation elements
+      *(float4*)in_v =                                         // NOLINT
+          *(float4*)(in + b * k + scale_loader.offset());      // NOLINT
+      *(float4*)(in_v + 8) =                                   // NOLINT
+          *(float4*)(in + b * k + scale_loader.offset() + 8);  // NOLINT
+      // Perform vector inner product and accumulate
+#ifndef WIN32
+      if constexpr (NPerBlock == 1) {
+#else
+      if (NPerBlock == 1) {
+#endif
+        HALF_2_TYPE v = ConvertDstFunc<HALF_2_TYPE>::apply(0.f);
+#pragma unroll
+        for (int y = 0; y < Details::kElemsPerThread; y += 2) {
+          v = HalfMulAdd<HALF_2_TYPE>::apply(
+              *reinterpret_cast<HALF_2_TYPE*>(weights_f16 + y),
+              *reinterpret_cast<HALF_2_TYPE*>(in_v + y),
+              v);
+        }
+        accumulator[b] = accumulator[b] + static_cast<T>(v.x + v.y);
+      } else {
+#pragma unroll
+        for (int x = 0; x < NPerBlock / 2; ++x) {
+#pragma unroll
+          for (int y = 0; y < Details::kElemsPerThread; ++y) {
+            *reinterpret_cast<HALF_2_TYPE*>(accumulator + b * NPerBlock +
+                                            x * 2) =
+                HalfMulAdd<HALF_2_TYPE>::apply(
+                    *reinterpret_cast<HALF_2_TYPE*>(weights_f16 +
+                                                    y * NPerBlock + x * 2),
+                    ConvertDstFunc_2<HALF_2_TYPE>::apply(in_v[y]),
+                    *reinterpret_cast<HALF_2_TYPE*>(accumulator +
+                                                    b * NPerBlock + x * 2));
+          }
+        }
+      }
+    }
+    scale_loader.advance();
+  }
+  float reses[Num];
+#pragma unroll
+  for (int i = 0; i < Num; ++i) {
+    reses[i] = static_cast<float>(accumulator[i]);
+  }
+
+  // Each warp completes the internal reduce and writes the [Batch * NPerBlock *
+  // Interleave] results to the corresponding address in shared memory
+  Details::Layout::sync<Num, WarpSize>(reses, sm);
+
+  // Each thread is responsible for the accumulation and store to global memory
+  // of one element
+  for (int i = tid; i < Num * Interleave; i += BlockSize) {
+    int nid = i % (NPerBlock * Interleave);
+    float v = 0.f;
+    for (int j = 0; j < BlockSize / WarpSize; ++j) {
+      v += sm[j][i];
+    }
+    float bias_v = 0.f;
+#ifndef WIN32
+    if constexpr (Bias) {
+#else
+    if (Bias) {
+#endif
+      bias_v = static_cast<float>(bias[n_start_id + nid]);
+    }
+    int b = i / NPerBlock / Interleave;
+
+    out[b * n + n_start_id + nid] = ConvertDstFunc<T>::apply(
+        GeluActivation<float, Gelu>::apply(v + bias_v));
+  }
+}
+
 #endif
 
 template <typename T>
 void int8_weight_only_gemv_launcher(const T* input,
                                     const int8_t* weight,
-                                    const float* scale_list,
+                                    const T* scale_list,
                                     const T* bias,
                                     T* output,
                                     const int k,
@@ -330,13 +835,161 @@ void int8_weight_only_gemv_launcher(const float* input,
 template <>
 void int8_weight_only_gemv_launcher(const phi::dtype::bfloat16* input,
                                     const int8_t* weight,
-                                    const float* scale_list,
+                                    const phi::dtype::bfloat16* scale_list,
                                     const phi::dtype::bfloat16* bias,
                                     phi::dtype::bfloat16* output,
                                     const int k,
                                     const int n,
                                     const bool gelu,
                                     gpuStream_t stream) {
+  // Environment do not support bf16.
+  assert(false);
+}
+
+template <typename T,
+          bool Bias,
+          bool Gelu,
+          int NPerBlock,
+          int kInterleave,
+          int BlockSize>
+void select_batch_gemv_multi_warp_by_batch(const T* input,
+                                           const int8_t* weight,
+                                           const T* scale_list,
+                                           const T* bias,
+                                           T* output,
+                                           const int m,
+                                           const int k,
+                                           const int n,
+                                           gpuStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  VLOG(3) << "launch batched gemv multi_block mnk:" << m << " "
+          << " " << n << " " << k;
+  dim3 grid(n / NPerBlock / kInterleave);
+  dim3 block(BlockSize);
+  int smem_size = sizeof(float) * BlockSize / 32 * m * NPerBlock * kInterleave;
+  switch (m) {
+    case 1: {
+      weight_only_batched_gemv_multi_warp<T,
+                                          WeightOnlyQuantType::Int8b,
+                                          WeightOnlyPerChannel,
+                                          Gelu,
+                                          false,
+                                          Bias,
+                                          NPerBlock,
+                                          /*Batch Size*/ 1,
+                                          BlockSize>
+          <<<grid, block, smem_size, stream>>>(
+              weight, scale_list, /*zeros*/ nullptr, input, bias, output, n, k);
+      break;
+    }
+    case 2: {
+      weight_only_batched_gemv_multi_warp<T,
+                                          WeightOnlyQuantType::Int8b,
+                                          WeightOnlyPerChannel,
+                                          Gelu,
+                                          false,
+                                          Bias,
+                                          NPerBlock,
+                                          /*Batch Size*/ 2,
+                                          BlockSize>
+          <<<grid, block, smem_size, stream>>>(
+              weight, scale_list, /*zeros*/ nullptr, input, bias, output, n, k);
+      break;
+    }
+    case 3: {
+      weight_only_batched_gemv_multi_warp<T,
+                                          WeightOnlyQuantType::Int8b,
+                                          WeightOnlyPerChannel,
+                                          Gelu,
+                                          false,
+                                          Bias,
+                                          NPerBlock,
+                                          /*Batch Size*/ 3,
+                                          BlockSize>
+          <<<grid, block, smem_size, stream>>>(
+              weight, scale_list, /*zeros*/ nullptr, input, bias, output, n, k);
+      break;
+    }
+    case 4: {
+      weight_only_batched_gemv_multi_warp<T,
+                                          WeightOnlyQuantType::Int8b,
+                                          WeightOnlyPerChannel,
+                                          Gelu,
+                                          false,
+                                          Bias,
+                                          NPerBlock,
+                                          /*Batch Size*/ 4,
+                                          BlockSize>
+          <<<grid, block, smem_size, stream>>>(
+              weight, scale_list, /*zeros*/ nullptr, input, bias, output, n, k);
+      break;
+    }
+    case 5: {
+      weight_only_batched_gemv_multi_warp<T,
+                                          WeightOnlyQuantType::Int8b,
+                                          WeightOnlyPerChannel,
+                                          Gelu,
+                                          false,
+                                          Bias,
+                                          NPerBlock,
+                                          /*Batch Size*/ 5,
+                                          BlockSize>
+          <<<grid, block, smem_size, stream>>>(
+              weight, scale_list, /*zeros*/ nullptr, input, bias, output, n, k);
+      break;
+    }
+    default: {
+      throw std::runtime_error("Use unsupported batch for gemv");
+      break;
+    }
+  }
+#endif
+}
+
+template <typename T>
+void batched_int8_weight_only_gemv_multi_warp_launcher(const T* input,
+                                                       const int8_t* weight,
+                                                       const T* scale_list,
+                                                       const T* bias,
+                                                       T* output,
+                                                       const int m,
+                                                       const int k,
+                                                       const int n,
+                                                       const bool gelu,
+                                                       gpuStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  if (bias) {
+    if (gelu) {
+      select_batch_gemv_multi_warp_by_batch<T, true, true, 2, 2, 256>(
+          input, weight, scale_list, bias, output, m, k, n, stream);
+    } else {
+      select_batch_gemv_multi_warp_by_batch<T, true, false, 2, 2, 256>(
+          input, weight, scale_list, bias, output, m, k, n, stream);
+    }
+  } else {
+    if (gelu) {
+      select_batch_gemv_multi_warp_by_batch<T, false, true, 2, 2, 256>(
+          input, weight, scale_list, bias, output, m, k, n, stream);
+    } else {
+      select_batch_gemv_multi_warp_by_batch<T, false, false, 2, 2, 256>(
+          input, weight, scale_list, bias, output, m, k, n, stream);
+    }
+  }
+#endif
+}
+
+template <>
+void batched_int8_weight_only_gemv_multi_warp_launcher(
+    const phi::dtype::bfloat16* input,
+    const int8_t* weight,
+    const phi::dtype::bfloat16* scale_list,
+    const phi::dtype::bfloat16* bias,
+    phi::dtype::bfloat16* output,
+    const int m,
+    const int k,
+    const int n,
+    const bool gelu,
+    gpuStream_t stream) {
   // Environment do not support bf16.
   assert(false);
 }
@@ -348,7 +1001,8 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
                                const T* x,
                                const int8_t* weight,
                                const T* bias,
-                               const float* weight_scale,
+                               const T* weight_scale,
+                               const int m,
                                const int n,
                                const int k,
                                const std::string& act_method,
@@ -365,17 +1019,33 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
         errors::InvalidArgument("Currently, Int8 weightonly GEMV act_method "
                                 "only support `gelu`, `None`. "));
   }
-
-  int8_weight_only_gemv_launcher<DataType>(
-      reinterpret_cast<const DataType*>(x),
-      weight,
-      weight_scale,
-      reinterpret_cast<const DataType*>(bias),
-      reinterpret_cast<DataType*>(output),
-      k,
-      n,
-      gelu,
-      ctx.stream());
+  if (m < 1) {
+    // should no go here since m >=1
+    // multi_warp is slightly faster even in m == 1. we don't dispatch to this
+    // kernel but keep it for future use.
+    int8_weight_only_gemv_launcher<DataType>(
+        reinterpret_cast<const DataType*>(x),
+        weight,
+        reinterpret_cast<const DataType*>(weight_scale),
+        reinterpret_cast<const DataType*>(bias),
+        reinterpret_cast<DataType*>(output),
+        k,
+        n,
+        gelu,
+        ctx.stream());
+  } else {
+    batched_int8_weight_only_gemv_multi_warp_launcher<DataType>(
+        reinterpret_cast<const DataType*>(x),
+        weight,
+        reinterpret_cast<const DataType*>(weight_scale),
+        reinterpret_cast<const DataType*>(bias),
+        reinterpret_cast<DataType*>(output),
+        m,
+        k,
+        n,
+        gelu,
+        ctx.stream());
+  }
 }
 
 template <typename T, typename Context>
@@ -391,9 +1061,9 @@ void GemvWeightonlyInt8Kernel(const Context& dev_ctx,
       weight.data<int8_t>();  // Actually, we pass the weight datatype is
                               // uint8_t type.
   const T* bias_data = bias ? bias.get().data<T>() : nullptr;
-  const float* weight_scale_data = weight_scale.data<float>();
+  const T* weight_scale_data = weight_scale.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
-
+  int m = x.dims()[0];
   int k = x.dims()[1];
   int n = weight.dims()[0];
   GemvWeightonlyInt8Wrapper<T, Context>(dev_ctx,
@@ -401,6 +1071,7 @@ void GemvWeightonlyInt8Kernel(const Context& dev_ctx,
                                         weight_data,
                                         bias_data,
                                         weight_scale_data,
+                                        m,
                                         n,
                                         k,
                                         act_method,
@@ -411,30 +1082,34 @@ template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const phi::dtype::float16* x,
                                         const int8_t* weight,
                                         const phi::dtype::float16* bias,
-                                        const float* weight_scale,
+                                        const phi::dtype::float16* weight_scale,
+                                        const int m,
                                         const int n,
                                         const int k,
                                         const std::string& act_method,
                                         phi::dtype::float16* output);
 
-template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
-                                        const phi::dtype::bfloat16* x,
-                                        const int8_t* weight,
-                                        const phi::dtype::bfloat16* bias,
-                                        const float* weight_scale,
-                                        const int n,
-                                        const int k,
-                                        const std::string& act_method,
-                                        phi::dtype::bfloat16* output);
+template void GemvWeightonlyInt8Wrapper(
+    const phi::GPUContext& ctx,
+    const phi::dtype::bfloat16* x,
+    const int8_t* weight,
+    const phi::dtype::bfloat16* bias,
+    const phi::dtype::bfloat16* weight_scale,
+    const int m,
+    const int n,
+    const int k,
+    const std::string& act_method,
+    phi::dtype::bfloat16* output);
 
-template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
-                                        const float* x,
-                                        const int8_t* weight,
-                                        const float* bias,
-                                        const float* weight_scale,
-                                        const int n,
-                                        const int k,
-                                        const std::string& act_method,
-                                        float* output);
+// template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
+//                                         const float* x,
+//                                         const int8_t* weight,
+//                                         const float* bias,
+//                                         const float* weight_scale,
+//                                         const int m,
+//                                         const int n,
+//                                         const int k,
+//                                         const std::string& act_method,
+//                                         float* output);
 
 }  // namespace phi

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle import base
@@ -23,9 +23,6 @@ from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.incubate.layers.nn import shuffle_batch
-
-sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils_new import compare_legacy_with_pir
 
 paddle.enable_static()
 
@@ -121,7 +118,7 @@ class TestWhileOp(unittest.TestCase):
             for _ in range(2):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(
@@ -136,7 +133,7 @@ class TestWhileOp(unittest.TestCase):
 
 
 class BadInputTest(unittest.TestCase):
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_error(self):
         with base.program_guard(base.Program()):
 
@@ -192,7 +189,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
 
 class TestOutputsMustExistsInputs(unittest.TestCase):
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_outputs_exists_inputs(self):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.

@@ -26,7 +26,7 @@ namespace py = pybind11;
 namespace cinn {
 namespace pybind {
 
-using common::Type;
+using cinn::common::Type;
 using lang::Placeholder;
 using py::arg;
 using utils::GetStreamCnt;
@@ -137,7 +137,7 @@ void BindPE(py::module* m) {
          py::arg("trans_b") = false,
          py::arg("alpha") = 1,
          py::arg("out") = "T_Matmul_mkl_out",
-         py::arg("target") = common::DefaultHostTarget());
+         py::arg("target") = cinn::common::DefaultHostTarget());
 }
 
 }  // namespace pybind

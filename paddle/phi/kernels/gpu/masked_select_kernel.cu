@@ -54,9 +54,9 @@ void MaskedSelectKernel(const Context& dev_ctx,
   DenseTensor x_expand;
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-      vectorize(x.dims()), vectorize(mask.dims()));
+      common::vectorize(x.dims()), common::vectorize(mask.dims()));
 
-  DDim epxand_dims = make_ddim(expanded_size);
+  DDim epxand_dims = common::make_ddim(expanded_size);
   if (mask.dims() != epxand_dims) {
     phi::ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);

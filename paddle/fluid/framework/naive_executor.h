@@ -51,11 +51,7 @@ class NaiveExecutor {
 
   // Create child scope.
   // Create variables.
-  // @with_feed_fetch_ops: whether to work with the feed and fetch operators.
-  void Prepare(Scope* scope,
-               const ProgramDesc& program_desc,
-               int block_id,
-               bool with_feed_fetch_ops);
+  void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id);
 
   void PrepareInterpreterCore(
       Scope* scope,
@@ -99,9 +95,7 @@ class NaiveExecutor {
   void RegisterInputHook(const HookFunc& hookfunc);
 
  private:
-  void CreateOps(const ProgramDesc& desc,
-                 int block_id,
-                 bool with_feed_fetch_ops);
+  void CreateOps(const ProgramDesc& desc, int block_id);
 
  private:
   const platform::Place place_;

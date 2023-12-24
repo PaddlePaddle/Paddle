@@ -70,6 +70,8 @@ bool IsCommunicationOp(const OperatorBase* op);
 
 bool IsCommunicationOp(const Instruction& instr);
 
+bool IsCommunicationOp(const ::pir::Operation* op);
+
 bool IsCpuOp(const Instruction& instr);
 
 bool IsCpuOp(Instruction* instr);
@@ -101,6 +103,8 @@ void BuildOpFuncList(const platform::Place& place,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* scope,
                      const ExecutionConfig& execution_config,
+                     const std::vector<HookFunc>& input_hookfuncs,
+                     const std::vector<HookFunc>& output_hookfuncs,
                      bool use_local_scope = true,
                      bool static_build = false);
 

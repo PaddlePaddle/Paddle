@@ -58,7 +58,10 @@ enum class AlgorithmType {
   kScaleBiasReluConvBNstats = 13,
   kBNFinalize = 14,
   kScaleBiasAddRelu = 15,
-  kAlgorithmCount = 16
+  kDgradDreluBnBwdWeight = 16,
+  kDbnApply = 17,
+  kBnActWgrad = 18,
+  kAlgorithmCount = 19
 #endif
 };
 

@@ -19,10 +19,7 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/arange_kernel.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
 
 PD_DECLARE_bool(cudnn_deterministic);
 
@@ -54,21 +51,40 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
+  void* dq_ptr = nullptr;
+  void* dk_ptr = nullptr;
+  void* dv_ptr = nullptr;
+
   ctx.template Alloc<T>(dq);
-  ctx.template Alloc<T>(dk);
-  ctx.template Alloc<T>(dv);
+  dq_ptr = dq->data();
+
+  DenseTensor dk_tmp;
+  if (dk) {
+    ctx.template Alloc<T>(dk);
+    dk_ptr = dk->data();
+  } else {
+    dk_tmp = EmptyLike<T, Context>(ctx, k);
+    dk_ptr = dk_tmp.data();
+  }
+
+  DenseTensor dv_tmp;
+  if (dv) {
+    ctx.template Alloc<T>(dv);
+    dv_ptr = dv->data();
+  } else {
+    dv_tmp = EmptyLike<T, Context>(ctx, v);
+    dv_ptr = dv_tmp.data();
+  }
 
   const cudaStream_t stream = ctx.stream();
 
   // q,k,v [total_*, num_heads, head_dim]
   auto dims = q.dims();
 
-  const int64_t total_q = dims[0];
   const int64_t batch_size = cu_seqlens_q.numel() - 1;
   const int64_t num_heads = dims[1];
   const int64_t head_size_og = dout.dims()[2];
   const int64_t head_size = dims[2];
-  const int64_t total_k = k.dims()[0];
   const int64_t num_heads_k = k.dims()[1];
 
   int num_splits = get_num_split();
@@ -109,9 +125,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       cu_seqlens_q.data<int32_t>(),
       cu_seqlens_k.data<int32_t>(),
       params.rng_state.data(),
-      dq->data(),
-      dk->data(),
-      dv->data(),
+      dq_ptr,
+      dk_ptr,
+      dv_ptr,
       params.dq_accum.data(),
       params.batch_size,
       params.max_seqlen_q,
@@ -123,8 +139,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       params.head_size,
       params.head_size_rounded,
       params.dropout,
-      params.scale,
-      1.0f / params.scale,
+      params.softmax_scale,
+      1.0f / params.softmax_scale,
       params.causal,
       params.is_bf16,
       num_splits,
@@ -132,7 +148,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -155,9 +171,36 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
-  // q,k,v [batch_size, seq_len, num_heads, head_dim]
+  void* dq_ptr = nullptr;
+  void* dk_ptr = nullptr;
+  void* dv_ptr = nullptr;
 
+  ctx.template Alloc<T>(dq);
+  dq_ptr = dq->data();
+
+  DenseTensor dk_tmp;
+  if (dk) {
+    ctx.template Alloc<T>(dk);
+    dk_ptr = dk->data();
+  } else {
+    dk_tmp = EmptyLike<T, Context>(ctx, k);
+    dk_ptr = dk_tmp.data();
+  }
+
+  DenseTensor dv_tmp;
+  if (dv) {
+    ctx.template Alloc<T>(dv);
+    dv_ptr = dv->data();
+  } else {
+    dv_tmp = EmptyLike<T, Context>(ctx, v);
+    dv_ptr = dv_tmp.data();
+  }
+
+  const cudaStream_t stream = ctx.stream();
+
+  // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
+
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
@@ -166,9 +209,6 @@ void FlashAttnGradKernel(const Context& ctx,
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
 
-  const int64_t total_q = batch_size * seqlen_q;
-  const int64_t total_k = batch_size * seqlen_k;
-
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
       head_size_og,
@@ -176,10 +216,8 @@ void FlashAttnGradKernel(const Context& ctx,
       phi::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
 
-  VLOG(10) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
-           << "], v[" << v.dims() << "]";
-
-  const float scale = 1.0f / std::sqrt(head_size);
+  const float softmax_scale = 1.0f / std::sqrt(head_size);
+  const float softmax_unscale = std::sqrt(head_size);
 
   FlashAttnBwdParamsV2 params =
       FlashAttnBwdParamsV2(ctx,
@@ -190,20 +228,22 @@ void FlashAttnGradKernel(const Context& ctx,
                            num_heads_k,
                            head_size,
                            dropout,
-                           scale,
+                           softmax_scale,
                            causal,
                            q.dtype(),
                            attn_mask,
                            seed_offset.data<int64_t>());
 
-  ctx.template Alloc<T>(dq);
-  ctx.template Alloc<T>(dk);
-  ctx.template Alloc<T>(dv);
-
-  cudaStream_t stream = ctx.stream();
-
-  VLOG(10) << "FlashAttn bwd seed: " << params.seed
-           << ", offset: " << params.offset;
+  VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
+           << k.dims() << "], v.shape=[" << v.dims() << "]";
+  VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
+           << ", seed=" << params.seed << ", offset=" << params.offset;
+  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
+           << ", softmax_unscale=" << softmax_unscale;
+  if (attn_mask.get_ptr()) {
+    VLOG(10) << "[FlashAttn Backward] attn_mask.shape=["
+             << (attn_mask.get_ptr())->dims() << "]";
+  }
 
   int num_splits = get_num_split();
 
@@ -216,9 +256,9 @@ void FlashAttnGradKernel(const Context& ctx,
       params.softmax_d.data(),
       softmax_lse.data(),
       params.rng_state.data(),
-      dq->data(),
-      dk->data(),
-      dv->data(),
+      dq_ptr,
+      dk_ptr,
+      dv_ptr,
       params.dq_accum.data(),
       params.batch_size,
       params.max_seqlen_q,
@@ -230,8 +270,8 @@ void FlashAttnGradKernel(const Context& ctx,
       params.head_size,
       params.head_size_rounded,
       params.dropout,
-      params.scale,
-      std::sqrt(head_size),  // for unscale
+      params.softmax_scale,
+      softmax_unscale,
       params.causal,
       params.is_bf16,
       num_splits,
@@ -239,7 +279,7 @@ void FlashAttnGradKernel(const Context& ctx,
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();

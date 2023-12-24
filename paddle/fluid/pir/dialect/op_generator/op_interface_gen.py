@@ -88,7 +88,7 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
     }"""
 
 OP_VJP_DEFINE_TEMPLATE = """
-std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::OpResult>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
+std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
 {check_param}
     VLOG(6) << "Prepare inputs of {op_grad_name}";
 {backward_input_code}
@@ -122,6 +122,14 @@ def gen_op_vjp_str(
     fwd_input_and_mutable_attr_name_list = (
         op_info.input_name_list + op_info.mutable_attribute_name_list
     )
+    if op_grad_info.forward_input_name_list:
+        fwd_inputs_list = op_grad_info.forward_input_name_list
+    else:
+        fwd_inputs_list = fwd_input_and_mutable_attr_name_list
+    if op_grad_info.forward_output_name_list:
+        fwd_outputs_list = op_grad_info.forward_output_name_list
+    else:
+        fwd_outputs_list = op_info.output_name_list
 
     backward_input_code = ''
     build_args_str = ''
@@ -133,15 +141,16 @@ def gen_op_vjp_str(
 
         vjp_param_name = ''
         index_0 = -1
-        if bw_input_name in fwd_input_and_mutable_attr_name_list:
+        if bw_input_name in fwd_inputs_list:
             vjp_param_name = 'inputs_'
-            index_0 = fwd_input_and_mutable_attr_name_list.index(bw_input_name)
-        elif bw_input_name in op_info.output_name_list:
+            index_0 = fwd_inputs_list.index(bw_input_name)
+        elif bw_input_name in fwd_outputs_list:
             vjp_param_name = 'outputs'
-            index_0 = op_info.output_name_list.index(bw_input_name)
+            index_0 = fwd_outputs_list.index(bw_input_name)
         else:
             vjp_param_name = 'out_grads'
-            grad_idx += 1
+            offset = len('_grad')
+            grad_idx = fwd_outputs_list.index(bw_input_name[:-offset])
             index_0 = grad_idx
         if op_grad_info.input_optional_list[idx] == 'true':
             if input_type == 'Tensor':
@@ -293,5 +302,5 @@ def gen_exclusive_interface_str(op_info, op_info_items):
                 "  static void InferMeta( phi::InferMetaContext *infer_meta );"
             )
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
-        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::OpResult>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
+        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str

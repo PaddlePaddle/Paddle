@@ -277,7 +277,7 @@ void GraphCompiler::InsertBufferHandlers(
       const auto& malloc_var_names = m_it->second;
       auto function_name = "malloc_buffer_instruction_" + std::to_string(step);
       auto malloc_instr =
-          std::make_unique<Instruction>(common::DefaultHostTarget(),
+          std::make_unique<Instruction>(cinn::common::DefaultHostTarget(),
                                         context->scope.get(),
                                         malloc_var_names,
                                         std::vector<std::string>({}),
@@ -300,7 +300,7 @@ void GraphCompiler::InsertBufferHandlers(
       const auto& free_var_names = f_it->second;
       auto function_name = "free_buffer_instruction_" + std::to_string(step);
       auto free_instr =
-          std::make_unique<Instruction>(common::DefaultHostTarget(),
+          std::make_unique<Instruction>(cinn::common::DefaultHostTarget(),
                                         context->scope.get(),
                                         std::vector<std::string>({}),
                                         free_var_names,
@@ -350,7 +350,7 @@ std::shared_ptr<Scope> BuildScope(Target target,
 
 std::vector<ir::LoweredFunc> GetFuncFromImpl(
     const std::shared_ptr<OpImpl>& impl,
-    const common::CINNValuePack& cinn_inputs,
+    const cinn::common::CINNValuePack& cinn_inputs,
     std::vector<ir::Tensor>& all_arg_tensors,  // NOLINT
     const std::vector<std::string>& input_output_nodes,
     const std::string& node_id,
@@ -359,7 +359,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
                      utils::EventType::kOrdinary);
   // 1.Call Op's Compute function, using the default stages and LowerVec to get
   // IR tree.
-  common::CINNValuePack C = impl->fcompute(cinn_inputs);
+  cinn::common::CINNValuePack C = impl->fcompute(cinn_inputs);
 
   // 2. Collect tensors and arguments
   // Add output tensors to all_arg_tensors
@@ -367,7 +367,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     ir::Expr temp = C[i];
     // checkout whether the tensor is with buffer.
     if (!temp.as_tensor_ref()->buffer.defined() ||
-        target != common::DefaultNVGPUTarget()) {
+        target != cinn::common::DefaultNVGPUTarget()) {
       all_arg_tensors.push_back(temp.as_tensor_ref());
     }
   }
@@ -386,18 +386,18 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     VLOG(4) << fun;
   }
 
-  std::vector<common::CINNValue> schedule_inputs;
+  std::vector<cinn::common::CINNValue> schedule_inputs;
   for (int i = 0; i < C.size() - 1; ++i) {
     CHECK(C[i].is_tensor());
-    schedule_inputs.push_back(common::CINNValue(C[i]));
+    schedule_inputs.push_back(cinn::common::CINNValue(C[i]));
   }
   for (auto& f : funcs) {
-    schedule_inputs.push_back(common::CINNValue(f->body));
+    schedule_inputs.push_back(cinn::common::CINNValue(f->body));
   }
 
   // 3. Call Op's Schedule function, optimizing the IR tree by new IR schedule
-  common::CINNValuePack expr_pack =
-      impl->fschedule(common::CINNValuePack{schedule_inputs});
+  cinn::common::CINNValuePack expr_pack =
+      impl->fschedule(cinn::common::CINNValuePack{schedule_inputs});
 
   // 4. Optimize the LoweredFunc
   VLOG(3) << "expr_pack.size() is : " << expr_pack.size()

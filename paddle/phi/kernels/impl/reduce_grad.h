@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"

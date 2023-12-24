@@ -109,7 +109,6 @@ class TestDeformConv2D(TestCase):
 
         self.mask = np.random.uniform(-1, 1, self.mask_shape).astype(self.dtype)
 
-    @test_with_pir_api
     def static_graph_case_dcn(self):
         main = paddle.static.Program()
         start = paddle.static.Program()
@@ -144,27 +143,31 @@ class TestDeformConv2D(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.vision.ops.deform_conv2d(
-                x,
-                offset=offset,
-                mask=None,
+            y_v1 = paddle.vision.ops.DeformConv2D(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
-            )
+                weight_attr=I.Assign(self.weight),
+                bias_attr=False if self.no_bias else I.Assign(self.bias),
+            )(x, offset, None)
 
-            y_v2 = paddle.vision.ops.deform_conv2d(
-                x,
-                offset=offset,
-                mask=mask,
+            y_v2 = paddle.vision.ops.DeformConv2D(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
-            )
+                weight_attr=I.Assign(self.weight),
+                bias_attr=False if self.no_bias else I.Assign(self.bias),
+            )(x, offset, mask)
 
         exe = paddle.static.Executor(self.place)
         exe.run(start)
@@ -208,6 +211,7 @@ class TestDeformConv2D(TestCase):
 
         return out_v1, out_v2
 
+    @test_with_pir_api
     def _test_identity(self):
         self.prepare()
         static_dcn_v1, static_dcn_v2 = self.static_graph_case_dcn()
@@ -311,7 +315,6 @@ class TestDeformConv2DFunctional(TestCase):
 
         self.mask = np.random.uniform(-1, 1, self.mask_shape).astype(self.dtype)
 
-    @test_with_pir_api
     def static_graph_case_dcn(self):
         main = paddle.static.Program()
         start = paddle.static.Program()
@@ -346,26 +349,37 @@ class TestDeformConv2DFunctional(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.vision.ops.deform_conv2d(
-                x,
+            y_v1 = paddle.static.nn.common.deformable_conv(
+                input=x,
                 offset=offset,
                 mask=None,
+                num_filters=self.out_channels,
+                filter_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
+                im2col_step=1,
+                param_attr=I.Assign(self.weight),
+                bias_attr=False if self.no_bias else I.Assign(self.bias),
+                modulated=False,
             )
 
-            y_v2 = paddle.vision.ops.deform_conv2d(
-                x,
+            y_v2 = paddle.static.nn.common.deformable_conv(
+                input=x,
                 offset=offset,
                 mask=mask,
+                num_filters=self.out_channels,
+                filter_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
+                im2col_step=1,
+                param_attr=I.Assign(self.weight),
+                bias_attr=False if self.no_bias else I.Assign(self.bias),
             )
 
         exe = paddle.static.Executor(self.place)
@@ -390,7 +404,7 @@ class TestDeformConv2DFunctional(TestCase):
         bias = None if self.no_bias else paddle.to_tensor(self.bias)
 
         y_v1 = paddle.vision.ops.deform_conv2d(
-            x,
+            x=x,
             offset=offset,
             weight=weight,
             bias=bias,
@@ -402,7 +416,7 @@ class TestDeformConv2DFunctional(TestCase):
         )
 
         y_v2 = paddle.vision.ops.deform_conv2d(
-            x,
+            x=x,
             offset=offset,
             mask=mask,
             weight=weight,
@@ -419,7 +433,6 @@ class TestDeformConv2DFunctional(TestCase):
 
         return out_v1, out_v2
 
-    @test_with_pir_api
     def new_api_static_graph_case_dcn(self):
         main = paddle.static.Program()
         start = paddle.static.Program()
@@ -462,7 +475,7 @@ class TestDeformConv2DFunctional(TestCase):
                 bias = paddle.static.data("bias", [-1], dtype=self.dtype)
 
             y_v1 = paddle.vision.ops.deform_conv2d(
-                x,
+                x=x,
                 offset=offset,
                 weight=weight,
                 bias=None if self.no_bias else bias,
@@ -474,7 +487,7 @@ class TestDeformConv2DFunctional(TestCase):
             )
 
             y_v2 = paddle.vision.ops.deform_conv2d(
-                x,
+                x=x,
                 offset=offset,
                 mask=mask,
                 weight=weight,
@@ -504,10 +517,11 @@ class TestDeformConv2DFunctional(TestCase):
         self.prepare()
         static_dcn_v1, static_dcn_v2 = self.static_graph_case_dcn()
         dy_dcn_v1, dy_dcn_v2 = self.dygraph_case_dcn()
-        (
-            new_static_dcn_v1,
-            new_static_dcn_v2,
-        ) = self.new_api_static_graph_case_dcn()
+        with paddle.pir_utils.IrGuard():
+            (
+                new_static_dcn_v1,
+                new_static_dcn_v2,
+            ) = self.new_api_static_graph_case_dcn()
         np.testing.assert_array_almost_equal(static_dcn_v1, dy_dcn_v1)
         np.testing.assert_array_almost_equal(static_dcn_v2, dy_dcn_v2)
         np.testing.assert_array_almost_equal(static_dcn_v1, new_static_dcn_v1)
@@ -709,8 +723,8 @@ class TestDeformConv2DFunctionalWithGroups(TestDeformConv2DFunctional):
 
 
 class TestDeformConv2DError(unittest.TestCase):
+    @test_with_pir_api
     def test_input_error(self):
-        @test_with_pir_api
         def test_input_rank_error():
             paddle.enable_static()
             x = paddle.static.data(name='error_x_1', shape=[0], dtype='float32')
@@ -720,11 +734,14 @@ class TestDeformConv2DError(unittest.TestCase):
             mask = paddle.static.data(
                 name='error_mask_1', shape=[0, 0, 0], dtype='float32'
             )
-            out = paddle.vision.ops.deform_conv2d(
-                x, offset, mask=mask, deformable_groups=0
-            )
+            out = paddle.vision.ops.DeformConv2D(
+                in_channels=0,
+                out_channels=0,
+                kernel_size=0,
+                deformable_groups=0,
+            )(x, offset, mask)
 
-        self.assertRaises(ValueError, test_input_rank_error)
+        self.assertRaises(AssertionError, test_input_rank_error)
 
 
 if __name__ == "__main__":

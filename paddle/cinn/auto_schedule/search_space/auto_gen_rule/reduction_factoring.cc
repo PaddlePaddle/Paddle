@@ -189,7 +189,7 @@ void ReductionFactoring::Apply(const std::string& block_name,
       ir_schedule->GetBlock(block_name + "_rf__reduce_init");
   ir_schedule->SimpleComputeAt(rf_init_block, rb_loops.back());
 
-  if (*target_ == common::DefaultNVGPUTarget()) {
+  if (*target_ == cinn::common::DefaultNVGPUTarget()) {
     rb_loops = ir_schedule->GetLoops(block_name);
     rf_block = ir_schedule->GetBlock(block_name + "_rf");
     ir_schedule->Bind(rb_loops.back(), "threadIdx.x");

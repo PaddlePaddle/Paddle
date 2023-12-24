@@ -420,10 +420,10 @@ void QuantDequantMkldnnPass::TransposeWeight(phi::DenseTensor* input) const {
     out_dim_v.push_back(in_dims[i]);
   }
 
-  const auto out_dims = phi::make_ddim(out_dim_v);
+  const auto out_dims = common::make_ddim(out_dim_v);
   const int rank = axis.size();
-  auto in_stride = phi::stride(in_dims);
-  auto out_stride = phi::stride(out_dims);
+  auto in_stride = common::stride(in_dims);
+  auto out_stride = common::stride(out_dims);
   const int count = input->numel();
 
   phi::DenseTensor trans_tensor;
@@ -490,7 +490,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
     }
 
     weight_tensor->clear();  // clear int weight
-    weight_tensor->Resize(phi::make_ddim(phi::vectorize(weight_dims)));
+    weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
     auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
@@ -532,7 +532,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
       }
     }
     weight_tensor->clear();  // clear int weight
-    weight_tensor->Resize(phi::make_ddim(phi::vectorize(weight_dims)));
+    weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
     auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),

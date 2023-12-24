@@ -209,7 +209,7 @@ struct EmbeddingSparseGradCUDAFunctor {
     auto* d_output_data = d_output->template data<T>();
     auto d_output_dims = d_output->dims();
     auto d_output_dims_2d =
-        phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+        common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
     PADDLE_ENFORCE_EQ(d_table_value->dims(),
                       d_output_dims_2d,
                       phi::errors::InvalidArgument(

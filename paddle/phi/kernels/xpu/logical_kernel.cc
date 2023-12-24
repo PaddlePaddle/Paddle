@@ -91,7 +91,7 @@ void LogicalBinaryKernel(
 
   bool is_x_need_broadcast = false;
   bool is_y_need_broadcast = false;
-  auto out_vec = phi::vectorize(out->dims());
+  auto out_vec = common::vectorize(out->dims());
   for (int i = 0; i < max_dim; i++) {
     if (x_dims_vec[i] != out_vec[i]) {
       is_x_need_broadcast = true;

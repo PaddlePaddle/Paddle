@@ -51,16 +51,16 @@ class ResnetBasicBlockAttr {
     auto conv1_out = ctx.Output<phi::DenseTensor>("Conv1");
     auto filter2 = ctx.Input<phi::DenseTensor>("Filter2");
     auto conv2_out = ctx.Output<phi::DenseTensor>("Conv2");
-    conv1_input_shape = phi::vectorize<int>(input1->dims());
-    conv1_output_shape = phi::vectorize<int>(conv1_out->dims());
-    conv1_filter_shape = phi::vectorize<int>(filter1->dims());
+    conv1_input_shape = common::vectorize<int>(input1->dims());
+    conv1_output_shape = common::vectorize<int>(conv1_out->dims());
+    conv1_filter_shape = common::vectorize<int>(filter1->dims());
     conv1_filter_numel = filter1->numel();
     conv1_input_numel = input1->numel();
     conv1_output_numel = conv1_out->numel();
 
-    conv2_input_shape = phi::vectorize<int>(conv1_out->dims());
-    conv2_output_shape = phi::vectorize<int>(conv2_out->dims());
-    conv2_filter_shape = phi::vectorize<int>(filter2->dims());
+    conv2_input_shape = common::vectorize<int>(conv1_out->dims());
+    conv2_output_shape = common::vectorize<int>(conv2_out->dims());
+    conv2_filter_shape = common::vectorize<int>(filter2->dims());
     conv2_filter_numel = filter2->numel();
     conv2_input_numel = conv1_out->numel();
     conv2_output_numel = conv2_out->numel();
@@ -68,9 +68,9 @@ class ResnetBasicBlockAttr {
     if (has_shortcut) {
       auto filter3 = ctx.Input<phi::DenseTensor>("Filter3");
       auto conv3_out = ctx.Output<phi::DenseTensor>("Conv3");
-      conv3_input_shape = phi::vectorize<int>(input1->dims());
-      conv3_output_shape = phi::vectorize<int>(conv3_out->dims());
-      conv3_filter_shape = phi::vectorize<int>(filter3->dims());
+      conv3_input_shape = common::vectorize<int>(input1->dims());
+      conv3_output_shape = common::vectorize<int>(conv3_out->dims());
+      conv3_filter_shape = common::vectorize<int>(filter3->dims());
       conv3_filter_numel = filter3->numel();
       conv3_input_numel = input1->numel();
       conv3_output_numel = conv3_out->numel();
@@ -139,16 +139,16 @@ class ResnetBasicBlockGradAttr {
     auto conv1_out = ctx.Input<phi::DenseTensor>("Conv1");
     auto filter2 = ctx.Input<phi::DenseTensor>("Filter2");
     auto conv2_out = ctx.Input<phi::DenseTensor>("Conv2");
-    conv1_input_shape = phi::vectorize<int>(input1->dims());
-    conv1_output_shape = phi::vectorize<int>(conv1_out->dims());
-    conv1_filter_shape = phi::vectorize<int>(filter1->dims());
+    conv1_input_shape = common::vectorize<int>(input1->dims());
+    conv1_output_shape = common::vectorize<int>(conv1_out->dims());
+    conv1_filter_shape = common::vectorize<int>(filter1->dims());
     conv1_filter_numel = filter1->numel();
     conv1_input_numel = input1->numel();
     conv1_output_numel = conv1_out->numel();
 
-    conv2_input_shape = phi::vectorize<int>(conv1_out->dims());
-    conv2_output_shape = phi::vectorize<int>(conv2_out->dims());
-    conv2_filter_shape = phi::vectorize<int>(filter2->dims());
+    conv2_input_shape = common::vectorize<int>(conv1_out->dims());
+    conv2_output_shape = common::vectorize<int>(conv2_out->dims());
+    conv2_filter_shape = common::vectorize<int>(filter2->dims());
     conv2_filter_numel = filter2->numel();
     conv2_input_numel = conv1_out->numel();
     conv2_output_numel = conv2_out->numel();
@@ -156,9 +156,9 @@ class ResnetBasicBlockGradAttr {
     if (has_shortcut) {
       auto filter3 = ctx.Input<phi::DenseTensor>("Filter3");
       auto conv3_out = ctx.Input<phi::DenseTensor>("Conv3");
-      conv3_input_shape = phi::vectorize<int>(input1->dims());
-      conv3_output_shape = phi::vectorize<int>(conv3_out->dims());
-      conv3_filter_shape = phi::vectorize<int>(filter3->dims());
+      conv3_input_shape = common::vectorize<int>(input1->dims());
+      conv3_output_shape = common::vectorize<int>(conv3_out->dims());
+      conv3_filter_shape = common::vectorize<int>(filter3->dims());
       conv3_filter_numel = filter3->numel();
       conv3_input_numel = input1->numel();
       conv3_output_numel = conv3_out->numel();

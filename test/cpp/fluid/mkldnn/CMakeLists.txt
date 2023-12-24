@@ -7,6 +7,7 @@ cc_test(
        elementwise_add_op
        activation_op
        phi
+       common
        scope
        device_context
        enforce
@@ -21,6 +22,7 @@ cc_test(
        cpu_quantize_placement_pass
        cpu_quantize_pass
        phi
+       common
        scope
        device_context)
 
@@ -32,6 +34,7 @@ cc_test(
        depthwise_conv
        tensor
        phi
+       common
        scope
        device_context
        enforce
@@ -43,6 +46,7 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_add_op
     activation_op
     phi
+    common
     scope
     device_context
     enforce
@@ -55,33 +59,9 @@ cc_test(
   test_mkldnn_caching
   SRCS test_mkldnn_caching.cc
   DEPS ${TEST_MKLDNN_CACHING_DEPS})
-if(WIN32 AND WITH_TESTING)
-  cc_test_old(
-    test_mkldnn_op_nhwc
-    SRCS
-    test_mkldnn_op_nhwc.cc
-    DEPS
-    fleet_executor
-    conditional_block_op
-    standalone_executor
-    executor
-    recurrent_op_helper
-    recurrent_op
-    op_registry
-    generated_static_op
-    crop_op
-    activation_op
-    generated_op
-    generated_static_op
-    phi
-    transpose_op
-    fused_transpose_op
-    scope
-    device_context
-    enforce)
-else()
-  cc_test_old(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc DEPS
-              ${paddle_lib} python)
+
+if(WITH_TESTING)
+  paddle_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc)
 endif()
 
 cc_test(
@@ -89,7 +69,21 @@ cc_test(
   SRCS test_mkldnn_pool_adaptive_op.cc
   DEPS fleet_executor
        conditional_block_op
-       standalone_executor
+       executor
+       op_registry
+       generated_static_op
+       generated_op
+       phi
+       common
+       scope
+       device_context
+       enforce)
+
+cc_test(
+  test_mkldnn_squeeze
+  SRCS test_mkldnn_squeeze.cc
+  DEPS fleet_executor
+       conditional_block_op
        executor
        op_registry
        generated_static_op
@@ -98,3 +92,9 @@ cc_test(
        scope
        device_context
        enforce)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_mkldnn_op_nhwc)
+endif()

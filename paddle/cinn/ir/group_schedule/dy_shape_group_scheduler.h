@@ -27,15 +27,15 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   DynamicShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const common::Target& target)
+      const cinn::common::Target& target)
       : GroupScheduler(ir_sch, output_tensor_names, target) {}
 
   void Schedule() override;
 
-  std::vector<std::pair<SymbolicCondition, ir::Expr>> GetIRs() override;
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
 
  private:
-  std::vector<std::pair<SymbolicCondition, std::unique_ptr<ir::IRSchedule>>>
+  std::vector<std::pair<SymbolicPredicate, std::unique_ptr<ir::IRSchedule>>>
       ir_schs_;
 };
 

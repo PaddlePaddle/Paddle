@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -37,7 +37,7 @@ void DepthwiseConv2dTransposeKernel(const Context& ctx,
                                     const std::vector<int>& dilations,
                                     const std::string& data_format,
                                     DenseTensor* out) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_format);
+  const DataLayout data_layout = common::StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
   ctx.template Alloc<T>(out);
 
@@ -72,7 +72,7 @@ void DepthwiseConv2dTransposeKernel(const Context& ctx,
     in_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 

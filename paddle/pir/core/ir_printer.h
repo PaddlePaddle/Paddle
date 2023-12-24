@@ -56,7 +56,7 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintFullOperation(Operation* op);
 
   void PrintRegion(const Region& Region);
-  void PrintBlock(const Block* block);
+  void PrintBlock(const Block& block);
 
   void PrintValue(Value v);
 

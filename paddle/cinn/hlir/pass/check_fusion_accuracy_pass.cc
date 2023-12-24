@@ -37,15 +37,15 @@ using framework::NodePtr;
 using framework::Operator;
 using framework::OpPatternKind;
 
+using cinn::common::GraphEdge;
+using cinn::common::GraphNode;
 using cinn::hlir::framework::GenerateAccCheckNodeId;
-using common::GraphEdge;
-using common::GraphNode;
 
 using GroupPtr = std::shared_ptr<Graph::Group>;
 using GroupList = std::vector<GroupPtr>;
 
 using ShapeDict = absl::flat_hash_map<std::string, framework::shape_t>;
-using DtypeDict = absl::flat_hash_map<std::string, common::Type>;
+using DtypeDict = absl::flat_hash_map<std::string, cinn::common::Type>;
 
 namespace utils {
 class AssertMsg {
@@ -325,7 +325,7 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateIsCloseNode(
 
   auto check_out_shape = shape_dict_.at(node_id);
   shape_dict_.emplace(output_data->id(), std::move(check_out_shape));
-  dtype_dict_.emplace(output_data->id(), common::Bool());
+  dtype_dict_.emplace(output_data->id(), cinn::common::Bool());
 
   VLOG(4) << "Create node " << node_id
           << "'s isclose node success, whose id is " << is_close_node_id
@@ -356,7 +356,7 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAllNode(
   auto output_data = CreateOutputNode(all_node);
 
   shape_dict_.emplace(output_data->id(), framework::shape_t{1});
-  dtype_dict_.emplace(output_data->id(), common::Bool());
+  dtype_dict_.emplace(output_data->id(), cinn::common::Bool());
 
   VLOG(4) << "Create node " << node_id << "'s all node success, whose id is "
           << all_node_id << ", whose output is " << DebugNodeData(output_data);
@@ -387,7 +387,7 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAssertNode(
   auto output_data = CreateOutputNode(assert_node);
 
   shape_dict_.emplace(output_data->id(), framework::shape_t{1});
-  dtype_dict_.emplace(output_data->id(), common::Bool());
+  dtype_dict_.emplace(output_data->id(), cinn::common::Bool());
 
   VLOG(4) << "Create node " << node_id << "'s assert node success, whose id is "
           << assert_node_id << ", whose output is "

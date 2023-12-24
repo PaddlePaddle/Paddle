@@ -114,37 +114,33 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
 
-  int* roi_id_data = nullptr;
-  int r = xpu_malloc(reinterpret_cast<void**>(&roi_id_data),
-                     (rois_batch_size + 1) * sizeof(int));
-  PADDLE_ENFORCE_XPU_SUCCESS(r);
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  int* roi_id_data = RAII_GUARD.alloc_l3_or_gm<int>(rois_batch_size + 1);
+  PADDLE_ENFORCE_NOT_NULL(
+      roi_id_data, errors::ResourceExhausted("XPU has no enough memory"));
   memory_utils::Copy(xplace,
                      roi_id_data,
                      cplace,
                      cpu_lod,
                      (rois_batch_size + 1) * sizeof(int));
   delete[] cpu_lod;
-  r = xpu::roi_align<T, int>(dev_ctx.x_context(),
-                             x.data<T>(),
-                             dev_ctx.template Alloc<T>(out),
-                             boxes.data<T>(),
-                             roi_id_data,
-                             batch_size,
-                             channels,
-                             height,
-                             width,
-                             out->dims()[0],
-                             pooled_height,
-                             pooled_width,
-                             spatial_scale,
-                             sampling_ratio,
-                             true,
-                             aligned);
+  int r = xpu::roi_align<T, int>(dev_ctx.x_context(),
+                                 x.data<T>(),
+                                 dev_ctx.template Alloc<T>(out),
+                                 boxes.data<T>(),
+                                 roi_id_data,
+                                 batch_size,
+                                 channels,
+                                 height,
+                                 width,
+                                 out->dims()[0],
+                                 pooled_height,
+                                 pooled_width,
+                                 spatial_scale,
+                                 sampling_ratio,
+                                 true,
+                                 aligned);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "roi_align");
-  if (dev_ctx.x_context()->xpu_stream) {
-    dev_ctx.Wait();
-  }
-  xpu_free(roi_id_data);
 }
 
 }  // namespace phi

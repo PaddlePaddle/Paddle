@@ -24,9 +24,9 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/dll_decl.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation.h"
@@ -345,6 +345,8 @@ class RewritePatternSet {
   NativePatternListT& native_patterns() { return native_patterns_; }
 
   void Clear() { native_patterns_.clear(); }
+
+  bool Empty() const { return native_patterns_.empty(); }
 
   // 'add' methods for adding patterns to the set.
   template <typename... Ts,

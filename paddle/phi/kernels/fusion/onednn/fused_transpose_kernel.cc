@@ -48,7 +48,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
   }
 
   in->set_mem_desc(in_md.reshape(squeezed_op_tz));
-  in->Resize(make_ddim(squeezed_op_tz));
+  in->Resize(common::make_ddim(squeezed_op_tz));
 }
 
 template <typename T, typename Context>
@@ -76,7 +76,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
         formated_axis[i] = axis[i] + axis_size;
       }
     }
-    auto dims = phi::vectorize<int>(x_dims);
+    auto dims = common::vectorize<int>(x_dims);
 
     std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
     x_dims = x_dims.reshape(dims);
@@ -107,7 +107,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
     return;
   }
 
-  auto x_vec_dims = vectorize(x.dims());
+  auto x_vec_dims = common::vectorize(x.dims());
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
 
   dnnl::primitive_attr attrs;
@@ -188,7 +188,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
         fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
     out->set_mem_desc(out_md);
-    out->Resize(make_ddim(out_md.get_dims()));
+    out->Resize(common::make_ddim(out_md.get_dims()));
   } else {
     out->set_mem_desc(out_md);
   }

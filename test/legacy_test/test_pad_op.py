@@ -251,6 +251,7 @@ class TestPaddingValueTensor3(unittest.TestCase):
                 ).minimize(loss)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(starup_prog)
             res = exe.run(
                 main_prog, fetch_list=[y] + [g for p, g in params_grads]
             )

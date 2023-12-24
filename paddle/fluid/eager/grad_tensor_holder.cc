@@ -92,8 +92,10 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
             std::static_pointer_cast<phi::DenseTensor>(init_grad.impl());
         auto dist_t =
             static_cast<phi::distributed::DistTensor*>(t.impl().get());
+        auto dist_attr = dist_t->dist_attr();
+        dist_attr.clean_partial_status();
         init_grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
-            global_dense_t, dist_t->dist_attr()));
+            global_dense_t, dist_attr));
         buffer_[slot_id][rank] = init_grad;
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
@@ -26,7 +27,6 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"

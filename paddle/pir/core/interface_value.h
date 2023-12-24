@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <set>
+#include <type_traits>
 #include "paddle/pir/core/type_id.h"
 #include "paddle/pir/core/utils.h"
 
@@ -20,25 +22,13 @@ namespace pir {
 
 class IR_API InterfaceValue {
  public:
-  template <typename ConcreteT, typename T>
-  static InterfaceValue get() {
-    InterfaceValue val;
-    val.type_id_ = TypeId::get<T>();
-    val.model_ = malloc(sizeof(typename T::template Model<ConcreteT>));
-    if (val.model_ == nullptr) {
-      throw("Alloc memory for interface failed.");
-    }
-    static_assert(std::is_trivially_destructible<
-                      typename T::template Model<ConcreteT>>::value,
-                  "interface models must be trivially destructible");
-    new (val.model_) typename T::template Model<ConcreteT>();
-    return val;
-  }
+  template <typename ConcreteT, typename Interface, typename Model>
+  static InterfaceValue Get();
   TypeId type_id() const { return type_id_; }
   void *model() const { return model_; }
 
   InterfaceValue() = default;
-  explicit InterfaceValue(TypeId type_id) : type_id_(type_id) {}
+  InterfaceValue(TypeId type_id) : type_id_(type_id) {}  // NOLINT
   InterfaceValue(const InterfaceValue &) = delete;
   InterfaceValue(InterfaceValue &&) noexcept;
   InterfaceValue &operator=(const InterfaceValue &) = delete;
@@ -62,4 +52,25 @@ class IR_API InterfaceValue {
   void *model_{nullptr};
 };
 
+template <typename ConcreteT, typename Interface, typename Model>
+InterfaceValue InterfaceValue::Get() {
+  InterfaceValue val;
+  val.type_id_ = TypeId::get<Interface>();
+  static_assert(std::is_base_of<typename Interface::Concept, Model>::value,
+                "Model must derived from corresponding Interface Concept.");
+  static_assert(
+      sizeof(typename Interface::Concept) == sizeof(Model),
+      "Compared with Concept, Model class shouldn't define new data members");
+
+  val.model_ = malloc(sizeof(Model));
+  if (val.model_ == nullptr) {
+    throw("Alloc memory for interface failed.");
+  }
+  static_assert(std::is_trivially_destructible<Model>::value,
+                "interface models must be trivially destructible");
+  new (val.model_) Model();
+  return val;
+}
+
+using InterfaceSet = std::set<InterfaceValue>;
 }  // namespace pir

@@ -45,7 +45,7 @@ class RowwiseMean2D<phi::GPUContext, T> {
     DDim ones_dim({right_});
     divisor_.Resize(ones_dim);
     dev_ctx.template Alloc<T>(&divisor_);
-    phi::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
+    phi::funcs::set_constant(dev_ctx, &divisor_, static_cast<T>(1.0 / right));
   }
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& input,
@@ -102,7 +102,7 @@ class ColwiseSum2D<phi::GPUContext, T> {
     DDim ones_dim({left_});
     divisor_.Resize(ones_dim);
     dev_ctx.template Alloc<T>(&divisor_);
-    phi::funcs::set_constant(dev_ctx, &divisor_, 1.0);
+    phi::funcs::set_constant(dev_ctx, &divisor_, static_cast<T>(1.0));
   }
 
   void operator()(const phi::GPUContext& context,
