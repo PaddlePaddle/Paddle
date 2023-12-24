@@ -20,7 +20,6 @@ from distribution.config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2022)
 paddle.enable_static()
@@ -33,23 +32,15 @@ paddle.enable_static()
 )
 class TestDirichlet(unittest.TestCase):
     def setUp(self):
-        self.old_ir_program = paddle.static.Program()
-        self.pir_program = paddle.static.Program()
+        self.program = paddle.static.Program()
         self.executor = paddle.static.Executor()
-        with paddle.static.program_guard(self.old_ir_program):
-            conc = paddle.static.data(
-                'conc', self.concentration.shape, self.concentration.dtype
-            )
-            self._paddle_diric = paddle.distribution.Dirichlet(conc)
-            self.feeds = {'conc': self.concentration}
-        with paddle.static.program_guard(self.pir_program):
+        with paddle.static.program_guard(self.program):
             conc = paddle.static.data(
                 'conc', self.concentration.shape, self.concentration.dtype
             )
             self._paddle_diric = paddle.distribution.Dirichlet(conc)
             self.feeds = {'conc': self.concentration}
 
-    @test_with_pir_api
     def test_mean(self):
         with paddle.static.program_guard(self.program):
             [out] = self.executor.run(
@@ -64,7 +55,6 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
-    @test_with_pir_api
     def test_variance(self):
         with paddle.static.program_guard(self.program):
             [out] = self.executor.run(
@@ -79,7 +69,6 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
-    @test_with_pir_api
     def test_prob(self):
         with paddle.static.program_guard(self.program):
             random_number = np.random.rand(*self.concentration.shape)
@@ -99,7 +88,6 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
-    @test_with_pir_api
     def test_log_prob(self):
         with paddle.static.program_guard(self.program):
             random_number = np.random.rand(*self.concentration.shape)
@@ -119,7 +107,104 @@ class TestDirichlet(unittest.TestCase):
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
 
-    @test_with_pir_api
+    def test_entropy(self):
+        with paddle.static.program_guard(self.program):
+            [out] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=[self._paddle_diric.entropy()],
+            )
+            np.testing.assert_allclose(
+                out,
+                scipy.stats.dirichlet.entropy(self.concentration),
+                rtol=RTOL.get(str(self.concentration.dtype)),
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
+
+
+@place(DEVICES)
+@parameterize_cls(
+    (TEST_CASE_NAME, 'concentration'),
+    [('test-one-dim', np.random.rand(89) + 5.0)],
+)
+class TestDirichletPir(unittest.TestCase):
+    def setUp(self):
+        with paddle.pir_utils.IrGuard():
+            self.program = paddle.static.Program()
+            self.executor = paddle.static.Executor()
+            with paddle.static.program_guard(self.program):
+                conc = paddle.static.data(
+                    'conc', self.concentration.shape, self.concentration.dtype
+                )
+                self._paddle_diric = paddle.distribution.Dirichlet(conc)
+                self.feeds = {'conc': self.concentration}
+
+    def test_mean(self):
+        with paddle.static.program_guard(self.program):
+            [out] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=[self._paddle_diric.mean],
+            )
+            np.testing.assert_allclose(
+                out,
+                scipy.stats.dirichlet.mean(self.concentration),
+                rtol=RTOL.get(str(self.concentration.dtype)),
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
+
+    def test_variance(self):
+        with paddle.static.program_guard(self.program):
+            [out] = self.executor.run(
+                self.program,
+                feed=self.feeds,
+                fetch_list=[self._paddle_diric.variance],
+            )
+            np.testing.assert_allclose(
+                out,
+                scipy.stats.dirichlet.var(self.concentration),
+                rtol=RTOL.get(str(self.concentration.dtype)),
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
+
+    def test_prob(self):
+        with paddle.static.program_guard(self.program):
+            random_number = np.random.rand(*self.concentration.shape)
+            random_number = random_number / random_number.sum()
+            feeds = dict(self.feeds, value=random_number)
+            value = paddle.static.data(
+                'value', random_number.shape, random_number.dtype
+            )
+            out = self._paddle_diric.prob(value)
+            [out] = self.executor.run(
+                self.program, feed=feeds, fetch_list=[out]
+            )
+            np.testing.assert_allclose(
+                out,
+                scipy.stats.dirichlet.pdf(random_number, self.concentration),
+                rtol=RTOL.get(str(self.concentration.dtype)),
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
+
+    def test_log_prob(self):
+        with paddle.static.program_guard(self.program):
+            random_number = np.random.rand(*self.concentration.shape)
+            random_number = random_number / random_number.sum()
+            feeds = dict(self.feeds, value=random_number)
+            value = paddle.static.data(
+                'value', random_number.shape, random_number.dtype
+            )
+            out = self._paddle_diric.log_prob(value)
+            [out] = self.executor.run(
+                self.program, feed=feeds, fetch_list=[out]
+            )
+            np.testing.assert_allclose(
+                out,
+                scipy.stats.dirichlet.logpdf(random_number, self.concentration),
+                rtol=RTOL.get(str(self.concentration.dtype)),
+                atol=ATOL.get(str(self.concentration.dtype)),
+            )
+
     def test_entropy(self):
         with paddle.static.program_guard(self.program):
             [out] = self.executor.run(
@@ -135,15 +220,8 @@ class TestDirichlet(unittest.TestCase):
             )
 
     def test_all(self):
-        self.test_mean(self.old_ir_program)
-        self.test_variance(self.old_ir_program)
-        self.test_prob(self.old_ir_program)
-        self.test_log_prob(self.old_ir_program)
-        self.test_entropy(self.old_ir_program)
-
-        with paddle.pir_utils.IrGuard():
-            self.test_mean(self.pir_program)
-            self.test_variance(self.pir_program)
-            self.test_prob(self.pir_program)
-            self.test_log_prob(self.pir_program)
-            self.test_entropy(self.pir_program)
+        self._test_mean(self.program)
+        self._test_variance(self.program)
+        self._test_prob(self.program)
+        self._test_log_prob(self.program)
+        self._test_entropy(self.program)
