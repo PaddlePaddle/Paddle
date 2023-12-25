@@ -8,6 +8,16 @@
     func : expand
     param : [x, broadcast_axes]
 
+- op : isclose
+  args : (Tensor x, Tensor y, float rtol=1e-5, float atol=1e-8,  bool equal_nan=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ValueCompareInferMeta
+    param: [x, y]
+  kernel :
+    func : isclose
+    data_type : x
+
 - op : reduce_max
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)

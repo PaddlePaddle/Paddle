@@ -822,4 +822,16 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
     int pre_cache_length,
     MetaTensor* out);
 
+void QKVAttentionXPUInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              const MetaTensor& q_max,
+                              const MetaTensor& k_max,
+                              const MetaTensor& v_max,
+                              float alpha,
+                              int head_num,
+                              int head_dim,
+                              DataType out_dtype,
+                              MetaTensor* qkv,
+                              MetaTensor* qkv_max);
 }  // namespace phi

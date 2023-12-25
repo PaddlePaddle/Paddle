@@ -75,7 +75,8 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
 
   // Step2.3 get new dist attribute for input. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
-  TensorDistAttr input_dist_attr_dst(input_dist_attr_src);
+  TensorDistAttr input_dist_attr_dst =
+      CopyTensorDistAttrForOutput(input_dist_attr_src);
   for (int i = 0; i < static_cast<int>(axes.size()); i++) {
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     input_dims_mapping[axis] = -1;
@@ -181,7 +182,9 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   // Step2.2: infer input dims mapping from output dims mapping. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
   input_dims_mapping = GetDimsMappingForAxes(input_axes, axis_to_dim_map, true);
-  input_dist_attr.set_dims_mapping(input_dims_mapping);
+
+  auto input_dist_attr_dst = CopyTensorDistAttrForOutput(input_dist_attr);
+  input_dist_attr_dst.set_dims_mapping(input_dims_mapping);
 
   // step2.3 get new dist attribute for output. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
@@ -190,7 +193,8 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
     int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
     out_dims_mapping[axis] = -1;
   }
-  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   VLOG(4) << "SliceInferSpmdReverse:";
   VLOG(4) << "Einsum Notation: " << input_axes << "-->" << out_axes;
@@ -199,12 +203,12 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
           << "axes: [" << str_join(axes) << "] "
           << "src_dims_mapping: ["
           << str_join(output.dist_attr().dims_mapping()) << "] "
-          << "dst_dims_mapping: [" << str_join(out_dist_attr.dims_mapping())
+          << "dst_dims_mapping: [" << str_join(out_dist_attr_dst.dims_mapping())
           << "]";
   VLOG(4) << "Input shape: [" << str_join(input_shape) << "] "
           << "dims_mapping: [" << str_join(input_dims_mapping) << "]\n\n";
 
-  return {{input_dist_attr}, {out_dist_attr}};
+  return {{input_dist_attr_dst}, {out_dist_attr_dst}};
 }
 
 SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,

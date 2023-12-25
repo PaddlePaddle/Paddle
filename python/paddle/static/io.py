@@ -103,7 +103,7 @@ def _get_valid_program(program=None):
         program = program._program
         if program is None:
             raise TypeError(
-                "The type of input program is invalid, expected tyep is Program, but received None"
+                "The type of input program is invalid, expected type is Program, but received None"
             )
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended."

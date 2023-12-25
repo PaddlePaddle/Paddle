@@ -55,6 +55,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "test/cpp/pir/tools/macros_utils.h"
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, CPU, ALL_LAYOUT);
@@ -93,7 +95,7 @@ void Operation1::VerifySig() {
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
     "op2_attr1",
     "op2_attr2"};
-IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
@@ -108,7 +110,7 @@ class TestDialect : public pir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1>(); }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 // TODO(wilber): Add logical when ir support erase, replace or update.

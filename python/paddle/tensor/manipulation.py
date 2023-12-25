@@ -149,10 +149,10 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
                     'tensor_array_to_tensor',
                 )
                 if not input_x.is_dense_tensor_array_type():
-                    raise TypeError("input should be tensor array vairable")
+                    raise TypeError("input should be tensor array variable")
         else:
             if not input.is_dense_tensor_array_type():
-                raise TypeError("input should be tensor array vairable")
+                raise TypeError("input should be tensor array variable")
         return paddle._pir_ops.array_to_tensor(input, axis, use_stack)
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
@@ -1580,7 +1580,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
     """
 
     helper = LayerHelper("rot90", **locals())
-    check_type(x, 'X', (Variable), 'rot90')
+    check_type(x, 'X', (Variable, paddle.pir.Value), 'rot90')
     dtype = helper.input_dtype('x')
     check_dtype(
         dtype,
@@ -1668,7 +1668,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             Out.shape = (3 * 100 * 100 * 4)
 
     Args:
-        x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float16, float32,
+        x (Tensor): A tensor of number of dimensions >= axis. A tensor with data type float16, float32,
                       float64, int8, int32, int64, uint8.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
@@ -2580,7 +2580,7 @@ def tensor_split(x, num_or_indices, axis=0, name=None):
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections along ``axis``.
             If ``x`` is divisible by ``n``, each section will be ``x.shape[axis] / n``. If ``x`` is not divisible by ``n``, the first
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
-            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split along ``axis`` at each of the indices. For instance,
+            If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split along ``axis`` at each of the indices. For instance,
             ``num_or_indices=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
@@ -2696,7 +2696,7 @@ def hsplit(x, num_or_indices, name=None):
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
-            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split at each of the indices.
+            If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -2749,7 +2749,7 @@ def dsplit(x, num_or_indices, name=None):
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 2. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
-            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split at each of the indices.
+            If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -2791,7 +2791,7 @@ def vsplit(x, num_or_indices, name=None):
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
-            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split at each of the indices.
+            If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -5412,8 +5412,8 @@ def as_complex(x, name=None):
     The data type of the input tensor is 'float32' or 'float64', and the data
     type of the returned tensor is 'complex64' or 'complex128', respectively.
 
-    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e.
-    the size of the last axis shoule be 2, which represent the real and imag part
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitrary shape), i.e.
+    the size of the last axis should be 2, which represent the real and imag part
     of a complex number. The shape of the returned tensor is ``(*,)``.
 
     Args:
@@ -5458,7 +5458,7 @@ def as_real(x, name=None):
     The data type of the input tensor is 'complex64' or 'complex128', and the data
     type of the returned tensor is 'float32' or 'float64', respectively.
 
-    When the shape of the input tensor is ``(*, )``, (``*`` means arbitary shape),
+    When the shape of the input tensor is ``(*, )``, (``*`` means arbitrary shape),
     the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
     the shape of the input appended by an extra ``2``.
 
@@ -5618,9 +5618,9 @@ def moveaxis(x, source, destination, name=None):
     ), "'source' must have the same number with 'destination'"
 
     if len(src) != len(set(src)):
-        raise ValueError("Each elemment of 'source' must be unique!")
+        raise ValueError("Each element of 'source' must be unique!")
     if len(dst) != len(set(dst)):
-        raise ValueError("Each elemment of 'destination' must be unique!")
+        raise ValueError("Each element of 'destination' must be unique!")
 
     ndim = len(x.shape)
 
@@ -5632,7 +5632,7 @@ def moveaxis(x, source, destination, name=None):
     for i, axis in enumerate(zip(src, dst)):
         assert isinstance(
             axis[0], int
-        ), "Each elemment of 'source' must be integer."
+        ), "Each element of 'source' must be integer."
         if axis[0] < 0:
             assert (
                 axis[0] >= -ndim
@@ -5645,7 +5645,7 @@ def moveaxis(x, source, destination, name=None):
 
         assert isinstance(
             axis[1], int
-        ), "Each elemment of 'source' must be integer."
+        ), "Each element of 'source' must be integer."
         if axis[1] < 0:
             assert (
                 axis[1] >= -ndim
@@ -5710,7 +5710,7 @@ def masked_fill(x, mask, value, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, same dimention and dtype with x.
+        Tensor, same dimension and dtype with x.
     Examples:
         .. code-block:: python
 
@@ -6088,7 +6088,7 @@ def index_add(x, index, axis, value, name=None):
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, same dimention and dtype with x.
+        Tensor, same dimension and dtype with x.
 
     Examples:
         .. code-block:: python
@@ -6187,7 +6187,7 @@ def index_put_(x, indices, value, accumulate=False, name=None):
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, same dimention and dtype with x.
+        Tensor, same dimension and dtype with x.
 
     Examples:
         .. code-block:: python
@@ -6569,7 +6569,7 @@ def index_fill(x, index, axis, value, name=None):
 @inplace_apis_in_dygraph_only
 def index_fill_(x, index, axis, value, name=None):
     """
-    Fill the elements of the input tensor with value by the spcific axis and index.
+    Fill the elements of the input tensor with value by the specific axis and index.
 
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
@@ -6580,7 +6580,7 @@ def index_fill_(x, index, axis, value, name=None):
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, same dimention and dtype with x.
+        Tensor, same dimension and dtype with x.
 
     Examples:
         .. code-block:: python
@@ -6630,7 +6630,7 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, Tensor with diagonal embedeed with ``y``.
+        Tensor, Tensor with diagonal embedded with ``y``.
 
     Examples:
         .. code-block:: python

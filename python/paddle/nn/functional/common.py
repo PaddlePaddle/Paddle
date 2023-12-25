@@ -1960,9 +1960,9 @@ def linear(x, weight, bias=None, name=None):
         return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
-        out = paddle._pir_ops.matmul(x, weight, False, False)
+        out = _C_ops.matmul(x, weight, False, False)
         if bias is not None:
-            return paddle._pir_ops.add(out, bias)
+            return _C_ops.add(out, bias)
         else:
             return out
     else:

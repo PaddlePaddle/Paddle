@@ -18,7 +18,7 @@ import functools
 import inspect
 import logging
 import os
-import pdb
+import pdb  # noqa: T100
 import re
 from typing import Any, List
 
@@ -40,7 +40,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func, unwrap
+from .utils import is_builtin, is_paddle_func
 
 __all__ = []
 
@@ -250,7 +250,7 @@ def convert_call(func):
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
             # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
-            _origfunc = unwrap(func)
+            _origfunc = inspect.unwrap(func)
             global_functions = set()
             for fn in _origfunc.__globals__.values():
                 if inspect.isfunction(fn):

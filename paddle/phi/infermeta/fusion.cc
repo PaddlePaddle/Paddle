@@ -3631,4 +3631,60 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
   out->set_layout(query.layout());
 }
 
+void QKVAttentionXPUInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              const MetaTensor& q_max,
+                              const MetaTensor& k_max,
+                              const MetaTensor& v_max,
+                              float alpha,
+                              int head_num,
+                              int head_dim,
+                              DataType out_dtype,
+                              MetaTensor* qkv,
+                              MetaTensor* qkv_max) {
+  auto q_dims = q.dims();
+  auto k_dims = k.dims();
+  auto v_dims = v.dims();
+  // input shape : {B, L, 3*H*D}
+  PADDLE_ENFORCE_EQ(q_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument("The dim of q should be 3! "
+                                                 "But received ."));
+  PADDLE_ENFORCE_EQ(k_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument("The dim of k should be 3! "
+                                                 "But received ."));
+  PADDLE_ENFORCE_EQ(v_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument("The dim of v should be 3! "
+                                                 "But received ."));
+  for (int i = 0; i < q_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        q_dims[i],
+        k_dims[i],
+        phi::errors::InvalidArgument("The shape of q, k   should be the same! "
+                                     "But received ."));
+    PADDLE_ENFORCE_EQ(
+        k_dims[i],
+        v_dims[i],
+        phi::errors::InvalidArgument("The shape of k , v should be the same! "
+                                     "But received ."));
+  }
+  PADDLE_ENFORCE_EQ(
+      q_dims[2],
+      3 * head_num * head_dim,
+      phi::errors::InvalidArgument("To support do_fc_qkv_fusion,"
+                                   "The shape of q should be [B, L, 3*H*D]! "
+                                   "But received q_dims[2]: [%d] != 3*H*D.",
+                                   q_dims[2]));
+
+  // output shape: {B, L, HD}
+  qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
+  qkv->set_dtype(out_dtype);
+  qkv->set_layout(q.layout());
+  qkv_max->set_dims(phi::make_ddim({6}));
+  qkv_max->set_dtype(out_dtype);
+  qkv_max->set_layout(q.layout());
+}
 }  // namespace phi

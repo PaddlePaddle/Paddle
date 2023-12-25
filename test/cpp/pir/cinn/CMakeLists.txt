@@ -42,21 +42,13 @@ if(WITH_TESTING AND WITH_CINN)
     pir_transforms
     pir)
 
-  paddle_test(
-    test_ir_op_fusion
-    SRCS
-    ir_op_fusion_test.cc
-    DEPS
-    op_with_group_merge_pass
-    cinn_op_dialect
-    pir)
+  paddle_test(test_ir_op_fusion SRCS ir_op_fusion_test.cc)
 
   paddle_test(
     test_pir_all_path
     SRCS
     pir_all_path_test.cc
     DEPS
-    op_with_group_merge_pass
     pir_transforms
     cinn_op_dialect
     pd_to_cinn_pass
@@ -69,7 +61,15 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     pd_to_cinn_pass
     add_broadcast_to_elementwise_pass
-    op_with_group_merge_pass
+    cinn_op_dialect
+    pir_transforms)
+
+  paddle_test(
+    dynamic_reshape_test
+    SRCS
+    dynamic_reshape_test.cc
+    DEPS
+    pd_to_cinn_pass
     cinn_op_dialect
     pir_transforms)
 
