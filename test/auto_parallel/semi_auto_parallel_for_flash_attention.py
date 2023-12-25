@@ -23,10 +23,10 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
+    def check_placements(self, output, expected_placements):
         assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
 
     def test_flash_att_forward(self):
         shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
@@ -42,7 +42,7 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             causal=True,
         )
-        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
+        self.check_placements(outputs[0], [dist.Shard(0)])
 
     def test_flash_att_forward_reshard(self):
         shapes = ([2, 256, 2, 128], [2, 256, 2, 128], [2, 256, 2, 128])
@@ -58,7 +58,7 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             causal=True,
         )
-        self.check_dim_mapping(outputs[0], [0, -1, -1, -1])
+        self.check_placements(outputs[0], [dist.Shard(0)])
 
     def run_test_case(self):
         if self._backend == "cpu":

@@ -13,7 +13,8 @@
 // limitations under the License.
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
-paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp
+paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
+    paddle::dialect::AssertOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
@@ -245,7 +246,7 @@ void IfOp::VerifyRegion() {
 std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs_,
-    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
   PADDLE_ENFORCE_EQ(
@@ -345,7 +346,7 @@ void WhileOp::Print(pir::IrPrinter &printer) {
 std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
-    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
   auto fwd_op = WhileOp::dyn_cast(op);
@@ -416,7 +417,7 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
 std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
-    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
   PADDLE_ENFORCE_EQ(
@@ -465,11 +466,111 @@ void HasElementsOp::VerifySig() {
              "The type of cf.has_elements' output is not correct.");
 }
 
+const char *AssertOp::attributes_name[1] = {"summarize"};
+
+void AssertOp::Build(pir::Builder &builder,             // NOLINT
+                     pir::OperationArgument &argument,  // NOLINT
+                     pir::Value cond_,
+                     pir::Value data_,
+                     int64_t summarize) {
+  VLOG(4) << "Start build AssertOp";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {cond_, data_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_summarize =
+      pir::Int64Attribute::get(pir::IrContext::Instance(), summarize);
+  argument.AddAttribute("summarize", attr_summarize);
+}
+
+OpInfoTuple AssertOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("cond",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false),
+      paddle::dialect::OpInputInfo(
+          "data",
+          "pir::VectorType<paddle::dialect::DenseTensorType>",
+          false,
+          false,
+          false,
+          false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("summarize", "pir::Int64Attribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      "", {""}, "assert", {"cond", "data", "summarize"}, {"cond"}, {}, {}, {});
+  return std::make_tuple(inputs, attributes, outputs, run_time_info, "assert");
+}
+
+void AssertOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: AssertOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 2u,
+               "The size %d of inputs must be equal to 2.",
+               input_size);
+
+    if ((*this)->operand_source(0).type().isa<pir::DenseTensorType>()) {
+      IR_ENFORCE((*this)
+                     ->operand_source(0)
+                     .type()
+                     .dyn_cast<pir::DenseTensorType>()
+                     .dtype()
+                     .isa<pir::BoolType>(),
+                 "Type validation failed for the 0th input, it should be a "
+                 "bool DenseTensorType.");
+    }
+
+    if (auto vec_type =
+            (*this)->operand(1).type().dyn_cast<pir::VectorType>()) {
+      for (size_t i = 0; i < vec_type.size(); ++i) {
+        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
+                       vec_type[i].isa<paddle::dialect::SelectedRowsType>() ||
+                       vec_type[i].isa<AllocatedDenseTensorType>(),
+                   "Type validation failed for the 1th input.");
+      }
+    } else {
+      IR_ENFORCE(
+          (*this)->operand(1).type().isa<paddle::dialect::DenseTensorType>() ||
+              (*this)
+                  ->operand(1)
+                  .type()
+                  .isa<paddle::dialect::SelectedRowsType>(),
+          (*this)->operand(1).type().isa<AllocatedDenseTensorType>(),
+          "Type validation failed for the 1th input.");
+    }
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("summarize") > 0, "summarize does not exist.");
+    IR_ENFORCE(attributes.at("summarize").isa<pir::Int64Attribute>(),
+               "Type of attribute: summarize is not pir::Int64Attribute.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 0u,
+               "The size %d of outputs must be equal to 0.",
+               output_size);
+    // Outputs num is 0, not need to check outputs type.
+  }
+  VLOG(4) << "End Verifying for: AssertOp.";
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp)
 
 #endif

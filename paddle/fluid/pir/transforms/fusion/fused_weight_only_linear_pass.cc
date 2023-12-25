@@ -24,8 +24,8 @@
 namespace {
 
 int getSMVersion() {
-  int sm_version = 80;
-#if defined(PADDLE_WITH_CUDA)
+  int sm_version = -1;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
 #else
