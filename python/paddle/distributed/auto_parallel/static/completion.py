@@ -60,7 +60,8 @@ _max_propagation_step = 500
 
 
 def mark_as_sharding_propagation_skip_op(op):
-    op._set_attr('op_namescope', '/' + _skip_propagation_prefix)
+    prefix = op.attr("op_namescope") if op.has_attr("op_namescope") else '/'
+    op._set_attr('op_namescope', prefix + _skip_propagation_prefix)
 
 
 def is_sharding_propagation_skip_op(op):

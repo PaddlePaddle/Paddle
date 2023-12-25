@@ -72,6 +72,18 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
       "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
 }
 
+std::vector<int64_t> GetValueShape(const pir::Value& value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return phi::vectorize(value.type().dyn_cast<DenseTensorType>().dims());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return phi::vectorize(value.type().dyn_cast<SelectedRowsType>().dims());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
     {"DataType::FLOAT16", phi::DataType::FLOAT16},
     {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
@@ -152,6 +164,30 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
              .data() == true)) {
       return true;
     }
+  } else if ((op->isa<AffineGridOp>() || op->isa<AffineGridGradOp>()) &&
+             kernel_key.backend() == phi::Backend::GPUDNN) {
+    bool use_cudnn = true;
+    int version = -1;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    version = platform::DnnVersion();
+#endif
+    if (version >= 6000 && op->attributes()
+                                   .at("align_corners")
+                                   .dyn_cast<pir::BoolAttribute>()
+                                   .data() == true) {
+      use_cudnn = true;
+    } else {
+      use_cudnn = false;
+    }
+
+    auto shape = GetValueShape(op->operand_source(0));
+    if (shape[1] == 3) {
+      use_cudnn = false;
+    }
+#if defined(PADDLE_WITH_HIP)
+    use_cudnn = false;
+#endif
+    return !use_cudnn;
   }
   return false;
 }

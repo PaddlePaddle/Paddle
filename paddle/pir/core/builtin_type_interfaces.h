@@ -20,11 +20,13 @@
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/core/cast_utils.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/type.h"
 
 namespace pir {
 
-class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
+class IR_API ShapedTypeInterface
+    : public TypeInterfaceBase<ShapedTypeInterface> {
  public:
   using DDim = pir::DDim;
   using DataType = Type;
@@ -139,4 +141,4 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
 
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)

@@ -146,6 +146,16 @@ std::vector<Value> GetUsedExternalValue(const Operation& op) {
   return used_values;
 }
 
+std::vector<Value> GetUsedExternalValue(const Block& block) {
+  auto& args = block.args();
+  std::unordered_set<Value> defined_values(args.begin(), args.end());
+  std::vector<Value> used_values;
+  for (auto& op : block) {
+    GetUsedExternalValueImpl(defined_values, used_values, op);
+  }
+  return used_values;
+}
+
 Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
   PADDLE_ENFORCE(fwd_op.isa<WhileOp>(),
                  phi::errors::PreconditionNotMet(
@@ -235,7 +245,10 @@ void PyIfOp::UpdateOutput() {
 }
 
 void BindControlFlowApi(py::module* m) {
-  m->def("get_used_external_value", GetUsedExternalValue);
+  m->def("get_used_external_value",
+         [](const Operation& op) { return GetUsedExternalValue(op); });
+  m->def("get_used_external_value",
+         [](const Block& block) { return GetUsedExternalValue(block); });
   m->def("build_pipe_for_block", BuildPipeForBlock);
   m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {

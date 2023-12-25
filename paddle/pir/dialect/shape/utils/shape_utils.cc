@@ -14,7 +14,6 @@
 
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include <string>
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 namespace pir {
 
 bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
@@ -167,6 +166,13 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   }
 
   return it->second;
+}
+
+std::string GetValueId(Value* val) {
+  auto op_id = val->defining_op()->id();
+  auto val_idx = val->dyn_cast<OpResult>().index();
+
+  return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
 }
 
 }  // namespace pir
