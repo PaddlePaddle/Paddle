@@ -29,7 +29,7 @@ class Tensor;
 namespace experimental {
 
 template <typename T>
-class IntArrayBase {
+class TEST_API IntArrayBase {
  public:
   // Constructor support implicit
   IntArrayBase() = default;
