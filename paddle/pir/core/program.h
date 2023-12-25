@@ -73,6 +73,6 @@ class IR_API Program {
   ParameterMap parameters_;
 };
 
-std::ostream& operator<<(std::ostream& os, const Program& prog);
+IR_API std::ostream& operator<<(std::ostream& os, const Program& prog);
 
 }  // namespace pir

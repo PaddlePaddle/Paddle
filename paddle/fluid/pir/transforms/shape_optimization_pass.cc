@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/infer_type_op_interface.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
@@ -227,7 +227,7 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
   }
 };
 
-// Fold dim of an operation that implements the InferShapedTypeOpInterface
+// Fold dim of an operation that implements the InferSymbolicShapeInterface
 template <typename OpTy>
 struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
   using OpRewritePattern<OpTy>::OpRewritePattern;
@@ -237,14 +237,15 @@ struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
     if (!dim_value) return false;
 
     auto shaped_type_op =
-        dim_value.owner()->dyn_cast<InferShapedTypeOpInterface>();
+        dim_value.owner()
+            ->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (!shaped_type_op) return false;
 
     std::optional<int64_t> dim_index = dim_op.GetConstantIndex();
     if (!dim_index) return false;
 
     std::vector<Value> reified_result_shapes;
-    if (!shaped_type_op.ReifyReturnTypeShapes(
+    if (!shaped_type_op.InferSymbolicShape(
             rewriter, shaped_type_op->operands(), reified_result_shapes))
       return false;
 
@@ -507,13 +508,267 @@ bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
   return true;
 }
 
+void print_program(pir::ModuleOp m, std::string mgs) {
+  std::ostringstream print_stream;
+  print_stream << "\n\n";
+  m.program()->Print(print_stream);
+  print_stream << "\n\n";
+  VLOG(0) << "===================== " << mgs << "\n" << print_stream.str();
+}
+
+bool IsShapeSpecialOp(const pir::Operation& op) {
+  auto name = op.name();
+  if (name == "pd_op.shape" || name == "cinn_op.slice") {
+    return true;
+  }
+
+  return false;
+}
+
+bool IsAllEqualUnaryOp(const pir::Operation& op) {
+  auto name = op.name();
+  if (name == "pd_op.exp" || name == "pd_op.cast") {
+    return true;
+  }
+
+  return false;
+}
+
+void InferSymbolicShapeAllEqualUnary(
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
+  shape_analysis->value_to_valueshape_expr_[rst_id] =
+      shape_analysis->value_to_valueshape_expr_[operand_source_id];
+}
+
+bool IsAllEqualBinaryOp(const pir::Operation& op) {
+  auto name = op.name();
+  if (name == "pd_op.subtract") {
+    return true;
+  }
+
+  return false;
+}
+
+void InferSymbolicShapeAllEqualBinary(
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
+  shape_analysis->value_to_valueshape_expr_[rst_id] =
+      shape_analysis->value_to_valueshape_expr_[operand_source_id];
+}
+
+void InferSymbolicShapePdShape(pir::Operation* op,
+                               pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
+  std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
+
+  auto type = rst.type();
+  auto tensor_type = type.dyn_cast<pir::DenseTensorType>();
+  auto ddim_vec = common::vectorize(tensor_type.dims());
+  for (auto dim : ddim_vec) {
+    std::string sym_name = "";
+    if (dim == -1) {
+      sym_name = shape_analysis->GetNextSymName();
+    } else {
+      sym_name = std::to_string(dim);
+    }
+    value_shape.first.emplace_back(sym_name);
+  }
+
+  value_shape.second =
+      shape_analysis->value_to_valueshape_expr_[operand_source_id].first;
+  shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
+}
+
+void InferSymbolicShapeCinnSlice(
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
+  std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
+
+  auto type = rst.type();
+  auto tensor_type = type.dyn_cast<pir::DenseTensorType>();
+  auto ddim_vec = common::vectorize(tensor_type.dims());
+  for (auto dim : ddim_vec) {
+    std::string sym_name = "";
+    if (dim == -1) {
+      sym_name = shape_analysis->GetNextSymName();
+    } else {
+      sym_name = std::to_string(dim);
+    }
+    value_shape.first.emplace_back(sym_name);
+  }
+
+  auto attributes = op->attributes();
+
+  auto attr_starts = attributes["starts"].dyn_cast<ArrayAttribute>().AsVector();
+  auto start = attr_starts[0].dyn_cast<Int64Attribute>().data();
+
+  auto attr_ends = attributes["ends"].dyn_cast<ArrayAttribute>().AsVector();
+  auto end = attr_ends[0].dyn_cast<Int64Attribute>().data();
+
+  auto source_shape_vec =
+      shape_analysis->value_to_valueshape_expr_[operand_source_id].second;
+  for (int i = start; i < end; i++) {
+    value_shape.second.emplace_back(source_shape_vec[i]);
+  }
+
+  shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
+}
+
+void InferSymbolicShapeBuiltinCombine(
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
+  for (auto operand_source : op->operands_source()) {
+    auto operand_source_id = pir::GetValueId(&operand_source);
+    auto source_shape_vec =
+        shape_analysis->value_to_valueshape_expr_[operand_source_id].second;
+    for (int i = 0; i < source_shape_vec.size(); i++) {
+      value_shape.second.emplace_back(source_shape_vec[i]);
+    }
+  }
+
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
+
+  shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
+}
+
+void InferSymbolicShapeStack(pir::Operation* op,
+                             pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
+  std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
+
+  value_shape.second =
+      shape_analysis->value_to_valueshape_expr_[operand_source_id].second;
+  shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
+}
+
+void InferSymbolicShapeReshape(pir::Operation* op,
+                               pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source_1 = op->operand_source(1);
+  auto operand_source_1_id = pir::GetValueId(&operand_source_1);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
+
+  std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
+
+  value_shape.first =
+      shape_analysis->value_to_valueshape_expr_[operand_source_1_id].second;
+  shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
+}
+
+void debug_print_op_info(
+    pir::Operation* op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+  VLOG(0) << op->name() << ", num_operands: " << op->num_operands();
+  for (auto& rst : op->results()) {
+    auto type = rst.type();
+    auto value_id = pir::GetValueId(&rst);
+    std::ostringstream print_stream;
+    print_stream << ">>>> result(" << rst.index() << ") 's ID: " << value_id;
+    if (shape_analysis != nullptr) {
+      auto value_shape = shape_analysis->value_to_valueshape_expr_[value_id];
+
+      print_stream << ", value_shape.first: [";
+      for (auto str : value_shape.first) {
+        print_stream << str << ", ";
+      }
+      print_stream << "], second: [";
+      for (auto str : value_shape.second) {
+        print_stream << str << ", ";
+      }
+      print_stream << "]\n";
+    }
+    VLOG(0) << print_stream.str();
+  }
+}
+
+void InferSymExprForAllValues(pir::ModuleOp module_op) {
+  auto shape_analysis_mgr = pir::ShapeAnalysisManager::Instance();
+  pir::ShapeConstraintIRAnalysis& shape_analysis =
+      shape_analysis_mgr.Get(module_op.program());
+  for (int i = 0; i < module_op->num_regions(); i++) {
+    for (auto& block : module_op->region(i)) {
+      for (auto& op : block) {
+        if (op.num_operands() == 0) {
+          // Need new syms for -1s
+          for (auto& rst : op.results()) {
+            auto value_id = pir::GetValueId(&rst);
+            std::pair<std::vector<std::string>, std::vector<std::string>>
+                value_shape;
+            auto type = rst.type();
+            auto tensor_type = type.dyn_cast<pir::DenseTensorType>();
+            auto ddim_vec = common::vectorize(tensor_type.dims());
+            for (auto dim : ddim_vec) {
+              std::string sym_name = "";
+              if (dim == -1) {
+                sym_name = shape_analysis.GetNextSymName();
+              } else {
+                sym_name = std::to_string(dim);
+              }
+              value_shape.first.emplace_back(sym_name);
+            }
+
+            if (op.name() == "pd_op.full_int_array") {
+              auto attributes = op.attributes();
+              auto attr = attributes["value"];
+              auto arr = attr.dyn_cast<ArrayAttribute>();
+              const auto& vec = arr.AsVector();
+              for (auto item : vec) {
+                auto i = item.dyn_cast<Int64Attribute>();
+                value_shape.second.emplace_back(std::to_string(i.data()));
+              }
+            }
+            shape_analysis.value_to_valueshape_expr_[value_id] = value_shape;
+          }
+        } else if (IsAllEqualUnaryOp(op)) {
+          InferSymbolicShapeAllEqualUnary(&op, &shape_analysis);
+        } else if (IsAllEqualBinaryOp(op)) {
+          InferSymbolicShapeAllEqualBinary(&op, &shape_analysis);
+        } else if (op.name() == "pd_op.shape") {
+          InferSymbolicShapePdShape(&op, &shape_analysis);
+        } else if (op.name() == "cinn_op.slice") {
+          InferSymbolicShapeCinnSlice(&op, &shape_analysis);
+        } else if (op.name() == "builtin.combine") {
+          InferSymbolicShapeBuiltinCombine(&op, &shape_analysis);
+        } else if (op.name() == "pd_op.stack") {
+          InferSymbolicShapeStack(&op, &shape_analysis);
+        } else if (op.name() == "pd_op.reshape") {
+          InferSymbolicShapeReshape(&op, &shape_analysis);
+        }
+        debug_print_op_info(&op, &shape_analysis);
+      }
+    }
+  }
+}
+
 class ShapeOptimizationPass : public pir::Pass {
  public:
   ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
 
   void Run(pir::Operation* op) override {
+    VLOG(0) << "===================== ShapeOptimizationPass Run start... "
+               "=============================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
+    print_program(module_op, "Origin Program:");
+
+    InferSymExprForAllValues(module_op);
     MaterializeShapeComputation(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
@@ -522,6 +777,8 @@ class ShapeOptimizationPass : public pir::Pass {
     // if (!OptimizeShapeComputation(module_op, runner)) {
     //   return;
     // }
+    VLOG(0) << "===================== ShapeOptimizationPass Run End. "
+               "=============================";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

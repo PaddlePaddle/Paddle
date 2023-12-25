@@ -85,6 +85,7 @@ API_INNER_CODE_TEMPLATE = """
     {in_combine}
     {compute_op}
     {handle_optional_outputs}
+    {set_null_type}
     {out_split}
     {return_result}"""
 
@@ -147,6 +148,12 @@ OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
         auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
         optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
     }}"""
+
+SET_NULL_TYPE_TEMPLATE = """
+    if (!{input}) {{
+        {op_name}_op.result({index}).set_type(pir::Type());
+    }}"""
+
 
 COMBINE_OP_TEMPLATE = """
     auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
@@ -435,6 +442,21 @@ class CodeGen:
                     )
         return ret
 
+    def _gen_set_null_type(self, op_info, op_name):
+        name_list = op_info.output_name_list
+        inplace_map = op_info.inplace_map
+        if inplace_map is None:
+            return ""
+
+        ret = ""
+        for i, out_name in enumerate(name_list):
+            if self._is_optional_output(op_info, out_name):
+                in_name = inplace_map[out_name]
+                ret += SET_NULL_TYPE_TEMPLATE.format(
+                    input=in_name, op_name=op_name, index=i
+                )
+        return ret
+
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
@@ -572,7 +594,6 @@ class CodeGen:
 
         if (
             op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
-            or op_name in ["print", "hardshrink", "det", "assign_out_"]
             or len(mapping_name_to_type) == 0
         ):
             return ""
@@ -728,6 +749,7 @@ class CodeGen:
                     handle_optional_outputs=self._gen_handle_optional_outputs(
                         op_info, kernel_name
                     ),
+                    set_null_type=self._gen_set_null_type(op_info, kernel_name),
                     out_split=out_split,
                     return_result=self._gen_return_result(ret_list),
                 )
@@ -766,8 +788,15 @@ class CodeGen:
                 op_info, op_inst_name
             )
 
+            kernel_name = (
+                list(dispatch_kernel.keys())[0]
+                if dispatch_kernel and len(dispatch_kernel.keys()) == 1
+                else op_name
+            )
+            if op_name.endswith('_') and not kernel_name.endswith('_'):
+                kernel_name = kernel_name + '_'
             api_inner_code = API_INNER_CODE_TEMPLATE.format(
-                check_data_type=self._gen_check_data_type(op_info, op_name),
+                check_data_type=self._gen_check_data_type(op_info, kernel_name),
                 handle_optional_inputs=self._gen_handle_optional_inputs(
                     op_info
                 ),
@@ -776,6 +805,7 @@ class CodeGen:
                 handle_optional_outputs=self._gen_handle_optional_outputs(
                     op_info, op_name
                 ),
+                set_null_type=self._gen_set_null_type(op_info, op_name),
                 out_split=out_split,
                 return_result=self._gen_return_result(ret_list),
             )

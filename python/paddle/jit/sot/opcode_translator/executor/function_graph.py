@@ -255,25 +255,30 @@ class FunctionGraph:
                 self._pycode_gen.gen_load(self._store_var_info[var.id])
 
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
+        is_precall = origin_instrs[instr_idx].opname == "PRECALL"
+        current_idx = instr_idx
+        # skip CALL if current instr is PRECALL
+        next_idx = instr_idx + 1 + int(is_precall)
 
-        restore_instrs = origin_instrs[:instr_idx]
+        restore_instrs = origin_instrs[:current_idx]
         restore_instr_names = [
-            instr.opname for instr in restore_instrs[:instr_idx]
+            instr.opname for instr in restore_instrs[:current_idx]
         ]
-        # NOTE(SigureMo): Trailing KW_NAMES + PRECALL is no need to restore in Python 3.11+
-        if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
-            restore_instrs = restore_instrs[:-2]
+        # NOTE(SigureMo): Trailing KW_NAMES is no need to restore in Python 3.11+
+        if restore_instr_names[-1:] == ["KW_NAMES"]:
+            restore_instrs = restore_instrs[:-1]
+            restore_instr_names = restore_instr_names[:-1]
 
         self.pycode_gen.extend_instrs(restore_instrs)
         nop = self.pycode_gen._add_instr("NOP")
 
         for instr in origin_instrs:
-            if instr.jump_to == origin_instrs[instr_idx]:
+            if instr.jump_to == origin_instrs[current_idx]:
                 instr.jump_to = nop
 
         self.pycode_gen.hooks.append(
             lambda: self.pycode_gen.extend_instrs(
-                iter(origin_instrs[instr_idx + 1 :])
+                iter(origin_instrs[next_idx:])
             )
         )
 

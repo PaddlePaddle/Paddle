@@ -40,8 +40,13 @@ namespace details {
 
 using TensorType = paddle::dialect::AllocatedDenseTensorType;
 
-static std::unordered_set<std::string> relaxing_op_list = {
+static std::unordered_set<std::string> ignore_shape_check_ops = {
     paddle::dialect::ReshapeOp::name(),
+    paddle::dialect::SqueezeOp::name(),
+    paddle::dialect::UnsqueezeOp::name(),
+};
+
+static std::unordered_set<std::string> relax_shape_check_ops = {
     paddle::dialect::ReshapeGradOp::name(),
     paddle::dialect::AddGradOp::name(),
 };
@@ -64,7 +69,7 @@ static bool CanBeDeleted(pir::Value value) {
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                          pir::Value input,
                          pir::Value output,
-                         bool relax = false) {
+                         const std::string& op_name) {
   if (!input.type() || !output.type()) {
     return false;
   }
@@ -78,11 +83,23 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       return false;
     }
 
+    if (details::ignore_shape_check_ops.count(op_name) > 0 &&
+        eager_dels.count(input) != 0) {
+      VLOG(9) << "     -- reshape, squeeze, unsqueeze do not need check shape, "
+                 "can do inplace";
+      return true;
+    }
+
     auto is_numel_euqal = [](const TensorType& in,
                              const TensorType& out) -> bool {
       int64_t in_numel = 1;
       int64_t out_numel = 1;
       for (int i = 0; i < in.dims().size(); i++) {
+        if (in.dims()[i] == -1 && in.dims().size() == 1) {
+          VLOG(9) << "     -- input's shape has -1 and dim size is 1, can't "
+                     "do inplace";
+          return false;
+        }
         if (in.dims()[i] == -1 && i != 0) {
           VLOG(9) << "     -- input's shape has -1 and not in first dim, can't "
                      "do inplace";
@@ -92,6 +109,11 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       }
 
       for (int i = 0; i < out.dims().size(); i++) {
+        if (out.dims()[i] == -1 && out.dims().size() == 1) {
+          VLOG(9) << "     -- output's shape has -1 and dim size is 1, can't "
+                     "do inplace";
+          return false;
+        }
         if (out.dims()[i] == -1 && i != 0) {
           VLOG(9)
               << "     -- output's shape has -1 and not in first dim, can't "
@@ -102,7 +124,6 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       }
       return in_numel == out_numel;
     };
-
     // In this version, we don't consider the -1 in ddim, we just calculate the
     // result.
     auto is_numel_euqal_loose_version = [](const TensorType& in,
@@ -119,8 +140,8 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       VLOG(10) << "in: " << in_numel << ", out: " << out_numel;
       return in_numel == out_numel;
     };
-
     bool equal = false;
+    bool relax = (details::relax_shape_check_ops.count(op_name) > 0);
     if (relax) {
       equal = is_numel_euqal_loose_version(input_alloc_tensor_type,
                                            output_alloc_tensor_type);
@@ -371,7 +392,6 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         upper_inplace_op_info_parser.GetInplaceIdMap();
 
     bool can_do_inplace = true;
-    bool relax = (details::relaxing_op_list.count(upper_op_name) > 0);
     for (auto& kv : inplace_out_2_in) {
       uint32_t out_slot = kv.first;
       uint32_t in_slot = kv.second;
@@ -379,7 +399,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
           (!CanDoInplace(eager_dels.at(&op),
                          op.operand_source(in_slot),
                          op.result(out_slot),
-                         relax)) ||
+                         upper_op_name)) ||
           (visited_values.count(op.result(out_slot)) > 0) ||
           (!CanBeDeleted(op.result(out_slot))) ||
           (reused_input_values.count(op.operand_source(in_slot)) > 0) ||
@@ -388,7 +408,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         VLOG(6) << upper_op_name
                 << "'s value has been visited or reused by other inplace op, "
                    "so that can't do inplace when setting relax to :"
-                << relax;
+                << (details::relax_shape_check_ops.count(upper_op_name) > 0);
         VLOG_IF(
             8, ((in_slot < op.num_operands()) && (out_slot < op.num_results())))
             << " -- operand " << in_slot << " and result " << out_slot
@@ -396,7 +416,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             << CanDoInplace(eager_dels.at(&op),
                             op.operand_source(in_slot),
                             op.result(out_slot),
-                            relax);
+                            upper_op_name);
         VLOG_IF(8, out_slot < op.num_results())
             << " -- result " << out_slot
             << " visited: " << (visited_values.count(op.result(out_slot)) > 0);

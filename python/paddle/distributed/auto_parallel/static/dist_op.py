@@ -258,7 +258,12 @@ class DistributedOperatorHelper:
         default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         op_size = len(cur_block.ops)
-        output = self._serial_op(*args, **kwargs)
+        if paddle.base.dygraph.base.in_to_static_mode():
+            output = paddle.jit.dy2static.convert_call_func.convert_call(
+                self._serial_op
+            )(*args, **kwargs)
+        else:
+            output = self._serial_op(*args, **kwargs)
         new_op_size = len(cur_block.ops)
 
         if isinstance(output, (tuple, list)):

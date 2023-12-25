@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import copy
 from typing import List, Tuple, Union
 
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 from paddle.framework import core
 
 
@@ -36,19 +38,20 @@ def get_coordinator(mesh: Union[np.array, List[List[int]]], rank: int):
 def compute_local_shape_and_global_offset(
     global_shape: List[int],
     process_mesh: core.ProcessMesh,
-    dims_mapping: List[int],
+    placements: List[core.Placement],
 ) -> Tuple[Tuple[int], Tuple[int]]:
     mesh = np.array(process_mesh.process_ids).reshape(process_mesh.shape)
     # deal with cross mesh case
     if paddle.distributed.get_rank() not in mesh:
-        return ((), ())
+        return (None, None)
     rank_coordinator = get_coordinator(mesh, paddle.distributed.get_rank())
     local_shape = copy.copy(global_shape)
     global_offset = [0 for _ in global_shape]
-    for i, dim in enumerate(dims_mapping):
-        if dim == -1:
+    for dim, placement in enumerate(placements):
+        if isinstance(placement, dist.Replicate):
             continue
         else:
+            i = placement.get_dim()
             assert (
                 global_shape[i] % process_mesh.shape[dim] == 0
             ), f"i:{i}, global_shape[i]:{global_shape[i]}, process_mesh.shape[dim]:{process_mesh.shape[dim]}"

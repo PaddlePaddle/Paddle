@@ -307,6 +307,7 @@ def launch():
         from ..auto_tuner.tuner import AutoTuner
         from ..auto_tuner.utils import (
             add_overlap_performance,
+            find_error_from_log,
             gen_new_args,
             gen_new_ctx,
             read_log,
@@ -750,15 +751,21 @@ def launch():
                     auto_tuner.add_cfg(cur_cfg)
                     continue
 
-            c = controllers.init(ctx)
             # for single dp estimation and not run sharding overlap
             if tuner_cfg["search_algo"]["name"] != "grid":
                 # estimated_num_gpus means need single dp estimation
-                if "estimated_num_gpus" in tuner_cfg["search_algo"]:
-                    if cur_cfg["sharding_degree"] == 1:
-                        os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "1"
-                    else:
-                        os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "0"
+                bypass_optimizer_flag = "0"
+                if (
+                    "estimated_num_gpus" in tuner_cfg["search_algo"]
+                    and cur_cfg["sharding_degree"] == 1
+                ):
+                    bypass_optimizer_flag = "1"
+                ctx.set_envs(
+                    {
+                        "FLAGS_shard_bypass_dygraph_optimizer": bypass_optimizer_flag
+                    }
+                )
+            c = controllers.init(ctx)
             c.run()
 
             task_end_time = time.time()
@@ -910,10 +917,61 @@ def launch():
                         f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = multi_dp_performace
 
+            error_info = None
             cur_cfg["has_error"] = has_error
             if has_error:
+                error_info = []
                 error_task_nums += 1
-            error_info = None
+                if OOM_flag:
+                    error_info.append("Out of memory")
+                else:
+                    if actual_nnodes > 1:
+                        path = f"auto_tuner/error/{job_id}/{ip}"
+                        single_error_info = find_error_from_log(
+                            ctx.args.log_dir
+                        )
+                        if len(single_error_info) > 0:
+                            while not client.put(
+                                path, single_error_info.encode('latin-1')
+                            ):
+                                time.sleep(1)
+                            ctx.logger.info(
+                                f"Put Error info: {single_error_info} to {path}"
+                            )
+                            logger.info(
+                                f"Put Error info: {single_error_info} to {path}"
+                            )
+                        else:
+                            while not client.put(path, "OK".encode('latin-1')):
+                                time.sleep(1)
+                            ctx.logger.info(f"Put OK to {path}")
+                            logger.info(f"Put OK to {path}")
+
+                        result = list(
+                            client.get_prefix(f"auto_tuner/error/{job_id}/")
+                        )
+                        size = len(result)
+                        while size != actual_nnodes:
+                            time.sleep(1)
+                            result = list(
+                                client.get_prefix(f"auto_tuner/error/{job_id}/")
+                            )
+                            size = len(result)
+
+                        status = [
+                            i[0].decode()
+                            for i in result
+                            if "OK" not in i[0].decode()
+                        ]
+                        error_info = list(set(status))
+                        ctx.logger.info(
+                            f"Status of auto_tuner/error/{job_id}/: {error_info}"
+                        )
+                        logger.info(
+                            f"Status of auto_tuner/error/{job_id}/: {error_info}"
+                        )
+                    else:
+                        error_info.append(find_error_from_log(ctx.args.log_dir))
             cur_cfg["error_info"] = error_info
             task_nums = len(auto_tuner.algo.all_tasks)
             cur_task_id = auto_tuner.algo.idx

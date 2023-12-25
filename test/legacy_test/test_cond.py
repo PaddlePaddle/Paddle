@@ -195,7 +195,7 @@ class TestCondInputOutput(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
             ret = exe.run(main_program, fetch_list=[out, da])
         else:
@@ -463,9 +463,9 @@ class TestCondInputOutput(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
-                if p == b:
+                if p.is_same(b):
                     db = g
             ret = exe.run(main_program, fetch_list=[out, b, da, db])
         else:
@@ -480,7 +480,7 @@ class TestCondInputOutput(unittest.TestCase):
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_inside_cond(self):
         """
         pseudocode:
@@ -544,11 +544,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 expected_a_grad = 2.0 * expected_a if feed_i < 8 else 0.0
             if paddle.framework.in_pir_mode():
                 for p, g in grad_list:
-                    if p == a:
+                    if p.is_same(a):
                         da = g
                 ret = exe.run(
                     main_program,
-                    feed={'i': np.full((1), feed_i)},
+                    feed={'i': np.full((1), feed_i, np.float32)},
                     fetch_list=[out, da],
                 )
             else:
@@ -560,7 +560,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_inside_cond_0d_tensor(self):
         """
         pseudocode:
@@ -618,7 +618,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == i:
+                if p.is_same(i):
                     di = g
             ret = exe.run(main_program, fetch_list=[out, di])
         else:
@@ -635,7 +635,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         )
         self.assertEqual(ret[1].shape, ())
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_op_in_condition(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -675,9 +675,9 @@ class TestCondNestedControlFlow(unittest.TestCase):
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == a:
+                if p.is_same(a):
                     da = g
-                if p == b:
+                if p.is_same(b):
                     db = g
             ret = exe.run(main_program, fetch_list=[out, da, db])
         else:
@@ -728,7 +728,7 @@ class TestCondBackward(unittest.TestCase):
             )
             if paddle.framework.in_pir_mode():
                 for p, g in grad_list:
-                    if p == img:
+                    if p.is_same(img):
                         dimg = g
                 img_grad, loss_value = exe.run(
                     main_program,

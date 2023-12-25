@@ -15,6 +15,7 @@
 import copy
 import csv
 import itertools
+import logging
 import os
 import re
 from typing import Tuple
@@ -22,6 +23,8 @@ from typing import Tuple
 from .prune import _PRUNE_FUNC
 
 __SUPPORTED_RECOMPUTE_GRANULARITY__ = ["full", "full_attn", "core_attn"]
+
+logger = logging.getLogger('auto_tuner')
 
 
 def divisor(num, reverse=False):
@@ -224,9 +227,22 @@ def default_candidates(tuner_cfg):
         candidates["use_recompute"] = (
             [True, False] if schedule_mode != "performance" else [False, True]
         )
-        tuner_cfg["recompute_granularity"] = "auto"
     elif isinstance(use_recompute, bool):
         candidates["use_recompute"] = [use_recompute]
+    elif isinstance(use_recompute, list):
+        if len(use_recompute) == 0:
+            candidates["use_recompute"] = [None]
+        else:
+            candidates["use_recompute"] = []
+            for recompute_setting in use_recompute:
+                if recompute_setting not in [True, False]:
+                    raise ValueError(
+                        f"use_recompute only supports auto/True/False, but got {recompute_setting}"
+                    )
+                else:
+                    candidates["use_recompute"].append(recompute_setting)
+            if len(candidates["use_recompute"]) == 0:
+                candidates["use_recompute"] = [None]
     # TODO: should remove this case in the future
     elif use_recompute is None:
         candidates["use_recompute"] = [None]
@@ -247,13 +263,32 @@ def default_candidates(tuner_cfg):
             candidates["recompute_granularity"] = [
                 recompute_granularity.lower()
             ]
-        # TODO: should remove this case in the future
-        elif recompute_granularity is None:
-            candidates["recompute_granularity"] = [None]
         else:
             raise ValueError(
                 f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
             )
+    elif isinstance(recompute_granularity, list):
+        if len(recompute_granularity) == 0:
+            candidates["recompute_granularity"] = [None]
+        else:
+            candidates["recompute_granularity"] = []
+            for granularity in recompute_granularity:
+                if (
+                    granularity.lower()
+                    not in __SUPPORTED_RECOMPUTE_GRANULARITY__
+                ):
+                    raise ValueError(
+                        f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {granularity}"
+                    )
+                else:
+                    candidates["recompute_granularity"].append(
+                        granularity.lower()
+                    )
+            if len(candidates["recompute_granularity"]) == 0:
+                candidates["recompute_granularity"] = [None]
+    # TODO: should remove this case in the future
+    elif recompute_granularity is None:
+        candidates["recompute_granularity"] = [None]
     else:
         raise ValueError(
             f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
@@ -363,6 +398,7 @@ def search_all(tuner_cfg):
             new_cfg[mapping[idx]] = val
         new_all_cfgs.append(new_cfg)
 
+    search_space_size_before_prune = len(new_all_cfgs)
     pruned_all_cfgs = []
     tuner_cfg["num_gpus"] = num_gpus
     for cur_cfg in new_all_cfgs:
@@ -374,6 +410,10 @@ def search_all(tuner_cfg):
                 break
         if not pruned:
             pruned_all_cfgs.append(cur_cfg)
+    search_space_size_after_prune = len(pruned_all_cfgs)
+    logger.info(
+        f"{search_space_size_before_prune - search_space_size_after_prune} tasks are pruned before launching."
+    )
     return pruned_all_cfgs
 
 
@@ -438,8 +478,8 @@ def search_by_dp_estimation(tuner_cfg):
             new_all_cfgs.append(task)
 
     # expanding sharding degree to run overlap and nonoverlap to calculate overlap benefits
+    sharding_all_cfgs = []
     if tuner_cfg["search_algo"].get("sharding_overlap", None):
-        sharding_all_cfgs = []
         for task in new_all_cfgs:
             new_task = copy.deepcopy(task)
             given_num_gpus = tuner_cfg["nodes"] * tuner_cfg["gpus_per_node"]
@@ -1187,6 +1227,48 @@ def read_log(
         res_memory = 0.0
         err_code = (1 << 2) | err_code
     return res_metric, res_memory, err_code
+
+
+def get_error_info(filename):
+    """
+    get error info from log file
+    return:
+        error_info: Specific error message
+    """
+    error_infos = []
+    error_pattern = r"Error"
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        last_lines = lines[-100:]
+        for line in last_lines:
+            error_info = re.findall(error_pattern, line, re.IGNORECASE)
+            if error_info:
+                if "Out of memory" in line:
+                    error_infos.append("Out of memory")
+                else:
+                    error_infos.append(line)
+    return list(set(error_infos))
+
+
+def find_error_from_log(path):
+    """
+    find error infos from log directory
+    return:
+        error_info: all error message on log directory
+    """
+    unique_error_info = ""
+    all_error_infos = []
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if not file.startswith("workerlog"):
+                continue
+            error_infos = get_error_info(path + "/" + file)
+            all_error_infos += error_infos
+    all_error_infos = list(set(all_error_infos))
+    for info in all_error_infos:
+        unique_error_info = unique_error_info + info + ","
+    unique_error_info = unique_error_info[:-1]
+    return unique_error_info
 
 
 def three_mul_combinations(target):

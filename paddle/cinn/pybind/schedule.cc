@@ -28,11 +28,13 @@ void BindSchedule(py::module *m) {
       .def(py::init<const ir::ModuleExpr &,
                     utils::LinearRandomEngine::StateType,
                     bool,
-                    utils::ErrorMessageLevel>(),
+                    utils::ErrorMessageLevel,
+                    bool>(),
            py::arg("modexpr"),
            py::arg("rand_seed") = -1,
            py::arg("debug_flag") = false,
-           py::arg("err_msg_level") = utils::ErrorMessageLevel::kGeneral)
+           py::arg("err_msg_level") = utils::ErrorMessageLevel::kGeneral,
+           py::arg("is_dynamic_shape") = false)
       .def_static(
           "make",
           [](ir::LoweredFunc &ir_func) {
