@@ -40,6 +40,31 @@ DEFINE_BITWISE_KERNEL(Or)
 DEFINE_BITWISE_KERNEL(Xor)
 #undef DEFINE_BITWISE_KERNEL
 
+#define DEFINE_BITWISE_KERNEL_WITH_INVERSE(op_type)                         \
+  template <typename T, typename Context>                                   \
+  void Bitwise##op_type##Kernel(const Context& dev_ctx,                     \
+                                const DenseTensor& x,                       \
+                                const DenseTensor& y,                       \
+                                DenseTensor* out) {                         \
+    funcs::Bitwise##op_type##Functor<T> func;                               \
+    funcs::InverseBitwise##op_type##Functor<T> inv_func;                    \
+    auto x_dims = x.dims();                                                 \
+    auto y_dims = y.dims();                                                 \
+    if (x_dims.size() >= y_dims.size()) {                                   \
+      funcs::ElementwiseCompute<funcs::Bitwise##op_type##Functor<T>, T>(    \
+          dev_ctx, x, y, func, out);                                        \
+    } else {                                                                \
+      funcs::ElementwiseCompute<funcs::InverseBitwise##op_type##Functor<T>, \
+                                T>(dev_ctx, x, y, inv_func, out);           \
+    }                                                                       \
+  }
+
+DEFINE_BITWISE_KERNEL_WITH_INVERSE(LeftShiftArithmetic)
+DEFINE_BITWISE_KERNEL_WITH_INVERSE(LeftShiftLogic)
+DEFINE_BITWISE_KERNEL_WITH_INVERSE(RightShiftArithmetic)
+DEFINE_BITWISE_KERNEL_WITH_INVERSE(RightShiftLogic)
+#undef DEFINE_BITWISE_KERNEL_WITH_INVERSE
+
 template <typename T, typename Context>
 void BitwiseNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -92,6 +117,47 @@ PD_REGISTER_KERNEL(bitwise_not,
                    ALL_LAYOUT,
                    phi::BitwiseNotKernel,
                    bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+
+PD_REGISTER_KERNEL(bitwise_left_shift_arithmetic,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseLeftShiftArithmeticKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_left_shift_logic,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseLeftShiftLogicKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_right_shift_arithmetic,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseRightShiftArithmeticKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_right_shift_logic,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseRightShiftLogicKernel,
                    uint8_t,
                    int8_t,
                    int16_t,
