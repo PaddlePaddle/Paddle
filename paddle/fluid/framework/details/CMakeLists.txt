@@ -306,6 +306,7 @@ cc_library(
   scope_buffered_ssa_graph_executor
   SRCS scope_buffered_ssa_graph_executor.cc
   DEPS ssa_graph_executor scope_buffered_monitor)
+
 cc_library(
   bind_threaded_ssa_graph_executor
   SRCS bind_threaded_ssa_graph_executor.cc
