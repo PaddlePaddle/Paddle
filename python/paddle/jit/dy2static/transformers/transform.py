@@ -19,9 +19,10 @@
 
 import os
 
-from . import logging_utils
+from .. import logging_utils
+from ..utils import ast_to_source_code
 from .assert_transformer import AssertTransformer
-from .base_transformer import BaseTransformer
+from .base import BaseTransformer
 from .basic_api_transformer import BasicApiTransformer, NameloadJstTransformer
 from .break_continue_transformer import (
     BreakContinueTransformer,
@@ -39,7 +40,6 @@ from .return_transformer import ReturnTransformer
 from .tensor_shape_transformer import TensorShapeTransformer
 from .tensorhook_transformer import RegisterHookTransformer
 from .typehint_transformer import TypeHintTransformer
-from .utils import ast_to_source_code
 
 __all__ = []
 

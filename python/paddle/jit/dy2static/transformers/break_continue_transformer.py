@@ -17,7 +17,7 @@ from paddle.jit.dy2static.utils import BaseNodeVisitor, index_in_list
 from paddle.jit.dy2static.variable_trans_func import create_bool_node
 from paddle.utils import gast
 
-from .base_transformer import BaseTransformer, ForNodeVisitor
+from .base import BaseTransformer, ForNodeVisitor
 
 __all__ = []
 
