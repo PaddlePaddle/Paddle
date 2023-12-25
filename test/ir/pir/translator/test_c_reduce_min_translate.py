@@ -19,8 +19,6 @@ from test_op_transcriber import TestOpTranscriber
 import paddle
 from paddle.base.layer_helper import LayerHelper
 
-paddle.enable_static()
-
 
 class TestCReduceMinOpTranscriber(TestOpTranscriber):
     def build_model(self):

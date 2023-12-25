@@ -18,6 +18,8 @@ import paddle
 from paddle import pir
 from paddle.base import core
 
+paddle.enable_static()
+
 
 class TestOpTranscriber(unittest.TestCase):
     def setUp(self):
