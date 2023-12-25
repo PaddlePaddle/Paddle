@@ -24,6 +24,7 @@ import paddle
 from paddle.distribution.kl import kl_divergence
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
+from paddle.pir_utils import test_with_pir_api
 
 
 @place(config.DEVICES)
@@ -67,6 +68,7 @@ class TestLogNormal(unittest.TestCase):
             self.log_prob,
         ] = executor.run(main_program, feed=self.feeds, fetch_list=fetch_list)
 
+    @test_with_pir_api
     def test_mean(self):
         np_mean = self.np_lognormal.mean
         self.assertEqual(str(self.mean.dtype).split('.')[-1], self.scale.dtype)
@@ -77,6 +79,7 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
+    @test_with_pir_api
     def test_var(self):
         np_var = self.np_lognormal.variance
         self.assertEqual(str(self.var.dtype).split('.')[-1], self.scale.dtype)
@@ -87,6 +90,7 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
+    @test_with_pir_api
     def test_entropy(self):
         np_entropy = self.np_lognormal.entropy()
         self.assertEqual(
@@ -99,6 +103,7 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
+    @test_with_pir_api
     def test_probs(self):
         np_probs = self.np_lognormal.probs(self.value)
         np.testing.assert_allclose(
@@ -108,6 +113,7 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
+    @test_with_pir_api
     def test_log_prob(self):
         np_log_prob = self.np_lognormal.log_prob(self.value)
         np.testing.assert_allclose(
@@ -150,6 +156,7 @@ class TestLogNormalSample(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
+    @test_with_pir_api
     def test_sample(self):
         samples_mean = self.samples.mean(axis=0)
         samples_var = self.samples.var(axis=0)
@@ -236,6 +243,7 @@ class TestLogNormalKL(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
+    @test_with_pir_api
     def test_kl_divergence(self):
         np.testing.assert_allclose(
             self.kl0,
