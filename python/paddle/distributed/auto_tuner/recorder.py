@@ -58,7 +58,7 @@ class HistoryRecorder:
                 or best_cfg["time"] == -1
             ):
                 return (best_cfg, True)
-            first_few = 1
+            first_few = 0
             for cfg in self.history:
                 if (
                     not isinstance(cfg["max_mem_usage"], str)
