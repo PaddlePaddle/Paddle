@@ -13,21 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/pir/core/type_id.h"
 
-#include "paddle/pir/core/dialect.h"
-#include "test/cpp/pir/tools/macros_utils.h"
-
-namespace test {
-class TestDialect : public pir::Dialect {
- public:
-  explicit TestDialect(pir::IrContext *context);
-  static const char *name() { return "test"; }
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override;
-
- private:
-  void initialize();
-};
-
-}  // namespace test
-IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::TestDialect)
+#define IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TYPE_CLASS) \
+  namespace pir {                                    \
+  namespace detail {                                 \
+  template <>                                        \
+  class TypeIdResolver<TYPE_CLASS> {                 \
+   public:                                           \
+    static TypeId Resolve() { return id_; }          \
+    static UniqueingId id_;                          \
+  };                                                 \
+  }                                                  \
+  }  // namespace pir
