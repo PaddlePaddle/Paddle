@@ -239,9 +239,9 @@ set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
   set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/common.dll)
 elseif(APPLE)
-  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.dylib)
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
 else()
-  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.so)
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
 endif()
 
 copy(
