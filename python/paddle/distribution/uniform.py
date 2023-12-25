@@ -19,7 +19,7 @@ from paddle import _C_ops
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 from paddle.tensor import random
 
 
@@ -105,13 +105,29 @@ class Uniform(distribution.Distribution):
             check_type(
                 low,
                 'low',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    list,
+                    tuple,
+                    paddle.pir.Value,
+                ),
                 'Uniform',
             )
             check_type(
                 high,
                 'high',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    list,
+                    tuple,
+                    paddle.pir.Value,
+                ),
                 'Uniform',
             )
 
@@ -213,7 +229,7 @@ class Uniform(distribution.Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
@@ -242,7 +258,7 @@ class Uniform(distribution.Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
             lb = _C_ops.cast(lb_bool, value.dtype)
