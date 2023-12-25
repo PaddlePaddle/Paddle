@@ -84,13 +84,8 @@ about:
 """
 
         self.build_const = r"""
-pip install paddle_bfloat==0.1.7 -f {}
-""".format(
-            package_path
-        )
-
+"""
         self.blt_const = r"""
-pip install paddle_bfloat==0.1.7 -f C:\package
 pip install protobuf===3.20.2 -f C:\package
 """
 
