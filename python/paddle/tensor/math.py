@@ -5078,8 +5078,10 @@ def igamma(x, a, name=None):
         raise ValueError(
             "The input argument a must be greater than or equal to 0."
         )
-    if not paddle.all(paddle.greater_than(x, paddle.zeros_like(x))):
-        raise ValueError("The input argument x must be greater than 0.")
+    if not paddle.all(paddle.greater_equal(x, paddle.zeros_like(x))):
+        raise ValueError(
+            "The input argument x must be greater than or equal to 0."
+        )
     if in_dynamic_or_pir_mode():
         return _C_ops.igamma(x, a)
     else:
