@@ -3425,6 +3425,12 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op: ftrl
+  inputs:
+    {param: Param, squared_accumulator: SquaredAccumulator, linear_accumulator: LinearAccumulator, grad: Grad, learning_rate: LearningRate}
+  outputs:
+    {param_out: ParamOut, squared_accum_out: SquaredAccumOut, linear_accum_out: LinearAccumOut}
+
 - op: full_batch_size_like (fill_constant_batch_size_like)
   inputs:
     {input: Input}
