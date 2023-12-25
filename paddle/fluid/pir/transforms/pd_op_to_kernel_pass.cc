@@ -1028,7 +1028,8 @@ phi::KernelKey GetKernelKey(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
+  if (op->dialect()->name() == "pd_onednn_op" && op->HasTrait<OneDNNTrait>() &&
+      res.backend() == phi::Backend::CPU &&
       SupportsMKLDNN(kernel_fn_str, res.dtype())) {
     res.set_backend(phi::Backend::ONEDNN);
     res.set_layout(phi::DataLayout::ONEDNN);
@@ -1858,6 +1859,8 @@ std::vector<pir::Value> BuildInputs(
     // 3. layout transfer(only for onednn)
 #ifdef PADDLE_WITH_DNNL
     if (kernel_key.backend() == phi::Backend::CPU &&
+        cur_in.dyn_cast<pir::OpResult>().owner()->dialect()->name() ==
+            "pd_onednn_op" &&
         cur_in.dyn_cast<pir::OpResult>().owner()->HasTrait<OneDNNTrait>()) {
       auto new_in_type = new_in.type();
       if (new_in_type.isa<AllocatedDenseTensorType>()) {
@@ -1951,7 +1954,8 @@ pir::Operation* BuildKernelOp(
 
   pir::Operation* op = nullptr;
 #ifdef PADDLE_WITH_DNNL
-  if (op_item->HasTrait<OneDNNTrait>()) {
+  if (op_item->dialect()->name() == "pd_onednn_op" &&
+      op_item->HasTrait<OneDNNTrait>()) {
     if (IsOneDNNLegacyOp(op_item->name())) {
       VLOG(4) << "choose OneDNNLegacyKernelOp";
       pir::OpInfo legacy_kernel_op_info =
@@ -1987,7 +1991,8 @@ pir::Operation* BuildKernelOp(
           "dynamic_fallback",
           pir::BoolAttribute::get(
               ctx, op_info_parser->OpRuntimeInfo().dynamic_fallback));
-      if (op_item->HasTrait<OneDNNDynamicFallbackTrait>()) {
+      if (op_item->dialect()->name() == "pd_onednn_op" &&
+          op_item->HasTrait<OneDNNDynamicFallbackTrait>()) {
         VLOG(4) << "choose OneDNNMixedPhiKernelOp";
         pir::OpInfo phi_kernel_op_info =
             ctx->GetRegisteredOpInfo(OneDNNMixedPhiKernelOp::name());
