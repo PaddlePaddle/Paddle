@@ -14,6 +14,8 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_DNNL
+
 #include "paddle/pir/core/op_base.h"
 
 namespace paddle {
@@ -43,3 +45,5 @@ class OneDNNDynamicFallbackTrait
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNOnlyTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNDynamicFallbackTrait)
+
+#endif
