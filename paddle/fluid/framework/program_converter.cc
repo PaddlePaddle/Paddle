@@ -46,6 +46,10 @@ std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
          paddle::framework::compatible::get_op_version_map()) {
       current_op_versions.insert(
           std::make_pair(pair.first, pair.second.version_id()));
+      if (pair.first == "assign_value") {
+        VLOG(6) << "get_op_version_map----------------------------------"
+                << pair.first << " " << pair.second.version_id();
+      }
     }
 
     const auto* _op_version_map = program->OpVersionMap();
@@ -54,6 +58,8 @@ std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
           std::make_pair(_op_version_map->pair(i).op_name(),
                          static_cast<uint32_t>(
                              _op_version_map->pair(i).op_version().version()));
+      VLOG(6) << "program_op_versions=----------------------------------"
+              << pair.first << " " << pair.second;
       program_op_versions.insert(pair);
     }
 
@@ -291,6 +297,7 @@ void ConvertProgram(ProgramDesc* program) {
   const std::unordered_map<std::string, uint32_t>& legacy_op_versions =
       legacy_op_results.second;
 
+  VLOG(3) << "is_legacy_program : " << is_legacy_program;
   if (!is_legacy_program) return;
 
   VLOG(3) << "Updating Program Version and OpVersionMap";
@@ -309,15 +316,19 @@ void ConvertProgram(ProgramDesc* program) {
     for (size_t j = 0; j < num_ops; j++) {
       OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
+      if (op_type == "assign_value") {
+        VLOG(6)
+            << "Converting program from old(no scalar attributes) to new(with "
+               "scalar attributes), op_type="
+            << op_type;
+        ConvertAssignValueOp(op);
+      }
       if (!legacy_op_versions.count(op_type)) {
         continue;
       }
 
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
-      }
-      if (op_type == "assign_value") {
-        ConvertAssignValueOp(op);
       }
     }
   }
