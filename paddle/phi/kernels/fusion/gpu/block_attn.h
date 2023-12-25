@@ -59,6 +59,10 @@ struct Block_AttN_params {
   // TODO(wangxi): optimize with input_lengths and max_input_len?
   // [bsz, 1, 1, time_step(cache_seq_length)+1]
   const T *attn_mask;
+  // mask_length is the 3th dimension of attn_mask.
+  int mask_length;
+  bool mask_broadcast_num_heads;
+
 
   // k_cache [max_block_num, num_head, block_size, head_size]
   // v_cache [max_block_num, num_head, block_size, head_size]
@@ -325,6 +329,13 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   }
   if (tid == 0) {
     qk *= params.inv_sqrt_dh;
+
+    if (params.attn_mask) {
+      auto mask_bhi = hi;
+      T mask = params.attn_mask[mask_bhi * params.mask_length + act_time_step];
+      qk += static_cast<float>(mask);
+    }
+
     qk_max = qk;
     qk_smem[act_time_step] = qk;
   }
@@ -385,6 +396,12 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     }
 
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
+
+    if (params.attn_mask) {
+      auto mask_bhi = hi;
+      T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
+      qk += static_cast<float>(mask);
+    }
 
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       qk_max = fmaxf(qk_max, qk);
@@ -826,11 +843,28 @@ void blha(const phi::GPUContext &dev_ctx,
   }
   params.max_num_blocks_per_seq = max_num_blocks_per_seq;
   params.neox_rotary_style = neox_rotary_style;
+
+  params.attn_mask = nullptr;
+  bool mask_broadcast_num_heads = false;
   if (src_mask_tensor) {
+    if (src_mask_tensor->dims()[1] == 1) {
+      // all head share a mask.
+      mask_broadcast_num_heads = true;
+    } else if (src_mask_tensor->dims()[1] == num_head) {
+      mask_broadcast_num_heads = false;
+    } else {
+      PADDLE_THROW(errors::InvalidArgument(
+          "Unknow dimension for attn_mask, the num_head(2nd) "
+          "dimension is invalid, it should be 1 or num_head(%d), "
+          "but got %d",
+          num_head,
+          src_mask_tensor->dims()[1]));
+    }
     params.attn_mask = src_mask_tensor->data<T>();
-  } else {
-    params.attn_mask = nullptr;
+    params.mask_broadcast_num_heads = mask_broadcast_num_heads;
+    params.mask_length = src_mask_tensor->dims()[3];
   }
+
   params.block_tables = block_tables->data<int>();
 
   if (sequence_lengths_tensor) {
