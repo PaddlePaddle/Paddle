@@ -44,6 +44,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -139,6 +140,7 @@ class TestClassL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
