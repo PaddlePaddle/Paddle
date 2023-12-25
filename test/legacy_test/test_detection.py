@@ -184,7 +184,6 @@ class TestMulticlassNMS2(unittest.TestCase):
 
 
 class TestDistributeFpnProposals(LayerTest):
-    @test_with_pir_api
     def static_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.static_graph():
             rois = paddle.static.data(
@@ -243,6 +242,7 @@ class TestDistributeFpnProposals(LayerTest):
                     output_dy_np.append(output_np)
         return output_dy_np
 
+    @test_with_pir_api
     def test_distribute_fpn_proposals(self):
         rois_np = np.random.rand(10, 4).astype('float32')
         rois_num_np = np.array([4, 6]).astype('int32')
