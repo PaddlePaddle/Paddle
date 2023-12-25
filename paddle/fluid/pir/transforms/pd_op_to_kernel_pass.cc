@@ -1859,6 +1859,7 @@ std::vector<pir::Value> BuildInputs(
     // 3. layout transfer(only for onednn)
 #ifdef PADDLE_WITH_DNNL
     if (kernel_key.backend() == phi::Backend::CPU &&
+        cur_in.dyn_cast<pir::OpResult>().owner() != nullptr &&
         cur_in.dyn_cast<pir::OpResult>().owner()->dialect()->name() ==
             "pd_onednn_op" &&
         cur_in.dyn_cast<pir::OpResult>().owner()->HasTrait<OneDNNTrait>()) {
