@@ -126,61 +126,61 @@ bool DimExpr::operator!=(const DimExpr& other) const {
 
 namespace {
 
-std::string ToTxtStringImpl(std::int64_t dim_expr) {
+std::string ToStringImpl(std::int64_t dim_expr) {
   return std::to_string(dim_expr);
 }
 
-std::string ToTxtStringImpl(const std::string& dim_expr) { return dim_expr; }
+std::string ToStringImpl(const std::string& dim_expr) { return dim_expr; }
 
-std::string ToTxtStringImpl(const Negative<DimExpr>& dim_expr) {
-  return "-" + ToTxtString(dim_expr->data);
+std::string ToStringImpl(const Negative<DimExpr>& dim_expr) {
+  return "-" + ToString(dim_expr->data);
 }
 
-std::string ToTxtStringImpl(const Reciprocal<DimExpr>& dim_expr) {
-  return "1 / (" + ToTxtString(dim_expr->data) + ")";
+std::string ToStringImpl(const Reciprocal<DimExpr>& dim_expr) {
+  return "1 / (" + ToString(dim_expr->data) + ")";
 }
 
-std::string ListDimExprToTxtString(const List<DimExpr>& dim_exprs,
-                                   const std::string& delim = ", ") {
+std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
+                                const std::string& delim = ", ") {
   std::string ret;
   for (std::size_t i = 0; i < dim_exprs->size(); ++i) {
     if (i > 0) {
       ret += delim;
     }
-    ret += ToTxtString(dim_exprs->at(i));
+    ret += ToString(dim_exprs->at(i));
   }
   return ret;
 }
 
-std::string ToTxtStringImpl(const Add<DimExpr>& dim_expr) {
-  return "Add(" + ListDimExprToTxtString(dim_expr.operands, ", ") + ")";
+std::string ToStringImpl(const Add<DimExpr>& dim_expr) {
+  return "Add(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
 }
 
-std::string ToTxtStringImpl(const Mul<DimExpr>& dim_expr) {
-  return "Mul(" + ListDimExprToTxtString(dim_expr.operands, ", ") + ")";
+std::string ToStringImpl(const Mul<DimExpr>& dim_expr) {
+  return "Mul(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
 }
 
-std::string ToTxtStringImpl(const Max<DimExpr>& dim_expr) {
-  return "Max(" + ListDimExprToTxtString(dim_expr.operands, ", ") + ")";
+std::string ToStringImpl(const Max<DimExpr>& dim_expr) {
+  return "Max(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
 }
 
-std::string ToTxtStringImpl(const Min<DimExpr>& dim_expr) {
-  return "Min(" + ListDimExprToTxtString(dim_expr.operands, ", ") + ")";
+std::string ToStringImpl(const Min<DimExpr>& dim_expr) {
+  return "Min(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
 }
 
-std::string ToTxtStringImpl(const Broadcast<DimExpr>& dim_expr) {
-  return "Broadcast(" + ListDimExprToTxtString(dim_expr.operands, ", ") + ")";
+std::string ToStringImpl(const Broadcast<DimExpr>& dim_expr) {
+  return "Broadcast(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
 }
 
 }  // namespace
 
-std::string ToTxtString(const DimExpr& dim_expr) {
-  return std::visit([](const auto& impl) { return ToTxtStringImpl(impl); },
+std::string ToString(const DimExpr& dim_expr) {
+  return std::visit([](const auto& impl) { return ToStringImpl(impl); },
                     dim_expr.variant());
 }
 
 std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
-  stream << ToTxtString(dim_expr);
+  stream << ToString(dim_expr);
   return stream;
 }
 
