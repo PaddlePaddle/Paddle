@@ -675,16 +675,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     pre_cond = cond(*loop_vars)
 
-    if in_pir_mode():
-        while_op = build_while_op(pre_cond, flatten(loop_vars))
-        with while_op.body() as cur_block:
-            args = cur_block.args()
-            next_var = body(*args)
-            next_cond = cond(*next_var)
-            next_cond.stop_gradient = True
-            cf_yield([next_cond, *next_var])
-        return while_op.as_operation().results()
-
     check_variable_and_dtype(
         pre_cond, 'var of cond returned', ['bool'], 'static.nn.while_loop'
     )
@@ -693,6 +683,25 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [1],"
             f"but given shape as {list(pre_cond.shape)}."
         )
+
+    if in_pir_mode():
+        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        with while_op.body() as cur_block:
+            args = cur_block.args()
+            next_var = body(*args)
+            try:
+                assert_same_structure(
+                    flatten(next_var), flatten(loop_vars), check_types=False
+                )
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    f"(length and structure) as loop_vars: {e}"
+                )
+            next_cond = cond(*next_var)
+            next_cond.stop_gradient = True
+            cf_yield([next_cond, *next_var])
+        return while_op.as_operation().results()
 
     if in_dygraph_mode():
         now_cond = pre_cond.item()
