@@ -26,6 +26,8 @@ __SUPPORTED_RECOMPUTE_GRANULARITY__ = ["full", "full_attn", "core_attn"]
 
 logger = logging.getLogger('auto_tuner')
 
+SORT_BY_MEMORY = os.environ.get("FLAGS_sort_by_memory", True)
+
 
 def divisor(num, reverse=False):
     """Return the divisor of the given number."""
@@ -414,6 +416,14 @@ def search_all(tuner_cfg):
     logger.info(
         f"{search_space_size_before_prune - search_space_size_after_prune} tasks are pruned before launching."
     )
+    if SORT_BY_MEMORY:
+        pruned_all_cfgs = sorted(
+            pruned_all_cfgs,
+            key=lambda x: x["estimated_memory_usage"]
+            if "estimated_memory_usage" in x.keys()
+            else -1,
+            reverse=True,
+        )
     return pruned_all_cfgs
 
 
