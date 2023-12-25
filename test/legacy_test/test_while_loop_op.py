@@ -704,7 +704,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
     @compare_legacy_with_pt
-    # @test_with_pir_api (need to fix slice bug in pir)
+    @test_with_pir_api
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
@@ -716,7 +716,8 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = paddle.tensor.fill_constant([], 'int32', 0)
             x_shape = paddle.shape(x)
