@@ -309,7 +309,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  explicit ConstantFoldingPass()
+  ConstantFoldingPass()
       : pir::Pass("constant_folding_pass", 1),
         place_(phi::CPUPlace{}),
         scope_(nullptr) {}
