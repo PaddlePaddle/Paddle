@@ -15,32 +15,30 @@
 from paddle.jit.dy2static.utils import ast_to_source_code
 from paddle.utils import gast
 
-from .base_transformer import BaseTransformer
+from .base import BaseTransformer
 
 __all__ = []
 
 
-class AssertTransformer(BaseTransformer):
+class CastTransformer(BaseTransformer):
     """
-    A class transforms python assert to convert_assert.
+    This class transforms type casting into Static Graph Ast.
     """
 
     def __init__(self, root):
         self.root = root
+        self._castable_type = {'bool', 'int', 'float'}
 
     def transform(self):
         self.visit(self.root)
 
-    def visit_Assert(self, node):
-        convert_assert_node = (
-            gast.parse(
-                '_jst.Assert({test}, {msg})'.format(
-                    test=ast_to_source_code(node.test),
-                    msg=ast_to_source_code(node.msg) if node.msg else "",
-                )
-            )
-            .body[0]
-            .value
-        )
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        func_str = ast_to_source_code(node.func).strip()
+        if func_str in self._castable_type and len(node.args) > 0:
+            args_str = ast_to_source_code(node.args[0]).strip()
+            new_func_str = f"_jst.AsDtype({args_str}, '{func_str}')"
+            new_node = gast.parse(new_func_str).body[0].value
+            return new_node
 
-        return gast.Expr(value=convert_assert_node)
+        return node

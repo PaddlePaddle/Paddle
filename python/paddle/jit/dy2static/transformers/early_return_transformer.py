@@ -14,7 +14,7 @@
 
 from paddle.utils import gast
 
-from .base_transformer import BaseTransformer
+from .base import BaseTransformer
 
 __all__ = []
 

@@ -71,13 +71,25 @@ def create_optimizer(model, lr_scheduler):
     def apply_decay_param_fun(x):
         return x in decay_parameters
 
-    optimizer = paddle.optimizer.adamw.AdamW(
-        learning_rate=lr_scheduler,
-        apply_decay_param_fun=apply_decay_param_fun,
-        parameters=model.parameters(),
-        weight_decay=0.01,
-        grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
-    )
+    # test global_clip in auto_parallel
+    if os.getenv("use_param_group") == "true":
+        param_group = {}
+        param_group["params"] = list(model.parameters())
+        param_group["weight_decay"] = 0.01
+        param_group["grad_clip"] = paddle.nn.ClipGradByGlobalNorm(1.0)
+        optimizer = paddle.optimizer.adamw.AdamW(
+            learning_rate=lr_scheduler,
+            apply_decay_param_fun=apply_decay_param_fun,
+            parameters=[param_group],
+        )
+    else:
+        optimizer = paddle.optimizer.adamw.AdamW(
+            learning_rate=lr_scheduler,
+            apply_decay_param_fun=apply_decay_param_fun,
+            parameters=model.parameters(),
+            weight_decay=0.01,
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
+        )
     return optimizer
 
 
