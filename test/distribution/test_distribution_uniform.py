@@ -138,8 +138,11 @@ class UniformTest(unittest.TestCase):
         )
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
-    def test_old_ir_uniform_distribution_static(self, sample_shape):
-        with base.program_guard(self.test_program):
+    def test_old_ir_uniform_distribution_static(
+        self, sample_shape=7, tolerance=1e-6
+    ):
+        self.init_static_data(self.batch_size, self.dims, in_pir=False)
+        with base.program_guard(self.test_program, paddle.static.Program()):
             uniform = Uniform(self.static_low, self.static_high)
             sample = uniform.sample([sample_shape])
             entropy = uniform.entropy()
@@ -160,9 +163,14 @@ class UniformTest(unittest.TestCase):
 
             self.compare_with_numpy(fetch_list)
 
-    def test_pir_uniform_distribution_static(self, sample_shape):
+    def test_pir_uniform_distribution_static(
+        self, sample_shape=7, tolerance=1e-6
+    ):
+        self.init_static_data(self.batch_size, self.dims, in_pir=True)
         with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(self.test_program):
+            with paddle.static.program_guard(
+                self.test_pir_program, paddle.static.Program()
+            ):
                 uniform = Uniform(self.static_low, self.static_high)
                 sample = uniform.sample([sample_shape])
                 entropy = uniform.entropy()
