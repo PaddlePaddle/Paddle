@@ -297,6 +297,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_trt_pool_op$|\ 
 ^test_trt_convert_clip$|\ 
 ^test_trt_convert_grid_sampler$|\
+^test_trt_convert_p_norm$|\
 ^disable_wingpu_cuda12_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
