@@ -15,6 +15,7 @@
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include <string>
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+
 namespace pir {
 
 bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
@@ -145,6 +146,18 @@ ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
               .second);
   }
   return value_to_sym_dims_.at(value);
+}
+
+const symbol::ShapeOrDataDimExprs&
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value* val) {
+  auto val_id = GetValueId(val);
+  return value_id_to_shapeordata[val_id];
+}
+
+void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
+    Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  auto val_id = GetValueId(val);
+  value_id_to_shapeordata[val_id] = shape_or_data;
 }
 
 symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {
