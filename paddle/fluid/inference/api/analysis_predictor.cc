@@ -56,6 +56,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -788,13 +789,15 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
-      std::vector<pir::OpResult> src_vars;
-      std::set<std::string> blacklist;
-      std::set<std::string> whitelist;
-      VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
-      DecompProgram decomp_object(
-          pir_program_.get(), src_vars, blacklist, whitelist);
-      decomp_object.decomp_program();
+      if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
+        VLOG(4) << "[Prim] Decomp program in predictor begin.";
+        std::vector<pir::OpResult> src_vars;
+        std::set<std::string> blacklist;
+        std::set<std::string> whitelist;
+        DecompProgram decomp_object(
+            pir_program_.get(), src_vars, blacklist, whitelist);
+        decomp_object.decomp_program();
+      }
 
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
