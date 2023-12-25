@@ -331,7 +331,6 @@ def inverse_sort_op(ops):
     while queue:
         op = queue.popleft()
         sorted_list.append(op)
-        # why reverse: tuple_push's input order is fwd op's order
         for x in get_real_op_inputs(op):
             x_op = x.get_defining_op()
             pending_count[x_op] -= 1
@@ -633,7 +632,6 @@ def append_backward_ops(
                     value_grad = append_full_like(
                         0.0, value, value, state, backward_ops
                     )
-
                 input_grad = state.value_to_valuegrad[value][0][0]
 
                 inputs_grad.append(input_grad)
@@ -718,6 +716,7 @@ def append_backward_ops(
                             output_grads,
                             input_grad_stopgradients,
                         )
+
                     pop_op = bwd_block.ops[-1]
                     bwd_ops = [pop_op]
                     tmp_inputs = (
@@ -745,7 +744,6 @@ def append_backward_ops(
 
                     if op.name() == "pd_op.if":
                         origin_inputs = get_real_op_inputs(op)
-
                         for sub_block in op.blocks():
                             build_pipe_for_block(sub_block)
                         with dynamic_shape_prim_vjp_guard(op, inputs):
@@ -762,6 +760,16 @@ def append_backward_ops(
                         for sub_fwd_block, sub_bwd_block in zip(
                             op.blocks(), grad_op.blocks()
                         ):
+                            # update grad_op structure
+                            if grad_op.name() == "pd_op.while":
+                                (
+                                    _,
+                                    sub_bwd_block_argument_to_value_map,
+                                ) = argument_to_value(grad_op)
+                            else:
+                                sub_bwd_block_argument_to_value_map = (
+                                    ValueDict()
+                                )
                             sub_state = state.copy(sub_fwd_block)
                             sub_backward_ops = []
                             append_backward_ops(
@@ -774,6 +782,7 @@ def append_backward_ops(
                                 no_grad_set,
                                 sub_backward_ops,
                                 sub_state,
+                                sub_bwd_block_argument_to_value_map,
                             )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
@@ -985,6 +994,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         no_grad_set,
         backward_ops,
         state,
+        ValueDict(),
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(

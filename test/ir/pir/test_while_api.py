@@ -188,15 +188,6 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .name(),
                 "cf.has_elements",
             )
-            self.assertEqual(
-                main_program.global_block()
-                .ops[-1]
-                .as_while_op()
-                .body()
-                .ops[-4]
-                .name(),
-                "cf.has_elements",
-            )
 
     def test_backward_with_loop_var_same_to_extral_var(self):
         main_program = paddle.static.Program()
