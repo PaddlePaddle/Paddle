@@ -14,6 +14,9 @@
 
 import collections
 
+from ..auto_parallel.static.utils import (
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+)
 from .pass_base import PassBase, register_pass
 from .pass_utils import AutoParallelStreamType
 
@@ -32,14 +35,18 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
     def __init__(self):
         super().__init__()
         self.set_attr("allreduce_stream", None)
+        self.set_attr("dist_context", None)
 
     def _check_self(self):
+        if self.get_attr("dist_context") is None:
+            return False
         return True
 
     def _check_conflict(self, other_pass):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
+        self.dist_context = self.get_attr("dist_context")
         block = main_program.global_block()
         matmul_grad_id_to_allreduce_id = (
             self._get_all_matmul_grad_and_allreduce_pairs(block)
@@ -70,14 +77,23 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
 
     def _insert_reshape_op(self, block, index, x, shape, op_role, out=None):
         var_x = block.var(x[0])
+        x_dist_attr = self.dist_context.get_tensor_dist_attr_for_program(var_x)
+
         if out is None:
             out = block.create_var(
                 name=f"{x[0]}@reshape.out",
                 dtype=var_x.dtype,
                 persistable=False,
             )
+            self.dist_context.set_tensor_dist_attr_for_program(
+                out, x_dist_attr.copy()
+            )
+
         x_shape = block.create_var(
             name=f"{x[0]}@reshape.xshape", dtype=var_x.dtype
+        )
+        self.dist_context.set_tensor_dist_attr_for_program(
+            x_shape, x_dist_attr.copy()
         )
 
         block._insert_op_without_sync(
@@ -86,6 +102,11 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             inputs={"X": x},
             outputs={"Out": out, "XShape": x_shape},
             attrs={"shape": shape, "op_role": op_role},
+        )
+        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+            process_mesh=x_dist_attr.process_mesh,
+            ref_mapping=x_dist_attr.dim_mapping,
+            chunk_id=x_dist_attr.chunk_id,
         )
         block._sync_with_cpp()
 
@@ -161,13 +182,24 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 dtype=var_y_grad.dtype,
                 persistable=False,
             )
-            block._insert_op_without_sync(
+            self.dist_context.set_tensor_dist_attr_for_program(
+                self.dist_context.get_tensor_dist_attr_for_program(var_y_grad)
+            )
+
+            matmul_grad_dist_attr = (
+                self.dist_context.get_op_dist_attr_for_program(matmul_grad_op)
+            )
+            matmul_op = block._insert_op_without_sync(
                 index=allreduce_id + 3,
                 type="matmul_v2",
                 inputs={"X": new_x, "Y": new_out_grad},
                 outputs={"Out": new_y_grad},
                 attrs={"trans_x": True, "trans_y": False, "op_role": op_role},
             )
+            self.dist_context.set_op_dist_attr_for_program(
+                matmul_op, matmul_grad_dist_attr
+            )
+
             self._insert_reshape_op(
                 block,
                 allreduce_id + 4,
@@ -177,12 +209,15 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 y_grad,
             )
 
-            block._insert_op_without_sync(
+            matmul_op = block._insert_op_without_sync(
                 index=matmul_grad_id + 1,
                 type="matmul_v2",
                 inputs={"X": out_grad, "Y": y},
                 outputs={"Out": x_grad},
                 attrs={"trans_x": False, "trans_y": True, "op_role": op_role},
+            )
+            self.dist_context.set_op_dist_attr_for_program(
+                matmul_op, matmul_grad_dist_attr
             )
 
             block._remove_op(matmul_grad_id)
