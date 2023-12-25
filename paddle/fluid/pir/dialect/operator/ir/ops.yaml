@@ -350,7 +350,7 @@
   kernel :
     func : distribute_fpn_proposals
     data_type : fpn_rois
-  optional : rois_num
+  optional : rois_num, multi_level_rois_num
 
 - op : divide
   args : (Tensor x, Tensor y)
