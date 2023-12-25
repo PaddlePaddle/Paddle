@@ -94,24 +94,20 @@ pip install paddle_bfloat==0.1.7 -f C:\package
 pip install protobuf===3.20.2 -f C:\package
 """
 
-        self.python37 = r"    - python>=3.7, <3.8"
         self.python38 = r"    - python>=3.8, <3.9"
         self.python39 = r"    - python>=3.9, <3.10"
         self.python310 = r"    - python>=3.10, <3.11"
         self.python311 = r"    - python>=3.11, <3.12"
+        self.python312 = r"    - python>=3.12, <3.13"
 
         self.python_version = [
-            self.python37,
             self.python38,
             self.python39,
             self.python310,
             self.python311,
+            self.python312,
         ]
 
-        self.cuda102 = r"""
-    - cudatoolkit>=10.2, <10.3
-    - cudnn>=7.6, <7.7
-    """
         self.cuda112 = r"""
     - cudatoolkit>=11.2, <11.3
     - cudnn>=8.2, <8.3
@@ -126,12 +122,11 @@ pip install protobuf===3.20.2 -f C:\package
     - cudnn>=8.4, <8.5
     """
         self.cuda_info = [
-            (self.cuda102, "cuda10.2", ".post102"),
             (self.cuda112, "cuda11.2", ".post112"),
             (self.cuda116, "cuda11.6", ".post116"),
             (self.cuda117, "cuda11.7", ".post117"),
         ]
-        self.py_str = ["py37", "py38", "py39", "py310", "py311"]
+        self.py_str = ["py38", "py39", "py310", "py311", "py312"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install {}/paddlepaddle".format(
             package_path
@@ -140,11 +135,11 @@ pip install protobuf===3.20.2 -f C:\package
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
-            "-cp37-cp37m-macosx_10_9_x86_64",
             "-cp38-cp38-macosx_10_9_x86_64",
             "-cp39-cp39-macosx_10_9_x86_64",
             "-cp310-cp310-macosx_10_9_x86_64",
             "-cp311-cp311-macosx_10_9_x86_64",
+            "-cp312-cp312-macosx_10_9_x86_64",
         ]
         self.mac_pip_arm = [
             "",
@@ -152,20 +147,21 @@ pip install protobuf===3.20.2 -f C:\package
             "-cp39-cp39-macosx_11_0_arm64",
             "-cp310-cp310-macosx_11_0_arm64",
             "-cp311-cp311-macosx_11_0_arm64",
+            "-cp312-cp312-macosx_11_0_arm64",
         ]
         self.linux_pip = [
-            "-cp37-cp37m-linux_x86_64",
             "-cp38-cp38-linux_x86_64",
             "-cp39-cp39-linux_x86_64",
             "-cp310-cp310-linux_x86_64",
             "-cp311-cp311-linux_x86_64",
+            "-cp312-cp312-linux_x86_64",
         ]
         self.windows_pip = [
-            "-cp37-cp37m-win_amd64",
             "-cp38-cp38-win_amd64",
             "-cp39-cp39-win_amd64",
             "-cp310-cp310-win_amd64",
             "-cp311-cp311-win_amd64",
+            "-cp312-cp312-win_amd64",
         ]
 
 
