@@ -1611,7 +1611,9 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.jit.dy2static.return_transformer import RETURN_VALUE_PREFIX
+    from paddle.jit.dy2static.transformers.return_transformer import (
+        RETURN_VALUE_PREFIX,
+    )
     from paddle.jit.dy2static.utils import UndefinedVar
 
     def pack_undefined_var_as(seq):

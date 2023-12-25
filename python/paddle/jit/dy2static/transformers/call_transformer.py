@@ -15,8 +15,8 @@
 from paddle.jit.dy2static.utils import ast_to_source_code, is_paddle_api
 from paddle.utils import gast
 
-from .base_transformer import BaseTransformer
-from .utils import is_builtin  # noqa: F401
+from ..utils import is_builtin  # noqa: F401
+from .base import BaseTransformer
 
 PDB_SET = "pdb.set_trace"
 
