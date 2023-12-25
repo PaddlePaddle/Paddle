@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def calc_psroi_pool(
@@ -174,10 +175,10 @@ class TestPSROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
@@ -370,6 +371,7 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
         ).astype(np.float32)
         self.boxes_num = np.array([1, 2]).astype(np.int32)
 
+    @test_with_pir_api
     def test_function_in_static(self):
         output_size = 7
         out = paddle.vision.ops.psroi_pool(
