@@ -17,7 +17,6 @@ import math
 # TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 

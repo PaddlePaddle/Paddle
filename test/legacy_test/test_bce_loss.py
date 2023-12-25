@@ -301,6 +301,8 @@ class TestBceLossOpFP16(TestBceLossOp):
 class TestBceLossOpStaticFP16(unittest.TestCase):
     @test_with_pir_api
     def test_fp16(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.enable_static()
         shape = [2, 3, 20]
         x_data = np.random.uniform(0.1, 0.8, shape).astype("float16")
