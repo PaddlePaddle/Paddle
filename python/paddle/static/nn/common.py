@@ -26,6 +26,7 @@ from paddle.base.framework import (
     Variable,
     default_main_program,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     name_scope,
     program_guard,
     static_only,
@@ -3481,7 +3482,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     )
     v.stop_gradient = True
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
 
     inputs = {'Weight': weight}
