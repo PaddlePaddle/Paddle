@@ -842,6 +842,8 @@ class TestCondBackward(unittest.TestCase):
     @test_with_pir_api
     def test_half_nested_cond_backward(self):
         paddle.enable_static()
+        np.random.seed(2023)
+        paddle.seed(2023)
 
         def branch(i, img, label):
             return paddle.static.nn.cond(
@@ -881,6 +883,8 @@ class TestCondBackward(unittest.TestCase):
     @test_with_pir_api
     def test_nested_cond_backward(self):
         paddle.enable_static()
+        np.random.seed(2023)
+        paddle.seed(2023)
 
         def branch(i, img, label, mod_two):
             if mod_two:
