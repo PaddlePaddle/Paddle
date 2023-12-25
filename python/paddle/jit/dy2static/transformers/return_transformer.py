@@ -15,14 +15,14 @@
 from paddle.base import unique_name
 from paddle.utils import gast
 
-from .base_transformer import BaseTransformer
-from .break_continue_transformer import ForToWhileTransformer
-from .utils import (
+from ..utils import (
     ORIGI_INFO,
     Dygraph2StaticException,
     ast_to_source_code,
     index_in_list,
 )
+from .base import BaseTransformer
+from .break_continue_transformer import ForToWhileTransformer
 
 __all__ = []
 
