@@ -301,6 +301,7 @@ test_transpose_int8_mkldnn_op
 test_transpose_op
 test_triangular_solve_op
 test_tril_indices_op
+test_tril_triu_op
 test_trilinear_interp_v2_op
 test_triu_indices_op
 test_trunc_op
