@@ -100,9 +100,6 @@ function(set_pit_tests_properties)
         TEST ${IR_OP_TEST}
         APPEND
         PROPERTY ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
-      message(STATUS "PIR OpTest: succ set ${IR_OP_TEST}")
-    else()
-      message(STATUS "PIR OpTest: not found ${IR_OP_TEST}")
     endif()
   endforeach()
 
@@ -114,9 +111,6 @@ function(set_pit_tests_properties)
         TEST ${IR_OP_TEST}
         APPEND
         PROPERTY ENVIRONMENT "FLAGS_PIR_NO_CHECK=True")
-      message(STATUS "PIR OpTest: succ set ${IR_OP_TEST}")
-    else()
-      message(STATUS "PIR OpTest: not found ${IR_OP_TEST}")
     endif()
   endforeach()
 
@@ -129,9 +123,6 @@ function(set_pit_tests_properties)
         TEST ${IR_OP_TEST}
         APPEND
         PROPERTY ENVIRONMENT "FLAGS_PIR_OPTEST_RELAX_CHECK=True")
-      message(STATUS "PIR OpTest: succ set ${IR_OP_TEST}")
-    else()
-      message(STATUS "PIR OpTest: not found ${IR_OP_TEST}")
     endif()
   endforeach()
 
