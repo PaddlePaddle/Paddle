@@ -46,6 +46,7 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
+#include "paddle/phi/api/lib/data_type_set.h"
 
 namespace paddle {
 namespace dialect {
@@ -2614,6 +2615,89 @@ phi::DataType Increment_Op::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+void ShapeBroadcastOp::Build(pir::Builder &builder, pir::OperationArgument &argument, pir::Value x_, pir::Value y_) {
+  VLOG(4) << "Start build ShapeBroadcastOp";
+
+
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_, y_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  paddle::dialect::DenseTensorType y = y_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(paddle::dialect::TransToPhiDataType(x.dtype()),
+                                                      x.dims(),
+                                                      x.data_layout(),
+                                                      x.lod(),
+                                                      x.offset());
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+
+  VLOG(4) << "Builder construction  dense_y";
+  paddle::dialect::IrTensor ir_tensor_y(paddle::dialect::TransToPhiDataType(y.dtype()),
+                                                      y.dims(),
+                                                      y.data_layout(),
+                                                      y.lod(),
+                                                      y.offset());
+  VLOG(4) << "Builder construction  meta_y";
+  paddle::dialect::IrMetaTensor meta_y(&ir_tensor_y);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_out.dtype()), dense_out.dims(), dense_out.layout(), dense_out.lod(), dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+
+}
+
+namespace {
+
+void ShapeBroadcastOpInferMeta(const phi::MetaTensor& x,
+                             const phi::MetaTensor& y,
+                             phi::MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(x.dims().size(), 1);
+  PADDLE_ENFORCE_EQ(y.dims().size(), 1);
+  out->set_dims({std::max<int64_t>(x.dims().at(0), y.dims().at(0))});
+  // dtype need promote when meet input dtype with more precision
+  paddle::experimental::DataTypeSet dtype_set{x.dtype()};
+  dtype_set = dtype_set | paddle::experimental::DataTypeSet(y.dtype());
+  DataType promote_result = PromoteTypes(dtype_set);
+  if (promote_result == DataType::UNDEFINED) {
+    promote_result = x.dtype();
+  }
+  out->set_dtype(promote_result);
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
+}
+
+void ShapeBroadcastOp::InferMeta( phi::InferMetaContext *infer_meta ) {
+  auto fn = PD_INFER_META(ShapeBroadcastOpInferMeta);
+  fn(infer_meta);
+}
+
+
+phi::DataType ShapeBroadcastOp::GetKernelTypeForVar(
+    const std::string& var_name,
+    const phi::DataType& tensor_dtype,
+    const phi::DataType& expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: ShapeBroadcastOp";
+
+  return expected_kernel_dtype;
+}
+
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -2635,4 +2719,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 #endif

@@ -16,6 +16,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "test/cpp/pir/tools/test_pir_utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 TEST(shape_op, symbolic_dim_op) {
   pir::IrContext *ctx = pir::IrContext::Instance();
@@ -295,4 +297,25 @@ TEST(shape_op, index_cast_op) {
   pir::Value index_cast_op_input = index_cast_op.in();
 
   EXPECT_EQ(index_cast_op_input, in);
+}
+
+TEST(ShapeBroadcastOp, Build) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
+  const auto [x, y] = [&]{
+    pir::Value x_zero = builder.Build<paddle::dialect::FullOp>(
+            std::vector<int64_t>{1, 1024, 1},
+            0).out();
+    pir::Value x = builder.Build<paddle::dialect::ShapeOp>(x_zero).out();
+    pir::Value y_zero = builder.Build<paddle::dialect::FullOp>(
+            std::vector<int64_t>{32, 1024, 64},
+            0).out();
+    pir::Value y = builder.Build<paddle::dialect::ShapeOp>(y_zero).out();
+    return std::tuple{x, y};
+  }();
+  auto shape_op = builder.Build<paddle::dialect::ShapeBroadcastOp>(x, y);
+  EXPECT_EQ(shape_op.x(), x);
+  EXPECT_EQ(shape_op.y(), y);
 }
