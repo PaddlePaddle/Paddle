@@ -32,7 +32,7 @@ limitations under the License. */
 
 namespace phi {
 
-class InferMetaContext {
+class TEST_API InferMetaContext {
  public:
   InferMetaContext() = default;
   explicit InferMetaContext(MetaConfig config) : config_(config) {}
