@@ -207,7 +207,6 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
 
     // seed_offset_data should preserved by cudaGraph pool
-    const phi::GPUContext* dev_ctx_p = &dev_ctx;
     auto gen_cuda = dev_ctx.GetGenerator();
     auto state_index = gen_cuda->GetStateIndex();
     auto parameterSetter =
