@@ -352,7 +352,7 @@
     backend : x
   inplace: (x -> out)
 
-  - op : bitwise_right_shift_arithmetic
+- op : bitwise_right_shift_arithmetic
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
