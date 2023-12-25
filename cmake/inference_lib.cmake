@@ -236,7 +236,11 @@ copy(
 copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
-
+set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
+copy(
+  inference_lib_dist
+  SRCS ${paddle_common_lib}
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 if(WIN32)
   if(WITH_STATIC_LIB)
     set(paddle_inference_lib
@@ -268,11 +272,6 @@ else()
       SRCS ${paddle_phi_lib}
       DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   endif()
-  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
-  copy(
-    inference_lib_dist
-    SRCS ${paddle_common_lib}
-    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 endif()
 
 copy(
