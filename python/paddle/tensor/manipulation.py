@@ -3661,6 +3661,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
     Examples:
         .. code-block:: python
+        :name: scatter-example-2
 
             >>> import paddle
 
