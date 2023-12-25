@@ -114,7 +114,9 @@ class XavierInitializer(Initializer):
                 name=unique_name.generate(
                     ".".join(['xavier_init', var.name, 'tmp'])
                 ),
-                shape=var.shape,
+                shape=var._local_shape
+                if (hasattr(var, "is_dist") and var.is_dist())
+                else var.shape,
                 dtype=out_dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
@@ -151,10 +153,15 @@ class XavierInitializer(Initializer):
             if var.dtype == core.VarDesc.VarType.FP16 or (
                 var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
             ):
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
+                out_var = _C_ops.cast(out_var, var.dtype)
+            if hasattr(var, "is_dist") and var.is_dist():
+                # lazy init for dist tensor
+                out_var = (
+                    paddle.distributed.auto_parallel.api.dtensor_from_local(
+                        out_var, var.process_mesh, var.placements
+                    )
+                )
+            out_var._share_underline_tensor_to(var)
             return None
         elif in_pir_mode():
             if self._uniform:

@@ -56,6 +56,9 @@ class NumpyArrayInitializer(Initializer):
         Returns:
             The initialization op
         """
+        assert not (
+            hasattr(var, "is_dist") and var.is_dist()
+        ), "Currently, assign initializer not support lazy init for dist param."
         block = self._check_block(block)
 
         assert isinstance(

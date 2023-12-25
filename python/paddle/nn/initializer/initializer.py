@@ -86,7 +86,11 @@ class Initializer:
         Returns:
             tuple of two integers (fan_in, fan_out).
         """
-        shape = var.shape
+        shape = (
+            var._local_shape
+            if (hasattr(var, "is_dist") and var.is_dist())
+            else var.shape
+        )
         if not shape or len(shape) == 0:
             fan_in = fan_out = 1
         elif len(shape) == 1:

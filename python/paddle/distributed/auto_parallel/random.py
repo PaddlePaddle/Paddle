@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import logging
 
 import paddle
@@ -22,6 +23,7 @@ from .static.utils import _get_idx_in_axis
 _logger = get_logger(logging.INFO)
 
 _rng_name_to_seed = {}
+_rng_name_to_states = {}
 _inited_rng_name_to_seed = {}
 _enable_random_control = False
 _basic_seed = 42
@@ -112,6 +114,7 @@ def determinate_rng(rank, dims_mapping, process_mesh):
         seed_ += _dim_offsets[i] * (relative_idx + 1)
 
     global _rng_name_to_seed
+    global _rng_name_to_states
     if sharding_expr in _rng_name_to_seed:
         assert _rng_name_to_seed[sharding_expr] == seed_
     else:
@@ -121,8 +124,28 @@ def determinate_rng(rank, dims_mapping, process_mesh):
             seed_, sharding_expr, _rng_name_to_seed
         )
         _rng_name_to_seed[sharding_expr] = seed_
-
+        if paddle.in_dynamic_mode():
+            # for dygraph, just init the seed when meeting a new seed
+            orig_rng_state = paddle.get_rng_state()
+            paddle.seed(seed_)
+            _rng_name_to_states[sharding_expr] = paddle.get_rng_state()
+            paddle.set_rng_state(orig_rng_state)
     return sharding_expr
+
+
+@contextlib.contextmanager
+def rng_state(name):
+    global _rng_name_to_states
+    assert (
+        name in _rng_name_to_states
+    ), f"The rng state name {name} haven't been init. "
+    orig_rng_state = paddle.get_rng_state()
+    paddle.set_rng_state(_rng_name_to_states[name])
+    try:
+        yield
+    finally:
+        _rng_name_to_states[name] = paddle.get_rng_state()
+        paddle.set_rng_state(orig_rng_state)
 
 
 def init_auto_parallel_rng():
