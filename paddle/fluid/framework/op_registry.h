@@ -426,7 +426,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   STATIC_ASSERT_GLOBAL_NAMESPACE(                          \
       __use_op_itself_##op_type,                           \
       "USE_OP_ITSELF must be called in global namespace"); \
-  extern int TouchOpRegistrar_##op_type();                 \
+  TEST_API extern int TouchOpRegistrar_##op_type();                 \
   UNUSED static int use_op_itself_##op_type##_ = TouchOpRegistrar_##op_type()
 
 #define USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(op_type,                     \

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <vector>
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
@@ -21,7 +22,7 @@ using shape::SymbolicDimOp;
 
 // Represents a product of symbolic and concrete factors.
 // Used to prove product equalities symbolically.
-struct SymbolicDimProduct {
+struct IR_API SymbolicDimProduct {
   // List all symbolic factors that can not be aggregated.
   std::vector<SymbolicDimOp> symbols;
 
@@ -60,7 +61,7 @@ struct SymProductHasher {
 };
 
 // A class to manage shape-constraint related IR
-class SymbolicDimMgr {
+class IR_API SymbolicDimMgr {
  public:
   explicit SymbolicDimMgr(ModuleOp m);
 

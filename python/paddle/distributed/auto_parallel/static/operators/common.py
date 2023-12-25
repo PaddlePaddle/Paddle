@@ -15,6 +15,7 @@
 import abc
 import logging
 
+import paddle
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
@@ -44,6 +45,7 @@ _g_elementwise_ops = [
     "cast",
     # "gather",
     # "concat",
+    "silu",
     "fused_softmax_mask_upper_triangle",
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
@@ -392,13 +394,15 @@ def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
 
 
 def set_comm_op_dist_attr_for_program(
-    new_op, process_mesh, tensor_dist_attr, ctx
+    new_op, process_mesh, tensor_dist_attr, ctx, **kwargs
 ):
     assert process_mesh is not None
     assert tensor_dist_attr is not None
 
     new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = process_mesh
+    if "chunk_id" in kwargs:
+        new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     for input_varname in new_op.desc.input_arg_names():
         new_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
     for output_varname in new_op.desc.output_arg_names():
@@ -410,6 +414,9 @@ def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
     ref_dist_attr = ctx.get_op_dist_attr_for_program(ref_op)
     new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = ref_dist_attr.process_mesh
+    new_op_dist_attr.impl_type = ref_dist_attr.impl_type
+    new_op_dist_attr.impl_idx = ref_dist_attr.impl_idx
+    new_op_dist_attr.chunk_id = ref_dist_attr.chunk_id
 
     for input_name in ref_op.input_names:
         assert input_name in new_op.input_names
@@ -492,6 +499,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
 
     op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
     process_mesh = op_dist_attr.process_mesh
+    chunk_id = op_dist_attr.chunk_id
     dist_op_context = dist_ctx.dist_op_context
     main_block = dist_op_context.work_block
 
@@ -541,6 +549,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
             for new_op in added_ops:
                 new_op_attr = OperatorDistAttr()
                 new_op_attr.process_mesh = process_mesh
+                new_op_attr.chunk_id = chunk_id
                 new_op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
                 new_op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
                 dist_ctx.set_op_dist_attr_for_program(new_op, new_op_attr)
@@ -677,20 +686,30 @@ def is_in_backward_phase(dist_ctx):
 
 
 def merge_forward_backward_dims_mapping(fw_results, bw_results):
-    ninputs = len(fw_results[0])
-    noutputs = len(fw_results[1])
+    flatten_fw_inputs = paddle.utils.flatten(fw_results[0])
+    flatten_fw_outputs = paddle.utils.flatten(fw_results[1])
+    flatten_bw_inputs = paddle.utils.flatten(bw_results[0])
+    flatten_bw_outputs = paddle.utils.flatten(bw_results[1])
+    ninputs = len(flatten_fw_inputs)
+    noutputs = len(flatten_fw_outputs)
     infered_input_dims_mappings = []
     infered_output_dims_mappings = []
 
     for i in range(ninputs):
         compatible_dims_mapping = compute_compatible_dims_mapping(
-            [fw_results[0][i].dims_mapping, bw_results[0][i].dims_mapping]
+            [
+                flatten_fw_inputs[i].dims_mapping,
+                flatten_bw_inputs[i].dims_mapping,
+            ]
         )
         infered_input_dims_mappings.append(compatible_dims_mapping)
 
     for i in range(noutputs):
         compatible_dims_mapping = compute_compatible_dims_mapping(
-            [fw_results[1][i].dims_mapping, bw_results[1][i].dims_mapping]
+            [
+                flatten_fw_outputs[i].dims_mapping,
+                flatten_bw_outputs[i].dims_mapping,
+            ]
         )
         infered_output_dims_mappings.append(compatible_dims_mapping)
     return infered_input_dims_mappings, infered_output_dims_mappings
@@ -769,14 +788,14 @@ def update_op_dims_mapping(
             fw_results[1][output_idx]._partial_dims()
             != output_dist_attr._partial_dims()
         ):
-            _logger.info(
-                "Changed: Op [{}], tensor name [{}], Original partial on [{}], Infered partial on [{}]".format(
-                    dist_op.serial_op.type,
-                    output_arg_names[i],
-                    output_dist_attr._partial_dims(),
-                    fw_results[1][output_idx]._partial_dims(),
-                )
-            )
+            # _logger.info(
+            #     "Changed: Op [{}], tensor name [{}], Original partial on [{}], Infered partial on [{}]".format(
+            #         dist_op.serial_op.type,
+            #         output_arg_names[i],
+            #         output_dist_attr._partial_dims(),
+            #         fw_results[1][output_idx]._partial_dims(),
+            #     )
+            # )
             output_dist_attr._clean_partial_status()
             output_dist_attr._set_partial_dims(
                 list(fw_results[1][0]._partial_dims())
@@ -804,4 +823,5 @@ def copy_op_without_infer_shape(src_op, block, ctx, varname_kwargs):
         new_op_desc.set_input(input_name, varname_kwargs[input_name])
     for output_name in src_op.desc.output_names():
         new_op_desc.set_output(output_name, varname_kwargs[output_name])
+    # TODO: should we add a new dist attr for the new op here?
     return new_op

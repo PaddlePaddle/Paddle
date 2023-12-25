@@ -28,6 +28,7 @@ class TestReshardNdMesh:
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([[0], [1]], dim_names=["x", "y"])
+        self._other_mesh = dist.ProcessMesh([[1], [0]], dim_names=["x", "y"])
 
     def test_shard_partial_to_shard_replicated(self, dev_ctx):
         paddle.seed(self._seeds)
@@ -181,7 +182,7 @@ class TestReshardNdMesh:
         )
         assert np.equal(out.shape, input_tensor.shape).all()
 
-    def run_test_case(self):
+    def same_mesh_reshard(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
             place = paddle.CPUPlace()
@@ -198,6 +199,23 @@ class TestReshardNdMesh:
         if self._backend == "gpu":
             # reduce_scatter is not supported on CPU
             self.test_partial_replicate_to_shard_replicated(dev_ctx)
+
+    def cross_mesh_reshard(self):
+        a = paddle.zeros([20, 20])
+        a = dist.shard_tensor(
+            a,
+            self._mesh,
+            [
+                dist.Partial(dist.ReduceType.kRedSum),
+                dist.Partial(dist.ReduceType.kRedSum),
+            ],
+        )
+        dist.reshard(a, self._other_mesh, [dist.Shard(0), dist.Shard(1)])
+
+    def run_test_case(self):
+        self.same_mesh_reshard()
+        if self._backend == "gpu":
+            self.cross_mesh_reshard()
 
 
 if __name__ == '__main__':

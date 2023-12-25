@@ -448,7 +448,9 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
     dy->share_meta(y);
   }
   if (dz) {
-    dz->share_meta(z);
+    if (z) {
+      dz->share_meta(z);
+    }
   }
 }
 void GeneralQuaternaryGradInferMeta(const MetaTensor& x,
@@ -979,6 +981,19 @@ void RnnGradInferMeta(const MetaTensor& x,
   }
 }
 
+void RowConvGradInferMeta(const MetaTensor& out_grad,
+                          const MetaTensor& filter,
+                          MetaTensor* x_grad,
+                          MetaTensor* filter_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(out_grad.dims());
+  }
+
+  if (filter_grad != nullptr) {
+    filter_grad->set_dims(filter.dims());
+  }
+}
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
@@ -1168,10 +1183,10 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const int32_t arch,
                                    MetaTensor* x_grad) {
   PADDLE_ENFORCE_EQ(
-      arch,
-      80,
+      ((arch == 80) || (arch == 86)),
+      true,
       phi::errors::InvalidArgument(
-          "Currently weightonly linear grad only support arch = 80. "));
+          "Currently weightonly linear grad only support arch = 80 or 86. "));
   x_grad->set_dims(x.dims());
   x_grad->set_dtype(x.dtype());
 }

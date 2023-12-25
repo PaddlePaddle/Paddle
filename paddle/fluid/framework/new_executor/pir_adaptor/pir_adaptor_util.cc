@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -243,12 +244,9 @@ Variable* CreateVar(pir::Value value,
   bool is_persisable = false;
   if (def_op->isa<::pir::ParameterOp>()) {
     is_persisable = true;
-  } else if (def_op->HasAttribute(kAttrIsPersisable)) {
-    is_persisable = def_op->attribute(kAttrIsPersisable)
-                        .dyn_cast<pir::ArrayAttribute>()
-                        .AsVector()[value.dyn_cast<pir::OpResult>().index()]
-                        .dyn_cast<pir::BoolAttribute>()
-                        .data();
+  } else if (auto attr =
+                 value.attribute<pir::BoolAttribute>(kAttrIsPersisable)) {
+    is_persisable = attr.data();
   }
 
   Variable* var = nullptr;
@@ -408,7 +406,7 @@ void HandleForSpecialOp(pir::Operation* op,
     value_exe_info->Add(value, fetch_var_name);
   } else if (op_name == paddle::dialect::FeedOp::name() ||
              op_name == paddle::dialect::DataOp::name()) {
-    VLOG(6) << "Handle for" << op_name;
+    VLOG(6) << "Handle for " << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable"
             << value_exe_info->GetScope();
@@ -418,6 +416,25 @@ void HandleForSpecialOp(pir::Operation* op,
     Variable* var = value_exe_info->GetScope()->FindVar(name);
     if (var == nullptr) {
       var = value_exe_info->GetScope()->Var(name);
+      auto* t = var->GetMutable<phi::DenseTensor>();
+      if (op_name == paddle::dialect::DataOp::name()) {
+        auto shape = op->attribute<dialect::IntArrayAttribute>("shape");
+        auto dim = phi::make_ddim(shape.data().GetData());
+        auto dtype = op->attribute<dialect::DataTypeAttribute>("dtype");
+        auto place = op->attribute<dialect::PlaceAttribute>("place").data();
+        if (place.GetType() == phi::AllocationType::UNDEFINED) {
+          place = phi::CPUPlace();
+        }
+        if (phi::product(dim) >= 0) {
+          phi::DenseTensorMeta meta(dtype.data(), dim);
+          t->set_meta(meta);
+          auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+          dev_ctx->Alloc(t, dtype.data());
+          VLOG(10) << "[Alloc var]: "
+                   << op->attribute<pir::StrAttribute>("name") << " "
+                   << t->initialized();
+        }
+      }
     }
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
@@ -458,11 +475,9 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    PADDLE_ENFORCE_NE(
-        param_name,
-        orig_name,
-        phi::errors::PreconditionNotMet(
-            "SetParamer param name should not equal with var name"));
+    if (param_name == orig_name) {
+      return;
+    }
 
     if (value_exe_info->GetScope()->root()->FindVar(param_name) == nullptr) {
       const_cast<Scope*>(value_exe_info->GetScope()->root())

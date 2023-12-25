@@ -26,7 +26,6 @@ test_auc_single_pred_op
 test_bce_loss
 test_bernoulli_op               
 test_bicubic_interp_v2_op
-test_bilinear_interp_mkldnn_op
 test_bilinear_interp_v2_mkldnn_op
 test_bilinear_interp_v2_op
 test_bilinear_tensor_product_op
@@ -167,7 +166,6 @@ test_index_select_op
 test_instance_norm_op
 test_instance_norm_op_v2
 test_inverse_op
-test_ir_pybind
 test_is_empty_op
 test_isclose_op
 test_kldiv_loss_op
@@ -199,6 +197,7 @@ test_matmul_v2_op
 test_matmul_v2_op_static_build
 test_matrix_nms_op
 test_matrix_power_op
+test_matrix_rank_op
 test_maxout_op
 test_mean_op
 test_memcpy_op
@@ -221,6 +220,7 @@ test_nms_op
 test_nn_functional_hot_op
 test_nonzero_api
 test_norm_op
+test_number_count_op
 test_numel_op
 test_one_hot_v2_op
 test_one_hot_v2_op_static_build
@@ -257,6 +257,7 @@ test_reverse_op
 test_roi_align_op
 test_roi_pool_op
 test_roll_op
+test_row_conv_op
 test_rrelu_op
 test_scale_mkldnn_op
 test_scale_op

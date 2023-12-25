@@ -382,9 +382,19 @@ class FusedCommBuffer:
                     use_main_grad=self.use_main_grad,
                     fuse_param=False,
                     warp_buffer=False,
-                    release_grads=True,
+                    release_grad=True,
                 )
-                self.grad_storage = grad_storage.buffer
+                self.grad_storage = (
+                    None if grad_storage is None else grad_storage.buffer
+                )
+            else:
+                self.param_storage = None
+                self.grad_storage = flatten_dense_tensors(
+                    self._params,
+                    use_main_grad=self.use_main_grad,
+                    fuse_param=False,
+                    warp_buffer=False,
+                )[0].buffer
         else:
             assert not self._fuse_param, "not supported"
             (
@@ -569,6 +579,15 @@ class FusedCommBuffer:
         if self._scale_after_comm:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
+
+        self._reset_params_checked_in()
+
+    @imperative_base.no_grad
+    def scale_and_split_grads(self):
+        assert self._task is not None, "Task is not initialized. "
+        self._task.wait()
+        scale_factor = 1.0 / self._comm_group.nranks
+        self.grad_storage.scale_(scale_factor)
 
         self._reset_params_checked_in()
 

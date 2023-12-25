@@ -23,6 +23,7 @@ from .lbfgs import LBFGS
 from .momentum import Momentum
 from .optimizer import Optimizer
 from .rmsprop import RMSProp
+from .rprop import Rprop
 from .sgd import SGD
 
 __all__ = [
@@ -34,6 +35,7 @@ __all__ = [
     'RMSProp',
     'Adadelta',
     'SGD',
+    'Rprop',
     'Momentum',
     'Lamb',
     'LBFGS',
