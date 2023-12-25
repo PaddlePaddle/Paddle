@@ -85,6 +85,7 @@ test_diagonal_op
 test_digamma_op
 test_dirichlet_op
 test_dist_op
+test_distribute_fpn_proposals_op
 test_dot_op
 test_dpsgd_op
 test_edit_distance_op
