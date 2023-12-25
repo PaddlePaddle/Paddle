@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-// #define _DEBUG_WEIGHT_ONLY_GEMV
-
 namespace phi {
 
 namespace {
@@ -592,12 +590,22 @@ struct WeightOnlyScaleLoader {
   __device__ __forceinline__ void load(T* scale, T* zero, int nid) {
     int offset = nid * Details::kInterleave;
 
+// TODO(freeliuzc): cpplint has bug here
+#ifndef WIN32
+    if constexpr (kIsFineGrained) {
+#else
     if (kIsFineGrained) {
+#endif
       offset += _offset / kGroupSize * _stride;
     }
     *scale = _scales[offset];
 
+// TODO(freeliuzc): cpplint has bug here
+#ifndef WIN32
+    if constexpr (Zero) {
+#else
     if (Zero) {
+#endif
       *zero = _zeros[offset];
     } else {
       *zero = static_cast<T>(0.f);
@@ -609,7 +617,7 @@ struct WeightOnlyScaleLoader {
   }
 
   __device__ __forceinline__ int offset() { return _offset; }
-};
+};  // NOLINT
 
 template <typename T, WeightOnlyQuantType QType>
 struct WeightOnlyConverter {};
@@ -844,9 +852,10 @@ struct WeightPostProcessor<T, WeightOnlyQuantType::Int4b, Details> {
         HALF_2_TYPE v = *reinterpret_cast<HALF_2_TYPE*>(
             weights_vec + i * Details::kShuffleBasicTile +
             j * Details::kShuffleContinous * Details::kShuffleBasicTile);
-        v = __hfma2(v,
-                    ConvertDstFunc_2<HALF_2_TYPE>::apply(scale[idx]),
-                    ConvertDstFunc_2<HALF_2_TYPE>::apply(zero[idx]));
+        v = HalfMulAdd<HALF_2_TYPE>::apply(
+            v,
+            ConvertDstFunc_2<HALF_2_TYPE>::apply(scale[idx]),
+            ConvertDstFunc_2<HALF_2_TYPE>::apply(zero[idx]));
         weights_f16[(i * Details::kShuffleStrided * Details::kShuffleBasicTile +
                      j * Details::kShuffleBasicTile + 0) *
                         NPerBlock +
@@ -855,18 +864,6 @@ struct WeightPostProcessor<T, WeightOnlyQuantType::Int4b, Details> {
                      j * Details::kShuffleBasicTile + 1) *
                         NPerBlock +
                     idx] = v.y;
-#ifdef _DEBUG_WEIGHT_ONLY_GEMV
-        if (threadIdx.x == 0 && blockIdx.x == 0) {
-          printf(
-              "int4 weights_f16_idx: %d, weights_vec_idx: %d\n",
-              (i * Details::kShuffleStrided * Details::kShuffleBasicTile +
-               j * Details::kShuffleBasicTile + 0) *
-                      NPerBlock +
-                  idx,
-              i * Details::kShuffleBasicTile +
-                  j * Details::kShuffleContinous * Details::kShuffleBasicTile);
-        }
-#endif
       }
     }
   }
@@ -884,13 +881,6 @@ struct WeightPostProcessor<T, WeightOnlyQuantType::Int8b, Details> {
     for (int p = 0; p < 16; ++p) {
       weights_f16[p * NPerBlock + idx] =
           weights_vec[p / 8 + (p % 8) * 2] * scale[idx];
-#ifdef _DEBUG_WEIGHT_ONLY_GEMV
-      if (threadIdx.x == 0 && blockIdx.x == 0) {
-        printf("int8 weights_f16_idx: %d, weights_vec_idx: %d\n",
-               p * NPerBlock + idx,
-               p / 8 + (p % 8) * 2);
-      }
-#endif
     }
   }
 };
