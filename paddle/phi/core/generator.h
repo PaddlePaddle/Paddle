@@ -52,13 +52,14 @@ class Generator {
       seed = new_seed;
     }
 
-    GeneratorState clone() const {
-      GeneratorState state(device, seed, offset);
-      if (cpu_engine) {
+    GeneratorState(const GeneratorState& state)
+        : device(state.device), seed(state.seed), offset(state.offset) {
+      if (state.cpu_engine) {
+        std::seed_seq seq({state.seed});
+        cpu_engine = std::make_shared<std::mt19937_64>(seq);
         // Clone the engine state
-        *(state.cpu_engine) = *cpu_engine;
+        *(cpu_engine) = *(state.cpu_engine);
       }
-      return state;
     }
   };
 
