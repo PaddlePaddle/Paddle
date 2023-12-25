@@ -17,6 +17,11 @@ import logging
 import os
 import time
 
+from paddle.distributed.auto_parallel.static.utils import (
+    is_backward_op,
+    is_forward_op,
+    is_optimize_op,
+)
 from paddle.distributed.passes import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
@@ -335,6 +340,45 @@ class Parallelizer:
 
         return main_program, startup_program, params_grads
 
+    def _check_dist_attr(self, program, dist_context):
+        oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
+
+        for ib, block in enumerate(program.blocks):
+            dist_types = set()
+
+            for ip, op in enumerate(block.ops):
+                if is_forward_op(op):
+                    type = oprole_type[0]
+                elif is_backward_op(op):
+                    type = oprole_type[1]
+                elif is_optimize_op(op):
+                    type = oprole_type[2]
+                else:
+                    raise ValueError(
+                        "The op role: "
+                        + str(op.attr('op_role'))
+                        + " isn't one of Forward, Backward or Optimizer."
+                    )
+
+                for ip, op in enumerate(block.ops):
+                    dist_op = dist_context.get_dist_op_for_program(op)
+                    if op.type == "share_buffer":
+                        dist_pre_op = dist_context.get_dist_op_for_program(
+                            block.ops[ip - 1]
+                        )
+                        dist_types.add(
+                            type + str(dist_pre_op.dist_attr.chunk_id)
+                        )
+                    elif dist_op:
+                        if type + str(dist_op.dist_attr.chunk_id) in dist_types:
+                            dist_types.add(
+                                type + str(dist_op.dist_attr.chunk_id)
+                            )
+                        else:
+                            raise ValueError(
+                                f"There is not dist_attr for op[{op.type}]."
+                            )
+
     def _apply_post_optimization(
         self, main_program, startup_program, rank, params_grads
     ):
@@ -489,6 +533,8 @@ class Parallelizer:
 
         main_program._pass_opt = {}
         main_program._pass_opt['pass_list'] = ir_pass_list
+
+        self._check_dist_attr(main_program, self._dist_context)
 
         if (
             self.is_train
