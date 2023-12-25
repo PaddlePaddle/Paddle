@@ -527,14 +527,8 @@ void BindOperation(py::module *m) {
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
-      .def("as_while_op", [](Operation &self) -> WhileOp {
-        auto while_op = self.dyn_cast<WhileOp>();
-        if (!while_op) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Can't cast non-while type Operation to WhileOp."));
-        }
-        return while_op;
-      });
+      .def("as_while_op",
+           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.

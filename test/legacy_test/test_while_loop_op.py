@@ -22,7 +22,6 @@ import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.base.framework import program_guard
 from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
@@ -98,6 +97,7 @@ class TestApiWhileLoop(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[1]), data, rtol=1e-05)
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
             return paddle.less_than(i, ten)
@@ -118,7 +118,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -130,7 +130,7 @@ class TestApiWhileLoop(unittest.TestCase):
             test_dict = {"test_key": test_data}
             test_list = [
                 paddle.tensor.fill_constant(
-                    shape=[1, 2], dtype='int64', value=0
+                    shape=[2, 1], dtype='int64', value=0
                 )
             ]
             test_list_dict = [
