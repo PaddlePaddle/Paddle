@@ -146,6 +146,7 @@ class TestCopySignAPI(unittest.TestCase):
 
             out_ref = ref_copysign(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_equal((out_ref.dtype == res[0].dtype), True)
         paddle.disable_static()
 
     def test_dygraph_api(self):
@@ -155,21 +156,9 @@ class TestCopySignAPI(unittest.TestCase):
         out = paddle.copysign(x, y)
         out_ref = ref_copysign(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_equal((out_ref.dtype == out.numpy().dtype), True)
         paddle.enable_static()
 
-
-class TestCopySignInt32(TestCopySignAPI):
-    def input_init(self):
-        dtype = np.int32
-        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
-        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
-
-
-class TestCopySignInt64(TestCopySignAPI):
-    def input_init(self):
-        dtype = np.int64
-        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
-        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
 
 class TestCopySignFloat32(TestCopySignAPI):
@@ -182,13 +171,6 @@ class TestCopySignFloat32(TestCopySignAPI):
 class TestCopySignFloat64(TestCopySignAPI):
     def input_init(self):
         dtype = np.float64
-        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
-        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
-
-
-class TestCopySignUint8(TestCopySignAPI):
-    def input_init(self):
-        dtype = np.uint8
         self.x = (np.random.randn(10, 20) * 10).astype(dtype)
         self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
@@ -239,14 +221,14 @@ class TestCopySignZeroDimCase2(TestCopySignAPI):
 
 class TestCopySignSpecialZeroCase1(TestCopySignAPI):
     def input_init(self):
-        self.x = np.array([1, 2, 3])
-        self.y = np.array([0, +0, -0])
+        self.x = np.array([1, 2, 3]).astype(np.float32)
+        self.y = np.array([0, +0, -0]).astype(np.float32)
 
 
 class TestCopySignSpecialZeroCase2(TestCopySignAPI):
     def input_init(self):
-        self.x = np.array([0, +0, -0])
-        self.y = np.array([1, 2, 3])
+        self.x = np.array([0, +0, -0]).astype(np.float32)
+        self.y = np.array([1, 2, 3]).astype(np.float32)
 
 
 class TestCopySignBroadcastCase1(TestCopySignAPI):

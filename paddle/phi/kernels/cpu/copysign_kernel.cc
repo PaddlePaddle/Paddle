@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/copysign_kernel.h"
-// #include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -41,10 +40,8 @@ PD_REGISTER_KERNEL(copysign,
                    CPU,
                    ALL_LAYOUT,
                    phi::CopySignKernel,
-                   uint8_t,
                    float,
                    double,
-                   int,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
