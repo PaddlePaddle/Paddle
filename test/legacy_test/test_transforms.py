@@ -182,6 +182,11 @@ class TestTransformsCV2(unittest.TestCase):
         )
         self.do_transform(trans)
 
+    def test_pir_affine(self):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                self.test_affine()
+
     def test_rotate(self):
         trans = transforms.Compose(
             [
@@ -517,8 +522,13 @@ class TestTransformsTensor(TestTransformsCV2):
 
     def test_affine(self):
         trans = transforms.RandomAffine(15, translate=[0.1, 0.1])
-        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        batch_input = paddle.rand((2, 3, 4, 4), dtype='float32')
         result = trans(batch_input)
+
+    def test_pir_affine(self):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                self.test_affine()
 
     def test_pad(self):
         trans = transforms.Compose([transforms.Pad(2)])
@@ -1037,6 +1047,55 @@ class TestFunctional(unittest.TestCase):
             tensor_affined_img.numpy().transpose((1, 2, 0)),
             decimal=4,
         )
+
+    def test_pir_affine(self):
+        np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np.testing.assert_almost_equal(
+            np_img, tensor_img.transpose((1, 2, 0)), decimal=4
+        )
+        np_affined_img = F.affine(
+            np_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10]
+        )
+        pil_affined_img = F.affine(
+            pil_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10]
+        )
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                tensor_img = (
+                    F.to_tensor(
+                        np.array(pil_img).astype('float32'), data_format='CHW'
+                    ).astype('uint8')
+                    * 255
+                )
+                tensor_affined_img = F.affine(
+                    tensor_img,
+                    45,
+                    translate=[0.2, 0.2],
+                    scale=0.5,
+                    shear=[-10, 10],
+                )
+                exe = paddle.static.Executor()
+                tensor_affined_img = exe.run(
+                    feed={}, fetch_list=[tensor_affined_img]
+                )
+
+            np.testing.assert_equal(
+                np_affined_img.shape, np.array(pil_affined_img).shape
+            )
+            np.testing.assert_equal(
+                np_affined_img.shape,
+                tensor_affined_img.transpose((1, 2, 0)).shape,
+            )
+
+            np.testing.assert_almost_equal(
+                np.array(pil_affined_img),
+                tensor_affined_img.numpy().transpose((1, 2, 0)),
+                decimal=4,
+            )
 
     def test_rotate(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')

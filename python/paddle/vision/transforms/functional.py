@@ -38,7 +38,7 @@ def _is_tensor_image(img):
     """
     Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
     """
-    return isinstance(img, (paddle.Tensor, Variable))
+    return isinstance(img, (paddle.Tensor, Variable, paddle.pir.Value))
 
 
 def _is_numpy_image(img):

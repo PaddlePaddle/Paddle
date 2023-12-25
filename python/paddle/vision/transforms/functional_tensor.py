@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
+from paddle.framework import in_dynamic_or_pir_mode
 
 from ...base.framework import Variable
 
@@ -223,7 +224,7 @@ def _affine_grid(theta, w, h, ow, oh):
 
     x_grid = paddle.linspace(-ow * 0.5 + d, ow * 0.5 + d - 1, ow)
 
-    if paddle.in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         y_grid = paddle.linspace(
             -oh * 0.5 + d, oh * 0.5 + d - 1, oh
         ).unsqueeze_(-1)
@@ -269,7 +270,7 @@ def _grid_transform(img, grid, mode, fill):
         mask = mask.tile([1, img.shape[1], 1, 1])
         len_fill = len(fill) if isinstance(fill, (tuple, list)) else 1
 
-        if paddle.in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             fill_img = (
                 paddle.to_tensor(fill)
                 .reshape((1, len_fill, 1, 1))
