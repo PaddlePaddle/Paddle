@@ -386,17 +386,12 @@ void BuildValue(pir::Value value,
             << " is not invalid, so skip build a variable.";
     return;
   }
-  bool is_optional = (value.impl() == nullptr || !value.type());
   Variable* var = nullptr;
   auto& value_2_var_name = value_exe_info->GetValue2VarName();
   if (value_2_var_name.find(value) != value_2_var_name.end()) {
     var = value_exe_info->GetVarByValue(value);
   } else {
     var = CreateVar(value, var_name_prefix, false, value_exe_info);
-  }
-  if (is_optional) {
-    VLOG(6) << "value " << value.impl() << " is optional so var is null";
-    return;
   }
   // Only support DenseTensor or Vector<DenseTensor>
   if (!value.type() ||
