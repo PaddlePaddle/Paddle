@@ -18,14 +18,8 @@ from collections import defaultdict
 from paddle.base import unique_name
 from paddle.utils import gast
 
-from .base_transformer import (
-    BaseTransformer,
-    ForLoopTuplePreTransformer,
-    ForNodeVisitor,
-)
-from .ifelse_transformer import ARGS_NAME
-from .static_analysis import NodeVarType, StaticAnalysisVisitor
-from .utils import (
+from ..static_analysis import NodeVarType, StaticAnalysisVisitor
+from ..utils import (
     FOR_BODY_PREFIX,
     FOR_CONDITION_PREFIX,
     WHILE_BODY_PREFIX,
@@ -39,6 +33,12 @@ from .utils import (
     create_set_args_node,
     get_attribute_full_name,
 )
+from .base import (
+    BaseTransformer,
+    ForLoopTuplePreTransformer,
+    ForNodeVisitor,
+)
+from .ifelse_transformer import ARGS_NAME
 
 __all__ = []
 
