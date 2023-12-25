@@ -1995,7 +1995,7 @@ struct SelectInputOpTranscriber : public OpTranscriber {
         undefine_value.defining_op()->set_attribute(
             "dtype",
             dialect::DataTypeAttribute::get(
-                ctx, PirTypeToPhiDType(undefined_var_type.dtype())));
+                ctx, dialect::TransToPhiDataType(undefined_var_type.dtype())));
         auto& attribute_translator = AttributeTranslator::instance();
         undefine_value.defining_op()->set_attribute(
             "shape",
