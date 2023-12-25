@@ -4,20 +4,15 @@ paddle_test(ir_value_test SRCS ir_value_test.cc)
 paddle_test(ir_op_test SRCS ir_op_test.cc DEPS test_dialect)
 paddle_test(ir_region_test SRCS ir_region_test.cc)
 paddle_test(ir_builder_test SRCS ir_builder_test.cc)
-cc_test_old(
+paddle_test(
   ir_program_test
   SRCS
   ir_program_test.cc
-  DEPS
-  common
-  gtest
-  pir
-  op_dialect_vjp
-  phi)
+)
 
-cc_test_old(ir_infershape_test SRCS ir_infershape_test.cc DEPS common gtest)
+paddle_test(ir_infershape_test SRCS ir_infershape_test.cc )
 
-cc_test_old(scalar_attribute_test SRCS scalar_attribute_test.cc DEPS gtest)
+paddle_test(scalar_attribute_test SRCS scalar_attribute_test.cc )
 
 file(
   DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
