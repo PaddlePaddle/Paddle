@@ -155,12 +155,7 @@ def _strong_wolfe(
     gtd_new = paddle.dot(grad_new, d)
 
     # bracket an interval containing a point satisfying the Wolfe criteria
-    t_prev, f_prev, g_prev, gtd_prev = (
-        paddle.to_tensor(0, dtype=grad.dtype),
-        loss,
-        grad,
-        gtd,
-    )
+    t_prev, f_prev, g_prev, gtd_prev = (0, loss, grad, gtd)
     done = False
     ls_iter = 0
     while ls_iter < max_ls:
@@ -228,7 +223,7 @@ def _strong_wolfe(
     while not done and ls_iter < max_ls:
         # line-search bracket is so small
         if (
-            abs(float(bracket[1] - bracket[0])) * float(d_norm)
+            paddle.abs(paddle.to_tensor(bracket[1] - bracket[0])) * d_norm
             < tolerance_change
         ):
             break
