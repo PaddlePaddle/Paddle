@@ -14,6 +14,7 @@
 
 import paddle
 from paddle import _C_ops
+from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.framework import in_dynamic_mode
 
 from .base.data_feeder import check_variable_and_dtype
@@ -114,7 +115,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if frame_length > x.shape[axis]:
             raise ValueError(
                 f'Attribute frame_length should be less equal than sequence length, '

@@ -45,7 +45,9 @@ class TestFeatures(unittest.TestCase):
         self.sr = 16000
         self.dtype = "float32"
         waveform_tensor = get_wav_data(
-            self.dtype, self.num_channels, num_frames=self.duration * self.sr
+            self.dtype,
+            self.num_channels,
+            num_frames=int(self.duration * self.sr),
         )
         self.waveform = waveform_tensor.numpy()
 
@@ -99,6 +101,66 @@ class TestFeatures(unittest.TestCase):
         )
         # relative difference
         np.testing.assert_allclose(feature_librosa, feature_layer, rtol=1e-4)
+
+    # @test_with_pir_api
+    def test_log_melspect_static(
+        self,
+    ):
+        sr = 16000
+        window_str = "hamming"
+        n_fft = 128
+        hop_length = 128
+        n_mels = 64
+        fmin = 0.0
+        paddle.enable_static()
+        if len(self.waveform.shape) == 2:  # (C, T)
+            self.waveform = self.waveform.squeeze(
+                0
+            )  # 1D input for librosa.feature.melspectrogram
+
+        # librosa:
+        feature_librosa = librosa.feature.melspectrogram(
+            y=self.waveform,
+            sr=sr,
+            n_fft=n_fft,
+            hop_length=hop_length,
+            window=window_str,
+            n_mels=n_mels,
+            center=True,
+            fmin=fmin,
+            pad_mode='reflect',
+        )
+        feature_librosa = librosa.power_to_db(feature_librosa, top_db=None)
+
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                'x', self.waveform.shape, self.waveform.dtype
+            )
+            feature_extractor = paddle.audio.features.LogMelSpectrogram(
+                sr=sr,
+                n_fft=n_fft,
+                hop_length=hop_length,
+                window=window_str,
+                center=True,
+                n_mels=n_mels,
+                f_min=fmin,
+                top_db=None,
+                dtype=x.dtype,
+            )
+            feature_layer = feature_extractor(x).squeeze(0)
+
+            exe = paddle.static.Executor()
+            out = exe.run(feed={'x': self.waveform}, fetch_list=[feature_layer])
+
+            np.testing.assert_array_almost_equal(
+                feature_librosa, out[0], decimal=2
+            )
+            # relative difference
+            np.testing.assert_allclose(feature_librosa, out[0], rtol=1e-4)
+
+        paddle.disable_static()
 
     @parameterize(
         [16000], [256, 128], [40, 64], [64, 128], ['float32', 'float64']
