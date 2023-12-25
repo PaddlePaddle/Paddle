@@ -95,6 +95,11 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       int64_t in_numel = 1;
       int64_t out_numel = 1;
       for (int i = 0; i < in.dims().size(); i++) {
+        if (in.dims()[i] == -1 && in.dims().size() == 1) {
+          VLOG(9) << "     -- input's shape has -1 and dim size is 1, can't "
+                     "do inplace";
+          return false;
+        }
         if (in.dims()[i] == -1 && i != 0) {
           VLOG(9) << "     -- input's shape has -1 and not in first dim, can't "
                      "do inplace";
@@ -104,6 +109,11 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       }
 
       for (int i = 0; i < out.dims().size(); i++) {
+        if (out.dims()[i] == -1 && out.dims().size() == 1) {
+          VLOG(9) << "     -- output's shape has -1 and dim size is 1, can't "
+                     "do inplace";
+          return false;
+        }
         if (out.dims()[i] == -1 && i != 0) {
           VLOG(9)
               << "     -- output's shape has -1 and not in first dim, can't "
