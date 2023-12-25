@@ -479,6 +479,7 @@
   output : Tensor(input_grad)
   infer_meta :
     func : CrossEntropyWithSoftmaxGradInferMeta
+    spmd_rule : CrossEntropyWithSoftmaxGradInferSpmd
   kernel :
     func : cross_entropy_with_softmax_grad
     data_type : loss_grad

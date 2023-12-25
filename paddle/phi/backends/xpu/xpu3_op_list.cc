@@ -484,7 +484,6 @@ XPUOpMap& get_kl3_ops() {
       {"gelu_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"gelu", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
-      {"generate_proposals_v2", XPUKernelSet({phi::DataType::FLOAT32})},
       {"generate_sequence_xpu",
        XPUKernelSet({
            phi::DataType::FLOAT32,
@@ -1152,8 +1151,6 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
 
       // AddMore
-      {"sequence_conv", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"sequence_conv_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"sequence_unpad", XPUKernelSet({phi::DataType::FLOAT32})},
       // Fused op
       {"resnet_basic_block_grad", XPUKernelSet({phi::DataType::FLOAT32})},

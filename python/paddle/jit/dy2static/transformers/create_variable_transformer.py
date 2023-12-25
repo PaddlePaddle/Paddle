@@ -12,33 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.jit.dy2static.utils import ast_to_source_code
-from paddle.utils import gast
-
-from .base_transformer import BaseTransformer
+from ..utils import FunctionNameLivenessAnalysis
+from ..variable_trans_func import create_undefined_var
+from .base import BaseTransformer
 
 __all__ = []
 
 
-class CastTransformer(BaseTransformer):
-    """
-    This class transforms type casting into Static Graph Ast.
-    """
+class CreateVariableTransformer(BaseTransformer):
+    """ """
 
     def __init__(self, root):
         self.root = root
-        self._castable_type = {'bool', 'int', 'float'}
+        FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):
+        """
+        Main function to transform AST.
+        """
         self.visit(self.root)
 
-    def visit_Call(self, node):
+    def visit_FunctionDef(self, node):
+        # attributes = set(filter(lambda x: '.' in x, node.pd_scope.modified_vars()))
         self.generic_visit(node)
-        func_str = ast_to_source_code(node.func).strip()
-        if func_str in self._castable_type and len(node.args) > 0:
-            args_str = ast_to_source_code(node.args[0]).strip()
-            new_func_str = f"_jst.AsDtype({args_str}, '{func_str}')"
-            new_node = gast.parse(new_func_str).body[0].value
-            return new_node
-
+        bodys = node.body
+        names = sorted(node.pd_scope.created_vars())
+        for name in names:
+            bodys[0:0] = [create_undefined_var(name)]
         return node

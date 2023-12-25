@@ -1580,7 +1580,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
     """
 
     helper = LayerHelper("rot90", **locals())
-    check_type(x, 'X', (Variable, paddle.pir.OpResult), 'rot90')
+    check_type(x, 'X', (Variable, paddle.pir.Value), 'rot90')
     dtype = helper.input_dtype('x')
     check_dtype(
         dtype,

@@ -69,9 +69,31 @@ def set_op_dtype_to_fp16(op):
         op._set_attr('dtype', __target_dtype__)
 
 
+def set_auto_cast_attr(cast_op, block):
+    in_name = cast_op.input('X')[0]
+    out_name = cast_op.output('Out')[0]
+    in_var = block._find_var_recursive(in_name)
+    out_var = block._find_var_recursive(out_name)
+    assert (
+        in_var is not None and out_var is not None
+    ), f"in_var {in_name} or out_var {out_name} is None of cast op"
+    if is_forward_op(cast_op):
+        cast_op._set_attr('in_dtype', in_var.dtype)
+        cast_op._set_attr('out_dtype', out_var.dtype)
+    elif is_backward_op(cast_op):
+        in_var_fw = block._find_var_recursive(in_name[: in_name.find("@")])
+        out_var_fw = block._find_var_recursive(out_name[: out_name.find("@")])
+        cast_op._set_attr('in_dtype', in_var_fw.dtype)
+        cast_op._set_attr('out_dtype', out_var_fw.dtype)
+        in_var.desc.set_dtype(in_var_fw.dtype)
+        out_var.desc.set_dtype(out_var_fw.dtype)
+
+
 # adapot for backward op
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_input(op, in_name):
+    if not op.amp_options.enable:
+        return True
     op_type = op.type
     if op_type == 'batch_norm':
         # Scale, Bias, Mean, Variance should be float32.
@@ -101,6 +123,9 @@ def _keep_fp32_input(op, in_name):
 
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_output(op, out_name):
+    # TODO(lizhiyu02): Support 'custom_white_list' adn 'custom_black_list' in amp_options
+    if not op.amp_options.enable:
+        return True
     op_type = op.type
     if op_type in ['batch_norm', 'fused_bn_add_activation']:
         return out_name != 'Y'
@@ -141,6 +166,7 @@ class FP16State:
         self.grad_op_to_op_map = (
             self.dist_context.dist_op_context.grad_op_id_to_op_id
         )
+        self.forward_op_to_amp_options = {}
         if input_data_var_names:
             self.input_data_var_names = input_data_var_names
         else:
@@ -176,7 +202,7 @@ class FP16State:
                         self.out_var_op_deps[name].extend(
                             [op.desc.original_id()]
                         )
-
+                self._mark_amp_options_info(op)
                 self._mark_op(op)
 
         # set forward tensor dtype
@@ -188,6 +214,25 @@ class FP16State:
             self.cast_block(block)
 
         return self.is_train
+
+    def _mark_amp_options_info(self, op):
+        """
+        Mark amp options info for backward ops according to forward ops
+        """
+        if is_forward_op(op):
+            self.forward_op_to_amp_options[
+                op.desc.original_id()
+            ] = op.amp_options
+        elif is_backward_op(op):
+            if op.desc.original_id() in self.grad_op_to_op_map:
+                if (
+                    self.grad_op_to_op_map[op.desc.original_id()]
+                    in self.forward_op_to_amp_options.keys()
+                ):
+                    amp_option = self.forward_op_to_amp_options[
+                        self.grad_op_to_op_map[op.desc.original_id()]
+                    ]
+                    op.set_amp_options(amp_option)
 
     def _mark_op(self, op):
         if op.type in __amp_skip_ops__:
@@ -210,7 +255,7 @@ class FP16State:
                         self._op_fp16_dict[op.desc.original_id()] = True
                     return
 
-            if __amp_utils__._need_keep_fp32(
+            if not op.amp_options.enable or __amp_utils__._need_keep_fp32(
                 op, self.amp_list.unsupported_list, self.use_fp16_guard
             ):
                 self._op_fp16_dict[op.desc.original_id()] = False
@@ -253,6 +298,11 @@ class FP16State:
 
     def resolute_tensor_dtype(self, block):
         for op in block.ops:
+            # 'amp_options' flag has highest priority
+            if not op.amp_options.enable:
+                if op.type == "cast":
+                    set_auto_cast_attr(op, block)
+                continue
             if is_forward_op(op):
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
                 if (
@@ -795,7 +845,6 @@ class FP16Pass(AMPPass):
         # NOTE don't not change input data dtype, since it is controled by dataloader
         # and which is out of control of FP16 Pass
         input_data_var_names = [var.name for var in self.get_attr("input_data")]
-
         with paddle.static.program_guard(main_program, startup_program):
             fp16_state = FP16State(
                 main_program,
