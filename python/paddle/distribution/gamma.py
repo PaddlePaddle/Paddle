@@ -71,14 +71,18 @@ class Gamma(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, concentration, rate):
-        if not isinstance(concentration, (numbers.Real, framework.Variable)):
+        if not isinstance(
+            concentration, (numbers.Real, paddle.Tensor, framework.Variable)
+        ):
             raise TypeError(
-                f"Expected type of concentration is Real|Variable, but got {type(concentration)}"
+                f"Expected type of concentration is scalar or tensor, but got {type(concentration)}"
             )
 
-        if not isinstance(rate, (numbers.Real, framework.Variable)):
+        if not isinstance(
+            rate, (numbers.Real, paddle.Tensor, framework.Variable)
+        ):
             raise TypeError(
-                f"Expected type of rate is Real|Variable, but got {type(rate)}"
+                f"Expected type of rate is scalar or tensor, but got {type(rate)}"
             )
 
         if isinstance(concentration, numbers.Real):

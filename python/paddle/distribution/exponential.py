@@ -56,9 +56,11 @@ class Exponential(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, rate):
-        if not isinstance(rate, (numbers.Real, framework.Variable)):
+        if not isinstance(
+            rate, (numbers.Real, paddle.Tensor, framework.Variable)
+        ):
             raise TypeError(
-                f"Expected type of rate is Real|Variable, but got {type(rate)}"
+                f"Expected type of rate is scalar or tensor, but got {type(rate)}"
             )
 
         if isinstance(rate, numbers.Real):
