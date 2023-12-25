@@ -625,6 +625,9 @@ def append_backward_ops(
                 if value_grad is None:
                     continue
 
+                while value in state.inside_value_to_outside_value_map:
+                    value = state.inside_value_to_outside_value_map[value]
+
                 if value in state.value_to_valuegrad:
                     if len(state.value_to_valuegrad[value]) > 1:
                         append_add_n(value)
