@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base, nn
+from paddle.base.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 LOOKAHEAD_K = 5
@@ -57,13 +58,20 @@ class TestLookAhead(unittest.TestCase):
                     fast_param - slow_param
                 )
             x = np.random.random(size=(10, 1)).astype('float32')
+            if in_pir_mode():
+                for op in train_program.global_block().ops:
+                    if op.name() == 'pd_op.add_grad':
+                        bias_grad = op.result(1)
+                fetch_list = [hidden.bias, bias_grad]
+            else:
+                fetch_list = [
+                    'linear_0.b_0',
+                    'linear_0.b_0@GRAD',
+                ]
             latest_b, b_grad = exe.run(
                 program=train_program,
                 feed={'X': x},
-                fetch_list=[
-                    'fc_0.b_0',
-                    'fc_0.b_0@GRAD',
-                ],
+                fetch_list=fetch_list,
             )
             if i == 0:
                 slow_param = latest_b
