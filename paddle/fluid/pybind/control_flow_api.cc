@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -109,51 +110,6 @@ void BindAssertOp(py::module* m) {
   )DOC");
   assert_op.def(
       "as_operation", &AssertOp::operation, return_value_policy::reference);
-}
-
-void GetUsedExternalValueImpl(
-    std::unordered_set<Value>& defined_values,  // NOLINT
-    std::vector<Value>& used_values,            // NOLINT
-    const Operation& op) {
-  for (size_t index = 0; index < op.num_operands(); ++index) {
-    Value value = op.operand_source(index);
-    if (defined_values.find(value) == defined_values.end()) {
-      used_values.push_back(value);
-      defined_values.insert(value);
-    }
-  }
-  for (auto& region : op) {
-    for (auto& block : region) {
-      for (auto value : block.args()) {
-        defined_values.insert(value);
-      }
-    }
-    for (auto& block : region) {
-      for (auto& inner_op : block) {
-        GetUsedExternalValueImpl(defined_values, used_values, inner_op);
-      }
-    }
-  }
-  for (size_t index = 0; index < op.num_results(); ++index) {
-    defined_values.insert(op.result(index));
-  }
-}
-
-std::vector<Value> GetUsedExternalValue(const Operation& op) {
-  std::unordered_set<Value> defined_values{nullptr};
-  std::vector<Value> used_values;
-  GetUsedExternalValueImpl(defined_values, used_values, op);
-  return used_values;
-}
-
-std::vector<Value> GetUsedExternalValue(const Block& block) {
-  auto& args = block.args();
-  std::unordered_set<Value> defined_values(args.begin(), args.end());
-  std::vector<Value> used_values;
-  for (auto& op : block) {
-    GetUsedExternalValueImpl(defined_values, used_values, op);
-  }
-  return used_values;
 }
 
 Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
@@ -246,9 +202,9 @@ void PyIfOp::UpdateOutput() {
 
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value",
-         [](const Operation& op) { return GetUsedExternalValue(op); });
+         [](const Operation& op) { return pir::GetUsedExternalValue(op); });
   m->def("get_used_external_value",
-         [](const Block& block) { return GetUsedExternalValue(block); });
+         [](const Block& block) { return pir::GetUsedExternalValue(block); });
   m->def("build_pipe_for_block", BuildPipeForBlock);
   m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {

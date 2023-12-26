@@ -29,40 +29,61 @@ namespace pir {
  *
  * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
- * @param pir::Value
+ * @param const pir::Value&
  *
  * @return std::string
  */
 
-std::string GetParameterNameFromValue(pir::Value value);
+std::string GetParameterNameFromValue(const pir::Value& value);
 
 /**
  * @brief Get tensor's shape from a value.
  *
- * @param pir::Value
+ * @param const pir::Value&
  *
  * @return const phi::DDim&
  */
-const common::DDim& GetShapeFromValue(pir::Value value);
+const common::DDim& GetShapeFromValue(const pir::Value& value);
 
 /**
  * @brief Get tensor's data type from a value.
  *
- * @param pir::Value
+ * @param const pir::Value&
  *
  * @return pir::Type
  */
-pir::Type GetDataTypeFromValue(pir::Value value);
+pir::Type GetDataTypeFromValue(const pir::Value& value);
 
 /**
  * @brief Get an operation that defines the specific input of the operation.
  *
- * @param Operation* pointer to an operation
+ * @param const Operation* const pointer to an operation
  * @param uint32_t index of operand of the operation
  *
  * @return Operation*
  */
-Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
+Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
+
+/**
+ * @brief Get operations and the index of designative op operand (op result)
+ that use the specific output of the operation.
+ *
+ * @param const Operation* cosnt pointer to an operation
+ * @param uint32_t index of result of the operation
+
+ * @return std::vector<std::pair<Operation*, int32_t>>
+ */
+std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
+    const Operation* op, uint32_t index);
+
+/**
+* @brief 获取指定op
+*
+* @param const Operation& const reference to an operation
+
+* @return std::vector<Value>
+*/
+std::vector<Value> GetUsedExternalValue(const Operation& op);
 
 /**
  * @brief Get operations and the index of designative op operand (op result)
@@ -73,7 +94,6 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
 
  * @return std::vector<std::pair<Operation*, int32_t>>
  */
-std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
-                                                               uint32_t index);
+std::vector<Value> GetUsedExternalValue(const Block& block);
 
 }  // namespace pir
