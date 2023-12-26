@@ -203,10 +203,87 @@ void GenerateShapeOp::Build(pir::Builder &builder,
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
+namespace {
+
+const char* GetSymbolBindingTypeImpl(const DataSymbolBinding& binding) {
+  return "DataSymbolBinding";
+}
+
+const char* GetSymbolBindingTypeImpl(const ShapeSymbolBinding& binding) {
+  return "ShapeSymbolBinding";
+}
+
+const char* GetSymbolBindingType(const SymbolBinding& binding) {
+  return std::visit([](const auto& impl) {
+    return GetSymbolBindingTypeImpl(impl);
+  }, binding);
+}
+
+const SymbolBindingBase* GetSymbolBindingBaseImpl(const DataSymbolBinding& binding) {
+  return &binding;
+}
+
+const SymbolBindingBase* GetSymbolBindingBaseImpl(const ShapeSymbolBinding& binding) {
+  return &binding;
+}
+
+const SymbolBindingBase* GetSymbolBindingBase(const SymbolBinding& binding) {
+  return std::visit([](const auto& impl) {
+    return GetSymbolBindingBaseImpl(impl);
+  }, binding);
+}
+
+typedef SymbolBinding (*SymbolBindingConstructorT)(const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx);
+
+SymbolBinding MakeDataSymbolBinding(
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx) {
+  return DataSymbolBinding{symbol_name, input_tensor_idx, input_tensor_dim_idx};
+}
+
+SymbolBinding MakeShapeSymbolBinding(
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx) {
+  return ShapeSymbolBinding{symbol_name, input_tensor_idx, input_tensor_dim_idx};
+}
+
+std::optional<SymbolBindingConstructorT> GetMakerSymbolBinding(const std::string& type) {
+  static std::map<std::string, SymbolBindingConstructorT> map{
+    {GetSymbolBindingTypeImpl(DataSymbolBinding{}), &MakeDataSymbolBinding},
+    {GetSymbolBindingTypeImpl(ShapeSymbolBinding{}), &MakeShapeSymbolBinding},
+  }
+  const auto& iter = map.find(type);
+  if (iter == map.end()) {
+    return std::nullopt;
+  }
+  return iter->second;
+};
+
+std::optional<SymbolBinding> MakeSymbolBinding(
+    const std::string& type,
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx) {
+  auto opt_creator = GetMakerSymbolBinding(type);
+  if (!opt_creator.has_value()) {
+    return std::nullopt;
+  }
+  return opt_creator.value()(symbol_name, input_tensor_idx, input_tensor_dim_idx);
+}
+
+}
+
 pir::Attribute GenerateShapeOp::ConvertSymbolBindingsToAttribute(pir::Builder &builder, const GenerateShapeOp::SymbolBindings& symbol_bindings) {
   const auto& ConvertSymbolBindingToAttr = [&](const SymbolBinding& binding) {
-    const auto& [symbol_name, input_tensor_idx, input_tensor_dim_idx] = binding;
+    const auto* type = GetSymbolBindingType(binding);
+    const auto& [symbol_name, input_tensor_idx, input_tensor_dim_idx] =
+      *GetSymbolBindingBase(binding);
     return builder.array_attr({
+      builder.str_attr(type),
       builder.str_attr(symbol_name),
       builder.int64_attr(input_tensor_idx),
       builder.int64_attr(input_tensor_dim_idx),
@@ -231,23 +308,31 @@ std::optional<GenerateShapeOp::SymbolBindings> GenerateShapeOp::ConvertAttribute
       return std::nullopt;
     }
     const auto& symbol_binding_array_attr = symbol_binding.dyn_cast<pir::ArrayAttribute>();
-    if (symbol_binding_array_attr.size() != 3) {
+    if (symbol_binding_array_attr.size() != 4) {
       return std::nullopt;
     }
     if (!symbol_binding_array_attr.at(0).isa<pir::StrAttribute>()) {
       return std::nullopt;
     }
-    if (!symbol_binding_array_attr.at(1).isa<pir::Int64Attribute>()) {
+    if (!symbol_binding_array_attr.at(1).isa<pir::StrAttribute>()) {
       return std::nullopt;
     }
     if (!symbol_binding_array_attr.at(2).isa<pir::Int64Attribute>()) {
       return std::nullopt;
     }
-    ret.emplace_back(std::tuple{
+    if (!symbol_binding_array_attr.at(3).isa<pir::Int64Attribute>()) {
+      return std::nullopt;
+    }
+    const auto& opt_symbol_binding = MakeSymbolBinding(
       symbol_binding_array_attr.at(0).dyn_cast<pir::StrAttribute>().AsString(),
-      symbol_binding_array_attr.at(1).dyn_cast<pir::Int64Attribute>().data(),
+      symbol_binding_array_attr.at(1).dyn_cast<pir::StrAttribute>().AsString(),
       symbol_binding_array_attr.at(2).dyn_cast<pir::Int64Attribute>().data(),
-    });
+      symbol_binding_array_attr.at(3).dyn_cast<pir::Int64Attribute>().data(),
+    );
+    if (!opt_symbol_binding.has_value()) {
+      return std::nullopt;
+    }
+    ret.emplace_back(opt_symbol_binding.value());
   }
   return std::move(ret);
 }

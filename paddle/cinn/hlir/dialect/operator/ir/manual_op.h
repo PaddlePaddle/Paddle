@@ -88,9 +88,17 @@ class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
 
-  using SymbolBinding = std::tuple</*symbol_name*/std::string,
-                                   /*input_tensor_idx*/int,
-                                   /*input_tensor_dim_idx*/int>;
+  struct SymbolBindingBase {
+    std::string symbol_name;
+    int64_t input_tensor_idx;
+    int64_t input_tensor_dim_idx;
+  };
+
+  struct DataSymbolBinding : public SymbolBindingBase {};
+  struct ShapeSymbolBinding : public SymbolBindingBase {};
+
+  using SymbolBinding = std::variant<DataSymbolBinding, ShapeSymbolBinding>;
+
   using SymbolBindings = std::vector<SymbolBinding>;
 
   static void Build(pir::Builder &builder,
