@@ -404,7 +404,7 @@
   optional : bias_qk
 
 - op : qkv_attention_xpu
-  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, DataType out_dtype)
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
   output : Tensor(qkv), Tensor(qkv_max)
   infer_meta :
     func : QKVAttentionXPUInferMeta

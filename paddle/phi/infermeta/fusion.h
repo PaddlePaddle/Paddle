@@ -838,6 +838,7 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               float alpha,
                               int head_num,
                               int head_dim,
+                              bool qkv_fc_fusion,
                               DataType out_dtype,
                               MetaTensor* qkv,
                               MetaTensor* qkv_max);
