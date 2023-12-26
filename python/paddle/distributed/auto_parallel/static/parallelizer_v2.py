@@ -16,6 +16,7 @@ import copy
 import logging
 import os
 import time
+from collections import OrderedDict
 
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
@@ -340,11 +341,22 @@ class Parallelizer:
 
         return main_program, startup_program, params_grads
 
-    def _check_dist_attr(self, program, dist_context):
+    def _check_dist_attr(self, program, num_model_chunks, dist_context):
         oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
 
         for ib, block in enumerate(program.blocks):
-            dist_types = set()
+            type_to_ops = OrderedDict()
+            chunk_ids = list(range(num_model_chunks))
+            for type in oprole_type.values():
+                if type == "optimizer":
+                    type_to_ops[type] = []
+                else:
+                    chunk_ids = (
+                        chunk_ids if type != "backward" else reversed(chunk_ids)
+                    )
+                    for chunk_id in chunk_ids:
+                        type_to_ops[type + str(chunk_id)] = []
+            type_to_ops["fetch"] = []
 
             for ip, op in enumerate(block.ops):
                 if is_forward_op(op):
@@ -360,24 +372,31 @@ class Parallelizer:
                         + " isn't one of Forward, Backward or Optimizer."
                     )
 
-                for ip, op in enumerate(block.ops):
-                    dist_op = dist_context.get_dist_op_for_program(op)
-                    if op.type == "share_buffer":
-                        dist_pre_op = dist_context.get_dist_op_for_program(
-                            block.ops[ip - 1]
-                        )
-                        dist_types.add(
-                            type + str(dist_pre_op.dist_attr.chunk_id)
-                        )
-                    elif dist_op:
-                        if type + str(dist_op.dist_attr.chunk_id) in dist_types:
-                            dist_types.add(
-                                type + str(dist_op.dist_attr.chunk_id)
-                            )
-                        else:
-                            raise ValueError(
-                                f"There is not dist_attr for op[{op.type}]."
-                            )
+                dist_op = dist_context.get_dist_op_for_program(op)
+                if op.type in ["fetch", "fetch_v2"]:
+                    type_to_ops["fetch"].append(op)
+                elif is_optimize_op(op):
+                    type_to_ops[type].append(op)
+                elif op.type == "feed":
+                    type_to_ops[type + str(0)].append(op)
+                elif op.type == "share_buffer":
+                    dist_pre_op = dist_context.get_dist_op_for_program(
+                        block.ops[ip - 1]
+                    )
+                    type_to_ops[
+                        type + str(dist_pre_op.dist_attr.chunk_id)
+                    ].append(op)
+                elif (
+                    dist_op
+                    and type + str(dist_op.dist_attr.chunk_id) in type_to_ops
+                ):
+                    type_to_ops[type + str(dist_op.dist_attr.chunk_id)].append(
+                        op
+                    )
+                else:
+                    raise ValueError(
+                        f"There is not dist_attr for op[{op.type}]."
+                    )
 
     def _apply_post_optimization(
         self, main_program, startup_program, rank, params_grads
@@ -534,7 +553,9 @@ class Parallelizer:
         main_program._pass_opt = {}
         main_program._pass_opt['pass_list'] = ir_pass_list
 
-        self._check_dist_attr(main_program, self._dist_context)
+        self._check_dist_attr(
+            main_program, self._strategy.pipeline.vpp_degree, self._dist_context
+        )
 
         if (
             self.is_train
