@@ -457,37 +457,35 @@ class InplacePass : public pir::Pass {
   InplacePass() : pir::Pass("inplace_pass", 3) {}
 
   void Run(pir::Operation* op) override {
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "inplace_pass should run on module op.");
-    auto& block = module_op.block();
-
-    auto inplace_ops = details::GetInplaceOps(&block);
     int64_t num_rewrites_{0};
-    for (auto kv : inplace_ops) {
-      VLOG(6) << "Do inplace for: "
-              << kv.first->attributes()
-                     .at("op_name")
-                     .dyn_cast<pir::StrAttribute>()
-                     .AsString();
-      pir::Block::Iterator insert_pos =
-          std::find(block.begin(), block.end(), *kv.first);
-      IR_ENFORCE(insert_pos != block.end(),
-                 "Operator %s not found in block.",
-                 kv.first->name());
+    for (size_t i = 0; i < op->num_regions(); ++i) {
+      auto& region = op->region(i);
+      for (auto& block : region) {
+        auto inplace_ops = details::GetInplaceOps(&block);
 
-      kv.first->set_attribute(
-          "op_name",
-          pir::StrAttribute::get(pir::IrContext::Instance(), kv.second));
-      kv.first->set_attribute(
-          "is_inplace",
-          pir::BoolAttribute::get(pir::IrContext::Instance(), true));
-      num_rewrites_++;
+        for (const auto& kv : inplace_ops) {
+          VLOG(6) << "Do inplace for: "
+                  << kv.first->attributes()
+                         .at("op_name")
+                         .dyn_cast<pir::StrAttribute>()
+                         .AsString();
+          pir::Block::Iterator insert_pos =
+              std::find(block.begin(), block.end(), *kv.first);
+          IR_ENFORCE(insert_pos != block.end(),
+                     "Operator %s not found in block.",
+                     kv.first->name());
+
+          kv.first->set_attribute(
+              "op_name",
+              pir::StrAttribute::get(pir::IrContext::Instance(), kv.second));
+          kv.first->set_attribute(
+              "is_inplace",
+              pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+          num_rewrites_++;
+        }
+      }
     }
     PrintStatistics(num_rewrites_);
-  }
-
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 
