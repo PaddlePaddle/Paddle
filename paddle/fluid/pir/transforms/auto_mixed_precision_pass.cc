@@ -60,6 +60,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         precision_mode_(precision_mode) {}
 
   bool Initialize(pir::IrContext* context) override {
+    context_ = context;
     enable_low_precision_io_ = false;
     SetDefaultBlacklist();
     SetDefaultWhitelist();
@@ -77,8 +78,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
     LOG(INFO) << "===========" << op_run_low_precision_.size() << " of "
               << block->size() << " ops"
               << " run low precision" << std::endl;
-    pir::IrContext* ctx = pir::IrContext::Instance();
-    pir::Builder builder = pir::Builder(ctx, block);
+    pir::Builder builder = pir::Builder(context_, block);
     LOG(INFO) << "===========Process Op Precision============" << std::endl;
 
     ProcessBlock(block, builder);
@@ -98,10 +98,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
   }
 
  private:
-  pir::FrozenRewritePatternSet patterns_;
   phi::Place place_;
   phi::DataType precision_mode_;
   bool enable_low_precision_io_;
+  pir::IrContext* context_;
 
   std::unordered_set<std::string> black_list_;
   std::unordered_set<std::string> white_list_;
