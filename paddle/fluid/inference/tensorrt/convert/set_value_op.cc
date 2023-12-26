@@ -159,6 +159,12 @@ class SetValueConverter : public OpConverter {
     if (ends >= input_dims.d[axes]) {
       ends = input_dims.d[axes];
     }
+     
+    VLOG(3) << "after standardization" << axes;
+    VLOG(3) << "axes is: " << axes;
+    VLOG(3) << "starts is: " << starts;
+    VLOG(3) << "steps is: " << steps;
+    VLOG(3) << "ends is: " << ends;
 
     PADDLE_ENFORCE_LE(axes, input_dims.nbDims,
     platform::errors::InvalidArgument(
@@ -172,11 +178,11 @@ class SetValueConverter : public OpConverter {
         axes,
         input_dims.d[axes]));
 
-    PADDLE_ENFORCE_EQ(update_dims.d[axes], (ends - starts) / steps,
+    PADDLE_ENFORCE_EQ(update_dims.d[axes], (ends - 1 - starts) / steps + 1,
     platform::errors::InvalidArgument(
         "the %dth axis of update dim error, should be %d, but we got %d",
         axes,
-        (ends - starts) / steps, 
+        (ends - 1 - starts) / steps + 1, 
         update_dims.d[axes]));
 
     for(int i = 0; i < input_dims.nbDims; i++) {
