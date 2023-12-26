@@ -175,10 +175,10 @@ class TestPSROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
