@@ -105,12 +105,11 @@ class AutoMixedPrecisionPass : public pir::Pass {
   std::unordered_set<std::string> black_list_;
   std::unordered_set<std::string> white_list_;
 
-  mutable std::unordered_set<pir::Operation*> op_run_low_precision_;
-  mutable std::unordered_set<pir::Operation*> op_should_not_handle_;
-  mutable std::unordered_map<pir::Value, paddle::dialect::CastOp>
-      cached_cast_ops_;
+  std::unordered_set<pir::Operation*> op_run_low_precision_;
+  std::unordered_set<pir::Operation*> op_should_not_handle_;
+  std::unordered_map<pir::Value, paddle::dialect::CastOp> cached_cast_ops_;
 
-  mutable int insert_cast_op_num_ = 0;
+  int insert_cast_op_num_ = 0;
 
   void SetDefaultBlacklist() {
     // black_list_.insert({
@@ -132,7 +131,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
     // return;
   }
 
-  void ProcessBlock(pir::Block* block, pir::Builder& builder) const {  // NOLINT
+  void ProcessBlock(pir::Block* block, pir::Builder& builder) {  // NOLINT
     for (auto& op_item : *block) {
       auto op = &op_item;
       if (op_should_not_handle_.count(op)) continue;
@@ -155,10 +154,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
                  op->isa<paddle::dialect::FetchOp>()) {
         support_low_precision = enable_low_precision_io_;
       } else if (OpHasFloatOpOperand(op) ||
-                 OpHasFloatResult(op)) {  // pd op with float result,
-        // but op like not_equal has float input, but has not float result
-        // if I don't add this, not_equal will be added to op_run_low_precision_
-        // if I add this, full_like op will be run at high precision
+                 OpHasFloatResult(op)) {  // pd op without float result,
         auto op_type = op_name.substr(op_name.find(".") + 1);
         auto backend = ConvertPlaceToBackend(place_);
         support_low_precision =
@@ -176,18 +172,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
                   << std::endl;
       }
     }
-  }
-
-  bool VectorTypeFloat(pir::VectorType vec_type) {
-    size_t output_num = vec_type.size();
-    for (size_t j = 0; j < output_num; j++) {
-      auto dtype =
-          vec_type[j].dyn_cast<paddle::dialect::DenseTensorType>().dtype();
-      if (!IsDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
-        return false;
-      }
-    }
-    return true;
   }
 
   bool CheckUseOpsScalaAttribute(
@@ -238,7 +222,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
           // handled
           auto result_dtype = paddle::dialect::TransToPhiDataType(
               pir::GetDataTypeFromValue(op->result(0)));
-          if (!IsDataTypeFloat(result_dtype)) {
+          if (!IsPhiDataTypeFloat(result_dtype)) {
             op_run_low_precision_.erase(op);
             op_should_not_handle_.insert(op);
             precision_updated = true;
@@ -258,7 +242,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
           if (operand.type() && operand.type().isa<pir::VectorType>()) {
             // check if there are all float in the vectortype
             auto vec_type = operand.type().dyn_cast<pir::VectorType>();
-            if (VectorTypeFloat(vec_type)) {
+            if (IsVectorTypeFloat(vec_type)) {
               auto input_operation = GetDefiningOpForInput(op, idx);
               // 如果有一个是高精的话，则必须都跑在高精上
               if (!op_run_low_precision_.count(op) ||
@@ -411,11 +395,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
     return KernelSupportPrecision(kernel_fn_str, backend, precision);
   }
 
-  bool ValueInPrecision(pir::Value value, phi::DataType precision) const {
-    auto dtype = pir::GetDataTypeFromValue(value);
-    return paddle::dialect::TransToPhiDataType(dtype) == precision;
-  }
-
   void SetResultDataType(pir::Value result,
                          phi::DataType precision,
                          pir::IrContext* context) const {
@@ -458,20 +437,14 @@ class AutoMixedPrecisionPass : public pir::Pass {
     for (size_t i = 0; i < op->num_operands(); i++) {
       auto operand = op->operand_source(i);
       if (!operand.type()) continue;
-      if (operand.type().isa<paddle::dialect::DenseTensorType>()) {
-        auto dtype = pir::GetDataTypeFromValue(operand);
-        if (IsDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
-          return true;
-        }
-      } else if (operand.type().isa<pir::VectorType>()) {
-        auto vec_type = operand.type().dyn_cast<pir::VectorType>();
-        for (size_t j = 0; j < vec_type.size(); j++) {
-          auto dtype =
-              vec_type[j].dyn_cast<paddle::dialect::DenseTensorType>().dtype();
-          if (IsDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
-            return true;
-          }
-        }
+      if (operand.type().isa<paddle::dialect::DenseTensorType>() &&
+          IsDenseTensorTypeFloat(
+              operand.type().dyn_cast<paddle::dialect::DenseTensorType>())) {
+        return true;
+      } else if (operand.type().isa<pir::VectorType>() &&
+                 IsVectorTypeFloat(
+                     operand.type().dyn_cast<pir::VectorType>())) {
+        return true;
       }
     }
     return false;
@@ -481,20 +454,11 @@ class AutoMixedPrecisionPass : public pir::Pass {
     for (size_t i = 0; i < op->num_results(); i++) {
       auto result = op->result(i);
       if (!result.type()) continue;
-      if (result.type().isa<paddle::dialect::DenseTensorType>()) {
-        auto dtype = pir::GetDataTypeFromValue(result);
-        if (IsDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
-          return true;
-        }
-      } else if (result.type().isa<pir::VectorType>()) {
-        auto vec_type = result.type().dyn_cast<pir::VectorType>();
-        for (size_t j = 0; j < vec_type.size(); j++) {
-          auto dtype =
-              vec_type[j].dyn_cast<paddle::dialect::DenseTensorType>().dtype();
-          if (IsDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
-            return true;
-          }
-        }
+      if (result.type().isa<paddle::dialect::DenseTensorType>() &&
+          IsDenseTensorTypeFloat(
+              result.type().dyn_cast<paddle::dialect::DenseTensorType>())) {
+      } else if (result.type().isa<pir::VectorType>() &&
+                 IsVectorTypeFloat(result.type().dyn_cast<pir::VectorType>())) {
       }
     }
     LOG(INFO) << "op " << op->name() << " doesn't have float result"
@@ -502,13 +466,36 @@ class AutoMixedPrecisionPass : public pir::Pass {
     return false;
   }
 
-  bool IsDataTypeFloat(const phi::DataType& dtype) const {
+  bool IsPhiDataTypeFloat(const phi::DataType& dtype) const {
     return dtype == phi::DataType::FLOAT32 || dtype == phi::DataType::FLOAT16 ||
            dtype == phi::DataType::BFLOAT16;
   }
 
-  phi::DataType OperandDataType(const pir::OpOperand& operand) const {
-    auto dtype = pir::GetDataTypeFromValue(operand.source());
+  bool IsDenseTensorTypeFloat(
+      paddle::dialect::DenseTensorType dense_type) const {
+    auto dtype = dense_type.dtype();
+    return IsPhiDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype));
+  }
+
+  bool IsVectorTypeFloat(pir::VectorType vec_type) const {
+    size_t output_num = vec_type.size();
+    for (size_t j = 0; j < output_num; j++) {
+      auto dtype =
+          vec_type[j].dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+      if (!IsPhiDataTypeFloat(paddle::dialect::TransToPhiDataType(dtype))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  phi::DataType GetPhiDataTypeFromOpOperand(
+      const pir::OpOperand& operand) const {
+    return GetPhiDataTypeFromValue(operand.source());
+  }
+
+  phi::DataType GetPhiDataTypeFromValue(const pir::Value& value) const {
+    auto dtype = pir::GetDataTypeFromValue(value);
     return paddle::dialect::TransToPhiDataType(dtype);
   }
 
@@ -517,10 +504,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
            operand.type().isa<paddle::dialect::DenseTensorType>();
   }
 
-  void InsertCastOp(pir::Operation* op,
-                    pir::OpOperand operand,
-                    phi::DataType precision,
-                    pir::Builder& builder) const {  // NOLINT
+  void DoInsertCastOp(pir::Operation* op,
+                      pir::OpOperand operand,
+                      phi::DataType precision,
+                      pir::Builder& builder) {  // NOLINT
     auto value = operand.source();
     if (cached_cast_ops_.count(value)) {
       operand.set_source(cached_cast_ops_[value]->result(0));
@@ -539,7 +526,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   }
 
   void RewriteBuiltinOp(pir::Operation* op,
-                        pir::Builder& builder) const {  // NOLINT
+                        pir::Builder& builder) {  // NOLINT
     LOG(INFO) << "Rewrite builtin op " << op->name() << std::endl;
     // Rewrite CombineOp
     if (op->isa<pir::CombineOp>()) {
@@ -548,10 +535,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
       if (OpRunLowPrecision(op)) {
         for (size_t i = 0; i < input_num; ++i) {
           auto operand = op->operand(i);
-          auto operand_dtype = OperandDataType(operand);
-          if (IsDataTypeFloat(operand_dtype) &&
-              operand_dtype != precision_mode_) {
-            InsertCastOp(op, operand, precision_mode_, builder);
+          auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
+          if (IsPhiDataTypeFloat(operand_phi_dtype) &&
+              operand_phi_dtype != precision_mode_) {
+            DoInsertCastOp(op, operand, precision_mode_, builder);
           }
         }
         std::vector<pir::Type> inputs_type(input_num);
@@ -564,9 +551,9 @@ class AutoMixedPrecisionPass : public pir::Pass {
       } else {
         for (size_t i = 0; i < input_num; ++i) {
           auto operand = op->operand(i);
-          auto operand_dtype = OperandDataType(operand);
-          if (operand_dtype == precision_mode_) {
-            InsertCastOp(op, operand, phi::DataType::FLOAT32, builder);
+          auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
+          if (operand_phi_dtype == precision_mode_) {
+            DoInsertCastOp(op, operand, phi::DataType::FLOAT32, builder);
           }
         }
       }
@@ -602,16 +589,16 @@ class AutoMixedPrecisionPass : public pir::Pass {
     // Rewrite FetchOp
     if (op->isa<paddle::dialect::FetchOp>()) {
       auto fetch_operand = op->operand(0);
-      auto fetch_operand_dtype = OperandDataType(fetch_operand);
+      auto fetch_operand_phi_dtype = GetPhiDataTypeFromOpOperand(fetch_operand);
       if (OpRunLowPrecision(op)) {
         SetResultDataType(op->result(0), precision_mode_, builder.ir_context());
       }
       if (!op->result(0).type().isa<paddle::dialect::DenseTensorType>()) return;
       auto result_dtype = paddle::dialect::TransToPhiDataType(
           pir::GetDataTypeFromValue(op->result(0)));
-      if (fetch_operand_dtype != result_dtype) {
+      if (fetch_operand_phi_dtype != result_dtype) {
         LOG(INFO) << "Insert CastOp for FetchOp" << std::endl;
-        InsertCastOp(op, fetch_operand, result_dtype, builder);
+        DoInsertCastOp(op, fetch_operand, result_dtype, builder);
       }
       return;
     }
@@ -634,7 +621,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
                 << std::endl;
 
       if (op->HasAttribute("dtype") &&
-          IsDataTypeFloat(
+          IsPhiDataTypeFloat(
               op->attribute<paddle::dialect::DataTypeAttribute>("dtype")
                   .data())) {
         pir::Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
@@ -671,7 +658,9 @@ class AutoMixedPrecisionPass : public pir::Pass {
                   << std::endl;
         if (out_phi_dtype == phi::DataType::UNDEFINED)
           out_phi_dtype = precision_mode_;
-        if (!IsDataTypeFloat(out_phi_dtype)) continue;
+        if (!IsPhiDataTypeFloat(out_phi_dtype))
+          continue;  // here handle op like "unequal", which has bool result
+                     // type
         SetResultDataType(result, out_phi_dtype, builder.ir_context());
       }
 
@@ -681,11 +670,12 @@ class AutoMixedPrecisionPass : public pir::Pass {
         auto operand = op->operand(i);
         auto in_phi_dtype = input_defs[i].dtype;
         if (!IsOperandHasDenseTensorType(operand)) continue;
-        auto operand_dtype = OperandDataType(operand);
-        if (IsDataTypeFloat(operand_dtype) && operand_dtype != in_phi_dtype) {
+        auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
+        if (IsPhiDataTypeFloat(operand_phi_dtype) &&
+            operand_phi_dtype != in_phi_dtype) {
           LOG(INFO) << "Support low precision, insert CastOp for " << op->name()
                     << " operand " << i << std::endl;
-          InsertCastOp(op, operand, in_phi_dtype, builder);
+          DoInsertCastOp(op, operand, in_phi_dtype, builder);
         }
       }
     } else {  // current op doesn't support low precision, should cast to float
@@ -694,12 +684,12 @@ class AutoMixedPrecisionPass : public pir::Pass {
       for (size_t i = 0; i < op->num_operands(); i++) {
         auto operand = op->operand(i);
         if (!IsOperandHasDenseTensorType(operand)) continue;
-        auto operand_dtype = OperandDataType(operand);
-        if (IsDataTypeFloat(operand_dtype) &&
-            operand_dtype == precision_mode_) {
+        auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
+        if (IsPhiDataTypeFloat(operand_phi_dtype) &&
+            operand_phi_dtype == precision_mode_) {
           LOG(INFO) << "Not support low precision, insert CastOp for "
                     << op->name() << " operand " << i << std::endl;
-          InsertCastOp(op, operand, phi_dtype, builder);
+          DoInsertCastOp(op, operand, phi_dtype, builder);
         }
       }
     }
