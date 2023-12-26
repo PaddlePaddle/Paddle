@@ -254,7 +254,6 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
-    # TODO(zhangbo): Support while grad exe for pir
     def test_while_loop_backward(self):
         with paddle.pir_utils.IrGuard():
 
@@ -313,7 +312,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
             np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
 
-    # TODO(zhangbo): Support while grad exe for pir
     @test_with_pir_api
     def test_while_loop_backward2(self):
         def cond(i, x):
@@ -352,15 +350,14 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         x_grad = np.asarray([2]).astype('float32')
 
         if paddle.framework.in_pir_mode():
+            fetch_list = [out[1]]
             for p, g in grad_list:
-                if p.is_same(i):
-                    di = g
-                if p.is_same(x):
-                    dx = g
+                fetch_list.append(g)
+
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
-                fetch_list=[out[1], di, dx],
+                fetch_list=fetch_list,
             )
         else:
             res = exe.run(
@@ -697,7 +694,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
     @compare_legacy_with_pt
-    # @test_with_pir_api (need to fix slice bug in pir)
+    @test_with_pir_api
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
@@ -709,7 +706,8 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = paddle.tensor.fill_constant([], 'int32', 0)
             x_shape = paddle.shape(x)
