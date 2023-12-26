@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <variant>
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/ir_printer.h"
