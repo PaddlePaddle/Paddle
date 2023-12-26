@@ -166,10 +166,10 @@ class MasterGradPass(PassBase):
             if is_optimize_op(op) and main_ops[idx].type == "squared_l2_norm":
                 first_optimize_idx = idx
                 break
-        to_delete_tem_var_names = []
-        to_delete_persis_var_names = []
+        deleted_temp_var_names = []
+        deleted_persis_var_names = []
         reserved_var_names = []
-        for idx in range(main_ops_len - 1, first_optimize_idx + 1, -1):
+        for idx in range(main_ops_len - 1, first_optimize_idx - 1, -1):
             op = main_ops[idx]
             inout_arg_names = op.input_arg_names + op.output_arg_names
             if op.type in _supported_optimizer_type:
@@ -187,33 +187,33 @@ class MasterGradPass(PassBase):
                 var = main_program.global_block().var(input_name)
                 if (
                     var.persistable
-                    and input_name not in to_delete_persis_var_names
+                    and input_name not in deleted_persis_var_names
                 ):
-                    to_delete_persis_var_names.append(input_name)
+                    deleted_persis_var_names.append(input_name)
                 elif (
                     not var.persistable
-                    and input_name not in to_delete_tem_var_names
+                    and input_name not in deleted_temp_var_names
                 ):
-                    to_delete_tem_var_names.append(input_name)
+                    deleted_temp_var_names.append(input_name)
             main_program.global_block()._remove_op(idx)
 
-        for var_name in to_delete_tem_var_names + to_delete_persis_var_names:
+        for var_name in deleted_temp_var_names + deleted_persis_var_names:
             if var_name not in reserved_var_names:
                 main_program.global_block()._remove_var(var_name)
         main_program.global_block()._sync_with_cpp()
 
         # 1.2 delete the var and op in startup_program
         for reserved_name in reserved_var_names:
-            if reserved_name in to_delete_persis_var_names:
-                to_delete_persis_var_names.remove(reserved_name)
+            if reserved_name in deleted_persis_var_names:
+                deleted_persis_var_names.remove(reserved_name)
         startup_global_block = startup_program.global_block()
-        for var_name in to_delete_persis_var_names:
+        for var_name in deleted_persis_var_names:
             if startup_global_block.has_var(var_name):
                 startup_global_block._remove_var(var_name)
         for idx, op in reversed(list(enumerate(startup_global_block.ops))):
             inout_arg_names = op.input_arg_names + op.output_arg_names
             for var_name in inout_arg_names:
-                if var_name in to_delete_persis_var_names:
+                if var_name in deleted_persis_var_names:
                     startup_program.global_block()._remove_op(idx)
                     break
 
