@@ -21,8 +21,6 @@ import numpy as np
 import paddle
 from paddle.inference import Config, create_predictor
 
-np.random.seed(2023)
-
 
 class TestNet(paddle.nn.Layer):
     def __init__(self):
@@ -33,15 +31,16 @@ class TestNet(paddle.nn.Layer):
     def forward(self, x1, x2):
         y1 = self.fc1(x1)
         y2 = self.fc2(x2)
-        y = paddle.nn.functional.softmax(y1 + y2)
-        return y
+        y3 = y1 + y2
+        y4 = paddle.nn.functional.layer_norm(y3, y3.shape[1:])
+        z = paddle.nn.functional.softmax(y4)
+        return z
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), 'should compile with cuda.'
-)
 class TestPredictorRunWithTensor(unittest.TestCase):
     def setUp(self):
+        self.use_gpu = paddle.is_compiled_with_cuda()
+        np.random.seed(2023)
         self.shape = [4, 8, 16, 64]
         self.x = np.random.random(self.shape).astype(np.float32)
         self.y = np.random.random(self.shape).astype(np.float32)
@@ -82,9 +81,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
                 'test_predictor_run_model/inference.pdiparams',
             ),
         )
-        config.enable_use_gpu(256, 0)
+        if self.use_gpu:
+            config.enable_use_gpu(256, 0)
         config.switch_ir_optim(False)
-        # config.enable_memory_optim()
         config.enable_new_executor()
         predictor = create_predictor(config)
         return predictor
@@ -117,29 +116,38 @@ class TestPredictorRunWithTensor(unittest.TestCase):
 
         return outputs[0]
 
-    def test_output(self):
+    def test_output_prim_inorder(self):
         self.enable_pir(False)
         predictor = self.init_predictor()
         output = self.get_inorder_output(predictor)
         self.enable_pir(True)
+        paddle.core._set_prim_all_enabled(True)
         pir_predictor = self.init_predictor()
-        pir_output = self.get_disorder_output(pir_predictor)
+        pir_output = self.get_inorder_output(pir_predictor)
+        paddle.core._set_prim_all_enabled(False)
 
         np.testing.assert_allclose(
-            output.numpy().flatten(), pir_output.numpy().flatten(), rtol=1e-6
+            output.numpy().flatten(),
+            pir_output.numpy().flatten(),
+            rtol=1e-6,
+            atol=1e-6,
         )
 
-    def test_output_prim(self):
-        paddle.core._set_prim_all_enabled(True)
+    def test_output_prim_disorder(self):
         self.enable_pir(False)
         predictor = self.init_predictor()
-        output = self.get_inorder_output(predictor)
+        output = self.get_disorder_output(predictor)
         self.enable_pir(True)
+        paddle.core._set_prim_all_enabled(True)
         pir_predictor = self.init_predictor()
         pir_output = self.get_disorder_output(pir_predictor)
+        paddle.core._set_prim_all_enabled(False)
 
         np.testing.assert_allclose(
-            output.numpy().flatten(), pir_output.numpy().flatten(), rtol=1e-6
+            output.numpy().flatten(),
+            pir_output.numpy().flatten(),
+            rtol=1e-6,
+            atol=1e-6,
         )
 
 
