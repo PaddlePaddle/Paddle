@@ -69,30 +69,29 @@ class AutoMixedPrecisionPass : public pir::Pass {
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    pir::Block* block = &module_op.block();
-    LOG(INFO) << "===========Get Op Precision============" << std::endl;
-    GetOpPrecision(block);
-    LOG(INFO) << "===========Update Op Precision============" << std::endl;
-    UpdateOpPrecision(block);
+    for (size_t i = 0; i < op->num_regions(); ++i) {
+      auto& region = op->region(i);
+      for (auto& block : region) {
+        LOG(INFO) << "===========Get Op Precision============" << std::endl;
+        GetOpPrecision(block);
+        LOG(INFO) << "===========Update Op Precision============" << std::endl;
+        UpdateOpPrecision(block);
 
-    LOG(INFO) << "===========" << op_run_low_precision_.size() << " of "
-              << block->size() << " ops"
-              << " run low precision" << std::endl;
-    pir::Builder builder = pir::Builder(context_, block);
-    LOG(INFO) << "===========Process Op Precision============" << std::endl;
+        LOG(INFO) << "===========" << op_run_low_precision_.size() << " of "
+                  << block->size() << " ops"
+                  << " run low precision" << std::endl;
+        pir::Builder builder = pir::Builder(context_, block);
+        LOG(INFO) << "===========Process Op Precision============" << std::endl;
 
-    ProcessBlock(block, builder);
-    LOG(INFO) << "===========Insert Cast Op Num : " << insert_cast_op_num_
-              << "============" << std::endl;
-    // pir::GreedyRewriteConfig cfg;
-    // cfg.use_top_down_traversal = true;
-    // cfg.max_iterations = 2;
-    // pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+        ProcessBlock(block, builder);
+        LOG(INFO) << "===========Insert Cast Op Num : " << insert_cast_op_num_
+                  << "============" << std::endl;
+      }
+    }
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0 &&
-           place_ == paddle::PlaceType::kGPU &&
+    return op->num_regions() > 0 && place_ == paddle::PlaceType::kGPU &&
            (precision_mode_ == phi::DataType::FLOAT16 ||
             precision_mode_ == phi::DataType::BFLOAT16);
   }
