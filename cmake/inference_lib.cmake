@@ -238,7 +238,7 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 
 if(WIN32)
-  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/common.dll)
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/common.*)
 else()
   set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon.*)
 endif()
