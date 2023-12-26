@@ -32,7 +32,7 @@ void Region::push_front(Block *block) { insert(blocks_.begin(), block); }
 
 Region::Iterator Region::insert(ConstIterator position, Block *block) {
   Region::Iterator iter = blocks_.insert(position, block);
-  block->SetParent(this, iter);
+  block->SetParent(this);
   return iter;
 }
 
@@ -54,7 +54,7 @@ void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
   for (auto iter = blocks_.begin(); iter != blocks_.end(); ++iter) {
-    (*iter)->SetParent(this, iter);
+    (*iter)->SetParent(this);
   }
 }
 
@@ -72,11 +72,11 @@ void Region::clear() {
 
 void Region::swap(Region &&other) {
   blocks_.swap(other.blocks_);
-  for (auto iter = begin(); iter != end(); ++iter) {
-    iter->SetParent(this, iter);
+  for (auto &block : *this) {
+    block.SetParent(this);
   }
-  for (auto iter = other.begin(); iter != other.end(); ++iter) {
-    iter->SetParent(&other, iter);
+  for (auto &block : other) {
+    block.SetParent(&other);
   }
 }
 

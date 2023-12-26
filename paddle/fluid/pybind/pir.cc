@@ -317,10 +317,14 @@ void BindBlock(py::module *m) {
         The constructor of Block should not be invoked directly. You can
         use `Program.block()` to get a block.
   )DOC");
-  block
+  block.def("empty", &Block::empty)
       .def(
           "front",
           [](Block &self) { return &self.front(); },
+          return_value_policy::reference)
+      .def(
+          "back",
+          [](Block &self) { return &self.back(); },
           return_value_policy::reference)
       .def_property_readonly(
           "parent_op",
