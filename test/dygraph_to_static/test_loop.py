@@ -26,7 +26,7 @@ from dygraph_to_static_utils import (
 import paddle
 import paddle.nn.functional as F
 from paddle import base
-from paddle.jit.dy2static.loop_transformer import NameVisitor
+from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
 from paddle.utils import gast
 
 SEED = 2020

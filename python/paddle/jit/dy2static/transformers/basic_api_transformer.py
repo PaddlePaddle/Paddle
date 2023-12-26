@@ -17,8 +17,8 @@ import astor
 
 from paddle.utils import gast
 
-from . import utils
-from .base_transformer import BaseTransformer
+from .. import utils
+from .base import BaseTransformer
 
 __all__ = []
 

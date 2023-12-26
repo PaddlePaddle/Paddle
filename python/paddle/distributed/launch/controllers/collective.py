@@ -92,7 +92,9 @@ class CollectiveController(Controller):
         ips = self.ctx.args.ips.split(',')
 
         job_endpoints = [
-            f"{h}:{p+start_port}" for h in ips for p in range(self.pod.replicas)
+            f"{h}:{p + start_port}"
+            for h in ips
+            for p in range(self.pod.replicas)
         ]
 
         self.ctx.logger.debug(f"job endpoints: {job_endpoints}")

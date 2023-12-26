@@ -1373,6 +1373,28 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TrilAndTriuGradOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    bool lower = PADDLE_GET_CONST(bool, op_desc.GetAttr("lower"));
+    std::string target_op_name = "";
+    if (lower) {
+      target_op_name = "pd_op.tril_grad";
+    } else {
+      target_op_name = "pd_op.triu_grad";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op tril_triu_grad should have corresponding OpInfo pd_op.tril_grad "
+          "or "
+          "pd_op.triu_grad.");
+    }
+
+    return op_info;
+  }
+};
+
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::OpResult>;
 
@@ -2025,7 +2047,7 @@ struct SelectInputOpTranscriber : public OpTranscriber {
         undefine_value.defining_op()->set_attribute(
             "dtype",
             dialect::DataTypeAttribute::get(
-                ctx, PirTypeToPhiDType(undefined_var_type.dtype())));
+                ctx, dialect::TransToPhiDataType(undefined_var_type.dtype())));
         auto& attribute_translator = AttributeTranslator::instance();
         undefine_value.defining_op()->set_attribute(
             "shape",
@@ -3018,6 +3040,7 @@ OpTranslator::OpTranslator() {
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
+  special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
   special_handlers["matrix_rank"] = MatrixRankOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();

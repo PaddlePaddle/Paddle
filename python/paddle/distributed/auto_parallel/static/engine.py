@@ -848,7 +848,9 @@ class Engine:
                         # for amp
                         if dest_type == core.VarDesc.VarType.BF16:
                             buffer_tensor.set(
-                                _convert_float_to_bfloat16(buffer.numpy()),
+                                _convert_float_to_bfloat16(
+                                    self._place, buffer.numpy()
+                                ),
                                 self._place,
                             )
                         elif dest_type == core.VarDesc.VarType.FP16:

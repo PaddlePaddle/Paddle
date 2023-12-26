@@ -94,9 +94,6 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   // throughout the entire IR.
   void UpdateBlockOrder();
 
-  // Get output tensor names of group.
-  std::unordered_set<std::string> OutputTensorNames() const;
-
   /**
    * @brief Determine whether the graph level dependency is still maintained
    * after the schedule_block is placed in the insert position of target_loop.

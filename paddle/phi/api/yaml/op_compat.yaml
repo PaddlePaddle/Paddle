@@ -452,6 +452,13 @@
   outputs :
     out : Out
 
+- op : c_softmax_with_cross_entropy
+  backward : c_softmax_with_cross_entropy_grad
+  inputs :
+    {logits : Logits, label : Label}
+  outputs :
+    {softmax : Softmax, loss : Loss}
+
 - op : cast
   inputs :
     x : X
@@ -3461,6 +3468,12 @@
     x: X
   outputs :
     out : Out
+
+- op: lars_momentum
+  inputs:
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
 
 - op: lod_array_length
   inputs :
