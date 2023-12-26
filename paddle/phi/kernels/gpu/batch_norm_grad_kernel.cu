@@ -595,12 +595,12 @@ void BatchNormGradFunctor(const Context &ctx,
 // HIP do not support compute format of NHWC
 // auto compute_format = DataLayout::kNCHW;
 #else
-  const bool fast_nhwc_batch_norm =
-      dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent &&
-      (reserve_space.get_ptr() != nullptr) auto compute_format =
-          fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
-              ? DataLayout::kNHWC
-              : DataLayout::kNCHW;
+  const bool fast_nhwc_batch_norm = dtype == CUDNN_DATA_HALF &&
+                                    FLAGS_cudnn_batchnorm_spatial_persistent &&
+                                    (reserve_space.get_ptr() != nullptr);
+  auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
+                            ? DataLayout::kNHWC
+                            : DataLayout::kNCHW;
 #endif
 
   DenseTensor transformed_x(x.type());
