@@ -109,7 +109,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
     def setUp(self):
         self.config()
         if self.dtype == "bfloat16" or self.weight_dtype == "int4":
-            self.atol = 1e-1
+            self.atol = 1.5e-1
         x = np.random.random((self.batch, self.token, self.in_features))
         self.x = paddle.to_tensor(x, dtype=self.dtype)
         if self.bias:

@@ -52,7 +52,6 @@ void per_channel_scale(
                 ? static_cast<float>(xabs(input[j * n + i]))
                 : max;
     }
-    max = max == static_cast<float>(0.f) ? static_cast<float>(1e-6) : max;
     scale[i] = static_cast<T>(max / bound);
   }
 }
@@ -72,7 +71,6 @@ void group_wise_scale(T* scale,
                   ? static_cast<float>(xabs(input[(j + k) * n + i]))
                   : max;
       }
-      max = max == static_cast<float>(0.f) ? static_cast<float>(1e-6) : max;
       scale[static_cast<int>(j / group_size) * n + i] =
           static_cast<T>(max / bound);
     }
