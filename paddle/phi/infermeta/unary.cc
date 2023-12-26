@@ -4023,6 +4023,7 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({1});
+  out->set_dtype(x.dtype());
 }
 
 void SqueezeInferMeta(const MetaTensor& x,

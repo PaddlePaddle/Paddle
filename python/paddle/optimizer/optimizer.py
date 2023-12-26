@@ -1198,7 +1198,7 @@ class Optimizer:
                             # need to filter again here.
                             if (
                                 param_and_grad[1] is None
-                                or not param_and_grad[0]._is_initialized()
+                                or not param_and_grad[1]._is_initialized()
                             ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
@@ -1209,7 +1209,7 @@ class Optimizer:
                         for param_and_grad in parameters_and_grads['params']:
                             if (
                                 param_and_grad[1] is None
-                                or not param_and_grad[0]._is_initialized()
+                                or not param_and_grad[1]._is_initialized()
                             ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
