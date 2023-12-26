@@ -285,7 +285,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 out = paddle.static.nn.while_loop(cond, body, [i, x])
                 mean = paddle.mean(out[1])
                 grad_list = append_backward(mean)
-                print(main_program)
 
             place = (
                 base.CUDAPlace(0)
@@ -310,8 +309,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 feed={'i': feed_i, 'x': feed_x},
                 fetch_list=[mean, di, dx],
             )
-            print("res[1]", res[1])
-            print("res[2]", res[2])
             np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
             np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
             np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
