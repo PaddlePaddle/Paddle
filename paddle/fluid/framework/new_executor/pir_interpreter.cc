@@ -45,6 +45,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
 
+#include "paddle/fluid/framework/new_executor/instruction/assert_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
@@ -703,6 +704,8 @@ void PirInterpreter::BuildInstruction() {
                  ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
+      } else if (op.isa<paddle::dialect::AssertOp>()) {
+        CREATE_INSTR(AssertInstruction);
       } else if (op.isa<paddle::dialect::SelectInputOp>()) {
         CREATE_INSTR(SelectInputInstruction);
       } else {
@@ -1737,6 +1740,7 @@ void PirInterpreter::PreAnalysis() {
   BuildInstructionDependences();
   VLOG(4) << "Done BuildInstructionDependences";
 
+  ir_stream_analyzer_.SetForceEventsToWaitInfo(force_evnets_to_wait_);
   ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
   VLOG(4) << "Done ConstructEvents";
 

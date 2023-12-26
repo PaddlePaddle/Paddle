@@ -23,13 +23,13 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-
 namespace pir {
 
 using shape::SymbolicDimOp;
-class SymbolTable {
+class IR_API SymbolTable {
  public:
   explicit SymbolTable(Operation* symbol_table_op)
       : symbol_table_op_(symbol_table_op) {}
