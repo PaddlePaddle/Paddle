@@ -454,7 +454,6 @@ class TestCondInputOutput(unittest.TestCase):
             b.persistable = True
             out = paddle.static.nn.cond(a - b < -1.0, lambda: a, lambda: b)
             grad_list = append_backward(out)
-            print(main_program)
 
         place = (
             base.CUDAPlace(0)
