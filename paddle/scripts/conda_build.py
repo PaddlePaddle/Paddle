@@ -366,7 +366,7 @@ def conda_build(paddle_version, var):
         else:
             os.system("mkdir paddle")
             os.chdir(r"./paddle")
-            for i in range(1, len(var.python_version)):
+            for i in range(len(var.python_version)):
                 # The mac-arm version does not support python3.7
                 build_var = (
                     var.pip_prefix_linux
