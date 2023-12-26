@@ -232,7 +232,13 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,
-                         std::vector<std::vector<int>>* out_shapes);
+                         std::vector<std::vector<int>>* out_shapes,
+                         const GroupPtr& group);
+
+  void CollectOutputInfo(::pir::Operation* op,
+                         std::vector<Type>* out_types,
+                         std::vector<std::vector<ir::Dim>>* out_shapes,
+                         const GroupPtr& group);
 
   std::string ValueName(::pir::Value value);
 

@@ -33,6 +33,8 @@ from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.geometric import Geometric
+from paddle.distribution.binomial import Binomial
+from paddle.distribution.poisson import Poisson
 
 __all__ = [
     'Bernoulli',
@@ -55,6 +57,8 @@ __all__ = [
     'LogNormal',
     'Gumbel',
     'Geometric',
+    'Binomial',
+    'Poisson',
 ]
 
 __all__.extend(transform.__all__)

@@ -136,7 +136,7 @@ TEST(DrrTest, FusedLinear) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateFusedGemmEpiloguePass());
-  // pm.EnablePassTiming();
+  pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
