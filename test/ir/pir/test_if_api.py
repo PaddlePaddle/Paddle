@@ -49,7 +49,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             paddle.static.nn.cond(x < y, lambda: x + y, lambda: x - y)
         return main_program
 
-    def test_if_with_single_output(self):
+    def _test_if_with_single_output(self):
         main_program = self.construct_program_with_if()
         if_op = main_program.global_block().ops[-1]
         self.assertEqual(if_op.name(), "pd_op.if")
@@ -57,6 +57,13 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         value_list = get_used_external_value(if_op)
         self.assertEqual(len(value_list), 3)
         self.assertTrue(value_list[0].is_same(if_op.operand_source(0)))
+        
+        print("main_program:")
+        print(main_program)
+        
+    def test_luq(self):
+        with paddle.pir_utils.IrGuard():
+            self._test_if_with_single_output()
 
     def test_if_with_multiple_output(self):
         main_program = self.construct_program_with_if()
@@ -84,6 +91,9 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         self.assertEqual(len(block_list), 2)
         self.assertEqual(block_list[0], true_block)
         self.assertEqual(block_list[1], if_op.false_block())
+        
+        print("main_program:")
+        print(main_program)
 
     def test_if_op_vjp_interface(self):
         main_program = self.construct_program_with_if()
