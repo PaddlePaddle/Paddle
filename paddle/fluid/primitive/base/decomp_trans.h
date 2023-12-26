@@ -29,7 +29,13 @@ class DecompProgram {
   DecompProgram(pir::Program* program,
                 const std::vector<pir::OpResult>& src_vars,
                 const std::set<std::string>& blacklist,
-                const std::set<std::string>& whitelist);
+                const std::set<std::string>& whitelist)
+      : program_(program),
+        src_vars_(src_vars),
+        blacklist_(blacklist),
+        whitelist_(whitelist) {}
+
+  explict DecompProgram(pir::Program* program) : program_(program) {}
 
   std::vector<pir::OpResult> decomp_program();
   bool check_decomp_dynamic_shape(pir::Operation* op);
@@ -46,6 +52,15 @@ class DecompProgram {
       const std::vector<pir::OpResult>& decomp_outs,
       std::unordered_map<pir::OpResult, int> orig_vars_dict);
   bool enable_decomp_by_filter(const std::string& op_name);
+  void set_src_vars(const std::vector<pir::OpResult>& src_vars) {
+    src_vars_ = src_vars;
+  }
+  void set_blacklist(const std::set<std::string>& blacklist) {
+    blacklist_ = blacklist;
+  }
+  void set_whitelist(const std::set<std::string>& whitelist) {
+    whitelist_ = whitelist;
+  }
 
  private:
   pir::Program* program_;

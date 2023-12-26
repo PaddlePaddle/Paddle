@@ -124,8 +124,8 @@ void DecompProgram::check_decomp_outputs(
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (skip_invalid_op_check &&
         paddle::dialect::IsEmptyValue(decomp_outs[i])) {
-      VLOG(0) << "[Prim] Decomp op skip check of output index " << i
-              << " of op " << op_name;
+      VLOG(4) << "[Prim] Decomp op skip check of " << i
+              << "-index output of op " << op_name;
     } else {
       PADDLE_ENFORCE(
           !paddle::dialect::IsEmptyValue(orig_outs[i]),
@@ -265,15 +265,6 @@ std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
       decomp_interface.Decomp(op);
   return decomp_res;
 }
-
-DecompProgram::DecompProgram(pir::Program* program,
-                             const std::vector<pir::OpResult>& src_vars,
-                             const std::set<std::string>& blacklist,
-                             const std::set<std::string>& whitelist)
-    : program_(program),
-      src_vars_(src_vars),
-      blacklist_(blacklist),
-      whitelist_(whitelist) {}
 
 std::vector<pir::OpResult> DecompProgram::decomp_program() {
   std::ostringstream orig_prog_stream;
