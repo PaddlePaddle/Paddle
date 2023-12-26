@@ -534,7 +534,8 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
 
 class TestApiWhileLoop_Error(unittest.TestCase):
     @compare_legacy_with_pt
-    def test_error(self):
+    @test_with_pir_api
+    def test_error1(self):
         def cond_returns_constant(i):
             return 1
 
@@ -560,27 +561,9 @@ class TestApiWhileLoop_Error(unittest.TestCase):
         def body_returns_error_type(i, ten):
             return paddle.increment(i)
 
-        def cond_returns_with_mutable_dict(i, test_dict):
-            return i > 0
-
-        def body_returns_with_mutable_dict(i, test_dict):
-            test_dict['new_key'] = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=1
-            )
-            return paddle.increment(i), test_dict
-
-        def cond_returns_with_mutable_list(i, test_list):
-            return i > 0
-
-        def body_returns_with_mutable_list(i, test_list):
-            test_list.append(
-                paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
-            )
-            return paddle.increment(i), test_list
-
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             data = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=1
             )
@@ -667,7 +650,35 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
             self.assertRaises(ValueError, value_error_body_returns_error_type)
 
+    @compare_legacy_with_pt
+    def test_error2(self):
+        def cond_returns_with_mutable_dict(i, test_dict):
+            return i > 0
+
+        def body_returns_with_mutable_dict(i, test_dict):
+            test_dict['new_key'] = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+            return paddle.increment(i), test_dict
+
+        def cond_returns_with_mutable_list(i, test_list):
+            return i > 0
+
+        def body_returns_with_mutable_list(i, test_list):
+            test_list.append(
+                paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+            )
+            return paddle.increment(i), test_list
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            data = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+
             # The length of `output_vars` with mutable value should keep same with `loop_vars`
+            # TODO(zhangbo): slice error need to fix, loop_vars support list/dict
             def value_error_body_returns_with_mutable_dict():
                 test_dict = {
                     "int_constant": paddle.tensor.fill_constant(
@@ -684,6 +695,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
                 ValueError, value_error_body_returns_with_mutable_dict
             )
 
+            # TODO(zhangbo): loop_vars support list/dict
             def value_error_body_returns_with_mutable_list():
                 test_list = [
                     paddle.tensor.fill_constant(
@@ -702,7 +714,8 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
-    # @compare_legacy_with_pt
+    @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
@@ -714,7 +727,8 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = paddle.tensor.fill_constant([], 'int32', 0)
             x_shape = paddle.shape(x)

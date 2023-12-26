@@ -16,7 +16,7 @@ import collections
 
 from paddle.utils import gast
 
-from .base_transformer import BaseTransformer
+from .base import BaseTransformer
 
 
 class RegisterHookTransformer(BaseTransformer):

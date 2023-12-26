@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
-
-from paddle import base, static
-
-
-@contextlib.contextmanager
-def new_program_scope(main=None, startup=None, scope=None):
-    prog = main if main else static.Program()
-    startup_prog = startup if startup else static.Program()
-    scope = scope if scope else base.core.Scope()
-    with static.scope_guard(scope):
-        with static.program_guard(prog, startup_prog):
-            with base.unique_name.guard():
-                yield
+from .transform import DygraphToStaticAst  # noqa: F401

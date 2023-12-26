@@ -12,31 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base_transformer import BaseTransformer
-from .utils import FunctionNameLivenessAnalysis
-from .variable_trans_func import create_undefined_var
+from paddle.jit.dy2static.utils import ast_to_source_code
+from paddle.utils import gast
+
+from .base import BaseTransformer
 
 __all__ = []
 
 
-class CreateVariableTransformer(BaseTransformer):
-    """ """
+class AssertTransformer(BaseTransformer):
+    """
+    A class transforms python assert to convert_assert.
+    """
 
     def __init__(self, root):
         self.root = root
-        FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):
-        """
-        Main function to transform AST.
-        """
         self.visit(self.root)
 
-    def visit_FunctionDef(self, node):
-        # attributes = set(filter(lambda x: '.' in x, node.pd_scope.modified_vars()))
-        self.generic_visit(node)
-        bodys = node.body
-        names = sorted(node.pd_scope.created_vars())
-        for name in names:
-            bodys[0:0] = [create_undefined_var(name)]
-        return node
+    def visit_Assert(self, node):
+        convert_assert_node = (
+            gast.parse(
+                '_jst.Assert({test}, {msg})'.format(
+                    test=ast_to_source_code(node.test),
+                    msg=ast_to_source_code(node.msg) if node.msg else "",
+                )
+            )
+            .body[0]
+            .value
+        )
+
+        return gast.Expr(value=convert_assert_node)
