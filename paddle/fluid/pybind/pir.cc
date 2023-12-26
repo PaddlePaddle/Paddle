@@ -1025,9 +1025,9 @@ void AppendSetParameter(Program *forward_program,
                         const std::string &name,
                         size_t start_point) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
   pir::AttributeMap attribute_map = {
-      {"parameter_name", pir::StrAttribute::get(ctx, name)},
+      {"output_name", pir::StrAttribute::get(ctx, name)},
   };
   pir::Operation *operation =
       pir::Operation::Create({result}, attribute_map, {}, op_info);
@@ -1167,7 +1167,7 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
-    // NOTE(Aurelius84): we should skip insert SetParameterOp repeatly by
+    // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatly by
     // calling SplitForwardBackward multi-times.
     std::string parameter_name =
         std::string("output_") + std::to_string(counter);
@@ -1175,12 +1175,12 @@ SplitedResult SplitForwardBackward(
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
-      if (it->isa<pir::SetParameterOp>()) {
+      if (it->isa<pir::ShadowOutputOp>()) {
         auto out_name =
-            it->attribute<pir::StrAttribute>("parameter_name").AsString();
+            it->attribute<pir::StrAttribute>("output_name").AsString();
         if (out_name == parameter_name) {
           VLOG(4) << out_name
-                  << " has been inserted SetParameterOp, skip it now.";
+                  << " has been inserted ShadowOutputOp, skip it now.";
           return;
         }
 
@@ -1191,9 +1191,9 @@ SplitedResult SplitForwardBackward(
     if (inserted_value.count(forward_value_map[v])) {
       return;
     }
-    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
-        {"parameter_name", pir::StrAttribute::get(ctx, parameter_name)},
+        {"output_name", pir::StrAttribute::get(ctx, parameter_name)},
     };
     pir::Operation *operation = pir::Operation::Create(
         {forward_value_map[v]}, attribute_map, {}, op_info);
@@ -1208,9 +1208,9 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
-    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
-        {"parameter_name",
+        {"output_name",
          pir::StrAttribute::get(
              ctx, std::string("output_") + std::to_string(counter))},
     };

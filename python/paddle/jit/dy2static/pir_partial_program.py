@@ -135,24 +135,29 @@ class RunableProgram:
         ret = ValueDict()
         ret[fake_op_result()] = "FakeVar"
         for op in program.global_block().ops:
-            if op.name() == "pd_op.data":
-                ret[op.result(0)] = op.attrs()["name"]
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
-            if op.name() == "builtin.parameter":
+            elif op.name() == "builtin.parameter":
                 ret[op.result(0)] = op.attrs()["parameter_name"]
+            elif op.name() == "builtin.shadow_output":
+                ret[op.operand(0).source()] = op.attrs()["output_name"]
+            elif op.name() == "pd_op.data":
+                ret[op.result(0)] = op.attrs()["name"]
         return ret
 
     @classmethod
     def _get_name_defining_op(cls, program, value):
         for op in program.global_block().ops:
-            if op.name() == "pd_op.data":
-                if value.is_same(op.result(0)):
-                    return op
             if op.name() == "builtin.set_parameter":
                 if value.is_same(op.operand(0).source()):
                     return op
-            if op.name() == "builtin.parameter":
+            elif op.name() == "builtin.parameter":
+                if value.is_same(op.result(0)):
+                    return op
+            elif op.name() == "builtin.shadow_output":
+                if value.is_same(op.operand(0).source()):
+                    return op
+            elif op.name() == "pd_op.data":
                 if value.is_same(op.result(0)):
                     return op
         return None
@@ -385,7 +390,7 @@ class PirPassContext:
 
     INPUT_OP_NAME = "pd_op.data"
     PARM_OP_NAME = "builtin.parameter"
-    OUTPUT_OP_NAME = "builtin.set_parameter"
+    OUTPUT_OP_NAME = "builtin.shadow_output"
 
     @classmethod
     def apply(cls, runable_program, build_strategy):
