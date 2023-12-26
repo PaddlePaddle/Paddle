@@ -15,15 +15,18 @@ if(WITH_DISTRIBUTE)
     SRCS dist_tensor_test.cc
     DEPS phi common)
 
-  paddle_test( spmd_rule_test SRCS spmd_rule_test.cc)
-  
-  paddle_test( softmax_grad_spmd_rule_test SRCS softmax_grad_spmd_rule_test.cc)
+  paddle_test(spmd_rule_test SRCS spmd_rule_test.cc)
+
+  paddle_test(softmax_grad_spmd_rule_test SRCS softmax_grad_spmd_rule_test.cc)
 
   paddle_test(tile_spmd_rule_test SRCS tile_spmd_rule_test.cc)
 
-  paddle_test(fused_linear_param_grad_add_spmd_rule_test SRCS fused_linear_param_grad_add_spmd_rule_test.cc)
+  paddle_test(fused_linear_param_grad_add_spmd_rule_test SRCS
+              fused_linear_param_grad_add_spmd_rule_test.cc)
 
-  paddle_test(cross_entropy_softmax_spmd_rule_test SRCS cross_entropy_softmax_spmd_rule_test.cc)
+  paddle_test(cross_entropy_softmax_spmd_rule_test SRCS
+              cross_entropy_softmax_spmd_rule_test.cc)
+
 endif()
 
 cc_test(
