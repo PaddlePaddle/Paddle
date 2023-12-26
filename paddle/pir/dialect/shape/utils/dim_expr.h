@@ -219,7 +219,7 @@ using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
 // ShapeOrDataDimExprs = (tShape [DimExpr], tData (opt [DimExpr]))
 template <typename T>
-class IR_API ShapeOrData {
+class ShapeOrData {
  public:
   explicit ShapeOrData(const std::vector<T>& shape)
       : shape_(shape), data_(std::nullopt) {}
