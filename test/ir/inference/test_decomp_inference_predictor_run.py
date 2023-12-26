@@ -21,17 +21,19 @@ import numpy as np
 import paddle
 from paddle.inference import Config, create_predictor
 
+np.random.seed(2023)
+
 
 class TestNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fc1 = paddle.nn.Linear(4, 4)
-        self.fc2 = paddle.nn.Linear(4, 4)
+        self.fc1 = paddle.nn.Linear(64, 32)
+        self.fc2 = paddle.nn.Linear(64, 32)
 
     def forward(self, x1, x2):
         y1 = self.fc1(x1)
         y2 = self.fc2(x2)
-        y = paddle.nn.functional.relu(y1 + y2)
+        y = paddle.nn.functional.softmax(y1 + y2)
         return y
 
 
@@ -40,16 +42,19 @@ class TestNet(paddle.nn.Layer):
 )
 class TestPredictorRunWithTensor(unittest.TestCase):
     def setUp(self):
+        self.shape = [4, 8, 16, 64]
+        self.x = np.random.random(self.shape).astype(np.float32)
+        self.y = np.random.random(self.shape).astype(np.float32)
         self.temp_dir = tempfile.TemporaryDirectory()
         net = TestNet()
         model = paddle.jit.to_static(
             net,
             input_spec=[
                 paddle.static.InputSpec(
-                    shape=[2, 4], dtype='float32', name='input0'
+                    shape=self.shape, dtype='float32', name='input0'
                 ),
                 paddle.static.InputSpec(
-                    shape=[2, 4], dtype='float32', name='input1'
+                    shape=self.shape, dtype='float32', name='input1'
                 ),
             ],
         )
@@ -85,13 +90,8 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         return predictor
 
     def get_inputs(self):
-        input0 = np.array([[1, 2, 3, 4], [2, 3, 4, 5]]).astype(np.float32)
-        input1 = np.array([[0.1, 0.2, 0.3, 0.4], [1.2, 1.3, 1.4, 1.5]]).astype(
-            np.float32
-        )
-
-        input0_tensor = paddle.to_tensor(input0)
-        input1_tensor = paddle.to_tensor(input1)
+        input0_tensor = paddle.to_tensor(self.x)
+        input1_tensor = paddle.to_tensor(self.y)
 
         return [input0_tensor, input1_tensor]
 
@@ -126,7 +126,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         pir_output = self.get_disorder_output(pir_predictor)
 
         np.testing.assert_allclose(
-            output.numpy().flatten(), pir_output.numpy().flatten()
+            output.numpy().flatten(), pir_output.numpy().flatten(), rtol=1e-6
         )
 
     def test_output_prim(self):
@@ -139,7 +139,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         pir_output = self.get_disorder_output(pir_predictor)
 
         np.testing.assert_allclose(
-            output.numpy().flatten(), pir_output.numpy().flatten()
+            output.numpy().flatten(), pir_output.numpy().flatten(), rtol=1e-6
         )
 
 
