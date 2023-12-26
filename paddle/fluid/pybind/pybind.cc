@@ -77,6 +77,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/float8.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
@@ -2958,6 +2959,8 @@ All parameter, weight, gradient are variables in Paddle.
       .value("COMPLEX128", phi::DataType::COMPLEX128)
       .value("FLOAT16", phi::DataType::FLOAT16)
       .value("BFLOAT16", phi::DataType::BFLOAT16)
+      .value("FLOAT8_E4M3", phi::DataType::FLOAT8_E4M3)
+      .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .export_values();
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

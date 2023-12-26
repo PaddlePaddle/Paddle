@@ -26,9 +26,15 @@ void CastKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   if (out->IsSharedWith(x)) {
     auto x_origin = x;
-    CastCUDAKernel<T>(dev_ctx, x_origin, out_dtype, out);
+    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
+                              CastCUDAKernelImpl<T, data_t>(
+                                  dev_ctx, x_origin, out_dtype, out);
+                            }));
   } else {
-    CastCUDAKernel<T>(dev_ctx, x, out_dtype, out);
+    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
+                              CastCUDAKernelImpl<T, data_t>(
+                                  dev_ctx, x, out_dtype, out);
+                            }));
   }
 }
 }  // namespace phi
@@ -53,4 +59,7 @@ void CastKernel(const Context& dev_ctx,
     kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED); \
   }
 
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, phi::dtype::bfloat16)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast,
+                                  phi::dtype::bfloat16,
+                                  phi::dtype::float8_e4m3,
+                                  phi::dtype::float8_e5m2)

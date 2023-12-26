@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
 /**
@@ -282,6 +284,8 @@ DATA_MEMBER_FUNC_INSTANTIATION(uint32_t);
 DATA_MEMBER_FUNC_INSTANTIATION(int64_t);
 DATA_MEMBER_FUNC_INSTANTIATION(uint64_t);
 DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e4m3);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e5m2);
 DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16);
 DATA_MEMBER_FUNC_INSTANTIATION(float);
 DATA_MEMBER_FUNC_INSTANTIATION(double);

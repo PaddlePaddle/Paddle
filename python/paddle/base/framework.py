@@ -1175,6 +1175,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         dtype = np.uint16
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3":
+        dtype = 'float8_e4m3'
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
+        dtype = 'float8_e5m2'
     else:
         dtype = np.dtype(np_dtype)
 
@@ -1182,6 +1186,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
         return core.VarDesc.VarType.FP64
+    elif dtype == 'float8_e4m3':
+        return core.VarDesc.VarType.FP8_E4M3
+    elif dtype == 'float8_e5m2':
+        return core.VarDesc.VarType.FP8_E5M2
     elif dtype == np.float16:
         return core.VarDesc.VarType.FP16
     elif dtype == np.int32:

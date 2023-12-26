@@ -31,6 +31,10 @@ namespace phi {
       callback, ::phi::dtype::float16, DataType::FLOAT16);          \
   _PhiForEachDataTypeHelper_(                                       \
       callback, ::phi::dtype::bfloat16, DataType::BFLOAT16);        \
+  _PhiForEachDataTypeHelper_(                                       \
+      callback, ::phi::dtype::float8_e4m3, DataType::FLOAT8_E4M3);  \
+  _PhiForEachDataTypeHelper_(                                       \
+      callback, ::phi::dtype::float8_e5m2, DataType::FLOAT8_E5M2);  \
   _PhiForEachDataTypeHelper_(callback, double, DataType::FLOAT64);  \
   _PhiForEachDataTypeHelper_(callback, int, DataType::INT32);       \
   _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);   \
@@ -131,7 +135,9 @@ enum ProtoDataType {
   BF16 = 22,
   COMPLEX64 = 23,
   COMPLEX128 = 24,
-  PSTRING = 29
+  PSTRING = 29,
+  FP8_E4M3 = 32,
+  FP8_E5M2 = 33
 };
 
 inline DataType TransToPhiDataType(const int& dtype) {
@@ -156,6 +162,10 @@ inline DataType TransToPhiDataType(const int& dtype) {
       return DataType::COMPLEX64;
     case ProtoDataType::COMPLEX128:
       return DataType::COMPLEX128;
+    case ProtoDataType::FP8_E4M3:
+      return DataType::FLOAT8_E4M3;
+    case ProtoDataType::FP8_E5M2:
+      return DataType::FLOAT8_E5M2;
     case ProtoDataType::FP16:
       return DataType::FLOAT16;
     case ProtoDataType::BF16:
@@ -193,6 +203,10 @@ inline int TransToProtoVarType(const DataType& dtype) {
       return ProtoDataType::COMPLEX64;
     case DataType::COMPLEX128:
       return ProtoDataType::COMPLEX128;
+    case DataType::FLOAT8_E4M3:
+      return ProtoDataType::FP8_E4M3;
+    case DataType::FLOAT8_E5M2:
+      return ProtoDataType::FP8_E5M2;
     case DataType::FLOAT16:
       return ProtoDataType::FP16;
     case DataType::BFLOAT16:
