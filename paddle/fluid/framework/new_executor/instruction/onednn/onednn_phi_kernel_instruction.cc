@@ -81,14 +81,14 @@ static RuntimeAttribute ConvertPirAttribute2RuntimeAttribute(
 
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
-            "ConvertPIRAttribute2RuntimeAttribute not support [%s] ",
+            "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
             attr_type_name));
       }
     }
     return vec_res;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "ConvertPIRAttribute2RuntimeAttribute not support [%s] ",
+        "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
         attr_type_name));
   }
 }
@@ -309,7 +309,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
     std::vector<std::string> extra_args;
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
-      extra_attr_[attr_name] = ConvertPIRAttribute2RuntimeAttribute(
+      extra_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
           op_attributes.at(attr_name), attr_name, yaml_info_parser);
     }
   }
