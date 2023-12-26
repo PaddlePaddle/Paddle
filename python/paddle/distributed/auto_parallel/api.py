@@ -515,6 +515,15 @@ class _ShardOptimizer:
         optimizer.helper = paddle.base.layer_helper.LayerHelper(
             optimizer.__class__.__name__
         )
+        # solve global_clip for auto_parallel
+        self._shard_clip = False
+        self._generate_flag = False
+        if (
+            hasattr(optimizer, "_grad_clip")
+            and optimizer._grad_clip is not None
+            and isinstance(optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm)
+        ):
+            self._shard_clip = True
         self._inner_opt = optimizer
         self._shard_fn = shard_fn
 
@@ -555,15 +564,40 @@ class _ShardOptimizer:
                         placements=placements,
                     )
 
+    def generate_pp_mesh(self, all_process_ids=[]):
+        pp_mesh = None
+        if len(all_process_ids) <= 1:
+            return pp_mesh
+        else:
+            mesh = np.array(all_process_ids)
+            for i in range(mesh.shape[-1]):
+                ranks = mesh[:, i].tolist()
+                if dist.get_rank() in ranks:
+                    pp_mesh = dist.ProcessMesh(ranks)
+        return pp_mesh
+
     def step(self):
         if not isinstance(self._inner_opt._parameter_list[0], dict):
             params_grads = []
+            all_process_ids = []
             for param in self._inner_opt._parameter_list:
                 if param.stop_gradient:
                     continue
                 if param._grad_ivar() is not None:
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
+                if (
+                    not self._generate_flag
+                    and self._shard_clip
+                    and param.is_dist()
+                ):
+                    if param.process_mesh.process_ids not in all_process_ids:
+                        all_process_ids.append(param.process_mesh.process_ids)
+            if not self._generate_flag and self._shard_clip:
+                self._inner_opt._grad_clip._pp_mesh = self.generate_pp_mesh(
+                    all_process_ids
+                )
+                self._generate_flag = True
             for p, g in params_grads:
                 self._shard_accumulator(p)
             self._inner_opt._apply_optimize(
@@ -572,12 +606,36 @@ class _ShardOptimizer:
         else:
             for param_group in self._inner_opt._param_groups:
                 params_grads = defaultdict(lambda: [])
+                all_process_ids = []
+                shard_clip_flag = False
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
                         params_grads['params'].append((param, grad_var))
+                    if (
+                        not self._generate_flag
+                        and "grad_clip" in param_group.keys()
+                        and isinstance(
+                            param_group["grad_clip"],
+                            paddle.nn.ClipGradByGlobalNorm,
+                        )
+                        and param.is_dist()
+                    ):
+                        if (
+                            param.process_mesh.process_ids
+                            not in all_process_ids
+                        ):
+                            all_process_ids.append(
+                                param.process_mesh.process_ids
+                            )
+                            shard_clip_flag = True
+
+                if shard_clip_flag:
+                    param_group["grad_clip"]._pp_mesh = self.generate_pp_mesh(
+                        all_process_ids
+                    )
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
@@ -586,6 +644,8 @@ class _ShardOptimizer:
                 self._inner_opt._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+            # only generate once.
+            self._generate_flag = True
 
     def state_dict(self):
         """
@@ -1249,15 +1309,13 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            # TODO(pangengzheng): construct dist_tensor with _dtensor_from_local api when it is ready.
-            global_tensor = paddle.zeros(global_shape, dtype=local_tensor.dtype)
             mesh = dist.ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )
             )
             placements = to_placements(dist_attr["dims_mapping"], mesh)
-            dist_tensor = dist.shard_tensor(global_tensor, mesh, placements)
+            dist_tensor = dtensor_from_local(local_tensor, mesh, placements)
             assert (
                 dist_tensor._local_value().shape == local_tensor.shape
             ), f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"

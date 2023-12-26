@@ -425,7 +425,7 @@ void HandleForSpecialOp(pir::Operation* op,
         if (place.GetType() == phi::AllocationType::UNDEFINED) {
           place = phi::CPUPlace();
         }
-        if (phi::product(dim) >= 0) {
+        if (!common::contain_unknown_dim(dim)) {
           phi::DenseTensorMeta meta(dtype.data(), dim);
           t->set_meta(meta);
           auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);

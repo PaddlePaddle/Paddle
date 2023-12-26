@@ -371,7 +371,8 @@
   kernel :
     func : dropout
     data_type : x
-  optional : seed_tensor, mask
+  optional : seed_tensor
+  intermediate : mask
   backward : dropout_grad
 
 - op : einsum
@@ -1391,6 +1392,16 @@
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
 
+- op: c_softmax_with_cross_entropy
+  args: (Tensor logits, Tensor label,  int64_t ignore_index=-100, int ring_id=0, int rank=0, int nranks=0)
+  output: Tensor(softmax), Tensor(loss)
+  infer_meta:
+    func : CSoftmaxWithCrossEntropyInferMeta
+  kernel:
+    func: c_softmax_with_cross_entropy
+    data_type : logits
+  backward: c_softmax_with_cross_entropy_grad
+
 - op: dpsgd
   args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
   output: Tensor(param_out)
@@ -1440,6 +1451,18 @@
   kernel:
      func: match_matrix_tensor
   backward: match_matrix_tensor_grad
+
+- op: lars_momentum
+  args: (Tensor param,  Tensor velocity, Tensor grad, Tensor learning_rate, Tensor master_param, float mu, float lars_coeff=0.001f, float[] lars_weight_decay={0.0005}, float epsilon=0, bool multi_precision=false, float rescale_grad=1.0f)
+  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  infer_meta:
+    func: SparseMomentumInferMeta
+    param: [param, learning_rate, velocity]
+  kernel:
+    func: lars_momentum
+    param: [param, velocity, learning_rate, grad, master_param, lars_weight_decay, mu, lars_coeff, epsilon, multi_precision, rescale_grad]
+    data_type: param
+  optional: master_param, master_param_out
 
 - op: number_count
   args: (Tensor numbers, int upper_range)

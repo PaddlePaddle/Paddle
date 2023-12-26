@@ -23,7 +23,6 @@ from paddle.jit.dy2static.utils import (
     ORIGI_INFO,
     ast_to_source_code,
     create_assign_node,
-    get_attribute_full_name,
 )
 from paddle.utils import gast
 
@@ -48,35 +47,6 @@ class BaseTransformer(gast.NodeTransformer):
                     setattr(n, ORIGI_INFO, origin_info)
 
         return result
-
-
-class RenameTransformer(BaseTransformer):
-    def __init__(self, node):
-        assert isinstance(
-            node, gast.AST
-        ), "RenameTransformer only accepts gast.AST as input"
-        self.root = node
-        self.old_name = ""
-        self.new_name = ""
-
-    def rename(self, old_name, new_name):
-        self.old_name = old_name
-        self.new_name = new_name
-        self.visit(self.root)
-
-    def visit_Name(self, node):
-        self.generic_visit(node)
-        if node.id == self.old_name:
-            node.id = self.new_name
-        return node
-
-    def visit_Attribute(self, node):
-        self.generic_visit(node)
-        attr_full_name = get_attribute_full_name(node)
-        if attr_full_name == self.old_name:
-            new_name_node = gast.parse(self.new_name).body[0].value
-            return new_name_node
-        return node
 
 
 class NameNodeReplaceTransformer(BaseTransformer):

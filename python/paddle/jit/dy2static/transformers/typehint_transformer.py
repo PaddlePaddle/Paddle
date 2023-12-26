@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from .base_transformer import BaseTransformer
+from .base import BaseTransformer
 
 __all__ = []
 

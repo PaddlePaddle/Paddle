@@ -69,6 +69,7 @@ static std::stack<const Variable*> PopElements(VariableRefArray* var_array,
   for (uint64_t i = 0; i < num; i++) {
     rtn.push(var_array->back());
     var_array->pop_back();
+    VLOG(6) << "tuple pop " << rtn.top() << " from : " << var_array;
   }
   return rtn;
 }

@@ -21,7 +21,9 @@ import numpy as np
 from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
-from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
+from paddle.jit.dy2static.transformers.logical_transformer import (
+    cmpop_node_to_str,
+)
 from paddle.utils import gast
 
 SEED = 2020
