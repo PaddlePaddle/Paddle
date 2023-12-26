@@ -60,6 +60,9 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
       enable_job_schedule_profiler_(false) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Error Construct A ProgramInterpreter."));
+
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
@@ -145,6 +148,8 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
                                   bool enable_job_schedule_profiler,
                                   bool enable_op_profiling) {
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Error Construct A ProgramInterpreter."));
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
   is_in_op_profiling_mode_ = enable_op_profiling;
 
@@ -234,6 +239,8 @@ FetchList ProgramInterpreter::Run(
     const std::vector<phi::DenseTensor>& feed_tensors,
     bool need_fetch,
     bool enable_job_schedule_profiler) {
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Error Construct A ProgramInterpreter."));
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   SetDeviceId(place_);

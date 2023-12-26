@@ -1360,7 +1360,7 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Note: If Ture, executor will use new IR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
-                         false,
+                         true,
                          "Enable new IR in executor");
 
 /**
