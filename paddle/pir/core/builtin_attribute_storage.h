@@ -157,7 +157,9 @@ struct Complex64AttributeStorage : public AttributeStorage {
     return new Complex64AttributeStorage(key);
   }
   static std::size_t HashValue(const ParamKey &key) {
-    return std::hash<float>{}(key.real + key.imag);
+    std::stringstream complex_str;
+    complex_str << key.real << "+" << key.imag << "i";
+    return std::hash<std::string>{}(complex_str.str());
   }
 
   bool operator==(ParamKey key) const { return data_ == key; }
@@ -175,7 +177,9 @@ struct Complex128AttributeStorage : public AttributeStorage {
     return new Complex128AttributeStorage(key);
   }
   static std::size_t HashValue(const ParamKey &key) {
-    return std::hash<double>{}(key.real + key.imag);
+    std::stringstream complex_str;
+    complex_str << key.real << "+" << key.imag << "i";
+    return std::hash<std::string>{}(complex_str.str());
   }
 
   bool operator==(ParamKey key) const { return data_ == key; }
