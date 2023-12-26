@@ -102,12 +102,18 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                               "The dtype in output[%d] of "
                               "true_block&false_block must be equal.",
                               i));
-        PADDLE_ENFORCE_EQ(l_type.data_layout(),
-                          r_type.data_layout(),
-                          phi::errors::PreconditionNotMet(
-                              "The date_layout in output[%d] of "
-                              "true_block&false_block must be equal.",
-                              i));
+        if (l_type.data_layout() != phi::DataLayout::UNDEFINED &&
+            r_type.data_layout() != phi::DataLayout::UNDEFINED) {
+          PADDLE_ENFORCE_EQ(
+              l_type.data_layout(),
+              r_type.data_layout(),
+              phi::errors::PreconditionNotMet(
+                  "The data_layout in output[%d] of "
+                  "true_block (%s) & false_block (%s) must be equal.",
+                  i,
+                  l_type.data_layout(),
+                  r_type.data_layout()));
+        }
         PADDLE_ENFORCE_EQ(l_type.lod(),
                           r_type.lod(),
                           phi::errors::PreconditionNotMet(
