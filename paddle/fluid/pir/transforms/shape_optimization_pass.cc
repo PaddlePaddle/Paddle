@@ -551,7 +551,8 @@ void InferSymExprForAllValues(ModuleOp module_op) {
           auto infer_symbolic_shape_interface =
               op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
           if (infer_symbolic_shape_interface) {
-            infer_symbolic_shape_interface.InferSymbolicShape(&shape_analysis);
+            PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
+                &shape_analysis));
           }
         }
 

@@ -48,6 +48,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     auto res_id = pir::GetValueId(&res);
 
     shape_analysis->value_id_to_shapeordata_[res_id] = value_shape;
+    return true;
   }
 
   CombineOpInferSymbolicShapeInterfaceModel()

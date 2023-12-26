@@ -118,6 +118,7 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
 
   symbol::ShapeOrDataDimExprs shape_data{shapes};
   shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
 }
 
 bool ShapeSrOpInferSymbolicShape(
@@ -183,15 +184,15 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     shapes.push_back(dim_expr);
   }
 
-  pir::AttributeMap attributes = op->attributes();
+  // pir::AttributeMap attributes = op->attributes();
 
-  auto attr_starts =
-      attributes["starts"].dyn_cast<pir::ArrayAttribute>().AsVector();
-  auto start = attr_starts[0].dyn_cast<pir::Int64Attribute>().data();
+  // auto attr_starts =
+  //     attributes["starts"].dyn_cast<pir::ArrayAttribute>().AsVector();
+  // auto start = attr_starts[0].dyn_cast<pir::Int64Attribute>().data();
 
-  auto attr_ends =
-      attributes["ends"].dyn_cast<pir::ArrayAttribute>().AsVector();
-  auto end = attr_ends[0].dyn_cast<pir::Int64Attribute>().data();
+  // auto attr_ends =
+  //     attributes["ends"].dyn_cast<pir::ArrayAttribute>().AsVector();
+  // auto end = attr_ends[0].dyn_cast<pir::Int64Attribute>().data();
 
   symbol::ShapeOrDataDimExprs shape_data{shapes};
   shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
