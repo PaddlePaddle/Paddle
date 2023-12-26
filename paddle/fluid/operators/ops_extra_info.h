@@ -100,6 +100,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
+        {"scale_out", ExtraAttrProperty::ONEDNN},
         {"Scale_in", ExtraAttrProperty::ONEDNN},
         {"Scale_in_eltwise", ExtraAttrProperty::ONEDNN},
         {"Scale_x", ExtraAttrProperty::ONEDNN},
