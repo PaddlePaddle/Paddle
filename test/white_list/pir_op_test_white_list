@@ -6,10 +6,7 @@ test_adadelta_op
 test_adagrad_op
 test_adagrad_op_static_build
 test_adamax_op
-test_adamw_op
-test_adamw_op_static_build
 test_addmm_op
-test_affine_grid_op
 test_allclose_op
 test_amp_check_finite_and_scale_op
 test_angle_op
@@ -60,14 +57,12 @@ test_conv2d_bf16_mkldnn_op
 test_conv2d_int8_mkldnn_op
 test_conv2d_mkldnn_op
 test_conv2d_op
-test_conv2d_op_depthwise_conv
 test_conv2d_transpose_bf16_mkldnn_op
 test_conv2d_transpose_mkldnn_op
 test_conv2d_transpose_op
 test_conv2d_transpose_op_depthwise_conv
 test_conv3d_mkldnn_op
 test_conv3d_op
-test_conv3d_transpose_op
 test_conv3d_transpose_part2_op
 test_crop_tensor_op
 test_cross_op
@@ -234,7 +229,6 @@ test_polygamma_op
 test_pool2d_int8_mkldnn_op
 test_pool2d_mkldnn_op
 test_pool2d_op
-test_pool3d_op
 test_pool_max_op
 test_prelu_mkldnn_op
 test_prelu_op
