@@ -315,13 +315,9 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
 
-    # TODO(zhangbo): Support while grad exe for pir
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_while_loop_backward2(self):
-        def cond1(i, x):
-            return i < 2
-
-        def cond2(i, x):
+        def cond(i, x):
             return i < 3
 
         def body(i, x):
@@ -339,7 +335,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             x.stop_gradient = False
             x.persistable = True
 
-            out = paddle.static.nn.while_loop(cond1, body, [i, x])
+            out = paddle.static.nn.while_loop(cond, body, [i, x])
             mean = paddle.mean(out[1])
             grad_list = append_backward(mean)
 
@@ -353,21 +349,17 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         feed_i = np.ones(1).astype('float32')
         feed_x = np.ones(1).astype('float32')
         data = np.asarray([2]).astype('float32')
-        ans = np.asarray([1]).astype('float32')
-        x1_grad = np.asarray([1]).astype('float32')
         i_grad = np.asarray([3]).astype('float32')
         x_grad = np.asarray([2]).astype('float32')
 
         if paddle.framework.in_pir_mode():
+            fetch_list = [out[1]]
             for p, g in grad_list:
-                if p == i:
-                    di = g
-                if p == x:
-                    dx = g
+                fetch_list.append(g)
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
-                fetch_list=[out[1], di, dx],
+                fetch_list=fetch_list,
             )
         else:
             res = exe.run(
@@ -375,10 +367,9 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 feed={'i': feed_i, 'x': feed_x},
                 fetch_list=[out[1].name, i.grad_name, x.grad_name],
             )
-
-        np.testing.assert_allclose(np.asarray(res[0]), ans, rtol=1e-05)
-        np.testing.assert_allclose(np.asarray(res[1]), ans, rtol=1e-05)
-        np.testing.assert_allclose(np.asarray(res[2]), ans, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
+        np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
 
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
@@ -704,7 +695,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
     @compare_legacy_with_pt
-    # @test_with_pir_api (need to fix slice bug in pir)
+    @test_with_pir_api
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
@@ -716,7 +707,8 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = paddle.tensor.fill_constant([], 'int32', 0)
             x_shape = paddle.shape(x)

@@ -145,8 +145,13 @@ TEST(DrrTest, AttentionFuse) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateAttentionFusePass());
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
