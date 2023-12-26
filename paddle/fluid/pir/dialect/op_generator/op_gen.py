@@ -39,6 +39,10 @@ sys.path.append(
 )
 import gen as vjp_gen
 
+# Note(Galaxy1458) The need_export_symbol_op_list is used
+# for some unittests these need to export symbol op compiled with dynamic lib.
+need_export_symbol_op_list = ['AbsOp', 'FullOp']
+
 # =====================================
 # String Template for h file code gen
 # =====================================
@@ -1352,7 +1356,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
 
                 # gen op_declare_str/op_defined_str
                 TEST_API = ""
-                if op_class_name in ["AbsOp", "FullOp"]:
+                if op_class_name in need_export_symbol_op_list:
                     TEST_API = "TEST_API"
                 if len(op_non_mutable_attribute_name_list) == 0:
                     op_declare_str = OP_DECLARE_TEMPLATE.format(
