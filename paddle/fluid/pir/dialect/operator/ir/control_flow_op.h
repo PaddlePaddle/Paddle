@@ -41,7 +41,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
                     std::unique_ptr<pir::Block> &&false_block);
 
   pir::Value cond() { return operand_source(0); }
-  pir::Block &true_block();
+  TEST_API pir::Block &true_block();
   TEST_API pir::Block &false_block();
   pir::Region &true_region() { return (*this)->region(0); }
   pir::Region &false_region() { return (*this)->region(1); }
