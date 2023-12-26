@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numbers
 
 import numpy as np
 
 import paddle
 from paddle import distribution
-from paddle.base import framework
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import exponential_family
+from paddle.framework import in_dynamic_mode
 
 
 class Exponential(exponential_family.ExponentialFamily):
@@ -37,7 +38,7 @@ class Exponential(exponential_family.ExponentialFamily):
     * :math:`rate = \theta`: is the rate parameter.
 
     Args:
-        rate (int|float|Tensor): Rate parameter. The value of rate must be positive.
+        rate (float|Tensor): Rate parameter. The value of rate must be positive.
 
     Example:
         .. code-block:: python
@@ -56,16 +57,25 @@ class Exponential(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, rate):
-        if not isinstance(
-            rate, (numbers.Real, paddle.Tensor, framework.Variable)
-        ):
-            raise TypeError(
-                f"Expected type of rate is scalar or tensor, but got {type(rate)}"
+        if not in_dynamic_mode():
+            check_type(
+                rate,
+                'rate',
+                (float, Variable),
+                'Exponential',
             )
 
-        if isinstance(rate, numbers.Real):
-            rate = paddle.full(shape=(), fill_value=rate, dtype=paddle.float32)
-        self.rate = rate
+        # Get/convert rate to tensor.
+        if self._validate_args(rate):
+            self.rate = rate
+            self.dtype = convert_dtype(rate.dtype)
+        else:
+            [self.rate] = self._to_tensor(rate)
+            self.dtype = paddle.get_default_dtype()
+
+        if not paddle.all(self.rate > 0):
+            raise ValueError("The arg of `rate` must be positive.")
+
         super().__init__(self.rate.shape)
 
     @property

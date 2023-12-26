@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numbers
 
 import paddle
 from paddle import distribution
-from paddle.base import framework
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import exponential_family
+from paddle.framework import in_dynamic_mode
 
 
 class Gamma(exponential_family.ExponentialFamily):
@@ -33,11 +34,11 @@ class Gamma(exponential_family.ExponentialFamily):
         \Gamma(\alpha)=\int_{0}^{\infty} x^{\alpha-1} e^{-x} \mathrm{~d} x, (\alpha>0)
 
     Args:
-        concentration (int|float|Tensor): Concentration parameter. It supports broadcast semantics.
+        concentration (float|Tensor): Concentration parameter. It supports broadcast semantics.
             The value of concentration must be positive. When the parameter is a tensor,
             it represents multiple independent distribution with
             a batch_shape(refer to ``Distribution`` ).
-        rate (int|float|Tensor): Rate parameter. It supports broadcast semantics.
+        rate (float|Tensor): Rate parameter. It supports broadcast semantics.
             The value of rate must be positive. When the parameter is tensor,
             it represent multiple independent distribution with
             a batch_shape(refer to ``Distribution`` ).
@@ -71,29 +72,40 @@ class Gamma(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, concentration, rate):
-        if not isinstance(
-            concentration, (numbers.Real, paddle.Tensor, framework.Variable)
-        ):
-            raise TypeError(
-                f"Expected type of concentration is scalar or tensor, but got {type(concentration)}"
+        if not in_dynamic_mode():
+            check_type(
+                concentration,
+                'concentration',
+                (float, Variable),
+                'Gamma',
+            )
+            check_type(
+                rate,
+                'rate',
+                (float, Variable),
+                'Gamma',
             )
 
-        if not isinstance(
-            rate, (numbers.Real, paddle.Tensor, framework.Variable)
-        ):
-            raise TypeError(
-                f"Expected type of rate is scalar or tensor, but got {type(rate)}"
+        # Get/convert concentration/rate to tensor.
+        if self._validate_args(concentration, rate):
+            self.concentration = concentration
+            self.rate = rate
+            self.dtype = convert_dtype(concentration.dtype)
+        else:
+            [self.concentration, self.rate] = self._to_tensor(
+                concentration, rate
             )
+            self.dtype = paddle.get_default_dtype()
 
-        if isinstance(concentration, numbers.Real):
-            concentration = paddle.full(shape=[], fill_value=concentration)
+        if not paddle.all(self.concentration > 0):
+            raise ValueError("The arg of `concentration` must be positive.")
 
-        if isinstance(rate, numbers.Real):
-            rate = paddle.full(shape=[], fill_value=rate)
+        if not paddle.all(self.rate > 0):
+            raise ValueError("The arg of `rate` must be positive.")
 
-        self.concentration, self.rate = paddle.broadcast_tensors(
-            [concentration, rate]
-        )
+        # self.concentration, self.rate = paddle.broadcast_tensors(
+        #     [concentration, rate]
+        # )
         super().__init__(self.concentration.shape)
 
     @property
