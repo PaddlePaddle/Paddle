@@ -26,6 +26,8 @@ namespace paddle {
 
 class DecompProgram {
  public:
+  explicit DecompProgram(pir::Program* program) : program_(program) {}
+
   DecompProgram(pir::Program* program,
                 const std::vector<pir::OpResult>& src_vars,
                 const std::set<std::string>& blacklist,
@@ -34,8 +36,6 @@ class DecompProgram {
         src_vars_(src_vars),
         blacklist_(blacklist),
         whitelist_(whitelist) {}
-
-  explict DecompProgram(pir::Program* program) : program_(program) {}
 
   std::vector<pir::OpResult> decomp_program();
   bool check_decomp_dynamic_shape(pir::Operation* op);
