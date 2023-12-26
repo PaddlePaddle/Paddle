@@ -68,22 +68,21 @@ class AutoMixedPrecisionPass : public pir::Pass {
   }
 
   void Run(pir::Operation* op) override {
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
       for (auto& block : region) {
         LOG(INFO) << "===========Get Op Precision============" << std::endl;
-        GetOpPrecision(block);
+        GetOpPrecision(&block);
         LOG(INFO) << "===========Update Op Precision============" << std::endl;
-        UpdateOpPrecision(block);
+        UpdateOpPrecision(&block);
 
         LOG(INFO) << "===========" << op_run_low_precision_.size() << " of "
-                  << block->size() << " ops"
+                  << block.size() << " ops"
                   << " run low precision" << std::endl;
-        pir::Builder builder = pir::Builder(context_, block);
+        pir::Builder builder = pir::Builder(context_, &block);
         LOG(INFO) << "===========Process Op Precision============" << std::endl;
 
-        ProcessBlock(block, builder);
+        ProcessBlock(&block, builder);
         LOG(INFO) << "===========Insert Cast Op Num : " << insert_cast_op_num_
                   << "============" << std::endl;
       }
@@ -256,12 +255,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
         }
       }
 
-      // 输出的方式比较好
-      // 一个op和他的输出是绑定的
-      // op1 -> var1
-      // var1 -> op2
-      // var1 的精度
-
       // builtin.combine -> vector type
       // reshape op
       // reshape -> vector_type
@@ -283,7 +276,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   }
 
   void RewriteOp(pir::Operation* op,
-                 pir::Builder& builder) const {  // NOLINT
+                 pir::Builder& builder) {  // NOLINT
     LOG(INFO) << "Rewrite op " << op->name() << std::endl;
     if (IsBuiltinOp(op)) {
       RewriteBuiltinOp(op, builder);
@@ -581,7 +574,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   }
 
   void RewritePdOp(pir::Operation* op,
-                   pir::Builder& builder) const {  // NOLINT
+                   pir::Builder& builder) {  // NOLINT
     LOG(INFO) << "Rewrite pd op " << op->name() << std::endl;
     phi::Backend backend = ConvertPlaceToBackend(place_);
     std::string op_type = op->name().substr(op->name().find(".") + 1);
