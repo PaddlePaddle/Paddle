@@ -127,9 +127,7 @@ parse_kernel_key_template = """
 """
 
 infer_symbolic_shape_template = """
-  static bool InferSymbolicShape(pir::Builder &builder,
-                              const std::vector<pir::OpOperand> &operands,
-                              std::vector<pir::Value> &reified_return_shapes);
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis* shape_analysis);
 """
 
 # =====================================
