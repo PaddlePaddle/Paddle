@@ -583,18 +583,18 @@ void FCKernel(const Context& dev_ctx,
                              dev_ctx.GetDnnAttr("mkldnn_data_type"))
           : "float32";
   const float scale_in =
-      dev_ctx.HasDnnAttr("scale_in")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_in"))
+      dev_ctx.HasDnnAttr("Scale_in")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_in"))
           : 1.0f;
   std::vector<float> tmp_scale_weights = {1.0f};
   const std::vector<float> scale_weights =
-      dev_ctx.HasDnnAttr("scale_weights")
+      dev_ctx.HasDnnAttr("Scale_weights")
           ? PADDLE_GET_CONST(std::vector<float>,
-                             dev_ctx.GetDnnAttr("scale_weights"))
+                             dev_ctx.GetDnnAttr("Scale_weights"))
           : tmp_scale_weights;
   const float scale_out =
-      dev_ctx.HasDnnAttr("scale_out")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_out"))
+      dev_ctx.HasDnnAttr("Scale_out")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"))
           : 1.0f;
   const bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
