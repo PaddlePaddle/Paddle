@@ -201,11 +201,13 @@ class TestSemiAutoParallelLlamaDPMPStrategy(
 
 class TestSemiAutoParallelLlama2D(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=4, timeout=200, nnode=1)
+        super().setUp(num_of_devices=4, timeout=400, nnode=1)
         self._default_envs = {"dp": "2", "mp": "2", "pp": "1", "acc_step": "2"}
         self._changeable_envs = {
             "backend": ["gpu"],
             "use_sp": ["true", "false"],
+            "recompute": ["true", "false"],
+            "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy(self):
@@ -226,6 +228,10 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
         self._changeable_envs = {
             "backend": ["gpu"],
             "use_sp": ["true", "false"],
+            "use_param_group": ["false", "true"],
+            # TODO(Yuang Liu): add recompute ut to pp after fixing pp probs
+            # "recompute": ["true", "false"],
+            # "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy(self):
