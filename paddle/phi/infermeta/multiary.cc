@@ -3260,6 +3260,7 @@ void NceInferMeta(const MetaTensor& input,
   out_dims.push_back(x_dims[0]);
   out_dims.push_back(1);
   cost->set_dims(common::make_ddim(out_dims));
+  cost->set_dtype(DataType::FLOAT32);
 
   if (!is_test) {
     // set dims of output(SampleOut)
