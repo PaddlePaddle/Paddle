@@ -427,6 +427,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
             mem_array.stop_gradient = False
+            mem_array.persistable = True
             i = paddle.increment(i)
             paddle.tensor.array_write(d1, i, array=data_array)
             i = paddle.increment(i)
@@ -449,6 +450,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             sum_result = paddle.tensor.array_read(array=out[3], i=j)
             mean = paddle.mean(sum_result)
             grad_list = append_backward(mean)
+
             place = (
                 base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()

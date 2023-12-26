@@ -562,6 +562,9 @@ phi::DataType GetValueDtype(Value value) {
   } else if (value.type().isa<SelectedRowsType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else if (value.type().isa<DenseTensorArrayType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "

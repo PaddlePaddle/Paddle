@@ -256,9 +256,14 @@ std::vector<std::vector<pir::OpResult>> ArrayReadOp::Vjp(
           outputs.size()));
 
   VLOG(6) << "Vjp prepare call  Array_read's vjp inteface";
-  pir::OpResult tensor_res = paddle::dialect::array_write_(
-      inputs_[0][0], out_grads[0][0], inputs_[1][0]);
+  paddle::dialect::DenseTensorType outgrad_type =
+      out_grads[0][0].type().dyn_cast<paddle::dialect::DenseTensorType>();
+  pir::Value new_array = paddle::dialect::create_array(
+      paddle::dialect::TransToPhiDataType(outgrad_type.dtype()));
+  pir::OpResult tensor_res =
+      paddle::dialect::array_write_(new_array, out_grads[0][0], inputs_[1][0]);
 
+  VLOG(0) << "444";
   std::vector<std::vector<pir::OpResult>> res{{tensor_res}};
   if (stop_gradients[0][0]) {
     res = {{}};
