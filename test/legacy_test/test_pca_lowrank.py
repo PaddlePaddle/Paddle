@@ -177,7 +177,6 @@ class TestStaticPcaLowrankAPI(unittest.TestCase):
             self.assertEqual(v.shape[-1], guess_rank)
             self.assertEqual(v.shape[-2], columns)
 
-            # breakpoint()
             A1 = u.matmul(paddle.diag_embed(s)).matmul(self.transpose(v))
             ones_m1 = paddle.ones(batches + (rows, 1), dtype=a.dtype)
             c = a.sum(axis=-2) / rows
