@@ -13,12 +13,16 @@
 # limitations under the License.
 
 import collections
+import logging
 
 from ..auto_parallel.static.utils import (
+    get_logger,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
 )
 from .pass_base import PassBase, register_pass
 from .pass_utils import AutoParallelStreamType
+
+logger = get_logger(logging.INFO)
 
 
 # For allreduce pattern in the backward phase of column parallel linear:
@@ -34,7 +38,7 @@ from .pass_utils import AutoParallelStreamType
 class AllreduceMatmulGradOverlappingPass(PassBase):
     def __init__(self):
         super().__init__()
-        self.set_attr("allreduce_stream", None)
+        self.op_namescope = "/auto_parallel/allreduce_matmul_grad_overlapping"
         self.set_attr("dist_context", None)
 
     def _check_self(self):
@@ -48,9 +52,14 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
     def _apply_single_impl(self, main_program, startup_program, context):
         self.dist_context = self.get_attr("dist_context")
         block = main_program.global_block()
+
         matmul_grad_id_to_allreduce_id = (
             self._get_all_matmul_grad_and_allreduce_pairs(block)
         )
+        logger.info(
+            f"overlap matmul_grad and allreduce: {matmul_grad_id_to_allreduce_id}"
+        )
+
         self._split_matmul_grad_and_multi_streaming_allreduce(
             block, matmul_grad_id_to_allreduce_id
         )
@@ -85,25 +94,26 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 dtype=var_x.dtype,
                 persistable=False,
             )
-            self.dist_context.set_tensor_dist_attr_for_program(
-                out, x_dist_attr.copy()
-            )
+            self.dist_context.set_tensor_dist_attr_for_program(out, x_dist_attr)
 
         x_shape = block.create_var(
             name=f"{x[0]}@reshape.xshape", dtype=var_x.dtype
         )
-        self.dist_context.set_tensor_dist_attr_for_program(
-            x_shape, x_dist_attr.copy()
-        )
+        self.dist_context.set_tensor_dist_attr_for_program(x_shape, x_dist_attr)
 
-        block._insert_op_without_sync(
+        reshape_op = block._insert_op_without_sync(
             index=index,
             type="reshape2",
             inputs={"X": x},
             outputs={"Out": out, "XShape": x_shape},
-            attrs={"shape": shape, "op_role": op_role},
+            attrs={
+                "shape": shape,
+                "op_role": op_role,
+                'op_namescope': self.op_namescope,
+            },
         )
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+            reshape_op,
             process_mesh=x_dist_attr.process_mesh,
             ref_mapping=x_dist_attr.dim_mapping,
             chunk_id=x_dist_attr.chunk_id,
@@ -183,7 +193,8 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 persistable=False,
             )
             self.dist_context.set_tensor_dist_attr_for_program(
-                self.dist_context.get_tensor_dist_attr_for_program(var_y_grad)
+                new_y_grad,
+                self.dist_context.get_tensor_dist_attr_for_program(var_y_grad),
             )
 
             matmul_grad_dist_attr = (
@@ -194,7 +205,12 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 type="matmul_v2",
                 inputs={"X": new_x, "Y": new_out_grad},
                 outputs={"Out": new_y_grad},
-                attrs={"trans_x": True, "trans_y": False, "op_role": op_role},
+                attrs={
+                    "trans_x": True,
+                    "trans_y": False,
+                    "op_role": op_role,
+                    'op_namescope': self.op_namescope,
+                },
             )
             self.dist_context.set_op_dist_attr_for_program(
                 matmul_op, matmul_grad_dist_attr
@@ -214,7 +230,12 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 type="matmul_v2",
                 inputs={"X": out_grad, "Y": y},
                 outputs={"Out": x_grad},
-                attrs={"trans_x": False, "trans_y": True, "op_role": op_role},
+                attrs={
+                    "trans_x": False,
+                    "trans_y": True,
+                    "op_role": op_role,
+                    'op_namescope': self.op_namescope,
+                },
             )
             self.dist_context.set_op_dist_attr_for_program(
                 matmul_op, matmul_grad_dist_attr
