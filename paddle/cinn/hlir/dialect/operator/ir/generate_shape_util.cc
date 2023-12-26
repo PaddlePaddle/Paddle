@@ -304,18 +304,14 @@ MakeGetterDimExpr4SymbolName(
   };
   return [map=std::move(symbol_name2symbol_bindins), GetDimExpr](const std::string& symbol_name) {
     const auto& iter = map.find(symbol_name);
-    if (iter == map.end()) {
-      return std::nullopt;
-    }
+    if (iter == map.end()) return std::nullopt;
     std::optional<DimExpr> ret = std::nullopt;
     for (const auto& symbol_binding : iter->second) {
       const auto& current = GetDimExpr(symbol_binding);
       if (!current.has_value()) return std::nullopt;
       if (ret.has_value()) {
         // Same names, same DimExprs.
-        if (ret.value() != current.value()) {
-          return std::nullopt;
-        }
+        if (ret.value() != current.value()) return std::nullopt;
       } else {
         ret = current;
       }
