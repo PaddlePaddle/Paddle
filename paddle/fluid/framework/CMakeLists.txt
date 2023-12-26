@@ -530,7 +530,6 @@ set(NAIVE_EXECUTOR_DEPS
     lod_rank_table
     feed_fetch_method
     graph_to_program_pass
-    standalone_executor
     variable_helper)
 
 if(TENSORRT_FOUND)
@@ -888,7 +887,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor pir_transforms pir)
+  DEPS parallel_executor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
@@ -957,6 +956,7 @@ cc_library(
        layer)
 
 cc_library(type_info SRCS type_info.cc)
+target_link_libraries(type_info pir op_dialect)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
 if(WITH_MKLDNN)
   add_dependencies(type_info mkldnn)

@@ -221,7 +221,14 @@ def recompute(op):
             with paddle.static.name_scope(
                 f'/auto_parallel/rc_{_g_recompute_idx}'
             ):
-                output = self._op(*args, **kwargs)
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._op
+                        )(*args, **kwargs)
+                    )
+                else:
+                    output = self._op(*args, **kwargs)
 
             return output
 
@@ -245,7 +252,14 @@ def exclude_ops_in_recompute(run_function):
 
         def __call__(self, *args, **kwargs):
             with paddle.static.name_scope('/exclude_rc'):
-                output = self._run_function(*args, **kwargs)
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._run_function
+                        )(*args, **kwargs)
+                    )
+                else:
+                    output = self._run_function(*args, **kwargs)
 
             return output
 

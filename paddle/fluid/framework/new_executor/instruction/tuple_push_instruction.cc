@@ -86,7 +86,8 @@ void TuplePushInstruction::Run() {
       DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
-      VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]";
+      VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]"
+              << "to: " << stack_element_var_array_;
     }
   }
 }

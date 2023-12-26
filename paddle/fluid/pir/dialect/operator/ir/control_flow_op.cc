@@ -246,7 +246,7 @@ void IfOp::VerifyRegion() {
 std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs_,
-    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
   PADDLE_ENFORCE_EQ(
@@ -346,7 +346,7 @@ void WhileOp::Print(pir::IrPrinter &printer) {
 std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
-    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
   auto fwd_op = WhileOp::dyn_cast(op);
@@ -417,7 +417,7 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
 std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
-    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
   PADDLE_ENFORCE_EQ(

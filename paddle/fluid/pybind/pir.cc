@@ -60,7 +60,7 @@
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -581,55 +581,38 @@ const phi::DDim &GetValueDims(Value value) {
   }
 }
 
-#define OVERRIDE_OPERATOR(operator, api, other_type)      \
-  value.def(#operator, [](Value self, other_type other) { \
-    return paddle::dialect::api(self, other);             \
-  });
+pir::OpResult apply(Value self, py::object func) {
+  py::gil_scoped_acquire gil;
+  auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Cannot apply function on a tensor that required gradient."));
+  }
+  PyObject *py_func = func.release().ptr();
+  Py_INCREF(py_func);
+  PyObject *res = nullptr;
+  try {
+    py::object obj = py::cast(self);
+    PyObject *tmp_self = obj.release().ptr();
+    Py_INCREF(tmp_self);
+    res = PyObject_CallFunctionObjArgs(py_func, tmp_self, nullptr);
+    Py_DECREF(tmp_self);
+  } catch (std::exception &e) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Apply function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "Apply function of Tensor raises an unknown exception."));
+  }
+  if (res == Py_None) {
+    return self.dyn_cast<OpResult>();
+  }
+  auto out = CastPyArg2Value(res, "", 0);
+  Py_DECREF(py_func);
+  Py_DECREF(res);
+  return out.dyn_cast<OpResult>();
+}
 
-#define OVERRIDE_OPERATOR_WITH_SCALE(operator,            \
-                                     other_type,          \
-                                     scale_value,         \
-                                     bias_value,          \
-                                     bias_after_scale)    \
-  value.def(#operator, [](Value self, other_type other) { \
-    return paddle::dialect::scale(                        \
-        self, scale_value, bias_value, bias_after_scale); \
-  });
-
-#define OVERRIDE_OPERATOR_FOR_EACH(operator,         \
-                                   api,              \
-                                   scale_value,      \
-                                   bias_value,       \
-                                   bias_after_scale) \
-  OVERRIDE_OPERATOR(operator, api, Value)            \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               int,                  \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               float,                \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               double,               \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)
-
-#define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)         \
-  value.def(#operator, [](Value self, other_type other) {                \
-    auto rhs =                                                           \
-        paddle::dialect::full(/*shape=*/{}, other, GetValueDtype(self)); \
-    return paddle::dialect::api(self, rhs);                              \
-  });
-
-#define OVERRIDE_COMPARE_OP_FOR_EACH(operator, api)   \
-  OVERRIDE_OPERATOR(operator, api, Value)             \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, int)   \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, float) \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, double)
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -787,23 +770,10 @@ void BindValue(py::module *m) {
              print_stream << ")";
              return print_stream.str();
            })
-      .def("__neg__",
-           [](Value self) {
-             return paddle::dialect::scale(self, -1.0, 0.0, true);
-           })
+      .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
-  // For basaic operators
-  OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__sub__, subtract, 1.0, -1.0 * other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__mul__, multiply, other, 0.0, false);
-  OVERRIDE_OPERATOR_FOR_EACH(__truediv__, divide, 1.0 / other, 0.0, false);
-  // For compare opeartors
-  OVERRIDE_COMPARE_OP_FOR_EACH(__lt__, less_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__le__, less_equal);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
 }
 
 void BindOpOperand(py::module *m) {
@@ -1635,7 +1605,6 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
                         : nullptr;
 
   pir::PassManager pass_manager(ctx);
-  VLOG(0) << "========= AddPass ===========";
   pass_manager.AddPass(pir::CreateShapeOptimizationPass());
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 

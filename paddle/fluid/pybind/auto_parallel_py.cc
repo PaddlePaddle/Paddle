@@ -51,6 +51,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/x_to_r_reshard_function.h"
 #include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -231,6 +232,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::PToSReshardFunction>(
       *m, "PToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::XToRShrinkReshardFunction>(
+      *m, "XToRShrinkReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SameNdMeshReshardFunction>(
