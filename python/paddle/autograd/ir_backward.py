@@ -631,8 +631,11 @@ def append_backward_ops(
                     if len(state.value_to_valuegrad[value]) > 1:
                         append_add_n(value)
                 else:
+                    new_value = return_map_value(
+                        value, control_flow_value_to_copyvalue_map
+                    )
                     value_grad = append_full_like(
-                        0.0, value, value, state, backward_ops
+                        0.0, new_value, value, state, backward_ops
                     )
                 input_grad = state.value_to_valuegrad[value][0][0]
 
