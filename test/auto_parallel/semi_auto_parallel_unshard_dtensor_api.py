@@ -34,6 +34,15 @@ class TestUnshardDTensor(unittest.TestCase):
         self.assertListEqual(dense_tensor.shape, ori_tensor.shape)
         self.assertFalse(dense_tensor.is_dist())
 
+        ori_parameter = paddle.create_parameter([1024, 512], dtype='float32')
+        d_tensor = dist.shard_tensor(ori_parameter, self.mesh, [Shard(0)])
+        dense_parameter = dist.unshard_dtensor(d_tensor)
+        self.assertListEqual(dense_parameter.shape, ori_parameter.shape)
+        self.assertFalse(dense_parameter.is_dist())
+        self.assertTrue(
+            isinstance(dense_parameter, paddle.base.framework.EagerParamBase)
+        )
+
     @switch_to_static_graph
     def run_static(self):
         ori_tensor = paddle.static.data(
@@ -41,10 +50,8 @@ class TestUnshardDTensor(unittest.TestCase):
             shape=[4, 1024, 512],
             dtype='float32',
         )
-        print(ori_tensor.dist_attr)
         self.assertIsNone(ori_tensor.dist_attr.process_mesh)
         d_tensor = dist.shard_tensor(ori_tensor, self.mesh, [Shard(0)])
-        print(d_tensor.dist_attr)
 
         default_dist_context = get_default_distributed_context()
         dist_input = default_dist_context.get_dist_tensor_for_program(

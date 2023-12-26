@@ -1429,8 +1429,10 @@ def to_static(
 
 def unshard_dtensor(dist_tensor):
     """
-    Converts a distributed tensor to its original dense tensor. ``unshard_dtensor``
-    can be treated as a reverse operation of ``shard_tensor``.
+    Converts a distributed tensor to a dense tensor. ``unshard_dtensor``
+    first make the ``dist_tensor`` be ``Replicate`` state on all processes and
+    then converts it to a dense ``paddle.Tensor``. It can be treated as a
+    reverse operation of ``shard_tensor``.
 
     Args:
         dist_tensor (paddle.Tensor): The distributed tensor which is constructed
@@ -1457,14 +1459,20 @@ def unshard_dtensor(dist_tensor):
         # if the input is not a distributed
         # tensor, return it directly
         if dist_tensor.is_dist() is False:
-            return dist_tensor
+            raise ValueError("The input should be a distributed tensor.")
 
         mesh = dist_tensor.process_mesh
         placements = dist_tensor.placements
         replicate_placements = [dist.Replicate()] * len(placements)
-
         r_dist_tensor = reshard(dist_tensor, mesh, replicate_placements)
-        return paddle.Tensor(r_dist_tensor._local_value())
+
+        if isinstance(dist_tensor, EagerParamBase):
+            return EagerParamBase.from_tensor(
+                r_dist_tensor._local_value(),
+                **dist_tensor.__dict__,
+            )
+        else:
+            return paddle.Tensor(r_dist_tensor._local_value())
 
     else:
         assert isinstance(
