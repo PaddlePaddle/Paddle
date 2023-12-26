@@ -18,7 +18,7 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 
 import paddle
-from paddle.distributed.fleet.base import role_maker
+from paddle.distributed.fleet.base.role_maker import PaddleCloudRoleMaker
 
 paddle.enable_static()
 
@@ -45,7 +45,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.base.framework.switch_main_program(main_program)
         paddle.base.framework.switch_startup_program(startup_program)
 
-        fleet.init(role_maker.PaddleCloudRoleMaker())
+        fleet.init(PaddleCloudRoleMaker())
         input_x = paddle.static.data(
             name="x",
             shape=[-1, 1],
