@@ -16,20 +16,23 @@
 
 #include <string>
 #include <unordered_set>
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 
 namespace cinn {
 namespace ir {
 
-class ArrangeStorageTactic final : public ScheduleTactic {
+class ComputeInlineTactic final : public ScheduleTactic {
  public:
-  explicit ArrangeStorageTactic(
-      const std::unordered_set<std::string>& output_names);
+  explicit ComputeInlineTactic(
+      const std::unordered_set<std::string>& output_names,
+      const cinn::common::Target& target);
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
 
  private:
   std::unordered_set<std::string> output_names_;
+  cinn::common::Target target_;
 };
 
 }  // namespace ir
