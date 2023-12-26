@@ -245,6 +245,18 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 }
 
 template <typename T>
+Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
+  std::vector<int64_t> axis_tmp = {axis};
+  auto out_shape = get_expand_dims(x[0], axis_tmp);
+
+  std::vector<Tensor> concat_x;
+  for (size_t i = 0; i < x.size(); ++i) {
+    concat_x.push_back(reshape<T>(x[i], out_shape));
+  }
+  return concat<T>(concat_x, axis);
+}
+
+template <typename T>
 Tensor silu_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
@@ -301,6 +313,15 @@ std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
 }
 
 template <typename T>
+std::tuple<Tensor, Tensor> unsqueeze_decomp(const Tensor& x,
+                                            const IntArray& axis) {
+  auto out_shape = get_expand_dims(x, axis.GetData());
+  Tensor out = reshape<T>(x, out_shape);
+  Tensor xshape;
+  return std::make_tuple(out, xshape);
+}
+
+template <typename T>
 Tensor add_n_decomp(const std::vector<Tensor>& x) {
   Tensor res = x[0];
   for (size_t i = 1; i < x.size(); i++) {
@@ -344,15 +365,19 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
 
-  std::vector<int64_t> slice_shape;
-  for (int64_t i = begin_norm_axis; i < static_cast<int64_t>(x_dim.size());
-       i++) {
-    slice_shape.push_back(x_dim[i]);
+  std::vector<int64_t> slice_shape_l;
+  std::vector<int64_t> slice_shape_r;
+  for (int64_t i = 0; i < static_cast<int64_t>(x_dim.size()); i++) {
+    if (i < begin_norm_axis) {
+      slice_shape_l.push_back(x_dim[i]);
+    } else {
+      slice_shape_r.push_back(x_dim[i]);
+    }
   }
   Tensor scale_cast;
   if (scale_ptr) {
-    if (slice_shape != scale_ptr->shape()) {
-      scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    if (slice_shape_r != scale_ptr->shape()) {
+      scale_cast = reshape<T>(*scale_ptr, slice_shape_r);
     } else {
       scale_cast = *scale_ptr;
     }
@@ -363,8 +388,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   }
   Tensor bias_cast;
   if (bias_ptr) {
-    if (slice_shape != bias_ptr->shape()) {
-      bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    if (slice_shape_r != bias_ptr->shape()) {
+      bias_cast = reshape<T>(*bias_ptr, slice_shape_r);
     } else {
       bias_cast = *bias_ptr;
     }
@@ -373,13 +398,14 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     }
     out = out + bias_cast;
   }
-  mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
-  variance = reshape<T>(variance, std::vector<int64_t>({-1}));
+  mean_ = reshape<T>(mean_, slice_shape_l);
+  variance = reshape<T>(variance, slice_shape_l);
 
+  // same as LayerNormInferMeta
+  // x: float32 --> out: float32, mean: float32, variance: float32
+  // x: float16 --> out: float16, mean: float32, variance: float32
   if (need_cast) {
     out = cast<T>(out, org_dtype);
-    mean_ = cast<T>(mean_, org_dtype);
-    variance = cast<T>(variance, org_dtype);
   }
 
   return std::make_tuple(out, mean_, variance);

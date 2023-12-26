@@ -62,8 +62,10 @@ parallel_list="^init_phi_test$|\
 ^test_custom_kernel$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
+^test_dist_fuse_resunit_pass$|\
 ^test_executor_feed_non_tensor$|\
 ^test_flash_attention$|\
+^test_fuse_resunit_pass$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
 ^test_fused_attention_op$|\
@@ -100,6 +102,9 @@ parallel_list="^init_phi_test$|\
 ^test_fused_token_prune_op$|\
 ^test_fused_transformer_encoder_layer$|\
 ^test_fused_transformer_with_amp_decorator$|\
+^test_fused_dot_product_attention_op$|\
+^test_fuse_dot_product_attention_pass$|\
+^test_fused_dot_product_attention_pass$|\
 ^test_gather_nd_op$|\
 ^test_index_select_op$|\
 ^test_pass_base_list$|\

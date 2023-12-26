@@ -205,15 +205,6 @@ ir::ScheduleBlockNode* StaticShapeGroupScheduler::FindGlobalMasterNode() const {
   return master;
 }
 
-std::unordered_set<std::string> StaticShapeGroupScheduler::OutputTensorNames()
-    const {
-  std::unordered_set<std::string> output_tensor_names{output_tensor_names_};
-  for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
-    output_tensor_names.insert(node->id());
-  }
-  return output_tensor_names;
-}
-
 void StaticShapeGroupScheduler::DoLoopAlignment() {
   VLOG(5) << "[Start LoopAlignment] func body: "
           << ir_sch_->GetModule().GetExprs().front();
@@ -256,16 +247,19 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
     std::vector<ir::Expr> indices =
         reduce_loads.begin()->As<ir::Load>()->indices;
     for (ir::Expr index : indices) {
+      if (index.is_constant()) continue;
       CHECK_NOTNULL(index.as_var());
       int idx = 0;
       bool is_reduce_var = false;
-      for (const ir::Var& iter_var : master_iter_vars) {
+      for (int iter_idx = 0; iter_idx < master_iter_vars.size(); ++iter_idx) {
+        auto& iter_var = master_iter_vars[iter_idx];
         if (iter_var->name == index.as_var_ref()->name) {
           is_reduce_var = iter_var->is_reduce_axis;
           break;
         }
         ++idx;
       }
+      if (master_iter_values[idx].is_constant()) continue;
       std::vector<ir::Var> loop_vars_in_order;
       ir::ir_utils::CollectIRNodesInOrder(
           master_iter_values[idx], [&](const ir::Expr* x) {

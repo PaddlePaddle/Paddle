@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import csv
 import os
 from typing import Tuple
@@ -21,9 +22,12 @@ import pandas as pd
 
 class HistoryRecorder:
     # NOTE increase extenable ablitity
-    def __init__(self) -> None:
+    def __init__(self, tuner_cfg) -> None:
+        self.tuner_cfg = tuner_cfg
+        self.search_algo = self.tuner_cfg['search_algo']['name']
         self.history = []
         self.store_path = None
+        self.additional_metric_key = None
 
     def add_cfg(self, **kwargs):
         cur_configs = {}
@@ -76,11 +80,10 @@ class HistoryRecorder:
             return (self.history[0], True)
         return (self.history[0], False)
 
-    def store_history(self, path="./history.csv"):
+    def _store_history_impl(self, data, path="./history.csv"):
         """Store history to csv file."""
-        self.store_path = path
         # convert to pd dataframe
-        df = pd.DataFrame(self.history)
+        df = pd.DataFrame(data)
         # move 'job_id' to the first column
         cols = df.columns.tolist()
         cols.insert(0, cols.pop(cols.index('job_id')))
@@ -88,8 +91,35 @@ class HistoryRecorder:
         # check if 'time' exists
         if 'time' in df.columns:
             df = df.drop(columns=['time'])
+        if 'has_error' in df.columns:
+            df = df.drop(columns=['has_error'])
         # write to csv
-        df.to_csv(self.store_path, index=False)
+        df.to_csv(path, index=False)
+
+    def store_history(self, path="./history.csv"):
+        # get enhanced report in dp-estimation mode
+        if self.search_algo == "dp_estimation":
+            metric_name = self.tuner_cfg['metric_cfg']['name']
+            _history = []
+            for cfg in self.history:
+                if (
+                    "sharding_overlap" not in cfg.keys()
+                    or cfg["sharding_overlap"] is None
+                ) and cfg["error_info"] is None:
+                    _history.append(copy.deepcopy(cfg))
+            _history.sort(
+                key=lambda x: x[self.additional_metric_key]
+                if x[self.additional_metric_key] is not None
+                else float('-inf'),
+                reverse=True,
+            )
+            self._store_history_impl(
+                data=_history, path=path.split('.csv')[0] + '_enhanced.csv'
+            )
+
+        """Store history to csv file."""
+        self.store_path = path
+        self._store_history_impl(data=self.history, path=path)
 
     def load_history(self, path="./history.csv") -> Tuple[list, bool]:
         """Load history from csv file."""

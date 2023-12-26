@@ -4565,23 +4565,27 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4], 1.0)
         self.assertEqual(res[5], 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_argsort(self):
-        # have no backward
-        x1 = paddle.rand([])
-        out1 = paddle.argsort(x1, axis=-1)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # have no backward
+            x1 = paddle.rand([])
+            out1 = paddle.argsort(x1, axis=-1)
 
-        x2 = paddle.rand([])
-        x2.stop_gradient = False
-        out2 = paddle.argsort(x2, axis=0)
+            x2 = paddle.rand([])
+            x2.stop_gradient = False
+            out2 = paddle.argsort(x2, axis=0)
 
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out1, out2])
+            prog = paddle.static.default_main_program()
+            res = self.exe.run(prog, fetch_list=[out1, out2])
 
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[0], 0.0)
-        self.assertEqual(res[1], 0.0)
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            self.assertEqual(res[0], 0.0)
+            self.assertEqual(res[1], 0.0)
 
     @prog_scope()
     def test_lerp(self):
@@ -5939,6 +5943,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[emb])
         self.assertEqual(res[0].shape, (3,))
 
+    @test_with_pir_api
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)

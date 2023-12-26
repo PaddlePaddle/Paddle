@@ -28,18 +28,25 @@ void BindSchedule(py::module *m) {
       .def(py::init<const ir::ModuleExpr &,
                     utils::LinearRandomEngine::StateType,
                     bool,
-                    utils::ErrorMessageLevel>(),
+                    utils::ErrorMessageLevel,
+                    bool>(),
            py::arg("modexpr"),
            py::arg("rand_seed") = -1,
            py::arg("debug_flag") = false,
-           py::arg("err_msg_level") = utils::ErrorMessageLevel::kGeneral)
-      .def_static(
-          "make",
-          [](ir::LoweredFunc &ir_func) {
-            ir::ModuleExpr *module_expr = new ir::ModuleExpr({ir_func->body});
-            auto scheduler = std::make_unique<ir::IRSchedule>(*module_expr);
-            return scheduler;
-          })
+           py::arg("err_msg_level") = utils::ErrorMessageLevel::kGeneral,
+           py::arg("is_dynamic_shape") = false)
+      .def_static("make",
+                  [](ir::LoweredFunc &ir_func) {
+                    ir::ModuleExpr *module_expr =
+                        new ir::ModuleExpr({ir_func->body});
+                    auto scheduler = std::make_unique<ir::IRSchedule>(
+                        *module_expr,
+                        -1,
+                        false,
+                        utils::ErrorMessageLevel::kGeneral,
+                        true);
+                    return scheduler;
+                  })
       .def("fuse",
            py::overload_cast<const std::vector<Expr> &>(&ir::IRSchedule::Fuse))
       .def("split",

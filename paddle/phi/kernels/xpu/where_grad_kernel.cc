@@ -68,6 +68,8 @@ PD_REGISTER_KERNEL(where_grad,
                    ALL_LAYOUT,
                    phi::WhereGradKernel,
                    float,
-                   phi::dtype::float16,
+                   double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

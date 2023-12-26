@@ -364,8 +364,14 @@ class OpcodeExecutorBase:
             str, ...
         ] | None = None  # store kwnames for Python 3.11+
         self._prepare_virtual_env()
-
         self.stop_state = None
+
+    def check_code_simulatable(self):
+        for instr in self._instructions:
+            if instr.opname == "LOAD_GLOBAL" and instr.argval == "locals":
+                raise FallbackError(
+                    "Can not support call builtin function `locals`"
+                )
 
     def print_sir(self):
         """
@@ -550,10 +556,12 @@ class OpcodeExecutorBase:
         ):
             BreakpointManager().locate(self)
             print(log_message)
-            breakpoint()  # breakpoint for debug
+            breakpoint()  # noqa: T100
 
-        with EventGuard(f"{instr.opname}", event_level=1):
-            return getattr(self, instr.opname)(instr)  # run single step.
+        opname = instr.opname if instr.opname != "PRECALL" else "PRECALL__CALL"
+        assert opname != "CALL", "CALL should fused with PRECALL"
+        with EventGuard(f"{opname}", event_level=1):
+            return getattr(self, opname)(instr)  # run single step.
 
     def indexof(self, instr: Instruction):
         """
@@ -1021,6 +1029,19 @@ class OpcodeExecutorBase:
             )
         )
 
+    @call_break_graph_decorator(push_n=1)
+    def PRECALL__CALL(self, instr: Instruction):
+        """
+        presudo super-instruction for PRECALL + CALL
+        """
+        assert isinstance(instr.arg, int)
+        assert instr.opname == "PRECALL"
+        self.PRECALL(instr)
+        next_instr = self._instructions[self._lasti]
+        self._lasti += 1
+        assert next_instr.opname == "CALL"
+        self.CALL(next_instr)
+
     def PRECALL(self, instr: Instruction):
         assert isinstance(instr.arg, int)
         is_method_layout = not isinstance(
@@ -1039,7 +1060,6 @@ class OpcodeExecutorBase:
         assert isinstance(instr.arg, int)
         self._call_shape = self._co_consts[instr.arg].get_py_value()
 
-    @call_break_graph_decorator(push_n=1)
     def CALL(self, instr: Instruction):
         assert isinstance(instr.arg, int)
         assert instr.arg + 2 <= len(self.stack)
@@ -1654,19 +1674,24 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         """
         push_n = push_n(instr.arg) if callable(push_n) else push_n
+        is_precall = instr.opname == "PRECALL"
         index = self.indexof(instr)
+        # Use CALL instead of PRECALL to calculate the real stack effect
+        call_instr = self._instructions[index + int(is_precall)]
+        # skip CALL if current instr is PRECALL
+        next_index = index + 1 + int(is_precall)
         self.stack = origin_stack
 
         # gen call static fn opcode
 
-        resume_input_name = analysis_inputs(self._instructions, index + 1)
+        resume_input_name = analysis_inputs(self._instructions, next_index)
 
         var_loader = self.gen_compute_in_break_with_name_store(
-            resume_input_name, self.indexof(instr)
+            resume_input_name, index
         )
 
         # gen graph break call fn opcode
-        stack_effect = calc_stack_effect(instr)
+        stack_effect = calc_stack_effect(call_instr)
         pop_n = push_n - stack_effect
 
         for i, stack_arg in enumerate(self.stack):
@@ -1675,11 +1700,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # gen call resume fn opcode
         # NOTE(SigureMo): In Python 3.11，we need generate KW_NAMES if the call shape is not None.
         self._graph.pycode_gen.gen_kw_names(self._call_shape)
-        self._graph.pycode_gen.extend_instrs([instr])
+        self._graph.pycode_gen.extend_instrs(
+            self._instructions[index:next_index]
+        )
         self.stack.pop_n(pop_n)
         stack_size = len(self.stack) + push_n
 
-        resume_fn, _ = self._create_resume_fn(index + 1, stack_size)
+        resume_fn, _ = self._create_resume_fn(next_index, stack_size)
 
         if resume_fn:
             self._graph.pycode_gen.gen_load_object(
@@ -2029,7 +2056,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._inline_call_for_loop(iterator, instr)
             self._lasti = self.indexof(instr.jump_to)
         except BreakGraphError as e:
-            log(3, f"[FOR_ITER] sim for loop failed for: {e}\n")
+            log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
             if backup_iter_idx:
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)

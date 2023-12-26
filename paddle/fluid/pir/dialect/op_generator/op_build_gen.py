@@ -23,8 +23,9 @@ _INFERMETA_NEED_META_CONFIG = {
     'SliceRawInferMeta',
     'StackInferMeta',
     'Conv2dTransposeInferMeta',
-    'Conv2dFusionInferMeta',
+    'FusedConv2dAddActInferMeta',
     'InterpolateInferMeta',
+    'DeformableConvInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
@@ -395,7 +396,11 @@ def GenBuildOutputs(
     {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
     {name}.SetFromTensor(true);
   }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
-    size_t {name}_size = common::product({name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t {name}_size = common::product({name}_dim);
+    if (common::contain_unknown_dim({name}_dim)) {{
+      {name}_size = 1;
+    }}
     {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
     {name}.SetFromTensor(true);
   }} else {{
@@ -412,7 +417,11 @@ def GenBuildOutputs(
     size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
     {name} = std::vector<int64_t>({name}_size, -1);
   }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
-    size_t {name}_size = common::product({name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t {name}_size = common::product({name}_dim);
+    if (common::contain_unknown_dim({name}_dim)) {{
+      {name}_size = 1;
+    }}
     {name} = std::vector<int64_t>({name}_size, -1);
   }} else {{
     PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));

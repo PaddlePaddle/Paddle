@@ -916,7 +916,7 @@ def decorate(  # noqa: F811
     """
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'OD', 'O1', 'O2']):
+    if level not in ['O0', 'OD', 'O1', 'O2']:
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     amp_dtype = check_amp_dtype(dtype)
@@ -935,7 +935,7 @@ def decorate(  # noqa: F811
 
     if optimizer is not None:
         # support master_weight
-        multi_precision = not (master_weight is False)
+        multi_precision = master_weight is not False
         _set_multi_precision(optimizer, multi_precision)
 
     mp_optimizer = OptimizerWithMixedPrecision(

@@ -23,6 +23,7 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
+from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
@@ -38,10 +39,11 @@ from paddle.base.framework import (
     Parameter,
     Program,
     _current_expected_place as _get_device,
-    _global_flags,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
+    in_pir_mode,
+    name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -266,14 +268,9 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-        if (use_mkldnn is not None) and use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
@@ -1142,7 +1139,9 @@ class Layer:
                  [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
-        params_set = set()
+        params_set = (
+            ValueSet() if in_pir_mode() and not in_to_static_mode() else set()
+        )
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
@@ -1407,7 +1406,8 @@ class Layer:
             ):
                 outputs = self.forward(*inputs, **kwargs)
         else:
-            outputs = self.forward(*inputs, **kwargs)
+            with name_struct(self.__class__.__name__):
+                outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
@@ -1677,7 +1677,10 @@ class Layer:
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
-        elif isinstance(value, paddle.pir.OpResult) and value.persistable:
+        elif (
+            isinstance(value, paddle.pir.Value)
+            and value.get_defining_op().name() == 'builtin.parameter'
+        ):
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
@@ -1729,7 +1732,9 @@ class Layer:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
-                    if type(value) == framework.Variable:
+                    if type(value) == framework.Variable or isinstance(
+                        value, paddle.pir.Value
+                    ):
                         from paddle import assign
 
                         # Note(zhhsplendid): the condition below happens in PaddleGan model,
@@ -2069,6 +2074,8 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
+            if isinstance(param, paddle.Tensor) and not param._is_initialized():
+                continue
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)

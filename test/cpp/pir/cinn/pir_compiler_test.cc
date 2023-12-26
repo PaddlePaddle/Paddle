@@ -188,7 +188,7 @@ TEST(PirCompier, CompileSoftmax) {
 
   new_program->block()->push_back(cinn_op);
 
-  builder.SetInsertionPointToEnd(new_program->block());
+  builder.SetInsertionPointToBlockEnd(new_program->block());
   builder.Build<paddle::dialect::FetchOp>(
       cinn_op->result(cinn_op->num_results() - 1), "out", 0);
 
@@ -207,7 +207,6 @@ TEST(PirCompier, CompileSoftmax) {
   executor.Run({}, true);
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 16);
   EXPECT_EQ(res0, true);
 }

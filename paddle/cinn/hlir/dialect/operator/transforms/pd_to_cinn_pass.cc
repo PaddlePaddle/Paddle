@@ -82,6 +82,56 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
   }
 };
 
+class MinOpPattern : public pir::drr::DrrPatternBase<MinOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &pd_max = pattern.Op(paddle::dialect::MinOp::name(),
+                                    {{"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_reduce_max =
+        res.Op(cinn::dialect::ReduceMinOp::name(),
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+  }
+};
+
+class ProdOpPattern : public pir::drr::DrrPatternBase<ProdOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &pd_max = pattern.Op(paddle::dialect::ProdOp::name(),
+                                    {{"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_reduce_max =
+        res.Op(cinn::dialect::ReduceProdOp::name(),
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+  }
+};
+
 class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::ScaleOp>::OpRewritePattern;
@@ -167,6 +217,46 @@ class ReshapeOpPattern
       auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
           op->operand_source(0).dyn_cast<pir::OpResult>(), vec_out_shape);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
+class IsCloseOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::IscloseOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::IscloseOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::IscloseOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto rtol_op = op->operand_source(2)
+                       .dyn_cast<pir::OpResult>()
+                       .owner()
+                       ->dyn_cast<paddle::dialect::FullOp>();
+
+    auto atol_op = op->operand_source(3)
+                       .dyn_cast<pir::OpResult>()
+                       .owner()
+                       ->dyn_cast<paddle::dialect::FullOp>();
+
+    if (rtol_op && atol_op) {
+      auto rtol_val =
+          rtol_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data();
+      auto atol_val =
+          atol_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data();
+      auto equal_nan =
+          op->attribute("equal_nan").dyn_cast<::pir::BoolAttribute>().data();
+
+      auto cinn_isclose =
+          rewriter.Build<cinn::dialect::IscloseOp>(op->operand_source(0),
+                                                   op->operand_source(1),
+                                                   rtol_val,
+                                                   atol_val,
+                                                   equal_nan);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_isclose.result(0));
       rewriter.EraseOp(op);
 
       return true;
@@ -520,6 +610,8 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
+  ps.Add(MinOpPattern().Build(context));
+  ps.Add(ProdOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
@@ -528,6 +620,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<AddNOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
+  ps.Add<IsCloseOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
   return ps;

@@ -1061,7 +1061,9 @@ struct FindBlocksVisitor {
     if (expr->As<ir::For>()) {
       Visit(&(expr->As<ir::For>()->body));
     } else if (expr->As<ir::ScheduleBlockRealize>()) {
-      if (!expr->As<ir::ScheduleBlockRealize>()->iter_values.empty()) {
+      if (expr->As<ir::ScheduleBlockRealize>()
+              ->schedule_block.As<ScheduleBlock>()
+              ->name.substr(0, 4) != "root") {
         auto* schedule_block = expr->As<ir::ScheduleBlockRealize>()
                                    ->schedule_block.As<ir::ScheduleBlock>();
         if (block_name_.empty() || schedule_block->name == block_name_) {

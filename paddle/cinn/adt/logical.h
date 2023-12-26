@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/tree.h"
 
 namespace cinn::adt {
 
@@ -28,24 +29,19 @@ DEFINE_ADT_BINARY(And);
 DEFINE_ADT_BINARY(Or);
 DEFINE_ADT_UNARY(Not);
 
-// Logical T = EQ T T
-//           | LT T T
-//           | GT T T
-//           | NE T T
-//           | GE T T
-//           | LE T T
-//           | And (Logical T) (Logical T)
-//           | Or (Logical T) (Logical T)
-//           | Not (Logical T)
 template <typename ValueT>
-DEFINE_ADT_UNION(Logical,
+DEFINE_ADT_UNION(Compare,
                  EQ<ValueT, ValueT>,
                  LT<ValueT, ValueT>,
                  GT<ValueT, ValueT>,
                  NE<ValueT, ValueT>,
                  GE<ValueT, ValueT>,
-                 LE<ValueT, ValueT>,
-                 And<Logical<ValueT>, Logical<ValueT>>,
-                 Or<Logical<ValueT>, Logical<ValueT>>,
-                 Not<Logical<ValueT>>);
+                 LE<ValueT, ValueT>);
+
+template <typename T>
+DEFINE_ADT_UNION(LogicalOp, And<T, T>, Or<T, T>, Not<T>);
+
+template <typename ValueT>
+using Logical = Tree<LogicalOp, Compare<ValueT>>;
+
 }  // namespace cinn::adt

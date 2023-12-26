@@ -55,6 +55,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "test/cpp/pir/tools/macros_utils.h"
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, CPU, ALL_LAYOUT);
@@ -66,6 +68,7 @@ PD_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(fetch, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(conv2d, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cummax, CPU, ALL_LAYOUT);
 
 // Define op1.
 class Operation1 : public pir::Op<Operation1> {
@@ -92,7 +95,7 @@ void Operation1::VerifySig() {
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
     "op2_attr1",
     "op2_attr2"};
-IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
@@ -107,7 +110,7 @@ class TestDialect : public pir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1>(); }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 // TODO(wilber): Add logical when ir support erase, replace or update.
@@ -541,4 +544,40 @@ TEST(constant_folding, ConstantFolding_Combine) {
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 12u);
+}
+
+void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {
+  pir::Builder builder = pir::Builder(ctx, program->block());
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({2, 2}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto cummax_op = builder.Build<paddle::dialect::CummaxOp>(x, 0);
+
+  auto out = cummax_op.out();
+  auto indices = cummax_op.indices();
+
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(indices, "indices", 1);
+}
+
+TEST(constant_folding, ConstantFolding_MultiOutput) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  BuildMultiOutputProgram(&program, ctx);
+
+  pir::PassManager pm(ctx);
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }

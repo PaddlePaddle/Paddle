@@ -33,14 +33,15 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 #ifndef _WIN32
 class TestAnalysis1 {};
 class TestAnalysis2 {};
 
-IR_DECLARE_EXPLICIT_TYPE_ID(TestAnalysis1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestAnalysis1)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestAnalysis1)
-IR_DECLARE_EXPLICIT_TYPE_ID(TestAnalysis2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestAnalysis2)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestAnalysis2)
 
 TEST(pass_manager, PreservedAnalyses) {
@@ -93,7 +94,7 @@ void AddOp::Build(pir::Builder &,
   argument.AddInput(r_operand);
   argument.AddOutput(sum_type);
 }
-IR_DECLARE_EXPLICIT_TYPE_ID(AddOp)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(AddOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(AddOp)
 
 struct CountOpAnalysis {
@@ -115,7 +116,7 @@ struct CountOpAnalysis {
   int count = 0;
 };
 
-IR_DECLARE_EXPLICIT_TYPE_ID(CountOpAnalysis)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(CountOpAnalysis)
 IR_DEFINE_EXPLICIT_TYPE_ID(CountOpAnalysis)
 
 class TestPass : public pir::Pass {
@@ -226,7 +227,7 @@ TEST(pass_manager, PassManager) {
       true,
       true));
 
-  pm.EnablePassTiming(true);
+  // pm.EnablePassTiming(true);
 
   CHECK_EQ(pm.Run(&program), true);
 }

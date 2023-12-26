@@ -11,8 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifdef GET_OP_LIST
+#undef GET_OP_LIST
+paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
+    paddle::dialect::AddNWithKernelOp, paddle::dialect::FusedGemmEpilogueOp,
+    paddle::dialect::FusedGemmEpilogueGradOp, paddle::dialect::SplitGradOp,
+    paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
+    paddle::dialect::ArrayLengthOp, paddle::dialect::ArrayReadOp,
+    paddle::dialect::ArrayWrite_Op, paddle::dialect::SliceArrayOp,
+    paddle::dialect::SliceArrayDenseOp, paddle::dialect::AssignArray_Op,
+    paddle::dialect::ArrayToTensorOp, paddle::dialect::SelectInputOp,
+    paddle::dialect::IncrementOp, paddle::dialect::Increment_Op
+#else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
@@ -2181,6 +2194,426 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+void SelectInputOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SelectInputOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto in_size = num_operands();
+    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be >= 3.", in_size);
+    auto input1 = (*this)->operand_source(1).type();
+    auto input2 = (*this)->operand_source(2).type();
+    if (input1.isa<paddle::dialect::DenseTensorType>() &&
+        input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+    } else if (input1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
+               input2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto tensor1 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      auto tensor2 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+      IR_ENFORCE(
+          tensor1.place() == tensor2.place(),
+          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor1.place(),
+          tensor2.place());
+    } else {
+      IR_ENFORCE(input1 == input2,
+                 "The 1st input type %s should be equal to 2ed input type %s.",
+                 input1,
+                 input2);
+    }
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto out_size = num_results();
+    IR_ENFORCE(
+        out_size == 1u, "Size %d of outputs must be equal to 1.", out_size);
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
+const char *IncrementOp::attributes_name[1] = {"value"};
+
+OpInfoTuple IncrementOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("value", "pir::FloatAttribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("IncrementInferMeta",
+                                     {"x", "value"},
+                                     "increment",
+                                     {"x", "value"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "increment");
+}
+
+void IncrementOp::Build(pir::Builder &builder,
+                        pir::OperationArgument &argument,
+                        pir::Value x_,
+                        float value) {
+  VLOG(4) << "Start build IncrementOp";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_value =
+      pir::FloatAttribute::get(pir::IrContext::Instance(), value);
+  argument.AddAttribute("value", attr_value);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)x;
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::IncrementInferMeta(meta_x, value, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void IncrementOp::Build(pir::Builder &builder,
+                        pir::OperationArgument &argument,
+                        pir::Value x_,
+                        pir::AttributeMap attributes) {
+  VLOG(4) << "Start build IncrementOp";
+
+  IR_ENFORCE(attributes.find("value") != attributes.end(),
+             "'value' Attribute is expected for IncrementOp. ");
+  float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_value =
+      pir::FloatAttribute::get(pir::IrContext::Instance(), value);
+  argument.AddAttribute("value", attr_value);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)x;
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::IncrementInferMeta(meta_x, value, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void IncrementOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: IncrementOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("value") > 0, "value does not exist.");
+    IR_ENFORCE(attributes.at("value").isa<pir::FloatAttribute>(),
+               "Type of attribute: value is not pir::FloatAttribute.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: IncrementOp.";
+}
+
+void IncrementOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::IncrementInferMeta);
+  fn(infer_meta);
+}
+
+phi::DataType IncrementOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: IncrementOp";
+
+  return expected_kernel_dtype;
+}
+
+const char *Increment_Op::attributes_name[1] = {"value"};
+
+OpInfoTuple Increment_Op::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("value", "pir::FloatAttribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("IncrementInferMeta",
+                                     {"x", "value"},
+                                     "increment",
+                                     {"x", "value"},
+                                     {},
+                                     {},
+                                     {{"out", "x"}},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "increment");
+}
+
+void Increment_Op::Build(pir::Builder &builder,
+                         pir::OperationArgument &argument,
+                         pir::Value x_,
+                         float value) {
+  VLOG(4) << "Start build Increment_Op";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_value =
+      pir::FloatAttribute::get(pir::IrContext::Instance(), value);
+  argument.AddAttribute("value", attr_value);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)x;
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::IncrementInferMeta(meta_x, value, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void Increment_Op::Build(pir::Builder &builder,
+                         pir::OperationArgument &argument,
+                         pir::Value x_,
+                         pir::AttributeMap attributes) {
+  VLOG(4) << "Start build Increment_Op";
+
+  IR_ENFORCE(attributes.find("value") != attributes.end(),
+             "'value' Attribute is expected for Increment_Op. ");
+  float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_value =
+      pir::FloatAttribute::get(pir::IrContext::Instance(), value);
+  argument.AddAttribute("value", attr_value);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)x;
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::IncrementInferMeta(meta_x, value, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void Increment_Op::VerifySig() {
+  VLOG(4)
+      << "Start Verifying inputs, outputs and attributes for: Increment_Op.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("value") > 0, "value does not exist.");
+    IR_ENFORCE(attributes.at("value").isa<pir::FloatAttribute>(),
+               "Type of attribute: value is not pir::FloatAttribute.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: Increment_Op.";
+}
+
+void Increment_Op::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::IncrementInferMeta);
+  fn(infer_meta);
+}
+
+phi::DataType Increment_Op::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: Increment_Op";
+
+  return expected_kernel_dtype;
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -2199,3 +2632,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
+#endif

@@ -180,7 +180,8 @@ class FusedMatmulOneDNNHandler
       auto residual_data_tz = vectorize(residual_data->dims());
       auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
       dnnl::memory::desc residual_data_md;
-      if (residual_data_tz.size() == 4 && residual_data_tz[0] == 1 &&
+      if (out_ddims.size() > 0 && out_ddims[0] > 1 &&
+          residual_data_tz.size() == 4 && residual_data_tz[0] == 1 &&
           residual_data_tz[1] > 1 && residual_data_tz[2] > 1 &&
           residual_data_tz[3] > 1) {
         chosen_memory_format = funcs::OneDNNMemoryFormat::nchw;
@@ -320,7 +321,8 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
   if (residual_data) {
     auto residual_data_vec = vectorize(residual_data->dims());
     std::shared_ptr<dnnl::memory> residual_data_memory_p;
-    if (residual_data_vec.size() == 4 && residual_data_vec[0] == 1 &&
+    if (std::max((x_dims)[0], (y_dims)[0]) > 1 &&
+        residual_data_vec.size() == 4 && residual_data_vec[0] == 1 &&
         residual_data_vec[1] > 1 && residual_data_vec[2] > 1 &&
         residual_data_vec[3] > 1) {
       residual_data_memory_p = handler.AcquireSrcMemoryStride(residual_data);

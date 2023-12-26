@@ -392,52 +392,6 @@ int tensor_properties_set_persistable(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_dist_attr__doc__,
-             R"DOC(dist_attr
-
-Get dist_attr property from shard tensor.
-
-Returns:
-    core.TensorDistAttr: the dist attr of shard tensor
-
-Examples:
-    .. code-block:: python
-
-        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-        >>> import paddle
-        >>> import paddle.distributed as dist
-
-        >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
-
-        >>> a = paddle.to_tensor([[1,2,3],
-        ...                       [5,6,7]])
-        >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-
-        >>> print(d_tensor.dist_attr)
-
-)DOC");
-
-PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
-  EAGER_TRY
-  if (self->tensor.is_dist_tensor()) {
-#ifdef PADDLE_WITH_DISTRIBUTE
-    phi::distributed::DistTensor* dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    return ToPyObject(&dist_tensor->dist_attr());
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "The `dist_attr()` property of (Dist)Tensor is not supported in the "
-        "current PaddlePaddle, please recompile and installPaddlePaddle with "
-        "the "
-        "option of `WITH_DISTRIBUTE=ON`."));
-#endif
-  } else {
-    RETURN_PY_NONE
-  }
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 PyDoc_STRVAR(tensor_process_mesh__doc__,
              R"DOC(process_mesh
 
@@ -454,11 +408,10 @@ Examples:
         >>> import paddle.distributed as dist
 
         >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
         >>> a = paddle.to_tensor([[1,2,3],
         ...                       [5,6,7]])
-        >>> d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+        >>> d_tensor = dist.shard_tensor(a, [core.Shard(0), core.Shard(1)])
 
         >>> print(d_tensor.process_mesh)
 
@@ -836,6 +789,42 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_placements_str(TensorObject* self,
+                                               void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+
+    std::stringstream ostr;
+    ostr << "[";
+
+    bool isFirst = true;
+    for (const auto& p : dist_tensor->placements()) {
+      if (p) {
+        if (!isFirst) {
+          ostr << ", ";
+        }
+        ostr << p->to_string();
+        isFirst = false;
+      }
+    }
+    ostr << "]";
+    return ToPyObject(ostr.str());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `placements()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyDoc_STRVAR(tensor_dtype__doc__,
              R"DOC(dtype
 
@@ -973,11 +962,6 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr,
      tensor_offset__doc__,
      nullptr},
-    {"dist_attr",
-     (getter)tensor_properties_get_dist_attr,
-     nullptr,
-     tensor_dist_attr__doc__,
-     nullptr},
     {"process_mesh",
      (getter)tensor_properties_get_process_mesh,
      nullptr,
@@ -995,6 +979,11 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
+     nullptr,
+     nullptr,
+     nullptr},
+    {"_placements_str",
+     (getter)tensor_properties_get_placements_str,
      nullptr,
      nullptr,
      nullptr},
