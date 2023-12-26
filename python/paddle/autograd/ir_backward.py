@@ -80,14 +80,21 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
 
 
 def get_real_op_inputs(op):
-    if op.name() in ["pd_op.if", "pd_op.while"]:
+    if op.name() == "pd_op.if":
         return get_used_external_value(op)
+    elif op.name() == "pd_op.while":
+        return op.operands_source() + get_used_external_value(
+            op.as_while_op().body()
+        )
     else:
         return op.operands_source()
 
 
 def update_no_grad_set_by_stopgradient(block, no_grad_set):
     for op in block.ops:
+        if op.name() in ["pd_op.if", "pd_op.while"]:
+            for sub_block in op.blocks():
+                update_no_grad_set_by_stopgradient(sub_block, no_grad_set)
         for value in op.results():
             if value.stop_gradient and value not in no_grad_set:
                 no_grad_set.add(value)
@@ -144,6 +151,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 [feedop],
             )
             state.value_to_valuegrad[output] = [[grad]]
+
     # add input for bwd first op
     complete_outputs = outputs
     complete_gradoutputs = grad_outputs
@@ -262,6 +270,12 @@ def update_no_grad_set_after_prune(
     from outputs to inputs add value not in the path to no_grad_set,
     '''
     inputs_set = ValueSet(inputs)
+    for input in inputs:
+        if not input.use_empty():
+            for used_op in input.all_used_ops():
+                for item in get_real_op_inputs(used_op):
+                    inputs_set.add(item)
+
     if inputs_set:
         for op in total_ops:
             if some_in_set(get_real_op_inputs(op), inputs_set):
@@ -317,7 +331,6 @@ def inverse_sort_op(ops):
     while queue:
         op = queue.popleft()
         sorted_list.append(op)
-
         for x in get_real_op_inputs(op):
             x_op = x.get_defining_op()
             pending_count[x_op] -= 1
@@ -327,6 +340,28 @@ def inverse_sort_op(ops):
     if len(sorted_list) != len(ops):
         raise ValueError(
             "inverse_sort_op wrong, sorted_list size is not equal to origin_list size"
+        )
+    change_list = []
+    for op in reversed(sorted_list):
+        if op.name() == 'pd_op.increment_':
+            idx_1 = sorted_list.index(op)
+            idx_2 = sorted_list.index(op)
+
+            for op_in in reversed(sorted_list[: sorted_list.index(op)]):
+                if (
+                    some_in_set(
+                        op.operands_source(),
+                        ValueSet(get_real_op_inputs(op_in)),
+                    )
+                    and op_in.name() != "cf.tuple_push"
+                ):
+                    idx_2 = sorted_list.index(op_in)
+            if idx_1 != idx_2:
+                change_list.append((idx_1, idx_2))
+    for idx_1, idx_2 in change_list:
+        sorted_list[idx_1], sorted_list[idx_2] = (
+            sorted_list[idx_2],
+            sorted_list[idx_1],
         )
 
     return sorted_list
@@ -342,6 +377,7 @@ def append_backward_ops(
     no_grad_set,
     backward_ops,
     state,
+    bwd_value_to_block_argument_map=ValueDict(),
 ):
     '''
     add grad_op in order of topological inverse sort
@@ -383,6 +419,12 @@ def append_backward_ops(
         else continue to next op.
     '''
 
+    def return_map_value(value, map):
+        output = value
+        while output in map:
+            output = map[output]
+        return output
+
     def append_add_n(value):
         # value is input of more than one fwd_op,
         # so more than one bwd_op create input_grad,
@@ -405,11 +447,9 @@ def append_backward_ops(
         outputs = []
         output_grads = []
         for i, value in enumerate(op.results()):
-            new_value = (
-                [control_flow_value_to_copyvalue_map[value]]
-                if value in control_flow_value_to_copyvalue_map
-                else [value]
-            )
+            new_value = [
+                return_map_value(value, control_flow_value_to_copyvalue_map)
+            ]
             while value in state.inside_value_to_outside_value_map:
                 value = state.inside_value_to_outside_value_map[value]
 
@@ -454,27 +494,36 @@ def append_backward_ops(
                     zero_flag[i] = True
 
             outputs.append(new_value)
-            output_grads.append(state.value_to_valuegrad[value][0])
+            grad_value = state.value_to_valuegrad[value][0]
+            output_grads.append(
+                [bwd_value_to_block_argument_map[grad_value[0]]]
+                if grad_value[0] in bwd_value_to_block_argument_map
+                else grad_value
+            )
 
         return zero_flag, outputs, output_grads
 
-    def make_input_with_input_stopgradient(op):
-        inputs = []
-        input_grad_stopgradients = []
+    def get_grad_semantic_info(op):
         if op.name() in [
             "builtin.combine",
             "pd_op.if",
             "pd_op.while",
             "cf.tuple_push",
+            "pd_op.increment_",
+            "pd_op.increment",
         ]:
             grad_semantic_info = [
                 True for _ in range(len(get_real_op_inputs(op)))
             ]
         else:
             grad_semantic_info = op.get_input_grad_semantics()
+        return grad_semantic_info
 
+    def make_input_with_input_stopgradient(op):
+        inputs = []
+        input_grad_stopgradients = []
         for input, grad_semantic in zip(
-            get_real_op_inputs(op), grad_semantic_info
+            get_real_op_inputs(op), get_grad_semantic_info(op)
         ):
             if not grad_semantic:
                 if (
@@ -484,18 +533,18 @@ def append_backward_ops(
                     tmp_input = []
                     for tmp in input.get_defining_op().operands_source():
                         tmp_input.append(
-                            control_flow_value_to_copyvalue_map[tmp]
-                            if tmp in control_flow_value_to_copyvalue_map
-                            else tmp
+                            return_map_value(
+                                tmp, control_flow_value_to_copyvalue_map
+                            )
                         )
 
                     inputs.append(tmp_input)
                 else:
-                    tmp_input = (
-                        [control_flow_value_to_copyvalue_map[input]]
-                        if input in control_flow_value_to_copyvalue_map
-                        else [input]
-                    )
+                    tmp_input = [
+                        return_map_value(
+                            input, control_flow_value_to_copyvalue_map
+                        )
+                    ]
                     inputs.append(tmp_input)
                 continue
 
@@ -512,32 +561,25 @@ def append_backward_ops(
                     [info[0] for info in combine_stop_gradient]
                 )
             else:
-                tmp_input = (
-                    [control_flow_value_to_copyvalue_map[input]]
-                    if input in control_flow_value_to_copyvalue_map
-                    else [input]
-                )
+                tmp_input = [
+                    return_map_value(input, control_flow_value_to_copyvalue_map)
+                ]
                 inputs.append(tmp_input)
-                if input.get_defining_op() is None or input in no_grad_set:
+
+                if input in no_grad_set or input.stop_gradient is True:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
 
         return inputs, input_grad_stopgradients
 
-    def update_input_grad_map(op, input_grads, origin_inputs):
+    def update_input_grad_map(op, input_grads, all_inputs):
+        _, fwd_value_to_block_argument_map = argument_to_value(op)
         i = 0
-        if (
-            op.name() == "builtin.combine"
-            or op.name() == "pd_op.if"
-            or op.name() == "pd_op.while"
-        ):
-            grad_semantic_info = [True for _ in range(len(origin_inputs))]
-        else:
-            grad_semantic_info = op.get_input_grad_semantics()
-        for input, grad_semantic in zip(origin_inputs, grad_semantic_info):
+        for input, grad_semantic in zip(all_inputs, get_grad_semantic_info(op)):
             if not grad_semantic:
                 continue
+
             if (
                 input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
@@ -555,9 +597,29 @@ def append_backward_ops(
                     state.value_to_valuegrad[input].append([input_grad])
             i += 1
 
-    def append_yield(block, base_inputs, base_inputs_grad):
+    def append_yield(
+        block,
+        base_op,
+        base_grad_op,
+        base_inputs,
+        base_inputs_grad,
+    ):
+        (
+            fwd_block_argument_to_value_map,
+            fwd_value_to_block_argument_map,
+        ) = argument_to_value(base_op)
         with block:
             inputs_grad = []
+            if base_op.name() == "pd_op.while":
+                new_cond = paddle.base.libpaddle.pir.cf_has_elements(base_op)
+                inputs_grad.append(new_cond)
+
+                for idx in range(len(base_inputs[: base_op.num_operands()])):
+                    operands = base_inputs[idx]
+                    if operands in fwd_value_to_block_argument_map:
+                        operands = fwd_value_to_block_argument_map[operands]
+                    base_inputs[idx] = operands
+
             for value, value_grad in zip(base_inputs, base_inputs_grad):
                 if value_grad is None:
                     continue
@@ -568,13 +630,32 @@ def append_backward_ops(
                 if value in state.value_to_valuegrad:
                     if len(state.value_to_valuegrad[value]) > 1:
                         append_add_n(value)
-                    inputs_grad.append(state.value_to_valuegrad[value][0][0])
                 else:
                     value_grad = append_full_like(
                         0.0, value, value, state, backward_ops
                     )
-                    inputs_grad.append(value_grad)
+                input_grad = state.value_to_valuegrad[value][0][0]
+
+                inputs_grad.append(input_grad)
+
             paddle.base.libpaddle.pir.cf_yield(inputs_grad)
+
+    def argument_to_value(while_op):
+        if while_op.name() != "pd_op.while":
+            return ValueDict(), ValueDict()
+
+        assert len(while_op.as_while_op().block_arguments()) + 1 == len(
+            while_op.operands_source()
+        ), "while op's block_arguments size + 1 should same to whiel op's operands_source"
+        arg_to_value_map = ValueDict()
+        value_to_arg_map = ValueDict()
+        for arg, value in zip(
+            while_op.as_while_op().block_arguments(),
+            while_op.operands_source()[1:],
+        ):
+            arg_to_value_map[arg] = value
+            value_to_arg_map[value] = arg
+        return arg_to_value_map, value_to_arg_map
 
     # there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
@@ -585,14 +666,22 @@ def append_backward_ops(
     # -----------------only for control flow-----------------#
     # tuple_push value to pop value
     control_flow_value_to_copyvalue_map = ValueDict()
+    control_flow_copyvalue_to_value_map = ValueDict()
 
     if (
         len(effective_forward_ops) > 1
         and effective_forward_ops[-1].name() == "cf.yield"
     ):
         yield_op = effective_forward_ops[-1]
+        if base_op.name() == "pd_op.while":
+            # while op yield [cond, loop_vars],
+            # but outputs only has loop_vars.
+            inside_outputs = yield_op.operands_source()[1:]
+        else:
+            inside_outputs = yield_op.operands_source()
+
         for outside_output, inside_output in zip(
-            base_op.results(), yield_op.operands_source()
+            base_op.results(), inside_outputs
         ):
             state.inside_value_to_outside_value_map[
                 inside_output
@@ -620,7 +709,7 @@ def append_backward_ops(
                     input_grad_stopgradients,
                 ) = make_input_with_input_stopgradient(op)
 
-                if op.name() == "cf.tuple_push":
+                if op.name() in ["cf.tuple_push", "pd_op.increment_"]:
                     with dynamic_shape_prim_vjp_guard(op, inputs):
                         copy_out = paddle.framework.core.call_vjp(
                             op,
@@ -629,21 +718,34 @@ def append_backward_ops(
                             output_grads,
                             input_grad_stopgradients,
                         )
+
                     pop_op = bwd_block.ops[-1]
                     bwd_ops = [pop_op]
-                    for output, copy_output in zip(inputs[1:], copy_out[1:]):
+                    tmp_inputs = (
+                        inputs
+                        if op.name() == "pd_op.increment_"
+                        else inputs[1:]
+                    )
+                    tmp_copy_out = (
+                        copy_out
+                        if op.name() == "pd_op.increment_"
+                        else copy_out[1:]
+                    )
+                    for output, copy_output in zip(tmp_inputs, tmp_copy_out):
                         control_flow_value_to_copyvalue_map[
                             output[0]
                         ] = copy_output[0]
-
+                        control_flow_copyvalue_to_value_map[
+                            copy_output[0]
+                        ] = output[0]
                 else:
                     # all(zero_flag) support this op has no contribution for grad
                     # should be delete (prune sub_graph)
                     if len(output_grads) == 0 or all(zero_flag):
                         continue
 
-                    if op.name() == "pd_op.if" or op.name() == "pd_op.while":
-                        origin_inputs = get_used_external_value(op)
+                    if op.name() == "pd_op.if":
+                        origin_inputs = get_real_op_inputs(op)
                         for sub_block in op.blocks():
                             build_pipe_for_block(sub_block)
                         with dynamic_shape_prim_vjp_guard(op, inputs):
@@ -660,6 +762,16 @@ def append_backward_ops(
                         for sub_fwd_block, sub_bwd_block in zip(
                             op.blocks(), grad_op.blocks()
                         ):
+                            # update grad_op structure
+                            if grad_op.name() == "pd_op.while":
+                                (
+                                    _,
+                                    sub_bwd_block_argument_to_value_map,
+                                ) = argument_to_value(grad_op)
+                            else:
+                                sub_bwd_block_argument_to_value_map = (
+                                    ValueDict()
+                                )
                             sub_state = state.copy(sub_fwd_block)
                             sub_backward_ops = []
                             append_backward_ops(
@@ -672,7 +784,60 @@ def append_backward_ops(
                                 no_grad_set,
                                 sub_backward_ops,
                                 sub_state,
+                                sub_bwd_block_argument_to_value_map,
                             )
+                        # update input_grad map
+                        update_input_grad_map(op, input_grads, origin_inputs)
+                    elif op.name() == "pd_op.while":
+                        origin_inputs = get_real_op_inputs(op)
+                        # prepare while[cond, loop_vars, other_input] other_input's grad
+                        while_block = op.as_while_op().body()
+                        sub_state = state.copy(while_block)
+                        for i, input in enumerate(
+                            get_used_external_value(while_block)
+                        ):
+                            append_full_like(
+                                0.0, input, input, sub_state, backward_ops
+                            )
+                            grad_value = sub_state.value_to_valuegrad[input][0]
+                            output_grads.append(
+                                [bwd_value_to_block_argument_map[grad_value[0]]]
+                                if grad_value[0]
+                                in bwd_value_to_block_argument_map
+                                else grad_value
+                            )
+
+                        build_pipe_for_block(while_block)
+                        with dynamic_shape_prim_vjp_guard(op, inputs):
+                            input_grads = paddle.framework.core.call_vjp(
+                                op,
+                                inputs,
+                                outputs,
+                                output_grads,
+                                input_grad_stopgradients,
+                            )
+                        grad_op = bwd_block.ops[-1]
+                        bwd_ops = [grad_op]
+
+                        # update grad_op structure
+                        (
+                            _,
+                            sub_bwd_value_to_block_argument_map,
+                        ) = argument_to_value(grad_op)
+                        while_grad_block = grad_op.as_while_op().body()
+                        sub_backward_ops = []
+                        append_backward_ops(
+                            op,
+                            [input[0] for input in inputs],
+                            [input_grad[0] for input_grad in input_grads],
+                            while_block,
+                            while_grad_block,
+                            while_block.ops,
+                            no_grad_set,
+                            sub_backward_ops,
+                            sub_state,
+                            sub_bwd_value_to_block_argument_map,
+                        )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
                     else:
@@ -715,15 +880,22 @@ def append_backward_ops(
                     state.op_to_opgrad[op] = []
 
         if fwd_block != bwd_block:
-            append_yield(bwd_block, base_inputs, base_input_grads)
+            append_yield(
+                bwd_block,
+                base_op,
+                bwd_block.parent_op,
+                base_inputs,
+                base_input_grads,
+            )
 
 
 def prepare_backward_prune_set(inputs, outputs):
     outputs_fwd_set = ValueSet()
     for input_ in inputs:
         if not input_.use_empty():
-            for item in get_real_op_inputs(input_.first_use().owner()):
-                outputs_fwd_set.add(item)
+            for used_op in input_.all_used_ops():
+                for item in get_real_op_inputs(used_op):
+                    outputs_fwd_set.add(item)
         else:
             logging.warning("input privided by inputs has no use")
 
@@ -799,8 +971,8 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     inputs_set = ValueSet(inputs)
     outputs_set = ValueSet(complete_outputs)
     total_ops = []
-    if block.get_parent is not None:
-        total_ops += block.get_parent.ops
+    if block.parent_block is not None:
+        total_ops += block.parent_block.ops
     total_ops += block.ops
 
     effective_forward_ops, _ = prune_ops(
@@ -824,17 +996,18 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         no_grad_set,
         backward_ops,
         state,
+        ValueDict(),
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
+
     _, remove_ops = prune_ops(
         backward_ops, inputs_set, outputs_set, no_gradvar_set
     )
 
     state.turn_map()
-
     for bwd_op in inverse_sort_op(remove_ops):
         if bwd_op.result(0) in ValueSet(grad_outputs):
             continue

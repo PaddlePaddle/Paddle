@@ -1076,3 +1076,12 @@ using ir::Var;
 // @}
 
 }  // namespace cinn
+
+namespace std {
+template <>
+struct hash<cinn::ir::Var> {
+  std::size_t operator()(const cinn::ir::Var& var) const {
+    return std::hash<std::string>()(var->name);
+  }
+};
+}  // namespace std

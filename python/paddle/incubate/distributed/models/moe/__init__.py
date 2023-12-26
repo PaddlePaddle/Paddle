@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .gate import GShardGate, BaseGate, SwitchGate, NaiveGate
-from .moe_layer import MoELayer
+from .gate import BaseGate, GShardGate, NaiveGate, SwitchGate  # noqa: F401
 from .grad_clip import ClipGradForMOEByGlobalNorm
+from .moe_layer import MoELayer  # noqa: F401
 
 ClipGradByGlobalNorm = ClipGradForMOEByGlobalNorm

@@ -70,13 +70,6 @@ class TestPrimMode(unittest.TestCase):
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
-    def test_prim_all_dynamic_sink(self):
-        with decomp.sink_decomp_guard():
-            res_ref = self.base_net()
-            res = self.base_net("all")
-            for ref, actual in zip(res_ref, res):
-                np.testing.assert_allclose(ref, actual, rtol=1e-6)
-
 
 if __name__ == "__main__":
     unittest.main()

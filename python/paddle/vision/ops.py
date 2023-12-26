@@ -15,13 +15,18 @@
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode, in_dynamic_or_pir_mode
+from ..base.framework import (
+    Variable,
+    convert_np_dtype_to_dtype_,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+)
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
@@ -873,7 +878,7 @@ def deform_conv2d(
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.deformable_conv(
             x,
             offset,
@@ -1319,8 +1324,9 @@ def read_file(filename, name=None):
             [142773]
     """
 
-    if in_dygraph_mode():
-        return _legacy_C_ops.read_file('filename', filename)
+    attr_dtype = convert_np_dtype_to_dtype_('uint8')
+    if in_dynamic_or_pir_mode():
+        return _C_ops.read_file(filename, attr_dtype, paddle.CPUPlace())
     else:
         inputs = {}
         attrs = {'filename': filename}
@@ -1368,7 +1374,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             >>> print(img.shape)
             [3, 400, 300]
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
     else:
         inputs = {'X': x}
