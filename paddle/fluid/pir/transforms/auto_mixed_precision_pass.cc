@@ -187,7 +187,11 @@ class AutoMixedPrecisionPass : public pir::Pass {
   bool CheckUseOpsScalaAttribute(
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
-      if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+      if (use_op->isa<pir::CombineOp>()) {
+        if (CheckOutputIsScalarAttribute(use_op)) {
+          return true;
+        }
+      } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
         auto [input_infos, _1, _2, _3, _4] =
             use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
                 .GetOpInfo();
