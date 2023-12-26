@@ -804,8 +804,13 @@ bool AnalysisPredictor::PrepareExecutor() {
         // Functional pass
         // Do auto mixed precision pass first, so do not need to handle
         // shadowoutput.
-        gpu_pm.AddPass(::pir::CreateAutoMixedPrecisionPass(
-            place_, ConvertPrecision(config_.mixed_precision_mode_)));
+        auto auto_mixed_precision_pass = ::pir::CreateAutoMixedPrecisionPass();
+        auto_mixed_precision_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        phi::DataType data_type =
+            ConvertPrecision(config_.mixed_precision_mode_);
+        auto_mixed_precision_pass->SetNotOwned("__mixed_precision_mode__",
+                                               &data_type);
+        gpu_pm.AddPass(std::move(auto_mixed_precision_pass));
         gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
         //----------------------------------------------------------------------------------------------//
 

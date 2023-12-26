@@ -23,7 +23,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateAutoMixedPrecisionPass(
-    const phi::Place& place, const phi::DataType& precision_mode);
+IR_API std::unique_ptr<Pass> CreateAutoMixedPrecisionPass();
 
 }  // namespace pir

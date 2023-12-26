@@ -53,13 +53,24 @@ namespace {
 
 class AutoMixedPrecisionPass : public pir::Pass {
  public:
-  AutoMixedPrecisionPass(const phi::Place& place,
-                         const phi::DataType& precision_mode)
+  AutoMixedPrecisionPass()
       : pir::Pass("auto_mixed_precision_pass", 1),
-        place_(place),
-        precision_mode_(precision_mode) {}
+        place_(phi::CPUPlace{}),
+        precision_mode_(phi::DataType::FLOAT16) {}
 
   bool Initialize(pir::IrContext* context) override {
+    IR_ENFORCE(Has(pir::kPlaceAttr),
+               "Pass initialize failed."
+               "When using AutoMixedPrecisionPass, place attribute is required!"
+               "Use Set method to set the place attribute.");
+    IR_ENFORCE(Has("__mixed_precision_mode__"),
+               "Pass initialize failed."
+               "When using AutoMixedPrecisionPass, precison_mode attribute is "
+               "required!"
+               "Use Set method to set the scope attribute.");
+
+    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    precision_mode_ = Get<phi::DataType>("__mixed_precision_mode__");
     context_ = context;
     enable_low_precision_io_ = false;
     SetDefaultBlacklist();
@@ -692,9 +703,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateAutoMixedPrecisionPass(
-    const phi::Place& place, const phi::DataType& precision_mode) {
-  return std::make_unique<AutoMixedPrecisionPass>(place, precision_mode);
+std::unique_ptr<Pass> CreateAutoMixedPrecisionPass() {
+  return std::make_unique<AutoMixedPrecisionPass>();
 }
 
 }  // namespace pir

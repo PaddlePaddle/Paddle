@@ -94,8 +94,14 @@ TEST(AutoMixedPrecisonTest, MixedPrecisionTest) {
   EXPECT_EQ(program.block()->size(), 11u);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateAutoMixedPrecisionPass(phi::GPUPlace(),
-                                               phi::DataType::FLOAT16));
+  std::unique_ptr<pir::Pass> auto_mixed_precision_pass =
+      pir::CreateAutoMixedPrecisionPass();
+  phi::Place place = phi::GPUPlace();
+  phi::DataType data_type = phi::DataType::FLOAT16;
+  auto_mixed_precision_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  auto_mixed_precision_pass->SetNotOwned("__mixed_precision_mode__",
+                                         &data_type);
+  pm.AddPass(std::move(auto_mixed_precision_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
