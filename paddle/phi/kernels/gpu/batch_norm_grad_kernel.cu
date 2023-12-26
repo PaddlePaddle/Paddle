@@ -597,11 +597,10 @@ void BatchNormGradFunctor(const Context &ctx,
 #else
   const bool fast_nhwc_batch_norm =
       dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent &&
-          (reserve_space.get_ptr() != nullptr) ||
-      reserve_space->memory_size() == 0;
-  auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
-                            ? DataLayout::kNHWC
-                            : DataLayout::kNCHW;
+      (reserve_space.get_ptr() != nullptr) auto compute_format =
+          fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
+              ? DataLayout::kNHWC
+              : DataLayout::kNCHW;
 #endif
 
   DenseTensor transformed_x(x.type());
