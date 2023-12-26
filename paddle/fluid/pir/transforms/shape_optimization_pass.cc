@@ -111,8 +111,8 @@ class InferSymbolicShapePass : public pir::Pass {
     if (it != infer_sym_shape_map.end()) {
       it->second(op, shape_analysis_);
     } else {
-      LOG(WARNING) << "[" << op.name()
-                   << "] is not supported for infer_symbolic_shape pass.";
+      VLOG(3) << "[" << op.name()
+              << "] is not supported for infer_symbolic_shape pass.";
     }
   }
 
@@ -206,7 +206,7 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
 
   bool MatchAndRewrite(shape::ShapeOfOp op,
                        PatternRewriter& rewriter) const override {
-    VLOG(3) << "Apply ExpandShapeOfOpPattern...";
+    VLOG(5) << "Apply ExpandShapeOfOpPattern...";
 
     auto type = op.out().type().dyn_cast<pir::DenseTensorType>();
 
@@ -513,7 +513,7 @@ void print_program(pir::ModuleOp m, std::string mgs) {
   print_stream << "\n\n";
   m.program()->Print(print_stream);
   print_stream << "\n\n";
-  VLOG(0) << "===================== " << mgs << "\n" << print_stream.str();
+  VLOG(5) << "===================== " << mgs << "\n" << print_stream.str();
 }
 
 bool IsShapeSpecialOp(const pir::Operation& op) {
@@ -675,7 +675,7 @@ void InferSymbolicShapeReshape(pir::Operation* op,
 void debug_print_op_info(
     pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
-  VLOG(0) << op->name() << ", num_operands: " << op->num_operands();
+  VLOG(5) << op->name() << ", num_operands: " << op->num_operands();
   for (auto& rst : op->results()) {
     auto type = rst.type();
     auto value_id = pir::GetValueId(&rst);
@@ -694,7 +694,7 @@ void debug_print_op_info(
       }
       print_stream << "]\n";
     }
-    VLOG(0) << print_stream.str();
+    VLOG(5) << print_stream.str();
   }
 }
 
@@ -762,7 +762,7 @@ class ShapeOptimizationPass : public pir::Pass {
   ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
 
   void Run(pir::Operation* op) override {
-    VLOG(0) << "===================== ShapeOptimizationPass Run start... "
+    VLOG(5) << "===================== ShapeOptimizationPass Run start... "
                "=============================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
@@ -777,7 +777,7 @@ class ShapeOptimizationPass : public pir::Pass {
     // if (!OptimizeShapeComputation(module_op, runner)) {
     //   return;
     // }
-    VLOG(0) << "===================== ShapeOptimizationPass Run End. "
+    VLOG(5) << "===================== ShapeOptimizationPass Run End. "
                "=============================";
   }
 
