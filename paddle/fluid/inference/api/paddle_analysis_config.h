@@ -32,7 +32,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle_infer_declare.h"  // NOLINT
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
@@ -75,7 +74,7 @@ struct LiteNNAdapterConfig {
   LiteNNAdapterConfig& Disable();
 };
 
-struct PD_INFER_DECL XpuConfig {
+struct XpuConfig {
   // Select which xpu device to run model.
   int device_id{0};
 
@@ -212,7 +211,7 @@ struct DistConfig {
 /// AnalysisConfig,
 /// and loading it into AnalysisPredictor.
 ///
-struct PD_INFER_DECL AnalysisConfig {
+struct AnalysisConfig {
   AnalysisConfig();
   ///
   /// \brief Construct a new AnalysisConfig from another

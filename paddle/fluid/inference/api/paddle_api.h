@@ -30,10 +30,9 @@
 #include <vector>
 
 #include "crypto/cipher.h"
-#include "paddle_infer_declare.h"  // NOLINT
-#include "paddle_tensor.h"         // NOLINT
-                                   /*! \namespace paddle
-                                    */
+#include "paddle_tensor.h"  // NOLINT
+                            /*! \namespace paddle
+                             */
 namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
@@ -87,7 +86,7 @@ using paddle_infer::OutputTensorHookFunc;
 /// delete[] external_memory; // manage the memory lifetime outside.
 /// \endcode
 ///
-class PD_INFER_DECL PaddleBuf {
+class PaddleBuf {
  public:
   ///
   /// \brief PaddleBuf allocate memory internally, and manage it.
@@ -152,7 +151,7 @@ class PD_INFER_DECL PaddleBuf {
 ///
 /// \brief Basic input and output data structure for PaddlePredictor.
 ///
-struct PD_INFER_DECL PaddleTensor {
+struct PaddleTensor {
   PaddleTensor() = default;
   std::string name;  ///<  variable name.
   std::vector<int> shape;
@@ -170,7 +169,7 @@ struct PD_INFER_DECL PaddleTensor {
 /// It is obtained through PaddlePredictor::GetinputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
 
-class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
+class ZeroCopyTensor : public paddle_infer::Tensor {
  public:
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
@@ -204,7 +203,7 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
 
 /// \brief A Predictor for executing inference on a model.
 /// Base class for AnalysisPredictor and NativePaddlePredictor.
-class PD_INFER_DECL PaddlePredictor {
+class PaddlePredictor {
  public:
   struct Config;
   PaddlePredictor() = default;
@@ -360,7 +359,7 @@ class PD_INFER_DECL PaddlePredictor {
 /// During inference procedure, there are many parameters(model/params path,
 /// place of inference, etc.)
 ///
-struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
+struct NativeConfig : public PaddlePredictor::Config {
   NativeConfig();
   /// GPU related fields.
   bool use_xpu{false};
@@ -416,16 +415,16 @@ struct NativeConfig;
 struct DemoConfig;
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<AnalysisConfig>(const AnalysisConfig& config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
+    const AnalysisConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig>(const NativeConfig& config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
+    const NativeConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<DemoConfig>(const DemoConfig& config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<DemoConfig>(
+    const DemoConfig& config);
 
 /// NOTE The following APIs are too trivial, we will discard it in the following
 /// versions.
@@ -438,32 +437,30 @@ enum class PaddleEngineKind {
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
-    const ConfigT& config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     const NativeConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     const AnalysisConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
     const AnalysisConfig& config);
 
-PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
+int PaddleDtypeSize(PaddleDType dtype);
 
-PD_INFER_DECL std::string get_version();
+std::string get_version();
 
-PD_INFER_DECL void UpdateDllFlag(const char* name, const char* value);
+void UpdateDllFlag(const char* name, const char* value);
 
-PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
-    const std::string& config_file);
+std::shared_ptr<framework::Cipher> MakeCipher(const std::string& config_file);
 
 }  // namespace paddle
 
@@ -500,7 +497,7 @@ struct XpuRuntimeConfig {
 };
 
 // Unstable interface, may be modified or deleted in the future.
-class PD_INFER_DECL InternalUtils {
+class InternalUtils {
  public:
   // Note: Can only be used under thread_local semantics.
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
