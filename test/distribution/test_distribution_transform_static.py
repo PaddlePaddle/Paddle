@@ -1159,6 +1159,7 @@ class TestReshapeTransform(unittest.TestCase):
     def test_codomain(self):
         self.assertTrue(isinstance(self._t._codomain, variable.Independent))
 
+    @test_with_pir_api
     def test_forward(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
@@ -1179,6 +1180,7 @@ class TestReshapeTransform(unittest.TestCase):
             atol=config.ATOL.get(str(expected.dtype)),
         )
 
+    @test_with_pir_api
     def test_inverse(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
@@ -1200,6 +1202,7 @@ class TestReshapeTransform(unittest.TestCase):
             atol=config.ATOL.get(str(expected.dtype)),
         )
 
+    @test_with_pir_api
     def test_forward_log_det_jacobian(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()

@@ -702,8 +702,8 @@ void BindVjp(pybind11::module *m) {
       "call_vjp",
       [](pir::Operation &fwd_op,
          const std::vector<std::vector<pir::Value>> &inputs,
-         const std::vector<std::vector<pir::OpResult>> &outputs,
-         const std::vector<std::vector<pir::OpResult>> &out_grads,
+         const std::vector<std::vector<pir::Value>> &outputs,
+         const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
         paddle::dialect::VjpInterface vjp_interface =

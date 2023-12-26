@@ -41,8 +41,8 @@ from paddle.jit.dy2static.utils import (
 # See details in https://github.com/serge-sans-paille/gast/
 from paddle.utils import gast
 
-from .base_transformer import BaseTransformer
-from .utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX
+from ..utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX
+from .base import BaseTransformer
 
 __all__ = []
 

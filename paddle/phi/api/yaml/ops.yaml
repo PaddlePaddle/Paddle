@@ -606,6 +606,7 @@
   inplace : (input -> softmax)
   infer_meta :
     func : CrossEntropyWithSoftmaxInferMeta
+    spmd_rule: CrossEntropyWithSoftmaxInferSpmd
   kernel :
     func : cross_entropy_with_softmax
     data_type : input
