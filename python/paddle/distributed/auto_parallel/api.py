@@ -18,9 +18,9 @@ from typing import Callable
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 from paddle import nn
 from paddle.base import unique_name
+from paddle.base.core import Partial, Replicate
 from paddle.base.framework import (
     EagerParamBase,
     Variable,
@@ -31,6 +31,7 @@ from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
 from paddle.distributed.auto_parallel.placement_type import to_placements
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -42,6 +43,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
     get_dist_attr,
 )
+from paddle.distributed.parallel import get_rank
 from paddle.framework import core
 
 from .placement_type import check_placements_equal, get_shard_spec
@@ -290,7 +292,7 @@ def reshard(dist_tensor, mesh, placements):
         dist_attr = DistAttr(mesh, sharding_specs)
         partial_dims = []
         for i, p in enumerate(placements):
-            if isinstance(p, dist.Partial):
+            if isinstance(p, Partial):
                 partial_dims.append(i)
         if len(partial_dims) > 0:
             dist_attr._set_partial_dims(partial_dims)
@@ -350,7 +352,7 @@ def reshard(dist_tensor, mesh, placements):
 
 def shard_layer(
     layer: nn.Layer,
-    process_mesh: dist.ProcessMesh,
+    process_mesh: ProcessMesh,
     shard_fn: Callable = None,
     input_fn: Callable = None,
     output_fn: Callable = None,
@@ -430,20 +432,17 @@ def shard_layer(
         raise ValueError("The argument `process_mesh` cannot be empty.")
 
     # Check the legality of process_mesh
-    if not isinstance(process_mesh, dist.ProcessMesh):
+    if not isinstance(process_mesh, ProcessMesh):
         raise ValueError(
             "The argument `process_mesh` is not `dist.ProcessMesh` type."
         )
 
     def replicate_layer_params_and_buffers(
-        layer: nn.Layer, mesh: dist.ProcessMesh
+        layer: nn.Layer, mesh: ProcessMesh
     ) -> None:
         for key, param in layer._parameters.items():
             if param is not None and not param.is_dist():
-                placements = [
-                    paddle.distributed.Replicate()
-                    for _ in range(len(param.shape))
-                ]
+                placements = [Replicate() for _ in range(len(param.shape))]
                 layer.add_parameter(
                     key,
                     shard_tensor(param, mesh, placements),
@@ -453,10 +452,7 @@ def shard_layer(
                 pass
         for key, buffer in layer._buffers.items():
             if buffer is not None and not buffer.is_dist():
-                placements = [
-                    paddle.distributed.Replicate()
-                    for _ in range(len(buffer.shape))
-                ]
+                placements = [Replicate() for _ in range(len(buffer.shape))]
                 layer.register_buffer(
                     key,
                     shard_tensor(buffer, mesh, placements),
@@ -553,7 +549,7 @@ class _ShardOptimizer:
                     else:
                         # The beta should be replicated cross param's mesh
                         placements = [
-                            dist.Replicate()
+                            Replicate()
                             for _ in range(len(param.process_mesh.shape))
                         ]
                     self._inner_opt._accumulators[key][
@@ -572,8 +568,8 @@ class _ShardOptimizer:
             mesh = np.array(all_process_ids)
             for i in range(mesh.shape[-1]):
                 ranks = mesh[:, i].tolist()
-                if dist.get_rank() in ranks:
-                    pp_mesh = dist.ProcessMesh(ranks)
+                if get_rank() in ranks:
+                    pp_mesh = ProcessMesh(ranks)
         return pp_mesh
 
     def step(self):
@@ -1309,7 +1305,7 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            mesh = dist.ProcessMesh(
+            mesh = ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )

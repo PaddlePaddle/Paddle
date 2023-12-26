@@ -71,23 +71,26 @@ from .framework.dtype import (
 Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
-import paddle.distributed.fleet  # noqa: F401
-import paddle.text  # noqa: F401
-import paddle.vision  # noqa: F401
-from paddle import (  # noqa: F401
+from paddle import io  # noqa: F401
+
+from . import (  # noqa: F401
+    _pir_ops,  # high-level api
     amp,
     audio,
     autograd,
+    callbacks,  # high-level api
     dataset,
     decomposition,
     device,
     distributed,
     distribution,
+    fft,  # high-level api
     geometric,
+    hub,  # high-level api
     incubate,
     inference,
-    io,
     jit,
+    linalg,  # high-level api
     metric,
     nn,
     onnx,
@@ -95,20 +98,11 @@ from paddle import (  # noqa: F401
     quantization,
     reader,
     regularizer,
+    signal,  # high-level api
     sparse,
     static,
     sysconfig,
     vision,
-)
-
-# high-level api
-from . import (  # noqa: F401
-    _pir_ops,
-    callbacks,
-    fft,
-    hub,
-    linalg,
-    signal,
 )
 from .autograd import (
     enable_grad,
