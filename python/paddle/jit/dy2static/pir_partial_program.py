@@ -103,7 +103,7 @@ class UnionFindSet:
             self.father[father_x] = father_y
 
     def find_root(self, x):
-        if not self.father.__contains__(x):
+        if x not in self.father:
             self.father[x] = x
         if self.father[x].is_same(x):
             return x
@@ -351,7 +351,7 @@ class RunableProgram:
             if has_name(ufset.find_root(value)):
                 name_defining_op = self._get_name_defining_op(program, value)
                 if name_defining_op:
-                    paddle.core.pir.reset_parameter_name(
+                    paddle.core.pir.reset_shadow_output_name(
                         name_defining_op, value2name[ufset.find_root(value)]
                     )
 
@@ -389,7 +389,7 @@ class PirPassContext:
     """
 
     INPUT_OP_NAME = "pd_op.data"
-    PARM_OP_NAME = "builtin.parameter"
+    PARAM_OP_NAME = "builtin.parameter"
     OUTPUT_OP_NAME = "builtin.shadow_output"
 
     @classmethod
@@ -424,7 +424,7 @@ class PirPassContext:
             op_name = op.name()
             if op_name == cls.INPUT_OP_NAME:
                 inputs.append(op.result(0))
-            elif op_name == cls.PARM_OP_NAME:
+            elif op_name == cls.PARAM_OP_NAME:
                 params.append(op.result(0))
             elif op_name == cls.OUTPUT_OP_NAME:
                 outputs.append(op.operand(0).source())
@@ -551,7 +551,7 @@ class PartialProgramLayer:
         inputs = list(self._inputs.var_list)
         outputs = list(self._outputs.var_list)
         params = self._param_values
-        paddle.base.libpaddle.pir.append_set_parameters(
+        paddle.base.libpaddle.pir.append_shadow_outputs(
             self._origin_main_program,
             outputs,
             len(self._origin_main_program.global_block().ops),
@@ -801,7 +801,7 @@ class PartialProgramLayer:
                             dtype=out_op_result.dtype,
                         )
                         forward_outputs_grads.append(value)
-                paddle.base.libpaddle.pir.append_set_parameters(
+                paddle.base.libpaddle.pir.append_shadow_outputs(
                     program,
                     forward_outputs_grads,
                     len(program.global_block().ops),
@@ -866,7 +866,7 @@ class PartialProgramLayer:
             )
         )
         backward_end_op_index = len(program.global_block().ops)
-        paddle.base.libpaddle.pir.append_set_parameters(
+        paddle.base.libpaddle.pir.append_shadow_outputs(
             program,
             output_grads_to_append,
             backward_end_op_index,
