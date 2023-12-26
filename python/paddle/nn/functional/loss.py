@@ -2314,7 +2314,7 @@ def margin_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits,
             label,
