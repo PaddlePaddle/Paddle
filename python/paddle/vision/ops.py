@@ -1231,7 +1231,7 @@ def distribute_fpn_proposals(
         num_lvl < 100
     ), "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             rois_num is not None
         ), "rois_num should not be None in dygraph mode."
