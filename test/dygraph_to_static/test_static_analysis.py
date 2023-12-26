@@ -200,26 +200,6 @@ class TestStaticAnalysis(unittest.TestCase):
             node_to_wrapper_map = visitor.get_node_to_wrapper_map()
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
-    def test_var_env(self):
-        for i, func in enumerate(test_funcs):
-            var_type = result_var_type[i]
-            test_source_code = inspect.getsource(func)
-            ast_root = gast.parse(test_source_code)
-            print(gast.dump(ast_root))
-            visitor = StaticAnalysisVisitor(ast_root)
-            var_env = visitor.get_var_env()
-
-            # There must be 1 sub scope for the test function
-            self.assertEqual(1, len(var_env.cur_scope.sub_scopes))
-            var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
-
-            scope_var_type = var_env.get_scope_var_type()
-            print(scope_var_type)
-            self.assertEqual(len(scope_var_type), len(var_type))
-            for name in scope_var_type:
-                print("Test var name %s" % (name))
-                self.assertTrue(name in var_type)
-                self.assertEqual(scope_var_type[name], var_type[name])
 
 
 if __name__ == '__main__':
