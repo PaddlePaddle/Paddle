@@ -513,7 +513,7 @@ void print_program(pir::ModuleOp m, std::string mgs) {
   print_stream << "\n\n";
   m.program()->Print(print_stream);
   print_stream << "\n\n";
-  VLOG(0) << "===================== " << mgs << "\n" << print_stream.str();
+  VLOG(5) << "===================== " << mgs << "\n" << print_stream.str();
 }
 
 bool IsShapeSpecialOp(const pir::Operation& op) {
@@ -675,7 +675,7 @@ void InferSymbolicShapeReshape(pir::Operation* op,
 void debug_print_op_info(
     pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
-  VLOG(0) << op->name() << ", num_operands: " << op->num_operands();
+  VLOG(5) << op->name() << ", num_operands: " << op->num_operands();
   for (auto& rst : op->results()) {
     auto type = rst.type();
     auto value_id = pir::GetValueId(&rst);
@@ -694,7 +694,7 @@ void debug_print_op_info(
       }
       print_stream << "]\n";
     }
-    VLOG(0) << print_stream.str();
+    VLOG(5) << print_stream.str();
   }
 }
 

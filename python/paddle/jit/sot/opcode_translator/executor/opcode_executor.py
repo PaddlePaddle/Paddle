@@ -497,7 +497,7 @@ class OpcodeExecutorBase:
             )
             if current_line != -1:
                 message_lines.append(
-                    f"{indent}  {lines[current_line-start].rstrip()}"
+                    f"{indent}  {lines[current_line - start].rstrip()}"
                 )
         error_message = traceback.format_exception_only(
             type(original_error), original_error
