@@ -1444,6 +1444,9 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
     auto* selected_rows =
         static_cast<phi::SelectedRows*>(self->tensor.impl().get());
     ptr = static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+  } else if (self->tensor.is_dist_tensor()) {
+    ptr = static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+              ->unsafe_mutable_value();
   } else {
     ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   }
