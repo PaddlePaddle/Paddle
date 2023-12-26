@@ -546,7 +546,7 @@ class PartialProgramLayer:
             def pass_fn(forward_program, backward_program, name_attr):
                 pm = paddle.base.libpaddle.pir.PassManager()
                 if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_pir_pass(pm, forward_program)
+                    paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
                     pm.run(forward_program)
                 return forward_program, backward_program
 
@@ -568,10 +568,10 @@ class PartialProgramLayer:
                 bwd_pm = paddle.base.libpaddle.pir.PassManager()
 
                 if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_pir_pass(
+                    paddle.base.libpaddle.pir.add_cinn_pass(
                         fwd_pm, forward_program
                     )
-                    paddle.base.libpaddle.pir.add_pir_pass(
+                    paddle.base.libpaddle.pir.add_cinn_pass(
                         bwd_pm, backward_program
                     )
                     # pm.add("pass_name") to apply more pass strategy

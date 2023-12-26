@@ -1558,8 +1558,8 @@ static bool HasDynamicShape(const Program &program) {
   return false;
 }
 
-void AddPirPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-                Program &program) {                          // NOLINT
+void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
+                 Program &program) {                          // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -1572,8 +1572,8 @@ void AddPirPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  pass_manager.AddPass(pir::CreateShapeOptimizationPass());
-  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
@@ -1595,7 +1595,7 @@ void AddPirPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 #endif
 }
 void BindIrPass(pybind11::module *m) {
-  m->def("add_pir_pass", AddPirPass);
+  m->def("add_cinn_pass", AddCinnPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
