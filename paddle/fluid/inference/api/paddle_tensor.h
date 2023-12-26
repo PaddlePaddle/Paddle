@@ -19,8 +19,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle_infer_declare.h"  // NOLINT
-
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
@@ -80,7 +78,7 @@ enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 /// AnalysisPredictor.
 /// It is obtained through PaddlePredictor::GetinputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
-class PD_INFER_DECL Tensor {
+class Tensor {
  public:
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.

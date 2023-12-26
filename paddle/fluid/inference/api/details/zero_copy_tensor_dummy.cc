@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/paddle_api.h"
-#include "paddle/fluid/inference/api/paddle_infer_declare.h"
 
 namespace paddle_infer {
 
@@ -29,10 +28,8 @@ T *Tensor::data(PlaceType *place, int *size) const {
   return nullptr;
 }
 
-template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
-                                                  int *size) const;
-template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
-                                                      int *size) const;
+template float *Tensor::data<float>(PlaceType *place, int *size) const;
+template int64_t *Tensor::data<int64_t>(PlaceType *place, int *size) const;
 template float *Tensor::mutable_data(PlaceType place);
 template int64_t *Tensor::mutable_data(PlaceType place);
 

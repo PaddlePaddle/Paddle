@@ -19,8 +19,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle_infer_declare.h"  // NOLINT
-
 ///
 /// \file paddle_pass_builder.h
 ///
@@ -46,7 +44,7 @@ namespace paddle {
 /// const vector<string> passes(1, "conv_relu_mkldnn_fuse_pass");
 /// PaddlePassBuilder builder(passes);
 /// \endcode
-class PD_INFER_DECL PaddlePassBuilder {
+class PaddlePassBuilder {
  public:
   /// \brief Constructor of the class. It stores the input passes.
   /// \param[in] passes passes' types.
@@ -128,7 +126,7 @@ class PD_INFER_DECL PaddlePassBuilder {
 /// \class PassStrategy
 /// \brief This class defines the pass strategies like whether to use gpu/cuDNN
 /// kernel/MKLDNN.
-class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
+class PassStrategy : public PaddlePassBuilder {
  public:
   /// \brief Constructor of PassStrategy class. It works the same as
   /// PaddlePassBuilder class. \param[in] passes passes' types.
@@ -190,7 +188,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
 /// \class CpuPassStrategy
 /// \brief The CPU passes controller, it is used in AnalysisPredictor with CPU
 /// mode.
-class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
+class CpuPassStrategy : public PassStrategy {
  public:
   /// \brief Default constructor of CpuPassStrategy.
   CpuPassStrategy();
@@ -245,7 +243,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
 /// \class GpuPassStrategy
 /// \brief The GPU passes controller, it is used in AnalysisPredictor with GPU
 /// mode.
-class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
+class GpuPassStrategy : public PassStrategy {
  public:
   /// \brief Default constructor of GpuPassStrategy.
   GpuPassStrategy();
@@ -288,7 +286,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 /// \class XpuPassStrategy
 /// \brief The XPU passes controller, it is used in AnalysisPredictor with XPU
 /// mode.
-class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
+class XpuPassStrategy final : public PassStrategy {
  public:
   XpuPassStrategy();
 };
@@ -297,7 +295,7 @@ class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
 /// \brief The CustomDevice passes controller, it is used in AnalysisPredictor
 /// with CustomDevice
 /// mode.
-class PD_INFER_DECL CustomDevicePassStrategy final : public PassStrategy {
+class CustomDevicePassStrategy final : public PassStrategy {
  public:
   CustomDevicePassStrategy() : PassStrategy({}) { use_custom_device_ = true; }
 
@@ -312,7 +310,7 @@ class PD_INFER_DECL CustomDevicePassStrategy final : public PassStrategy {
 /// \class IpuPassStrategy
 /// \brief The IPU passes controller, it is used in AnalysisPredictor with IPU
 /// mode.
-class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
+class IpuPassStrategy final : public PassStrategy {
  public:
   /// \brief Default constructor of IpuPassStrategy.
   IpuPassStrategy();
@@ -326,21 +324,21 @@ class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
 };
 
 /// \brief List of tensorRT subgraph passes.
-PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
+extern const std::vector<std::string> kTRTSubgraphPasses;
 
 /// \brief List of dlnne subgraph passes.
-PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
+extern const std::vector<std::string> kDlnneSubgraphPasses;
 
 /// \brief List of lite subgraph passes.
-PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
+extern const std::vector<std::string> kLiteSubgraphPasses;
 
 /// \brief List of cinn compiler passes.
-PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
+extern const std::vector<std::string> kCINNCompilerPasses;
 
 /// \brief TODO(inference): Most of the existing pass fusion operators do not
 /// support fp16/bf16 precision, temporarily use low precision pass to prevent
 /// running errors. After fusion operator supports low precision, delete this.
-PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
-PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
+extern const std::vector<std::string> kGpuLowerPrecisionPasses;
+extern const std::vector<std::string> kTrtLowerPrecisionPasses;
 
 }  // namespace paddle

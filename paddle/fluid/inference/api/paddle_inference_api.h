@@ -78,7 +78,7 @@ using XpuConfig = paddle::XpuConfig;
 ///   predictor->Run();
 /// \endcode
 ///
-class PD_INFER_DECL Predictor {
+class Predictor {
  public:
   Predictor() = delete;
   ~Predictor() {}
@@ -227,26 +227,24 @@ class PD_INFER_DECL Predictor {
 /// auto predictor = CreatePredictor(config);
 /// \endcode
 ///
-PD_INFER_DECL std::shared_ptr<Predictor> CreatePredictor(
-    const Config& config);  // NOLINT
+std::shared_ptr<Predictor> CreatePredictor(const Config& config);  // NOLINT
 
-PD_INFER_DECL int GetNumBytesOfDataType(DataType dtype);
+int GetNumBytesOfDataType(DataType dtype);
 
-PD_INFER_DECL std::string GetVersion();
-PD_INFER_DECL std::tuple<int, int, int> GetTrtCompileVersion();
-PD_INFER_DECL std::tuple<int, int, int> GetTrtRuntimeVersion();
-PD_INFER_DECL void UpdateDllFlag(const char* name, const char* value);
+std::string GetVersion();
+std::tuple<int, int, int> GetTrtCompileVersion();
+std::tuple<int, int, int> GetTrtRuntimeVersion();
+void UpdateDllFlag(const char* name, const char* value);
 
-PD_INFER_DECL void ConvertToMixedPrecision(
-    const std::string& model_file,
-    const std::string& params_file,
-    const std::string& mixed_model_file,
-    const std::string& mixed_params_file,
-    PrecisionType mixed_precision,
-    PlaceType backend,
-    bool keep_io_types = true,
-    std::unordered_set<std::string> black_list = {},
-    std::unordered_set<std::string> white_list = {});
+void ConvertToMixedPrecision(const std::string& model_file,
+                             const std::string& params_file,
+                             const std::string& mixed_model_file,
+                             const std::string& mixed_params_file,
+                             PrecisionType mixed_precision,
+                             PlaceType backend,
+                             bool keep_io_types = true,
+                             std::unordered_set<std::string> black_list = {},
+                             std::unordered_set<std::string> white_list = {});
 
 namespace services {
 ///
@@ -257,7 +255,7 @@ namespace services {
 /// corresponding Predictor is taken out from PredictorPool to complete the
 /// prediction.
 ///
-class PD_INFER_DECL PredictorPool {
+class PredictorPool {
  public:
   PredictorPool() = delete;
   PredictorPool(const PredictorPool&) = delete;
