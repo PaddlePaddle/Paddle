@@ -781,10 +781,12 @@ class ParallelCrossEntropy(paddle.nn.Layer):
         self.ignore_index = ignore_index
 
     def forward(self, input, label):
+        print("ParallelCrossEntropy before")
         loss = mp_ops._c_softmax_with_cross_entropy(
             input,
             label,
             group=self.model_parallel_group,
             ignore_index=self.ignore_index,
         )
+        print("ParallelCrossEntropy after")
         return loss

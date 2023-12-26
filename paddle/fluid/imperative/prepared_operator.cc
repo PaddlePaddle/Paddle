@@ -185,6 +185,8 @@ PreparedOp PrepareImpl(
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
       op, empty_scope, *dev_ctx, empty_ctx, ins, outs, attrs, default_attrs);
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
+  std::cout << "op.Type(): " << op.Type() << std::endl;
+  std::cout << "expected_kernel_key: " << expected_kernel_key << std::endl;
 
   const phi::KernelSignature* default_kernel_signature = nullptr;
   phi::KernelSignature kernel_signature;
@@ -215,6 +217,7 @@ PreparedOp PrepareImpl(
   bool is_xpu_unsupport = expected_kernel_key.backend() == phi::Backend::XPU &&
                           !paddle::platform::is_xpu_support_op(
                               op.Type(), expected_kernel_key.dtype());
+  std::cout << "is_xpu_unsupport: " << is_xpu_unsupport << std::endl;
 #endif
 
   bool has_phi_kernel = false;

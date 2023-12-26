@@ -162,37 +162,11 @@ void StridedSliceRawKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
 }
 
-template <typename T, typename Context>
-void StridedSliceArrayKernel(const Context& dev_ctx,
-                             const TensorArray& x,
-                             const std::vector<int>& axes,
-                             const IntArray& starts,
-                             const IntArray& ends,
-                             const IntArray& strides,
-                             const std::vector<int>& infer_flags,
-                             const std::vector<int>& decrease_axis,
-                             TensorArray* out) {
-  for (size_t i = 0; i < out->size(); i++) {
-    auto& out_tensor = out->at(i);
-    
-  }
-}
 }  // namespace phi
 PD_REGISTER_KERNEL(strided_slice_raw,
                    XPU,
                    ALL_LAYOUT,
                    phi::StridedSliceRawKernel,
-                   int,
-                   int16_t,
-                   int64_t,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(strided_slice_array,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::StridedSliceArrayKernel,
                    int,
                    int16_t,
                    int64_t,
