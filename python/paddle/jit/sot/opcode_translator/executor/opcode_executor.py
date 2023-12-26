@@ -558,7 +558,7 @@ class OpcodeExecutorBase:
             print(log_message)
             breakpoint()  # breakpoint for debug
 
-        with EventGuard(f"{instr.opname}", event_level=1):
+        with EventGuard(f"{instr.opname}", event_level=2):
             return getattr(self, instr.opname)(instr)  # run single step.
 
     def indexof(self, instr: Instruction):

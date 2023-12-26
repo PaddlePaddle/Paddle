@@ -225,9 +225,7 @@ class FunctionGraph:
     def guard_fn(self) -> Guard:
         with tmp_name_guard():
             guards = []
-            with EventGuard(
-                "guard_fn: find vars and make stringify guard", event_level=1
-            ):
+            with EventGuard("guard_fn: find vars and make stringify guard"):
                 for variable in find_traceable_vars(
                     self.input_variables + list(self._global_guarded_variables)
                 ):
