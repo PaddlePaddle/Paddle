@@ -29,6 +29,12 @@ void LayerNormKernel(const Context& ctx,
                      DenseTensor* out,
                      DenseTensor* mean,
                      DenseTensor* variance) {
+  std::cout << "x.dtype(): " << x.dtype() << std::endl;
+  std::cout << "scale.dtype(): " << scale.get_ptr()->dtype() << std::endl;
+  std::cout << "bias.dtype(): " << bias.get_ptr()->dtype() << std::endl;
+  std::cout << "out->dtype(): " << out->dtype() << std::endl;
+  std::cout << "mean->dtype(): " << mean->dtype() << std::endl;
+  std::cout << "variance->dtype(): " << variance->dtype() << std::endl;
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x.dims();
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
@@ -44,7 +50,8 @@ void LayerNormKernel(const Context& ctx,
   if (scale_ptr == nullptr) {
     // no scale, do nothing
   } else if (scale_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+             phi::CppTypeToDataType<phi::dtype::float16>::Type() || scale_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::bfloat16>::Type()) {
     float* scale_data_temp =
         RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
     int r = xpu::cast<XPUType, float>(
@@ -65,7 +72,8 @@ void LayerNormKernel(const Context& ctx,
   if (bias_ptr == nullptr) {
     // no bias, do nothing
   } else if (bias_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+             phi::CppTypeToDataType<phi::dtype::float16>::Type() || bias_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::bfloat16>::Type()) {
     float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
     int r = xpu::cast<XPUType, float>(
         ctx.x_context(),
@@ -105,4 +113,5 @@ PD_REGISTER_KERNEL(layer_norm,
                    ALL_LAYOUT,
                    phi::LayerNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

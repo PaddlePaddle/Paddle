@@ -28,7 +28,7 @@ void MatmulGradKernel(const Context& dev_ctx,
                       bool transpose_y,
                       DenseTensor* dx,
                       DenseTensor* dy) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
+  // using XPUType = typename XPUTypeTrait<T>::Type;
 
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
@@ -37,65 +37,65 @@ void MatmulGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dy);
   }
 
-  const XPUType* dout_ptr = reinterpret_cast<const XPUType*>(dout.data<T>());
-  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
-  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
+  // const XPUType* dout_ptr = reinterpret_cast<const XPUType*>(dout.data<T>());
+  // const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
+  // const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
 
-  xpu::Context* xpu_ctx = dev_ctx.x_context();
+  // xpu::Context* xpu_ctx = dev_ctx.x_context();
 
-  XpuFcInfo info_forward;
-  GetFCInfo(x.dims(), y.dims(), transpose_x, transpose_y, &info_forward);
-  xpu::ctx_guard RAII_GUARD(xpu_ctx);
-  // begin calculate
-  const XPUType* a_1 = reinterpret_cast<const XPUType*>(NULL);
-  const XPUType* b_1 = reinterpret_cast<const XPUType*>(NULL);
-  const XPUType* a_2 = reinterpret_cast<const XPUType*>(NULL);
-  const XPUType* b_2 = reinterpret_cast<const XPUType*>(NULL);
-  XPUType* c_1 = (dx == NULL) ? reinterpret_cast<XPUType*>(NULL)
-                              : reinterpret_cast<XPUType*>(dx->data<T>());
-  XPUType* c_2 = (dy == NULL) ? reinterpret_cast<XPUType*>(NULL)
-                              : reinterpret_cast<XPUType*>(dy->data<T>());
+  // XpuFcInfo info_forward;
+  // GetFCInfo(x.dims(), y.dims(), transpose_x, transpose_y, &info_forward);
+  // xpu::ctx_guard RAII_GUARD(xpu_ctx);
+  // // begin calculate
+  // const XPUType* a_1 = reinterpret_cast<const XPUType*>(NULL);
+  // const XPUType* b_1 = reinterpret_cast<const XPUType*>(NULL);
+  // const XPUType* a_2 = reinterpret_cast<const XPUType*>(NULL);
+  // const XPUType* b_2 = reinterpret_cast<const XPUType*>(NULL);
+  // XPUType* c_1 = (dx == NULL) ? reinterpret_cast<XPUType*>(NULL)
+  //                             : reinterpret_cast<XPUType*>(dx->data<T>());
+  // XPUType* c_2 = (dy == NULL) ? reinterpret_cast<XPUType*>(NULL)
+  //                             : reinterpret_cast<XPUType*>(dy->data<T>());
 
-  if (info_forward.is_x_need_broadcast) {
-    XPUType* new_c_1 = nullptr;
-    new_c_1 = RAII_GUARD.alloc_l3_or_gm<XPUType>(
-        info_forward.bs * info_forward.m * info_forward.k);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(new_c_1);
-    c_1 = new_c_1;
-  }
+  // if (info_forward.is_x_need_broadcast) {
+  //   XPUType* new_c_1 = nullptr;
+  //   new_c_1 = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+  //       info_forward.bs * info_forward.m * info_forward.k);
+  //   PADDLE_ENFORCE_XDNN_NOT_NULL(new_c_1);
+  //   c_1 = new_c_1;
+  // }
 
-  XpuFcInfo info_dx;
-  XpuFcInfo info_dy;
-  std::tuple<XpuFcInfo,
-             XpuFcInfo,
-             const XPUType*,
-             const XPUType*,
-             const XPUType*,
-             const XPUType*>
-      fc_info = MatmulGradFcInfo(xpu_ctx,
-                                 &RAII_GUARD,
-                                 info_forward,
-                                 transpose_x,
-                                 transpose_y,
-                                 x_ptr,
-                                 y_ptr,
-                                 dout_ptr);
-  std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
-  if (dx) {
-    MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
-    if (info_forward.is_x_need_broadcast) {
-      int r = xpu::reduce_sum<XPUType>(
-          xpu_ctx,
-          c_1,
-          reinterpret_cast<XPUType*>(dx->data<T>()),
-          {info_forward.bs, info_forward.m, info_forward.k},
-          {0});
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
-    }
-  }
-  if (dy) {
-    MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
-  }
+  // XpuFcInfo info_dx;
+  // XpuFcInfo info_dy;
+  // std::tuple<XpuFcInfo,
+  //            XpuFcInfo,
+  //            const XPUType*,
+  //            const XPUType*,
+  //            const XPUType*,
+  //            const XPUType*>
+  //     fc_info = MatmulGradFcInfo(xpu_ctx,
+  //                                &RAII_GUARD,
+  //                                info_forward,
+  //                                transpose_x,
+  //                                transpose_y,
+  //                                x_ptr,
+  //                                y_ptr,
+  //                                dout_ptr);
+  // std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
+  // if (dx) {
+  //   MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
+  //   if (info_forward.is_x_need_broadcast) {
+  //     int r = xpu::reduce_sum<XPUType>(
+  //         xpu_ctx,
+  //         c_1,
+  //         reinterpret_cast<XPUType*>(dx->data<T>()),
+  //         {info_forward.bs, info_forward.m, info_forward.k},
+  //         {0});
+  //     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+  //   }
+  // }
+  // if (dy) {
+  //   MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+  // }
 }
 
 template <typename T, typename Context>
@@ -179,7 +179,8 @@ PD_REGISTER_KERNEL(matmul_grad,
                    ALL_LAYOUT,
                    phi::MatmulGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    XPU,

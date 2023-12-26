@@ -32,6 +32,16 @@ void LayerNormGradKernel(const Context& ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
+  std::cout << "x.dtype(): " << x.dtype() << std::endl;
+  std::cout << "scale.dtype(): " << scale.get_ptr()->dtype() << std::endl;
+  std::cout << "bias.dtype(): " << bias.get_ptr()->dtype() << std::endl;
+  std::cout << "mean->dtype(): " << mean.dtype() << std::endl;
+  std::cout << "variance->dtype(): " << variance.dtype() << std::endl;
+  std::cout << "out_grad->dtype(): " << out_grad.dtype() << std::endl;
+  std::cout << "x_grad->dtype(): " << x_grad->dtype() << std::endl;
+  std::cout << "scale_grad->dtype(): " << scale_grad->dtype() << std::endl;
+  std::cout << "bias_grad->dtype(): " << bias_grad->dtype() << std::endl;
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x.dims();
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
@@ -137,8 +147,9 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    ALL_LAYOUT,
                    phi::LayerNormGradKernel,
                    float,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 || kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }

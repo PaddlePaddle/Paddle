@@ -27,19 +27,19 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
+//   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
-  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
-  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
-  XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+//   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
+//   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
+//   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
+//   auto x_dims = x.dims();
+//   auto y_dims = y.dims();
 
-  XpuFcInfo fc_info;
-  GetFCInfo(x_dims, y_dims, transpose_x, transpose_y, &fc_info);
-  xpu::Context* xpu_ctx = dev_ctx.x_context();
-  MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
+//   XpuFcInfo fc_info;
+//   GetFCInfo(x_dims, y_dims, transpose_x, transpose_y, &fc_info);
+//   xpu::Context* xpu_ctx = dev_ctx.x_context();
+//   MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
 }
 
 template <typename T, typename Context>
@@ -76,8 +76,13 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    matmul, XPU, ALL_LAYOUT, phi::MatmulKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(matmul, 
+                   XPU, 
+                   ALL_LAYOUT, 
+                   phi::MatmulKernel, 
+                   float, 
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten,
                    XPU,
