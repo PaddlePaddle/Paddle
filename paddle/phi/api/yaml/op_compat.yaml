@@ -1044,7 +1044,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
+    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
 
 - op : feed
   outputs: {out: Out}
