@@ -791,11 +791,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
-        std::vector<pir::OpResult> src_vars;
-        std::set<std::string> blacklist;
-        std::set<std::string> whitelist;
-        DecompProgram decomp_object(
-            pir_program_.get(), src_vars, blacklist, whitelist);
+        DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
       }
 
