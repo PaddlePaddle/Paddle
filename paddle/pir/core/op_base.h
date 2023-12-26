@@ -87,6 +87,7 @@ class IR_API OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
+  using Base = OpTraitBase<ConcreteTrait>;
   explicit OpTraitBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }

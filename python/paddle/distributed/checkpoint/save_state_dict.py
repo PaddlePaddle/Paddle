@@ -161,8 +161,8 @@ def save_state_dict(
                     ) = (
                         compute_local_shape_and_global_offset(
                             val.shape,
-                            val.dist_attr.process_mesh,
-                            val.dist_attr.dims_mapping,
+                            val.process_mesh,
+                            val.placements,
                         )
                         if len(val.shape) > 0
                         else ((), ())

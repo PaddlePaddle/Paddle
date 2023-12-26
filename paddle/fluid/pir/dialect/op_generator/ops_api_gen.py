@@ -101,12 +101,13 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'get_tensor_from_selected_rows',
     'print',
     'sequence_mask',
+    'number_count',
+    'assign_value',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'add_n_with_kernel',
-    'assign_value',
     'c_allgather',
     'c_allreduce_max',
     'c_allreduce_sum',
@@ -114,6 +115,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_identity',
     'c_reduce_sum',
     'c_reducescatter',
+    'c_softmax_with_cross_entropy',
     'decayed_adagrad',
     'dpsgd',
     'embedding_grad_sparse',

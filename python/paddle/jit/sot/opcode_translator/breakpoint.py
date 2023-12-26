@@ -123,7 +123,7 @@ class BreakpointManager:
         if "All" in self.record_event or event in self.record_event:
             print("event captured.")
             self.activate = len(self.executors) - 1
-            breakpoint()
+            breakpoint()  # noqa: T100
 
     def _dis_source_code(self):
         cur_exe = self.executors[self.activate]
