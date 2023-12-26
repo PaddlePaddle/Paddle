@@ -208,6 +208,9 @@ class PipelineParallel(MetaParallelBase):
         self._enable_timer = self._strategy.hybrid_configs[
             "pp_configs"
         ].enable_timer
+        self._release_gradients = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].release_gradients
 
         self._sharding_split_param = self._strategy.hybrid_configs[
             "sharding_configs"
@@ -372,7 +375,13 @@ class PipelineParallel(MetaParallelBase):
 
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
-                        group_idx, parameters, comm_group, acc_steps, act, dst
+                        group_idx,
+                        parameters,
+                        comm_group,
+                        acc_steps,
+                        act,
+                        dst,
+                        release_grads=self._release_gradients,
                     )
                     self._chunk_2_comm_buffers[chunk_idx].append(buffer)
 
@@ -862,7 +871,14 @@ class PipelineParallel(MetaParallelBase):
         else:
             self.optimizer.step()
 
-        self.optimizer.clear_grad()
+        if self._release_gradients:
+            self.optimizer.clear_grad(set_to_zero=False)
+            for _, buffers in self._chunk_2_comm_buffers.items():
+                for buffer in buffers:
+                    buffer._clear_grad_storage()
+        else:
+            self.optimizer.clear_grad()
+
         if self.lr_scheduler:
             self.lr_scheduler.step()
 
