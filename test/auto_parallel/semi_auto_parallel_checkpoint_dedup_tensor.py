@@ -31,11 +31,15 @@ class TestSaveStateDict:
         dist_w1 = dist.shard_tensor(w1, mesh, [dist.Replicate()])
         dist_w2 = dist.shard_tensor(w2, mesh, [dist.Shard(0)])
         state_dict = {"w1": dist_w1, "w2": dist_w2}
+        # w1 is replicated in rank0 and ran1, it will only save in rank0.
+        # Therefore, rank0 save state_dict:{"w1": dist_w1, "w2": dist_w2}, rank1 save state_dict:{"w2": dist_w2}
         dist.save_state_dict(state_dict, self._ckpt_path)
         paddle.distributed.barrier()
         # check
         expect_local_state_dict = {}
         for k, v in state_dict.items():
+            if k == "w1" and paddle.distributed.get_rank() != 0:
+                continue
             expect_local_state_dict[k] = v._local_value()
         data_file_path = os.path.join(
             self._ckpt_path, f"{paddle.distributed.get_rank()}_0.distcp"
@@ -46,23 +50,15 @@ class TestSaveStateDict:
         )
         local_state_dict = paddle.load(data_file_path)
         metadata = paddle.load(metadata_file_path)
+
+        for k, local_tensor in local_state_dict.items():
+            assert k in expect_local_state_dict
+            expect_tensor = expect_local_state_dict[k]
+            np.testing.assert_equal(expect_tensor.numpy(), local_tensor.numpy())
         for tensor_index, file_name in metadata.storage_metadata.items():
             rank = int(file_name.split(".")[0].split("_")[0])
-            if rank == paddle.distributed.get_rank():
-                assert (
-                    tensor_index.tensor_key in state_dict
-                    and tensor_index.tensor_key in local_state_dict
-                )
-                expect_tensor = expect_local_state_dict[tensor_index.tensor_key]
-                local_tensor = local_state_dict[tensor_index.tensor_key]
-                np.testing.assert_equal(
-                    expect_tensor.numpy(), local_tensor.numpy()
-                )
-            else:
-                if tensor_index.tensor_key == "w1":
-                    assert (
-                        tensor_index.tensor_key not in local_state_dict
-                    ), f"tensor_key: {tensor_index.tensor_key} should not in local state dict"
+            if tensor_index.tensor_key == "w1":
+                assert rank == 0
 
     def run_test_case(self):
         self.test_dedup_tesnor()

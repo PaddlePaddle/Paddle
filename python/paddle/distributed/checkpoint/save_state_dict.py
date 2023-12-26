@@ -73,14 +73,32 @@ def dedup_key_in_dict(global_storage_metadata):
     return out
 
 
-def dedup_tensor(state_dict, local_storage_metadata, dedup_storage_metadata):
-    for tensor_index, file_name in dedup_storage_metadata.items():
+def dedup_tensor(
+    local_state_dict, local_storage_metadata, global_storage_metadata
+):
+    """
+    Dedup the replicated tensor in local state_dict.
+
+    Args:
+        local_state_dict(Dict[str, paddle.Tensor]): The state_dict of current rank.
+        local_storage_metadata(Dict[LocalTensorIndex, str]): The storage metadata of current rank.
+        global_storage_metadata(Dict[LocalTensorIndex, str]): The final storage metadata of all ranks.
+
+    Examples:
+        In rank0, local_state_dict:{"w1": t1_0, "w2": t2}, local_storage_metadata:{LocalTensorIndex("w1", (0,0)): "0_0.distcp", LocalTensorIndex("w2", (0,0)): "0_0.distcp"},
+        in rank1, local_state_dict:{"w1": t1_1, "w2": t2}, local_storage_metadata:{LocalTensorIndex("w1", (1,0)): "1_0.distcp", LocalTensorIndex("w2", (0,0)): "1_0.distcp"},
+        global_storage_metadata:{LocalTensorIndex("w1", (0,0)): "0_0.distcp", LocalTensorIndex("w1", (1,0)): "1_0.distcp", LocalTensorIndex("w2", (0, 0)): "0_0.distcp"}.
+        w2 is replicated in rank0 and rank1. We save it in rank0 as default thus need to remove it in other ranks.
+        Finally, the local_state_dict:{"w1": t1_1, "w2": t2} in rank1 update to {"w1": t1_1}.
+    """
+
+    for tensor_index, file_name in global_storage_metadata.items():
         rank = int(file_name.split(".")[0].split("_")[0])
         if (
             tensor_index in local_storage_metadata
             and rank != paddle.distributed.get_rank()
         ):
-            state_dict.pop(tensor_index.tensor_key)
+            local_state_dict.pop(tensor_index.tensor_key)
 
 
 def save_state_dict(
