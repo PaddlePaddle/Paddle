@@ -81,28 +81,28 @@ class DataNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSize shouold be 1"));
+                          "The input dim of BatchSize should be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSum shouold be 1"));
+                          "The input dim of BatchSum should be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSquareSum shouold be 1"));
+                          "The input dim of BatchSquareSum should be 1"));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSize shouold be C"));
+                            "The input dim[0] of BatchSize should be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSum shouold be C"));
+                            "The input dim[0] of BatchSum should be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSqureSum shouold be C"));
+                            "The input dim[0] of BatchSqureSum should be C"));
     }
 
     if (enable_scale_and_shift) {

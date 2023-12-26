@@ -187,6 +187,23 @@ void BatchNormInferMeta(const MetaTensor& x,
                         MetaTensor* reserve_space,
                         MetaConfig config = MetaConfig());
 
+void DataNormInferMeta(const MetaTensor& scale_w,
+                       const MetaTensor& bias,
+                       const MetaTensor& x,
+                       const MetaTensor& batch_size,
+                       const MetaTensor& batch_sum,
+                       const MetaTensor& batch_square_sum,
+                       float epsilon,
+                       int slot_dim,
+                       float summary_decay_rate,
+                       bool enable_scale_and_shift,
+                       const std::string& data_layout,
+                       bool sync_stats,
+                       MetaTensor* y,
+                       MetaTensor* means,
+                       MetaTensor* scales,
+                       MetaConfig config = MetaConfig());
+
 void BatchNormInferInferMeta(const MetaTensor& x,
                              const MetaTensor& mean,
                              const MetaTensor& variance,

@@ -698,6 +698,15 @@
       support_tensor : true
 
 - op : data_norm
+  inputs :
+    scale_w : scale_w
+    bias : bias
+    x : X
+    batch_size : BatchSize
+    batch_sum : BatchSum
+    batch_square_sum : BatchSquareSum
+  outputs :
+    { y:Y , means:Means , scales:Scales }
   backward : data_norm_grad
   extra :
     attrs : [bool use_mkldnn = false]
