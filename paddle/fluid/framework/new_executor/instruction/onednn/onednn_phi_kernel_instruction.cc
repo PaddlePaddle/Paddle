@@ -349,6 +349,10 @@ void OneDNNPhiKernelInstruction::Run() {
         phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
       }
 
+      if (from_layout == DataLayout::kAnyLayout) {
+        from_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+      }
+
       dnnl::memory::desc out_mem_desc =
           phi::funcs::make_memory_desc(*input, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
