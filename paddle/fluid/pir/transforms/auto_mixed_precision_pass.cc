@@ -643,21 +643,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
         op->set_attribute("dtype", attr_dtype);
       }
 
-      if (op->HasAttribute("use_mkldnn") &&
-          op->attribute("use_mkldnn").dyn_cast<pir::BoolAttribute>().data() ==
-              true &&
-          op->HasAttribute("mkldnn_data_type")) {  // useless now?
-        std::string mkldnn_data_type = op->attribute("mkldnn_data_type")
-                                           .dyn_cast<pir::StrAttribute>()
-                                           .AsString();
-        std::string low_precision = phi::DataTypeToString(precision_mode_);
-        if (mkldnn_data_type != low_precision) {
-          pir::Attribute attr_mkldnn_data_type =
-              pir::StrAttribute::get(builder.ir_context(), low_precision);
-          op->set_attribute("mkldnn_data_type", attr_mkldnn_data_type);
-        }
-      }
-
       auto phi_kernel =
           GetPhiKernelInPrecision(op_type, backend, precision_mode_);
       PADDLE_ENFORCE(
