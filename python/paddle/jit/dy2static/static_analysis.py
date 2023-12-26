@@ -40,129 +40,6 @@ class AstNodeWrapper:
         self.node_var_type = {NodeVarType.UNKNOWN}
 
 
-# class AstVarScope:
-#     """
-#     AstVarScope is a class holding the map from current scope variable to its
-#     type.
-#     """
-
-#     SCOPE_TYPE_SCRIPT = 0
-#     SCOPE_TYPE_FUNCTION = 1
-#     SCOPE_TYPE_CLASS = 2
-
-#     def __init__(
-#         self, scope_name='', scope_type=SCOPE_TYPE_SCRIPT, parent_scope=None
-#     ):
-#         self.sub_scopes = []
-#         self.name_to_id = {}
-#         self.id_to_type = {}
-#         self.cur_id = 0
-
-#         self.scope_name = scope_name
-#         self.scope_type = scope_type
-#         self.parent_scope = parent_scope
-#         if parent_scope is not None:
-#             parent_scope.sub_scopes.append(self)
-
-#     def get_var_type(self, var_name):
-#         if var_name in self.name_to_id:
-#             num_id = self.name_to_id[var_name]
-#             return self.id_to_type[num_id]
-#         # 自己没存, 找爹, 爹也没有, 直接 UNKNOWN
-#         if self.parent_scope is None:
-#             return {NodeVarType.UNKNOWN}
-#         # 有爹, 让爹找
-#         return self.parent_scope.get_var_type(var_name)
-
-
-#     def set_var_type(self, var_name, node_var_type):
-#         # 找之前的 id, 没有则 id++
-#         # 设置 name_to_id
-#         if var_name in self.name_to_id:
-#             num_id = self.name_to_id[var_name]
-#         else:
-#             num_id = self.cur_id
-#             self.cur_id += 1
-#             self.name_to_id[var_name] = num_id
-
-#         # 设置 id_to_type
-#         self.id_to_type[num_id] = (
-#             node_var_type if isinstance(node_var_type, set) else {node_var_type}
-#         )
-
-
-#     def add_var_type(self, var_name, node_var_type):
-#         # 看有没有
-#         var_type = self.get_var_type(var_name)
-
-#         # 没有就设置
-#         if var_type == {NodeVarType.UNKNOWN}:
-#             self.set_var_type(var_name, node_var_type)
-#         else:
-#             # 已经有的话, set 用 update
-#             if isinstance(node_var_type, set):
-#                 var_type.update(node_var_type)
-#             else:
-#                 var_type.add(node_var_type)
-
-
-# class AstVarEnv:
-#     """
-#     A class maintains scopes and mapping from name strings to type.
-#     """
-
-#     def __init__(self):
-#         self.cur_scope = AstVarScope()
-
-#     def enter_scope(self, scope_name, scope_type):
-#         # 嵌套一版
-#         self.cur_scope = AstVarScope(
-#             scope_name, scope_type, parent_scope=self.cur_scope
-#         )
-#         return self.cur_scope
-
-#     def exit_scope(self):
-#         assert self.cur_scope.parent_scope is not None, (
-#             "Call exit_scope in "
-#             "AstVarEnv when current scope doesn't have parent scope."
-#         )
-#         # 拿当前 scope 的爹
-#         self.cur_scope = self.cur_scope.parent_scope
-#         return self.cur_scope
-
-#     def get_parent_scope(self):
-#         # 拿爹
-#         assert self.cur_scope.parent_scope is not None, (
-#             "Call parent_scope in "
-#             "AstVarEnv when current scope doesn't have parent scope."
-#         )
-#         return self.cur_scope.parent_scope
-
-
-#     # 对 scope 的封装
-#     def add_var_type(self, var_name, node_var_type):
-#         self.cur_scope.add_var_type(var_name, node_var_type)
-
-#     def set_var_type(self, var_name, node_var_type):
-#         self.cur_scope.set_var_type(var_name, node_var_type)
-
-#     def get_var_type(self, var_name):
-#         return self.cur_scope.get_var_type(var_name)
-
-
-
-    # def get_scope_var_type(self):
-    #     '''
-    #     Returns a dict mapping from variable name to type. Used for debug and
-    #     test.
-    #     '''
-    #     cur_scope_dict = {} # str => type
-    #     for name in self.cur_scope.name_to_id:
-    #         node_var_type = self.cur_scope.get_var_type(name)
-    #         cur_scope_dict[name] = node_var_type
-    #     return cur_scope_dict
-
-
 class StaticAnalysisVisitor:
     """
     A class that does static analysis
@@ -176,7 +53,6 @@ class StaticAnalysisVisitor:
         self.node_wrapper_root = None
         self.ancestor_wrappers = []
         self.node_to_wrapper_map = {}
-        # self.var_env = AstVarEnv()
 
         self.dfs_visit(ast_root)
 
@@ -198,16 +74,7 @@ class StaticAnalysisVisitor:
 
         self.ancestor_wrappers.append(cur_wrapper)
         for child in gast.iter_child_nodes(node):
-            if isinstance(child, (gast.FunctionDef, gast.AsyncFunctionDef)):
-                # TODO: current version is function name mapping to its type
-                # consider complex case involving parameters
-                # self.var_env.enter_scope(
-                #     child.name, AstVarScope.SCOPE_TYPE_FUNCTION
-                # )
-                self.dfs_visit(child)
-                # self.var_env.exit_scope()
-            else:
-                self.dfs_visit(child)
+            self.dfs_visit(child)
         self.ancestor_wrappers.pop()
 
         cur_wrapper.node_var_type = self._get_node_var_type(cur_wrapper)
@@ -218,9 +85,6 @@ class StaticAnalysisVisitor:
 
     def get_node_to_wrapper_map(self):
         return self.node_to_wrapper_map
-
-    # def get_var_env(self):
-    #     return self.var_env
 
     def is_tensor_node(self, node):
         tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
@@ -281,7 +145,6 @@ class StaticAnalysisVisitor:
             for target in node.targets:
                 if isinstance(target, gast.Name):
                     self.node_to_wrapper_map[target].node_var_type = ret_type
-                    # self.var_env.set_var_type(target.id, ret_type)
                 # Handle statements like `a, b = paddle.shape(x)`
                 elif isinstance(target, gast.Tuple):
                     for sub_target in target.elts:
@@ -289,7 +152,6 @@ class StaticAnalysisVisitor:
                             self.node_to_wrapper_map[
                                 sub_target
                             ].node_var_type = ret_type
-                            # self.var_env.set_var_type(sub_target.id, ret_type)
             return ret_type
 
         if isinstance(node, gast.AnnAssign):
@@ -308,7 +170,6 @@ class StaticAnalysisVisitor:
                     ret_type = node_value_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type
-                # self.var_env.set_var_type(node.target.id, ret_type)
             return ret_type
 
         if isinstance(node, gast.Name):
@@ -323,7 +184,6 @@ class StaticAnalysisVisitor:
             ):
                 return self._get_func_argument_type(parent_node_wrapper, node)
 
-            # return self.var_env.get_var_type(node.id)
             return {NodeVarType.UNKNOWN}
 
         if isinstance(node, gast.Return):
@@ -331,15 +191,6 @@ class StaticAnalysisVisitor:
             if node.value is None:
                 return {NodeVarType.NONE}
 
-            # return_type = self.node_to_wrapper_map[node.value].node_var_type
-            # assert (
-            #     self.var_env.cur_scope.scope_type
-            #     == AstVarScope.SCOPE_TYPE_FUNCTION
-            # ), "Return at non-function scope"
-            # func_name = self.var_env.cur_scope.scope_name
-            # parent_scope = self.var_env.get_parent_scope()
-            # parent_scope.add_var_type(func_name, return_type)
-            # return return_type
             return {NodeVarType.UNKNOWN}
 
         if isinstance(node, gast.Call):
@@ -354,7 +205,6 @@ class StaticAnalysisVisitor:
                 return {NodeVarType.NUMPY_NDARRAY}
 
             if isinstance(node.func, gast.Name):
-                # return self.var_env.get_var_type(node.func.id)
                 return {NodeVarType.UNKNOWN}
         if isinstance(node, gast.Subscript):
             if self.is_tensor_node(node.value):
@@ -385,7 +235,6 @@ class StaticAnalysisVisitor:
         var_type = {NodeVarType.UNKNOWN}
         if node.annotation is not None:
             var_type = {NodeVarType.type_from_annotation(node.annotation)}
-            # self.var_env.set_var_type(node.id, var_type)
 
         # if annotation and value(Constant) are diffent type, we use value type
         if parent_node.defaults:
@@ -395,8 +244,5 @@ class StaticAnalysisVisitor:
                 defaults_node = parent_node.defaults[index - args_len]
                 if isinstance(defaults_node, gast.Constant):
                     var_type = self._get_constant_node_type(defaults_node)
-
-                    # Add node with identified type into cur_env.
-                    # self.var_env.set_var_type(node.id, var_type)
 
         return var_type

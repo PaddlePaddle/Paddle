@@ -201,6 +201,5 @@ class TestStaticAnalysis(unittest.TestCase):
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
 
-
 if __name__ == '__main__':
     unittest.main()
