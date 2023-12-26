@@ -2089,6 +2089,7 @@ void ProcessBlock(
                                  op_item->attributes(),
                                  op_item_inner_output_types,
                                  op_info);
+      op_item->ReplaceAllUsesWith(op_item_inner->results());
       for (auto iter = block->begin(); iter != block->end(); ++iter) {
         if (*iter == *op_item) {
           block->Assign(iter, op_item_inner);
@@ -2096,7 +2097,7 @@ void ProcessBlock(
         }
       }
       op_item = op_item_inner;
-      op_info_parser = GetOpYamlInfoParser(op_item);
+      op_info_parser = GetOpYamlInfoParser(op_item_inner);
     }
 #endif
     // build output type
