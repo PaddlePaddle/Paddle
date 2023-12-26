@@ -77,6 +77,31 @@ void BindIfOp(py::module* m) {
       });
 }
 
+void BindPyLayerOp(py::module* m) {
+  m->def("build_pylayer_op", [](const std::vector<Value>& inputs) {
+    auto data_combine_op =
+        ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(data);
+    return PyLayerOp(ApiBuilder::Instance().GetBuilder()->Build<PyLayerOp>(
+        data_combine_op.out(), std::vector<Type>{}));
+  });
+  py::class_<PyIfOp> pylayer_op(*m, "PyLayerOp", R"DOC(
+    TODO(MarioLulab): Add some docs for pd.pylayer
+  )DOC");
+  if_op
+      .def("forward_block",
+           &PyLayerOp::forward_block,
+           return_value_policy::reference)
+      .def(
+          "as_operation", &PyLayerOp::operation, return_value_policy::reference)
+      .def("results", [](PyIfOp& self) -> py::list {
+        py::list op_list;
+        for (uint32_t i = 0; i < self->num_results(); i++) {
+          op_list.append(self.result(i));
+        }
+        return op_list;
+      });
+}
+
 void BindWhileOp(py::module* m) {
   m->def("build_while_op", [](Value cond, py::list loop_vars) {
     std::vector<Value> loop_values;
@@ -261,6 +286,7 @@ void BindControlFlowApi(py::module* m) {
   BindIfOp(m);
   BindWhileOp(m);
   BindAssertOp(m);
+  BindPyLayerOp(m);
 }
 
 }  // namespace pybind

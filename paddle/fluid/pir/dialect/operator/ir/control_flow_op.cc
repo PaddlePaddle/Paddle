@@ -14,7 +14,7 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
-    paddle::dialect::AssertOp
+    paddle::dialect::AssertOp, paddle::dialect::PyLayerOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
@@ -282,6 +282,58 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
     }
   }
   return res;
+}
+
+void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
+                      pir::OperationArgument &argument,  // NOLINT
+                      pir::Value inputs,
+                      std::vector<pir::Type> &&output_types) {
+  VLOG(4) << "Start to build PyLayerOp";
+  argument.AddInputs({inputs});
+  argument.output_types.swap(output_types);
+  argument.AddRegion().emplace_back();
+  VLOG(4) << "Finish to build PyLayerOp";
+}
+
+pir::Block &PyLayerOp::forward_block() {
+  pir::Region &region = forward_region();
+  if (region.empty()) {
+    region.emplace_back();
+  }
+
+  return region.front();
+}
+
+void PyLayerOp::Print(pir::IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = pd_op.pylayer";
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << "{";
+  for (auto &item : forward_block()) {
+    os << "\n  ";
+    printer.PrintOperation(&item);
+  }
+  os << "\n }";
+}
+
+void PyLayerOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: PyLayerOp.";
+  // NOTE(MarioLulab): do nothing.
+}
+
+void PyLayerOp::VerifyRegion() {
+  VLOG(4) << "Start Verifying sub regions for: IfOp.";
+  VLOG(4) << "Start Verifying forward block.";
+  PADDLE_ENFORCE_EQ(
+      (*this)->region(0).size(),
+      1u,
+      phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
+                                      (*this)->region(0).size()));
+  // TODO(MarioLulab): Do we need YieldOp here in pylayer op?
 }
 
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
