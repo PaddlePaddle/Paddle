@@ -27,16 +27,18 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/cast_utils.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/parameter.h"
@@ -49,9 +51,11 @@
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+#include "test/cpp/pir/tools/macros_utils.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -64,6 +68,7 @@ PD_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(fetch, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(conv2d, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cummax, CPU, ALL_LAYOUT);
 
 // Define op1.
 class Operation1 : public pir::Op<Operation1> {
@@ -90,7 +95,7 @@ void Operation1::VerifySig() {
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
     "op2_attr1",
     "op2_attr2"};
-IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
@@ -105,7 +110,7 @@ class TestDialect : public pir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1>(); }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 // TODO(wilber): Add logical when ir support erase, replace or update.
@@ -274,6 +279,48 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
+  paddle::dialect::FullOp full_input_op_1 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16, 16},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp full_filter_op_1 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 3, 3, 3},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp add_op_y =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 64, 1, 1},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp full_input_op_2 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16, 16},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp full_filter_op_2 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 3, 3, 3},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp add_op_y_1 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 64, 1, 1},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp add_op_2_x = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{4, 64, 14, 14},
+      1.5,
+      phi::DataType::FLOAT32,
+      phi::CPUPlace());
+
   paddle::dialect::FullOp full_mean_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{64}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
 
@@ -308,14 +355,34 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                                    "NCHW",
                                                    false,
                                                    false);
+  paddle::dialect::Conv2dOp conv2d_op_1 =
+      builder.Build<paddle::dialect::Conv2dOp>(full_input_op_1.out(),
+                                               full_filter_op_1.out());
+  paddle::dialect::AddOp add_op =
+      builder.Build<paddle::dialect::AddOp>(conv2d_op_1.out(), add_op_y.out());
+  paddle::dialect::ReluOp relu_op =
+      builder.Build<paddle::dialect::ReluOp>(add_op.out());
+
+  paddle::dialect::Conv2dOp conv2d_op_2 =
+      builder.Build<paddle::dialect::Conv2dOp>(full_input_op_2.out(),
+                                               full_filter_op_2.out());
+  paddle::dialect::AddOp add_op_1 = builder.Build<paddle::dialect::AddOp>(
+      conv2d_op_2.out(), add_op_y_1.out());
+  paddle::dialect::AddOp add_op_2 =
+      builder.Build<paddle::dialect::AddOp>(add_op_2_x.out(), add_op_1.out());
+  paddle::dialect::ReluOp relu_op_1 =
+      builder.Build<paddle::dialect::ReluOp>(add_op_2.out());
 
   auto transpose1_op = builder.Build<paddle::dialect::TransposeOp>(
       batch_norm_op.out(), std::vector<int>{0, 2, 3, 1});
 
   auto transpose2_op = builder.Build<paddle::dialect::TransposeOp>(
       transpose1_op.out(), std::vector<int>{0, 3, 1, 2});
-
-  builder.Build<paddle::dialect::FetchOp>(transpose2_op.out(), "out", 0);
+  auto add_out = builder.Build<paddle::dialect::AddOp>(transpose2_op.out(),
+                                                       relu_op_1.out());
+  auto add_out_1 =
+      builder.Build<paddle::dialect::AddOp>(add_out.out(), relu_op.out());
+  builder.Build<paddle::dialect::FetchOp>(add_out_1.out(), "out", 0);
 }
 
 TEST(pattern_rewrite, Patterns) {
@@ -328,13 +395,20 @@ TEST(pattern_rewrite, Patterns) {
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 11u);
+  EXPECT_EQ(program.block()->size(), 27u);
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(pir::CreateConv2dFusePass());
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  pm.AddPass(pir::CreateConv2dBnFusePass());
+  pm.AddPass(pir::CreateConv2dAddActFusePass());
+  pm.AddPass(pir::CreateConv2dAddFusePass());
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
@@ -349,7 +423,7 @@ TEST(pattern_rewrite, Patterns) {
   //       true));
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 2u);
+  EXPECT_EQ(program.block()->size(), 17u);
 }
 
 void BuildConstantFoldingProgram(pir::Program *program,
@@ -406,7 +480,12 @@ TEST(constant_folding, ConstantFolding) {
   BuildConstantFoldingProgram(&program, ctx, &scope);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
@@ -468,11 +547,57 @@ TEST(constant_folding, ConstantFolding_Combine) {
   BuildConcatProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 12u);
+}
+
+void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {
+  pir::Builder builder = pir::Builder(ctx, program->block());
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({2, 2}),
+                                               2.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto cummax_op = builder.Build<paddle::dialect::CummaxOp>(x, 0);
+
+  auto out = cummax_op.out();
+  auto indices = cummax_op.indices();
+
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(indices, "indices", 1);
+}
+
+TEST(constant_folding, ConstantFolding_MultiOutput) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  BuildMultiOutputProgram(&program, ctx);
+
+  pir::PassManager pm(ctx);
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }

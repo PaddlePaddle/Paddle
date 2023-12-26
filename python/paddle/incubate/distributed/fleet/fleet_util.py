@@ -1317,7 +1317,23 @@ class FleetUtil:
                 ...     is_data_hourly_placed=False)
 
         """
+        assert (
+            "|" not in days
+            and ";" not in days
+            and "\\" not in days
+            and "/" not in days
+            and "(" not in days
+            and ")" not in days
+        ), r"days should not contain [|,;,\,/,(,)]"
         days = os.popen("echo -n " + days).read().split(" ")
+        assert (
+            "|" not in hours
+            and ";" not in hours
+            and "\\" not in hours
+            and "/" not in hours
+            and "(" not in hours
+            and ")" not in days
+        ), r"hours should not contain [|,;,\,/,(,)]"
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)

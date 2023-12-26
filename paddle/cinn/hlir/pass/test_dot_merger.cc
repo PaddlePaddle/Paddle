@@ -52,7 +52,7 @@ TEST(DotMerger, lhs) {
   auto h1 = builder.Add(e1, h);
   auto p = builder.Build();
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(
       std::vector<absl::string_view>{a.id(), b.id(), c.id(), c1.id()},
@@ -92,7 +92,7 @@ TEST(DotMerger, rhs) {
   auto e = builder.Matmul(b, c);
   auto f = builder.Concat({d, e}, axis);
   auto p = builder.Build();
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id()},
                     std::back_inserter(input_ids),

@@ -26,7 +26,7 @@ namespace phi {
 
 inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
                                        const int groups) {
-  auto weights_tz = phi::vectorize(filter->dims());
+  auto weights_tz = common::vectorize(filter->dims());
   int g = std::max(groups, 1);
   int g_dim = (g > 1) ? 1 : 0;
   funcs::GetGroupConvWeightsTz(weights_tz, g);
@@ -119,11 +119,11 @@ class ConvTransposeOneDNNHandlerT
             "Now we only support 2d oneDNN convolution transpose op"));
 
     const auto x_dims = x->dims();
-    const auto x_data_dims = phi::slice_ddim(x_dims, 2, x_dims.size());
+    const auto x_data_dims = common::slice_ddim(x_dims, 2, x_dims.size());
     const auto filter_dims = filter->dims();
     const auto filter_data_dims =
-        phi::slice_ddim(filter_dims, 2, filter_dims.size());
-    const auto ksize = phi::vectorize(filter_data_dims);
+        common::slice_ddim(filter_dims, 2, filter_dims.size());
+    const auto ksize = common::vectorize(filter_data_dims);
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -132,9 +132,9 @@ class ConvTransposeOneDNNHandlerT
           return i - 1;
         });
 
-    const auto src_tz = phi::vectorize(x->dims());
+    const auto src_tz = common::vectorize(x->dims());
     const auto weights_tz = GetWeightsTz(filter, groups);
-    const auto dst_tz = phi::vectorize(out->dims());
+    const auto dst_tz = common::vectorize(out->dims());
     const auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
 
     /* create memory descriptor for convolution without specified format
@@ -164,7 +164,7 @@ class ConvTransposeOneDNNHandlerT
                                   : dnnl::prop_kind::forward_training;
 
     if (bias) {
-      std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
+      std::vector<int64_t> bias_tz = common::vectorize(bias->dims());
       const auto bias_md = funcs::OneDNNMemDesc(
           bias_tz, data_type, funcs::OneDNNMemoryFormat::x);
       this->AcquireForwardPrimitiveDescriptor(
@@ -312,7 +312,7 @@ class ConvTransposeOneDNNHandlerT
       const std::string& key,
       const phi::DenseTensor* bias) {
     const K* bias_data = bias->data<K>();
-    auto user_bias_md = funcs::OneDNNMemDesc(phi::vectorize(bias->dims()),
+    auto user_bias_md = funcs::OneDNNMemDesc(common::vectorize(bias->dims()),
                                              funcs::OneDNNGetDataType<K>(),
                                              funcs::OneDNNMemoryFormat::x);
     return this->AcquireMemoryWithReorder(dev_ctx,
@@ -446,7 +446,7 @@ KernelKey ConvTransposeGetKernelTypeForVar(
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = phi::StringToDataLayout(data_format);
+    auto dl = common::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {

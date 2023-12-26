@@ -67,23 +67,23 @@ DEFINE_ADT_UNION(Value,
                  Undefined,
                  Ok,
                  Iterator,
-                 Constant,
+                 DimExpr,
                  List<Value>,
-                 IndexDotValue<Value, Constant>,
-                 IndexUnDotValue<Value, Constant>,
-                 ListGetItem<Value, Constant>,
-                 BroadcastedIterator<Value, Constant>,
+                 IndexDotValue<Value, List<DimExpr>>,
+                 IndexUnDotValue<Value, List<DimExpr>>,
+                 ListGetItem<Value, DimExpr>,
+                 BroadcastedIterator<Value, DimExpr>,
                  PtrGetItem<Value>);
 
 OVERLOAD_OPERATOR_EQ_NE(Value, UnionEqual);
-using IndexDot_Value_Constant = IndexDotValue<Value, Constant>;
-OVERLOAD_OPERATOR_EQ_NE(IndexDot_Value_Constant, TupleEqual);
-using IndexUnDot_Value_Constant = IndexUnDotValue<Value, Constant>;
-OVERLOAD_OPERATOR_EQ_NE(IndexUnDot_Value_Constant, TupleEqual);
-using ListGetItem_Value_Constant = ListGetItem<Value, Constant>;
-OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
-using BroadcastedIterator_Value_Constant = BroadcastedIterator<Value, Constant>;
-OVERLOAD_OPERATOR_EQ_NE(BroadcastedIterator_Value_Constant, TupleEqual);
+using IndexDot_Value_List_DimExpr = IndexDotValue<Value, List<DimExpr>>;
+OVERLOAD_OPERATOR_EQ_NE(IndexDot_Value_List_DimExpr, TupleEqual);
+using IndexUnDot_Value_List_DimExpr = IndexUnDotValue<Value, List<DimExpr>>;
+OVERLOAD_OPERATOR_EQ_NE(IndexUnDot_Value_List_DimExpr, TupleEqual);
+using ListGetItem_Value_DimExpr = ListGetItem<Value, DimExpr>;
+OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_DimExpr, TupleEqual);
+using BroadcastedIterator_Value_DimExpr = BroadcastedIterator<Value, DimExpr>;
+OVERLOAD_OPERATOR_EQ_NE(BroadcastedIterator_Value_DimExpr, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
 inline std::size_t GetHashValue(const Value& value);
@@ -93,7 +93,7 @@ inline std::size_t GetHashValueImpl(const Ok& value) { return 1; }
 inline std::size_t GetHashValueImpl(const Iterator& value) {
   return value.value().unique_id();
 }
-inline std::size_t GetHashValueImpl(const Constant& value) {
+inline std::size_t GetHashValueImpl(const DimExpr& value) {
   return GetHashValue(value);
 }
 inline std::size_t GetHashValueImpl(const List<Value>& value) {
@@ -104,21 +104,29 @@ inline std::size_t GetHashValueImpl(const List<Value>& value) {
   return ret;
 }
 inline std::size_t GetHashValueImpl(
-    const IndexDotValue<Value, Constant>& value) {
+    const IndexDotValue<Value, List<DimExpr>>& value) {
+  const auto& [v, c] = value.tuple();
+  std::size_t hash_value = GetHashValue(v);
+  for (const auto& expr : *c) {
+    hash_value = hash_combine(hash_value, GetHashValue(expr));
+  }
+  return hash_value;
+}
+inline std::size_t GetHashValueImpl(
+    const IndexUnDotValue<Value, List<DimExpr>>& value) {
+  const auto& [v, c] = value.tuple();
+  std::size_t hash_value = GetHashValue(v);
+  for (const auto& expr : *c) {
+    hash_value = hash_combine(hash_value, GetHashValue(expr));
+  }
+  return hash_value;
+}
+inline std::size_t GetHashValueImpl(const ListGetItem<Value, DimExpr>& value) {
   const auto& [v, c] = value.tuple();
   return hash_combine(GetHashValue(v), GetHashValue(c));
 }
 inline std::size_t GetHashValueImpl(
-    const IndexUnDotValue<Value, Constant>& value) {
-  const auto& [v, c] = value.tuple();
-  return hash_combine(GetHashValue(v), GetHashValue(c));
-}
-inline std::size_t GetHashValueImpl(const ListGetItem<Value, Constant>& value) {
-  const auto& [v, c] = value.tuple();
-  return hash_combine(GetHashValue(v), GetHashValue(c));
-}
-inline std::size_t GetHashValueImpl(
-    const BroadcastedIterator<Value, Constant>& value) {
+    const BroadcastedIterator<Value, DimExpr>& value) {
   const auto& [v, c] = value.tuple();
   return hash_combine(GetHashValue(v), GetHashValue(c));
 }

@@ -56,7 +56,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         self.assertEqual(len(if_op.results()), 1)
         value_list = get_used_external_value(if_op)
         self.assertEqual(len(value_list), 3)
-        self.assertEqual(value_list[0], if_op.operand_source(0))
+        self.assertTrue(value_list[0].is_same(if_op.operand_source(0)))
 
     def test_if_with_multiple_output(self):
         main_program = self.construct_program_with_if()
@@ -135,15 +135,17 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         if_op = main_program.global_block().ops[-1]
         self.assertEqual(if_op.name(), "pd_op.if")
         with paddle.pir.core.program_guard(main_program):
-            if_op.result(0).stop_gradient = False
+            self.assertEqual(
+                main_program.global_block().ops[-2].result(0).stop_gradient,
+                True,
+            )
+            self.assertEqual(if_op.result(0).stop_gradient, False)
             # check vjp interface for if_op
-            print("main_program ", main_program)
             grad_outs = grad(
                 if_op.results(),
                 [dataop0.result(0), dataop1.result(0)],
             )
 
-            print("main_program ", main_program)
             self.assertEqual(grad_outs[0].get_defining_op().name(), "pd_op.if")
             self.assertEqual(grad_outs[1].get_defining_op().name(), "pd_op.if")
 

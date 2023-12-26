@@ -70,7 +70,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
                                 bool keep_dim,
                                 int reduce_type) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -103,6 +103,9 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
+  auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
@@ -112,7 +115,6 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
       ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
   out_dist_attr.set_partial_status(partial_on_dims,
                                    static_cast<ReduceType>(reduce_type));
-
   // Step3.2  handle input tensor partial (TODO)
   // If the op is a linear op, i.e. `linearity` is true, it supports
   // the input to be partial. Otherwise, the input cannot be partial
@@ -127,7 +129,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
           << "partial_on_dims: [" + str_join(partial_on_dims)
           << " with reduce_type " << reduce_type << "]\n\n";
 
-  return {{x_dist_attr_src}, {out_dist_attr}};
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
@@ -171,8 +173,8 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const std::vector<int64_t>& axis,
                                    bool keep_dim) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto out_shape = phi::vectorize(out.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
@@ -204,7 +206,7 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
 
   // initialize input dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
-  TensorDistAttr x_dist_attr_dst(x.dist_attr());
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
   // Step3: handle partial (TODO)
@@ -229,8 +231,8 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr = out_grad_dist_attr;
   TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
 
-  std::vector<int64_t> x_dim = phi::vectorize(x.dims());
-  std::vector<int64_t> out_grad_dim = phi::vectorize(out_grad.dims());
+  std::vector<int64_t> x_dim = common::vectorize(x.dims());
+  std::vector<int64_t> out_grad_dim = common::vectorize(out_grad.dims());
 
   if (x_dim.size() != out_grad_dim.size()) {
     auto dims_mapping = x_dist_attr.dims_mapping();
@@ -255,6 +257,8 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
     }
     x_dist_attr.set_dims_mapping(dims_mapping);
     x_grad_dist_attr.set_dims_mapping(dims_mapping);
+    x_dist_attr.set_default_dynamic_dims(dims_mapping);
+    x_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
   }
 
   return {{x_dist_attr, out_grad_dist_attr}, {x_grad_dist_attr}};

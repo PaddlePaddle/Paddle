@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 
 namespace cinn {
 namespace ir {
@@ -27,16 +28,24 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   DynamicShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const common::Target& target)
-      : GroupScheduler(ir_sch, output_tensor_names, target) {}
+      const cinn::common::Target& target)
+      : GroupScheduler(ir_sch, output_tensor_names, target) {
+    Init();
+  }
 
   void Schedule() override;
 
   std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
 
  private:
+  void Init();
+
+  void ApplyTactics();
+
+ private:
   std::vector<std::pair<SymbolicPredicate, std::unique_ptr<ir::IRSchedule>>>
       ir_schs_;
+  std::vector<std::unique_ptr<ScheduleTactic>> tactics_;
 };
 
 }  // namespace ir

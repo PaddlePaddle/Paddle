@@ -50,7 +50,7 @@ void BuildEinsumNotation(const size_t x_ndim,
 SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
                             const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  std::vector<int64_t> x_shape = phi::vectorize(x.dims());
+  std::vector<int64_t> x_shape = common::vectorize(x.dims());
   size_t x_ndim = x_shape.size();
   const TensorDistAttr& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -86,12 +86,14 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
+  auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
-
-  // Step3  Handle Partial (TODO)
+  out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
 
   VLOG(4) << "TransposeInferSpmd:";
   VLOG(4) << "Input: shape: [" << str_join(x_shape) << "] "
@@ -100,15 +102,15 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "Perm: [" << str_join(perm) << "]";
   VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
 
-  return {{x_dist_attr_src}, {out_dist_attr}};
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  const std::vector<int64_t> x_shape = phi::vectorize(x.dims());
-  const std::vector<int64_t> out_shape = phi::vectorize(out.dims());
+  const std::vector<int64_t> x_shape = common::vectorize(x.dims());
+  const std::vector<int64_t> out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   TensorDistAttr out_dist_attr_src = out.dist_attr();
@@ -157,6 +159,9 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr.set_dims_mapping(x_dims_mapping);
 
+  auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr_src);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+
   // Step3  Handle partial (TODO)
 
   VLOG(4) << "TransposeInferSpmdReverse:";
@@ -166,12 +171,13 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "Input shape: [" << str_join(x_shape) << "] "
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
-  return {{x_dist_attr}, {out_dist_attr_src}};
+  return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
 SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
                                 const std::vector<int>& perm) {
-  const std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
+  const std::vector<int64_t> out_grad_shape =
+      common::vectorize(out_grad.dims());
   size_t out_grad_ndim = out_grad_shape.size();
   const std::vector<int64_t> out_grad_dims_mapping =
       out_grad.dist_attr().dims_mapping();
@@ -196,10 +202,12 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
     int origin_index = perm[i] >= 0 ? perm[i] : out_grad_ndim + perm[i];
     x_dims_mapping[origin_index] = out_grad_dims_mapping[i];
   }
-  TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
-  x_grad_dist_attr.clean_partial_status();
+
+  auto out_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  out_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping);
+  auto x_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
-  return {{out_grad.dist_attr()}, {x_grad_dist_attr}};
+  return {{out_grad_dist_attr}, {x_grad_dist_attr}};
 }
 
 }  // namespace distributed

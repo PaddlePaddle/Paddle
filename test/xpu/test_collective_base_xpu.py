@@ -45,6 +45,8 @@ def DataTypeCast(date_type):
         np_dtype = np.int32
     elif date_type == "int64":
         np_dtype = np.int64
+    elif date_type == "bfloat16":
+        np_dtype = np.uint16
     else:
         raise ValueError("This data type is not support!")
 

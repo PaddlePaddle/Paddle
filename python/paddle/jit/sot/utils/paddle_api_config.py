@@ -38,6 +38,7 @@ def get_paddle_api():
         paddle.signal,
         paddle.fft,
         paddle.vision.ops,
+        paddle.metric,
     ]
     special_paddle_apis = [paddle.tensor.fill_constant]
     non_operator_related_apis = [
@@ -92,6 +93,12 @@ break_graph_tensor_method = {
     'clear_gradient',
     # TODO: Browse all possible functions and make prior judgments.
 }
+
+not_supported_paddle_layer = {paddle.nn.RNN}
+
+
+def is_not_supported_paddle_layer(layer_class):
+    return layer_class in not_supported_paddle_layer
 
 
 def is_break_graph_tensor_methods(method_name):

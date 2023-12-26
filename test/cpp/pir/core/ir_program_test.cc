@@ -34,6 +34,7 @@
 // paddle/fluid/pir/dialect/CMakeLists.txt.
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 class AddOp : public pir::Op<AddOp> {
  public:
@@ -65,7 +66,7 @@ void AddOp::Build(pir::Builder &,
   argument.AddInput(r_operand);
   argument.AddOutput(sum_type);
 }
-IR_DECLARE_EXPLICIT_TYPE_ID(AddOp)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(AddOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(AddOp)
 
 TEST(program_test, program) {
@@ -278,7 +279,7 @@ TEST(program_test, builder) {
   EXPECT_EQ(
       full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset() == 0,
       true);
-  for (auto dim : phi::vectorize(
+  for (auto dim : common::vectorize(
            full_op_output.dyn_cast<paddle::dialect::DenseTensorType>()
                .dims())) {
     EXPECT_EQ(dim == 2, true);

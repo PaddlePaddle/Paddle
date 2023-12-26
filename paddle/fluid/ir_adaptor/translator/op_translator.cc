@@ -22,6 +22,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
@@ -37,7 +40,6 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
@@ -65,12 +67,12 @@ using OpAttributeInfo = dialect::OpAttributeInfo;
 using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
 using OpOutputInfo = dialect::OpOutputInfo;
 using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-using InputHandlerFn = std::function<pir::OpResult(pir::IrContext*,
-                                                   TranslationContext*,
-                                                   const OpDesc&,
-                                                   const std::string&,
-                                                   const OpInputInfo&,
-                                                   pir::Block*)>;
+using InputHandlerFn = std::function<pir::Value(pir::IrContext*,
+                                                TranslationContext*,
+                                                const OpDesc&,
+                                                const std::string&,
+                                                const OpInputInfo&,
+                                                pir::Block*)>;
 using AttributeHandlerFn = std::function<pir::Attribute(
     pir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
@@ -207,6 +209,18 @@ inline pir::Operation* InsertStackOperationForTarget(
   dialect::StackOp stack_op =
       builder.Build<dialect::StackOp>(combine_op->result(0), axis);
   return stack_op.operation();
+}
+
+inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
+                                           pir::Block* block,
+                                           const VarDesc* var) {
+  pir::Builder builder(ctx, block);
+
+  auto var_desc_dtype = var->GetDataType();
+  phi::DataType phi_dtype = phi::TransToPhiDataType(var_desc_dtype);
+
+  auto create_array_op = builder.Build<dialect::CreateArrayOp>(phi_dtype);
+  return create_array_op.operation();
 }
 
 }  // namespace
@@ -413,7 +427,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
 
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
-      pir::OpResult ret = special_handler(
+      pir::Value ret = special_handler(
           ctx, param_map, op_desc, normalized_op_name, info, block);
       op_inputs.push_back(ret);
       continue;
@@ -629,6 +643,42 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
   return {op_output_types, arg_to_idx};
 }
 
+static void TranslateOpDistAttribute(const OpDesc& op_desc,
+                                     pir::AttributeMap* attr_map) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  const paddle::framework::OperatorDistAttr* dist_attr = op_desc.DistAttr();
+  if (dist_attr) {
+    if (dist_attr->execution_stream() !=
+        paddle::distributed::auto_parallel::kDefault) {
+      pir::Attribute new_attr = attribute_translator(
+          "execution_stream", dist_attr->execution_stream());
+      (*attr_map)["execution_stream"] = new_attr;
+    }
+    if (dist_attr->stream_priority() != 0) {
+      pir::Attribute new_attr =
+          attribute_translator("stream_priority", dist_attr->stream_priority());
+      (*attr_map)["stream_priority"] = new_attr;
+    }
+    if (dist_attr->scheduling_priority() != 0) {
+      pir::Attribute new_attr = attribute_translator(
+          "scheduling_priority", dist_attr->scheduling_priority());
+      (*attr_map)["scheduling_priority"] = new_attr;
+    }
+
+    pir::Attribute force_record_event_attr = attribute_translator(
+        "force_record_event", dist_attr->force_record_event());
+    (*attr_map)["force_record_event"] = force_record_event_attr;
+
+    pir::Attribute event_to_record_attr =
+        attribute_translator("event_to_record", dist_attr->event_to_record());
+    (*attr_map)["event_to_record"] = event_to_record_attr;
+
+    pir::Attribute events_to_wait_attr =
+        attribute_translator("events_to_wait", dist_attr->events_to_wait());
+    (*attr_map)["events_to_wait"] = events_to_wait_attr;
+  }
+}
+
 pir::AttributeMap OpTranscriber::TranslateOpAttribute(
     pir::IrContext* ctx,
     const std::string& normalized_op_name,
@@ -728,6 +778,7 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
 
   auto attribute_map =
       this->TranslateOpAttribute(ctx, op_info.name(), attr_infos, op_desc);
+  TranslateOpDistAttribute(op_desc, &attribute_map);
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
   pir::Operation* operation = pir::Operation::Create(
@@ -740,6 +791,34 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
 
   return operation;
 }
+
+struct AssignOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name;
+
+    IR_ENFORCE(
+        op_desc.HasInput("X"), "op %s should have input `X`", op_desc.Type());
+    const auto& input_vars = op_desc.Input("X");
+    IR_ENFORCE(input_vars.size() == 1,
+               "op %s should have one input `X`, but got %d.",
+               op_desc.Type(),
+               input_vars.size());
+    const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
+    if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      target_op_name = dialect::AssignArray_Op::name();
+    } else {
+      return OpTranscriber::LoopkUpOpInfo(ctx, op_desc);
+    }
+
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op assign should have corresponding OpInfo %s", target_op_name);
+    }
+
+    return op_info;
+  }
+};
 
 struct CastOpTranscriber : public OpTranscriber {
   pir::AttributeMap TranslateOpAttribute(
@@ -882,6 +961,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
         attr_info_maps.at("values").type_name, legacy_attr);
     attribute_map["values"] = attr_values;
 
+    TranslateOpDistAttribute(op_desc, &attribute_map);
+
     VLOG(10) << "[op assign_value] attribute translation done";
 
     std::vector<pir::Value> op_inputs = {};
@@ -940,7 +1021,7 @@ pir::OpResult TranslateDropOutStateIn(pir::IrContext* ctx,
 
   pir::Builder builder(ctx, block);
   dialect::FullOp full_op = builder.Build<dialect::FullOp>(
-      phi::vectorize(tensor_type.dims()),
+      common::vectorize(tensor_type.dims()),
       0.0f,
       dialect::TransToPhiDataType(tensor_type.dtype()),
       phi::CPUPlace());
@@ -1176,6 +1257,7 @@ struct FetchOpTranscriber : public OpTranscriber {
         {"col",
          pir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     op_output_types.push_back(op_inputs[0].type());
     pir::Operation* operation = pir::Operation::Create(
@@ -1210,6 +1292,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
          pir::StrAttribute::get(ctx,
                                 op_desc.GetAttrIfExists<std::string>("name"))},
     };
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     pir::Operation* operation =
         pir::Operation::Create(op_inputs, attribute_map, {}, op_info);
@@ -1260,6 +1343,28 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TrilAndTriuGradOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    bool lower = PADDLE_GET_CONST(bool, op_desc.GetAttr("lower"));
+    std::string target_op_name = "";
+    if (lower) {
+      target_op_name = "pd_op.tril_grad";
+    } else {
+      target_op_name = "pd_op.triu_grad";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op tril_triu_grad should have corresponding OpInfo pd_op.tril_grad "
+          "or "
+          "pd_op.triu_grad.");
+    }
+
+    return op_info;
+  }
+};
+
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::OpResult>;
 
@@ -1291,7 +1396,7 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
   dialect::DenseTensorType tensor_type =
       type.dyn_cast<dialect::DenseTensorType>();
 
-  std::vector<int64_t> shape = phi::vectorize(tensor_type.dims());
+  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
 
   return std::make_tuple(shape, tensor_type, value);
 }
@@ -1376,7 +1481,7 @@ struct MulOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
     pir::OpResult x_new = reshape_op_x.out();
     VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
-            << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
+            << x_tensor_type.dims() << " to " << common::make_ddim(x_new_shape);
 
     std::vector<int64_t> y_new_shape(
         {std::max(std::accumulate(y_shape.begin(),
@@ -1394,7 +1499,7 @@ struct MulOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
     pir::OpResult y_new = reshape_op_y.out();
     VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
-            << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+            << y_tensor_type.dims() << " to " << common::make_ddim(y_new_shape);
 
     return {x_new, y_new};
   }
@@ -1442,7 +1547,7 @@ struct MulOpTranscriber : public OpTranscriber {
       pir::OpResult out_new = reshape_op_out.out().dyn_cast<pir::OpResult>();
       VLOG(6) << "[" << op_desc.Type() << "] out_shape change from "
               << out_tensor_type.dims() << " to "
-              << phi::make_ddim(out_new_shape);
+              << common::make_ddim(out_new_shape);
 
       param_map->PushValue(output_name,
                            VariableDefiningInfo(out_new, false, -1));
@@ -1539,7 +1644,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
     pir::OpResult x_new = reshape_op_x.out();
     VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
-            << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
+            << x_tensor_type.dims() << " to " << common::make_ddim(x_new_shape);
 
     std::vector<int64_t> y_new_shape(
         {std::max(std::accumulate(y_shape.begin(),
@@ -1557,7 +1662,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
         builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
     pir::OpResult y_new = reshape_op_y.out();
     VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
-            << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+            << y_tensor_type.dims() << " to " << common::make_ddim(y_new_shape);
 
     std::vector<int64_t> out_grad_new_shape(
         {x_new_shape.front(), y_new_shape.back()});
@@ -1567,7 +1672,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
     pir::OpResult out_grad_new = reshape_op_out_grad.out();
     VLOG(6) << "[" << op_desc.Type() << "] out_grad_shape change from "
             << out_grad_tensor_type.dims() << " to "
-            << phi::make_ddim(out_grad_new_shape);
+            << common::make_ddim(out_grad_new_shape);
 
     return {x_new, y_new, out_grad_new};
   }
@@ -1613,7 +1718,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
                  op_desc.Type(),
                  var_name.substr(0, 1));
       std::vector<int64_t> shape = var_desc->GetShape();
-      DenseTensorTypeStorage::Dim dim = phi::make_ddim(shape);
+      DenseTensorTypeStorage::Dim dim = common::make_ddim(shape);
 
       pir::OpResult value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
@@ -1723,7 +1828,6 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
             paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
       }
     }
-
     return attribute_map;
   }
 };
@@ -1820,6 +1924,130 @@ struct FillConstantTranscriber : public OpTranscriber {
       return FillConstant2FullWithTensorTranscriber()(
           ctx, param_map, op_desc, block);
     }
+  }
+};
+
+struct SelectInputOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    VLOG(10) << "[op select_input] start transcribing";
+    auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+
+    std::vector<pir::Value> op_inputs = {};
+    auto Mask_name = op_desc.Input("Mask")[0];
+    auto& Input_name = op_desc.Input("X");
+    IR_ENFORCE(param_map->count(Mask_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               Mask_name);
+    op_inputs.push_back(param_map->at(Mask_name).value);
+    for (auto in_name : Input_name) {
+      IR_ENFORCE(param_map->count(in_name) > 0,
+                 "Expected op[%s]'s input %s has been parsed",
+                 op_desc.Type(),
+                 in_name);
+      op_inputs.push_back(param_map->at(in_name).value);
+    }
+
+    pir::AttributeMap attribute_map;
+    TranslateOpDistAttribute(op_desc, &attribute_map);
+
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types;
+    auto Out_name = op_desc.Output("Out")[0];
+    VarDesc* var = op_desc.Block()->FindVarRecursive(Out_name);
+    arg_to_idx[var->Name()] = {0, 0};
+
+    // NOTE(zhangbo): Only support
+    auto input1 = op_inputs[1].type();
+    auto input2 = op_inputs[2].type();
+    if (input1 == input2) {
+      op_output_types.push_back(op_inputs[1].type());
+    } else if (input1.isa<paddle::dialect::DenseTensorType>() &&
+               input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
+      if (tensor1.dtype() != tensor2.dtype() ||
+          tensor1.data_layout() != tensor2.data_layout() ||
+          tensor1.lod() != tensor2.lod() ||
+          tensor1.offset() != tensor2.offset()) {
+        const std::string undefined_prefix = "undefined_var_";
+
+        size_t undefined_var_index = 0;
+        size_t target_var_index = 1;
+        if (Input_name[undefined_var_index].substr(
+                0, undefined_prefix.size()) != undefined_prefix &&
+            Input_name[target_var_index].substr(0, undefined_prefix.size()) ==
+                undefined_prefix) {
+          std::swap(undefined_var_index, target_var_index);
+        } else if (Input_name[undefined_var_index].substr(
+                       0, undefined_prefix.size()) == undefined_prefix) {
+          // do nothing
+        } else {
+          IR_THROW(
+              "select_input only support same type or DenseTensorType with "
+              "only different dim, but get dtype:[%s, %s], layout:[%s, %s], "
+              "lod:[%s, %s], offset:[%s, %s].",
+              tensor1.dtype(),
+              tensor2.dtype(),
+              tensor1.data_layout(),
+              tensor2.data_layout(),
+              tensor1.lod(),
+              tensor2.lod(),
+              tensor1.offset(),
+              tensor2.offset());
+        }
+
+        auto undefined_var_type = tensor1;
+        auto target_var_type = tensor2;
+        if (undefined_var_index == 1) {
+          std::swap(undefined_var_type, target_var_type);
+        }
+
+        auto undefine_value = op_inputs[1 + undefined_var_index];
+        IR_ENFORCE(
+            undefine_value.defining_op()->isa<dialect::AssignValueOp>(),
+            "undefined_var %s should be generated by assign_value, but got %s",
+            Input_name[undefined_var_index],
+            undefine_value.defining_op());
+
+        undefine_value.set_type(target_var_type);
+        undefine_value.defining_op()->set_attribute(
+            "dtype",
+            dialect::DataTypeAttribute::get(
+                ctx, dialect::TransToPhiDataType(undefined_var_type.dtype())));
+        auto& attribute_translator = AttributeTranslator::instance();
+        undefine_value.defining_op()->set_attribute(
+            "shape",
+            attribute_translator(common::vectorize(undefined_var_type.dims())));
+      }
+      auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      auto dim = common::ComputeCompatibleDim(dim1, dim2);
+      op_output_types.push_back(
+          paddle::dialect::DenseTensorType::get(ctx,
+                                                tensor1.dtype(),
+                                                dim,
+                                                tensor1.data_layout(),
+                                                tensor1.lod(),
+                                                tensor1.offset()));
+    } else {
+      IR_THROW(
+          "select_input only support same type or DenseTensorType with only "
+          "different dim, now is %s != %s.",
+          input1,
+          input2);
+    }
+
+    pir::Operation* operation = pir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    block->push_back(operation);
+    RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
+
+    VLOG(10) << "[op assign_value] translation finished";
+    return operation;
   }
 };
 
@@ -1976,7 +2204,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
                x_type);
     dialect::DenseTensorType x_tensor_type =
         x_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
+    std::vector<int64_t> x_shape = common::vectorize(x_tensor_type.dims());
 
     auto y_names = op_desc.Input("Y", true);
     IR_ENFORCE(y_names.size() == 1,
@@ -2007,7 +2235,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
                y_type);
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
-    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+    std::vector<int64_t> y_shape = common::vectorize(y_tensor_type.dims());
 
     if (axis < 0) {
       axis += static_cast<int>(x_shape.size());
@@ -2035,7 +2263,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
           builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
       VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
-              << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+              << y_tensor_type.dims() << " to "
+              << common::make_ddim(y_new_shape);
     } else {
       auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
       auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
@@ -2142,7 +2371,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
       return;
     }
 
-    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+    std::vector<int64_t> y_shape = common::vectorize(y_tensor_type.dims());
     pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
     param_map->PushValue(y_grad_var_name,
@@ -2202,7 +2431,7 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
               const OpDesc& op_desc,
               const std::string&,
               const OpInputInfo& info,
-              pir::Block* block) -> pir::OpResult {
+              pir::Block* block) -> pir::Value {
       std::vector<std::string> legacy_input_vars;
       IR_ENFORCE(op_desc.HasInput("ValueTensor"),
                  "[set_value] should have ValueTensor");
@@ -2218,7 +2447,7 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
             ctx, param_map, block, defining_info, var_name);
         defining_info = param_map->at(var_name).value;
       }
-      return defining_info.value.dyn_cast<pir::OpResult>();
+      return defining_info.value;
     };
   }
 };
@@ -2360,7 +2589,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
 
     pir::Type dtype = type_translator[var_type](ctx, *var);
     paddle::dialect::DenseTensorTypeStorage::Dim dim =
-        phi::make_ddim(var->GetShape());
+        common::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
         paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
     paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
@@ -2476,12 +2705,278 @@ struct FusedElemwiseAddActivationGradOpTranscriber
   }
 };
 
+struct MatrixRankOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = "";
+    if (op_desc.HasInput("TolTensor") && !op_desc.Input("TolTensor").empty()) {
+      target_op_name = "pd_op.matrix_rank_tol";
+    } else {
+      target_op_name = "pd_op.matrix_rank";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op matrix_rank should have corresponding OpInfo pd_op.matrix_rank "
+          "or "
+          "pd_op.matrix_rank_tol.");
+    }
+    return op_info;
+  }
+};
+
+struct LodArrayLengthOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::ArrayLengthOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op lod_array_length should have corresponding OpInfo "
+          "pd_op.array_length");
+    }
+
+    return op_info;
+  }
+
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
+    if (input_name != "x") {
+      return nullptr;
+    }
+    return [](pir::IrContext* ctx,
+              TranslationContext* param_map,
+              const OpDesc& op_desc,
+              const std::string&,
+              const OpInputInfo& info,
+              pir::Block* block) -> pir::Value {
+      VLOG(10) << "[" << op_desc.Type() << "][input `array`]";
+      IR_ENFORCE(op_desc.HasInput("X"),
+                 "Op lod_array_length should have input `X` but not found");
+      const auto& vars = op_desc.Input("X");
+      IR_ENFORCE(vars.size() == 1,
+                 "Input `X` should be one variable %s",
+                 op_desc.Type());
+      VLOG(10) << "[" << op_desc.Type() << "][input `x`] from " << vars[0];
+      const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
+      IR_ENFORCE(var_desc != nullptr,
+                 "VarDesc `%s` should be exist in legacy program",
+                 vars[0]);
+      auto defining_value = pir::Value(nullptr);
+      if (param_map->count(var_desc->Name())) {
+        VLOG(10) << "[" << op_desc.Type() << "][input `x`] var: " << vars[0]
+                 << " have been created";
+        defining_value = param_map->at(var_desc->Name()).value;
+      } else {
+        VLOG(10) << "[" << op_desc.Type() << "][input `x`] var: " << vars[0]
+                 << " newly created";
+        auto create_array_op = InsertCreateArrayOp(ctx, block, var_desc);
+        defining_value = create_array_op->result(0);
+      }
+      return defining_value;
+    };
+  }
+};
+
+struct WriteArrayOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::ArrayWrite_Op::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op write_to_array should have corresponding OpInfo "
+          "pd_op.array_write_");
+    }
+
+    return op_info;
+  }
+
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
+    if (input_name != "array") {
+      return nullptr;
+    }
+    return [](pir::IrContext* ctx,
+              TranslationContext* param_map,
+              const OpDesc& op_desc,
+              const std::string&,
+              const OpInputInfo& info,
+              pir::Block* block) -> pir::Value {
+      VLOG(10) << "[" << op_desc.Type() << "][input `array`]";
+      IR_ENFORCE(op_desc.HasOutput("Out"),
+                 "Op write_to_array should have output `Out` but not found");
+      const auto& vars = op_desc.Output("Out");
+      IR_ENFORCE(vars.size() == 1,
+                 "Output `Out` should be one variable %s",
+                 op_desc.Type());
+      VLOG(10) << "[" << op_desc.Type() << "][input `array`] from " << vars[0];
+      const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
+      IR_ENFORCE(var_desc != nullptr,
+                 "VarDesc `%s` should be exist in legacy program",
+                 vars[0]);
+      auto defining_value = pir::Value(nullptr);
+      if (param_map->count(var_desc->Name())) {
+        VLOG(10) << "[" << op_desc.Type() << "][input `array`] var: " << vars[0]
+                 << " have been created";
+        defining_value = param_map->at(var_desc->Name()).value;
+      } else {
+        VLOG(10) << "[" << op_desc.Type() << "][input `array`] var: " << vars[0]
+                 << " newly created";
+        auto create_array_op = InsertCreateArrayOp(ctx, block, var_desc);
+        defining_value = create_array_op->result(0);
+      }
+      return defining_value;
+    };
+  }
+};
+
+struct ReadArrayOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::ArrayReadOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op read_from_array should have corresponding OpInfo "
+          "pd_op.read_array");
+    }
+
+    return op_info;
+  }
+};
+
+struct SliceOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SliceOp::name();
+
+    IR_ENFORCE(op_desc.HasInput("Input"),
+               "op %s should have input `Input`",
+               op_desc.Type());
+    const auto& input_vars = op_desc.Input("Input");
+    IR_ENFORCE(input_vars.size() == 1,
+               "op %s should have one input `Input`, but got %d.",
+               op_desc.Type(),
+               input_vars.size());
+    const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
+    if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      IR_ENFORCE(op_desc.HasOutput("Out"),
+                 "op %s should have input `Out`",
+                 op_desc.Type());
+      const auto& output_vars = op_desc.Output("Out");
+      IR_ENFORCE(output_vars.size() == 1,
+                 "op %s should have one input `Out`, but got %d.",
+                 op_desc.Type(),
+                 output_vars.size());
+      const auto* output_var =
+          op_desc.Block()->FindVarRecursive(output_vars[0]);
+      IR_ENFORCE(output_var != nullptr,
+                 "op %s should have non-empty output `%s`.",
+                 op_desc.Type(),
+                 output_vars[0]);
+
+      if (output_var->GetType() == framework::proto::VarType::LOD_TENSOR) {
+        target_op_name = dialect::SliceArrayDenseOp::name();
+      } else {
+        target_op_name = dialect::SliceArrayOp::name();
+      }
+    }
+
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op slice should have corresponding OpInfo %s", target_op_name);
+    }
+
+    return op_info;
+  }
+};
+
+struct LegacyMatmulOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    auto enforce_not_occur = [&](const std::string& attr_name,
+                                 float expected_value) -> void {
+      if (!op_desc.HasAttr(attr_name)) {
+        return;
+      }
+      float v = PADDLE_GET_CONST(float, op_desc.GetAttr(attr_name));
+      if (abs(v - expected_value) > 1e-6f) {
+        IR_THROW("Expected op[%s]'s attr %s is not %f",
+                 op_desc.Type(),
+                 attr_name,
+                 v);
+      }
+    };
+
+    enforce_not_occur("Scale_x", 1.0f);
+    enforce_not_occur("Scale_y", 1.0f);
+    enforce_not_occur("Scale_out", 1.0f);
+
+    std::string target_op_name = dialect::MatmulOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op read_from_array should have corresponding OpInfo "
+          "pd_op.read_array");
+    }
+
+    return op_info;
+  }
+
+  void RecordOpResultMapping(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+
+    float alpha = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
+    if (abs(alpha - 1.0f) < 1e-6f) {
+      return;
+    }
+
+    const auto& output_vars = op_desc.Output("Out");
+    IR_ENFORCE(output_vars.size() == 1,
+               "Expected op[%s]'s output `Out` has only 1 variable, but got %d",
+               op_desc.Type(),
+               output_vars.size());
+
+    auto idx_iter = arg_to_idx.find(output_vars[0]);
+    if (idx_iter == arg_to_idx.end()) {
+      IR_THROW("op[%s] should have got its `Out`", op_desc.Type());
+    }
+    auto [idx_in_op, idx_in_vec] = idx_iter->second;
+    VLOG(10) << "[output recording]"
+             << "[" << op_desc.Type() << "]" << output_vars[0] << " "
+             << idx_in_op << " " << idx_in_vec;
+
+    pir::Builder builder(ctx, operation->GetParent());
+    pir::OpResult value = operation->result(idx_in_op);
+    auto scale_op = builder.Build<dialect::ScaleOp>(value, alpha);
+    param_map->PushValue(output_vars[0],
+                         VariableDefiningInfo(scale_op.out(), false, -1));
+  }
+};
+
+struct CEmbeddingOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "vocab_size") {
+      (*attribute_map)[info.name] = pir::Int64Attribute::get(ctx, -1);
+    }
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["assign"] = AssignOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
@@ -2511,11 +3006,20 @@ OpTranslator::OpTranslator() {
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["share_buffer"] = ShareBufferOpTranscriber();
+  special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
+  special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
+  special_handlers["matrix_rank"] = MatrixRankOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
+  special_handlers["select_input"] = SelectInputOpTranscriber();
+
+  // To adapt LodTensorArray
+  special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();
+  special_handlers["write_to_array"] = WriteArrayOpTranscriber();
+  special_handlers["read_from_array"] = ReadArrayOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
@@ -2535,6 +3039,7 @@ OpTranslator::OpTranslator() {
   special_handlers["elementwise_min_grad"] = ElementwiseGradTranscriber();
   special_handlers["elementwise_mod_grad"] = ElementwiseGradTranscriber();
   special_handlers["elementwise_floordiv_grad"] = ElementwiseGradTranscriber();
+  special_handlers["c_embedding"] = CEmbeddingOpTranscriber();
 }
 
 }  // namespace translator

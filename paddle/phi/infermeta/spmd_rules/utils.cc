@@ -170,6 +170,8 @@ TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
 TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
   TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
   std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  int64_t n_dim = dims_mapping.size();
+  dim = dim < 0 ? n_dim + dim : dim;
   dims_mapping[dim] = kReplicateDim;
   dst_dist_attr.set_dims_mapping(dims_mapping);
   return dst_dist_attr;
@@ -178,6 +180,8 @@ TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
 TensorDistAttr UnShardTensorDim(const TensorDistAttr& dist_attr, int dim) {
   TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
   std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  int64_t n_dim = dims_mapping.size();
+  dim = dim < 0 ? n_dim + dim : dim;
   dims_mapping[dim] = kReplicateDim;
   dst_dist_attr.set_dims_mapping(dims_mapping);
   return dst_dist_attr;
@@ -501,6 +505,103 @@ std::vector<int64_t> GetDimsMappingForAxes(
     }
   }
   return dims_mapping;
+}
+
+void DebugInfoForInferSpmd(const std::string& rule_name,
+                           const SpmdInfo& infer_result) {
+  VLOG(4) << "The infer spmd result of " << rule_name << " is as below:";
+  auto dist_attr_for_inputs = infer_result.first;
+  VLOG(4) << "======= The dist attr of inputs after inferspmd =======";
+  for (size_t i = 0; i < dist_attr_for_inputs.size(); ++i) {
+    if (paddle::holds_alternative<TensorDistAttr>(dist_attr_for_inputs[i])) {
+      VLOG(4) << "The dist attr of the " << i << "th input need to be "
+              << PADDLE_GET(TensorDistAttr, dist_attr_for_inputs[i]);
+    } else if (paddle::holds_alternative<std::vector<TensorDistAttr>>(
+                   dist_attr_for_inputs[i])) {
+      auto& dist_attr_vec =
+          PADDLE_GET(std::vector<TensorDistAttr>, dist_attr_for_inputs[i]);
+      for (size_t j = 0; j < dist_attr_vec.size(); j++) {
+        VLOG(4) << "The dist attr of the " << i << "th input[" << j
+                << "] need to be " << dist_attr_vec[j];
+      }
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The dist attr of the %d th input should be TensorDistAttr "
+          "or std::vector<TensorDistAttr>.",
+          i));
+    }
+  }
+  VLOG(4) << "======= The dist attr of outputs after inferspmd =======";
+  auto dist_attr_for_outputs = infer_result.second;
+  for (size_t i = 0; i < dist_attr_for_outputs.size(); ++i) {
+    if (paddle::holds_alternative<TensorDistAttr>(dist_attr_for_outputs[i])) {
+      VLOG(4) << "The dist attr of the " << i << "th output need to be "
+              << PADDLE_GET(TensorDistAttr, dist_attr_for_outputs[i]);
+    } else if (paddle::holds_alternative<std::vector<TensorDistAttr>>(
+                   dist_attr_for_outputs[i])) {
+      auto& dist_attr_vec =
+          PADDLE_GET(std::vector<TensorDistAttr>, dist_attr_for_outputs[i]);
+      for (size_t j = 0; j < dist_attr_vec.size(); j++) {
+        VLOG(4) << "The dist attr of the " << i << "th output[" << j
+                << "] need to be " << dist_attr_vec[j];
+      }
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The dist attr of the %d th output should be TensorDistAttr "
+          "or std::vector<TensorDistAttr>.",
+          i));
+    }
+  }
+}
+
+TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
+                                       const ArgDistAttr& grad) {
+  const auto& grad_in = PADDLE_GET_CONST(TensorDistAttr, grad);
+  return ReduceGradBroadCastDims(input, grad_in);
+}
+
+TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
+                                       const TensorDistAttr& grad) {
+  TensorDistAttr input;
+  std::vector<int64_t> dim_mapping(input_dims, -1);
+  input.set_dims_mapping(dim_mapping);
+  return ReduceGradBroadCastDims(input, grad);
+}
+
+TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
+                                       const TensorDistAttr& grad) {
+  auto grad_dim = grad.dims_mapping().size();
+  auto input_dim = input.dims_mapping().size();
+  PADDLE_ENFORCE_GE(
+      grad_dim,
+      input_dim,
+      phi::errors::InvalidArgument("grad dim must ge than input dim, but we "
+                                   "got grad_dim [%d], input_dim[%d]",
+                                   grad_dim,
+                                   input_dim));
+  if (grad_dim == input_dim) {
+    return grad;
+  }
+  size_t broadcast_dim = grad_dim - input_dim;
+  // gather partial status
+  auto partial_dims = grad.partial_dims();
+  auto& grad_dims_mapping = grad.dims_mapping();
+  auto dims_mapping = input.dims_mapping();
+  for (size_t i = 0; i < grad_dim; ++i) {
+    auto mapping = grad_dims_mapping[i];
+    if (i < broadcast_dim) {
+      if (mapping >= 0) {
+        partial_dims.insert(mapping);
+      }
+    } else {
+      dims_mapping[i - broadcast_dim] = mapping;
+    }
+  }
+  auto grad_out = CopyTensorDistAttrForOutput(input);
+  grad_out.set_dims_mapping(dims_mapping);
+  std::vector<int64_t> partial_status(partial_dims.begin(), partial_dims.end());
+  grad_out.set_partial_status(partial_status);
+  return grad_out;
 }
 
 }  // namespace distributed

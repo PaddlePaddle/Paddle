@@ -29,21 +29,21 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 
 namespace phi {
 class DenseTensor;
+class TensorBase;
 }  // namespace phi
 
-namespace phi {
-class TensorBase;
+namespace common {
 class DDim;
-}  // namespace phi
+}  // namespace common
 
 namespace paddle {
 // TODO(chenweihang): Remove the experimental namespace for Scalar and IntArray
@@ -173,9 +173,9 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the dimensions of Tensor.
    *
-   * @return phi::DDim
+   * @return common::DDim
    */
-  const phi::DDim& dims() const;
+  const common::DDim& dims() const;
 
   /**
    * @brief Return the shape (dimensions) of Tensor.
@@ -190,9 +190,9 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the strides (dimensions) of Tensor.
    *
-   * @return phi::DDim
+   * @return common::DDim
    */
-  const phi::DDim& strides() const;
+  const common::DDim& strides() const;
 
   /**
    * @brief Reset the shape of the tensor.

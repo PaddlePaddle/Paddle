@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
 import unittest
+
+import numpy as np
 
 import paddle
 from paddle import pir
@@ -21,30 +24,30 @@ from paddle import pir
 class PassTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.main_program = paddle.static.Program()
         self.feeds = None
         self.fetch_list = None
         self.valid_op_map = {}
         self.pass_list = []
         self.pir_program = None
-        self.place_runtime = "cpu"
+        self.places = []
+        self.skip_accuracy_verification = False
 
-    def run_pir_pass(self):
+    def run_pir_pass(self, program):
         if not isinstance(self.pass_list, list):
             self.pass_list = [self.pass_list]
 
-        pm = pir.PassManager()
+        pm = pir.PassManager(opt_level=4)
         for pass_name in self.pass_list:
             pm.add_pass(pass_name)
+        pm.run(program)
+        return program
 
-        pm.run(self.pir_program)
-
-    def check_fused_ops(self):
+    def check_fused_ops(self, program):
         self.assertTrue(
             len(self.valid_op_map) != 0,
             "self.fuse_op_map cannot  be empty!",
         )
-        op_names = [op.name() for op in self.pir_program.global_block().ops]
+        op_names = [op.name() for op in program.global_block().ops]
         for valid_op_name, valid_op_count in self.valid_op_map.items():
             acctual_valid_op_count = op_names.count(valid_op_name)
             self.assertTrue(
@@ -55,22 +58,62 @@ class PassTest(unittest.TestCase):
                 ),
             )
 
-    def check_pass_correct(self, need_translate_to_pir=False, atol=1e-5):
-        self.assertTrue(
-            self.place_runtime == "cpu" or self.place_runtime == "gpu",
-            "The place param must be either GPU or CPU ",
-        )
-        if self.place_runtime == "cpu":
-            executor = paddle.static.Executor(paddle.base.CPUPlace())
-        elif self.place_runtime == "gpu":
-            executor = paddle.static.Executor(paddle.base.CUDAPlace(0))
-        self.assertTrue(
-            need_translate_to_pir is False and self.pir_program is not None,
-            "using old ir need_translate_to_pir Cannot be fasle.\n \
-             using new ir program Cannot be None. \n",
-        )
-        if need_translate_to_pir and self.pir_program is None:
-            self.pir_program = pir.translate_to_pir(self.main_program.desc)
+    @abc.abstractmethod
+    def sample_program(self):
+        """
+        Generate all pir grogram
+        """
+        raise NotImplementedError
 
-        self.run_pir_pass()
-        self.check_fused_ops()
+    def run_program(self, executor, startup_program, main_program):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(startup_program, main_program):
+                fetches = executor.run(
+                    main_program,
+                    feed=self.feeds,
+                    fetch_list=self.fetch_list,
+                )
+                return fetches
+
+    def compare_accuracy(
+        self, baseline_data, actual_data, atol=1e-5, rtol=1e-5
+    ):
+        self.assertTrue(
+            len(baseline_data) == len(actual_data),
+            f"The output baseline_data are not equal, the baseline output_data is {len(baseline_data)}, but got {len(actual_data)}",
+        )
+        for i in range(len(baseline_data)):
+            self.assertEqual(
+                baseline_data[i].shape,
+                actual_data[i].shape,
+                f"The output shapes are not equal, the baseline shape is {baseline_data[i].shape}, but got {actual_data[i].shape}",
+            )
+            np.testing.assert_allclose(
+                baseline_data[i], actual_data[i], atol=atol, rtol=rtol
+            )
+
+    def check_pass_correct(self, atol=1e-5, rtol=1e-5):
+        for place in self.places:
+            for program, need_translate_to_pir in self.sample_program():
+                main_program = program[0]
+                startup_program = program[1]
+                if need_translate_to_pir:
+                    main_program = pir.translate_to_pir(main_program.desc)
+                with paddle.pir_utils.IrGuard():
+                    with paddle.static.program_guard(
+                        main_program, startup_program
+                    ):
+                        executor = paddle.static.Executor(place)
+                        executor.run(startup_program)
+                baseline_fetch = self.run_program(
+                    executor, startup_program, main_program
+                )
+                main_program = self.run_pir_pass(main_program)
+                self.check_fused_ops(main_program)
+                actual_fetch = self.run_program(
+                    executor, startup_program, main_program
+                )
+                if self.skip_accuracy_verification is False:
+                    self.compare_accuracy(
+                        baseline_fetch, actual_fetch, atol, rtol
+                    )

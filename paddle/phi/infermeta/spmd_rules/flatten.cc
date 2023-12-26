@@ -93,7 +93,7 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
                           int start_axis,
                           int stop_axis) {
   // Step0: Verify input args based on flatten logic
-  auto src_shape = phi::vectorize(x.dims());
+  auto src_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int64_t>(src_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -120,9 +120,9 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
 
   // Step3: Update the dist attributes of input
   // and output with the inferred dims mapping.
-  TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
-  TensorDistAttr out_dist_attr(x_dist_attr_src);
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
 
   VLOG(4) << "FlattenInferSpmd: X shape: [" << str_join(src_shape) << "]";
@@ -145,9 +145,9 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
                                  int start_axis,
                                  int stop_axis) {
   // Step0: Verify input args based on flatten logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   auto x_ndim = x_shape.size();
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
@@ -178,9 +178,10 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
 
   // Step3: Update the dist attributes of input
   // and output with the inferred dims mapping
-  TensorDistAttr out_dist_attr_dst(out_dist_attr_src);
+  TensorDistAttr out_dist_attr_dst =
+      CopyTensorDistAttrForOutput(out_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
-  TensorDistAttr x_dist_attr(x.dist_attr());
+  TensorDistAttr x_dist_attr = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
 
   VLOG(4) << "FlattenInferSpmdReverse: Out shape: [" << str_join(out_shape)

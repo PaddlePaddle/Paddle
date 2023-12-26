@@ -30,9 +30,9 @@
 namespace cinn {
 namespace hlir {
 namespace op {
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -45,6 +45,15 @@ using framework::StrategyFunction;
       const std::vector<std::vector<int>> &output_shapes,                      \
       const Target &target) {                                                  \
     return StrategyForBroadcast(                                               \
+        attrs, inputs, out_type, output_shapes, target, #op_name__, pe::pe__); \
+  }                                                                            \
+  std::shared_ptr<OpStrategy> StrategyFor##pe__##Symbolic(                     \
+      const framework::NodeAttr &attrs,                                        \
+      const std::vector<ir::Tensor> &inputs,                                   \
+      const std::vector<Type> &out_type,                                       \
+      const std::vector<std::vector<ir::Dim>> &output_shapes,                  \
+      const Target &target) {                                                  \
+    return StrategyForBroadcastSymbolic(                                       \
         attrs, inputs, out_type, output_shapes, target, #op_name__, pe::pe__); \
   }
 
@@ -93,6 +102,51 @@ std::shared_ptr<OpStrategy> StrategyForBroadcast(
                     GetInjectiveScheduleFunc(output_shapes, target),
                     "strategy." + op_name + ".x86",
                     1);
+  return strategy;
+}
+std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target,
+    const std::string &op_name,
+    ir::Tensor (*pe_func)(const ir::Tensor &A,
+                          const ir::Tensor &B,
+                          const std::string &output_name,
+                          const Expr &axis)) {
+  framework::CINNCompute binary_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty()) << "The input argument of " << op_name
+                             << " compute is empty! Please check.";
+        CINNValuePack pack_args = args[0];
+        CHECK_GE(pack_args.size(), 2U)
+            << "at least 2 input tensors for " << op_name << " compute";
+        CHECK_GE(pack_args.size(), 3U) << op_name << " 's input is not enough!";
+        CHECK(pack_args[2].is_string());
+        std::string tensor_name = pack_args[2].operator std::string();
+        Expr A_expr = pack_args[0];
+        Expr B_expr = pack_args[1];
+        CHECK(A_expr.as_tensor());
+        CHECK(B_expr.as_tensor());
+        ir::Tensor A = A_expr.as_tensor_ref();
+        ir::Tensor B = B_expr.as_tensor_ref();
+        Expr axis;
+        bool trans_a;
+        for (auto &iter : attrs.attr_store) {
+          if (iter.first == "axis") {
+            axis = Expr(absl::get<int>(iter.second));
+            break;
+          }
+        }
+        auto out = pe_func(A, B, tensor_name, axis);
+        auto stages = CreateStages({A, B, out});
+        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      binary_compute, lang::PackedFunc(), "strategy." + op_name + ".x86", 1);
   return strategy;
 }
 
@@ -453,6 +507,9 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .set_num_outputs(1)                                                      \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
           "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)          \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(              \
+          "CINNStrategySymbolic",                                              \
+          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)                \
       .set_attr("infershape",                                                  \
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))        \
       .set_attr("inferdtype",                                                  \

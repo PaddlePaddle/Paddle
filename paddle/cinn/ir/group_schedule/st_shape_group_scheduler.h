@@ -23,7 +23,7 @@ namespace ir {
 // and secondly considering the amount of calculated data.
 struct NodePriority {
   bool has_loop_binded;
-  double score;
+  int64_t score;
 
   bool operator<(const NodePriority& other) const {
     if (has_loop_binded ^ other.has_loop_binded) {
@@ -46,7 +46,7 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   StaticShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const common::Target& target)
+      const cinn::common::Target& target)
       : GroupScheduler(ir_sch, output_tensor_names, target) {}
 
   void Schedule() override;
@@ -93,9 +93,6 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   // Obtain the latest order of ScheduleBlock and the control structures
   // throughout the entire IR.
   void UpdateBlockOrder();
-
-  // Get output tensor names of group.
-  std::unordered_set<std::string> OutputTensorNames() const;
 
   /**
    * @brief Determine whether the graph level dependency is still maintained

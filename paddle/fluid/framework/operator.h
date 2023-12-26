@@ -40,12 +40,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/test_macros.h"
 
@@ -773,6 +773,8 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
+
+  bool SupportsCPUBF16() const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;

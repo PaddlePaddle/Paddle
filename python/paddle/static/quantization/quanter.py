@@ -23,6 +23,7 @@ import paddle
 from ...base.framework import IrGraph, core
 from ..log_helper import get_logger
 from .quantization_pass import (
+    AddQuantDequantForResidual,
     AddQuantDequantPass,
     ConvertToInt8Pass,
     OutScaleForInferencePass,
@@ -369,6 +370,16 @@ def quant_aware(
 
             for sub_graph in sub_graphs:
                 transform_pass.apply(sub_graph)
+
+            residual_pass = AddQuantDequantForResidual(
+                scope=scope,
+                place=place,
+                quant_bits=config['activation_bits'],
+                is_test=is_test,
+            )
+
+            for subgraph in sub_graphs:
+                residual_pass.apply(sub_graph)
 
         if len(quant_dequant_ops) > 0:
             qdq_func = (

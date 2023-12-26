@@ -109,7 +109,7 @@ class TestDistributedTensor(unittest.TestCase):
         ) = get_dist_prog(train_program, startup_program, dist_context, rank_id)
         dist_context.dist_main_programs[rank_id] = dist_main_prog
         dist_context.dist_startup_programs[rank_id] = dist_startup_prog
-        name = "layer_norm_1.tmp_2"
+        name = "layer_norm_0.tmp_2"
         dist_tensor = dist_context.get_dist_tensor_for_program(
             complete_train_program.global_block().vars[name]
         )
@@ -133,7 +133,7 @@ class TestDistributedTensor(unittest.TestCase):
         )
         dist_context.dist_main_programs[rank_id] = dist_main_prog
         dist_context.dist_startup_programs[rank_id] = dist_startup_prog
-        name = "layer_norm_1.tmp_2"
+        name = "layer_norm_0.tmp_2"
         dist_tensor = dist_context.get_dist_tensor_for_program(
             complete_train_program.global_block().vars[name]
         )

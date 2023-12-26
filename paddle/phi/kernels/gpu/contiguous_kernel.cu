@@ -13,8 +13,6 @@ limitations under the License. */
 
 #include <set>
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -30,7 +28,7 @@ template <typename T, size_t N>
 __global__ void ContiguousCaseZeroFunc(
     const T* input_data,
     T* out_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride) {
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_stride) {
   int64_t input_offset = 0;
   int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
                            blockIdx.y * gridDim.x + blockIdx.x) *
@@ -56,8 +54,8 @@ template <typename T, size_t N>
 __global__ void ContiguousCaseOneFunc(
     const T* input_data,
     T* out_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
-    phi::Array<int64_t, 6> dims,
+    Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    Array<int64_t, 6> dims,
     const int64_t x_max) {
   int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
   if (x < x_max) {
@@ -511,8 +509,8 @@ void ContiguousKernel(const Context& dev_ctx,
     return;
   }
 
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
+  Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
+  Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
   for (int i = 0; i < input.dims().size(); i++) {
     input_dims[i] = input.dims()[i];
     input_stride[i] = input.strides()[i];

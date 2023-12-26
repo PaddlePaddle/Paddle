@@ -28,8 +28,8 @@
 namespace cinn {
 namespace ir {
 
-using common::bfloat16;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::float16;
 
 void IrPrinter::Print(const Expr &e) {
   IRVisitorRequireReImpl::Visit(&e);

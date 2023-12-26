@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/pir/core/block_argument.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/value_impl.h"
 
 #define CHECK_NULL_IMPL(func_name) \
@@ -32,6 +34,18 @@ class BlockArgumentImpl : public ValueImpl {
     return value.kind() == BLOCK_ARG_IDX;
   }
 
+  ///
+  /// \brief attribute related public interfaces
+  ///
+  Attribute attribute(const std::string &key) const {
+    auto iter = attributes_.find(key);
+    return iter == attributes_.end() ? nullptr : iter->second;
+  }
+
+  void set_attribute(const std::string &key, Attribute value) {
+    attributes_[key] = value;
+  }
+
  private:
   BlockArgumentImpl(Type type, Block *owner, uint32_t index)
       : ValueImpl(type, BLOCK_ARG_IDX), owner_(owner), index_(index) {}
@@ -39,6 +53,8 @@ class BlockArgumentImpl : public ValueImpl {
   ~BlockArgumentImpl();
   // access construction and owner
   friend BlockArgument;
+
+  AttributeMap attributes_;
   Block *owner_;
   uint32_t index_;
 };
@@ -63,8 +79,16 @@ Block *BlockArgument::owner() const {
 }
 
 uint32_t BlockArgument::index() const {
-  CHECK_NULL_IMPL(arg_index);
+  CHECK_NULL_IMPL(index);
   return IMPL_->index_;
+}
+
+Attribute BlockArgument::attribute(const std::string &key) const {
+  return impl_ ? IMPL_->attribute(key) : nullptr;
+}
+void BlockArgument::set_attribute(const std::string &key, Attribute value) {
+  CHECK_NULL_IMPL(set_attribute);
+  return IMPL_->set_attribute(key, value);
 }
 
 BlockArgument BlockArgument::Create(Type type, Block *owner, uint32_t index) {

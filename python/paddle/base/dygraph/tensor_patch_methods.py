@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import inspect
 import sys
 import warnings
@@ -147,22 +148,14 @@ def monkey_patch_tensor():
         else:
             static_var = Variable(**attr_kwargs)
 
-        if self.dist_attr is not None:  # import for shard tensor api
+        if self.placements is not None:  # import for shard tensor api
             import paddle.distributed as dist
-            from paddle.distributed.auto_parallel.static.utils import (
-                convert_to_shard_spec,
-            )
 
-            dist_attr = dist.DistAttr(
-                mesh=self.dist_attr.process_mesh,
-                sharding_specs=convert_to_shard_spec(
-                    self.dist_attr.dims_mapping, self.dist_attr.process_mesh
-                ),
-            )
             static_var = dist.shard_tensor(
                 static_var,
+                self.process_mesh,
+                self.placements,
                 stop_gradient=static_var.stop_gradient,
-                dist_attr=dist_attr,
             )
         return static_var
 
@@ -199,6 +192,10 @@ def monkey_patch_tensor():
         assert isinstance(
             value, (np.ndarray, base_tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
+        if self.is_dist():
+            assert isinstance(
+                value, (np.ndarray, base_tensor)
+            ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
 
         if isinstance(value, (dict, str)):
             assert len(self) == len(
@@ -231,6 +228,25 @@ def monkey_patch_tensor():
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
+            if self.is_dist():
+                if isinstance(value, paddle.Tensor) and value.is_dist():
+                    from paddle.distributed.auto_parallel.placement_type import (
+                        check_placements_equal,
+                    )
+
+                    # TODO: support reshard later
+                    assert value.process_mesh == self.value().process_mesh or check_placements_equal(
+                        value.placements, self.value().placements
+                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
+                else:
+                    # calling set method bound for DistTensor
+                    value = paddle.distributed.shard_tensor(
+                        value,
+                        self.value().process_mesh,
+                        self.value().placements,
+                    )
+                self.value().get_tensor().set(value.get_tensor())
+                return
             self.value().get_tensor().set(
                 value, framework._current_expected_place()
             )
@@ -368,6 +384,104 @@ def monkey_patch_tensor():
         return np.array(self.grad)
 
     @framework.dygraph_only
+    def apply_(self, func):
+        """
+        Inplace apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
+                >>> f = lambda x: 3*x+2
+                >>> x.apply_(f)
+                >>> print(x)
+                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+                       [[2.90000004, 3.50000000, 2.30000000],
+                        [4.69999993, 4.69999993, 4.09999996],
+                        [3.20000002, 4.40000004, 2.60000001]])
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float16")
+                >>> x.apply_(f)
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
+                >>> x.apply_(f)
+
+
+                >>> if paddle.is_compiled_with_cuda():
+                >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("gpu", "float32")
+                >>>     x.apply_(f)
+        """
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        return self._apply_(func)
+
+    def apply(self, func):
+        """
+        Apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
+                >>> f = lambda x: 3*x+2
+                >>> y = x.apply(f)
+                >>> print(y)
+                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+                       [[2.90000004, 3.50000000, 2.30000000],
+                        [4.69999993, 4.69999993, 4.09999996],
+                        [3.20000002, 4.40000004, 2.60000001]])
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float16")
+                >>> y = x.apply(f)
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
+                >>> y = x.apply(f)
+
+
+                >>> if paddle.is_compiled_with_cuda():
+                >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("gpu", "float32")
+                >>>     y = x.apply(f)
+
+        """
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        return self._apply(func)
+
+    @framework.dygraph_only
     def register_hook(self, hook):
         """
         Registers a backward hook for current Tensor.
@@ -451,6 +565,7 @@ def monkey_patch_tensor():
             elif isinstance(
                 device,
                 (
+                    core.Place,
                     core.CPUPlace,
                     core.CUDAPlace,
                     core.CUDAPinnedPlace,
@@ -963,11 +1078,11 @@ def monkey_patch_tensor():
             return res
 
     @framework.dygraph_only
-    def pin_memory(self):
+    def pin_memory(self, blocking=True):
         if self.place.is_cuda_pinned_place():
             return self
         else:
-            res = self._copy_to(core.CUDAPinnedPlace(), True)
+            res = self._copy_to(core.CUDAPinnedPlace(), blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -1053,6 +1168,30 @@ def monkey_patch_tensor():
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
+    @framework.dygraph_only
+    def _md5sum(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+
+        Calculate the md5sum of current Tensor.
+
+        Returns:
+            str: The md5sum of current Tensor.
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([1, 2, 3])
+                >>> print(x._md5sum())
+                >>> #'1f68049372c5b2a4e0d049044450
+        """
+        numpy_array = np.array(self)
+        array_bytes = numpy_array.tobytes()
+        return hashlib.md5(array_bytes).hexdigest()
+
     def __hash__(self):
         return hash(id(self))
 
@@ -1101,6 +1240,8 @@ def monkey_patch_tensor():
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
         ("gradient", gradient),
+        ("apply_", apply_),
+        ("apply", apply),
         ("register_hook", register_hook),
         ("__str__", __str__),
         ("__repr__", __str__),
@@ -1127,6 +1268,7 @@ def monkey_patch_tensor():
         ("_clear_data", _clear_data),
         ("__hash__", __hash__),
         ("_use_gpudnn", _use_gpudnn),
+        ("_md5sum", _md5sum),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

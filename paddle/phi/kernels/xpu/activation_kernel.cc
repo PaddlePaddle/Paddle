@@ -212,7 +212,7 @@ void PowKernel(const Context& dev_ctx,
                      static_cast<void*>(&pow_factor),
                      sizeof(T));
 
-  auto x_dims = vectorize<int>(x.dims());
+  auto x_dims = common::vectorize<int>(x.dims());
   // use [1] to replace [], because xpu not support []
   if (x_dims.size() == 0) {
     x_dims = std::vector<int>({1});
@@ -633,6 +633,11 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    sin, XPU, ALL_LAYOUT, phi::SinKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    cos, XPU, ALL_LAYOUT, phi::CosKernel, float, phi::dtype::float16) {}
+
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
 
@@ -643,6 +648,4 @@ PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
-PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)
 PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)

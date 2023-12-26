@@ -202,5 +202,17 @@ std::vector<int64_t> GetDimsMappingForAxes(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const bool unsharded_miss_axis = false);
 
+void DebugInfoForInferSpmd(const std::string& rule_name,
+                           const SpmdInfo& infer_result);
+
+TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
+                                       const ArgDistAttr& grad);
+
+TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
+                                       const TensorDistAttr& grad);
+
+TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
+                                       const TensorDistAttr& grad);
+
 }  // namespace distributed
 }  // namespace phi

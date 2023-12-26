@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -25,7 +26,6 @@
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {

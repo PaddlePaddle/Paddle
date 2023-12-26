@@ -399,7 +399,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     3,
                 ],
             )
-            self.assertTrue(y.item() == y)
+            self.assertTrue(y.item().is_same(y))
             with self.assertRaises(TypeError):
                 x.item()
 
@@ -450,6 +450,13 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 self.assertEqual(output_x, 24)
 
+    def test_hash_error(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data('x', [2, 3])
+                self.assertRaises(NotImplementedError, hash, x)
+
     def test_clone(self):
         x_np = np.random.random(size=[100, 10]).astype('float64')
         with paddle.pir_utils.IrGuard():
@@ -483,6 +490,25 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 array.append(x)
                 with self.assertRaises(TypeError):
                     x.append(array)
+
+    def test_neg(self):
+        x_np = np.random.uniform(-1, 1, [10, 1024]).astype(np.float32)
+        res = -x_np
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(
+                    name='x', shape=[10, 1024], dtype="float32"
+                )
+                a = -x
+                b = x.__neg__()
+                (a_np, b_np) = exe.run(
+                    main_program,
+                    feed={"x": x_np},
+                    fetch_list=[a, b],
+                )
+                np.testing.assert_array_equal(res, a_np)
+                np.testing.assert_array_equal(res, b_np)
 
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():

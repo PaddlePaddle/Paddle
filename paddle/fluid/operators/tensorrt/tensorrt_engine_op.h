@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -39,7 +40,6 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/string_helper.h"
@@ -288,7 +288,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             scope, name_real);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
-        auto t_shape = phi::vectorize<int32_t>(t.dims());
+        auto t_shape = common::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
         // We need collect value range for shape tensor for Paddle-TRT's use.
         // To be noticed, this method to identify all shape tensors is based on
@@ -446,7 +446,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         if (param_names_.count(x)) continue;
         auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
         calib_buffers[x] = t.memory_size();
-        auto t_shape = phi::vectorize(t.dims());
+        auto t_shape = common::vectorize(t.dims());
         runtime_batch = t_shape[0];
       }
       calib_res->calib_ = std::make_unique<TRTInt8Calibrator>(
@@ -549,7 +549,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         framework::TensorCopy(t, dev_place, dev_ctx, &out);
         t.ShareDataWith(out);
       }
-      auto t_shape = phi::vectorize<int64_t>(t.dims());
+      auto t_shape = common::vectorize<int64_t>(t.dims());
 
       // This must be a zero dimension tensor.
       // At present, we convert it to a 1D tensor to feed them into Trt.
@@ -736,7 +736,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
-      fluid_t->Resize(phi::make_ddim(ddim));
+      fluid_t->Resize(common::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,
                         num_bindings,

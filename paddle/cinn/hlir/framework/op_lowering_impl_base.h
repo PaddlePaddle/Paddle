@@ -43,6 +43,7 @@ class OpLowererImplBase {
               bool apply_op_schedule = false,
               bool apply_group_schedule = true,
               bool apply_pass = true) = 0;
+  virtual void InsertNameGeneToScope(std::shared_ptr<Scope> scope) = 0;
 };
 
 }  // namespace framework

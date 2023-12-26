@@ -316,6 +316,22 @@ class TestDygraphInplaceMaskedFill2(TestDygraphInplaceMaskedFill):
         self.mask = paddle.to_tensor(self.mask, dtype='bool')
 
 
+class TestDygraphInplaceMaskedScatter(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.masked_scatter(var, self.mask, self.value)
+
+    def inplace_api_processing(self, var):
+        return paddle.masked_scatter_(var, self.mask, self.value)
+
+    def init_data(self):
+        self.dtype = "float32"
+        self.input_var_numpy = np.random.uniform(-5, 5, [30, 3])
+        self.value = np.random.uniform(size=(30, 30))
+        self.value = paddle.to_tensor(self.value, dtype=self.dtype)
+        self.mask = np.random.randint(0, 2, [30, 1]).astype('bool')
+        self.mask = paddle.to_tensor(self.mask, dtype='bool')
+
+
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
@@ -1621,7 +1637,7 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.random((20, 40))
         self.dtype = "float32"
-        self.axis = 0
+        self.axis = 1
         self.index = paddle.to_tensor([0, 2])
         self.value = -1
 
@@ -1630,6 +1646,69 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
 
     def non_inplace_api_processing(self, var):
         return paddle.index_fill(var, self.index, self.axis, self.value)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+    def test_backward_error(self):
+        with paddle.base.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            var_c = var_b**2
+            self.inplace_api_processing(var_b)
+            var_c = paddle.cast(var_c, "float32")
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
+            ):
+                loss.backward()
+
+
+class TestDygraphTensorApplyInplace(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+        self.set_np_compare_func()
+
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+
+    def set_np_compare_func(self):
+        self.np_compare = np.array_equal
+
+    def non_inplace_api_processing(self, var, f):
+        return var.apply(f)
+
+    def inplace_api_processing(self, var, f):
+        return var.apply_(f)
+
+    def test_inplace_api(self):
+        var = paddle.to_tensor(self.input_var_numpy, stop_gradient=True).astype(
+            self.dtype
+        )
+        f = lambda x: 3 * x + 2
+        non_inplace_var = self.non_inplace_api_processing(var, f)
+        inplace_var = self.inplace_api_processing(var, f)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_array_equal(
+            non_inplace_var.numpy(), inplace_var.numpy()
+        )
 
 
 if __name__ == '__main__':

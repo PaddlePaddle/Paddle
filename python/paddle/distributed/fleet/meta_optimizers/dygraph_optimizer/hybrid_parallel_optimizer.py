@@ -200,6 +200,13 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_fp32
         )
 
+        return self._comm_and_clip(
+            params_grads, global_norm_var_dist, global_norm_var_not_dist
+        )
+
+    def _comm_and_clip(
+        self, params_grads, global_norm_var_dist, global_norm_var_not_dist
+    ):
         self._global_norm(global_norm_var_dist, global_norm_var_not_dist)
 
         global_norm_var_fp32 = paddle.sqrt(
@@ -218,12 +225,8 @@ class HybridParallelClipGrad:
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
-        # bf16 is not supported on XPU now
-        if not (
-            paddle.is_compiled_with_xpu()
-            or isinstance(
-                paddle.framework._current_expected_place(), paddle.CustomPlace
-            )
+        if not isinstance(
+            paddle.framework._current_expected_place(), paddle.CustomPlace
         ):
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
@@ -234,10 +237,6 @@ class HybridParallelClipGrad:
             if g.dtype == paddle.float16:
                 g.multiply_(clip_var_fp16)
             elif g.dtype == paddle.bfloat16:
-                if paddle.is_compiled_with_xpu():
-                    raise NotImplementedError(
-                        "BF16 is not supported on XPU now"
-                    )
                 g.multiply_(clip_var_bf16)
             else:
                 g.multiply_(clip_var)

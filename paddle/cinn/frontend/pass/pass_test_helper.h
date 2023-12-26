@@ -73,7 +73,7 @@ inline void PrintMatrix(const std::vector<float>& mat, int bs, int m, int n) {
 }
 
 inline void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
-                     const common::Target& target,
+                     const cinn::common::Target& target,
                      const std::shared_ptr<hlir::framework::Scope>& scope,
                      const std::vector<std::string>& output_ids,
                      const std::vector<std::string>& graph_passes) {
@@ -91,7 +91,7 @@ inline void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
 
 inline std::vector<float> RunProgram(
     const Program& program,
-    const common::Target& target,
+    const cinn::common::Target& target,
     const std::vector<std::string>& input_ids,
     const std::vector<std::string>& output_ids,
     const std::vector<std::string>& graph_passes,
@@ -177,7 +177,7 @@ struct OptimizeConfig {
 };
 
 inline void CompareResult(Program* program,
-                          const common::Target& target,
+                          const cinn::common::Target& target,
                           const std::vector<std::string>& input_ids,
                           const std::vector<std::string>& output_ids,
                           size_t size_diff,
@@ -222,7 +222,7 @@ inline void CompareResult(Program* program,
 
 inline bool CompareProgramPassResult(
     Program* program,
-    const common::Target& target,
+    const cinn::common::Target& target,
     const std::unordered_set<std::string>& fetch_ids,
     const size_t size_diff,
     const OptimizeConfig& passes) {

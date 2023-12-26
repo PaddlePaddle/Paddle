@@ -1,14 +1,12 @@
 test_accuracy_op
 test_activation_bf16_mkldnn_op
 test_activation_mkldnn_op
+test_activation_op
 test_adadelta_op
 test_adagrad_op
 test_adagrad_op_static_build
 test_adamax_op
-test_adamw_op
-test_adamw_op_static_build
 test_addmm_op
-test_affine_grid_op
 test_allclose_op
 test_amp_check_finite_and_scale_op
 test_angle_op
@@ -25,7 +23,6 @@ test_auc_single_pred_op
 test_bce_loss
 test_bernoulli_op               
 test_bicubic_interp_v2_op
-test_bilinear_interp_mkldnn_op
 test_bilinear_interp_v2_mkldnn_op
 test_bilinear_interp_v2_op
 test_bilinear_tensor_product_op
@@ -60,14 +57,12 @@ test_conv2d_bf16_mkldnn_op
 test_conv2d_int8_mkldnn_op
 test_conv2d_mkldnn_op
 test_conv2d_op
-test_conv2d_op_depthwise_conv
 test_conv2d_transpose_bf16_mkldnn_op
 test_conv2d_transpose_mkldnn_op
 test_conv2d_transpose_op
 test_conv2d_transpose_op_depthwise_conv
 test_conv3d_mkldnn_op
 test_conv3d_op
-test_conv3d_transpose_op
 test_conv3d_transpose_part2_op
 test_crop_tensor_op
 test_cross_op
@@ -75,6 +70,7 @@ test_cummax_op
 test_cummin_op
 test_cumprod_op
 test_cumsum_op
+test_decayed_adagrad_op
 test_deformable_conv_op
 test_dequantize_mkldnn_op
 test_determinant_op
@@ -165,7 +161,6 @@ test_index_select_op
 test_instance_norm_op
 test_instance_norm_op_v2
 test_inverse_op
-test_ir_pybind
 test_is_empty_op
 test_isclose_op
 test_kldiv_loss_op
@@ -197,11 +192,13 @@ test_matmul_v2_op
 test_matmul_v2_op_static_build
 test_matrix_nms_op
 test_matrix_power_op
+test_matrix_rank_op
 test_maxout_op
 test_mean_op
 test_memcpy_op
 test_meshgrid_op
 test_mode_op
+test_momentum_op
 test_mul_int8_mkldnn_op
 test_mul_op
 test_multi_dot_op
@@ -219,6 +216,7 @@ test_nms_op
 test_nn_functional_hot_op
 test_nonzero_api
 test_norm_op
+test_number_count_op
 test_numel_op
 test_one_hot_v2_op
 test_one_hot_v2_op_static_build
@@ -231,7 +229,6 @@ test_polygamma_op
 test_pool2d_int8_mkldnn_op
 test_pool2d_mkldnn_op
 test_pool2d_op
-test_pool3d_op
 test_pool_max_op
 test_prelu_mkldnn_op
 test_prelu_op
@@ -255,6 +252,7 @@ test_reverse_op
 test_roi_align_op
 test_roi_pool_op
 test_roll_op
+test_row_conv_op
 test_rrelu_op
 test_scale_mkldnn_op
 test_scale_op
@@ -298,6 +296,7 @@ test_transpose_int8_mkldnn_op
 test_transpose_op
 test_triangular_solve_op
 test_tril_indices_op
+test_tril_triu_op
 test_trilinear_interp_v2_op
 test_triu_indices_op
 test_trunc_op

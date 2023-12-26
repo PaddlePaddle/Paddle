@@ -66,8 +66,8 @@ class GraphEdge : public Object {
 };
 
 struct GraphEdgeCompare {
-  bool operator()(const common::Shared<GraphEdge>& a,
-                  const common::Shared<GraphEdge>& b) const;
+  bool operator()(const cinn::common::Shared<GraphEdge>& a,
+                  const cinn::common::Shared<GraphEdge>& b) const;
 };
 
 /**
@@ -224,11 +224,11 @@ class GraphNode : public Object {
   //! The input links of the node.
   //! \note We record the raw pointer rather than the shared pointer to avoid
   //! cycle reference.
-  std::set<common::Shared<GraphEdge>, GraphEdgeCompare> inlinks_;
+  std::set<cinn::common::Shared<GraphEdge>, GraphEdgeCompare> inlinks_;
   //! The output links of the node.
   //! \note We record the raw pointer rather than the shared pointer to avoid
   //! cycle reference.
-  std::set<common::Shared<GraphEdge>, GraphEdgeCompare> outlinks_;
+  std::set<cinn::common::Shared<GraphEdge>, GraphEdgeCompare> outlinks_;
 
   mutable int visited_time_{};
   //! used to mark the index of node's input/output tensors
@@ -276,7 +276,7 @@ class Graph {
 
   //! Collect the nodes match the condition defined by \p teller in the graph.
   std::set<GraphNode*> CollectNodes(
-      std::function<bool(const common::GraphNode*)>&& teller);
+      std::function<bool(const cinn::common::GraphNode*)>&& teller);
 
   void DropNode(GraphNode* n) {
     auto it = std::find_if(
@@ -291,7 +291,7 @@ class Graph {
 
   void ClearUnlinkedNodes(
       absl::flat_hash_map<std::string, std::vector<int>>* shape_dict,
-      absl::flat_hash_map<std::string, common::Type>* type_dict,
+      absl::flat_hash_map<std::string, cinn::common::Type>* type_dict,
       absl::flat_hash_map<std::string, std::string>* layout_dict);
 
   size_t num_nodes() const { return nodes_.size(); }

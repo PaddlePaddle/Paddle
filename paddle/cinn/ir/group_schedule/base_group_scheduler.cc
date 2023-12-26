@@ -22,7 +22,7 @@ namespace ir {
 std::unique_ptr<GroupScheduler> GroupScheduler::Make(
     ir::IRSchedule* ir_sch,
     const std::unordered_set<std::string>& output_tensor_names,
-    const common::Target& target,
+    const cinn::common::Target& target,
     bool is_dy_shape) {
   if (is_dy_shape) {
     return std::make_unique<DynamicShapeGroupScheduler>(
@@ -31,6 +31,14 @@ std::unique_ptr<GroupScheduler> GroupScheduler::Make(
     return std::make_unique<StaticShapeGroupScheduler>(
         ir_sch, output_tensor_names, target);
   }
+}
+
+std::unordered_set<std::string> GroupScheduler::OutputTensorNames() const {
+  std::unordered_set<std::string> output_tensor_names{output_tensor_names_};
+  for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
+    output_tensor_names.insert(node->id());
+  }
+  return output_tensor_names;
 }
 
 }  // namespace ir

@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/arg_min_max_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -96,8 +96,8 @@ struct VisitDataArgMinMaxFunctor {
     int new_axis = axis;
     if (flatten) {
       // always reduce 1D -> 0D
-      x_dims = phi::make_ddim({x.numel()});
-      out_dims = phi::make_ddim({});
+      x_dims = common::make_ddim({x.numel()});
+      out_dims = common::make_ddim({});
       new_axis = 0;
     } else {
       x_dims = x.dims();
@@ -111,7 +111,7 @@ struct VisitDataArgMinMaxFunctor {
 
     switch (x_dims.size()) {
       case 0:
-        phi::funcs::set_constant(dev_ctx, out, 0);
+        phi::funcs::set_constant(dev_ctx, out, static_cast<Tout>(0));
         return;
       case 1:
         CALL_ARG_MINMAX_FUNCTOR(1);
@@ -153,6 +153,11 @@ void ArgMinMaxKernel(const Context& dev_ctx,
                      bool flatten,
                      DataType dtype,
                      DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument(
+          "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,
