@@ -358,7 +358,6 @@ def inverse_sort_op(ops):
                     idx_2 = sorted_list.index(op_in)
             if idx_1 != idx_2:
                 change_list.append((idx_1, idx_2))
-
     for idx_1, idx_2 in change_list:
         sorted_list[idx_1], sorted_list[idx_2] = (
             sorted_list[idx_2],
