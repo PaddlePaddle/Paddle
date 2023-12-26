@@ -30,7 +30,6 @@ def call_sfl_functional(
     return res
 
 
-@test_with_pir_api
 def test_static(
     place,
     logit_np,
@@ -121,6 +120,7 @@ def calc_sigmoid_focal_loss(
 
 
 class TestSigmoidFocalLoss(unittest.TestCase):
+    @test_with_pir_api
     def test_SigmoidFocalLoss(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64
