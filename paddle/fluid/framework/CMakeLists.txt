@@ -340,7 +340,7 @@ if(WITH_XPU)
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi
@@ -367,7 +367,7 @@ else()
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi

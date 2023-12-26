@@ -19,7 +19,7 @@ if(WITH_XPU)
          var_type_traits
          op_kernel_type
          data_transform
-         nan_inf_utils
+         #detail_op_handle
          phi
          common
          var_helper
@@ -37,7 +37,7 @@ else()
          var_type_traits
          op_kernel_type
          data_transform
-         nan_inf_utils
+         #detail_op_handle
          phi
          common
          var_helper

@@ -1,3 +1,120 @@
+if(WITH_PSCORE)
+  set(DISTRIBUTE_COMPILE_FLAGS
+      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
+  )
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(
+    reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(
+    threaded_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
+                                              ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(
+    async_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
+                                           ${DISTRIBUTE_COMPILE_FLAGS})
+endif()
+
+set(op_handle_srcs
+    nan_inf_utils_detail.cc
+    all_reduce_op_handle.cc
+    fused_all_reduce_op_handle.cc
+    grad_merge_all_reduce_op_handle.cc
+    reduce_op_handle.cc
+    broadcast_op_handle.cc
+    fused_broadcast_op_handle.cc)
+
+if(WITH_DGC)
+  set(op_handle_srcs ${op_handle_srcs} sparse_all_reduce_op_handle.cc)
+endif()
+
+set(op_handle_deps pass operator variable_visitor)
+
+if(WITH_MKLDNN)
+  set(op_handle_deps ${op_handle_deps} mkldnn)
+endif()
+
+if(WITH_DGC)
+  set(op_handle_deps ${op_handle_deps} dgc)
+endif()
+
+if(WITH_GPU)
+  nv_library(
+    detail_op_handle
+    SRCS ${op_handle_srcs}
+    DEPS ${op_handle_deps})
+elseif(WITH_ROCM)
+  hip_library(
+    detail_op_handle
+    SRCS ${op_handle_srcs}
+    DEPS ${op_handle_deps})
+else()
+  cc_library(
+    detail_op_handle
+    SRCS ${op_handle_srcs}
+    DEPS ${op_handle_deps})
+endif()
+
+add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
+# file(GLOB framework_details_srcs "*.cc")
+# foreach(FILE_NAME ${op_handle_srcs})
+#   list(REMOVE_ITEM framework_details_srcs
+#        ${CMAKE_CURRENT_SOURCE_DIR}/${FILE_NAME}
+#        ${CMAKE_CURRENT_SOURCE_DIR}/sparse_all_reduce_op_handle.cc)
+# endforeach()
+
+# set(IR_PASS_DEPS
+#     graph_viz_pass
+#     multi_devices_graph_pass
+#     multi_devices_graph_print_pass
+#     multi_devices_graph_check_pass
+#     fuse_elewise_add_act_pass
+#     fuse_bn_act_pass
+#     fuse_bn_add_act_pass
+#     multi_batch_merge_pass
+#     fuse_relu_depthwise_conv_pass
+#     lock_free_optimize_pass
+#     sequential_execution_pass
+#     all_reduce_deps_pass
+#     add_reader_dependency_pass
+#     modify_op_lock_and_record_event_pass
+#     coalesce_grad_tensor_pass
+#     fuse_all_reduce_op_pass
+#     backward_optimizer_op_deps_pass
+#     fuse_adam_op_pass
+#     fuse_sgd_op_pass
+#     fuse_momentum_op_pass
+#     sync_batch_norm_pass
+#     runtime_context_cache_pass
+#     graph_to_program_pass
+#     fix_op_run_order_pass
+#     fuse_gemm_epilogue_pass
+#     fused_attention_pass
+#     fuse_adamw_op_pass
+#     fused_feedforward_pass
+#     delete_dropout_op_pass)
+# if(NOT APPLE
+#    AND NOT WIN32
+#    AND (WITH_GPU OR WITH_ROCM))
+#   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
+# endif()
+# set(framework_details_deps
+#     xxhash
+#     phi
+#     operator
+#     pass_builder
+#     eager_deletion_pass
+#     pass
+#     eager_deletion_pass
+#     reference_count_pass
+#     inplace_addto_op_pass
+#     fix_op_run_order_pass
+#     ${IR_PASS_DEPS})
+
+# cc_library(
+#   framework_details
+#   SRCS ${framework_details_srcs}
+#   DEPS ${framework_details_deps})
 cc_library(
   var_handle
   SRCS var_handle.cc
@@ -50,211 +167,211 @@ cc_library(
   SRCS variable_visitor.cc
   DEPS lod_tensor selected_rows_utils)
 
-if(WITH_PSCORE)
-  set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
-  )
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-  endif()
-  set_source_files_properties(
-    reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(
-    threaded_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
-                                              ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(
-    async_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
-                                           ${DISTRIBUTE_COMPILE_FLAGS})
-endif()
+# if(WITH_PSCORE)
+#   set(DISTRIBUTE_COMPILE_FLAGS
+#       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
+#   )
+#   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+#     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+#   endif()
+#   set_source_files_properties(
+#     reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+#   set_source_files_properties(
+#     threaded_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
+#                                               ${DISTRIBUTE_COMPILE_FLAGS})
+#   set_source_files_properties(
+#     async_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
+#                                            ${DISTRIBUTE_COMPILE_FLAGS})
+# endif()
 
-if(WITH_GPU)
-  nv_library(
-    nan_inf_utils
-    SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place phi common)
-  nv_library(
-    all_reduce_op_handle
-    SRCS all_reduce_op_handle.cc
-    DEPS variable_visitor
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         fluid_memory
-         dynload_cuda)
-  nv_library(
-    fused_all_reduce_op_handle
-    SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         variable_visitor
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         place)
-  nv_library(
-    grad_merge_all_reduce_op_handle
-    SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS fused_all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         variable_visitor
-         place
-         all_reduce_op_handle)
+# if(WITH_GPU)
+#   nv_library(
+#     nan_inf_utils
+#     SRCS nan_inf_utils_detail.cc
+#     DEPS framework_proto scope place phi common)
+#   nv_library(
+#     all_reduce_op_handle
+#     SRCS all_reduce_op_handle.cc
+#     DEPS variable_visitor
+#          op_handle_base
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          fluid_memory
+#          dynload_cuda)
+#   nv_library(
+#     fused_all_reduce_op_handle
+#     SRCS fused_all_reduce_op_handle.cc
+#     DEPS all_reduce_op_handle
+#          variable_visitor
+#          op_handle_base
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          dynload_cuda
+#          place)
+#   nv_library(
+#     grad_merge_all_reduce_op_handle
+#     SRCS grad_merge_all_reduce_op_handle.cc
+#     DEPS fused_all_reduce_op_handle
+#          op_handle_base
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          dynload_cuda
+#          variable_visitor
+#          place
+#          all_reduce_op_handle)
 
-  if(WITH_DGC)
-    nv_library(
-      sparse_all_reduce_op_handle
-      SRCS sparse_all_reduce_op_handle.cc
-      DEPS op_handle_base
-           scope
-           lod_tensor
-           phi
-           common
-           dynload_cuda
-           variable_visitor
-           dgc
-           all_reduce_op_handle)
-  endif()
+#   if(WITH_DGC)
+#     nv_library(
+#       sparse_all_reduce_op_handle
+#       SRCS sparse_all_reduce_op_handle.cc
+#       DEPS op_handle_base
+#            scope
+#            lod_tensor
+#            phi
+#            common
+#            dynload_cuda
+#            variable_visitor
+#            dgc
+#            all_reduce_op_handle)
+#   endif()
 
-  if(WITH_DISTRIBUTE)
-    nv_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  else()
-    nv_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  endif()
-  nv_library(
-    broadcast_op_handle
-    SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
-  nv_library(
-    fused_broadcast_op_handle
-    SRCS fused_broadcast_op_handle.cc
-    DEPS broadcast_op_handle)
-elseif(WITH_ROCM)
-  hip_library(
-    nan_inf_utils
-    SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place phi common)
-  hip_library(
-    all_reduce_op_handle
-    SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         variable_visitor)
-  hip_library(
-    fused_all_reduce_op_handle
-    SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         op_handle_base
-         variable_visitor
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         place)
-  hip_library(
-    grad_merge_all_reduce_op_handle
-    SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS fused_all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         variable_visitor
-         place
-         all_reduce_op_handle)
+#   if(WITH_DISTRIBUTE)
+#     nv_library(
+#       reduce_op_handle
+#       SRCS reduce_op_handle.cc
+#       DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
+#   else()
+#     nv_library(
+#       reduce_op_handle
+#       SRCS reduce_op_handle.cc
+#       DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
+#   endif()
+#   nv_library(
+#     broadcast_op_handle
+#     SRCS broadcast_op_handle.cc
+#     DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
+#   nv_library(
+#     fused_broadcast_op_handle
+#     SRCS fused_broadcast_op_handle.cc
+#     DEPS broadcast_op_handle)
+# elseif(WITH_ROCM)
+#   hip_library(
+#     nan_inf_utils
+#     SRCS nan_inf_utils_detail.cc
+#     DEPS framework_proto scope place phi common)
+#   hip_library(
+#     all_reduce_op_handle
+#     SRCS all_reduce_op_handle.cc
+#     DEPS op_handle_base
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          dynload_cuda
+#          variable_visitor)
+#   hip_library(
+#     fused_all_reduce_op_handle
+#     SRCS fused_all_reduce_op_handle.cc
+#     DEPS all_reduce_op_handle
+#          op_handle_base
+#          variable_visitor
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          dynload_cuda
+#          place)
+#   hip_library(
+#     grad_merge_all_reduce_op_handle
+#     SRCS grad_merge_all_reduce_op_handle.cc
+#     DEPS fused_all_reduce_op_handle
+#          op_handle_base
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          dynload_cuda
+#          variable_visitor
+#          place
+#          all_reduce_op_handle)
 
-  if(WITH_DISTRIBUTE)
-    hip_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  else()
-    hip_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  endif()
-  hip_library(
-    broadcast_op_handle
-    SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
-  hip_library(
-    fused_broadcast_op_handle
-    SRCS fused_broadcast_op_handle.cc
-    DEPS broadcast_op_handle)
-else()
-  cc_library(
-    nan_inf_utils
-    SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place phi common)
-  cc_library(
-    all_reduce_op_handle
-    SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base scope lod_tensor phi common variable_visitor)
-  cc_library(
-    fused_all_reduce_op_handle
-    SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         variable_visitor
-         place)
-  cc_library(
-    grad_merge_all_reduce_op_handle
-    SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS fused_all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         variable_visitor
-         place
-         all_reduce_op_handle)
-  if(WITH_DISTRIBUTE)
-    cc_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common)
-  else()
-    cc_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common)
-  endif()
-  cc_library(
-    broadcast_op_handle
-    SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi common variable_visitor)
-  cc_library(
-    fused_broadcast_op_handle
-    SRCS fused_broadcast_op_handle.cc
-    DEPS broadcast_op_handle)
-endif()
+#   if(WITH_DISTRIBUTE)
+#     hip_library(
+#       reduce_op_handle
+#       SRCS reduce_op_handle.cc
+#       DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
+#   else()
+#     hip_library(
+#       reduce_op_handle
+#       SRCS reduce_op_handle.cc
+#       DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
+#   endif()
+#   hip_library(
+#     broadcast_op_handle
+#     SRCS broadcast_op_handle.cc
+#     DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
+#   hip_library(
+#     fused_broadcast_op_handle
+#     SRCS fused_broadcast_op_handle.cc
+#     DEPS broadcast_op_handle)
+# else()
+#   cc_library(
+#     nan_inf_utils
+#     SRCS nan_inf_utils_detail.cc
+#     DEPS framework_proto scope place phi common)
+#   cc_library(
+#     all_reduce_op_handle
+#     SRCS all_reduce_op_handle.cc
+#     DEPS op_handle_base scope lod_tensor phi common variable_visitor)
+#   cc_library(
+#     fused_all_reduce_op_handle
+#     SRCS fused_all_reduce_op_handle.cc
+#     DEPS all_reduce_op_handle
+#          op_handle_base
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          variable_visitor
+#          place)
+#   cc_library(
+#     grad_merge_all_reduce_op_handle
+#     SRCS grad_merge_all_reduce_op_handle.cc
+#     DEPS fused_all_reduce_op_handle
+#          op_handle_base
+#          scope
+#          lod_tensor
+#          phi
+#          common
+#          variable_visitor
+#          place
+#          all_reduce_op_handle)
+#   if(WITH_DISTRIBUTE)
+#     cc_library(
+#       reduce_op_handle
+#       SRCS reduce_op_handle.cc
+#       DEPS op_handle_base variable_visitor scope phi common)
+#   else()
+#     cc_library(
+#       reduce_op_handle
+#       SRCS reduce_op_handle.cc
+#       DEPS op_handle_base variable_visitor scope phi common)
+#   endif()
+#   cc_library(
+#     broadcast_op_handle
+#     SRCS broadcast_op_handle.cc
+#     DEPS op_handle_base scope phi common variable_visitor)
+#   cc_library(
+#     fused_broadcast_op_handle
+#     SRCS fused_broadcast_op_handle.cc
+#     DEPS broadcast_op_handle)
+# endif()
 
 cc_library(
   gather_op_handle
