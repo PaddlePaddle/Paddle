@@ -202,7 +202,7 @@ std::vector<std::vector<pir::OpResult>> ArrayWrite_Op::Vjp(
       inputs_.size(),
       3,
       platform::errors::InvalidArgument(
-          "ArrayWrite_ op's inputs size should be 1, but now is %d.",
+          "ArrayWrite_ op's inputs size should be 3, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
@@ -239,7 +239,7 @@ std::vector<std::vector<pir::OpResult>> ArrayReadOp::Vjp(
       inputs_.size(),
       2,
       platform::errors::InvalidArgument(
-          "Array_read op's inputs size should be 1, but now is %d.",
+          "Array_read op's inputs size should be 2, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
