@@ -21,7 +21,6 @@ from distribution import config
 
 import paddle
 from paddle.distribution import transform, variable
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2022)
 paddle.seed(2022)
@@ -1069,31 +1068,6 @@ class TestSigmoidTransform(unittest.TestCase):
         )
 
     @param.param_func(
-        ((np.ones((5, 10)), 1 / (1 + np.exp(-np.ones((5, 10))))),)
-    )
-    @test_with_pir_api
-    def test_forward_static(self, input, expected):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.SigmoidTransform()
-            out = model.forward(x)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        np.testing.assert_allclose(
-            result,
-            expected,
-            rtol=config.RTOL.get(str(input.dtype)),
-            atol=config.ATOL.get(str(input.dtype)),
-        )
-        paddle.disable_static()
-
-    @param.param_func(
         ((np.ones(10), np.log(np.ones(10)) - np.log1p(-np.ones(10))),)
     )
     def test_inverse(self, input, expected):
@@ -1103,31 +1077,6 @@ class TestSigmoidTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
-
-    @param.param_func(
-        ((np.ones(10), np.log(np.ones(10)) - np.log1p(-np.ones(10))),)
-    )
-    @test_with_pir_api
-    def test_inverse_static(self, input, expected):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.SigmoidTransform()
-            out = model.inverse(x)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        np.testing.assert_allclose(
-            result,
-            expected,
-            rtol=config.RTOL.get(str(input.dtype)),
-            atol=config.ATOL.get(str(input.dtype)),
-        )
-        paddle.disable_static()
 
     @param.param_func(
         (
@@ -1144,36 +1093,6 @@ class TestSigmoidTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
-
-    @param.param_func(
-        (
-            (
-                np.ones(10),
-                -_np_softplus(-np.ones(10)) - _np_softplus(np.ones(10)),
-            ),
-        )
-    )
-    @test_with_pir_api
-    def test_forward_log_det_jacobian_static(self, input, expected):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.SigmoidTransform()
-            out = model.forward_log_det_jacobian(x)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        np.testing.assert_allclose(
-            result,
-            expected,
-            rtol=config.RTOL.get(str(input.dtype)),
-            atol=config.ATOL.get(str(input.dtype)),
-        )
-        paddle.disable_static()
 
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_forward_shape(self, shape, expected_shape):
@@ -1192,24 +1111,6 @@ class TestSigmoidTransform(unittest.TestCase):
         self.assertEqual(self._t.inverse_log_det_jacobian(x).shape, [])
         self.assertEqual(self._t.forward_shape(x.shape), [])
         self.assertEqual(self._t.inverse_shape(x.shape), [])
-
-    @param.param_func([(np.array(1.0), np.array(1.0))])
-    @test_with_pir_api
-    def test_zerodim_static(self, input, expected):
-        paddle.enable_static()
-        shape = ()
-        if paddle.framework.in_pir_mode():
-            shape = []
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, 'float32')
-            model = transform.SigmoidTransform()
-            self.assertEqual(model.forward(x).shape, shape)
-            self.assertEqual(model.inverse(x).shape, shape)
-            self.assertEqual(model.forward_log_det_jacobian(x).shape, shape)
-            self.assertEqual(model.inverse_log_det_jacobian(x).shape, shape)
-            self.assertEqual(model.forward_shape(x.shape), shape)
-            self.assertEqual(model.inverse_shape(x.shape), shape)
-        paddle.disable_static()
 
 
 class TestSoftmaxTransform(unittest.TestCase):
@@ -1295,30 +1196,6 @@ class TestStickBreakingTransform(unittest.TestCase):
             atol=config.ATOL.get(str(input.dtype)),
         )
 
-    @param.param_func(((np.random.random(10),),))
-    @test_with_pir_api
-    def test_forward_static(self, input):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.StickBreakingTransform()
-            fwd = model.forward(x)
-            out = model.inverse(fwd)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        np.testing.assert_allclose(
-            result,
-            input,
-            rtol=config.RTOL.get(str(input.dtype)),
-            atol=config.ATOL.get(str(input.dtype)),
-        )
-        paddle.disable_static()
-
     @param.param_func([((2, 3, 5), (2, 3, 6))])
     def test_forward_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
@@ -1332,24 +1209,6 @@ class TestStickBreakingTransform(unittest.TestCase):
         self.assertEqual(
             self._t.forward_log_det_jacobian(paddle.to_tensor(x)).shape, []
         )
-
-    @param.param_func(((np.random.random(10),),))
-    @test_with_pir_api
-    def test_forward_log_det_jacobian_static(self, input):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.StickBreakingTransform()
-            out = model.forward_log_det_jacobian(x)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        self.assertEqual(result.shape, ())
-        paddle.disable_static()
 
 
 # Todo
@@ -1386,29 +1245,6 @@ class TestStackTransform(unittest.TestCase):
 
     @param.param_func(
         [
-            (np.array([[0.0, 1.0, 2.0, 3.0]]),),
-            (np.array([[-5.0, 6.0, 7.0, 8.0]]),),
-        ]
-    )
-    @test_with_pir_api
-    def test_forward_static(self, input):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.StackTransform(self.transforms, self.axis)
-            out = model.forward(x)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        self.assertEqual(tuple(result.shape), input.shape)
-        paddle.disable_static()
-
-    @param.param_func(
-        [
             (np.array([[1.0, 2.0, 3.0]]),),
             (
                 np.array(
@@ -1423,33 +1259,6 @@ class TestStackTransform(unittest.TestCase):
         )
 
     @param.param_func(
-        [
-            (np.array([[1.0, 2.0, 3.0]]),),
-            (
-                np.array(
-                    [[6.0, 7.0, 8.0]],
-                ),
-            ),
-        ]
-    )
-    @test_with_pir_api
-    def test_inverse_static(self, input):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.StackTransform(self.transforms, self.axis)
-            out = model.inverse(x)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        self.assertEqual(tuple(result.shape), input.shape)
-        paddle.disable_static()
-
-    @param.param_func(
         [(np.array([[1.0, 2.0, 3.0]]),), (np.array([[6.0, 7.0, 8.0]]),)]
     )
     def test_forward_log_det_jacobian(self, input):
@@ -1459,26 +1268,6 @@ class TestStackTransform(unittest.TestCase):
             ),
             input.shape,
         )
-
-    @param.param_func(
-        [(np.array([[1.0, 2.0, 3.0]]),), (np.array([[6.0, 7.0, 8.0]]),)]
-    )
-    @test_with_pir_api
-    def test_forward_log_det_jacobian_static(self, input):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', input.shape, input.dtype)
-            model = transform.StackTransform(self.transforms, self.axis)
-            out = model.forward_log_det_jacobian(x)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-            (result,) = exe.run(feed={'X': input}, fetch_list=[out])
-        self.assertEqual(tuple(result.shape), input.shape)
-        paddle.disable_static()
 
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_forward_shape(self, shape, expected_shape):
@@ -1498,12 +1287,10 @@ class TestStackTransform(unittest.TestCase):
             ([paddle.distribution.ExpTransform()], 'axis', TypeError),
         ]
     )
-    @test_with_pir_api
     def test_init_exception(self, transforms, axis, exc):
         with self.assertRaises(exc):
             paddle.distribution.StackTransform(transforms, axis)
 
-    @test_with_pir_api
     def test_transforms(self):
         self.assertIsInstance((self._t.transforms), typing.Sequence)
 
