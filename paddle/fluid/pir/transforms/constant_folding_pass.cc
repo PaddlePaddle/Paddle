@@ -309,15 +309,28 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  explicit ConstantFoldingPass(const phi::Place& place,
-                               paddle::framework::Scope* scope)
-      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope) {
-    PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
-  }
+  ConstantFoldingPass()
+      : pir::Pass("constant_folding_pass", 1),
+        place_(phi::CPUPlace{}),
+        scope_(nullptr) {}
 
  private:
   bool Initialize(pir::IrContext* context) override {
+    IR_ENFORCE(Has(pir::kPlaceAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, place attribute is required!"
+               "Use Set method to set the place attribute.");
+    IR_ENFORCE(Has(pir::kParamScopeAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, scope attribute is required!"
+               "Use Set method to set the scope attribute.");
+
+    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
+
+    PADDLE_ENFORCE_NOT_NULL(
+        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+
     pir::RewritePatternSet ps(context);
     ps.Add<ConstantFoldingPattern>(
         context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
@@ -354,9 +367,8 @@ class ConstantFoldingPass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope) {
-  return std::make_unique<ConstantFoldingPass>(place, scope);
+std::unique_ptr<Pass> CreateConstantFoldingPass() {
+  return std::make_unique<ConstantFoldingPass>();
 }
 
 }  // namespace pir
