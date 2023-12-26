@@ -89,7 +89,7 @@ IR_DECLARE_EXPLICIT_TYPE_ID({op_name})
 """
 
 OP_DECLARE_TEMPLATE = """
-class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
+class TEST_API {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
  public:
   using Op::Op;
   static const char *name() {{ return "{dialect_op_name}"; }}
