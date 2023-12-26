@@ -204,7 +204,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
     return false;
   }
 
-  bool CheckOutputIsScalarAttribute(pir::Operation* op) {
+  bool CheckOutputIsScalarAttribute(pir::Operation* op) const {
     for (uint32_t i = 0; i < op->num_results(); i++) {
       auto use_ops = pir::GetUseOpsForOutput(op, i);
       if (CheckUseOpsScalaAttribute(use_ops)) return true;
