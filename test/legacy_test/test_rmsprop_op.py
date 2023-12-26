@@ -281,7 +281,9 @@ class TestRMSPropV2(unittest.TestCase):
         with base.program_guard(main):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
-            y_predict = paddle.static.nn.fc(x, size=1)
+            y_predict = paddle.nn.Linear(
+                in_features=x.shape[-1], out_features=1
+            )(x)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -470,7 +472,9 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
                 data = paddle.static.data(
                     shape=[2, 2], name='X', dtype='float32'
                 )
-            hidden = paddle.static.nn.fc(x=data, size=10)
+            hidden = paddle.nn.Linear(
+                in_features=data.shape[-1], out_features=10
+            )(data)
             loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
