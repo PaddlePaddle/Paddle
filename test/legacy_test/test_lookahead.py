@@ -40,7 +40,7 @@ class TestLookAhead(unittest.TestCase):
                     name='X', shape=[None, 1], dtype='float32'
                 )
                 hidden = paddle.nn.Linear(1, 10)
-                loss = paddle.mean(hidden)
+                loss = paddle.mean(hidden(data))
 
                 optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
                 lookahead = paddle.incubate.optimizer.LookAhead(
