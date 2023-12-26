@@ -115,7 +115,8 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             reshape_op,
             process_mesh=x_dist_attr.process_mesh,
-            ref_mapping=x_dist_attr.dim_mapping,
+            ref_mapping=x_dist_attr.dims_mapping,
+            ctx=self.dist_context,
             chunk_id=x_dist_attr.chunk_id,
         )
         block._sync_with_cpp()
