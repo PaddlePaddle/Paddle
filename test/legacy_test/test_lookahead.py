@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base, nn
+from paddle.pir_utils import test_with_pir_api
 
 LOOKAHEAD_K = 5
 LOOKAHEAD_ALPHA = 0.2
@@ -25,19 +26,20 @@ SGD_LR = 1.0
 
 
 class TestLookAhead(unittest.TestCase):
+    @test_with_pir_api
     def test_lookahead_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
         shape = [2, 3, 8, 8]
         exe = base.Executor(place)
-        train_program = base.Program()
-        startup = base.Program()
-        with base.program_guard(train_program, startup):
+        train_program = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup):
             with base.unique_name.guard():
                 data = paddle.static.data(
                     name='X', shape=[None, 1], dtype='float32'
                 )
-                hidden = paddle.static.nn.fc(x=data, size=10)
+                hidden = paddle.nn.Linear(1, 10)
                 loss = paddle.mean(hidden)
 
                 optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
