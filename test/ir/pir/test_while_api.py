@@ -62,16 +62,13 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
     def test_get_used_external_value(self):
         main_program = paddle.static.Program()
         with paddle.pir.core.program_guard(main_program):
-            print(main_program)
             i = paddle.full(shape=[1], fill_value=0)
-            print(main_program)
             x = paddle.full(shape=[1], fill_value=10)
             y = paddle.full(shape=[1], fill_value=5)
             # i, x = paddle.static.nn.while_loop(cond, body, [i, ten])
             paddle.static.nn.while_loop(
                 lambda p, q: p < q, lambda p, q: [p + y, q + i], [i, x]
             )
-            print(main_program)
         while_op = main_program.global_block().ops[-1]
         self.assertEqual(while_op.name(), "pd_op.while")
         body_block = while_op.as_while_op().body()
@@ -175,7 +172,6 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 out,
                 [i, j],
             )
-
             self.assertEqual(
                 grad_outs[0].get_defining_op().name(), "pd_op.while"
             )
@@ -187,6 +183,16 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .ops[-2]
                 .name(),
                 "cf.has_elements",
+            )
+
+            self.assertEqual(
+                main_program.global_block()
+                .ops[-1]
+                .as_while_op()
+                .body()
+                .ops[-3]
+                .name(),
+                "pd_op.add_grad",
             )
 
     def test_backward_with_loop_var_same_to_extral_var(self):
