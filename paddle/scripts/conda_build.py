@@ -53,7 +53,7 @@ requirements:
   run:
     - httpx
     - numpy>=1.13
-    - protobuf>=3.20.2, <4.22.5
+    - protobuf>=3.20.2
     - Pillow
     - decorator
     - astor
@@ -137,7 +137,6 @@ pip install protobuf===3.20.2 -f C:\package
             "-cp312-cp312-macosx_10_9_x86_64",
         ]
         self.mac_pip_arm = [
-            "",
             "-cp38-cp38-macosx_11_0_arm64",
             "-cp39-cp39-macosx_11_0_arm64",
             "-cp310-cp310-macosx_11_0_arm64",
