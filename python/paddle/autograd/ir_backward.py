@@ -765,16 +765,6 @@ def append_backward_ops(
                         for sub_fwd_block, sub_bwd_block in zip(
                             op.blocks(), grad_op.blocks()
                         ):
-                            # update grad_op structure
-                            if grad_op.name() == "pd_op.while":
-                                (
-                                    _,
-                                    sub_bwd_block_argument_to_value_map,
-                                ) = argument_to_value(grad_op)
-                            else:
-                                sub_bwd_block_argument_to_value_map = (
-                                    ValueDict()
-                                )
                             sub_state = state.copy(sub_fwd_block)
                             sub_backward_ops = []
                             append_backward_ops(
@@ -787,7 +777,6 @@ def append_backward_ops(
                                 no_grad_set,
                                 sub_backward_ops,
                                 sub_state,
-                                sub_bwd_block_argument_to_value_map,
                             )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
