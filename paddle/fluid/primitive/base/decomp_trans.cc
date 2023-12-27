@@ -313,6 +313,22 @@ void DecompProgram::decomp_program() {
       tar_vars = construct_dst_vars(
           op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
 
+      std::vector<pir::Operation*> tmp_ops_list;
+      for (auto& tmp_op : *block) {
+        tmp_ops_list.push_back(&tmp_op);
+      }
+      for (size_t j = 0; j < tmp_ops_list.size(); j++) {
+        auto sub_op = tmp_ops_list[i];
+        VLOG(0) << "[prim] sub op " << sub_op->name() << " index " << j;
+        if (sub_op == op) {
+          VLOG(0) << "[prim] sub op start ================ ";
+        }
+
+        if (sub_op == ops_list[i + 1] || sub_op == ops_list[-1]) {
+          VLOG(0) << "[prim] sub op end ================ ";
+        }
+      }
+
       op->ReplaceAllUsesWith(standard_decomp_res);
       bool remove_op = true;
       for (auto& item : op->results()) {
