@@ -216,7 +216,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 [[0., 0.],
                  [0., 0.],
-                 [1., 1.]])
+                 [1., 0.]])
         """
         if not in_dynamic_mode():
             check_type(
