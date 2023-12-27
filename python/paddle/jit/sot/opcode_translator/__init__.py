@@ -13,6 +13,6 @@
 # limitations under the License.
 
 from .skip_files import setup_skip_files
-from .transform import eval_frame_callback  # noqa: F401
+from .eval_frame_callback import eval_frame_callback  # noqa: F401
 
 setup_skip_files()

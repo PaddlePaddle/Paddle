@@ -20,6 +20,7 @@ from distribution import config
 
 import paddle
 from paddle.distribution import transform, variable
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2022)
 paddle.seed(2022)
@@ -1157,6 +1158,7 @@ class TestReshapeTransform(unittest.TestCase):
     def test_codomain(self):
         self.assertTrue(isinstance(self._t._codomain, variable.Independent))
 
+    @test_with_pir_api
     def test_forward(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
@@ -1177,6 +1179,7 @@ class TestReshapeTransform(unittest.TestCase):
             atol=config.ATOL.get(str(expected.dtype)),
         )
 
+    @test_with_pir_api
     def test_inverse(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
@@ -1198,6 +1201,7 @@ class TestReshapeTransform(unittest.TestCase):
             atol=config.ATOL.get(str(expected.dtype)),
         )
 
+    @test_with_pir_api
     def test_forward_log_det_jacobian(self):
         exe = paddle.static.Executor()
         sp = paddle.static.Program()
