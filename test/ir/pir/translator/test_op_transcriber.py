@@ -36,10 +36,9 @@ class TestOpTranscriber(unittest.TestCase):
             with paddle.static.program_guard(self.main_program):
                 self.append_op()
 
-    def test_translate(self):
+    def check(self):
         self.build_model()
         l = pir.translate_to_pir(self.main_program.desc)
-        print(l)
         assert hasattr(self, "op_type"), "Op_type should be specified!"
         assert self.op_type in str(l), (
             self.op_type
