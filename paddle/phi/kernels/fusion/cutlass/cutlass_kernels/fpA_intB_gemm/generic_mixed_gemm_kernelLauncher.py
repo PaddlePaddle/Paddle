@@ -13,6 +13,7 @@
 # limitations under the License.
 import argparse
 import re
+from typing import List
 
 # this is a file's header part
 CommonHead = '''
@@ -33,6 +34,7 @@ void generic_mixed_gemm_kernelLauncher_template<{T},
                                                 {WeightType},
                                                 {arch},
                                                 {EpilogueTag},
+                                                {FineGrained},
                                                 {ThreadblockShape},
                                                 {WarpShape},
                                                 {Stages}>(
@@ -44,6 +46,7 @@ void generic_mixed_gemm_kernelLauncher_template<{T},
     int m,
     int n,
     int k,
+    int group_size,
     CutlassGemmConfig gemm_config,
     char* workspace,
     size_t workspace_bytes,
@@ -53,6 +56,7 @@ void generic_mixed_gemm_kernelLauncher_template<{T},
                                       {WeightType},
                                       {arch},
                                       {EpilogueTag},
+                                      {FineGrained},
                                       {ThreadblockShape},
                                       {WarpShape},
                                       {Stages}>(
@@ -64,6 +68,7 @@ void generic_mixed_gemm_kernelLauncher_template<{T},
         m,
         n,
         k,
+        group_size,
         gemm_config,
         workspace,
         workspace_bytes,
@@ -87,10 +92,12 @@ ThreadblockShapes = [
     "cutlass::gemm::GemmShape<64, 128, 64>",
     "cutlass::gemm::GemmShape<128, 128, 64>",
     "cutlass::gemm::GemmShape<128, 256, 64>",
+    "cutlass::gemm::GemmShape<256, 128, 64>",
 ]
 WarpShapes = [
     "cutlass::gemm::GemmShape<16, 32, 64>",
     "cutlass::gemm::GemmShape<32, 32, 64>",
+    "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
@@ -118,6 +125,8 @@ EpilogueTags = {
     # "biasFtGelu": "EpilogueOpBiasFtGelu",
     # "biasReLU": "EpilogueOpBiasReLU",
 }
+
+finegrained_types = ["true", "false"]
 
 
 def SubstituteTemplate(template, values):
@@ -174,7 +183,11 @@ def parse_args():
 
 # generate source cu
 def generate_source_cu(
-    element_type: str, arch: int, epilogue_tag: str, stages: int
+    element_type: str,
+    arch: int,
+    epilogue_tag: str,
+    finegrained_types: List,
+    stages: int,
 ):
     all_code = CommonHead
     ThreadblockShapes_arch = ThreadblockShapes
@@ -184,18 +197,20 @@ def generate_source_cu(
         WarpShapes_arch = WarpShapes_sm70
     for WeightType in WeightTypes:
         for i in range(len(ThreadblockShapes_arch)):
-            value_dict = {
-                "T": ElementTypes[element_type],
-                "WeightType": WeightType,
-                "arch": Archs[arch],
-                "EpilogueTag": EpilogueTags[epilogue_tag],
-                "ThreadblockShape": ThreadblockShapes_arch[i],
-                "WarpShape": WarpShapes_arch[i],
-                "Stages": str(stages),
-            }
-            all_code += SubstituteTemplate(
-                DispatchGemmConfigInstanceDeclare, value_dict
-            )
+            for j in range(len(finegrained_types)):
+                value_dict = {
+                    "T": ElementTypes[element_type],
+                    "WeightType": WeightType,
+                    "arch": Archs[arch],
+                    "EpilogueTag": EpilogueTags[epilogue_tag],
+                    "FineGrained": finegrained_types[j],
+                    "ThreadblockShape": ThreadblockShapes_arch[i],
+                    "WarpShape": WarpShapes_arch[i],
+                    "Stages": str(stages),
+                }
+                all_code += SubstituteTemplate(
+                    DispatchGemmConfigInstanceDeclare, value_dict
+                )
     all_code += CommonTail
     return all_code
 
@@ -221,7 +236,11 @@ if __name__ == "__main__":
                             element_type, arch, stages, epilogue_tag
                         )
                         all_code = generate_source_cu(
-                            element_type, arch, epilogue_tag, stages
+                            element_type,
+                            arch,
+                            epilogue_tag,
+                            finegrained_types,
+                            stages,
                         )
                         with open(file_name, "w") as f:
                             f.write(all_code)
