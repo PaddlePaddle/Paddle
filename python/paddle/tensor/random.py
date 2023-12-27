@@ -429,7 +429,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
                     op_type_for_check, supported_dtypes, dtype
                 )
             )
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
