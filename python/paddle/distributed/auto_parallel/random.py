@@ -73,7 +73,11 @@ def parallel_manual_seed(seed, name=""):
     _basic_name = name
 
 
-def determinate_rng(rank, dims_mapping, process_mesh):
+def determinate_rng(
+    rank, dims_mapping=None, process_mesh=None, placements=None
+):
+    assert process_mesh is not None
+    assert not ()
     # TODO(JZ-LIANG) Support Mesh with any high rank
     # use a string to unique integer hashing algorithm for seed computation.
     # instead of using offsets to coodinate seed across devices.

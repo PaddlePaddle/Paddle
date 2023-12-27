@@ -115,7 +115,7 @@ class XavierInitializer(Initializer):
                     ".".join(['xavier_init', var.name, 'tmp'])
                 ),
                 shape=var._local_shape
-                if (hasattr(var, "is_dist") and var.is_dist())
+                if (isinstance(var, framework.EagerParamBase) and var.is_dist())
                 else var.shape,
                 dtype=out_dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
@@ -154,7 +154,7 @@ class XavierInitializer(Initializer):
                 var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
             ):
                 out_var = _C_ops.cast(out_var, var.dtype)
-            if hasattr(var, "is_dist") and var.is_dist():
+            if isinstance(var, framework.EagerParamBase) and var.is_dist():
                 # lazy init for dist tensor
                 out_var = (
                     paddle.distributed.auto_parallel.api.dtensor_from_local(

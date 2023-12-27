@@ -82,7 +82,7 @@ class Orthogonal(Initializer):
             The last initialization op, it contain 8 ops in orthogonal initializer.
         """
         assert not (
-            hasattr(var, "is_dist") and var.is_dist()
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
         ), "Currently, orthogonal initializer not support lazy init for dist param."
         block = self._check_block(block)
         assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))

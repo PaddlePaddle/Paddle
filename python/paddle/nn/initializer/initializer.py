@@ -17,7 +17,11 @@ import math
 
 import numpy as np
 
-from ...base.framework import default_main_program, in_dygraph_mode
+from ...base.framework import (
+    EagerParamBase,
+    default_main_program,
+    in_dygraph_mode,
+)
 from .lazy_init import lazy_init_helper
 
 __all__ = []
@@ -88,7 +92,7 @@ class Initializer:
         """
         shape = (
             var._local_shape
-            if (hasattr(var, "is_dist") and var.is_dist())
+            if (isinstance(var, EagerParamBase) and var.is_dist())
             else var.shape
         )
         if not shape or len(shape) == 0:

@@ -107,7 +107,7 @@ class Dirac(Initializer):
             The most critical OP(scatter) in this initializer, which contains 7~8 ops in total.
         """
         assert not (
-            hasattr(var, "is_dist") and var.is_dist()
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
         ), "Currently, dirac initializer not support lazy init for dist param."
         block = self._check_block(block)
         assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))
