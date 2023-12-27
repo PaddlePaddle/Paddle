@@ -42,6 +42,8 @@ class Config:
     use_flash_attention = False
     sequence_parallel = False
     rope = True
+    recompute = False
+    recompute_granularity = None
 
 
 class RandomDataset(Dataset):
@@ -69,13 +71,25 @@ def create_optimizer(model, lr_scheduler):
     def apply_decay_param_fun(x):
         return x in decay_parameters
 
-    optimizer = paddle.optimizer.adamw.AdamW(
-        learning_rate=lr_scheduler,
-        apply_decay_param_fun=apply_decay_param_fun,
-        parameters=model.parameters(),
-        weight_decay=0.01,
-        grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
-    )
+    # test global_clip in auto_parallel
+    if os.getenv("use_param_group") == "true":
+        param_group = {}
+        param_group["params"] = list(model.parameters())
+        param_group["weight_decay"] = 0.01
+        param_group["grad_clip"] = paddle.nn.ClipGradByGlobalNorm(1.0)
+        optimizer = paddle.optimizer.adamw.AdamW(
+            learning_rate=lr_scheduler,
+            apply_decay_param_fun=apply_decay_param_fun,
+            parameters=[param_group],
+        )
+    else:
+        optimizer = paddle.optimizer.adamw.AdamW(
+            learning_rate=lr_scheduler,
+            apply_decay_param_fun=apply_decay_param_fun,
+            parameters=model.parameters(),
+            weight_decay=0.01,
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
+        )
     return optimizer
 
 
@@ -87,6 +101,9 @@ class TestLlamaAuto:
         self.pp = int(os.getenv("pp"))
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
+        if os.getenv("recompute") == "true":
+            self.config.recompute = True
+        self.config.recompute_granularity = os.getenv("recompute_granularity")
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
 
         self.init_dist_env()

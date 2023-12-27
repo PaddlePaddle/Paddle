@@ -918,6 +918,9 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     if (op->Type() == "while") {
       op->SetInputHooks(input_hookfuncs_);
       op->SetOutputHooks(output_hookfuncs_);
+      auto runtime_attrs = op->RuntimeAttrs();
+      runtime_attrs.insert(std::make_pair("used_for_inference", true));
+      op->SetRuntimeAttributeMap(runtime_attrs);
     }
   }
 

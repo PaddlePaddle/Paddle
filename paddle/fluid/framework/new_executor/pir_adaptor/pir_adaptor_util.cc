@@ -425,7 +425,7 @@ void HandleForSpecialOp(pir::Operation* op,
         if (place.GetType() == phi::AllocationType::UNDEFINED) {
           place = phi::CPUPlace();
         }
-        if (phi::product(dim) >= 0) {
+        if (!common::contain_unknown_dim(dim)) {
           phi::DenseTensorMeta meta(dtype.data(), dim);
           t->set_meta(meta);
           auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -626,18 +626,26 @@ void HandleForInplaceOp(pir::Operation* op,
       pir::Value inplace_value =
           op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
       std::string var_name = value_exe_info->GetVarName(inplace_value);
-      VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
-              << " (var: " << var_name << ")";
-      value_exe_info->AddValue2VarName(value, var_name);
+      if (var_name != "") {
+        VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+                << " (var: " << var_name << ")";
+        value_exe_info->AddValue2VarName(value, var_name);
+      } else {
+        BuildValue(value, var_name_prefix, value_exe_info);
+      }
     } else if (yaml_parser.HasView(value_name)) {
       const std::string& view_name = yaml_parser.ViewName(value_name);
       pir::Value view_value =
           op->operand_source(yaml_parser.InputName2Id().at(view_name));
       // const std::string& var_name = value_2_var_name->at(view_value);
       std::string var_name = value_exe_info->GetVarName(view_value);
-      VLOG(4) << "view: " << value_name << " -> " << view_name
-              << " (var: " << var_name << ")";
-      value_exe_info->AddValue2VarName(value, var_name);
+      if (var_name != "") {
+        VLOG(4) << "view: " << value_name << " -> " << view_name
+                << " (var: " << var_name << ")";
+        value_exe_info->AddValue2VarName(value, var_name);
+      } else {
+        BuildValue(value, var_name_prefix, value_exe_info);
+      }
     } else {
       BuildValue(value, var_name_prefix, value_exe_info);
     }

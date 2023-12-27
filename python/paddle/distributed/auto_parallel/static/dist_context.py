@@ -1040,6 +1040,12 @@ class DistributedContext:
                             dist_op.dist_attr,
                         )
                     )
+                if (
+                    op.has_attr("op_namescope")
+                    and 'auto_parallel/rc_' in op.attr("op_namescope")
+                    and not self.strategy.recompute.enable
+                ):
+                    self.strategy.recompute.enable = True
         return True
 
     def __deepcopy__(self, memo):

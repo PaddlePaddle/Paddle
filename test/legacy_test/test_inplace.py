@@ -1680,5 +1680,36 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
                 loss.backward()
 
 
+class TestDygraphTensorApplyInplace(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+        self.set_np_compare_func()
+
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+
+    def set_np_compare_func(self):
+        self.np_compare = np.array_equal
+
+    def non_inplace_api_processing(self, var, f):
+        return var.apply(f)
+
+    def inplace_api_processing(self, var, f):
+        return var.apply_(f)
+
+    def test_inplace_api(self):
+        var = paddle.to_tensor(self.input_var_numpy, stop_gradient=True).astype(
+            self.dtype
+        )
+        f = lambda x: 3 * x + 2
+        non_inplace_var = self.non_inplace_api_processing(var, f)
+        inplace_var = self.inplace_api_processing(var, f)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_array_equal(
+            non_inplace_var.numpy(), inplace_var.numpy()
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

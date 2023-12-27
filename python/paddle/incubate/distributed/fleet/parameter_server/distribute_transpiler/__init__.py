@@ -17,63 +17,51 @@ Convert the static program to distributed data-parallelism programs.
 
 import os
 import sys
-import warnings
 
 import paddle
-from paddle.framework import core
-from paddle.static import (
-    default_main_program,
-    default_startup_program,
-    Program,
-    Executor,
-)
 from paddle.base.compiler import CompiledProgram
-
-from paddle.distributed.transpiler.distribute_transpiler import (
-    DistributeTranspilerConfig,
-)
-
-from paddle.incubate.distributed.fleet.base import Fleet
-from paddle.incubate.distributed.fleet.base import Mode
-from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
-
-from paddle.incubate.distributed.fleet.parameter_server import version
-from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
-    DistributedAdam,
-)
-from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
-    get_sparse_tablenames,
-)
-from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
-    _get_lr_ops,
-)
-from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
-    _has_global_step,
-)
-from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
-    TrainerRuntimeConfig,
-    DistributedStrategy,
-    SyncStrategy,
-    AsyncStrategy,
-    HalfAsyncStrategy,
-    GeoStrategy,
-    StrategyFactory,
-)
-
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-from paddle.incubate.distributed.fleet.base import DistributedOptimizer
-from paddle.incubate.distributed.fleet.parameter_server.mode import PSMode
-
-from paddle.incubate.distributed.fleet.parameter_server.ir import (
-    trainer_pass as worker,
+from paddle.distributed.transpiler.distribute_transpiler import (
+    DistributeTranspilerConfig,
+)
+from paddle.framework import core
+from paddle.incubate.distributed.fleet.base import (
+    DistributedOptimizer,
+    Fleet,
+    Mode,
+)
+from paddle.incubate.distributed.fleet.parameter_server import version
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    AsyncStrategy,
+    DistributedStrategy,
+    GeoStrategy,
+    HalfAsyncStrategy,
+    StrategyFactory,
+    SyncStrategy,
+    TrainerRuntimeConfig,  # noqa: F401
 )
 from paddle.incubate.distributed.fleet.parameter_server.ir import (
     pserver_pass as server,
-)
-from paddle.incubate.distributed.fleet.parameter_server.ir import (
     public,
+    trainer_pass as worker,
+)
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
+    _get_lr_ops,
+    _has_global_step,
+    get_sparse_tablenames,
+)
+from paddle.incubate.distributed.fleet.parameter_server.mode import PSMode
+from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
+    DistributedAdam,  # noqa: F401
+)
+from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
+from paddle.static import (
+    Executor,
+    Program,
+    default_main_program,
+    default_startup_program,
 )
 
 

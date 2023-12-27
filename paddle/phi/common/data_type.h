@@ -35,7 +35,7 @@ using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
 // The enum value are consistent with jit/property.proto
-enum class DataType {
+enum class TEST_API DataType {
   UNDEFINED = 0,
 
   BOOL,
