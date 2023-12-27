@@ -234,7 +234,7 @@ class LookAhead(Optimizer):
             k_var = create_parameter(
                 dtype='int32',
                 shape=[1],
-                name=unique_name.generate("lookahead_step"),
+                name=unique_name.generate("lookahead_k"),
                 trainable=False,
                 initializer=paddle.nn.initializer.ConstantInitializer(
                     value=float(self.k), force_cpu=False
