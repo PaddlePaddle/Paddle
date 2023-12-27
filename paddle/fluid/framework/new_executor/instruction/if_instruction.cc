@@ -43,7 +43,7 @@ IfInstruction::IfInstruction(size_t id,
                              const platform::Place& place,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
-                             const std::set<std::string>& skip_gc_vars)
+                             const ExecutionConfig& execution_config)
     : InstructionBase(id, place) {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
@@ -129,7 +129,7 @@ IfInstruction::IfInstruction(size_t id,
                                           &true_branch_block,
                                           true_scope,
                                           value_exec_info->NewChild(true_scope),
-                                          {});
+                                          execution_config);
 
   std::set<std::string> true_skip_gc_names_set;
   for (auto value : GetYiedOpInputs(&true_branch_block)) {
@@ -143,7 +143,7 @@ IfInstruction::IfInstruction(size_t id,
     true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
     true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
   }
-  for (auto var_name : skip_gc_vars) {
+  for (const auto& var_name : execution_config.skip_gc_vars) {
     true_skip_gc_names_.push_back(var_name);
     true_skip_gc_names_set.insert(var_name);
   }
@@ -157,7 +157,7 @@ IfInstruction::IfInstruction(size_t id,
                          &if_op.false_block(),
                          false_scope,
                          value_exec_info->NewChild(false_scope),
-                         {});
+                         execution_config);
   std::set<std::string> false_skip_gc_names_set;
   for (auto value : GetYiedOpInputs(&false_branch_block)) {
     false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
@@ -168,7 +168,7 @@ IfInstruction::IfInstruction(size_t id,
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
   }
-  for (auto var_name : skip_gc_vars) {
+  for (const auto& var_name : execution_config.skip_gc_vars) {
     false_skip_gc_names_.push_back(var_name);
     false_skip_gc_names_set.insert(var_name);
   }

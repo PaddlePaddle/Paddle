@@ -44,7 +44,7 @@ WhileInstruction::WhileInstruction(size_t id,
                                    const platform::Place& place,
                                    pir::Operation* op,
                                    ValueExecutionInfo* parent_exe_info,
-                                   const std::set<std::string>& skip_gc_vars)
+                                   const ExecutionConfig& execution_config)
     : InstructionBase(id, place) {
   op_ = op;
   VLOG(6) << "finish process dist attributes";
@@ -109,7 +109,7 @@ WhileInstruction::WhileInstruction(size_t id,
     body_exe_info->Add(body_block_->arg(i), var_name);
   }
   body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
-      place, {}, body_block_, body_scope, body_exe_info, {}));
+      place, {}, body_block_, body_scope, body_exe_info, execution_config));
 
   std::set<std::string> body_skip_gc_names_set;
   auto body_block_outputs = GetYiedOpInputs(body_block_);
@@ -122,7 +122,7 @@ WhileInstruction::WhileInstruction(size_t id,
     body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
   }
-  for (auto var_name : skip_gc_vars) {
+  for (const auto& var_name : execution_config.skip_gc_vars) {
     body_skip_gc_names_.push_back(var_name);
     body_skip_gc_names_set.insert(var_name);
   }
