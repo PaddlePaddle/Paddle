@@ -46,10 +46,6 @@ std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
          paddle::framework::compatible::get_op_version_map()) {
       current_op_versions.insert(
           std::make_pair(pair.first, pair.second.version_id()));
-      if (pair.first == "assign_value") {
-        VLOG(6) << "get_op_version_map:" << pair.first << " "
-                << pair.second.version_id();
-      }
     }
 
     const auto* _op_version_map = program->OpVersionMap();
@@ -58,13 +54,7 @@ std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
           std::make_pair(_op_version_map->pair(i).op_name(),
                          static_cast<uint32_t>(
                              _op_version_map->pair(i).op_version().version()));
-      VLOG(6) << "program_op_versions:" << pair.first << " " << pair.second;
       program_op_versions.insert(pair);
-    }
-
-    // hardcode: Compatible with older versions
-    if (!program_op_versions.count("assign_value")) {
-      program_op_versions.insert(std::make_pair("assign_value", 0));
     }
 
     for (const auto& pair : program_op_versions) {
@@ -320,15 +310,17 @@ void ConvertProgram(ProgramDesc* program) {
     for (size_t j = 0; j < num_ops; j++) {
       OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
+
+      if (op_type == "assign_value") {
+        VLOG(3) << "Converting program from old to new, op_type=" << op_type;
+        ConvertAssignValueOp(op);
+      }
       if (!legacy_op_versions.count(op_type)) {
         continue;
       }
-      VLOG(6) << "Converting program from old to new, op_type=" << op_type;
+      VLOG(3) << "Converting program from old to new, op_type=" << op_type;
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
-      }
-      if (op_type == "assign_value") {
-        ConvertAssignValueOp(op);
       }
     }
   }
