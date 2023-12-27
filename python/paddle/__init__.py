@@ -102,6 +102,7 @@ from . import (  # noqa: F401
     sparse,
     static,
     sysconfig,
+    text,
     vision,
 )
 from .autograd import (
