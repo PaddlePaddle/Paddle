@@ -1332,10 +1332,9 @@ void HandleForSpecialOp(
 
 void PushBackOutputTypes(pir::IrContext* ctx,
                          pir::Operation* op_item,
-                         const phi::KernelKey& kernel_key,
+                         const phi::Place& out_place,
                          std::vector<pir::Type>* op_output_types,
                          size_t index) {
-  phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
   auto result_type = op_item->result(index).type();
   if (!result_type) {
     op_output_types->push_back(result_type);
@@ -1393,7 +1392,8 @@ void HandleForCustomOp(
   std::vector<pir::Type> op_output_types;
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
-    PushBackOutputTypes(ctx, op_item, kernel_key, &op_output_types, i);
+    phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
+    PushBackOutputTypes(ctx, op_item, out_place, &op_output_types, i);
   }
 
   // Prepare input
@@ -1508,7 +1508,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
         (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
       out_place = phi::TransToPhiPlace(output_defs[i].backend);
     }
-    PushBackOutputTypes(ctx, op_item, kernel_key, &op_output_types, i);
+    PushBackOutputTypes(ctx, op_item, out_place, &op_output_types, i);
   }
 
   return op_output_types;
