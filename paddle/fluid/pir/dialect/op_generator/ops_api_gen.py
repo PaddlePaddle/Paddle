@@ -103,6 +103,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'sequence_mask',
     'number_count',
     'assign_value',
+    'share_data',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

@@ -1140,6 +1140,9 @@
 - op : share_data
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
   kernel:
     func: share_data
     param: [x]
