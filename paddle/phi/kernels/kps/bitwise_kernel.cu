@@ -41,10 +41,10 @@ namespace phi {
 DEFINE_BITWISE_KERNEL(And)
 DEFINE_BITWISE_KERNEL(Or)
 DEFINE_BITWISE_KERNEL(Xor)
-DEFINE_BITWISE_KERNEL(LeftShiftArithmetic)
-DEFINE_BITWISE_KERNEL(LeftShiftLogic)
-DEFINE_BITWISE_KERNEL(RightShiftArithmetic)
-DEFINE_BITWISE_KERNEL(RightShiftLogic)
+// DEFINE_BITWISE_KERNEL(LeftShiftArithmetic)
+// DEFINE_BITWISE_KERNEL(LeftShiftLogic)
+// DEFINE_BITWISE_KERNEL(RightShiftArithmetic)
+// DEFINE_BITWISE_KERNEL(RightShiftLogic)
 #undef DEFINE_BITWISE_KERNEL
 
 template <typename T, typename Context>
@@ -116,44 +116,44 @@ PD_REGISTER_KERNEL(bitwise_not,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(bitwise_left_shift_arithmetic,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::BitwiseLeftShiftArithmeticKernel,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
+// PD_REGISTER_KERNEL(bitwise_left_shift_arithmetic,
+//                    KPS,
+//                    ALL_LAYOUT,
+//                    phi::BitwiseLeftShiftArithmeticKernel,
+//                    uint8_t,
+//                    int8_t,
+//                    int16_t,
+//                    int,
+//                    int64_t) {}
 
-PD_REGISTER_KERNEL(bitwise_left_shift_logic,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::BitwiseLeftShiftLogicKernel,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
+// PD_REGISTER_KERNEL(bitwise_left_shift_logic,
+//                    KPS,
+//                    ALL_LAYOUT,
+//                    phi::BitwiseLeftShiftLogicKernel,
+//                    uint8_t,
+//                    int8_t,
+//                    int16_t,
+//                    int,
+//                    int64_t) {}
 
-PD_REGISTER_KERNEL(bitwise_right_shift_arithmetic,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::BitwiseRightShiftArithmeticKernel,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
+// PD_REGISTER_KERNEL(bitwise_right_shift_arithmetic,
+//                    KPS,
+//                    ALL_LAYOUT,
+//                    phi::BitwiseRightShiftArithmeticKernel,
+//                    uint8_t,
+//                    int8_t,
+//                    int16_t,
+//                    int,
+//                    int64_t) {}
 
-PD_REGISTER_KERNEL(bitwise_right_shift_logic,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::BitwiseRightShiftLogicKernel,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
+// PD_REGISTER_KERNEL(bitwise_right_shift_logic,
+//                    KPS,
+//                    ALL_LAYOUT,
+//                    phi::BitwiseRightShiftLogicKernel,
+//                    uint8_t,
+//                    int8_t,
+//                    int16_t,
+//                    int,
+//                    int64_t) {}
 
 #endif

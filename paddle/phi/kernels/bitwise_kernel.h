@@ -41,29 +41,29 @@ void BitwiseNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out);
 
-template <typename T, typename Context>
-void BitwiseLeftShiftArithmeticKernel(const Context& dev_ctx,
-                                      const DenseTensor& x,
-                                      const DenseTensor& y,
-                                      DenseTensor* out);
+// template <typename T, typename Context>
+// void BitwiseLeftShiftArithmeticKernel(const Context& dev_ctx,
+//                                       const DenseTensor& x,
+//                                       const DenseTensor& y,
+//                                       DenseTensor* out);
 
-template <typename T, typename Context>
-void BitwiseLeftShiftLogicKernel(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& y,
-                                 DenseTensor* out);
+// template <typename T, typename Context>
+// void BitwiseLeftShiftLogicKernel(const Context& dev_ctx,
+//                                  const DenseTensor& x,
+//                                  const DenseTensor& y,
+//                                  DenseTensor* out);
 
-template <typename T, typename Context>
-void BitwiseRightShiftArithmeticKernel(const Context& dev_ctx,
-                                       const DenseTensor& x,
-                                       const DenseTensor& y,
-                                       DenseTensor* out);
+// template <typename T, typename Context>
+// void BitwiseRightShiftArithmeticKernel(const Context& dev_ctx,
+//                                        const DenseTensor& x,
+//                                        const DenseTensor& y,
+//                                        DenseTensor* out);
 
-template <typename T, typename Context>
-void BitwiseRightShiftLogicKernel(const Context& dev_ctx,
-                                  const DenseTensor& x,
-                                  const DenseTensor& y,
-                                  DenseTensor* out);
+// template <typename T, typename Context>
+// void BitwiseRightShiftLogicKernel(const Context& dev_ctx,
+//                                   const DenseTensor& x,
+//                                   const DenseTensor& y,
+//                                   DenseTensor* out);
 
 
 }  // namespace phi
