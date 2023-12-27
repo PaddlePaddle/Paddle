@@ -502,6 +502,10 @@ NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 WITH_GPU=$3
 
+ls $PADDLE_ROOT/build/paddle/common/common.*
+rm -f $PADDLE_ROOT/build/paddle/common/common.*
+
+
 # Step1: Print disable_ut_quickly
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
