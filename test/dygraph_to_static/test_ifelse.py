@@ -69,12 +69,20 @@ class TestDy2staticException(Dy2StTestBase):
         self.dyfunc = None
         self.error = "Your if/else have different number of return value."
 
+    @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 with enable_to_static_guard(True):
                     self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+
+
+class TestDy2StIfElseRetInt2(TestDy2staticException):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.error = "Your if/else have different number of return value."
+        self.dyfunc = dyfunc_ifelse_ret_int2
 
 
 class TestDygraphIfElse(Dy2StTestBase):
@@ -529,20 +537,6 @@ class TestDy2StIfElseRetInt1(Dy2StTestBase):
         self.setUp()
         self.assertIsInstance(self.out[0], paddle.Tensor)
         self.assertIsInstance(self.out[1], int)
-
-
-class TestDy2StIfElseRetInt2(Dy2StTestBase):
-    def setUp(self):
-        self.x = np.random.random([5]).astype('float32')
-        self.error = "Your if/else have different number of return value."
-        self.dyfunc = dyfunc_ifelse_ret_int2
-
-    @test_legacy_and_pt_and_pir
-    def test_error(self):
-        if self.dyfunc:
-            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                with enable_to_static_guard(True):
-                    self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
 
 
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
