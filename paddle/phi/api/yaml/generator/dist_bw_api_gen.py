@@ -126,7 +126,7 @@ INPLACE_OUT_CREATION_TEMPLATE = """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({name});
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
-    if (dense_out_{idx} && !rank_is_in_current_mesh && dist_out_{idx}->defined()) {{
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
       *dense_out_{idx} = phi::DenseTensor(
         std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
         phi::DenseTensorMeta());
@@ -137,7 +137,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
         CreateKernelDistOutput({name}, !rank_is_in_current_mesh, spmd_info.second[{idx}]);
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
-    if (dense_out_{idx} && !rank_is_in_current_mesh && dist_out_{idx}->defined()) {{
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
       *dense_out_{idx} = phi::DenseTensor(
           std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
           phi::DenseTensorMeta());

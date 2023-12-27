@@ -39,6 +39,10 @@ sys.path.append(
 )
 import gen as vjp_gen
 
+# Note(Galaxy1458) The need_export_symbol_op_list is used
+# for some unittests these need to export symbol op compiled with dynamic lib.
+need_export_symbol_op_list = ['AbsOp', 'FullOp', 'UniformOp']
+
 # =====================================
 # String Template for h file code gen
 # =====================================
@@ -89,7 +93,7 @@ IR_DECLARE_EXPLICIT_TYPE_ID({op_name})
 """
 
 OP_DECLARE_TEMPLATE = """
-class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
+class {TEST_API} {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
  public:
   using Op::Op;
   static const char *name() {{ return "{dialect_op_name}"; }}
@@ -1351,8 +1355,12 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     )
 
                 # gen op_declare_str/op_defined_str
+                TEST_API = ""
+                if op_class_name in need_export_symbol_op_list:
+                    TEST_API = "TEST_API"
                 if len(op_non_mutable_attribute_name_list) == 0:
                     op_declare_str = OP_DECLARE_TEMPLATE.format(
+                        TEST_API=TEST_API,
                         op_name=op_class_name,
                         dialect_op_name=op_dialect_name,
                         interfaces=op_interfaces_str,
@@ -1372,6 +1380,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     op_defined_str = ""
                 else:
                     op_declare_str = OP_DECLARE_TEMPLATE.format(
+                        TEST_API=TEST_API,
                         op_name=op_class_name,
                         dialect_op_name=op_dialect_name,
                         interfaces=op_interfaces_str,

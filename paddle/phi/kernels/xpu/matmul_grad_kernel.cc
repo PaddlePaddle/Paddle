@@ -179,6 +179,7 @@ PD_REGISTER_KERNEL(matmul_grad,
                    ALL_LAYOUT,
                    phi::MatmulGradKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten_grad,
@@ -186,4 +187,5 @@ PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    ALL_LAYOUT,
                    phi::MatmulWithFlattenGradKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
