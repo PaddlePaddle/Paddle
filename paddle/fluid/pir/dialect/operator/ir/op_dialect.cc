@@ -61,13 +61,11 @@ OperatorDialect::OperatorDialect(pir::IrContext *ctx)
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
   info.AttachInterface(std::move(
-      pir::InterfaceValue::
-          Get<pir::TuplePushOp, VjpInterface, TuplePushOpVjpInterfaceModel>()));
+      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
 
   info = ctx->GetRegisteredOpInfo(pir::CombineOp::name());
   info.AttachInterface(std::move(
-      pir::InterfaceValue::Get<pir::CombineOp,
-                               InferSymbolicShapeInterface,
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>()));
 }
 
