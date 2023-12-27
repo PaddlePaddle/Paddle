@@ -254,66 +254,63 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
-    # TODO(zhangbo): Support while grad exe for pir
-    # @test_with_pir_api
     def test_while_loop_backward(self):
-        def cond(i, x):
-            return paddle.less_than(i, eleven)
+        with paddle.pir_utils.IrGuard():
 
-        def body(i, x):
-            x = paddle.multiply(x=i, y=i)
-            i = paddle.increment(i)
-            return [i, x]
+            def cond(i, x):
+                return paddle.less_than(i, eleven)
 
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            i = paddle.static.data(name='i', shape=[1], dtype='float32')
-            i.stop_gradient = False
-            i.persistable = True
-            eleven = paddle.tensor.fill_constant(
-                shape=[1], dtype='float32', value=11
+            def body(i, x):
+                x = paddle.multiply(x=i, y=i)
+                i = paddle.increment(i)
+                return [i, x]
+
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                i = paddle.static.data(name='i', shape=[1], dtype='float32')
+                i.stop_gradient = False
+                i.persistable = True
+                eleven = paddle.tensor.fill_constant(
+                    shape=[1], dtype='float32', value=11
+                )
+                one = paddle.tensor.fill_constant(
+                    shape=[1], dtype='float32', value=1
+                )
+                x = paddle.static.data(name='x', shape=[1], dtype='float32')
+                x.stop_gradient = False
+                x.persistable = True
+
+                out = paddle.static.nn.while_loop(cond, body, [i, x])
+                mean = paddle.mean(out[1])
+                grad_list = append_backward(mean)
+
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
             )
-            one = paddle.tensor.fill_constant(
-                shape=[1], dtype='float32', value=1
-            )
-            x = paddle.static.data(name='x', shape=[1], dtype='float32')
-            x.stop_gradient = False
-            x.persistable = True
+            exe = base.Executor(place)
 
-            out = paddle.static.nn.while_loop(cond, body, [i, x])
-            mean = paddle.mean(out[1])
-            grad_list = append_backward(mean)
+            feed_i = np.ones(1).astype('float32')
+            feed_x = np.ones(1).astype('float32')
+            data = np.asarray([100]).astype('float32')
+            i_grad = np.asarray([0]).astype('float32')
+            x_grad = np.asarray([0]).astype('float32')
 
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-        exe = base.Executor(place)
-
-        feed_i = np.ones(1).astype('float32')
-        feed_x = np.ones(1).astype('float32')
-        data = np.asarray([100]).astype('float32')
-        i_grad = np.asarray([110]).astype('float32')
-
-        if paddle.framework.in_pir_mode():
             for p, g in grad_list:
-                if p == i:
+                if p.is_same(i):
                     di = g
+                elif p.is_same(x):
+                    dx = g
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
-                fetch_list=[mean, di],
+                fetch_list=[mean, di, dx],
             )
-        else:
-            res = exe.run(
-                main_program,
-                feed={'i': feed_i, 'x': feed_x},
-                fetch_list=[mean.name, i.grad_name, x.grad_name],
-            )
-        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
-        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
+            np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
+            np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
+            np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
 
     @test_with_pir_api
     def test_while_loop_backward2(self):
@@ -356,6 +353,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             fetch_list = [out[1]]
             for p, g in grad_list:
                 fetch_list.append(g)
+
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
@@ -367,6 +365,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 feed={'i': feed_i, 'x': feed_x},
                 fetch_list=[out[1].name, i.grad_name, x.grad_name],
             )
+
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
