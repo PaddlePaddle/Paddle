@@ -1349,7 +1349,7 @@ class TestTensorOutputSize1(UnittestBase):
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
         output_size = paddle.assign([17])
-        out = paddle.paddle.nn.functional.conv2d_transpose(
+        out = paddle.nn.functional.conv2d_transpose(
             x, w_var, stride=2, output_size=output_size
         )
         return out
@@ -1388,7 +1388,7 @@ class TestTensorOutputSize2(TestTensorOutputSize1):
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
         output_size = [17, paddle.assign([17])]
-        out = paddle.paddle.nn.functional.conv2d_transpose(
+        out = paddle.nn.functional.conv2d_transpose(
             x, w_var, stride=2, output_size=output_size
         )
         return out

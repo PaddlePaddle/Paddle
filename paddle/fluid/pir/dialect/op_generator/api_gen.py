@@ -593,7 +593,7 @@ class CodeGen:
         )
 
         if (
-            op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
+            op_name in ["real_grad", "imag_grad"]
             or len(mapping_name_to_type) == 0
         ):
             return ""

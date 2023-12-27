@@ -689,7 +689,12 @@ phi::KernelKey GetKernelKey(
     auto data_place =
         op->attributes().at("place").dyn_cast<PlaceAttribute>().data();
 
-    auto backend = paddle::experimental::ParseBackend(data_place);
+    phi::Backend backend;
+    if (data_place.GetType() == AllocationType::GPUPINNED) {
+      backend = phi::Backend::CPU;
+    } else {
+      backend = paddle::experimental::ParseBackend(data_place);
+    }
 
     return {backend,
             phi::DataLayout::ANY,

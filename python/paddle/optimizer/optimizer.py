@@ -36,7 +36,11 @@ from paddle.base.framework import (
 from paddle.regularizer import L2Decay
 
 from ..base import framework, unique_name
-from ..base.backward import _get_no_grad_set_name, append_backward
+from ..base.backward import (
+    _get_no_grad_set_name,
+    _get_no_grad_set_value,
+    append_backward,
+)
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
@@ -1165,7 +1169,13 @@ class Optimizer:
                         self._set_auxiliary_var('found_inf', False)
                     if isinstance(parameters_and_grads, list):
                         for param_and_grad in parameters_and_grads:
-                            if param_and_grad[1] is None:
+                            # Parameters can be uninitialized in pipeline parallel of semi-auto parallel.
+                            # Since gradient clip and parameters update mixed up in one interface, so we
+                            # need to filter again here.
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[1]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 self._append_optimize_op(
@@ -1173,7 +1183,10 @@ class Optimizer:
                                 )
                     else:
                         for param_and_grad in parameters_and_grads['params']:
-                            if param_and_grad[1] is None:
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[1]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 param_grad_dict = {}
@@ -1607,15 +1620,26 @@ class Optimizer:
         return params_and_grads
 
     def _get_no_grad_set(self, loss, no_grad_set=None):
-        no_grad_set = _get_no_grad_set_name(no_grad_set)
-        parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = {
-            param.name for param in parameters if param.stop_gradient is True
-        }
-        # If the parameter is no trainable, it should not have a gradient.
-        no_grad_set.update(param_no_trainable)
-
-        return no_grad_set
+        if in_pir_mode():
+            no_grad_set = _get_no_grad_set_value(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = [
+                param for param in parameters if param.stop_gradient is True
+            ]
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
+        else:
+            no_grad_set = _get_no_grad_set_name(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = {
+                param.name
+                for param in parameters
+                if param.stop_gradient is True
+            }
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
 
     @framework.non_static_only
     def clear_grad(self, set_to_zero=True):
