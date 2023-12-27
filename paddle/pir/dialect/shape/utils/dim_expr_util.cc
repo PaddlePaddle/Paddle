@@ -73,7 +73,7 @@ template <typename T>
                                                     const T& dim_expr) {
   std::vector<::pir::Attribute> attr_vecs{};
   attr_vecs.push_back(builder->str_attr(GetSerializedTag<T>()));
-  const auto& [operand] = *dim_expr;
+  const auto& operand = dim_expr->data;
   attr_vecs.push_back(ConvertDimExprToAttribute(builder, operand));
   return builder->array_attr(attr_vecs);
 }
@@ -267,7 +267,7 @@ class SubstituteDimExprHelper final {
 
   template <typename T>
   std::optional<DimExpr> SubstituteUnary(const T& dim_expr) {
-    const auto& [operand] = *dim_expr;
+    const auto& operand = dim_expr->data;
     const auto& substituted_operand = Substitute(operand);
     if (!substituted_operand.has_value()) {
       return std::nullopt;
