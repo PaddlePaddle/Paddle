@@ -22,6 +22,7 @@ from paddle import base
 from paddle.base import core
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -66,9 +67,9 @@ class LayerTest(unittest.TestCase):
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
         exe = base.Executor(self._get_place(force_to_use_cpu))
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
         return exe.run(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             feed=feed,
             fetch_list=fetch_list,
             return_numpy=(not with_lod),
@@ -183,9 +184,7 @@ class TestMulticlassNMS2(unittest.TestCase):
 
 
 class TestDistributeFpnProposals(LayerTest):
-    def test_distribute_fpn_proposals(self):
-        rois_np = np.random.rand(10, 4).astype('float32')
-        rois_num_np = np.array([4, 6]).astype('int32')
+    def static_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.static_graph():
             rois = paddle.static.data(
                 name='rois', shape=[10, 4], dtype='float32'
@@ -216,7 +215,9 @@ class TestDistributeFpnProposals(LayerTest):
                 output_np = np.array(output)
                 if len(output_np) > 0:
                     output_stat_np.append(output_np)
+        return output_stat_np
 
+    def dynamic_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.dynamic_graph():
             rois_dy = imperative_base.to_variable(rois_np)
             rois_num_dy = imperative_base.to_variable(rois_num_np)
@@ -239,6 +240,19 @@ class TestDistributeFpnProposals(LayerTest):
                 output_np = output.numpy()
                 if len(output_np) > 0:
                     output_dy_np.append(output_np)
+        return output_dy_np
+
+    @test_with_pir_api
+    def test_distribute_fpn_proposals(self):
+        rois_np = np.random.rand(10, 4).astype('float32')
+        rois_num_np = np.array([4, 6]).astype('int32')
+
+        output_stat_np = self.static_distribute_fpn_proposals(
+            rois_np, rois_num_np
+        )
+        output_dy_np = self.dynamic_distribute_fpn_proposals(
+            rois_np, rois_num_np
+        )
 
         for res_stat, res_dy in zip(output_stat_np, output_dy_np):
             np.testing.assert_array_equal(res_stat, res_dy)

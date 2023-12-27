@@ -306,8 +306,8 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 ) = (
                     compute_local_shape_and_global_offset(
                         val.shape,
-                        val.dist_attr.process_mesh,
-                        val.dist_attr.dims_mapping,
+                        val.process_mesh,
+                        val.placements,
                     )
                     if len(val.shape) > 0
                     else ((), ())

@@ -156,10 +156,15 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     //
     // We may add better computation of MaxIndexRange if we need
     for (int i = 0; i < vars.size(); ++i) {
-      Expr max_var_value = ir::Sub::Make(
-          var_name_to_extent_.at(vars[i].as_var_ref()->name), ir::Expr(1));
-      ReplaceModToMax(&copy);
-      ReplaceVarWithExpr(&copy, vars[i], max_var_value);
+      for (auto kv : var_name_to_extent_) {
+        auto var_name = vars[i].as_var_ref()->name;
+        if (var_name_to_extent_.count(var_name) != 0) {
+          Expr max_var_value = ir::Sub::Make(
+              var_name_to_extent_.at(vars[i].as_var_ref()->name), ir::Expr(1));
+          ReplaceModToMax(&copy);
+          ReplaceVarWithExpr(&copy, vars[i], max_var_value);
+        }
+      }
     }
     ir::Expr tmp = ir::Add::Make(copy, ir::Expr(1));
     ir::Expr simplify = common::AutoSimplify(tmp);

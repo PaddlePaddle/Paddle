@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -415,7 +416,25 @@ void HandleForSpecialOp(pir::Operation* op,
     Variable* var = value_exe_info->GetScope()->FindVar(name);
     if (var == nullptr) {
       var = value_exe_info->GetScope()->Var(name);
-      var->GetMutable<phi::DenseTensor>();
+      auto* t = var->GetMutable<phi::DenseTensor>();
+      if (op_name == paddle::dialect::DataOp::name()) {
+        auto shape = op->attribute<dialect::IntArrayAttribute>("shape");
+        auto dim = phi::make_ddim(shape.data().GetData());
+        auto dtype = op->attribute<dialect::DataTypeAttribute>("dtype");
+        auto place = op->attribute<dialect::PlaceAttribute>("place").data();
+        if (place.GetType() == phi::AllocationType::UNDEFINED) {
+          place = phi::CPUPlace();
+        }
+        if (!common::contain_unknown_dim(dim)) {
+          phi::DenseTensorMeta meta(dtype.data(), dim);
+          t->set_meta(meta);
+          auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+          dev_ctx->Alloc(t, dtype.data());
+          VLOG(10) << "[Alloc var]: "
+                   << op->attribute<pir::StrAttribute>("name") << " "
+                   << t->initialized();
+        }
+      }
     }
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
@@ -456,11 +475,9 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    PADDLE_ENFORCE_NE(
-        param_name,
-        orig_name,
-        phi::errors::PreconditionNotMet(
-            "SetParamer param name should not equal with var name"));
+    if (param_name == orig_name) {
+      return;
+    }
 
     if (value_exe_info->GetScope()->root()->FindVar(param_name) == nullptr) {
       const_cast<Scope*>(value_exe_info->GetScope()->root())
@@ -609,18 +626,26 @@ void HandleForInplaceOp(pir::Operation* op,
       pir::Value inplace_value =
           op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
       std::string var_name = value_exe_info->GetVarName(inplace_value);
-      VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
-              << " (var: " << var_name << ")";
-      value_exe_info->AddValue2VarName(value, var_name);
+      if (var_name != "") {
+        VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+                << " (var: " << var_name << ")";
+        value_exe_info->AddValue2VarName(value, var_name);
+      } else {
+        BuildValue(value, var_name_prefix, value_exe_info);
+      }
     } else if (yaml_parser.HasView(value_name)) {
       const std::string& view_name = yaml_parser.ViewName(value_name);
       pir::Value view_value =
           op->operand_source(yaml_parser.InputName2Id().at(view_name));
       // const std::string& var_name = value_2_var_name->at(view_value);
       std::string var_name = value_exe_info->GetVarName(view_value);
-      VLOG(4) << "view: " << value_name << " -> " << view_name
-              << " (var: " << var_name << ")";
-      value_exe_info->AddValue2VarName(value, var_name);
+      if (var_name != "") {
+        VLOG(4) << "view: " << value_name << " -> " << view_name
+                << " (var: " << var_name << ")";
+        value_exe_info->AddValue2VarName(value, var_name);
+      } else {
+        BuildValue(value, var_name_prefix, value_exe_info);
+      }
     } else {
       BuildValue(value, var_name_prefix, value_exe_info);
     }
