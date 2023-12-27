@@ -204,6 +204,5 @@ struct InverseBitwiseRightShiftLogicFunctor<int64_t> {
   }
 };
 
-
 }  // namespace funcs
 }  // namespace phi

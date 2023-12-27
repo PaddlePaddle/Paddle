@@ -65,5 +65,4 @@ void BitwiseRightShiftLogicKernel(const Context& dev_ctx,
                                   const DenseTensor& y,
                                   DenseTensor* out);
 
-
 }  // namespace phi

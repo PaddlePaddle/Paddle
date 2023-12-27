@@ -123,7 +123,6 @@ PD_REGISTER_KERNEL(bitwise_not,
                    int,
                    int64_t) {}
 
-
 PD_REGISTER_KERNEL(bitwise_left_shift_arithmetic,
                    CPU,
                    ALL_LAYOUT,
