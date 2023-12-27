@@ -58,7 +58,9 @@ def eval_frame_callback(frame, **kwargs) -> CustomCode:
         )
         log_do(4, partial(print_locals, frame))
 
-        log_format(3, "[transform] OriginCode: {}\n", frame.f_code.co_name)
+        log_format(
+            3, "[eval_frame_callback] OriginCode: {}\n", frame.f_code.co_name
+        )
         log_do(3, lambda: dis.dis(frame.f_code))
 
         custom_code = OpcodeExecutorCache()(frame, **kwargs)
@@ -66,13 +68,13 @@ def eval_frame_callback(frame, **kwargs) -> CustomCode:
         if custom_code.code is None:
             log_format(
                 3,
-                "[transform] NewCode (same as origin code): {}\n",
+                "[eval_frame_callback] NewCode (same as origin code): {}\n",
                 frame.f_code.co_name,
             )
         else:
             log_format(
                 3,
-                "[transform] NewCode: {}\n",
+                "[eval_frame_callback] NewCode: {}\n",
                 custom_code.code.co_name,
             )
             log_do(3, lambda: dis.dis(custom_code.code))

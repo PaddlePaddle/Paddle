@@ -17,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
@@ -247,5 +248,9 @@ class ShapeOrData {
 };
 
 using ShapeOrDataDimExprs = ShapeOrData<DimExpr>;
+
+IR_API std::string ToString(const DimExpr& dim_expr);
+
+IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 
 }  // namespace symbol

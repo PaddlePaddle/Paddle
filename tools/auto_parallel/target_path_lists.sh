@@ -21,6 +21,9 @@ target_lists_for_semi_auto_ci=(
     "paddle/fluid/pybind/auto_parallel_py.h"
     "paddle/phi/infermeta/spmd_rules"
     "paddle/phi/core/distributed"
+    "paddle/phi/api/yaml/generator/dist_api_gen.py"
+    "paddle/phi/api/yaml/generator/dist_bw_api_gen.py"
+    "tools/auto_parallel/target_path_lists.sh"
     "test/auto_parallel"
 )
 
@@ -30,6 +33,7 @@ target_lists_for_pir_ci=(
     "paddle/fluid/pir/dialect"
     "paddle/fluid/pir/transforms"
     "paddle/pir"
+    "tools/auto_parallel/target_path_lists.sh"
 )
 
 target_lists_for_dygraph_ci=(
@@ -38,5 +42,6 @@ target_lists_for_dygraph_ci=(
     "python/paddle/distributed/sharding"
     "paddle/fluid/distributed/collective"
     "paddle/phi/core/distributed"
+    "tools/auto_parallel/target_path_lists.sh"
     "test/collective/hybrid_strategy"
 )
