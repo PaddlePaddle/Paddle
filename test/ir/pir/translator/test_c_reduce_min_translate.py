@@ -14,30 +14,25 @@
 
 import unittest
 
-from test_op_transcriber import TestOpTranscriber
+import test_op_transcriber
 
 import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestCReduceMinOpTranscriber(TestOpTranscriber):
-    def build_model(self):
-        with paddle.static.scope_guard(self.new_scope):
-            with paddle.static.program_guard(self.main_program):
-                x = paddle.ones(shape=(100, 2, 3), dtype='float32')
-                y = paddle.ones(shape=(100, 2, 3), dtype='float32')
-                attrs = {'ring_id': 0, 'root_id': 0, 'use_calc_stream': False}
-                helper = LayerHelper('c_reduce_min')
-                helper.append_op(
-                    type="c_reduce_min",
-                    inputs={"X": x},
-                    outputs={"Out": y},
-                    attrs=attrs,
-                )
-
-    def test_translator(self):
-        self.op_name = "c_reduce_min"
-        self.check()
+class TestCReduceMinOpTranscriber(test_op_transcriber.TestOpTranscriber):
+    def append_op(self):
+        self.op_type = "c_reduce_min"
+        x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        attrs = {'ring_id': 0, 'root_id': 0, 'use_calc_stream': False}
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            inputs={"X": x},
+            outputs={"Out": y},
+            attrs=attrs,
+        )
 
 
 if __name__ == "__main__":

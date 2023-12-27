@@ -28,16 +28,22 @@ class TestOpTranscriber(unittest.TestCase):
         self.new_scope = paddle.static.Scope()
         self.main_program = paddle.static.Program()
 
-    def build_model(self):
-        raise Exception('Build a new program for the op to be tested!')
+    def append_op(self):
+        raise Exception("Define the op to be tested here!")
 
-    def check(self):
-        assert hasattr(self, "op_name"), "Op_name should be specified!"
+    def build_model(self):
+        with paddle.static.scope_guard(self.new_scope):
+            with paddle.static.program_guard(self.main_program):
+                self.append_op()
+
+    def test_translate(self):
         self.build_model()
         l = pir.translate_to_pir(self.main_program.desc)
-        assert self.op_name in str(l), (
-            self.op_name
+        print(l)
+        assert hasattr(self, "op_type"), "Op_type should be specified!"
+        assert self.op_type in str(l), (
+            self.op_type
             + " should be translated to pd_op."
-            + self.op_name
+            + self.op_type
             + '!'
         )
