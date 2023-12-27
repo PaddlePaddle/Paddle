@@ -22,7 +22,7 @@ import weakref
 from typing import TYPE_CHECKING
 
 import paddle.pir.core as ir_static
-from paddle import CUDAPinnedPlace, decomposition, get_flags
+from paddle import decomposition, get_flags
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -30,7 +30,7 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.framework import in_dynamic_mode, use_pir_api
+from paddle.framework import CUDAPinnedPlace, in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.pir import Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
@@ -710,16 +710,11 @@ class SymbolicStaticFunction(StaticFunction):
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None
 
-    def _perform_call(self, *args, **kwargs):
-        from ..sot import symbolic_translate
-
-        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-
-        # copy gpu_pinned tensor to gpu
+    def _copy_cuda_pinned_tensors(self, inputs):
         expected_place = framework._current_expected_place()
         cuda_pinned_place = CUDAPinnedPlace()
 
-        def copy_cuda_pinned_tensor(value):
+        def copy_cuda_pinned(value):
             if (
                 isinstance(value, core.eager.Tensor)
                 and value.stop_gradient
@@ -731,7 +726,13 @@ class SymbolicStaticFunction(StaticFunction):
                 var = value
             return var
 
-        args = map_structure(copy_cuda_pinned_tensor, args)
+        return map_structure(copy_cuda_pinned, inputs)
+
+    def _perform_call(self, *args, **kwargs):
+        from ..sot import symbolic_translate
+
+        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        args = self._copy_cuda_pinned_tensors(args)
 
         (
             input_args_with_spec,
