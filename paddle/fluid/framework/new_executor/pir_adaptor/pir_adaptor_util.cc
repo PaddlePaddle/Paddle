@@ -542,14 +542,17 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
-      const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
-      VLOG(1) << "var " << var_name << " has been removed from scope";
-    }
-    const_cast<Scope*>(value_exe_info->GetScope())->Rename(orig_name, var_name);
-    VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
+    if (var_name != orig_name) {
+      if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
+        const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
+        VLOG(1) << "var " << var_name << " has been removed from scope";
+      }
+      const_cast<Scope*>(value_exe_info->GetScope())
+          ->Rename(orig_name, var_name);
+      VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
-    value_exe_info->Rename(value, var_name, orig_name);
+      value_exe_info->Rename(value, var_name, orig_name);
+    }
   } else if (op->isa<pir::ParameterOp>()) {
     VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
