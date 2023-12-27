@@ -47,13 +47,16 @@ class Exponential(exponential_family.ExponentialFamily):
 
             >>> expon = paddle.distribution.Exponential(paddle.to_tensor([0.5]))
             >>> print(expon.mean)
-            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [2.])
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [2.])
 
             >>> print(expon.variance)
-            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [4.])
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [4.])
 
             >>> print(expon.entropy())
-            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.69314718])
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [1.69314718])
     """
 
     def __init__(self, rate):

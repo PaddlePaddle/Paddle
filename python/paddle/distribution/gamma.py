@@ -37,11 +37,11 @@ class Gamma(exponential_family.ExponentialFamily):
         concentration (float|Tensor): Concentration parameter. It supports broadcast semantics.
             The value of concentration must be positive. When the parameter is a tensor,
             it represents multiple independent distribution with
-            a batch_shape(refer to ``Distribution`` ).
+            a batch_shape(refer to :ref:`api_paddle_distribution_Distribution`).
         rate (float|Tensor): Rate parameter. It supports broadcast semantics.
             The value of rate must be positive. When the parameter is tensor,
             it represent multiple independent distribution with
-            a batch_shape(refer to ``Distribution`` ).
+            a batch_shape(refer to :ref:`api_paddle_distribution_Distribution`).
 
     Example:
         .. code-block:: python
@@ -51,24 +51,30 @@ class Gamma(exponential_family.ExponentialFamily):
             >>> # scale input
             >>> gamma = paddle.distribution.Gamma(0.5, 0.5)
             >>> print(gamma.mean)
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 1.)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   1.)
 
             >>> print(gamma.variance)
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 2.)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   2.)
 
             >>> print(gamma.entropy())
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 0.78375685)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.78375685)
 
             >>> # tensor input with broadcast
-            >>> gamma = paddle.distribution.Gamma(paddle.to_tensor([0.2, 0.4]), 0.6)
+            >>> gamma = paddle.distribution.Gamma(paddle.to_tensor([0.2, 0.4]), paddle.to_tensor(0.6))
             >>> print(gamma.mean)
-            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.33333331, 0.66666663])
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.33333331, 0.66666663])
 
             >>> print(gamma.variance)
-            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.55555552, 1.11111104])
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.55555552, 1.11111104])
 
             >>> print(gamma.entropy())
-            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True, [-1.99634242,  0.17067254])
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [-1.99634242,  0.17067254])
     """
 
     def __init__(self, concentration, rate):
