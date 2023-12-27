@@ -166,7 +166,9 @@ class Transform:
         Returns:
             Tensor: Outcome of forward transformation.
         """
-        if not isinstance(x, paddle.base.framework.Variable):
+        if not isinstance(
+            x, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected 'x' is a Tensor or Real, but got {type(x)}."
             )
@@ -187,7 +189,9 @@ class Transform:
         Returns:
             Tensor: Outcome of inverse transform.
         """
-        if not isinstance(y, paddle.base.framework.Variable):
+        if not isinstance(
+            y, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(y)}."
             )
@@ -209,12 +213,14 @@ class Transform:
         Returns:
             Tensor: The log of the absolute value of Jacobian determinant.
         """
-        if not isinstance(x, paddle.base.framework.Variable):
+        if not isinstance(
+            x, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}."
             )
         if (
-            isinstance(x, paddle.base.framework.Variable)
+            isinstance(x, (paddle.base.framework.Variable, paddle.pir.Value))
             and x.dim() < self._domain.event_rank
         ):
             raise ValueError(
@@ -241,7 +247,9 @@ class Transform:
         Returns:
             Tensor: The value of :math:`log|det J_{f^{-1}}(y)|`.
         """
-        if not isinstance(y, paddle.base.framework.Variable):
+        if not isinstance(
+            y, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(f"Expected 'y' is a Tensor, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
             raise ValueError(

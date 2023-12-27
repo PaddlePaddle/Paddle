@@ -60,7 +60,7 @@
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -562,6 +562,9 @@ phi::DataType GetValueDtype(Value value) {
   } else if (value.type().isa<SelectedRowsType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else if (value.type().isa<DenseTensorArrayType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
@@ -581,8 +584,42 @@ const phi::DDim &GetValueDims(Value value) {
   }
 }
 
+pir::OpResult apply(Value self, py::object func) {
+  py::gil_scoped_acquire gil;
+  auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Cannot apply function on a tensor that required gradient."));
+  }
+  PyObject *py_func = func.release().ptr();
+  Py_INCREF(py_func);
+  PyObject *res = nullptr;
+  try {
+    py::object obj = py::cast(self);
+    PyObject *tmp_self = obj.release().ptr();
+    Py_INCREF(tmp_self);
+    res = PyObject_CallFunctionObjArgs(py_func, tmp_self, nullptr);
+    Py_DECREF(tmp_self);
+  } catch (std::exception &e) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Apply function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "Apply function of Tensor raises an unknown exception."));
+  }
+  if (res == Py_None) {
+    return self.dyn_cast<OpResult>();
+  }
+  auto out = CastPyArg2Value(res, "", 0);
+  Py_DECREF(py_func);
+  Py_DECREF(res);
+  return out.dyn_cast<OpResult>();
+}
+
 void BindValue(py::module *m) {
-  py::class_<Value> value(*m, "Value", R"DOC(
+  py::class_<Value> value(*m,
+                          "Value",
+                          R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
     and a base class.
 
@@ -590,7 +627,8 @@ void BindValue(py::module *m) {
         The constructor of Value should not be invoked directly. Value can be automatically constructed
         when build network.
 
-  )DOC");
+  )DOC",
+                          pybind11::dynamic_attr());
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value.def(py::init<>())
       .def_property_readonly(
@@ -738,6 +776,7 @@ void BindValue(py::module *m) {
              print_stream << ")";
              return print_stream.str();
            })
+      .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
@@ -1572,7 +1611,6 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
                         : nullptr;
 
   pir::PassManager pass_manager(ctx);
-  VLOG(0) << "========= AddPass ===========";
   pass_manager.AddPass(pir::CreateShapeOptimizationPass());
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 
