@@ -49,60 +49,60 @@ std::string GetSerializedTag<Min<DimExpr>>() {
   return "Min";
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const std::int64_t& dim_expr) {
-  return builder->int64_attr(dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const std::int64_t& dim_expr) {
+  return pir::Int64Attribute::get(ctx, dim_expr);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const std::string& dim_expr) {
-  return builder->str_attr(dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const std::string& dim_expr) {
+  return pir::StrAttribute::get(ctx, dim_expr);
 }
 
 template <typename T>
-::pir::Attribute ConvertUnaryDimExprToAttributeImpl(::pir::Builder* builder, const T& dim_expr) {
+::pir::Attribute ConvertUnaryDimExprToAttributeImpl(::pir::IrContext* ctx, const T& dim_expr) {
   std::vector<::pir::Attribute> attr_vecs{};
-  attr_vecs.push_back(builder->str_attr(GetSerializedTag<T>()));
+  attr_vecs.push_back(pir::StrAttribute::get(ctx, GetSerializedTag<T>()));
   const auto& [operand] = *dim_expr;
-  attr_vecs.push_back(ConvertDimExprToAttribute(builder, operand));
-  return builder->array_attr(attr_vecs);
+  attr_vecs.push_back(ConvertDimExprToAttribute(ctx, operand));
+  return pir::ArrayAttribute::get(ctx, attr_vecs);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const Negative<DimExpr>& dim_expr) {
-  return ConvertUnaryDimExprToAttributeImpl(builder, dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const Negative<DimExpr>& dim_expr) {
+  return ConvertUnaryDimExprToAttributeImpl(ctx, dim_expr);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const Reciprocal<DimExpr>& dim_expr) {
-  return ConvertUnaryDimExprToAttributeImpl(builder, dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const Reciprocal<DimExpr>& dim_expr) {
+  return ConvertUnaryDimExprToAttributeImpl(ctx, dim_expr);
 }
 
 template<typename T>
-::pir::Attribute ConvertVariadicDimExprToAttribute(::pir::Builder* builder, const T& dim_expr) {
+::pir::Attribute ConvertVariadicDimExprToAttribute(::pir::IrContext* ctx, const T& dim_expr) {
   std::vector<::pir::Attribute> attr_vecs{};
-  attr_vecs.push_back(builder->str_attr(GetSerializedTag<T>()));
+  attr_vecs.push_back(pir::StrAttribute::get(ctx, GetSerializedTag<T>()));
   const auto& operands = *dim_expr;
   for (const auto& operand : operands) {
-    attr_vecs.push_back(ConvertDimExprToAttribute(builder, operand));
+    attr_vecs.push_back(ConvertDimExprToAttribute(ctx, operand));
   }
-  return builder->array_attr(attr_vecs);
+  return pir::ArrayAttribute::get(ctx, attr_vecs);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const Add<DimExpr>& dim_expr) {
-  return ConvertVariadicDimExprToAttribute(builder, dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const Add<DimExpr>& dim_expr) {
+  return ConvertVariadicDimExprToAttribute(ctx, dim_expr);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const Mul<DimExpr>& dim_expr) {
-  return ConvertVariadicDimExprToAttribute(builder, dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const Mul<DimExpr>& dim_expr) {
+  return ConvertVariadicDimExprToAttribute(ctx, dim_expr);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const Max<DimExpr>& dim_expr) {
-  return ConvertVariadicDimExprToAttribute(builder, dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const Max<DimExpr>& dim_expr) {
+  return ConvertVariadicDimExprToAttribute(ctx, dim_expr);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const Min<DimExpr>& dim_expr) {
-  return ConvertVariadicDimExprToAttribute(builder, dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const Min<DimExpr>& dim_expr) {
+  return ConvertVariadicDimExprToAttribute(ctx, dim_expr);
 }
 
-::pir::Attribute ConvertDimExprToAttributeImpl(::pir::Builder* builder, const Broadcast<DimExpr>& dim_expr) {
-  return ConvertVariadicDimExprToAttribute(builder, dim_expr);
+::pir::Attribute ConvertDimExprToAttributeImpl(::pir::IrContext* ctx, const Broadcast<DimExpr>& dim_expr) {
+  return ConvertVariadicDimExprToAttribute(ctx, dim_expr);
 }
 
 std::optional<DimExpr> ConvertInt64AttributeToDimExpr(const ::pir::Int64Attribute& attribute) {
@@ -168,11 +168,11 @@ std::optional<DimExpr> ConvertArrayAttributeToDimExpr(const ::pir::ArrayAttribut
   return opt_func.value()(attribute);
 }
 
-}
+}  // namespace
 
-::pir::Attribute ConvertDimExprToAttribute(::pir::Builder* builder, const DimExpr& dim_expr) {
+::pir::Attribute ConvertDimExprToAttribute(pir::IrContext* ctx, const DimExpr& dim_expr) {
   return std::visit([&](const auto& impl){
-    return ConvertDimExprToAttributeImpl(builder, impl);
+    return ConvertDimExprToAttributeImpl(ctx, impl);
   }, dim_expr.variant());
 }
 

@@ -8,7 +8,7 @@
 
 namespace cinn::dialect {
 
-::pir::Attribute ConvertDimExprToAttribute(::pir::Builder* builder, const symbol::DimExpr& dim_expr);
+::pir::Attribute ConvertDimExprToAttribute(pir::IrContext* ctx, const symbol::DimExpr& dim_expr);
 std::optional<symbol::DimExpr> ConvertAttributeToDimExpr(::pir::Attribute attribute);
 
 std::optional<symbol::DimExpr> SubstituteDimExpr(
