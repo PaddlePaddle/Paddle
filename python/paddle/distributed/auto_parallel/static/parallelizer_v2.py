@@ -16,13 +16,7 @@ import copy
 import logging
 import os
 import time
-from collections import OrderedDict
 
-from paddle.distributed.auto_parallel.static.utils import (
-    is_backward_op,
-    is_forward_op,
-    is_optimize_op,
-)
 from paddle.distributed.passes import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
@@ -342,58 +336,10 @@ class Parallelizer:
         return main_program, startup_program, params_grads
 
     def _check_dist_attr(self, program, num_model_chunks, dist_context):
-        oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
-
-        for ib, block in enumerate(program.blocks):
-            type_to_ops = OrderedDict()
-            chunk_ids = list(range(num_model_chunks))
-            for type in oprole_type.values():
-                if type == "optimizer":
-                    type_to_ops[type] = []
-                else:
-                    chunk_ids = (
-                        chunk_ids if type != "backward" else reversed(chunk_ids)
-                    )
-                    for chunk_id in chunk_ids:
-                        type_to_ops[type + str(chunk_id)] = []
-            type_to_ops["fetch"] = []
-
-            for ip, op in enumerate(block.ops):
-                if is_forward_op(op):
-                    type = oprole_type[0]
-                elif is_backward_op(op):
-                    type = oprole_type[1]
-                elif is_optimize_op(op):
-                    type = oprole_type[2]
-                else:
-                    raise ValueError(
-                        "The op role: "
-                        + str(op.attr('op_role'))
-                        + " isn't one of Forward, Backward or Optimizer."
-                    )
-
-                dist_op = dist_context.get_dist_op_for_program(op)
-                if op.type in ["fetch", "fetch_v2"]:
-                    type_to_ops["fetch"].append(op)
-                elif is_optimize_op(op):
-                    type_to_ops[type].append(op)
-                elif op.type == "feed":
-                    type_to_ops[type + str(0)].append(op)
-                elif op.type == "share_buffer":
-                    dist_pre_op = dist_context.get_dist_op_for_program(
-                        block.ops[ip - 1]
-                    )
-                    type_to_ops[
-                        type + str(dist_pre_op.dist_attr.chunk_id)
-                    ].append(op)
-                elif (
-                    dist_op
-                    and type + str(dist_op.dist_attr.chunk_id) in type_to_ops
-                ):
-                    type_to_ops[type + str(dist_op.dist_attr.chunk_id)].append(
-                        op
-                    )
-                else:
+        for _, block in enumerate(program.blocks):
+            for _, op in enumerate(block.ops):
+                op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+                if op_dist_attr is None:
                     raise ValueError(
                         f"There is not dist_attr for op[{op.type}]."
                     )
