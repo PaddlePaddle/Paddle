@@ -188,6 +188,45 @@ bool PyObject_CheckIROpResult(PyObject* obj) {
   return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
 }
 
+bool PyObject_CheckIRValue(PyObject* obj) {
+  return PyObject_TypeCheck(obj, g_ir_value_pytype);
+}
+
+bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    // if obj is [], parse it as std::vector<scalar>
+    if (len == 0) {
+      return false;
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (!PyObject_CheckIRValue(item)) {
+        return false;
+      }
+    }
+    return true;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    if (len == 0) {
+      return false;
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (!PyObject_CheckIRValue(item)) {
+        return false;
+      }
+    }
+    return true;
+  } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);

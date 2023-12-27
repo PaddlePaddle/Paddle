@@ -36,6 +36,7 @@ from ...utils import (
     InnerError,
     OrderedSet,
     SotUndefinedVar,
+    get_static_function,
     log,
     log_do,
 )
@@ -180,7 +181,7 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
 
     """
 
-    @jump_break_graph_decorator
+    @if_break_graph_decorator
     def inner(self: OpcodeExecutorBase, instr: Instruction):
         """
         Inner function that represents the wrapped POP_JUMP_IF opcode operation.
@@ -214,7 +215,7 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
     return inner
 
 
-def jump_break_graph_decorator(normal_jump: Callable):
+def if_break_graph_decorator(normal_jump: Callable):
     """
     A decorator function that breaks off the graph when a JUMP-related instruction is encountered.
 
@@ -231,8 +232,8 @@ def jump_break_graph_decorator(normal_jump: Callable):
         if isinstance(result, TensorVariable):
             # fallback when in OpcodeExecutor
             # raise error in OpcodeInlineExecutor
-            log(3, "[BreakGraph] jump break graph, because if tensor\n")
-            self._break_graph_in_jump(result, instr)
+            log(3, "[BreakGraph] break graph for if jump tensor\n")
+            self._break_graph_when_if(result, instr)
             return Stop(state="BreakGraph")
         else:
             return normal_jump(self, instr)
@@ -265,7 +266,7 @@ def call_break_graph_decorator(push_n: int | Callable[[int | None], int]):
                     )
                 if isinstance(self, OpcodeExecutor):
                     log(3, f"[BreakGraph] call function Break graph: {e}\n")
-                    self._break_graph_in_call(origin_stack, instr, push_n)
+                    self._break_graph_when_call(origin_stack, instr, push_n)
                     return Stop(state="BreakGraph")
                 else:
                     raise e
@@ -390,7 +391,7 @@ class OpcodeExecutorBase:
         """
         raise NotImplementedError("Please implement virtual_env.")
 
-    def _break_graph_in_jump(self, result, instr: Instruction):
+    def _break_graph_when_if(self, result, instr: Instruction):
         """
         Breaks the graph in JUMP instructions.
 
@@ -497,7 +498,7 @@ class OpcodeExecutorBase:
             )
             if current_line != -1:
                 message_lines.append(
-                    f"{indent}  {lines[current_line-start].rstrip()}"
+                    f"{indent}  {lines[current_line - start].rstrip()}"
                 )
         error_message = traceback.format_exception_only(
             type(original_error), original_error
@@ -512,7 +513,7 @@ class OpcodeExecutorBase:
         Executes the opcode.
 
         """
-        log(3, f"start execute opcode: {self._code}\n")
+        log(3, f"[EXECUTOR RUN] Start execute opcode: {self._code}\n")
         self._lasti = 0
         while True:
             if self._lasti >= len(self._instructions):
@@ -524,6 +525,7 @@ class OpcodeExecutorBase:
                 self.stop_state = is_stop.state
                 self.pop_call_stack_until_self()
                 break
+        log(3, f"[EXECUTOR RUN] End execute opcode: {self._code}\n")
 
     def step(self, instr: Instruction):
         """
@@ -1269,7 +1271,7 @@ class OpcodeExecutorBase:
             )(left, right)
         )
 
-    @jump_break_graph_decorator
+    @if_break_graph_decorator
     def JUMP_IF_FALSE_OR_POP(self, instr: Instruction):
         pred_obj = self.stack.top
         if isinstance(pred_obj, (ConstantVariable, ContainerVariable)):
@@ -1285,7 +1287,7 @@ class OpcodeExecutorBase:
             "Currently don't support predicate a non-const / non-tensor obj."
         )
 
-    @jump_break_graph_decorator
+    @if_break_graph_decorator
     def JUMP_IF_TRUE_OR_POP(self, instr: Instruction):
         pred_obj = self.stack.top
         if isinstance(pred_obj, (ConstantVariable, ContainerVariable)):
@@ -1549,22 +1551,25 @@ class OpcodeExecutor(OpcodeExecutorBase):
         instr_idx:
             the index for branch 1 to find the boundary and copy origin opcode
         """
-        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
-            store_var_info = {}
-            for name in restore_names:
-                _var = self.get_var(name)
-                if _var not in self.stack:
-                    store_var_info[_var.id] = name
+        # if we want get compiled fn, and do not do ast twice,
+        # we must give retval to get_compiled_fn which strictly same as start_compile
+        store_vars = list(self.stack)
+        store_var_info = {}
+
+        for name in restore_names:
+            _var = self.get_var(name)
+            if _var not in self.stack:
+                store_vars.append(_var)
+                store_var_info[_var.id] = name
+
+        compile_fn = self._graph.get_compiled_fn(*store_vars)
+
+        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             return self._graph._restore_origin_opcode(
                 list(self.stack), store_var_info, instr_idx
             )
         else:
-            store_vars = list(self.stack)
-            for name in restore_names:
-                _var = self.get_var(name)
-                if _var not in self.stack:
-                    store_vars.append(_var)
-            return self._graph._build_compile_fn_with_name_store([], store_vars)
+            return self._graph._build_compile_fn_with_name_store(store_vars)
 
     def _create_resume_fn(self, index, stack_size):
         """
@@ -1583,7 +1588,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return fn, inputs
 
     @fallback_when_occur_error
-    def _break_graph_in_jump(self, result: TensorVariable, instr: Instruction):
+    def _break_graph_when_if(self, result: TensorVariable, instr: Instruction):
         """
         Break the graph at a JUMP instruction.
 
@@ -1658,7 +1663,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self.guard_fn = self._graph.guard_fn
 
     @fallback_when_occur_error
-    def _break_graph_in_call(
+    def _break_graph_when_call(
         self,
         origin_stack: VariableStack,
         instr: Instruction,
@@ -1729,6 +1734,22 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self.guard_fn = self._graph.guard_fn
 
     def transform(self):
+        static_function = get_static_function(self._frame, "eval_frame")
+        if static_function is not None:
+            code = self._frame.f_code
+            inputs = []
+            for i in range(code.co_argcount):
+                arg_name = code.co_varnames[i]
+                value = self._locals[arg_name]
+                inputs.append(value)
+            output = self._graph.call_ast(static_function, *inputs)
+            if output is not None:
+                self.stack.push(output)
+                self.RETURN_VALUE(None)
+                return (
+                    CustomCode(self.new_code, self.new_code is None),
+                    self.guard_fn,
+                )
         self.run()
         if self.new_code is self.empty_code:
             raise InnerError("OpExecutor return a empty new_code.")
@@ -1790,7 +1811,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return pycode_gen.create_fn_with_inputs(inputs)
 
     @fallback_when_occur_error
-    def _break_graph_in_for_loop(
+    def _break_graph_when_for_loop(
         self, iterator: VariableBase, for_iter: Instruction
     ):
         '''
@@ -2061,7 +2082,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)
             self.stack.push(iterator)
-            self._break_graph_in_for_loop(iterator, instr)
+            self._break_graph_when_for_loop(iterator, instr)
             return Stop(state="BreakGraph")
 
     def RETURN_VALUE(self, instr: Instruction):
@@ -2069,7 +2090,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             len(self.stack) == 1
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
-        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        compile_fn = self._graph.get_compiled_fn(ret_val)
+        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             self.new_code = None
         else:
             self._graph.start_compile(ret_val)
