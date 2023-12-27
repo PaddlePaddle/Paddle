@@ -19,7 +19,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def calc_psroi_pool(
@@ -371,7 +370,6 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
         ).astype(np.float32)
         self.boxes_num = np.array([1, 2]).astype(np.int32)
 
-    @test_with_pir_api
     def test_function_in_static(self):
         output_size = 7
         out = paddle.vision.ops.psroi_pool(
@@ -397,6 +395,47 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
                 fetch_list=[out.name],
             )
             np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
+
+
+class TestPSROIPoolStaticAPI_NOLOD(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.x_placeholder = paddle.static.data(
+            name='x', shape=[2, 490, 28, 28]
+        )
+        self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
+        self.boxes_placeholder = paddle.static.data(
+            name='boxes_nolod', shape=[3, 4]
+        )
+        self.boxes = np.array(
+            [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]]
+        ).astype(np.float32)
+        self.boxes_num = np.array([1, 2]).astype(np.int32)
+
+    def test_function_in_static(self):
+        with paddle.pir_utils.IrGuard():
+            output_size = 7
+            out = paddle.vision.ops.psroi_pool(
+                self.x_placeholder,
+                self.boxes_placeholder,
+                self.boxes_num,
+                output_size,
+            )
+            expect_out = calc_psroi_pool(
+                self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
+            )
+            places = [paddle.CPUPlace()]
+            if paddle.base.core.is_compiled_with_cuda():
+                places.append(paddle.CUDAPlace(0))
+            for place in places:
+                exe = paddle.static.Executor(place)
+                boxes_data = paddle.to_tensor(self.boxes, place=place)
+                (out_res,) = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={'x': self.x, 'boxes_nolod': boxes_data},
+                    fetch_list=[out.name],
+                )
+                np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
 
 
 if __name__ == '__main__':
