@@ -1784,8 +1784,6 @@ phi::DataType SliceArrayOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
-const char *SliceArrayDenseOp::attributes_name[1] = {"starts"};
-
 OpInfoTuple SliceArrayDenseOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo("input",
@@ -1793,11 +1791,16 @@ OpInfoTuple SliceArrayDenseOp::GetOpInfo() {
                                    false,
                                    false,
                                    false,
+                                   false),
+      paddle::dialect::OpInputInfo("starts",
+                                   "paddle::dialect::IntArrayAttribute",
+                                   false,
+                                   false,
+                                   true,
                                    false)};
-  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
-      paddle::dialect::OpAttributeInfo("starts",
-                                       "paddle::dialect::IntArrayAttribute",
-                                       "std::vector<int64_t>")};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
@@ -1806,8 +1809,8 @@ OpInfoTuple SliceArrayDenseOp::GetOpInfo() {
                                      {"input", "starts"},
                                      "slice_array_dense",
                                      {"input", "starts"},
-                                     {},
-                                     {},
+                                     {"input"},
+                                     {"input"},
                                      {},
                                      {});
   return std::make_tuple(
@@ -1820,7 +1823,7 @@ void SliceArrayDenseOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
+    IR_ENFORCE(input_size == 2u,
                "The size %d of inputs must be equal to 1.",
                input_size);
     IR_ENFORCE((*this)
@@ -1829,14 +1832,13 @@ void SliceArrayDenseOp::VerifySig() {
                    .isa<paddle::dialect::DenseTensorArrayType>(),
                "Type validation failed for the 0th input, got %s.",
                (*this)->operand_source(0).type());
-  }
-  VLOG(4) << "Verifying attributes:";
-  {
-    auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("starts") > 0, "starts does not exist.");
-    IR_ENFORCE(
-        attributes.at("starts").isa<paddle::dialect::IntArrayAttribute>(),
-        "Type of attribute: starts is not paddle::dialect::IntArrayAttribute.");
+    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
+                   (*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 1st input, got %s.",
+               (*this)->operand_source(1).type());
   }
   VLOG(4) << "Verifying outputs:";
   {
