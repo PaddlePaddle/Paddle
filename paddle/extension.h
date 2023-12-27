@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/api/all.h"
 #if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
 // Python bindings for the C++ frontend (includes Python.h)
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/utils/pybind.h"
 #endif
 // For initialization of DeviceContextPool and MemoryMethod
