@@ -48,9 +48,7 @@ void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
 
 void CreateArrayInferMeta(DataType dtype, MetaTensor* out);
 
-TEST_API void CreateInferMeta(const IntArray& shape,
-                              DataType dtype,
-                              MetaTensor* out);
+void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out);
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,

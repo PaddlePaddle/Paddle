@@ -34,7 +34,7 @@ struct MetaConfig {
         is_run_mkldnn_kernel(is_run_mkldnn_kernel) {}  // NOLINT
 };
 
-class TEST_API MetaTensor {
+class MetaTensor {
  public:
   typedef void (*unspecified_bool_type)();
 

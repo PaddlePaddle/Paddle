@@ -32,7 +32,7 @@ template <typename T>
 class IntArrayBase {
  public:
   // Constructor support implicit
-  TEST_API IntArrayBase() = default;
+  IntArrayBase() = default;
 
   IntArrayBase(const std::vector<int64_t>& vec) : array_(vec) {}  // NOLINT
 
@@ -58,13 +58,12 @@ class IntArrayBase {
   explicit IntArrayBase(const common::DDim& dims);
 
   // The Tensor must have one dim
-  TEST_API IntArrayBase(const T& tensor);  // NOLINT
+  IntArrayBase(const T& tensor);  // NOLINT
 
   // The Tensor in vec must have only one element
-  TEST_API IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
+  IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
 
-  TEST_API explicit IntArrayBase(
-      const std::vector<phi::TensorRef>& tensor_ref_list);
+  explicit IntArrayBase(const std::vector<phi::TensorRef>& tensor_ref_list);
 
   template <typename OtherT>
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
