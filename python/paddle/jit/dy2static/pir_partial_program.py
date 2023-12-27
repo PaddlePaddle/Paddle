@@ -296,7 +296,7 @@ class RunableProgram:
     def program_attr(self):
         assert (
             self.finish_pass is False
-        ), "program_attr() is called by PartialProgramLayer, don't call it matually, use program_name_attr instead."
+        ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
         fwd_map = {
