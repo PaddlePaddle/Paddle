@@ -133,6 +133,14 @@ pir::OpResult create_array(phi::DataType dtype) {
   return create_array_op.out();
 }
 
+pir::OpResult create_array_like(pir::Value input, float value) {
+  auto create_array_like_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::CreateArrayLikeOp>(input, value);
+  return create_array_like_op.out();
+}
+
 pir::OpResult array_length(pir::Value x) {
   auto array_length_op = ApiBuilder::Instance()
                              .GetBuilder()

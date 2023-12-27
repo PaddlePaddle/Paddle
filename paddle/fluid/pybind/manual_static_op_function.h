@@ -147,6 +147,31 @@ static PyObject *static_api_create_array(PyObject *self,
   }
 }
 
+static PyObject *static_api_create_array_like(PyObject *self,
+                                              PyObject *args,
+                                              PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add create_array_like op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(input_obj, "create_array_like", 0);
+
+    // Parse Attributes
+    PyObject *value_obj = PyTuple_GET_ITEM(args, 1);
+    float value = CastPyArg2Float(value_obj, "create_array_like", 1);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::create_array_like(input, value);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_array_length(PyObject *self,
                                          PyObject *args,
                                          PyObject *kwargs) {
@@ -287,6 +312,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_create_array,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for create_array."},
+    {"create_array_like",
+     (PyCFunction)(void (*)(void))static_api_create_array_like,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for create_array_like."},
     {"array_length",
      (PyCFunction)(void (*)(void))static_api_array_length,
      METH_VARARGS | METH_KEYWORDS,

@@ -17,11 +17,12 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::AddNWithKernelOp, paddle::dialect::FusedGemmEpilogueOp,
     paddle::dialect::FusedGemmEpilogueGradOp, paddle::dialect::SplitGradOp,
     paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
-    paddle::dialect::ArrayLengthOp, paddle::dialect::ArrayReadOp,
-    paddle::dialect::ArrayWrite_Op, paddle::dialect::SliceArrayOp,
-    paddle::dialect::SliceArrayDenseOp, paddle::dialect::AssignArray_Op,
-    paddle::dialect::ArrayToTensorOp, paddle::dialect::SelectInputOp,
-    paddle::dialect::IncrementOp, paddle::dialect::Increment_Op
+    paddle::dialect::CreateArrayLikeOp, paddle::dialect::ArrayLengthOp,
+    paddle::dialect::ArrayReadOp, paddle::dialect::ArrayWrite_Op,
+    paddle::dialect::SliceArrayOp, paddle::dialect::SliceArrayDenseOp,
+    paddle::dialect::AssignArray_Op, paddle::dialect::ArrayToTensorOp,
+    paddle::dialect::SelectInputOp, paddle::dialect::IncrementOp,
+    paddle::dialect::Increment_Op
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -1156,6 +1157,115 @@ void CreateArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+const char *CreateArrayLikeOp::attributes_name[1] = {"val"};
+
+OpInfoTuple CreateArrayLikeOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("input",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo(
+          "val", "paddle::dialect::FloatAttribute", "")};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {OpOutputInfo(
+      "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("CreateArrayLikeInferMeta",
+                    {"input"},
+                    "create_array_like",
+                    {"input", "val"},
+                    {},
+                    {},
+                    {},
+                    {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "create_array_like");
+}
+
+void CreateArrayLikeOp::Build(pir::Builder &builder,             // NOLINT
+                              pir::OperationArgument &argument,  // NOLINT
+                              pir::Value &input_,                // NOLINT
+                              float &val) {
+  VLOG(4) << "Start build CreateArrayLikeOp";
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {input_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_val =
+      pir::FloatAttribute::get(pir::IrContext::Instance(), val);
+  argument.AddAttribute("val", attr_val);
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType input_type =
+      input_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(input_type.dtype()),
+      {},
+      input_type.data_layout(),
+      {});
+
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::CreateArrayLikeInferMeta(meta_input, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void CreateArrayLikeOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "CreateArrayLikeOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 1.", input_size));
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    PADDLE_ENFORCE(attributes.count("val") > 0, "val does not exist.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: CreateArrayLikeOp.";
+}
+
+void CreateArrayLikeOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::CreateArrayLikeInferMeta);
+  fn(infer_meta);
+}
+
 OpInfoTuple ArrayLengthOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       OpInputInfo("x",
@@ -1260,7 +1370,7 @@ OpInfoTuple ArrayReadOp::GetOpInfo() {
                   false,
                   false,
                   false,
-                  true),
+                  false),
       OpInputInfo(
           "i", "paddle::dialect::ScalarAttribute", false, false, true, false)};
 
@@ -1340,8 +1450,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   phi::Scalar i_scalar;
-  if (i.dyn_cast<pir::OpResult>() &&
-      i.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
+  if (i.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
     i_scalar =
         std::move(phi::Scalar(i.dyn_cast<pir::OpResult>()
                                   .owner()
@@ -1370,7 +1479,6 @@ void ArrayReadOp::Build(pir::Builder &builder,
       dense_out.lod());
   argument_outputs.push_back(out_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayReadOp::VerifySig() {
@@ -1429,7 +1537,7 @@ OpInfoTuple ArrayWrite_Op::GetOpInfo() {
                   false,
                   false),
       OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false, true),
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false),
       OpInputInfo(
           "i", "paddle::dialect::ScalarAttribute", false, false, true, false)};
 
@@ -1494,7 +1602,6 @@ void ArrayWrite_Op::Build(pir::Builder &builder,
       dense_out.layout());
   argument_outputs.push_back(out_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayWrite_Op::VerifySig() {
@@ -2629,6 +2736,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayLikeOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)

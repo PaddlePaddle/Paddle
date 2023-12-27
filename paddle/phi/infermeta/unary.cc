@@ -524,6 +524,16 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CreateArrayLikeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  // for( size_t i = 0 ;i < x.size(); i++){
+  //   double index = i.to<int64_t>();
+  //   out->at(i).set_dims(input.dims(index));
+  //   out->at(i).share_lod(input, index);
+  // }
+}
+
 void CumInferMeta(const MetaTensor& x,
                   int axis,
                   bool flatten,

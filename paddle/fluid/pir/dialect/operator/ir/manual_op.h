@@ -198,6 +198,25 @@ class CreateArrayOp
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
+                                         OpYamlInfoInterface,
+                                         InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.create_array_like"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value &input_,                // NOLINT
+                    float &val);                       // NOLINT
+  void VerifySig();
+  pir::Value input() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class ArrayLengthOp
     : public pir::Op<ArrayLengthOp, OpYamlInfoInterface, InferMetaInterface> {
  public:
@@ -215,10 +234,8 @@ class ArrayLengthOp
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
-class ArrayReadOp : public pir::Op<ArrayReadOp,
-                                   OpYamlInfoInterface,
-                                   paddle::dialect::VjpInterface,
-                                   InferMetaInterface> {
+class ArrayReadOp
+    : public pir::Op<ArrayReadOp, OpYamlInfoInterface, InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_read"; }
@@ -238,17 +255,10 @@ class ArrayReadOp : public pir::Op<ArrayReadOp,
   pir::Value i() { return operand_source(1); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
-      pir::Operation *op,
-      const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::Value>> &outputs,
-      const std::vector<std::vector<pir::Value>> &out_grads,
-      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
                                      OpYamlInfoInterface,
-                                     paddle::dialect::VjpInterface,
                                      InferMetaInterface,
                                      InplaceTrait> {
  public:
@@ -268,12 +278,6 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
   pir::Value i() { return operand_source(2); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
-      pir::Operation *op,
-      const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::Value>> &outputs,
-      const std::vector<std::vector<pir::Value>> &out_grads,
-      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class ArrayToTensorOp
@@ -520,6 +524,7 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayLikeOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)

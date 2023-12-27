@@ -62,6 +62,8 @@ pir::OpResult zeros(const std::vector<int64_t>& shape,
 
 pir::OpResult create_array(phi::DataType dtype);
 
+pir::OpResult create_array_like(pir::Value input, float value);
+
 pir::OpResult array_length(pir::Value x);
 
 pir::OpResult array_read(pir::Value array, pir::Value i);
