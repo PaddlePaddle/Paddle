@@ -273,6 +273,9 @@ std::string GetValueDataType(const pir::Value& value) {
   } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
+  } else if (value.type().isa<DenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype()));
   } else {
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "

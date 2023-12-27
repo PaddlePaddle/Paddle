@@ -21,12 +21,12 @@
 namespace cinn {
 namespace ir {
 
-class ArrangeStorageTactic : public ScheduleTactic {
+class ArrangeStorageTactic final : public ScheduleTactic {
  public:
   explicit ArrangeStorageTactic(
       const std::unordered_set<std::string>& output_names);
 
-  void Apply(ir::IRSchedule* sch, const std::string& block_id) final;
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
 
  private:
   std::unordered_set<std::string> output_names_;
