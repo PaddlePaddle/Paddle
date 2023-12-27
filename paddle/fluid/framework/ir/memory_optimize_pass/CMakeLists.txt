@@ -1,4 +1,7 @@
-cc_library(op_graph_view SRCS op_graph_view.cc)
+cc_library(
+  op_graph_view
+  SRCS op_graph_view.cc
+  DEPS detail_op_handle)
 cc_library(
   conditional_block_op_eager_deletion_pass
   SRCS conditional_block_op_eager_deletion_pass.cc

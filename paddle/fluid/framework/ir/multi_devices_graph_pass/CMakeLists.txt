@@ -19,7 +19,7 @@ endif()
 cc_library(
   multi_devices_graph_pass
   SRCS multi_devices_graph_pass.cc
-  DEPS ${ALL_REDUCE_OP_HANDLES})
+  DEPS detail_op_handle ${ALL_REDUCE_OP_HANDLES})
 cc_library(
   sequential_execution_pass
   SRCS sequential_execution_pass.cc
