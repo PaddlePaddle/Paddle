@@ -131,6 +131,8 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
 void ProgramTranslator::Translate() {
   GetParameterForSingleBlock(legacy_program_->Block(0));
 
+  InsertDataOpForSingleBlock(legacy_program_->Block(0));
+
   TranslateBlock(legacy_program_->Block(0),
                  0,
                  legacy_program_->Block(0).OpSize(),
@@ -417,6 +419,29 @@ inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
   pir::Operation* operation = pir::Operation::Create(
       {defining_op_result}, op_attribute_map, {}, op_info);
   return operation;
+}
+
+void ProgramTranslator::InsertDataOpForSingleBlock(const BlockDesc& block) {
+  std::unordered_set<std::string> inner_outputs;
+  for (auto op_desc : block.AllOps()) {
+    for (const auto& n : op_desc->Inputs()) {
+      const auto& input_var_names = n.second;
+      for (const auto& var_name : input_var_names) {
+        if (param_map_.count(var_name) != 0) continue;
+        if (no_cast_var_names.count(var_name) != 0) continue;
+        bool is_unseen_variable = (inner_outputs.count(var_name) == 0);
+        if (is_unseen_variable) {
+          CreateUndefinedVariable(var_name, block);
+        }
+      }
+    }
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_outputs.insert(var_name);
+      }
+    }
+  }
 }
 
 void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
