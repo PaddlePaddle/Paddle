@@ -250,14 +250,14 @@ def nested_if_else_3(x):
             )
             # `z` is created in above code block.
             z = y + 1
-            out = x + 1
+            out = x - 1
         else:
             res = paddle.tensor.fill_constant(
                 value=3, shape=x.shape, dtype="int32"
             )
             # `out` is a new var.
             out = x + 1
-            z = y + 1
+            z = y - 1
     return res
 
 
