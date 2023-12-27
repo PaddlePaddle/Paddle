@@ -58,9 +58,10 @@ struct SymbolicExprLimit {
 // The set consisting of all integers in the interval from min to max
 class SingleIntervalIntSet {
  public:
-  explicit SingleIntervalIntSet(const ir::Expr& min,
-                                const ir::Expr& max,
-                                cas_intervals_t var_intervals = {});
+  explicit SingleIntervalIntSet(
+      const ir::Expr& min = SymbolicExprLimit::positive_inf,
+      const ir::Expr& max = SymbolicExprLimit::negative_inf,
+      cas_intervals_t var_intervals = {});
   SingleIntervalIntSet(const SingleIntervalIntSet& set) = default;
   SingleIntervalIntSet(SingleIntervalIntSet&& set) = default;
   SingleIntervalIntSet& operator=(const SingleIntervalIntSet& set) = default;
@@ -91,6 +92,19 @@ class SingleIntervalIntSet {
   ir::Expr max_ = SymbolicExprLimit::negative_inf;
   cas_intervals_t var_intervals_;
 };
+
+std::optional<bool> ProveEQ(const SingleIntervalIntSet& lhs,
+                            const SingleIntervalIntSet& rhs);
+std::optional<SingleIntervalIntSet> ProvedUnion(const SingleIntervalIntSet& a,
+                                                const SingleIntervalIntSet& b);
+std::optional<SingleIntervalIntSet> ProvedIntersect(
+    const SingleIntervalIntSet& a, const SingleIntervalIntSet& b);
+cas_intervals_t MergeVarIntervals(const SingleIntervalIntSet& a,
+                                  const SingleIntervalIntSet& b);
+
+ir::Expr EnhancedSimplifyModExpr(
+    ir::Expr e,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals);
 
 }  // namespace common
 }  // namespace cinn

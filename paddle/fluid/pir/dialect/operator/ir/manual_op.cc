@@ -1340,7 +1340,8 @@ void ArrayReadOp::Build(pir::Builder &builder,
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   phi::Scalar i_scalar;
-  if (i.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
+  if (i.dyn_cast<pir::OpResult>() &&
+      i.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
     i_scalar =
         std::move(phi::Scalar(i.dyn_cast<pir::OpResult>()
                                   .owner()
