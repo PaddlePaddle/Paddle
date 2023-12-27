@@ -1,7 +1,7 @@
 add_subdirectory(memory)
 add_subdirectory(benchmark)
 add_subdirectory(framework)
-
+add_subdirectory(distributed)
 add_subdirectory(inference)
 
 if(WITH_CINN)
