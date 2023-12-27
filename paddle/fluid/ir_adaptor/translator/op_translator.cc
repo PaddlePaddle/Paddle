@@ -664,6 +664,18 @@ static void TranslateOpDistAttribute(const OpDesc& op_desc,
           "scheduling_priority", dist_attr->scheduling_priority());
       (*attr_map)["scheduling_priority"] = new_attr;
     }
+
+    pir::Attribute force_record_event_attr = attribute_translator(
+        "force_record_event", dist_attr->force_record_event());
+    (*attr_map)["force_record_event"] = force_record_event_attr;
+
+    pir::Attribute event_to_record_attr =
+        attribute_translator("event_to_record", dist_attr->event_to_record());
+    (*attr_map)["event_to_record"] = event_to_record_attr;
+
+    pir::Attribute events_to_wait_attr =
+        attribute_translator("events_to_wait", dist_attr->events_to_wait());
+    (*attr_map)["events_to_wait"] = events_to_wait_attr;
   }
 }
 
@@ -1331,6 +1343,28 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TrilAndTriuGradOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    bool lower = PADDLE_GET_CONST(bool, op_desc.GetAttr("lower"));
+    std::string target_op_name = "";
+    if (lower) {
+      target_op_name = "pd_op.tril_grad";
+    } else {
+      target_op_name = "pd_op.triu_grad";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op tril_triu_grad should have corresponding OpInfo pd_op.tril_grad "
+          "or "
+          "pd_op.triu_grad.");
+    }
+
+    return op_info;
+  }
+};
+
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::OpResult>;
 
@@ -1983,7 +2017,7 @@ struct SelectInputOpTranscriber : public OpTranscriber {
         undefine_value.defining_op()->set_attribute(
             "dtype",
             dialect::DataTypeAttribute::get(
-                ctx, PirTypeToPhiDType(undefined_var_type.dtype())));
+                ctx, dialect::TransToPhiDataType(undefined_var_type.dtype())));
         auto& attribute_translator = AttributeTranslator::instance();
         undefine_value.defining_op()->set_attribute(
             "shape",
@@ -2671,6 +2705,26 @@ struct FusedElemwiseAddActivationGradOpTranscriber
   }
 };
 
+struct MatrixRankOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = "";
+    if (op_desc.HasInput("TolTensor") && !op_desc.Input("TolTensor").empty()) {
+      target_op_name = "pd_op.matrix_rank_tol";
+    } else {
+      target_op_name = "pd_op.matrix_rank";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op matrix_rank should have corresponding OpInfo pd_op.matrix_rank "
+          "or "
+          "pd_op.matrix_rank_tol.");
+    }
+    return op_info;
+  }
+};
+
 struct LodArrayLengthOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
@@ -2956,6 +3010,8 @@ OpTranslator::OpTranslator() {
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
+  special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
+  special_handlers["matrix_rank"] = MatrixRankOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
   special_handlers["select_input"] = SelectInputOpTranscriber();

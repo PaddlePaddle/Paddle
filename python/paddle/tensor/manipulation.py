@@ -27,7 +27,7 @@ from ..base.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..base.framework import Variable
+from ..base.framework import Variable, default_main_program
 from ..framework import (
     LayerHelper,
     _current_expected_place,
@@ -1580,7 +1580,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
     """
 
     helper = LayerHelper("rot90", **locals())
-    check_type(x, 'X', (Variable, paddle.pir.OpResult), 'rot90')
+    check_type(x, 'X', (Variable, paddle.pir.Value), 'rot90')
     dtype = helper.input_dtype('x')
     check_dtype(
         dtype,
@@ -3661,6 +3661,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
     Examples:
         .. code-block:: python
+            :name: scatter-example-2
 
             >>> import paddle
 
@@ -6741,6 +6742,110 @@ def select_scatter(x, values, axis, index, name=None):
         )
     else:
         helper = LayerHelper('select_scatter', **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
+
+        return output
+
+
+def slice_scatter(x, value, axes, starts, ends, strides, name=None):
+    """
+    Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
+    The size of `axes` must be equal to `starts` , `ends` and `strides`.
+
+    Args:
+        x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        axes (list|tuple) : the dimensions to insert the value.
+        starts (list|tuple) : the start indices of where to insert.
+        ends (list|tuple) : the stop indices of where to insert.
+        strids (list|tuple) : the steps for each insert.
+        name (str, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, same dtype and shape with x
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros((3, 9))
+            >>> value = paddle.ones((3, 2))
+            >>> res = paddle.slice_scatter(x, value, axes=[1], starts=[2], ends=[6], strides=[2])
+            >>> print(res)
+            Tensor(shape=[3, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.]])
+
+            >>> # broadcast `value` got the same result
+            >>> x = paddle.zeros((3, 9))
+            >>> value = paddle.ones((3, 1))
+            >>> res = paddle.slice_scatter(x, value, axes=[1], starts=[2], ends=[6], strides=[2])
+            >>> print(res)
+            Tensor(shape=[3, 9], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0., 0.]])
+
+            >>> # broadcast `value` along multiple axes
+            >>> x = paddle.zeros((3, 3, 5))
+            >>> value = paddle.ones((1, 3, 1))
+            >>> res = paddle.slice_scatter(x, value, axes=[0, 2], starts=[1, 0], ends=[3, 4], strides=[1, 2])
+            >>> print(res)
+            Tensor(shape=[3, 3, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0., 0., 0., 0., 0.],
+              [0., 0., 0., 0., 0.],
+              [0., 0., 0., 0., 0.]],
+             [[1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.]],
+             [[1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.],
+              [1., 0., 1., 0., 0.]]])
+
+    """
+    none_axes = []
+    decrease_axes = []
+    dtype = x.dtype
+    value = value.astype(dtype)
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.set_value_with_tensor(
+            x,
+            value,
+            starts,
+            ends,
+            strides,
+            axes,
+            decrease_axes,
+            none_axes,
+        )
+    else:
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'steps': strides,
+            'decrease_axes': decrease_axes,
+            'none_axes': none_axes,
+            'dtype': dtype,
+        }
+
+        inputs = {
+            'Input': x,
+            'ValueTensor': value,
+        }
+
+        helper = LayerHelper('slice_scatter', **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
         cur_block = default_main_program().current_block()
         cur_block.append_op(

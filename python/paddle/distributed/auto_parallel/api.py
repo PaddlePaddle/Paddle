@@ -515,6 +515,13 @@ class _ShardOptimizer:
         optimizer.helper = paddle.base.layer_helper.LayerHelper(
             optimizer.__class__.__name__
         )
+        self._shard_clip = False
+        if (
+            hasattr(optimizer, "_grad_clip")
+            and optimizer._grad_clip is not None
+            and isinstance(optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm)
+        ):
+            self._shard_clip = True
         self._inner_opt = optimizer
         self._shard_fn = shard_fn
 
@@ -578,6 +585,7 @@ class _ShardOptimizer:
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
                         params_grads['params'].append((param, grad_var))
+
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
@@ -586,6 +594,8 @@ class _ShardOptimizer:
                 self._inner_opt._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+            # only generate once.
+            self._generate_flag = True
 
     def state_dict(self):
         """
@@ -812,11 +822,6 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._fused_passes = FusePasses(config_dict)
 
-        config_dict = self._config_dict.get(
-            auto_strategy.constants.RECOMPUTE, None
-        )
-        self._recompute = auto_strategy.RecomputeConfig(config_dict)
-
     @property
     def sharding(self):
         """
@@ -924,10 +929,6 @@ class Strategy(auto_strategy.BaseConfig):
                 >>> strategy.pipeline.micro_batch_size = 2
         """
         return self._pipeline
-
-    @property
-    def recompute(self):
-        return self._recompute
 
 
 class DistModel:
@@ -1179,7 +1180,6 @@ class DistModel:
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
-        inner_strategy.recompute = copy.deepcopy(strategy.recompute)
         return inner_strategy
 
     def __call__(self, *args):
@@ -1259,15 +1259,13 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            # TODO(pangengzheng): construct dist_tensor with _dtensor_from_local api when it is ready.
-            global_tensor = paddle.zeros(global_shape, dtype=local_tensor.dtype)
             mesh = dist.ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )
             )
             placements = to_placements(dist_attr["dims_mapping"], mesh)
-            dist_tensor = dist.shard_tensor(global_tensor, mesh, placements)
+            dist_tensor = dtensor_from_local(local_tensor, mesh, placements)
             assert (
                 dist_tensor._local_value().shape == local_tensor.shape
             ), f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"
@@ -1435,3 +1433,73 @@ def to_static(
     dist_loader = dist_model.dist_loader
 
     return dist_model, dist_loader
+
+
+def unshard_dtensor(dist_tensor):
+    """
+    Converts a distributed tensor to a dense tensor. ``unshard_dtensor``
+    first make the ``dist_tensor`` be ``Replicate`` state on all processes and
+    then converts it to a dense ``paddle.Tensor``. It can be treated as a
+    reverse operation of ``shard_tensor``.
+
+    Args:
+        dist_tensor (paddle.Tensor): The distributed tensor which is constructed
+            from a dense tensor with ``shard_tensor``.
+
+    Returns:
+        paddle.Tensor: The original dense tensor of the input ``dist_tensor``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed import Replicate, Shard
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> original_tensor = paddle.rand([4, 1024, 512])
+            >>> dist_tensor = dist.shard_tensor(original_tensor, mesh, [Shard(0)])
+            >>> # dense_tensor's shape is the same as original_tensor
+            >>> dense_tensor = dist.unshard_dtensor(dist_tensor)
+    """
+    if paddle.in_dynamic_mode():
+        # if the input is not a distributed
+        # tensor, return it directly
+        if dist_tensor.is_dist() is False:
+            raise ValueError("The input should be a distributed tensor.")
+
+        mesh = dist_tensor.process_mesh
+        placements = dist_tensor.placements
+        replicate_placements = [dist.Replicate()] * len(placements)
+        r_dist_tensor = reshard(dist_tensor, mesh, replicate_placements)
+
+        if isinstance(dist_tensor, EagerParamBase):
+            return EagerParamBase.from_tensor(
+                r_dist_tensor._local_value(),
+                **dist_tensor.__dict__,
+            )
+        else:
+            return paddle.Tensor(r_dist_tensor._local_value())
+
+    else:
+        assert isinstance(
+            dist_tensor, Variable
+        ), "the input type of 'unshard_dtensor' should be Variable, but got [{}]".format(
+            dist_tensor
+        )
+        # in static mode, 'distributed tensor' and 'dense tensor' are all
+        # Varialble type, the distributed attribute is a property of the Varibale.
+        # So, it's no need to convert the distributed tensor to a dense tensor.
+        # We only need to modify its distributed attribute.
+        empty_dist_attr = (
+            dist.auto_parallel.static.dist_attribute.TensorDistAttr()
+        )
+        dist_tensor.dist_attr = empty_dist_attr
+
+        # remove the distributed tensor from dist_context
+        default_dist_ctx = get_default_distributed_context()
+        serial_tensor_id = dist_tensor.desc.original_id()
+        default_dist_ctx._dist_tensors_for_program.pop(serial_tensor_id, None)
+
+        return dist_tensor

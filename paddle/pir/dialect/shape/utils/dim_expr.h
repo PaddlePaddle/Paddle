@@ -17,9 +17,12 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
+
+#include "paddle/pir/core/dll_decl.h"
 
 #include "glog/logging.h"
 
@@ -174,7 +177,7 @@ using DimExprBase = std::variant<std::int64_t,
                                  Min<DimExpr>,
                                  Broadcast<DimExpr>>;
 
-class DimExpr : public DimExprBase {
+class IR_API DimExpr : public DimExprBase {
  public:
   using DimExprBase::DimExprBase;
 
@@ -245,5 +248,9 @@ class ShapeOrData {
 };
 
 using ShapeOrDataDimExprs = ShapeOrData<DimExpr>;
+
+IR_API std::string ToString(const DimExpr& dim_expr);
+
+IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 
 }  // namespace symbol
