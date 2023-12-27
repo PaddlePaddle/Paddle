@@ -29,7 +29,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/common/bfs_walker.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
-#include  <algorithm>
+#include <algorithm>
+#include <glog/logging.h>
+
 
 namespace cinn {
 namespace dialect {
@@ -148,11 +150,13 @@ bool InputDimExprsAllSupported(const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimE
   return true;
 }
 
-void ConvertDimExprToAttributes(const std::vector<symbol::DimExpr>& dim_exprs, std::vector<pir::Attribute>* attrs) {
+void ConvertDimExprToAttributes(pir::IrContext* ir_context,
+                                const std::vector<symbol::DimExpr>& dim_exprs,
+                                std::vector<pir::Attribute>* attrs) {
   attrs->clear();
   attrs->reserve(dim_exprs.size());
   for (const auto& dim_expr : dim_exprs) {
-    TODO();
+    attrs->emplace_back(ConvertDimExprToAttribute(ir_context, dim_expr));
   }
 }
 
@@ -255,7 +259,8 @@ void GenerateSymbolBindings(const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExpr
   }
 }
 
-bool MakeGenerateShapeOpAttribute(const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
+bool MakeGenerateShapeOpAttribute(pir::IrContext* ir_context,
+                                  const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
                                   const std::vector<pir::Value>& input_tensors,
                                   pir::Value output_shape,
                                   std::vector<pir::Attribute>* output_dim_expr_attrs,
@@ -269,7 +274,7 @@ bool MakeGenerateShapeOpAttribute(const ShapeOrDataDimExprs4ValueT& ShapeOrDataD
     return false;
   }
   // generate output_dim_expr_attrs
-  ConvertDimExprToAttributes(out_dim_exprs, /*out*/output_dim_expr_attrs);
+  ConvertDimExprToAttributes(ir_context, out_dim_exprs, /*out*/output_dim_expr_attrs);
   // generate symbol_bindings
   std::set<std::string> symbol_names_in_out_dim_exprs{};
   CollectSymbolNames(out_dim_exprs, &symbol_names_in_out_dim_exprs);
@@ -288,7 +293,8 @@ std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
   if (input_tensors.empty()) return std::nullopt;
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   GenerateShapeOp::SymbolBindings symbol_bindings{};
-  bool success = MakeGenerateShapeOpAttribute(ShapeOrDataDimExprs4Value,
+  bool success = MakeGenerateShapeOpAttribute(rewriter->ir_context(),
+                                              ShapeOrDataDimExprs4Value,
                                               input_tensors,
                                               shape,
                                               &output_dim_expr_attrs,
