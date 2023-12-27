@@ -32,6 +32,12 @@ void Block::push_back(Operation *op) { insert(ops_.end(), op); }
 
 void Block::push_front(Operation *op) { insert(ops_.begin(), op); }
 
+void Block::pop_back() {
+  IR_ENFORCE(!ops_.empty(), "can't pop back from empty block.");
+  ops_.back()->Destroy();
+  ops_.pop_back();
+}
+
 Operation *Block::GetParentOp() const {
   return parent_ ? parent_->GetParent() : nullptr;
 }
@@ -50,8 +56,7 @@ Block::Iterator Block::erase(ConstIterator position) {
 
 void Block::clear() {
   while (!empty()) {
-    ops_.back()->Destroy();
-    ops_.pop_back();
+    pop_back();
   }
 }
 
@@ -103,6 +108,13 @@ Value Block::AddArgument(Type type) {
   return argument;
 }
 
+void Block::EraseArgument(uint32_t index) {
+  auto argument = arg(index);
+  IR_ENFORCE(argument.use_empty(),
+             "Erase a block argument that is still in use.");
+  argument.dyn_cast<BlockArgument>().Destroy();
+  arguments_.erase(arguments_.begin() + index);
+}
 bool Block::TopoOrderCheck(const OpListType &op_list) {
   std::unordered_set<Value> visited_values;
   for (Operation *op : op_list) {

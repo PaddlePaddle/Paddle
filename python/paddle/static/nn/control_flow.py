@@ -687,21 +687,23 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     if in_pir_mode():
         while_op = build_while_op(pre_cond, flatten(loop_vars))
         with while_op.body() as cur_block:
-            args = cur_block.args()
-            next_var = body(*args)
+            args = pack_sequence_as(loop_vars, cur_block.args())
+            next_vars = body(*args)
             try:
                 assert_same_structure(
-                    flatten(next_var), flatten(loop_vars), check_types=False
+                    flatten(next_vars), flatten(loop_vars), check_types=False
                 )
             except ValueError as e:
                 raise ValueError(
                     "body in while_loop should return the same arity "
                     f"(length and structure) as loop_vars: {e}"
                 )
-            next_cond = cond(*next_var)
+            if not isinstance(next_vars, (list, tuple)):
+                next_vars = [next_vars]
+            next_cond = cond(*next_vars)
             next_cond.stop_gradient = True
-            cf_yield([next_cond, *next_var])
-        return while_op.as_operation().results()
+            cf_yield([next_cond, *flatten(next_vars)])
+        return pack_sequence_as(loop_vars, while_op.optimize_update())
 
     if in_dygraph_mode():
         now_cond = pre_cond.item()
