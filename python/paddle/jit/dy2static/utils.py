@@ -43,7 +43,6 @@ from .utils_helper import (  # noqa: F401
     DYGRAPH_MODULE_PREFIX,
     DYGRAPH_TO_STATIC_MODULE_PREFIX,
     PADDLE_MODULE_PREFIX,
-    NodeVarType,
     _is_api_in_module_helper,
     index_in_list,
     is_api_in_module,

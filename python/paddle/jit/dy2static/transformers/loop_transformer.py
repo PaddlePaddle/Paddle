@@ -18,7 +18,7 @@ from collections import defaultdict
 from paddle.base import unique_name
 from paddle.utils import gast
 
-from ..static_analysis import NodeVarType, StaticAnalysisVisitor
+from ..static_analysis import StaticAnalysisVisitor
 from ..utils import (
     FOR_BODY_PREFIX,
     FOR_CONDITION_PREFIX,
@@ -346,10 +346,10 @@ class NameVisitor(gast.NodeVisitor):
 
     def _node_var_type_is_basic(self, node_var_type):
         basic_types = {
-            NodeVarType.BOOLEAN,
-            NodeVarType.INT,
-            NodeVarType.FLOAT,
-            NodeVarType.STRING,
+            "BOOLEAN",
+            "INT",
+            "FLOAT",
+            "STRING",
         }
         for t in node_var_type:
             if t in basic_types:
