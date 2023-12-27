@@ -344,18 +344,6 @@ class NameVisitor(gast.NodeVisitor):
         elif isinstance(node, gast.Attribute):
             return get_attribute_full_name(node)
 
-    def _node_var_type_is_basic(self, node_var_type):
-        basic_types = {
-            "BOOLEAN",
-            "INT",
-            "FLOAT",
-            "STRING",
-        }
-        for t in node_var_type:
-            if t in basic_types:
-                return True
-        return False
-
     def _is_call_func_name_node(self, node):
         parent_node = self._get_parent_node(node)
         if isinstance(parent_node, gast.Call) and parent_node.func == node:
