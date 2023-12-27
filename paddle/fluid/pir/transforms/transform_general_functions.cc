@@ -58,7 +58,7 @@ void GetUsedExternalValueImpl(
 
 namespace pir {
 
-std::string GetParameterNameFromValue(const pir::Value& value) {
+std::string GetParameterNameFromValue(pir::Value value) {
   pir::Operation* owner = value.dyn_cast<OpResult>().owner();
   std::string name;
   if (owner->isa<ParameterOp>()) {
@@ -75,7 +75,7 @@ std::string GetParameterNameFromValue(const pir::Value& value) {
   return name;
 }
 
-const phi::DDim& GetShapeFromValue(const pir::Value& value) {
+const phi::DDim& GetShapeFromValue(pir::Value value) {
   // TODO(dev): Support other types like DenseTensor.
   PADDLE_ENFORCE_EQ(
       value.type().isa<paddle::dialect::DenseTensorType>(),
@@ -84,7 +84,7 @@ const phi::DDim& GetShapeFromValue(const pir::Value& value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-pir::Type GetDataTypeFromValue(const pir::Value& value) {
+pir::Type GetDataTypeFromValue(pir::Value value) {
   // TODO(dev): Support other types like DenseTensor.
   PADDLE_ENFORCE_EQ(
       value.type().isa<paddle::dialect::DenseTensorType>(),

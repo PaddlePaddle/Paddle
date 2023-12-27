@@ -29,30 +29,30 @@ namespace pir {
  *
  * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
- * @param const pir::Value&
+ * @param pir::Value
  *
  * @return std::string
  */
 
-std::string GetParameterNameFromValue(const pir::Value& value);
+std::string GetParameterNameFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's shape from a value.
  *
- * @param const pir::Value&
+ * @param pir::Value
  *
  * @return const phi::DDim&
  */
-const common::DDim& GetShapeFromValue(const pir::Value& value);
+const common::DDim& GetShapeFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's data type from a value.
  *
- * @param const pir::Value&
+ * @param pir::Value
  *
  * @return pir::Type
  */
-pir::Type GetDataTypeFromValue(const pir::Value& value);
+pir::Type GetDataTypeFromValue(pir::Value value);
 
 /**
  * @brief Get an operation that defines the specific input of the operation.

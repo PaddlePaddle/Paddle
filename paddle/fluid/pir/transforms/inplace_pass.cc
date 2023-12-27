@@ -260,12 +260,13 @@ void GetEagerDelValueOfOp(
       }
     }
 
-    if (op.isa<paddle::dialect::IfOp>()) {
-      auto if_op = op.dyn_cast<paddle::dialect::IfOp>();
-      GetEagerDelValueOfOp(if_op.true_block(), skip_dels, del_value_2_op);
-      VLOG(8) << "GetEagerDelValueOfOp for IfOp true block";
-      GetEagerDelValueOfOp(if_op.false_block(), skip_dels, del_value_2_op);
-      VLOG(8) << "GetEagerDelValueOfOp for IfOp false block";
+    if (op.num_regions() > 0) {
+      for (size_t i = 0; i < op.num_regions(); ++i) {
+        for (const auto& inner_block : op.region(i)) {
+          GetEagerDelValueOfOp(inner_block, skip_dels, del_value_2_op);
+        }
+      }
+      VLOG(8) << "GetEagerDelValueOfOp for sub block";
     }
   }
 }
