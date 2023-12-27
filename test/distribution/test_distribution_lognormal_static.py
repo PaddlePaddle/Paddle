@@ -24,7 +24,6 @@ import paddle
 from paddle.distribution.kl import kl_divergence
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
-from paddle.pir_utils import test_with_pir_api
 
 
 @place(config.DEVICES)
@@ -34,9 +33,10 @@ from paddle.pir_utils import test_with_pir_api
         ('one-dim', xrand((2,)), xrand((2,)), xrand((2,))),
         ('multi-dim', xrand((3, 3)), xrand((3, 3)), xrand((3, 3))),
     ],
+    test_pir=True,
 )
 class TestLogNormal(unittest.TestCase):
-    def setUp(self):
+    def run_program(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -68,7 +68,13 @@ class TestLogNormal(unittest.TestCase):
             self.log_prob,
         ] = executor.run(main_program, feed=self.feeds, fetch_list=fetch_list)
 
-    @test_with_pir_api
+    def setUp(self):
+        if self.test_pir:
+            with paddle.pir_utils.IrGuard():
+                self.run_program()
+        else:
+            self.run_program()
+
     def test_mean(self):
         np_mean = self.np_lognormal.mean
         self.assertEqual(str(self.mean.dtype).split('.')[-1], self.scale.dtype)
@@ -79,7 +85,6 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
-    @test_with_pir_api
     def test_var(self):
         np_var = self.np_lognormal.variance
         self.assertEqual(str(self.var.dtype).split('.')[-1], self.scale.dtype)
@@ -90,7 +95,6 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
-    @test_with_pir_api
     def test_entropy(self):
         np_entropy = self.np_lognormal.entropy()
         self.assertEqual(
@@ -103,7 +107,6 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
-    @test_with_pir_api
     def test_probs(self):
         np_probs = self.np_lognormal.probs(self.value)
         np.testing.assert_allclose(
@@ -113,7 +116,6 @@ class TestLogNormal(unittest.TestCase):
             atol=config.ATOL.get(str(self.scale.dtype)),
         )
 
-    @test_with_pir_api
     def test_log_prob(self):
         np_log_prob = self.np_lognormal.log_prob(self.value)
         np.testing.assert_allclose(
@@ -128,9 +130,10 @@ class TestLogNormal(unittest.TestCase):
 @parameterize_cls(
     (TEST_CASE_NAME, 'loc', 'scale'),
     [('sample', xrand((4,)), xrand((4,), min=0, max=1))],
+    test_pir=True,
 )
 class TestLogNormalSample(unittest.TestCase):
-    def setUp(self):
+    def run_program(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -156,7 +159,13 @@ class TestLogNormalSample(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
-    @test_with_pir_api
+    def setUp(self):
+        if self.test_pir:
+            with paddle.pir_utils.IrGuard():
+                self.run_program()
+        else:
+            self.run_program()
+
     def test_sample(self):
         samples_mean = self.samples.mean(axis=0)
         samples_var = self.samples.var(axis=0)
@@ -203,9 +212,10 @@ class TestLogNormalSample(unittest.TestCase):
             xrand((2, 2)),
         ),
     ],
+    test_pir=True,
 )
 class TestLogNormalKL(unittest.TestCase):
-    def setUp(self):
+    def run_program(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -243,7 +253,13 @@ class TestLogNormalKL(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
-    @test_with_pir_api
+    def setUp(self):
+        if self.test_pir:
+            with paddle.pir_utils.IrGuard():
+                self.run_program()
+        else:
+            self.run_program()
+
     def test_kl_divergence(self):
         np.testing.assert_allclose(
             self.kl0,
