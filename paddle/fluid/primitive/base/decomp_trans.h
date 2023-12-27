@@ -37,7 +37,7 @@ class DecompProgram {
         blacklist_(blacklist),
         whitelist_(whitelist) {}
 
-  std::vector<pir::OpResult> decomp_program();
+  void decomp_program();
   bool check_decomp_dynamic_shape(pir::Operation* op);
   void check_decomp_outputs(const std::string& op_name,
                             const std::vector<pir::OpResult>& orig_outs,
@@ -61,10 +61,12 @@ class DecompProgram {
   void set_whitelist(const std::set<std::string>& whitelist) {
     whitelist_ = whitelist;
   }
+  std::vector<pir::OpResult> get_dst_vars();
 
  private:
   pir::Program* program_;
   std::vector<pir::OpResult> src_vars_;
+  std::vector<pir::OpResult> dst_vars_;
   std::set<std::string> blacklist_;
   std::set<std::string> whitelist_;
 };
