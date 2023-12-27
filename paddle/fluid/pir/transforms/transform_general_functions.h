@@ -77,7 +77,8 @@ std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
     const Operation* op, uint32_t index);
 
 /**
-* @brief 获取指定op
+* @brief Get the value of the input and output of the specified op in the
+external block.
 *
 * @param const Operation& const reference to an operation
 
@@ -86,13 +87,12 @@ std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
 std::vector<Value> GetUsedExternalValue(const Operation& op);
 
 /**
- * @brief Get operations and the index of designative op operand (op result)
- that use the specific output of the operation.
+ * @brief Get the external value of the input and output of all op which in the
+ specified block.
  *
- * @param Operation* pointer to an operation
- * @param uint32_t index of result of the operation
+ * @param const Block& const reference to an block
 
- * @return std::vector<std::pair<Operation*, int32_t>>
+ * @return std::vector<Value>
  */
 std::vector<Value> GetUsedExternalValue(const Block& block);
 
