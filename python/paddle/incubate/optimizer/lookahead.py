@@ -207,7 +207,9 @@ class LookAhead(Optimizer):
                         value=0.0, force_cpu=False
                     ),
                 )
-            self._global_step_var = paddle.increment(self._global_step_var, 1.0)
+            self._global_step_var = paddle.increment_(
+                self._global_step_var, 1.0
+            )
         else:
             if self._global_step_var is None:
                 self._global_step_var = paddle.static.create_global_var(
