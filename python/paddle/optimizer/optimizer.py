@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -31,17 +32,24 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
     name_scope,
-    use_pir_api,
 )
 from paddle.regularizer import L2Decay
 
 from ..base import framework, unique_name
-from ..base.backward import _get_no_grad_set_name, append_backward
+from ..base.backward import (
+    _get_no_grad_set_name,
+    _get_no_grad_set_value,
+    append_backward,
+)
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 __all__ = []
+
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
 
 
 @framework.static_only
@@ -790,19 +798,12 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    if not use_pir_api():
-                        with paddle.static.default_main_program()._lr_schedule_guard(
-                            is_with_opt=True
-                        ), framework.name_scope(
-                            'scale_with_param_lr'
-                        ):
-                            return self._global_learning_rate() * param_lr
-                    else:
-                        # TODO(dev): Currently there has not equivalent of op_role in PIR
-                        # mode, so we simply remove _lr_schedule_guard here, this should
-                        # be fixed in the future.
-                        with framework.name_scope('scale_with_param_lr'):
-                            return self._global_learning_rate() * param_lr
+                    with paddle.static.default_main_program()._lr_schedule_guard(
+                        is_with_opt=True
+                    ), framework.name_scope(
+                        'scale_with_param_lr'
+                    ):
+                        return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
 
@@ -1196,7 +1197,13 @@ class Optimizer:
                         self._set_auxiliary_var('found_inf', False)
                     if isinstance(parameters_and_grads, list):
                         for param_and_grad in parameters_and_grads:
-                            if param_and_grad[1] is None:
+                            # Parameters can be uninitialized in pipeline parallel of semi-auto parallel.
+                            # Since gradient clip and parameters update mixed up in one interface, so we
+                            # need to filter again here.
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[1]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 self._append_optimize_op(
@@ -1204,7 +1211,10 @@ class Optimizer:
                                 )
                     else:
                         for param_and_grad in parameters_and_grads['params']:
-                            if param_and_grad[1] is None:
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[1]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 param_grad_dict = {}
@@ -1482,6 +1492,10 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
+
+        if framework.in_dygraph_mode() and g_shard_bypass_dygraph_optimizer:
+            return
+
         if in_dynamic_or_pir_mode():
             with paddle.static.program_guard(
                 paddle.static.default_main_program(),
@@ -1634,15 +1648,26 @@ class Optimizer:
         return params_and_grads
 
     def _get_no_grad_set(self, loss, no_grad_set=None):
-        no_grad_set = _get_no_grad_set_name(no_grad_set)
-        parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = {
-            param.name for param in parameters if param.stop_gradient is True
-        }
-        # If the parameter is no trainable, it should not have a gradient.
-        no_grad_set.update(param_no_trainable)
-
-        return no_grad_set
+        if in_pir_mode():
+            no_grad_set = _get_no_grad_set_value(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = [
+                param for param in parameters if param.stop_gradient is True
+            ]
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
+        else:
+            no_grad_set = _get_no_grad_set_name(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = {
+                param.name
+                for param in parameters
+                if param.stop_gradient is True
+            }
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
 
     @framework.non_static_only
     def clear_grad(self, set_to_zero=True):

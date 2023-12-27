@@ -127,6 +127,7 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64};
   std::vector<CutlassTileConfig> quant_B_configs;
   switch (sm) {
+    case 86:
     case 80:
       quant_B_configs = quant_B_configs_sm80;
       break;
@@ -154,7 +155,7 @@ static std::vector<CutlassGemmConfig> get_candidate_configs(
       is_weight_only, is_weight_only_encoder, simt_configs_only, sm);
 
   std::vector<CutlassGemmConfig> candidate_configs;
-  const int min_stages = 5;
+  const int min_stages = 2;
   const int max_stages = sm >= 80 ? 5 : 2;
 
   for (const auto& tile_config : tiles) {

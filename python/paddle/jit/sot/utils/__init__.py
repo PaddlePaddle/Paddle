@@ -19,9 +19,11 @@ from .envs import (  # noqa: F401
     ENV_SHOW_TRACKERS,
     ENV_SOT_LOG_LEVEL,
     ENV_STRICT_MODE,
+    ENV_SOT_WITH_CONTROL_FLOW,
     cost_model_guard,
     min_graph_size_guard,
     strict_mode_guard,
+    with_control_flow_guard,
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,
@@ -33,6 +35,7 @@ from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
 from .paddle_api_config import (  # noqa: F401
     is_break_graph_tensor_methods,
     is_inplace_api,
+    is_not_supported_paddle_layer,
     paddle_tensor_methods,
 )
 from .utils import (  # noqa: F401
@@ -49,6 +52,7 @@ from .utils import (  # noqa: F401
     current_tmp_name_records,
     execute_time,
     flatten_extend,
+    flatten,
     get_unbound_method,
     hashable,
     in_paddle_module,
@@ -68,3 +72,4 @@ from .utils import (  # noqa: F401
     no_eval_frame,
     tmp_name_guard,
 )
+from .call_ast_utils import get_static_function, try_ast_func

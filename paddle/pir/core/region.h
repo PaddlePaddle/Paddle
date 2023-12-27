@@ -20,6 +20,7 @@
 
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/iterator.h"
+#include "paddle/pir/core/visitors.h"
 
 namespace pir {
 
@@ -64,6 +65,11 @@ class IR_API Region {
   Iterator insert(ConstIterator position, Block *block);
   Iterator erase(ConstIterator position);
   void clear();
+
+  /// Operation Walkers, walk the operations in this region. The callback method
+  /// is called for each nested region, block or operation,
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(FuncT &&callback);
 
   // take the last block of region.
   // if region is empty, return nullptr;

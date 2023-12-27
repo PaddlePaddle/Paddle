@@ -26,7 +26,12 @@ from paddle.base.framework import (
     in_pir_mode,
     static_only,
 )
-from paddle.base.libpaddle.pir import build_if_op, build_while_op, cf_yield
+from paddle.base.libpaddle.pir import (
+    build_assert_op,
+    build_if_op,
+    build_while_op,
+    cf_yield,
+)
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -103,6 +108,11 @@ def Assert(cond, data=None, summarize=20, name=None):
     )
     check_type(summarize, "summarize", int, "static.nn.control_flow.Assert")
     check_type(name, "name", (str, type(None)), "static.nn.control_flow.Assert")
+
+    if in_pir_mode():
+        input_data = [] if data is None else list(data)
+        assert_op = build_assert_op(cond, input_data, summarize)
+        return
 
     layer_name = name if name else ('assert_' + cond.name)
     helper = LayerHelper(layer_name, **locals())
@@ -665,15 +675,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     pre_cond = cond(*loop_vars)
 
-    if in_pir_mode():
-        while_op = build_while_op(pre_cond, flatten(loop_vars))
-        with while_op.body() as cur_block:
-            args = cur_block.args()
-            next_var = body(*args)
-            next_cond = cond(*next_var)
-            cf_yield([next_cond, *next_var])
-        return while_op.as_operation().results()
-
     check_variable_and_dtype(
         pre_cond, 'var of cond returned', ['bool'], 'static.nn.while_loop'
     )
@@ -682,6 +683,25 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [1],"
             f"but given shape as {list(pre_cond.shape)}."
         )
+
+    if in_pir_mode():
+        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        with while_op.body() as cur_block:
+            args = cur_block.args()
+            next_var = body(*args)
+            try:
+                assert_same_structure(
+                    flatten(next_var), flatten(loop_vars), check_types=False
+                )
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    f"(length and structure) as loop_vars: {e}"
+                )
+            next_cond = cond(*next_var)
+            next_cond.stop_gradient = True
+            cf_yield([next_cond, *next_var])
+        return while_op.as_operation().results()
 
     if in_dygraph_mode():
         now_cond = pre_cond.item()
@@ -1223,6 +1243,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     true_output = None
     false_output = None
     if in_pir_mode():
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
         if_op = build_if_op(pred)
         if true_fn is not None:
             if not callable(true_fn):
@@ -1598,7 +1620,9 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.jit.dy2static.return_transformer import RETURN_VALUE_PREFIX
+    from paddle.jit.dy2static.transformers.return_transformer import (
+        RETURN_VALUE_PREFIX,
+    )
     from paddle.jit.dy2static.utils import UndefinedVar
 
     def pack_undefined_var_as(seq):

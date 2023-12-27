@@ -144,7 +144,7 @@ void TopkKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, 0.0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
   // axis < 0, cacluate the real axis
@@ -246,7 +246,14 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {
+PD_REGISTER_KERNEL(topk,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TopkKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

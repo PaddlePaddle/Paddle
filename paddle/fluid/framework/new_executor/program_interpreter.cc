@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+#include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
@@ -42,7 +43,8 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 
 PD_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
-
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 
@@ -85,14 +87,14 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
     SchedulingPriority rhs_scheduling_priority =
         vec_instruction_[rhs].GetSchedulingPriority();
     if (lhs_scheduling_priority == rhs_scheduling_priority) {
-      return lhs < rhs;
+      return lhs > rhs;
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
 
   PrepareForCUDAGraphCapture();
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
 #endif
 }
@@ -659,7 +661,7 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
   double start_time = 0, end_time = 0;
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   start_time = calculate_stream_timer_->StartTime();
   end_time = calculate_stream_timer_->EndTime();
 #endif
@@ -916,6 +918,9 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     if (op->Type() == "while") {
       op->SetInputHooks(input_hookfuncs_);
       op->SetOutputHooks(output_hookfuncs_);
+      auto runtime_attrs = op->RuntimeAttrs();
+      runtime_attrs.insert(std::make_pair("used_for_inference", true));
+      op->SetRuntimeAttributeMap(runtime_attrs);
     }
   }
 
@@ -1053,6 +1058,45 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     }
   }
 
+  // for debug
+  if (FLAGS_save_static_runtime_data) {
+    VLOG(6) << "start to save paddle variable";
+    auto root_path = FLAGS_static_runtime_data_save_path;
+    for (auto& vname : op->InputVars()) {
+      auto* var = local_scope->FindVar(vname);
+      if (var == nullptr) continue;
+      const phi::DenseTensor* tensor{nullptr};
+      if (var->IsType<phi::DenseTensor>()) {
+        tensor = &var->Get<phi::DenseTensor>();
+      } else {
+        VLOG(6) << vname << " is not DenseTensor";
+        continue;
+      }
+      if (!tensor->IsInitialized()) continue;
+      paddle::framework::SaveTensor(
+          *tensor,
+          root_path + "/saved_tensors/" + op->Type() + "-input-" + vname,
+          false);
+    }
+    for (auto& vname : op->OutputVars(true)) {
+      auto* var = local_scope->FindVar(vname);
+      if (var == nullptr) continue;
+      const phi::DenseTensor* tensor{nullptr};
+      if (var->IsType<phi::DenseTensor>()) {
+        tensor = &var->Get<phi::DenseTensor>();
+      } else {
+        VLOG(6) << vname << "  is not DenseTensor";
+        continue;
+      }
+      if (!tensor->IsInitialized()) continue;
+      paddle::framework::SaveTensor(
+          *tensor,
+          root_path + "/saved_tensors/" + op->Type() + "-output-" + vname,
+          false);
+    }
+    VLOG(6) << "end save paddle variable";
+  }
+
   // for debug nan/inf
   if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
@@ -1105,7 +1149,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
       if (!calculate_stream_timer_->IsStarted() && op->Type() != "feed" &&
           !interpreter::IsCommunicationOp(instr_node)) {
@@ -1124,7 +1168,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     }
 
     instr_node.RecordEvent(place_);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
       if (instr_node.Id() == last_calculate_instr_id_ &&
           calculate_stream_timer_->IsStarted()) {

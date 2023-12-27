@@ -25,9 +25,11 @@ import paddle
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    get_static_function,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
+    is_not_supported_paddle_layer,
     is_paddle_api,
     magic_method_builtin_dispatch,
 )
@@ -176,6 +178,13 @@ class UserDefinedFunctionVariable(FunctionVariable):
             return result
 
         checkpoint = self.graph.save_memo()
+
+        static_function = get_static_function(self.value, "inline_call")
+        if static_function is not None:
+            output = self.graph.call_ast(static_function, *args, **kwargs)
+            if output is not None:
+                return output
+
         try:
             inline_executor = OpcodeInlineExecutor(self, *args, **kwargs)
             with EventGuard(
@@ -554,6 +563,7 @@ class PaddleLayerVariable(LayerVariable):
                 and value._forward_pre_hooks
                 or hasattr(value, "_forward_post_hooks")
                 and value._forward_post_hooks
+                or is_not_supported_paddle_layer(type(value))
             ):
                 return None
             if value.__module__.startswith("paddle.nn."):

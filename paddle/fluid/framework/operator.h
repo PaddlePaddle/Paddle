@@ -103,7 +103,7 @@ constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 /// TODO(luotao): Note that this temporal attribute would be deleted after all
 /// ops contain it.
 constexpr char kAllKernelsMustComputeRuntimeShape[] =
-    "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
+    "ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE";
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
@@ -773,6 +773,8 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
+
+  bool SupportsCPUBF16() const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;

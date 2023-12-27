@@ -65,6 +65,18 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
       "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
 }
 
+std::vector<int64_t> GetValueShape(const pir::Value& value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return phi::vectorize(value.type().dyn_cast<DenseTensorType>().dims());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return phi::vectorize(value.type().dyn_cast<SelectedRowsType>().dims());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
     {"DataType::FLOAT16", phi::DataType::FLOAT16},
     {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
@@ -105,6 +117,8 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
     HasElementsOp::name(),
+    AssertOp::name(),
+    SelectInputOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -143,6 +157,30 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
              .data() == true)) {
       return true;
     }
+  } else if ((op->isa<AffineGridOp>() || op->isa<AffineGridGradOp>()) &&
+             kernel_key.backend() == phi::Backend::GPUDNN) {
+    bool use_cudnn = true;
+    int version = -1;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    version = platform::DnnVersion();
+#endif
+    if (version >= 6000 && op->attributes()
+                                   .at("align_corners")
+                                   .dyn_cast<pir::BoolAttribute>()
+                                   .data() == true) {
+      use_cudnn = true;
+    } else {
+      use_cudnn = false;
+    }
+
+    auto shape = GetValueShape(op->operand_source(0));
+    if (shape[1] == 3) {
+      use_cudnn = false;
+    }
+#if defined(PADDLE_WITH_HIP)
+    use_cudnn = false;
+#endif
+    return !use_cudnn;
   }
   return false;
 }
@@ -651,7 +689,12 @@ phi::KernelKey GetKernelKey(
     auto data_place =
         op->attributes().at("place").dyn_cast<PlaceAttribute>().data();
 
-    auto backend = paddle::experimental::ParseBackend(data_place);
+    phi::Backend backend;
+    if (data_place.GetType() == AllocationType::GPUPINNED) {
+      backend = phi::Backend::CPU;
+    } else {
+      backend = paddle::experimental::ParseBackend(data_place);
+    }
 
     return {backend,
             phi::DataLayout::ANY,
@@ -997,6 +1040,20 @@ pir::Value GetNewInput(
   return new_in;
 }
 
+phi::Place ParsePhiPlace(pir::Type type) {
+  if (type.isa<AllocatedDenseTensorType>()) {
+    return type.dyn_cast<AllocatedDenseTensorType>().place();
+  } else if (type.isa<AllocatedSelectedRowsType>()) {
+    return type.dyn_cast<AllocatedSelectedRowsType>().place();
+  } else if (type.isa<AllocatedDenseTensorArrayType>()) {
+    return type.dyn_cast<AllocatedDenseTensorArrayType>().place();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ParsePhiPlace only support AllocatedDenseTensorType or "
+        "AllocatedSelectedRowsType or AllocatedDenseTensorArrayType"));
+  }
+}
+
 void HandleForSpecialOp(
     const phi::Place& place,
     pir::Operation* op_item,
@@ -1199,6 +1256,15 @@ void HandleForSpecialOp(
     }
   }
 
+  if (op_item->isa<AssertOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+  }
+
   if (op_item->isa<::pir::TuplePopOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
@@ -1219,6 +1285,18 @@ void HandleForSpecialOp(
       auto new_inlet_element = map_value_pair->at(cur_inlet_element);
 
       op_output_types.push_back(new_inlet_element.type());
+    }
+  }
+
+  if (op_item->isa<SelectInputOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(vec_inputs[1].type());
     }
   }
 

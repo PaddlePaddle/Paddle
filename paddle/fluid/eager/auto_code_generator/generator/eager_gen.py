@@ -528,7 +528,7 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
 
 TYPE_PROMOTION_LOGIC_TEMPLATE = """   if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype())) {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
-    LOG(WARNING) << "got different data type, run type protmotion automatically, this may cause data type been changed.";
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type protmotion automatically, this may cause data type been changed.";
     {op_name}
     auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype());
 
@@ -2591,7 +2591,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   """
             else:
                 grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+  std::string grad_op_name = "{composite_grad_api_name}";
+  auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
 {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
 {indent}if(!create_graph){{
 {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);

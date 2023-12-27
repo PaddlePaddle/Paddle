@@ -15,6 +15,7 @@
     data_type : x
   inplace: (x -> out)
   backward : abs_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
@@ -323,6 +324,14 @@
     func: bincount
   optional: weights
 
+- op : binomial
+  args : (Tensor count, Tensor prob)
+  output : Tensor(out)
+  infer_meta :
+    func : BinomialInferMeta
+  kernel :
+    func : binomial
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -597,6 +606,7 @@
   inplace : (input -> softmax)
   infer_meta :
     func : CrossEntropyWithSoftmaxInferMeta
+    spmd_rule: CrossEntropyWithSoftmaxInferSpmd
   kernel :
     func : cross_entropy_with_softmax
     data_type : input
@@ -1218,6 +1228,16 @@
   kernel :
     func : i1e
   backward : i1e_grad
+
+- op : identity_loss
+  args : (Tensor x, int reduction = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : IdentityLossInferMeta
+  kernel :
+    func : identity_loss
+  inplace: (x -> out)
+  backward : identity_loss_grad
 
 - op : imag
   args : (Tensor x)
@@ -2032,7 +2052,7 @@
   backward : psroi_pool_grad
 
 - op : put_along_axis
-  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
+  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2187,6 +2207,19 @@
     func : round
   inplace : (x -> out)
   backward : round_grad
+
+- op : rprop_
+  args : (Tensor param, Tensor grad, Tensor prev, Tensor learning_rate, Tensor master_param, Tensor learning_rate_range, Tensor etas, bool multi_precision=false)
+  output : Tensor(param_out), Tensor(prev_out), Tensor(learning_rate_out), Tensor(master_param_out)
+  infer_meta :
+    func : RpropInferMeta
+  kernel :
+    func : rprop
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (prev -> prev_out), (learning_rate -> learning_rate_out), (master_param -> master_param_out)
 
 - op : rsqrt
   args : (Tensor x)
@@ -2744,16 +2777,6 @@
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
-- op : variable_length_memory_efficient_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal)
-  output : Tensor
-  infer_meta :
-    func : VariableLengthMemoryEfficientAttentionInferMeta
-  kernel :
-    func : variable_length_memory_efficient_attention
-    data_type : query
-  optional : mask
-
 - op : view_dtype
   args : (Tensor input, DataType dtype)
   output : Tensor(out)
@@ -2810,7 +2833,7 @@
   backward : warprnnt_grad
 
 - op : weight_dequantize
-  args : (Tensor x, Tensor scale, str algo="weight_only_int8", DataType out_dtype=DataType::FLOAT16)
+  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", DataType out_dtype = DataType::FLOAT16, int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightDequantizeInferMeta
@@ -2819,7 +2842,7 @@
     data_type : out_dtype
 
 - op : weight_only_linear
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80, int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightOnlyLinearInferMeta
@@ -2830,7 +2853,7 @@
   backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo = "weight_only_int8", int arch = 80)
+  args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta

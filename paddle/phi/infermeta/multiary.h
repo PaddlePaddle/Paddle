@@ -544,17 +544,6 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                                        MetaTensor* logsumexp,
                                        MetaTensor* seed_and_offset);
 
-void VariableLengthMemoryEfficientAttentionInferMeta(
-    const MetaTensor& query,
-    const MetaTensor& key,
-    const MetaTensor& value,
-    const MetaTensor& seq_lens,
-    const MetaTensor& kv_seq_lens,
-    const MetaTensor& mask,
-    float scale,
-    bool causal,
-    MetaTensor* out);
-
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
@@ -638,6 +627,19 @@ void RnnInferMeta(const MetaTensor& x,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
 
+void RpropInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& prev,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& master_param,
+                    const MetaTensor& learning_rate_range,
+                    const MetaTensor& etas,
+                    bool multi_precision,
+                    MetaTensor* param_out,
+                    MetaTensor* prev_out,
+                    MetaTensor* learning_rate_out,
+                    MetaTensor* master_param_out);
+
 void SendUERecvInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          const MetaTensor& src_index,
@@ -718,6 +720,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
                                const int32_t arch,
+                               const int32_t group_size,
                                MetaTensor* out);
 
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,

@@ -33,13 +33,20 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 const std::string& weight_dtype,
                                 const int32_t arch,
+                                const int32_t group_size,
                                 DenseTensor* x_grad) {
 #if defined(PADDLE_WITH_CUTLASS)
   PADDLE_ENFORCE_EQ(
-      arch,
-      80,
+      ((arch == 80) || (arch == 86)),
+      true,
       phi::errors::InvalidArgument(
-          "Currently weightonly linear grad only support arch = 80. "));
+          "Currently weightonly linear grad only support arch = 80 or 86. "));
+
+  PADDLE_ENFORCE_EQ(
+      group_size,
+      -1,
+      phi::errors::InvalidArgument(
+          "Currently weightonly linear grad only support per-channel mode. "));
 
   int n = weight_scale.dims()[0];
   int k = weight.dims()[1];
@@ -49,8 +56,13 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&weight_dequantized);
   std::string algo =
       weight_dtype == "int8" ? "weight_only_int8" : "weight_only_int4";
-  WeightDequantize<T, Context>(
-      dev_ctx, weight, weight_scale, algo, true, &weight_dequantized);
+  WeightDequantize<T, Context>(dev_ctx,
+                               weight,
+                               weight_scale,
+                               algo,
+                               true,
+                               group_size,
+                               &weight_dequantized);
   MatmulKernel<T, Context>(
       dev_ctx, out_grad, weight_dequantized, false, false, x_grad);
 #else

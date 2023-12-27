@@ -479,6 +479,7 @@
   output : Tensor(input_grad)
   infer_meta :
     func : CrossEntropyWithSoftmaxGradInferMeta
+    spmd_rule : CrossEntropyWithSoftmaxGradInferSpmd
   kernel :
     func : cross_entropy_with_softmax_grad
     data_type : loss_grad
@@ -1096,6 +1097,17 @@
     param : [x]
   kernel :
     func : i1e_grad
+
+- backward_op : identity_loss_grad
+  forward : identity_loss (Tensor x, int reduction) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int reduction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : IdentityLossGradInferMeta
+  kernel :
+    func : identity_loss_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
@@ -1762,8 +1774,8 @@
   optional : boxes_num
 
 - backward_op : put_along_axis_grad
-  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign") -> Tensor(out)
-  args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
+  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
+  args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
   output : Tensor(arr_grad), Tensor(values_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -2591,8 +2603,8 @@
   no_need_buffer : input
 
 - backward_op : weight_only_linear_grad
-  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch) -> Tensor(out)
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch)
+  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch, int group_size) -> Tensor(out)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch, int group_size)
   output : Tensor(x_grad)
   infer_meta :
     func : WeightOnlyLinearGradInferMeta

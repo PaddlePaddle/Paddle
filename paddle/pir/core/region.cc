@@ -69,6 +69,14 @@ void Region::clear() {
     blocks_.pop_back();
   }
 }
+
+template <WalkOrder Order, typename FuncT>
+void Region::Walk(FuncT &&callback) {
+  for (auto &block : *this) {
+    block.Walk<Order>(callback);
+  }
+}
+
 Program *Region::parent_program() const {
   return parent_ ? parent_->GetParentProgram() : nullptr;
 }

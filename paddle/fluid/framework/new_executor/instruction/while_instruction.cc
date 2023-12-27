@@ -175,20 +175,14 @@ void WhileInstruction::CopyOutputsToBlockArgs() {
       auto* dst_tensor_array = inner_var->GetMutable<phi::TensorArray>();
       dst_tensor_array->set_type(src_tensor_array.dtype());
       dst_tensor_array->set_layout(src_tensor_array.layout());
-      if (dst_tensor_array->empty()) {
-        for (auto src_tensor : src_tensor_array) {
-          phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
-          tmp_dst_tensor->set_meta(src_tensor.meta());
-          framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-          dst_tensor_array->push_back(*tmp_dst_tensor);
-        }
-      } else {
-        for (size_t id = 0; id < dst_tensor_array->size(); id++) {
-          auto& src_tensor = src_tensor_array[id];
-          phi::DenseTensor* tmp_dst_tensor = &dst_tensor_array->at(id);
-          tmp_dst_tensor->set_meta(src_tensor.meta());
-          framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-        }
+      while (dst_tensor_array->size() < src_tensor_array.size()) {
+        dst_tensor_array->emplace_back();
+      }
+      for (size_t id = 0; id < dst_tensor_array->size(); id++) {
+        auto& src_tensor = src_tensor_array[id];
+        phi::DenseTensor* tmp_dst_tensor = &dst_tensor_array->at(id);
+        tmp_dst_tensor->set_meta(src_tensor.meta());
+        framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
       }
     } else {
       PADDLE_THROW(
@@ -211,6 +205,8 @@ void WhileInstruction::ShareDatasToOutputs() {
     if (out_var->IsType<phi::DenseTensor>()) {
       outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
           out_var->Get<phi::DenseTensor>());
+      VLOG(6) << "share data from " << out_var_name << "[" << out_var << "]"
+              << " -> " << i << " output[" << outputs_[i] << "]";
     } else if (out_var->IsType<phi::TensorArray>()) {
       const auto& inner_array = out_var->Get<phi::TensorArray>();
       auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();

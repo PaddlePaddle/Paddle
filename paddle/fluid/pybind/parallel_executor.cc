@@ -588,6 +588,34 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         >>> build_strategy.fuse_gemm_epilogue = True
           )DOC")
       .def_property(
+          "fuse_dot_product_attention",
+          [](const BuildStrategy &self) {
+            return self.fuse_dot_product_attention_;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_dot_product_attention_ = b;
+          },
+          R"DOC((bool, optional): fuse_dot_product_attention indicate whether
+                to fuse dot product attention,
+                it would make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_dot_product_attention = True
+                     )DOC")
+      .def_property(
           "fuse_adamw",
           [](const BuildStrategy &self) { return self.fuse_adamw_; },
           [](BuildStrategy &self, bool b) {
@@ -687,6 +715,36 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         >>> build_strategy = static.BuildStrategy()
                         >>> build_strategy.sequential_run = True
           )DOC")
+      .def_property(
+          "fuse_resunit",
+          [](const BuildStrategy &self) { return self.fuse_resunit_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finalized, cannot be "
+                                  "configured again."));
+            self.fuse_resunit_ = b;
+#ifndef PADDLE_WITH_CUDNN_FRONTEND
+            if (self.fuse_resunit_) {
+              PADDLE_THROW(platform::errors::PreconditionNotMet(
+                  "Paddle is not built with CUDNN Frontend support."));
+            }
+#endif
+          },
+          R"DOC((bool, optional): fuse_resunit Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_resunit = True
+                     )DOC")
       .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
