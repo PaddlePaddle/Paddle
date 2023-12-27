@@ -106,6 +106,29 @@ class TestIgammaOpApi(unittest.TestCase):
         self.assertRaises(ValueError, paddle.igamma, x, a)
         paddle.enable_static()
 
+    def test_dtype_error(self):
+        paddle.enable_static()
+        # in static graph mode
+        with self.assertRaises(TypeError):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    name="x", shape=self.shape, dtype="int32"
+                )
+                a = paddle.static.data(
+                    name="a", shape=self.shape, dtype="int32"
+                )
+                out = paddle.igamma(x, a)
+
+        paddle.disable_static()
+        # in dynamic mode
+        with self.assertRaises(RuntimeError):
+            with paddle.base.dygraph.guard():
+                x = paddle.to_tensor(self.x_np, dtype="int32")
+                a = paddle.to_tensor(self.a_np, dtype="int32")
+                res = paddle.igamma(x, a)
+
+        paddle.enable_static()
+
 
 class TestIgammaOpFp32Api(TestIgammaOpApi):
     def init_dtype_type(self):
@@ -113,5 +136,4 @@ class TestIgammaOpFp32Api(TestIgammaOpApi):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
