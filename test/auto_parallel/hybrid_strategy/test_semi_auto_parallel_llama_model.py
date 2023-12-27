@@ -68,7 +68,7 @@ class TestSemiAutoParallelLlama2D(test_base.CommunicationTestDistBase):
 
 class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=8, timeout=400, nnode=1)
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
         self._default_envs = {"dp": "2", "mp": "2", "pp": "2", "acc_step": "2"}
         self._changeable_envs = {
             "backend": ["gpu"],
@@ -91,7 +91,7 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
 
 class TestSemiAutoParallelLlamaACC(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=8, timeout=400, nnode=1)
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
         self._default_envs = {
             "dp": "2",
             "mp": "2",
