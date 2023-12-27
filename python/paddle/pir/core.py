@@ -273,10 +273,13 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
+    regularizer = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
+    if 'regularizer' in kwargs:
+        regularizer = kwargs['regularizer']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -302,6 +305,7 @@ def create_parameter(
         param.stop_gradient = not trainable
         param.persistable = True
 
+    param.regularizer = regularizer
     return param
 
 
