@@ -617,6 +617,13 @@ void EagerUtils::FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
         *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
               ->unsafe_mutable_value()) =
             *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+      } else {
+        *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
+              ->unsafe_mutable_value()) =
+            phi::DenseTensor(
+                std::make_shared<phi::Allocation>(
+                    nullptr, 0, phi::distributed::GetDefaultPlace()),
+                phi::DenseTensorMeta());
       }
     } else {
       auto tensor_with_zero =
