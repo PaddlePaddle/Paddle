@@ -1319,6 +1319,13 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # phi infermeta headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/infermeta/spmd_rules',
+                recursive=True,
+            )
+        )
         + list(  # phi kernel headers
             find_files(
                 '*.h',
