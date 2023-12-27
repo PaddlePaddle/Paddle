@@ -14,15 +14,13 @@
 
 #pragma once
 
-#include <memory>
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/program.h"
+namespace cinn::common {
 
-namespace paddle {
+struct DimExprConverter final {
+  ir::Expr ConvertToIrExpr(const symbol::DimExpr&) const;
+};
 
-TEST_API std::unique_ptr<::pir::Program> TranslateLegacyProgramToProgram(
-    const ::paddle::framework::ProgramDesc& legacy_program);
-
-}  // namespace paddle
+}  // namespace cinn::common
