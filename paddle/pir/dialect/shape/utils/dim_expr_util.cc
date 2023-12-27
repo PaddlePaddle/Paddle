@@ -304,7 +304,7 @@ class SubstituteDimExprHelper final {
       if (!substituted_operand.has_value()) {
         return std::nullopt;
       }
-      substituted_operands->push_back(substituted_operand.has_value());
+      substituted_operands->push_back(substituted_operand.value());
     }
     return T{substituted_operands};
   }

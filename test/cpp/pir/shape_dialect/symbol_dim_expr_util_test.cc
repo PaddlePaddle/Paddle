@@ -71,7 +71,7 @@ TEST(DimExprUtil, Substitute) {
         }
       });
   ASSERT_TRUE(ret_expr.has_value());
-  ASSERT_TRUE((ret_expr.value() == dim_expr));
+  ASSERT_EQ(ret_expr.value(), dim_expr);
 }
 
 TEST(DimExprUtil, MakeGetterDimExpr4SymbolName) {
