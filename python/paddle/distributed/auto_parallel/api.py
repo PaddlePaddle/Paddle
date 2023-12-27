@@ -44,7 +44,7 @@ from paddle.distributed.auto_parallel.static.utils import (
 )
 from paddle.framework import core
 
-from .placement_type import check_placements_equal, get_shard_spec, to_dim_map
+from .placement_type import check_placements_equal, get_shard_spec
 from .random import determinate_rng, rng_state
 
 # There are the auto parallel API of the unified version of dynamic and static mode.
@@ -190,11 +190,10 @@ def shard_tensor(
                 # lazy init hook with randomness controlling
                 def _init_func(var, block):
                     # get the unique rng name
-                    dims_mapping = to_dim_map(
-                        param.placements, len(param.shape)
-                    )
                     rng_name = determinate_rng(
-                        dist.get_rank(), dims_mapping, param.process_mesh
+                        dist.get_rank(),
+                        process_mesh=param.process_mesh,
+                        placements=param.placements,
                     )
                     # real call the init function
                     with rng_state(rng_name):

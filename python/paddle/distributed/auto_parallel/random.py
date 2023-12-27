@@ -73,7 +73,16 @@ def parallel_manual_seed(seed, name=""):
     _basic_name = name
 
 
-def determinate_rng(rank, dims_mapping, process_mesh):
+def determinate_rng(
+    rank, dims_mapping=None, process_mesh=None, placements=None
+):
+    assert process_mesh is not None, "Must provide process mesh"
+    assert (
+        dims_mapping is not None or placements is not None
+    ), "Must provide one of dims mapping or placements."
+    assert not (
+        dims_mapping is not None and placements is not None
+    ), "Cannot provide dims mapping and placements at same time."
     # TODO(JZ-LIANG) Support Mesh with any high rank
     # use a string to unique integer hashing algorithm for seed computation.
     # instead of using offsets to coodinate seed across devices.
@@ -100,7 +109,9 @@ def determinate_rng(rank, dims_mapping, process_mesh):
     seed_ += _mesh_offset * (unique_id + 1)
 
     for i in range(len(process_mesh.shape)):
-        if i not in dims_mapping:
+        if (dims_mapping is not None and i not in dims_mapping) or (
+            placements is not None and not placements[i].is_shard()
+        ):
             relative_idx = -1
         else:
             relative_idx = _get_idx_in_axis(
