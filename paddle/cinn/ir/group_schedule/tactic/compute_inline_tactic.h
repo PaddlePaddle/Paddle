@@ -24,9 +24,7 @@ namespace ir {
 
 class ComputeInlineTactic final : public ScheduleTactic {
  public:
-  explicit ComputeInlineTactic(
-      const std::unordered_set<std::string>& output_names,
-      const cinn::common::Target& target);
+  void Init(ScheduleContext* context) override;
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
 
