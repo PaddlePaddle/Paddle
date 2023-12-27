@@ -562,6 +562,9 @@ phi::DataType GetValueDtype(Value value) {
   } else if (value.type().isa<SelectedRowsType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else if (value.type().isa<DenseTensorArrayType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
@@ -614,7 +617,9 @@ pir::OpResult apply(Value self, py::object func) {
 }
 
 void BindValue(py::module *m) {
-  py::class_<Value> value(*m, "Value", R"DOC(
+  py::class_<Value> value(*m,
+                          "Value",
+                          R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
     and a base class.
 
@@ -622,7 +627,8 @@ void BindValue(py::module *m) {
         The constructor of Value should not be invoked directly. Value can be automatically constructed
         when build network.
 
-  )DOC");
+  )DOC",
+                          pybind11::dynamic_attr());
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value.def(py::init<>())
       .def_property_readonly(
