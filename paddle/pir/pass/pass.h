@@ -197,9 +197,9 @@ class PatternRewritePass : public Pass {
  protected:
   virtual RewritePatternSet InitializePatterns(IrContext* context) = 0;
 
-  bool Initialize(IrContext* context) final;
+  TEST_API bool Initialize(IrContext* context) final;
 
-  void Run(Operation* op) override;
+  TEST_API void Run(Operation* op) override;
 
  private:
   FrozenRewritePatternSet patterns_;
