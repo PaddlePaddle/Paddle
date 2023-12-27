@@ -39,7 +39,7 @@ using float8_e5m2 = ::phi::dtype::float8_e5m2;
 using pstring = ::phi::dtype::pstring;
 
 // The enum value are consistent with jit/property.proto
-enum class DataType {
+enum class TEST_API DataType {
   UNDEFINED = 0,
 
   BOOL,
