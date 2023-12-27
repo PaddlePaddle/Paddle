@@ -504,6 +504,8 @@ WITH_GPU=$3
 
 ls $PADDLE_ROOT/build/paddle/common/common.*
 rm -f $PADDLE_ROOT/build/paddle/common/common.*
+ls $PADDLE_ROOT/build/paddle_inference_install_dir/paddle/lib/common.*
+rm -f $PADDLE_ROOT/build/paddle_inference_install_dir/paddle/lib/common.*
 
 
 # Step1: Print disable_ut_quickly
