@@ -857,10 +857,7 @@ if(WITH_HETERPS)
 endif()
 
 if(WIN32)
-  cc_test(
-    cc_imp_py_test
-    SRCS cc_imp_py_test.cc
-    DEPS python)
+  paddle_test(cc_imp_py_test SRCS cc_imp_py_test.cc)
 endif()
 
 set_tests_properties(
