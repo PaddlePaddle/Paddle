@@ -98,7 +98,6 @@ def dyfunc_with_if_else3(x):
         x, y))
     """
     y = x + 1
-
     # NOTE: x_v[0] < 5 is True
     if paddle.mean(x).numpy() < 5:
         x = x + 1
@@ -310,15 +309,15 @@ class NetWithControlFlowIf(paddle.nn.Layer):
                         [hidden_dim], dtype='float32', value=9
                     )
                     y = paddle.abs(y)
-        #         else:
-        #             tmp = paddle.tensor.fill_constant(
-        #                 y.shape, dtype='float32', value=-1
-        #             )
-        #             y = y - tmp
-        # else:
-        #     y = fc_out - self.constant_vars['bias']
+                else:
+                    tmp = paddle.tensor.fill_constant(
+                        y.shape, dtype='float32', value=-1
+                    )
+                    y = y - tmp
+        else:
+            y = fc_out - self.constant_vars['bias']
 
-        loss = paddle.mean(fc_out)
+        loss = paddle.mean(y)
         return loss
 
 
@@ -426,7 +425,7 @@ def if_tensor_case(x):
     if paddle.mean(x) + 1 and mean > 1 and x is not None or 2 > 1:
         x -= 1
 
-    # # `not` statement
+    # `not` statement
     if not (x[0][0] and (mean * x)[0][0]):
         x += 1
 
