@@ -40,11 +40,12 @@
 namespace paddle {
 namespace framework {
 
-WhileInstruction::WhileInstruction(size_t id,
-                                   const platform::Place& place,
-                                   pir::Operation* op,
-                                   ValueExecutionInfo* parent_exe_info,
-                                   const ExecutionConfig& execution_config)
+WhileInstruction::WhileInstruction(
+    size_t id,
+    const platform::Place& place,
+    pir::Operation* op,
+    ValueExecutionInfo* parent_exe_info,
+    interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place) {
   op_ = op;
   VLOG(6) << "finish process dist attributes";
@@ -108,6 +109,9 @@ WhileInstruction::WhileInstruction(size_t id,
     body_scope->Var(var_name);
     body_exe_info->Add(body_block_->arg(i), var_name);
   }
+  auto skip_gc_vars = execution_config.skip_gc_vars;
+  execution_config.skip_gc_vars.clear();
+  execution_config.create_local_scope = true;
   body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
       place, {}, body_block_, body_scope, body_exe_info, execution_config));
 
@@ -122,7 +126,7 @@ WhileInstruction::WhileInstruction(size_t id,
     body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
   }
-  for (const auto& var_name : execution_config.skip_gc_vars) {
+  for (const auto& var_name : skip_gc_vars) {
     body_skip_gc_names_.push_back(var_name);
     body_skip_gc_names_set.insert(var_name);
   }
