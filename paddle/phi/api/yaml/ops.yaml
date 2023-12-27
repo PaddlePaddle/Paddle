@@ -332,6 +332,17 @@
   kernel :
     func : binomial
 
+- op : bitwise_and
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : bitwise_and
+    backend : x
+  inplace: (x -> out)
+
 - op : bitwise_left_shift_arithmetic
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -349,37 +360,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : bitwise_left_shift_logic
-    backend : x
-  inplace: (x -> out)
-
-- op : bitwise_right_shift_arithmetic
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : bitwise_right_shift_arithmetic
-    backend : x
-  inplace: (x -> out)
-
-- op : bitwise_right_shift_logic
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : bitwise_right_shift_logic
-    backend : x
-  inplace: (x -> out)
-
-- op : bitwise_and
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-    spmd_rule : ElementwiseBinaryInferSpmd
-  kernel :
-    func : bitwise_and
     backend : x
   inplace: (x -> out)
 
@@ -401,6 +381,26 @@
     func : ElementwiseInferMeta
   kernel :
     func : bitwise_or
+    backend : x
+  inplace: (x -> out)
+
+- op : bitwise_right_shift_arithmetic
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_right_shift_arithmetic
+    backend : x
+  inplace: (x -> out)
+
+- op : bitwise_right_shift_logic
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_right_shift_logic
     backend : x
   inplace: (x -> out)
 

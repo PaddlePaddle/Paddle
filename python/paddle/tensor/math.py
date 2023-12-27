@@ -7052,6 +7052,7 @@ def ldexp_(x, y, name=None):
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply_(x, paddle.pow(two, y))
 
+
 def _bitwise_op(op_name, x, y, out=None, name=None):
     check_variable_and_dtype(
         x,

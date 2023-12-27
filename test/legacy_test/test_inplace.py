@@ -1734,6 +1734,7 @@ class TestDygraphInplaceBitwiseRightShift_logic(TestDygraphInplaceLogicAnd):
         with self.assertRaises(ValueError):
             self.inplace_api_processing(broadcast_input)
 
+
 class TestDygraphInplaceIndexFill(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.random((20, 40))
