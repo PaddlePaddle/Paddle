@@ -2392,6 +2392,12 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 #endif
 
 void AnalysisPredictor::HookCollectShapeRangeInfo() {
+  if (config_.new_executor_enabled()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "When collecting shapes, it is recommended to run multiple loops to "
+           "obtain more accurate shape information.";
+  }
+
   auto hook = [&](const std::string &op_type,
                   const std::string &input_name,
                   const paddle::Tensor &input_tensor) -> void {
