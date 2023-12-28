@@ -57,9 +57,9 @@ def get_warning_index(api):
     return ERROR_WARNING_POSTION
 
 
-class TestDeprecatedDocorator(unittest.TestCase):
+class TestDeprecatedDecorator(unittest.TestCase):
     """
-    tests for paddle's Deprecated Docorator.
+    tests for paddle's deprecated decorator.
     test_new_multiply: test for new api, which should not insert warning information.
     """
 
