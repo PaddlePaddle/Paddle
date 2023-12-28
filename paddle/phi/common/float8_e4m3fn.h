@@ -19,7 +19,6 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
 
 #ifdef PADDLE_WITH_CUDA

@@ -27,7 +27,7 @@ void CastKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   if (out->IsSharedWith(x)) {
     PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
-                              CastKernelImpl<T, data_t>(
+                              CastInplaceKernelImpl<T, data_t>(
                                   dev_ctx, x, out_dtype, out);
                             }));
   } else {
