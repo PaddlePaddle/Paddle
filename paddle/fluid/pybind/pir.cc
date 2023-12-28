@@ -93,6 +93,7 @@ using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::IfOp;
+using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
 
@@ -527,6 +528,15 @@ void BindOperation(py::module *m) {
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
+      .def("as_pylayer_op",
+           [](Operation &self) -> PyLayerOp {
+             auto pylayer_op = self.dyn_cast<PyLayerOp>();
+             if (!pylayer_op) {
+               PADDLE_THROW(phi::errors::InvalidArgument(
+                   "Can't cast non-pylayer_op type Operation to PyLayerOp."));
+             }
+             return pylayer_op;
+           })
       .def("as_while_op", [](Operation &self) -> WhileOp {
         auto while_op = self.dyn_cast<WhileOp>();
         if (!while_op) {
