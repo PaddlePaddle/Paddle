@@ -58,7 +58,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             size=[1000000000, 100000],
             param_attr=paddle.base.ParamAttr(
                 name="embedding",
-                initializer=paddle.paddle.nn.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
         )

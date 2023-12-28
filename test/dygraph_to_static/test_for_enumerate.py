@@ -19,9 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
+    compare_legacy_with_pt,
     enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
@@ -497,7 +495,7 @@ class TestForIterVarList(TestForInRangeConfig):
     def set_test_func(self):
         self.dygraph_func = for_iter_var_list
 
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @compare_legacy_with_pt
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -507,7 +505,7 @@ class TestForEnumerateVarList(TestForInRangeConfig):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_list
 
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @compare_legacy_with_pt
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()

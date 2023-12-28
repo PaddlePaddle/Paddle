@@ -18,12 +18,14 @@ import unittest
 
 import cv2
 import numpy as np
+from op_test import paddle_static_guard
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.vision.ops import decode_jpeg, read_file
 
 
-class TestReadFile(unittest.TestCase):
+class TestReadFileWithDynamic(unittest.TestCase):
     def setUp(self):
         fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -33,38 +35,50 @@ class TestReadFile(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def read_file_decode_jpeg(self):
+    def test_read_file_decode_jpeg_dynamic(self):
         if not paddle.is_compiled_with_cuda():
             return
-
         img_bytes = read_file(self.img_path)
-
         img = decode_jpeg(img_bytes, mode='gray')
         img = decode_jpeg(img_bytes, mode='rgb')
-
         img = decode_jpeg(img_bytes)
-
         img_cv2 = cv2.imread(self.img_path)
-        if paddle.in_dynamic_mode():
-            np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
-        else:
-            place = paddle.CUDAPlace(0)
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            out = exe.run(
-                paddle.static.default_main_program(), fetch_list=[img]
-            )
+        np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
 
-            np.testing.assert_equal(
-                out[0].shape, img_cv2.transpose(2, 0, 1).shape
-            )
 
-    def test_read_file_decode_jpeg_dynamic(self):
-        self.read_file_decode_jpeg()
+class TestReadFileWithStatic(unittest.TestCase):
+    def setUp(self):
+        fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.img_path = os.path.join(self.temp_dir.name, 'fake.jpg')
+        cv2.imwrite(self.img_path, fake_img)
 
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    @test_with_pir_api
     def test_read_file_decode_jpeg_static(self):
         paddle.enable_static()
-        self.read_file_decode_jpeg()
+        if not paddle.is_compiled_with_cuda():
+            return
+        place = paddle.CUDAPlace(0)
+        with paddle_static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                img_bytes = read_file(self.img_path)
+                img = decode_jpeg(img_bytes, mode='gray')
+                img = decode_jpeg(img_bytes, mode='rgb')
+                img = decode_jpeg(img_bytes)
+                img_cv2 = cv2.imread(self.img_path)
+                exe = paddle.static.Executor(place)
+                out = exe.run(
+                    paddle.static.default_main_program(), fetch_list=[img]
+                )
+
+                np.testing.assert_equal(
+                    out[0].shape, img_cv2.transpose(2, 0, 1).shape
+                )
         paddle.disable_static()
 
 
