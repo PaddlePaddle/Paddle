@@ -27,8 +27,8 @@ __all__ = []
 class VisibleDeprecationWarning(UserWarning):
     """Visible deprecation warning.
 
-    After Python 3.7, Python hide the DeprecationWarning if the module is not
-    __main__. So we use this warning to make the deprecation warning visible.
+    Since Python 3.7, Python only show the DeprecationWarning if the module
+    is __main__. So we use this warning to make the deprecation warning visible.
 
     See more details from https://peps.python.org/pep-0565/
     """
