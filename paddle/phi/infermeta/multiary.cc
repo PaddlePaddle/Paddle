@@ -3769,7 +3769,23 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
                         "Number of Inputs(x) must be larger than 0, but"
                         " received value is:%d.",
                         x.size()));
-  const auto& input_dims = GetMetaTensorsDim(x);
+
+  std::vector<phi::DDim> input_dims;
+  input_dims.reserve(x.size());
+  for (auto item : x) {
+    if (item->dims().size() == 0) {
+      PADDLE_ENFORCE_EQ(item->numel(),
+                        1UL,
+                        phi::errors::InvalidArgument(
+                            "when a tensor's rank = 0, the number of elements "
+                            "of this tensor must be 1."));
+      input_dims.push_back(phi::DDim({1}));
+      continue;
+    }
+    input_dims.push_back(item->dims());
+  }
+
+  // const auto& input_dims = GetMetaTensorsDim(x);
   // we reuse concat logic to compute out_dim. we set concat_axis==-1 to check
   // every axis in input_tensors.
   auto out_dim =

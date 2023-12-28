@@ -42,17 +42,17 @@ static inline phi::DDim ComputeAndCheckShape(
   auto out_dims = inputs_dims[0];
   size_t in_zero_dims_size = out_dims.size();
   for (size_t i = 1; i < n; i++) {
-    // PADDLE_ENFORCE_EQ(
-    //     inputs_dims[i].size(),
-    //     out_dims.size(),
-    //     phi::errors::InvalidArgument("The shape of input[0] and input[%d] "
-    //                                  "is expected to be equal."
-    //                                  "But received input[0]'s shape = "
-    //                                  "[%s], input[%d]'s shape = [%s].",
-    //                                  i,
-    //                                  inputs_dims[0],
-    //                                  i,
-    //                                  inputs_dims[i]));
+    PADDLE_ENFORCE_EQ(
+        inputs_dims[i].size(),
+        out_dims.size(),
+        phi::errors::InvalidArgument("The shape of input[0] and input[%d] "
+                                     "is expected to be equal."
+                                     "But received input[0]'s shape = "
+                                     "[%s], input[%d]'s shape = [%s].",
+                                     i,
+                                     inputs_dims[0],
+                                     i,
+                                     inputs_dims[i]));
     for (size_t j = 0; j < in_zero_dims_size; j++) {
       if (j == axis) {
         if (is_runtime) {
@@ -69,18 +69,18 @@ static inline phi::DDim ComputeAndCheckShape(
             is_runtime || (inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0);
         if (check_shape) {
           // check all shape in run time
-          // PADDLE_ENFORCE_EQ(inputs_dims[0][j],
-          //                   inputs_dims[i][j],
-          //                   phi::errors::InvalidArgument(
-          //                       "The %d-th dimension of input[0] and input[%d] "
-          //                       "is expected to be equal."
-          //                       "But received input[0]'s shape = "
-          //                       "[%s], input[%d]'s shape = [%s].",
-          //                       j,
-          //                       i,
-          //                       inputs_dims[0],
-          //                       i,
-          //                       inputs_dims[i]));
+          PADDLE_ENFORCE_EQ(inputs_dims[0][j],
+                            inputs_dims[i][j],
+                            phi::errors::InvalidArgument(
+                                "The %d-th dimension of input[0] and input[%d] "
+                                "is expected to be equal."
+                                "But received input[0]'s shape = "
+                                "[%s], input[%d]'s shape = [%s].",
+                                j,
+                                i,
+                                inputs_dims[0],
+                                i,
+                                inputs_dims[i]));
         }
         if (!is_runtime && out_dims[j] == -1 && inputs_dims[i][j] > 0) {
           out_dims[j] = inputs_dims[i][j];
