@@ -44,8 +44,51 @@ class LegacyKernelOp : public pir::Op<LegacyKernelOp> {
   void VerifySig();
 };
 
+#ifdef PADDLE_WITH_DNNL
+class OneDNNPhiKernelOp : public pir::Op<OneDNNPhiKernelOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_onednn_kernel.phi_kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  std::string op_name();
+  std::string kernel_name();
+  phi::KernelKey kernel_key();
+  void VerifySig();
+};
+
+class OneDNNMixedPhiKernelOp : public pir::Op<OneDNNMixedPhiKernelOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_onednn_kernel.phi_mixed_kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  std::string op_name();
+  std::string kernel_name();
+  phi::KernelKey kernel_key();
+  void VerifySig();
+};
+
+class OneDNNLegacyKernelOp : public pir::Op<OneDNNLegacyKernelOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_onednn_kernel.legacy_kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  std::string op_name();
+  std::string kernel_name();
+  phi::KernelKey kernel_key();
+  void VerifySig();
+};
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
+#ifdef PADDLE_WITH_DNNL
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNPhiKernelOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNMixedPhiKernelOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNLegacyKernelOp)
+#endif

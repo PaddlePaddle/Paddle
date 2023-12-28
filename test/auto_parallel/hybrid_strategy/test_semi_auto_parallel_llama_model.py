@@ -74,9 +74,8 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
             "backend": ["gpu"],
             "use_sp": ["true", "false"],
             "use_param_group": ["false", "true"],
-            # TODO(Yuang Liu): add recompute ut to pp after fixing pp probs
-            # "recompute": ["true", "false"],
-            # "recompute_granularity": ["full", "full_attn", "core_attn"],
+            "recompute": ["true", "false"],
+            "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy(self):
@@ -103,6 +102,8 @@ class TestSemiAutoParallelLlamaACC(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {
             "backend": ["gpu"],
+            "recompute": ["true", "false"],
+            "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy_acc(self):

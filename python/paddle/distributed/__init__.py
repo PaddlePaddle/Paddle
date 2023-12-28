@@ -34,6 +34,7 @@ from .auto_parallel.api import (
     shard_optimizer,
     shard_tensor,
     to_static,
+    unshard_dtensor,
 )
 from .auto_parallel.placement_type import (
     Partial,
@@ -161,4 +162,5 @@ __all__ = [
     "to_static",
     "Strategy",
     "DistModel",
+    "unshard_dtensor",
 ]
