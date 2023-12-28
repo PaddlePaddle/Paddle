@@ -112,7 +112,7 @@ def save_state_dict(
             for val in state_dict.values():
                 assert isinstance(
                     val, paddle.Tensor
-                ), "Only support dygraph Tensor now, support static DistributedTensor later"
+                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)

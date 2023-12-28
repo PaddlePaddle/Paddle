@@ -38,6 +38,9 @@ class ReadItem:
 
 
 def get_rank_to_files(path, state_dict, process_group, use_dist):
+    """
+    Get the mapping of rank to its accessible files.
+    """
     accessible_files = os.listdir(path)
     metadata_files = [
         file for file in accessible_files if file.endswith(".metadata")
@@ -59,10 +62,11 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
                 necessary_files.append(file_name)
     necessary_data_files_set = set(necessary_files)
     if len(necessary_data_files_set) <= 0:
+        missing_keys = set(state_dict.keys())
         logger.warning(
             f"No necessary data files found in the checkpoint directory:{path}. Please check the metadata_files:{metadata_files}"
         )
-        return {}
+        return {}, missing_keys
 
     # allgather all accessible files
     local_data_files = [
@@ -101,12 +105,16 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
             ]
             rank_to_files[rank] = local_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
-    return rank_to_files
+    return rank_to_files, missing_keys
 
 
 def get_local_load_files(rank_to_files):
     """
     Load files in a load-balanced manner.
+
+    Args:
+        rank_to_files (dict): mapping from rank to files.
+
     Example:
         Case1: all ranks access the same data files
             rank_to_files = {rank0:[0_0.distcp, 1_0.distcp, 2_0.distcp, 3_0.distcp], rank1:[0_0.distcp, 1_0.distcp, 2_0.distcp, 3_0.distcp]}
@@ -410,7 +418,7 @@ def load_state_dict(
             for val in state_dict.values():
                 assert isinstance(
                     val, paddle.Tensor
-                ), f"Only support dygraph Tensor now, but is {val}"
+                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
 
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
 
@@ -422,9 +430,13 @@ def load_state_dict(
             # sync to avoid some ranks not write path yet
             paddle.distributed.barrier(process_group)
 
-        rank_to_files = get_rank_to_files(
+        rank_to_files, missing_keys = get_rank_to_files(
             path, state_dict, process_group, use_dist
         )
+        if len(missing_keys) > 0:
+            logger.warning(
+                f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
+            )
         if len(rank_to_files) <= 0:
             return
         local_load_files = get_local_load_files(rank_to_files)
