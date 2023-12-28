@@ -70,25 +70,25 @@ class TestDeprecatedDocorator(unittest.TestCase):
     test_new_multiply: test for new api, which should not insert warning information.
     """
 
-    # def test_new_multiply(self):
-    #     """
-    #     Test for new multiply api, expected result should be False.
-    #     """
+    def test_new_multiply(self):
+        """
+        Test for new multiply api, expected result should be False.
+        """
 
-    #     a = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-    #     b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-    #     x = paddle.to_tensor(a)
-    #     y = paddle.to_tensor(b)
-    #     res = paddle.multiply(x, y)
+        a = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
+        b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
+        x = paddle.to_tensor(a)
+        y = paddle.to_tensor(b)
+        res = paddle.multiply(x, y)
 
-    #     # expected
-    #     expected = LOWEST_WARNING_POSTION
+        # expected
+        expected = LOWEST_WARNING_POSTION
 
-    #     # captured
-    #     captured = get_warning_index(paddle.multiply)
+        # captured
+        captured = get_warning_index(paddle.multiply)
 
-    #     # testting
-    #     self.assertLess(expected, captured)
+        # testting
+        self.assertLess(expected, captured)
 
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
