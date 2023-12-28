@@ -118,8 +118,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
-# list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
-
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)

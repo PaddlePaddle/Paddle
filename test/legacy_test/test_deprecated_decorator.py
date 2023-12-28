@@ -63,7 +63,6 @@ class TestDeprecatedDocorator(unittest.TestCase):
     """
     tests for paddle's Deprecated Docorator.
     test_new_multiply: test for new api, which should not insert warning information.
-    test_ops_elementwise_mul: test for C++ elementwise_mul op, which should not insert warning information.
     """
 
     def test_new_multiply(self):
