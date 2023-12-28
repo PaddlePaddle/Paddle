@@ -4859,10 +4859,7 @@ create_test_act_fp16_class(
     check_prim_pir=True,
 )
 create_test_act_fp16_class(
-    TestAbs,
-    check_prim=True,
-    enable_cinn=True,
-    check_pir=True,
+    TestAbs, check_prim=True, enable_cinn=True, check_pir=True
 )
 create_test_act_fp16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
