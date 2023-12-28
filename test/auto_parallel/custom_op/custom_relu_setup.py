@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from utils import IS_MAC, extra_compile_args, paddle_includes
+from utils import extra_compile_args, paddle_includes
 
-from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
+from paddle.utils.cpp_extension import CUDAExtension, setup
 
 # Mac-CI don't support GPU
 Extension = CUDAExtension
 sources = ['custom_relu_op.cc', 'custom_relu_op.cu']
 
-# custom_relu_op_dup.cc is only used for multi ops test,
-# not a new op, if you want to test only one op, remove this
-# source file
 setup(
     name='custom_relu',
     ext_modules=Extension( 

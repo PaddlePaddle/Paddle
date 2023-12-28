@@ -19,6 +19,7 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.framework import core
 
 
 class TestParallelCrossEntropyHybrid(test_base.CommunicationTestDistBase):
@@ -38,9 +39,10 @@ class TestParallelCrossEntropyHybrid(test_base.CommunicationTestDistBase):
     def test_dynamic_auto_parallel(self):
         pass
 
-    # test dynamic run
+    # test static spmd rule register
     def test_static_rule(self):
-        pass
+        import custom_relu
+        assert core.contains_spmd_rule("custom_relu")
 
 
 if __name__ == "__main__":
