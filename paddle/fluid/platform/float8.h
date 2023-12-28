@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include "paddle/phi/common/float8_e4m3.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/common/float8_e5m2.h"
 
 namespace paddle {
 namespace platform {
-using float8_e4m3 = phi::dtype::float8_e4m3;
+using float8_e4m3fn = phi::dtype::float8_e4m3fn;
 using float8_e5m2 = phi::dtype::float8_e5m2;
 using namespace phi::dtype;  // NOLINT
 }  // namespace platform

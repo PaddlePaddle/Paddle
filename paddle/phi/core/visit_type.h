@@ -421,8 +421,10 @@ namespace phi {
           NAME, ::phi::DataType::BFLOAT16, phi::bfloat16, __VA_ARGS__)         \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT16, phi::float16, __VA_ARGS__)           \
-      PD_PRIVATE_CASE_TYPE(                                                    \
-          NAME, ::phi::DataType::FLOAT8_E4M3, phi::float8_e4m3, __VA_ARGS__)   \
+      PD_PRIVATE_CASE_TYPE(NAME,                                               \
+                           ::phi::DataType::FLOAT8_E4M3FN,                     \
+                           phi::float8_e4m3fn,                                 \
+                           __VA_ARGS__)                                        \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT8_E5M2, phi::float8_e5m2, __VA_ARGS__)   \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::FLOAT32, float, __VA_ARGS__) \

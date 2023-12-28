@@ -26,14 +26,15 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (out->IsSharedWith(x)) {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
-                         CastInplaceKernelImpl<T, data_t>(
-                             dev_ctx, x, out_dtype, out);
-                       }));
+    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
+                              CastKernelImpl<T, data_t>(
+                                  dev_ctx, x, out_dtype, out);
+                            }));
   } else {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                         CastKernelImpl<T, data_t>(dev_ctx, x, out_dtype, out);
-                       }));
+    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                              CastKernelImpl<T, data_t>(
+                                  dev_ctx, x, out_dtype, out);
+                            }));
   }
 }
 
@@ -51,6 +52,8 @@ PD_REGISTER_KERNEL(cast,
                    bool,
                    int8_t,
                    uint8_t,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,

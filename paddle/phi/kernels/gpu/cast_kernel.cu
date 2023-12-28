@@ -25,10 +25,9 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (out->IsSharedWith(x)) {
-    auto x_origin = x;
-    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
+    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
                               CastCUDAKernelImpl<T, data_t>(
-                                  dev_ctx, x_origin, out_dtype, out);
+                                  dev_ctx, x, out_dtype, out);
                             }));
   } else {
     PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
@@ -61,5 +60,5 @@ void CastKernel(const Context& dev_ctx,
 
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast,
                                   phi::dtype::bfloat16,
-                                  phi::dtype::float8_e4m3,
+                                  phi::dtype::float8_e4m3fn,
                                   phi::dtype::float8_e5m2)

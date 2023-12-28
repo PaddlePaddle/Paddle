@@ -20,6 +20,7 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
 
@@ -27,7 +28,7 @@
 #include <cuda.h>
 #endif
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 12000
+#if defined(__CUDACC__) && CUDA_VERSION >= 11800
 #define PADDLE_CUDA_FP8
 #include <cuda_fp8.h>
 #endif
@@ -45,7 +46,7 @@
 namespace phi {
 namespace dtype {
 
-struct float8_e5m2 {
+struct PADDLE_ALIGN(1) float8_e5m2 {
  public:
   uint8_t x;
 
@@ -62,9 +63,37 @@ struct float8_e5m2 {
     __nv_fp8_e5m2 tmp = __nv_fp8_e5m2(val);
     x = *reinterpret_cast<uint8_t*>(&tmp);
 #else
-    PADDLE_THROW(
-        phi::errors::Unimplemented("float8 is cannot be converted from float "
-                                   "if __nv_fp8_e5m2 is not used"));
+    // refer to
+    // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e5m2.h
+    Bits fb, denorm_mask;
+    fb.f = val;
+
+    constexpr uint32_t fp32_inf = UINT32_C(255) << 23;
+    constexpr uint32_t fp8_max = UINT32_C(143) << 23;
+    denorm_mask.ui = UINT32_C(134) << 23;
+
+    uint8_t result = 0u;
+
+    const uint32_t sign = fb.ui & UINT32_C(0x80000000);
+
+    fb.ui ^= sign;
+
+    if (fb.ui >= fp8_max) {
+      result = fb.ui > fp32_inf ? UINT8_C(0x7F) : UINT8_C(0x7C);
+    } else {
+      if (fb.ui < (UINT32_C(113) << 23)) {
+        fb.f = fb.f + denorm_mask.f;
+        result = static_cast<uint8_t>(fb.ui - denorm_mask.ui);
+      } else {
+        uint32_t mant_odd = (fb.ui >> 21) & 1;
+        fb.ui += ((uint32_t)(15 - 127) << 23) + 0xFFFFF;
+        fb.ui += mant_odd;
+        result = static_cast<uint8_t>(fb.ui >> 21);
+      }
+    }
+
+    result |= static_cast<uint8_t>(sign >> 24);
+    x = result;
 #endif
   }
 
@@ -141,8 +170,11 @@ struct float8_e5m2 {
 #ifdef PADDLE_CUDA_FP8
     return float(*reinterpret_cast<const __nv_fp8_e5m2*>(&x));  // NOLINT
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "float8 is cannot be converted to float if __nv_fp8_e5m2 is not used"));
+    // refer to
+    // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e5m2.h
+    uint16_t half_representation = x;
+    half_representation <<= 8;
+    return static_cast<float>(static_cast<float16>(half_representation));
 #endif
   }
 
@@ -183,6 +215,12 @@ struct float8_e5m2 {
   HOSTDEVICE inline explicit operator uint64_t() const {
     return static_cast<uint64_t>(static_cast<float>(*this));
   }
+
+ private:
+  union Bits {
+    float f;
+    uint32_t ui;
+  };
 };
 
 HOSTDEVICE inline float8_e5m2 operator+(const float8_e5m2& a,

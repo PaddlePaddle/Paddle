@@ -25,26 +25,26 @@ namespace phi {
 #define _PhiForEachDataTypeHelper_(callback, cpp_type, data_type) \
   callback(cpp_type, data_type);
 
-#define _PhiForEachDataType_(callback)                              \
-  _PhiForEachDataTypeHelper_(callback, float, DataType::FLOAT32);   \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::float16, DataType::FLOAT16);          \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::bfloat16, DataType::BFLOAT16);        \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::float8_e4m3, DataType::FLOAT8_E4M3);  \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::float8_e5m2, DataType::FLOAT8_E5M2);  \
-  _PhiForEachDataTypeHelper_(callback, double, DataType::FLOAT64);  \
-  _PhiForEachDataTypeHelper_(callback, int, DataType::INT32);       \
-  _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);   \
-  _PhiForEachDataTypeHelper_(callback, bool, DataType::BOOL);       \
-  _PhiForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);   \
-  _PhiForEachDataTypeHelper_(callback, int16_t, DataType::INT16);   \
-  _PhiForEachDataTypeHelper_(callback, int8_t, DataType::INT8);     \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::complex<float>, DataType::COMPLEX64); \
-  _PhiForEachDataTypeHelper_(                                       \
+#define _PhiForEachDataType_(callback)                                 \
+  _PhiForEachDataTypeHelper_(callback, float, DataType::FLOAT32);      \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::float16, DataType::FLOAT16);             \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::bfloat16, DataType::BFLOAT16);           \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::float8_e4m3fn, DataType::FLOAT8_E4M3FN); \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::float8_e5m2, DataType::FLOAT8_E5M2);     \
+  _PhiForEachDataTypeHelper_(callback, double, DataType::FLOAT64);     \
+  _PhiForEachDataTypeHelper_(callback, int, DataType::INT32);          \
+  _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);      \
+  _PhiForEachDataTypeHelper_(callback, bool, DataType::BOOL);          \
+  _PhiForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);      \
+  _PhiForEachDataTypeHelper_(callback, int16_t, DataType::INT16);      \
+  _PhiForEachDataTypeHelper_(callback, int8_t, DataType::INT8);        \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::complex<float>, DataType::COMPLEX64);    \
+  _PhiForEachDataTypeHelper_(                                          \
       callback, ::phi::dtype::complex<double>, DataType::COMPLEX128);
 
 #define _PhiForEachDataTypeTiny_(callback)                    \
@@ -136,7 +136,7 @@ enum ProtoDataType {
   COMPLEX64 = 23,
   COMPLEX128 = 24,
   PSTRING = 29,
-  FP8_E4M3 = 32,
+  FP8_E4M3FN = 32,
   FP8_E5M2 = 33
 };
 
@@ -162,8 +162,8 @@ inline DataType TransToPhiDataType(const int& dtype) {
       return DataType::COMPLEX64;
     case ProtoDataType::COMPLEX128:
       return DataType::COMPLEX128;
-    case ProtoDataType::FP8_E4M3:
-      return DataType::FLOAT8_E4M3;
+    case ProtoDataType::FP8_E4M3FN:
+      return DataType::FLOAT8_E4M3FN;
     case ProtoDataType::FP8_E5M2:
       return DataType::FLOAT8_E5M2;
     case ProtoDataType::FP16:
@@ -203,8 +203,8 @@ inline int TransToProtoVarType(const DataType& dtype) {
       return ProtoDataType::COMPLEX64;
     case DataType::COMPLEX128:
       return ProtoDataType::COMPLEX128;
-    case DataType::FLOAT8_E4M3:
-      return ProtoDataType::FP8_E4M3;
+    case DataType::FLOAT8_E4M3FN:
+      return ProtoDataType::FP8_E4M3FN;
     case DataType::FLOAT8_E5M2:
       return ProtoDataType::FP8_E5M2;
     case DataType::FLOAT16:

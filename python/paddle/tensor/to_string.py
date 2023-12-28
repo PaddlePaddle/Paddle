@@ -282,7 +282,7 @@ def to_string(var, prefix='Tensor'):
 def _format_dense_tensor(tensor, indent):
     if (
         tensor.dtype == core.VarDesc.VarType.BF16
-        or tensor.dtype == core.VarDesc.VarType.FP8_E4M3
+        or tensor.dtype == core.VarDesc.VarType.FP8_E4M3FN
         or tensor.dtype == core.VarDesc.VarType.FP8_E5M2
     ):
         tensor = tensor.astype('float32')

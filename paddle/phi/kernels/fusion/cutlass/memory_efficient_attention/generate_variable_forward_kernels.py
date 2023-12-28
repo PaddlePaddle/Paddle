@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, TypeVar
 
 DEFAULT_ARCH = [50, 70, 75, 80]
-MAX_ARCH = 91
+MAX_ARCH = 90
 ENABLE_MACRO = "PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
 
 assert sorted(DEFAULT_ARCH) == DEFAULT_ARCH

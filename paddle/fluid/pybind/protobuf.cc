@@ -294,7 +294,7 @@ void BindVarDsec(pybind11::module *m) {
       .value("FP32", pd::proto::VarType::FP32)
       .value("FP64", pd::proto::VarType::FP64)
       .value("BF16", pd::proto::VarType::BF16)
-      .value("FP8_E4M3", pd::proto::VarType::FP8_E4M3)
+      .value("FP8_E4M3FN", pd::proto::VarType::FP8_E4M3FN)
       .value("FP8_E5M2", pd::proto::VarType::FP8_E5M2)
       .value("COMPLEX64", pd::proto::VarType::COMPLEX64)
       .value("COMPLEX128", pd::proto::VarType::COMPLEX128)

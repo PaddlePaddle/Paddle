@@ -12,29 +12,82 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
 import unittest
 
 import paddle
 from paddle.base import core
 
 
-class Float8_E4M3_Test(unittest.TestCase):
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11800,
+    "fp8 support in CUDA need CUDA version >= 11.8.",
+)
+class Float8_E4M3FN_Test_GPU(unittest.TestCase):
     def setUp(self):
-        self.dtype = "float8_e4m3"
-        self.paddle_dtype = core.VarDesc.VarType.FP8_E4M3
+        paddle.device.set_device("gpu")
+        self.dtype = "float8_e4m3fn"
+        self.paddle_dtype = core.VarDesc.VarType.FP8_E4M3FN
 
     def test_fullOp(self):
-        input1 = paddle.ones([2, 3], dtype=self.dtype)
+        input1 = paddle.ones([16, 16], dtype=self.dtype)
         self.assertTrue(input1.dtype == self.paddle_dtype)
 
     def test_castOp(self):
-        input1 = paddle.ones([2, 3])
+        input1 = paddle.ones([16, 16])
         input1 = input1.astype(self.dtype)
         self.assertTrue(input1.dtype == self.paddle_dtype)
 
+        inut2 = input1.astype("float32")
+        self.assertTrue(inut2.dtype == core.VarDesc.VarType.FP32)
 
-class Float8_E5M2_Test(Float8_E4M3_Test):
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11800,
+    "fp8 support in CUDA need CUDA version >= 11.8.",
+)
+class Float8_E5M2_Test_GPU(Float8_E4M3FN_Test_GPU):
     def setUp(self):
+        paddle.device.set_device("gpu")
+        self.dtype = "float8_e5m2"
+        self.paddle_dtype = core.VarDesc.VarType.FP8_E5M2
+
+
+class Float8_E4M3FN_Test_CPU(unittest.TestCase):
+    def setUp(self):
+        paddle.device.set_device("cpu")
+        self.dtype = "float8_e4m3fn"
+        self.paddle_dtype = core.VarDesc.VarType.FP8_E4M3FN
+
+    def test_fullOp(self):
+        input1 = paddle.ones([16, 16], dtype=self.dtype)
+        self.assertTrue(input1.dtype == self.paddle_dtype)
+
+    def test_castOp(self):
+        input1 = paddle.ones([16, 16])
+        input1 = input1.astype(self.dtype)
+        self.assertTrue(input1.dtype == self.paddle_dtype)
+
+        inut2 = input1.astype("float32")
+        self.assertTrue(inut2.dtype == core.VarDesc.VarType.FP32)
+
+
+class Float8_E5M2_Test_CPU(Float8_E4M3FN_Test_CPU):
+    def setUp(self):
+        paddle.device.set_device("cpu")
         self.dtype = "float8_e5m2"
         self.paddle_dtype = core.VarDesc.VarType.FP8_E5M2
 
