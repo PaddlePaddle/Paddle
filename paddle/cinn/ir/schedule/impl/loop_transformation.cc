@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
+
+#include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/common/macros.h"
 
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
@@ -139,6 +141,63 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   splited_loops.resize(process_factors.size());
 
   new_node = IfThenElse::Make(LT::Make(substitute_value, tot_extent), new_node);
+
+  for (int i = process_factors.size() - 1; i >= 0; i--) {
+    if (!new_node.As<ir::Block>()) new_node = Block::Make({new_node});
+    new_node = For::Make(new_loop_vars[i],
+                         Expr(0),
+                         process_factors[i],
+                         for_node->for_type(),
+                         for_node->device_api,
+                         new_node);
+    splited_loops[i] = new_node;
+  }
+
+  this->Replace(loop, new_node);
+  VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
+  return splited_loops;
+}
+
+// TODO(@LiuYang): now -1 can't exsit in factors,
+std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
+                                        const std::vector<Expr>& factors) {
+  CHECK(loop.As<ir::For>())
+      << "Expr param of Split must be For node! Please check.";
+  auto* for_node = loop.As<ir::For>();
+  CHECK(common::is_zero(for_node->min))
+      << "The For node must start with 0! Please check.";
+  CHECK(!factors.empty())
+      << "The factors param of Split should not be empty! Please check.";
+  CHECK(!loop.As<ir::For>()->extent.is_constant())
+      << "Can't Split a loop with constant extent but with variable in "
+         "factors!";
+  Expr tot_extent = for_node->extent;
+
+  VLOG(3) << "Try Split loop from (" << for_node->loop_var->name << ", 0, "
+          << tot_extent << ") to (" << cinn::utils::Join(factors, ", ")
+          << ") at loop:\n"
+          << loop;
+
+  std::vector<Expr> process_factors(factors);
+  Expr prod_size(1);
+  for (auto factor : factors) prod_size = prod_size * Expr(factor);
+  cinn::common::SymbolicExprAnalyzer analyzer({});
+  CHECK(analyzer.ProveEQ(tot_extent, prod_size).value_or(false))
+      << "Product of factors can't be proved to be equal to the extent of "
+         "current for loop!";
+
+  std::vector<Var> new_loop_vars;
+  Expr substitute_value(0);
+  for (int i = 0; i < process_factors.size(); ++i) {
+    Var temp_var(common::UniqName(for_node->loop_var->name));
+    substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
+    new_loop_vars.push_back(temp_var);
+  }
+  substitute_value = cinn::common::AutoSimplify(substitute_value);
+  Expr new_node = ir::ir_utils::IRCopy(for_node->body);
+  ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
+  std::vector<Expr> splited_loops;
+  splited_loops.resize(process_factors.size());
 
   for (int i = process_factors.size() - 1; i >= 0; i--) {
     if (!new_node.As<ir::Block>()) new_node = Block::Make({new_node});
@@ -367,6 +426,12 @@ std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
   this->Replace(loop, new_node);
   VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
   return splited_loops;
+}
+
+std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
+                                        const std::vector<Expr>& factors) {
+  CHECK(false) << "Static shape schedule don't support Split with some "
+                  "variables in factors";
 }
 
 Expr StScheduleImpl::Fuse(const std::vector<Expr>& loops) {
