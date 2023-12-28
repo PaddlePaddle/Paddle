@@ -70,7 +70,7 @@ TEST(VJP, TanhBackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh");
@@ -125,7 +125,7 @@ TEST(VJP, Tanh_BackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh_");
@@ -181,7 +181,7 @@ TEST(VJP, MeanBackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.mean");
@@ -241,7 +241,7 @@ TEST(VJP, ConcatBackwardTest) {
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out(), op1.out()},
                                               {op3.axis()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.concat");
   auto concat_vjp_interface_impl =
@@ -308,7 +308,7 @@ TEST(VJP, AddBackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}, {op2.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add");
@@ -373,7 +373,7 @@ TEST(VJP, Add_BackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}, {op2.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add_");
@@ -441,7 +441,12 @@ TEST(VJP, SplitBackwardTest) {
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{
       {op2.x()}, {op2.sections()}, {op2.axis()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.outputs()}};
+  std::vector<std::vector<pir::Value>> outputs(1);
+  std::vector<pir::Value> res;
+  for (uint32_t i = 0; i < op3.outputs().size(); i++) {
+    res.push_back(op3.outputs()[i]);
+  }
+  outputs[0] = res;
   std::vector<std::vector<pir::Value>> out_grads{{op3.result(0), op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.split");
 

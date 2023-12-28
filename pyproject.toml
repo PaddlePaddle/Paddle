@@ -32,6 +32,9 @@ select = [
     # Comprehensions
     "C4",
 
+    # Debugger
+    "T100",
+
     # Pyupgrade
     "UP",
 
@@ -123,15 +126,6 @@ known-first-party = ["paddle"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
 
-# temp ignore unused imports in all distributed files
-"python/paddle/distributed/transpiler/__init__.py" = ["F401"]
-"python/paddle/incubate/distributed/fleet/parameter_server/distribute_transpiler/__init__.py" = ["F401", "I001"]
-"python/paddle/distributed/fleet/runtime/__init__.py" = ["F401"]
-"python/paddle/distributed/transpiler/details/__init__.py" = ["F401", "I001"]
-"python/paddle/incubate/distributed/models/moe/gate/__init__.py" = ["F401", "I001"]
-"python/paddle/incubate/distributed/models/moe/__init__.py" = ["F401", "I001"]
-"python/paddle/incubate/distributed/utils/io/__init__.py" = ["F401", "I001"]
-"python/paddle/distributed/fleet/elastic/__init__.py" = ["F401", "I001"]
 
 # temp ignore isort
 "python/paddle/amp/__init__.py" = ["I001"]

@@ -340,7 +340,7 @@ if(WITH_XPU)
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi
@@ -367,7 +367,7 @@ else()
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi
@@ -530,7 +530,6 @@ set(NAIVE_EXECUTOR_DEPS
     lod_rank_table
     feed_fetch_method
     graph_to_program_pass
-    standalone_executor
     variable_helper)
 
 if(TENSORRT_FOUND)
@@ -874,21 +873,13 @@ target_link_libraries(
 cc_library(
   parallel_executor
   SRCS parallel_executor.cc
-  DEPS threaded_ssa_graph_executor
-       scope_buffered_ssa_graph_executor
-       parallel_ssa_graph_executor
-       async_ssa_graph_executor
-       graph
-       build_strategy
-       bind_threaded_ssa_graph_executor
-       collective_helper
-       fast_threaded_ssa_graph_executor
+  DEPS ssa_graph_executor graph build_strategy collective_helper
        variable_helper)
 
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor pir_transforms pir)
+  DEPS parallel_executor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
@@ -957,6 +948,7 @@ cc_library(
        layer)
 
 cc_library(type_info SRCS type_info.cc)
+target_link_libraries(type_info pir op_dialect)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
 if(WITH_MKLDNN)
   add_dependencies(type_info mkldnn)
