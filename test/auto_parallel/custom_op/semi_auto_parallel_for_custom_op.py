@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 import paddle.distributed as dist
 from paddle.framework import core
-import custom_relu
-import os
 
 assert core.contains_spmd_rule("custom_relu")
+
 
 class TestCusomOpSemiAutoParallel:
     def __init__(self):
@@ -33,7 +34,7 @@ class TestCusomOpSemiAutoParallel:
             paddle.set_device("gpu:" + str(dist.get_rank()))
         else:
             raise ValueError("Only support cpu or gpu backend.")
-            
+
 
 if __name__ == '__main__':
     TestCusomOpSemiAutoParallel().run_test_case()

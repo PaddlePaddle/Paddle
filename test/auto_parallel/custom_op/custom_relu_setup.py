@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ sources = ['custom_relu_op.cc', 'custom_relu_op.cu']
 
 setup(
     name='custom_relu',
-    ext_modules=Extension( 
+    ext_modules=Extension(
         sources=sources,
         include_dirs=paddle_includes,
         extra_compile_args=extra_compile_args,

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,8 +106,7 @@ PD_BUILD_GRAD_OP(custom_relu)
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ReluBackward));
 
-
 PD_REGISTER_SPMD_RULE(
     custom_relu,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
-    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));    
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));

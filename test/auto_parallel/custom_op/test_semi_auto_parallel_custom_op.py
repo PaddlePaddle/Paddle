@@ -18,8 +18,8 @@ import unittest
 
 import collective.test_communication_api_base as test_base
 
-from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.framework import core
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
 class TestCusomOp(test_base.CommunicationTestDistBase):
@@ -50,8 +50,8 @@ class TestCusomOp(test_base.CommunicationTestDistBase):
 
     # test static spmd rule register
     def test_static_rule(self):
-        import custom_relu
         assert core.contains_spmd_rule("custom_relu")
+
 
 if __name__ == "__main__":
     unittest.main()

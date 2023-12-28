@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,18 +13,13 @@
 # limitations under the License.
 
 import os
-import sys
-from site import getsitepackages
 
 import numpy as np
-
-
 
 # Test for extra compile args
 extra_cc_args = ['-w', '-g']
 extra_nvcc_args = ['-O3']
 extra_compile_args = {'cc': extra_cc_args, 'nvcc': extra_nvcc_args}
-
 
 
 def check_output(out, pd_out, name):
@@ -62,6 +57,7 @@ def check_output_allclose(out, pd_out, name, rtol=5e-5, atol=1e-2):
         err_msg=f'custom op {name}: {out},\n paddle api {name}: {pd_out}',
     )
 
+
 def get_paddle_includes():
     env_dict = os.environ
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
@@ -80,7 +76,9 @@ def get_paddle_includes():
     paddle_includes.append(f"{paddle_source_dir}/paddle/phi/backends")
     paddle_includes.append(f"{paddle_source_dir}/paddle/phi/core")
     paddle_includes.append(f"{paddle_source_dir}/paddle/phi/infermeta")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/infermeta/spmd_rules")
+    paddle_includes.append(
+        f"{paddle_source_dir}/paddle/phi/infermeta/spmd_rules"
+    )
     paddle_includes.append(f"{paddle_source_dir}/paddle/phi/kernels")
     paddle_includes.append(f"{paddle_source_dir}/paddle/phi/capi")
     paddle_includes.append(f"{paddle_source_dir}/paddle/utils")
@@ -92,7 +90,8 @@ def get_paddle_includes():
         paddle_includes.append(f"{env_dict.get('MKLDNN_INSTALL_DIR')}/include")
     if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
         paddle_includes.append(f"{env_dict.get('externalError_INCLUDE_DIR')}")
-    paddle_includes.append(f"{env_dict.get('PYBIND_INCLUDE_DIR')}")    
-    return paddle_includes    
+    paddle_includes.append(f"{env_dict.get('PYBIND_INCLUDE_DIR')}")
+    return paddle_includes
+
 
 paddle_includes = get_paddle_includes()
