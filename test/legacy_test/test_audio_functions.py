@@ -17,6 +17,7 @@ import unittest
 import librosa
 import numpy as np
 from parameterized import parameterized
+from scipy import signal
 
 import paddle
 import paddle.audio
@@ -59,236 +60,236 @@ class TestAudioFunctions(unittest.TestCase):
         )
         self.waveform = waveform_tensor.numpy()
 
-    # @parameterize([1.0, 3.0, 9.0, 25.0], [True, False])
-    # def test_audio_function(self, val: float, htk_flag: bool):
-    #     mel_paddle = paddle.audio.functional.hz_to_mel(val, htk_flag)
-    #     mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
-    #         paddle.to_tensor([val]), htk_flag
-    #     )
-    #     mel_librosa = librosa.hz_to_mel(val, htk_flag)
-    #     np.testing.assert_almost_equal(mel_paddle, mel_librosa, decimal=5)
-    #     np.testing.assert_almost_equal(
-    #         mel_paddle_tensor.numpy(), mel_librosa, decimal=4
-    #     )
+    @parameterize([1.0, 3.0, 9.0, 25.0], [True, False])
+    def test_audio_function(self, val: float, htk_flag: bool):
+        mel_paddle = paddle.audio.functional.hz_to_mel(val, htk_flag)
+        mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
+            paddle.to_tensor([val]), htk_flag
+        )
+        mel_librosa = librosa.hz_to_mel(val, htk_flag)
+        np.testing.assert_almost_equal(mel_paddle, mel_librosa, decimal=5)
+        np.testing.assert_almost_equal(
+            mel_paddle_tensor.numpy(), mel_librosa, decimal=4
+        )
 
-    #     hz_paddle = paddle.audio.functional.mel_to_hz(val, htk_flag)
-    #     hz_paddle_tensor = paddle.audio.functional.mel_to_hz(
-    #         paddle.to_tensor([val]), htk_flag
-    #     )
-    #     hz_librosa = librosa.mel_to_hz(val, htk_flag)
-    #     np.testing.assert_almost_equal(hz_paddle, hz_librosa, decimal=4)
-    #     np.testing.assert_almost_equal(
-    #         hz_paddle_tensor.numpy(), hz_librosa, decimal=4
-    #     )
+        hz_paddle = paddle.audio.functional.mel_to_hz(val, htk_flag)
+        hz_paddle_tensor = paddle.audio.functional.mel_to_hz(
+            paddle.to_tensor([val]), htk_flag
+        )
+        hz_librosa = librosa.mel_to_hz(val, htk_flag)
+        np.testing.assert_almost_equal(hz_paddle, hz_librosa, decimal=4)
+        np.testing.assert_almost_equal(
+            hz_paddle_tensor.numpy(), hz_librosa, decimal=4
+        )
 
-    #     decibel_paddle = paddle.audio.functional.power_to_db(
-    #         paddle.to_tensor([val])
-    #     )
-    #     decibel_librosa = librosa.power_to_db(val)
-    #     np.testing.assert_almost_equal(
-    #         decibel_paddle.numpy(), decibel_paddle, decimal=5
-    #     )
+        decibel_paddle = paddle.audio.functional.power_to_db(
+            paddle.to_tensor([val])
+        )
+        decibel_librosa = librosa.power_to_db(val)
+        np.testing.assert_almost_equal(
+            decibel_paddle.numpy(), decibel_paddle, decimal=5
+        )
 
-    # @parameterize([1.0, 3.0, 9.0, 25.0], [True, False])
+    @parameterize([1.0, 3.0, 9.0, 25.0], [True, False])
+    @test_with_pir_api
+    def test_audio_function_static(self, val: float, htk_flag: bool):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
+                paddle.to_tensor([val]), htk_flag
+            )
+
+            hz_paddle_tensor = paddle.audio.functional.mel_to_hz(
+                paddle.to_tensor([val]), htk_flag
+            )
+
+            decibel_paddle = paddle.audio.functional.power_to_db(
+                paddle.to_tensor([val])
+            )
+
+            exe = paddle.static.Executor()
+            (
+                mel_paddle_tensor_ret,
+                hz_paddle_tensor_ret,
+                decibel_paddle_ret,
+            ) = exe.run(
+                main,
+                fetch_list=[
+                    mel_paddle_tensor,
+                    hz_paddle_tensor,
+                    decibel_paddle,
+                ],
+            )
+
+            mel_librosa = librosa.hz_to_mel(val, htk_flag)
+            np.testing.assert_almost_equal(
+                mel_paddle_tensor_ret, mel_librosa, decimal=4
+            )
+
+            hz_librosa = librosa.mel_to_hz(val, htk_flag)
+            np.testing.assert_almost_equal(
+                hz_paddle_tensor_ret, hz_librosa, decimal=4
+            )
+
+            decibel_librosa = librosa.power_to_db(val)
+            np.testing.assert_almost_equal(
+                decibel_paddle_ret, decibel_librosa, decimal=5
+            )
+
+        paddle.disable_static()
+
+    @parameterize(
+        [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
+    )
+    def test_audio_function_mel(
+        self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
+    ):
+        librosa_mel_freq = librosa.mel_frequencies(
+            n_mels, f_min, f_max, htk_flag
+        )
+        paddle_mel_freq = paddle.audio.functional.mel_frequencies(
+            n_mels, f_min, f_max, htk_flag, 'float64'
+        )
+        np.testing.assert_almost_equal(
+            paddle_mel_freq, librosa_mel_freq, decimal=3
+        )
+
+    @parameterize(
+        [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
+    )
+    # TODO(MarioLulab) May cause precision error. Fix it soon
     # @test_with_pir_api
-    # def test_audio_function_static(self, val: float, htk_flag: bool):
-    #     paddle.enable_static()
-    #     main = paddle.static.Program()
-    #     startup = paddle.static.Program()
-    #     with paddle.static.program_guard(main, startup):
-    #         mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
-    #             paddle.to_tensor([val]), htk_flag
-    #         )
+    def test_audio_function_mel_static(
+        self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
+    ):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            paddle_mel_freq = paddle.audio.functional.mel_frequencies(
+                n_mels, f_min, f_max, htk_flag, 'float64'
+            )
 
-    #         hz_paddle_tensor = paddle.audio.functional.mel_to_hz(
-    #             paddle.to_tensor([val]), htk_flag
-    #         )
+        exe = paddle.static.Executor()
+        (paddle_mel_freq_ret,) = exe.run(main, fetch_list=[paddle_mel_freq])
+        librosa_mel_freq = librosa.mel_frequencies(
+            n_mels, f_min, f_max, htk_flag
+        )
+        np.testing.assert_almost_equal(
+            paddle_mel_freq_ret, librosa_mel_freq, decimal=3
+        )
 
-    #         decibel_paddle = paddle.audio.functional.power_to_db(
-    #             paddle.to_tensor([val])
-    #         )
+        paddle.disable_static()
 
-    #         exe = paddle.static.Executor()
-    #         (
-    #             mel_paddle_tensor_ret,
-    #             hz_paddle_tensor_ret,
-    #             decibel_paddle_ret,
-    #         ) = exe.run(
-    #             main,
-    #             fetch_list=[
-    #                 mel_paddle_tensor,
-    #                 hz_paddle_tensor,
-    #                 decibel_paddle,
-    #             ],
-    #         )
+    @parameterize([8000, 16000], [64, 128, 256])
+    def test_audio_function_fft(self, sr: int, n_fft: int):
+        librosa_fft = librosa.fft_frequencies(sr, n_fft)
+        paddle_fft = paddle.audio.functional.fft_frequencies(sr, n_fft)
+        np.testing.assert_almost_equal(paddle_fft, librosa_fft, decimal=5)
 
-    #         mel_librosa = librosa.hz_to_mel(val, htk_flag)
-    #         np.testing.assert_almost_equal(
-    #             mel_paddle_tensor_ret, mel_librosa, decimal=4
-    #         )
+    @parameterize([1.0, 3.0, 9.0])
+    def test_audio_function_exception(self, spect: float):
+        try:
+            paddle.audio.functional.power_to_db(
+                paddle.to_tensor([spect]), amin=0
+            )
+        except Exception:
+            pass
 
-    #         hz_librosa = librosa.mel_to_hz(val, htk_flag)
-    #         np.testing.assert_almost_equal(
-    #             hz_paddle_tensor_ret, hz_librosa, decimal=4
-    #         )
+        try:
+            paddle.audio.functional.power_to_db(
+                paddle.to_tensor([spect]), ref_value=0
+            )
 
-    #         decibel_librosa = librosa.power_to_db(val)
-    #         np.testing.assert_almost_equal(
-    #             decibel_paddle_ret, decibel_librosa, decimal=5
-    #         )
+        except Exception:
+            pass
 
-    #     paddle.disable_static()
+        try:
+            paddle.audio.functional.power_to_db(
+                paddle.to_tensor([spect]), top_db=-1
+            )
+        except Exception:
+            pass
 
-    # @parameterize(
-    #     [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
-    # )
-    # def test_audio_function_mel(
-    #     self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
-    # ):
-    #     librosa_mel_freq = librosa.mel_frequencies(
-    #         n_mels, f_min, f_max, htk_flag
-    #     )
-    #     paddle_mel_freq = paddle.audio.functional.mel_frequencies(
-    #         n_mels, f_min, f_max, htk_flag, 'float64'
-    #     )
-    #     np.testing.assert_almost_equal(
-    #         paddle_mel_freq, librosa_mel_freq, decimal=3
-    #     )
+    @parameterize(
+        [
+            "hamming",
+            "hann",
+            "triang",
+            "bohman",
+            "blackman",
+            "cosine",
+            "tukey",
+            "taylor",
+        ],
+        [1, 512],
+    )
+    def test_window(self, window_type: str, n_fft: int):
+        window_scipy = signal.get_window(window_type, n_fft)
+        window_paddle = paddle.audio.functional.get_window(window_type, n_fft)
+        np.testing.assert_array_almost_equal(
+            window_scipy, window_paddle.numpy(), decimal=5
+        )
 
-    # @parameterize(
-    #     [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
-    # )
-    # # TODO(MarioLulab) May cause precision error. Fix it soon
-    # # @test_with_pir_api
-    # def test_audio_function_mel_static(
-    #     self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
-    # ):
-    #     paddle.enable_static()
-    #     main = paddle.static.Program()
-    #     startup = paddle.static.Program()
-    #     with paddle.static.program_guard(main, startup):
-    #         paddle_mel_freq = paddle.audio.functional.mel_frequencies(
-    #             n_mels, f_min, f_max, htk_flag, 'float64'
-    #         )
+    @parameterize([1, 512])
+    def test_gaussian_window_and_exception(self, n_fft: int):
+        window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
+        window_paddle_gaussian = paddle.audio.functional.get_window(
+            ('gaussian', 7), n_fft, False
+        )
+        np.testing.assert_array_almost_equal(
+            window_scipy_gaussain, window_paddle_gaussian.numpy(), decimal=5
+        )
+        window_scipy_general_gaussain = signal.windows.general_gaussian(
+            n_fft, 1, 7
+        )
+        window_paddle_general_gaussian = paddle.audio.functional.get_window(
+            ('general_gaussian', 1, 7), n_fft, False
+        )
+        np.testing.assert_array_almost_equal(
+            window_scipy_gaussain, window_paddle_gaussian.numpy(), decimal=5
+        )
 
-    #     exe = paddle.static.Executor()
-    #     (paddle_mel_freq_ret,) = exe.run(main, fetch_list=[paddle_mel_freq])
-    #     librosa_mel_freq = librosa.mel_frequencies(
-    #         n_mels, f_min, f_max, htk_flag
-    #     )
-    #     np.testing.assert_almost_equal(
-    #         paddle_mel_freq_ret, librosa_mel_freq, decimal=3
-    #     )
+        window_scipy_exp = signal.windows.exponential(n_fft)
+        window_paddle_exp = paddle.audio.functional.get_window(
+            ('exponential', None, 1), n_fft, False
+        )
+        np.testing.assert_array_almost_equal(
+            window_scipy_exp, window_paddle_exp.numpy(), decimal=5
+        )
+        try:
+            window_paddle = paddle.audio.functional.get_window("hann", -1)
+        except ValueError:
+            pass
 
-    #     paddle.disable_static()
+        try:
+            window_paddle = paddle.audio.functional.get_window(
+                "fake_window", self.n_fft
+            )
+        except ValueError:
+            pass
 
-    # @parameterize([8000, 16000], [64, 128, 256])
-    # def test_audio_function_fft(self, sr: int, n_fft: int):
-    #     librosa_fft = librosa.fft_frequencies(sr, n_fft)
-    #     paddle_fft = paddle.audio.functional.fft_frequencies(sr, n_fft)
-    #     np.testing.assert_almost_equal(paddle_fft, librosa_fft, decimal=5)
+        try:
+            window_paddle = paddle.audio.functional.get_window(1043, self.n_fft)
+        except ValueError:
+            pass
 
-    # @parameterize([1.0, 3.0, 9.0])
-    # def test_audio_function_exception(self, spect: float):
-    #     try:
-    #         paddle.audio.functional.power_to_db(
-    #             paddle.to_tensor([spect]), amin=0
-    #         )
-    #     except Exception:
-    #         pass
+    @parameterize([5, 13, 23], [257, 513, 1025])
+    def test_create_dct(self, n_mfcc: int, n_mels: int):
+        def dct(n_filters, n_input):
+            basis = np.empty((n_filters, n_input))
+            basis[0, :] = 1.0 / np.sqrt(n_input)
+            samples = np.arange(1, 2 * n_input, 2) * np.pi / (2.0 * n_input)
 
-    #     try:
-    #         paddle.audio.functional.power_to_db(
-    #             paddle.to_tensor([spect]), ref_value=0
-    #         )
+            for i in range(1, n_filters):
+                basis[i, :] = np.cos(i * samples) * np.sqrt(2.0 / n_input)
+            return basis.T
 
-    #     except Exception:
-    #         pass
-
-    #     try:
-    #         paddle.audio.functional.power_to_db(
-    #             paddle.to_tensor([spect]), top_db=-1
-    #         )
-    #     except Exception:
-    #         pass
-
-    # @parameterize(
-    #     [
-    #         "hamming",
-    #         "hann",
-    #         "triang",
-    #         "bohman",
-    #         "blackman",
-    #         "cosine",
-    #         "tukey",
-    #         "taylor",
-    #     ],
-    #     [1, 512],
-    # )
-    # def test_window(self, window_type: str, n_fft: int):
-    #     window_scipy = signal.get_window(window_type, n_fft)
-    #     window_paddle = paddle.audio.functional.get_window(window_type, n_fft)
-    #     np.testing.assert_array_almost_equal(
-    #         window_scipy, window_paddle.numpy(), decimal=5
-    #     )
-
-    # @parameterize([1, 512])
-    # def test_gaussian_window_and_exception(self, n_fft: int):
-    #     window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
-    #     window_paddle_gaussian = paddle.audio.functional.get_window(
-    #         ('gaussian', 7), n_fft, False
-    #     )
-    #     np.testing.assert_array_almost_equal(
-    #         window_scipy_gaussain, window_paddle_gaussian.numpy(), decimal=5
-    #     )
-    #     window_scipy_general_gaussain = signal.windows.general_gaussian(
-    #         n_fft, 1, 7
-    #     )
-    #     window_paddle_general_gaussian = paddle.audio.functional.get_window(
-    #         ('general_gaussian', 1, 7), n_fft, False
-    #     )
-    #     np.testing.assert_array_almost_equal(
-    #         window_scipy_gaussain, window_paddle_gaussian.numpy(), decimal=5
-    #     )
-
-    #     window_scipy_exp = signal.windows.exponential(n_fft)
-    #     window_paddle_exp = paddle.audio.functional.get_window(
-    #         ('exponential', None, 1), n_fft, False
-    #     )
-    #     np.testing.assert_array_almost_equal(
-    #         window_scipy_exp, window_paddle_exp.numpy(), decimal=5
-    #     )
-    #     try:
-    #         window_paddle = paddle.audio.functional.get_window("hann", -1)
-    #     except ValueError:
-    #         pass
-
-    #     try:
-    #         window_paddle = paddle.audio.functional.get_window(
-    #             "fake_window", self.n_fft
-    #         )
-    #     except ValueError:
-    #         pass
-
-    #     try:
-    #         window_paddle = paddle.audio.functional.get_window(1043, self.n_fft)
-    #     except ValueError:
-    #         pass
-
-    # @parameterize([5, 13, 23], [257, 513, 1025])
-    # def test_create_dct(self, n_mfcc: int, n_mels: int):
-    #     def dct(n_filters, n_input):
-    #         basis = np.empty((n_filters, n_input))
-    #         basis[0, :] = 1.0 / np.sqrt(n_input)
-    #         samples = np.arange(1, 2 * n_input, 2) * np.pi / (2.0 * n_input)
-
-    #         for i in range(1, n_filters):
-    #             basis[i, :] = np.cos(i * samples) * np.sqrt(2.0 / n_input)
-    #         return basis.T
-
-    #     librosa_dct = dct(n_mfcc, n_mels)
-    #     paddle_dct = paddle.audio.functional.create_dct(n_mfcc, n_mels)
-    #     np.testing.assert_array_almost_equal(librosa_dct, paddle_dct, decimal=5)
+        librosa_dct = dct(n_mfcc, n_mels)
+        paddle_dct = paddle.audio.functional.create_dct(n_mfcc, n_mels)
+        np.testing.assert_array_almost_equal(librosa_dct, paddle_dct, decimal=5)
 
     @parameterize(
         [128, 256, 512], ["hamming", "hann", "triang", "bohman"], [True, False]
