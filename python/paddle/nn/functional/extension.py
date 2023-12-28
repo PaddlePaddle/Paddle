@@ -104,7 +104,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if maxlen is not None:
-            out = _C_ops.sequence_mask(x, maxlen, dtype.value)
+            out = _C_ops.sequence_mask(x, maxlen, dtype)
             out.stop_gradient = True
             return out
 
