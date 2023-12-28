@@ -17,9 +17,12 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
+
+#include "paddle/pir/core/dll_decl.h"
 
 #include "glog/logging.h"
 
@@ -63,35 +66,95 @@ struct BinaryDimExpr {
 };
 
 template <typename T>
-struct VariadicDimExpr {
-  explicit VariadicDimExpr(const std::vector<T>& vec)
-      : data(std::make_shared<Data>(vec)) {}
+class List final {
+ public:
+  List(const List&) = default;
+  List(List&&) = default;
+  List& operator=(const List&) = default;
+  List& operator=(List&&) = default;
 
-  using Data = std::vector<T>;
+  using value_type = T;
 
-  const Data& operator*() const { return *data; }
-  Data& operator*() { return *data; }
-  const Data* operator->() const { return data.get(); }
-  Data* operator->() { return data.get(); }
+  explicit List() : vector_(std::make_shared<std::vector<T>>()) {}
 
-  std::shared_ptr<Data> data;
+  template <
+      typename Arg,
+      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, List>, bool> = true>
+  explicit List(Arg&& arg)
+      : vector_(std::make_shared<std::vector<T>>(
+            std::vector<T>{std::forward<Arg>(arg)})) {}
+
+  template <typename Arg0, typename Arg1, typename... Args>
+  List(Arg0&& arg0, Arg1&& arg1, Args&&... args)
+      : vector_(std::make_shared<std::vector<T>>(
+            std::vector<T>{std::forward<Arg0>(arg0),
+                           std::forward<Arg1>(arg1),
+                           std::forward<Args>(args)...})) {}
+
+  bool operator==(const List& other) const {
+    if (&vector() == &other.vector()) {
+      return true;
+    }
+    return vector() == other.vector();
+  }
+
+  bool operator!=(const List& other) const { return !(*this == other); }
+
+  std::vector<T>& operator*() const { return *vector_; }
+  std::vector<T>* operator->() const { return vector_.get(); }
+
+  const std::vector<T>& vector() const { return *vector_; }
+
+  const auto& Get(std::size_t idx) const { return vector_->at(idx); }
+
+ private:
+  std::shared_ptr<std::vector<T>> vector_;
 };
 
-#define DEFINE_DIM_EXPR_SUBCLASS(class_name, base) \
-  template <typename T>                            \
-  struct class_name : public base<T> {             \
-    using base<T>::base;                           \
-  };
+template <typename T>
+struct Negative final : public UnaryDimExpr<T> {
+  using UnaryDimExpr<T>::UnaryDimExpr;
+};
 
-DEFINE_DIM_EXPR_SUBCLASS(Negative, UnaryDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Reciprocal, UnaryDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Add, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Mul, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Max, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Min, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Broadcast, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Equal, BinaryDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Broadcastable, BinaryDimExpr);
+template <typename T>
+struct Reciprocal final : public UnaryDimExpr<T> {
+  using UnaryDimExpr<T>::UnaryDimExpr;
+};
+
+template <typename T>
+struct Add final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Mul final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Max final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Min final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Broadcast final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Equal final : public BinaryDimExpr<T> {
+  using BinaryDimExpr<T>::BinaryDimExpr;
+};
+
+template <typename T>
+struct Broadcastable final : public BinaryDimExpr<T> {
+  using BinaryDimExpr<T>::BinaryDimExpr;
+};
 
 class DimExpr;
 
@@ -114,7 +177,7 @@ using DimExprBase = std::variant<std::int64_t,
                                  Min<DimExpr>,
                                  Broadcast<DimExpr>>;
 
-class DimExpr : public DimExprBase {
+class IR_API DimExpr : public DimExprBase {
  public:
   using DimExprBase::DimExprBase;
 
@@ -128,39 +191,66 @@ class DimExpr : public DimExprBase {
     return std::get<T>(*this);
   }
 
+  template <typename T>
+  bool Has() const {
+    return std::holds_alternative<T>(*this);
+  }
+
+  template <typename T>
+  const T& Get() const {
+    return std::get<T>(*this);
+  }
+
+  const DimExprBase& variant() const {
+    return static_cast<const DimExprBase&>(*this);
+  }
+
   DimExpr operator+(const DimExpr& other) const;
   DimExpr operator-(const DimExpr& other) const;
   DimExpr operator*(const DimExpr& other) const;
   DimExpr operator/(const DimExpr& other) const;
+  bool operator==(const DimExpr& other) const;
+  bool operator!=(const DimExpr& other) const;
 };
 
 // DimExprConstraint = Equal DimExpr
 //                   | Broadcastable DimExpr
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
-// ValueShapeDimExprs = tShape [DimExpr] | tValue [DimExpr]
+// ShapeOrDataDimExprs = (tShape [DimExpr], tData (opt [DimExpr]))
 template <typename T>
-class ValueShape {
+class ShapeOrData {
  public:
-  explicit ValueShape(const std::vector<T>& shape)
-      : shape_(shape), value_(std::nullopt) {}
+  explicit ShapeOrData(const std::vector<T>& shape)
+      : shape_(shape), data_(std::nullopt) {}
+  ShapeOrData() = default;
+  ShapeOrData(const ShapeOrData&) = default;
+  ShapeOrData(ShapeOrData&&) = default;
+  ShapeOrData& operator=(const ShapeOrData&) = default;
+  ShapeOrData& operator=(ShapeOrData&&) = default;
 
-  static ValueShape MakeConsistentValue(const std::vector<T>& value) {
-    T size(std::int64_t(value.size()));
-    return ValueShape(std::vector<T>{size}, value);
+  static ShapeOrData MakeConsistentShapeOrData(const std::vector<T>& data) {
+    T shape(std::int64_t(data.size()));
+    return ShapeOrData(std::vector<T>{shape}, data);
   }
 
-  const std::optional<std::vector<T>>& shape() const { return shape_; }
-  const std::optional<std::vector<T>>& value() const { return value_; }
+  // Tensor's real shape
+  const std::vector<T>& shape() const { return shape_; }
+  // Specfic for Tensor generated by shape-relevant ops
+  const std::optional<std::vector<T>>& data() const { return data_; }
 
  private:
-  explicit ValueShape(const std::vector<T>& shape, const std::vector<T>& value)
-      : shape_(shape), value_(value) {}
+  explicit ShapeOrData(const std::vector<T>& shape, const std::vector<T>& data)
+      : shape_(shape), data_(data) {}
 
-  std::optional<std::vector<T>> shape_;
-  std::optional<std::vector<T>> value_;
+  std::vector<T> shape_;
+  std::optional<std::vector<T>> data_;
 };
 
-using ValueShapeDimExprs = ValueShape<DimExpr>;
+using ShapeOrDataDimExprs = ShapeOrData<DimExpr>;
+
+IR_API std::string ToString(const DimExpr& dim_expr);
+
+IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 
 }  // namespace symbol

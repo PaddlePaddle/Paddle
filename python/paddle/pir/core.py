@@ -20,6 +20,7 @@ from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.pir import (
     Program,
     get_current_insertion_point,
+    reset_insertion_point_to_start,
     set_insertion_point,
     set_insertion_point_to_block_end,
 )
@@ -273,10 +274,13 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
+    regularizer = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
+    if 'regularizer' in kwargs:
+        regularizer = kwargs['regularizer']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -297,11 +301,13 @@ def create_parameter(
 
     main_program.move_parameters_from(startup_program)
     with program_guard(default_main_program()):
+        reset_insertion_point_to_start()
         param = parameter(op_result_name, dtype, shape)
         trainable = kwargs.get('trainable', True)
         param.stop_gradient = not trainable
         param.persistable = True
 
+    param.regularizer = regularizer
     return param
 
 

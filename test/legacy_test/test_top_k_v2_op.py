@@ -67,7 +67,9 @@ class TestTopkOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestTopkOp_ZeroDim(TestTopkOp):
@@ -276,7 +278,12 @@ class TestTopkBF16Op(TestTopkOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

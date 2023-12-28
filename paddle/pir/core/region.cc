@@ -32,7 +32,7 @@ void Region::push_front(Block *block) { insert(blocks_.begin(), block); }
 
 Region::Iterator Region::insert(ConstIterator position, Block *block) {
   Region::Iterator iter = blocks_.insert(position, block);
-  block->SetParent(this, iter);
+  block->SetParent(this);
   return iter;
 }
 
@@ -54,7 +54,7 @@ void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
   for (auto iter = blocks_.begin(); iter != blocks_.end(); ++iter) {
-    (*iter)->SetParent(this, iter);
+    (*iter)->SetParent(this);
   }
 }
 
@@ -69,6 +69,24 @@ void Region::clear() {
     blocks_.pop_back();
   }
 }
+
+void Region::swap(Region &&other) {
+  blocks_.swap(other.blocks_);
+  for (auto &block : *this) {
+    block.SetParent(this);
+  }
+  for (auto &block : other) {
+    block.SetParent(&other);
+  }
+}
+
+template <WalkOrder Order, typename FuncT>
+void Region::Walk(FuncT &&callback) {
+  for (auto &block : *this) {
+    block.Walk<Order>(callback);
+  }
+}
+
 Program *Region::parent_program() const {
   return parent_ ? parent_->GetParentProgram() : nullptr;
 }

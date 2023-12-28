@@ -278,5 +278,18 @@ TEST(SingleIntervalIntSet, case_1) {
       ProvedIntersect(set_0, single_point).value().ProveEmpty().value());
 }
 
+TEST(SingleIntervalIntSet, case_2) {
+  ir::Var S = ir::Var(ir::Expr(0), ir::Expr(0), "S");
+
+  SingleIntervalIntSet set_0{S, S + Expr(1)};
+  SingleIntervalIntSet set_1{Expr(0), Expr(1)};
+  SingleIntervalIntSet set_2{Expr(0), Expr(2)};
+
+  EXPECT_TRUE(ProveEQ(set_0, set_1).value());
+  EXPECT_FALSE(ProveEQ(set_0, set_2).value());
+  EXPECT_TRUE(set_0.ProveSubSet(set_2).value());
+  EXPECT_TRUE(set_2.ProveSuperSet(set_0).value());
+}
+
 }  // namespace common
 }  // namespace cinn
