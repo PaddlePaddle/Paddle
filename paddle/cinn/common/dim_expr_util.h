@@ -4,7 +4,7 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-
+#include "paddle/cinn/common/dim_expr_simplify.h"
 
 namespace cinn::common {
 
