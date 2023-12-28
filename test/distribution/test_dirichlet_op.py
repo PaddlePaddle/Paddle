@@ -103,9 +103,6 @@ class TestDirichletBF16Op(OpTest):
         self.sample_shape = (10000, 2)
         self.dtype = np.uint16
         self.np_dtype = np.float32
-        self.python_api = paddle.distribution.Dirichlet(self.alpha).sample(
-            self.sample_shape
-        )
 
         self.inputs = {
             'Alpha': np.broadcast_to(self.alpha, self.sample_shape).astype(
