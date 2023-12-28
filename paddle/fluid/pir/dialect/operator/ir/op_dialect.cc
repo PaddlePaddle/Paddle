@@ -80,11 +80,6 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
                                CombineOpInferSymbolicShapeInterfaceModel>()));
 }
 
-void OperatorDialect::initialize() {
-  RegisterTypes<paddle::dialect::DenseTensorType,
-                paddle::dialect::SelectedRowsType,
-                paddle::dialect::DenseTensorArrayType>();
-}
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
   os << type.dialect().name();
   os << '.';
@@ -144,15 +139,6 @@ void PrintOperationImpl(pir::Operation* op,
   } else {
     printer.PrintGeneralOperation(op);
   }
-}
-
-OperatorDialect::OperatorDialect(pir::IrContext* ctx)
-    : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
-  initialize();
-  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
-  auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
-  info.AttachInterface(std::move(
-      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
 }
 
 void OperatorDialect::initialize() {
