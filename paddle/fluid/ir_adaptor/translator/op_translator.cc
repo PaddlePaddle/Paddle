@@ -230,7 +230,9 @@ inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
   return create_array_op.operation();
 }
 
-inline bool HasOpInfo(const OpDesc& op_desc, std::string prefix) {
+inline bool HasOpInfo(pir::IrContext* ctx,
+                      const OpDesc& op_desc,
+                      std::string prefix) {
   std::string target_op_name = prefix + OpNameCompatibleMapping(op_desc.Type());
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
@@ -243,12 +245,12 @@ inline bool HasOpInfo(const OpDesc& op_desc, std::string prefix) {
 }
 
 inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
-  if (HasOpInfo(op_desc, kCustomOpDialectPrefix)) {
+  if (HasOpInfo(ctx, op_desc, kCustomOpDialectPrefix)) {
     return kCustomOpDialectPrefix;
   }
 #ifdef PADDLE_WITH_DNNL
   if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-    if (!HasOpInfo(op_desc, kOneDNNTargetDialectPrefix)) {
+    if (!HasOpInfo(ctx, op_desc, kOneDNNTargetDialectPrefix)) {
       VLOG(3) << op_desc.Type()
               << "'s use_mkldnn == True, but PIR not support OneDNN for this "
                  "op right now.";

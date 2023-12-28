@@ -1478,6 +1478,7 @@ void HandleForSpecialOp(
 void PushBackOutputTypes(pir::IrContext* ctx,
                          pir::Operation* op_item,
                          const phi::Place& out_place,
+                         const phi::KernelKey& kernel_key,
                          std::vector<pir::Type>* op_output_types,
                          size_t index) {
   auto result_type = op_item->result(index).type();
@@ -1563,7 +1564,8 @@ void HandleForCustomOp(
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
     phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
-    PushBackOutputTypes(ctx, op_item, out_place, &op_output_types, i);
+    PushBackOutputTypes(
+        ctx, op_item, out_place, kernel_key, &op_output_types, i);
   }
 
   // Prepare input
@@ -1678,7 +1680,8 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
         (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
       out_place = phi::TransToPhiPlace(output_defs[i].backend);
     }
-    PushBackOutputTypes(ctx, op_item, out_place, &op_output_types, i);
+    PushBackOutputTypes(
+        ctx, op_item, out_place, kernel_key, &op_output_types, i);
   }
 
   return op_output_types;
@@ -2176,9 +2179,9 @@ void ProcessBlock(
         op_item, place, kernel_name, *map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
-    if (paddle::dialect::IsCustomOp(&op_item)) {
+    if (paddle::dialect::IsCustomOp(op_item)) {
       HandleForCustomOp(ctx,
-                        &op_item,
+                        op_item,
                         kernel_key,
                         place,
                         op_info_parser.get(),
