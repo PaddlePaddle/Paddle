@@ -1855,11 +1855,10 @@ void SliceArrayDenseOp::VerifySig() {
   VLOG(4) << "End Verifying for: SliceArrayOp.";
 }
 
-static void SliceArrayDenseOp::Build(
-    pir::Builder &builder,             // NOLINT
-    pir::OperationArgument &argument,  // NOLINT
-    pir::Value input,
-    pir::Value starts) {
+void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
+                              pir::OperationArgument &argument,  // NOLINT
+                              pir::Value input,
+                              pir::Value starts) {
   VLOG(4) << "Start build SliceArrayDenseOp";
   VLOG(4) << "Builder construction inputs";
   argument.AddInputs({input, starts});
