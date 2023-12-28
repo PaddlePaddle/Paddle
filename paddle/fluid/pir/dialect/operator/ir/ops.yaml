@@ -265,6 +265,7 @@
     data_type : x
   inplace: (x -> out)
   backward : cast_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : channel_shuffle
   args : (Tensor x, int groups, str data_format="NCHW")
@@ -1044,6 +1045,7 @@
   view: (x -> out)
   intermediate : xshape
   backward: reshape_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
@@ -1214,6 +1216,7 @@
     func : subtract
   inplace : (x -> out)
   backward : subtract_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sum
   args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
@@ -1463,6 +1466,15 @@
   kernel:
      func: number_count
      data_type: numbers
+
+- op: onednn_to_paddle_layout
+  args: (Tensor x, int dst_layout)
+  output: Tensor(out)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: onednn_to_paddle_layout
 
 - op: sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)

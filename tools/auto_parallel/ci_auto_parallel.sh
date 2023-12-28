@@ -160,8 +160,6 @@ if [[ ${#case_list[*]} -ne 0 ]];then
         elif [[ ${case} == "gpt-3_dygraph" ]];then
             bash /workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "llm_gpt" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_install_deps=1
-            export FLAGS_download_data="llm_gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "dygraph_unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
