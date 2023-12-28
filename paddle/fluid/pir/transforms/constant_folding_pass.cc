@@ -126,7 +126,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                pir::PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "constant_folding_pass applys rewrite on [" << op->name()
             << "] op";
-    auto output_var_names = RunOp(op, rewriter, place_);
+    auto output_var_names = RunOp(op, rewriter);
 
     // ParameterOp and ConstantTensorOp should be created in the top-level block
     rewriter.SetInsertionPointToStart(
@@ -226,8 +226,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
  protected:
   std::vector<std::string> RunOp(
       pir::Operation* op,
-      pir::PatternRewriter& rewriter,
-      phi::Place place) const {  // NOLINT
+      pir::PatternRewriter& rewriter) const {  // NOLINT
     pir::Program new_program(rewriter.ir_context());
     auto output_var_names =
         BuildProgramFromOperation(op, &new_program, rewriter);
@@ -237,9 +236,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       exe_config_->skip_gc_vars.insert(output_var_name);
     }
     auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(&new_program, place);
+        paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
     paddle::framework::InterpreterCore core(
-        place, {}, kernel_program->block(), scope_, *exe_config_);
+        place_, {}, kernel_program->block(), scope_, *exe_config_);
 
     core.Run({});
     return output_var_names;
@@ -316,9 +315,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   std::vector<std::string>* deleted_vars_;
 };
 
-class ConstantFoldingTrainingPattern : public ConstantFoldingPattern {
+class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
  public:
-  ConstantFoldingTrainingPattern(
+  ConstantFoldingPatternForTrain(
       pir::IrContext* context,
       size_t* counter,
       const phi::Place& place,
@@ -329,7 +328,7 @@ class ConstantFoldingTrainingPattern : public ConstantFoldingPattern {
             context, counter, place, scope, exe_config, deleted_vars) {}
 
   bool Match(pir::Operation* op) const override {
-    VLOG(4) << "constant_folding_training_pass applys match on [" << op->name()
+    VLOG(4) << "constant_folding_pass applys match on [" << op->name()
             << "] op";
     if (!ConstantFoldingPattern::Match(op)) {
       return false;
@@ -346,10 +345,10 @@ class ConstantFoldingTrainingPattern : public ConstantFoldingPattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    VLOG(4) << "constant_folding_pass applys rewrite on [" << op->name()
-            << "] op";
+    VLOG(4) << "constant_folding_pass for train applys rewrite on ["
+            << op->name() << "] op";
 
-    auto output_var_names = RunOp(op, rewriter, phi::CPUPlace{});
+    auto output_var_names = RunOp(op, rewriter);
 
     // ConstantTensorOp should be created in the top-level block
     rewriter.SetInsertionPointToStart(
@@ -373,8 +372,8 @@ class ConstantFoldingTrainingPattern : public ConstantFoldingPattern {
       rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
     }
     rewriter.EraseOp(op);
-    VLOG(4) << "constant_folding_pass applied rewrite on [" << op->name()
-            << "] op";
+    VLOG(4) << "constant_folding_pass for traun applied rewrite on ["
+            << op->name() << "] op";
   }
 };
 
@@ -405,8 +404,8 @@ class ConstantFoldingPass : public pir::Pass {
     pir::RewritePatternSet ps(context);
 
     if (Has("train_mode") && Get<bool>("train_mode")) {
-      ps.Add<ConstantFoldingTrainingPattern>(
-          context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
+      ps.Add<ConstantFoldingPatternForTrain>(
+          context, &counter_, phi::CPUPlace{}, scope_, &exe_config_, &deleted_vars_);
     } else {
       ps.Add<ConstantFoldingPattern>(
           context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
