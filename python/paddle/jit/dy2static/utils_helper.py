@@ -15,7 +15,6 @@
 
 import inspect
 
-import astor
 import numpy as np  # noqa: F401
 
 import paddle
@@ -62,7 +61,7 @@ def is_api_in_module(node, module_prefix):
     while isinstance(func_node, gast.Call):
         func_node = func_node.func
 
-    func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
+    func_str = ast_to_source_code(func_node).strip()
     try:
         import paddle.jit.dy2static as _jst  # noqa: F401
         from paddle import to_tensor  # noqa: F401
@@ -80,7 +79,7 @@ def _is_api_in_module_helper(obj, module_prefix):
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
 def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
+    func_str = ast_to_source_code(node.func)
     try:
         module_result = eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")

@@ -215,8 +215,10 @@ class ArrayLengthOp
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
-class ArrayReadOp
-    : public pir::Op<ArrayReadOp, OpYamlInfoInterface, InferMetaInterface> {
+class ArrayReadOp : public pir::Op<ArrayReadOp,
+                                   OpYamlInfoInterface,
+                                   paddle::dialect::VjpInterface,
+                                   InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_read"; }
@@ -236,10 +238,17 @@ class ArrayReadOp
   pir::Value i() { return operand_source(1); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
                                      OpYamlInfoInterface,
+                                     paddle::dialect::VjpInterface,
                                      InferMetaInterface,
                                      InplaceTrait> {
  public:
@@ -259,6 +268,12 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
   pir::Value i() { return operand_source(2); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class ArrayToTensorOp
@@ -314,8 +329,8 @@ class SliceArrayDenseOp
  public:
   using Op::Op;
   static const char *name() { return "pd_op.slice_array_dense"; }
-  static const char *attributes_name[1];
-  static constexpr uint32_t attributes_num = 1;
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
   void VerifySig();
 

@@ -308,7 +308,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
-    const std::vector<int64_t> &seeds) {
+    const int64_t &place_hash_key) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
@@ -325,8 +325,8 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, program_desc.Block(0), scope, execution_config));
 
-  auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
+  auto &cached_value = interpretercore_info_cache.GetMutable(
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/false);
   cached_value.core_ = core;
   return core;
 }
@@ -337,7 +337,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
-    const std::vector<int64_t> &seeds) {
+    const int64_t &place_hash_key) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
@@ -354,8 +354,8 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, {}, ir_program->block(), scope, execution_config));
 
-  auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
+  auto &cached_value = interpretercore_info_cache.GetMutable(
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/true);
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;

@@ -111,6 +111,40 @@ class TestL1Decay(unittest.TestCase):
         self.assertEqual(block.ops[-2].type, 'scale')
         self.assertEqual(block.ops[-3].type, 'sign')
 
+    def test_l1decay_regularizer(self):
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program):
+                block = main_program.global_block()
+                mul_x = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    name="mul.x",
+                    regularizer=regularizer.L1Decay(0.5),
+                    initializer=paddle.nn.initializer.Constant(1),
+                )
+                self.assertIsNotNone(mul_x.regularizer)
+                self.assertTrue(
+                    isinstance(mul_x.regularizer, regularizer.L1Decay)
+                )
+
+                mul_y = paddle.static.data(
+                    dtype="float32", shape=[10, 8], name="mul.y"
+                )
+                mul_out = paddle.matmul(mul_x, mul_y)
+                mean_out = paddle.mean(mul_out)
+                grads = paddle.autograd.ir_backward.grad(mean_out, [mul_x])
+                params_grads = [(mul_x, grads[0])]
+                self.assertEqual(len(params_grads), 1)
+                count_ops = len(block.ops)
+                optimizer = paddle.optimizer.Adam()
+                params_grads = optimizer.append_regularization_ops(params_grads)
+                self.assertEqual(len(params_grads), 1)
+                self.assertEqual(len(block.ops), count_ops + 5)
+                self.assertEqual(block.ops[-1].name(), 'pd_op.add_n')
+                self.assertEqual(block.ops[-3].name(), 'pd_op.scale')
+                self.assertEqual(block.ops[-5].name(), 'pd_op.sign')
+
 
 def bow_net(
     data,

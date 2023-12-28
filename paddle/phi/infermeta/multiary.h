@@ -720,6 +720,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
                                const int32_t arch,
+                               const int32_t group_size,
                                MetaTensor* out);
 
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
