@@ -389,7 +389,9 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
         cos_fp32 = paddle.to_tensor(cos_bf16, dtype="float32")
 
         position_ids = paddle.arange(0, self.shape[1], dtype="int64")
-        position_ids = paddle.stack([position_ids for _ in range(self.shape[0])], axis=0)
+        position_ids = paddle.stack(
+            [position_ids for _ in range(self.shape[0])], axis=0
+        )
         out_bf16 = fused_rotary_position_embedding(
             q_bf16,
             k_bf16,
@@ -404,7 +406,9 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
         grad_out_k_bf16 = paddle.randn(self.shape, dtype="bfloat16")
         grad_out_v_bf16 = paddle.randn(self.shape, dtype="bfloat16")
 
-        paddle.autograd.backward(out_bf16, [grad_out_q_bf16, grad_out_k_bf16, grad_out_v_bf16], True)
+        paddle.autograd.backward(
+            out_bf16, [grad_out_q_bf16, grad_out_k_bf16, grad_out_v_bf16], True
+        )
         grad_bf16 = [q_bf16.grad, k_bf16.grad, v_bf16.grad]
 
         out_fp32 = paddle_fused_rotary_position_embedding(
@@ -416,11 +420,13 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
             position_ids=position_ids,
             use_neox_rotary_style=False,
         )
-        
+
         grad_out_q_fp32 = paddle.to_tensor(grad_out_q_bf16, dtype="float32")
         grad_out_k_fp32 = paddle.to_tensor(grad_out_k_bf16, dtype="float32")
         grad_out_v_fp32 = paddle.to_tensor(grad_out_v_bf16, dtype="float32")
-        paddle.autograd.backward(out_fp32, [grad_out_q_fp32, grad_out_k_fp32, grad_out_v_fp32], True)
+        paddle.autograd.backward(
+            out_fp32, [grad_out_q_fp32, grad_out_k_fp32, grad_out_v_fp32], True
+        )
         grad_fp32 = [q_fp32.grad, k_fp32.grad, v_fp32.grad]
 
         for fp32_val, bf16_val in zip(out_fp32, out_bf16):
@@ -430,12 +436,17 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
             )
         for grad_fp32_val, grad_bf16_val in zip(grad_fp32, grad_bf16):
             grad_bf16_val = convert_uint16_to_float(grad_bf16_val.numpy())
-            np.testing.assert_allclose(grad_fp32_val.numpy(), grad_bf16_val, rtol=1e-2, atol=1e-2)
+            np.testing.assert_allclose(
+                grad_fp32_val.numpy(), grad_bf16_val, rtol=1e-2, atol=1e-2
+            )
 
 
-class XPUTestFusedRotaryPositionEmbeddingBf16_2(XPUTestFusedRotaryPositionEmbeddingBf16_1):
+class XPUTestFusedRotaryPositionEmbeddingBf16_2(
+    XPUTestFusedRotaryPositionEmbeddingBf16_1
+):
     def setUp(self):
         self.shape = [2, 2048, 16, 128]
+
 
 # too long for CI
 # class XPUTestFusedRotaryPositionEmbeddingBf16_3(XPUTestFusedRotaryPositionEmbeddingBf16_1):
