@@ -26,9 +26,11 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -509,6 +511,105 @@ static void ParseBoolAndBroadcastIndices(
     auto broadcasted_index = broadcast_tensors_ad_func(*advanced_index);
     advanced_index->assign(broadcasted_index.begin(), broadcasted_index.end());
   }
+}
+
+static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
+                                     PyObject* value_obj,
+                                     std::vector<phi::Scalar>* values,
+                                     const bool trans_to_tensor) {
+  paddle::Tensor value_tensor;
+  if (PyCheckTensor(value_obj)) {
+    value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
+  } else if (py::isinstance<py::array>(value_obj)) {
+    paddle::Tensor value_tensor_tmp(
+        std::make_shared<phi::DenseTensor>(),
+        egr::Controller::Instance().GenerateUniqueName());
+    py::object value_obj_tmp(py::handle(value_obj), true);
+    py::object value = value_obj_tmp;
+    if (tensor.dtype() == phi::DataType::FLOAT32) {
+      if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::FLOAT64) {
+      if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::INT32) {
+      if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::INT64) {
+      if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::BOOL) {
+      if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::COMPLEX64) {
+      if (!py::isinstance<py::array_t<std::complex<float>>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<std::complex<float>>(
+            value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::COMPLEX128) {
+      if (!py::isinstance<py::array_t<std::complex<double>>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<std::complex<double>>(
+            value_obj_tmp);
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "When assign a numpy.np value to a paddle.Tensor, "
+          "the data type of the paddle.Tensor must be bool, "
+          "float32, float64, complex64, complex128, int32 or int64, "
+          "please check the type of tensor."));
+    }
+    SetTensorFromPyArray(
+        static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
+        value,
+        tensor.place(),
+        false);
+    value_tensor = value_tensor_tmp;
+  } else {
+    py::object value_obj_tmp(py::handle(value_obj), true);
+    // convert the value to self data type
+    if (py::isinstance<py::float_>(value_obj_tmp) ||
+        py::isinstance<py::int_>(value_obj_tmp) ||
+        py::isinstance<py::bool_>(value_obj_tmp) ||
+        PyComplex_Check(value_obj)) {
+      if (tensor.dtype() == phi::DataType::FLOAT32 ||
+          tensor.dtype() == phi::DataType::FLOAT16 ||
+          tensor.dtype() == phi::DataType::BFLOAT16) {
+        values->push_back(value_obj_tmp.cast<float>());
+      } else if (tensor.dtype() == phi::DataType::FLOAT64) {
+        values->push_back(value_obj_tmp.cast<double>());
+      } else if (tensor.dtype() == phi::DataType::INT32 ||
+                 tensor.dtype() == phi::DataType::INT16 ||
+                 tensor.dtype() == phi::DataType::INT8 ||
+                 tensor.dtype() == phi::DataType::UINT8) {
+        values->push_back(value_obj_tmp.cast<int32_t>());
+      } else if (tensor.dtype() == phi::DataType::INT64) {
+        values->push_back(value_obj_tmp.cast<int64_t>());
+      } else if (tensor.dtype() == phi::DataType::BOOL) {
+        values->push_back(value_obj_tmp.cast<bool>());
+      } else if (tensor.dtype() == phi::DataType::COMPLEX64) {
+        values->push_back(value_obj_tmp.cast<std::complex<float>>());
+      } else if (tensor.dtype() == phi::DataType::COMPLEX128) {
+        values->push_back(value_obj_tmp.cast<std::complex<double>>());
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Value type error. The assign value allows "
+          "Tensor, numpy.ndarray, integer, float, complex or bool, "
+          "but received %s.",
+          Py_TYPE(value_obj)));
+    }
+
+    if (trans_to_tensor) {
+      value_tensor =
+          full_ad_func({1}, (*values)[0], tensor.dtype(), tensor.place());
+    }
+  }
+  return value_tensor;
 }
 
 }  // namespace pybind

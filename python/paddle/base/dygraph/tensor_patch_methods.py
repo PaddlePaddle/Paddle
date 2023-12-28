@@ -877,7 +877,7 @@ def monkey_patch_tensor():
             array = array.astype(dtype)
         return array
 
-    def pre_deal_index_and_value(self, item, value=None):
+    def pre_deal_index(self, item, value=None):
         # since in pybind there is no effiency way to transfer Py_Tuple/Py_List/Py_Range to Tensor
         # we call this function in python level.
         item = list(item) if isinstance(item, tuple) else [item]
@@ -887,17 +887,14 @@ def monkey_patch_tensor():
             elif isinstance(slice_item, range):
                 item[i] = paddle.to_tensor(list(slice_item))
 
-        if value is not None and not isinstance(value, Variable):
-            value = paddle.to_tensor(value, dtype=self.dtype)
-
         return tuple(item), value
 
     def __getitem__(self, item):
-        item, _ = pre_deal_index_and_value(self, item)
+        item, _ = pre_deal_index(self, item)
         return self._getitem_dygraph(item)
 
     def __setitem__(self, item, value):
-        item, value = pre_deal_index_and_value(self, item, value)
+        item, value = pre_deal_index(self, item, value)
         return self._setitem_dygraph(item, value)
 
     @framework.dygraph_only
