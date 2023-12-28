@@ -806,9 +806,18 @@ bool AnalysisPredictor::PrepareExecutor() {
 
         //----------------------------------------------------------------------------------------------//
         // Basic pass required by the framework
-        gpu_pm.AddPass(
-            ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
-        gpu_pm.AddPass(::pir::CreateConstantFoldingPass(place_, sub_scope_));
+        auto params_sync_among_devices_pass =
+            ::pir::CreateParamsSyncAmongDevicesPass();
+        params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
+                                                    sub_scope_);
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
+        gpu_pm.AddPass(std::move(constant_folding_pass));
         gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//
@@ -1930,6 +1939,9 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
+        }
+        if (std::getenv("FLAGS_cache_inference_while_scope") == nullptr) {
+          SetGflag("cache_inference_while_scope", "1");
         }
       });
 

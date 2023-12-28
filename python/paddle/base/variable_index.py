@@ -134,7 +134,8 @@ def get_value_for_bool_tensor(var, item):
                 )
             )
         i += 1
-
+    if len(item.shape) == len(var.shape):
+        return paddle.masked_select(var, item)
     bool_2_idx = paddle.nonzero(item)
     return paddle.gather_nd(var, bool_2_idx)
 

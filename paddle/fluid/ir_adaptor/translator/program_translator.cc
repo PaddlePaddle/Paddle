@@ -191,12 +191,26 @@ pir::Operation* ProgramTranslator::InsertDataOpOrCreateArrayToBlock(
   if (type.isa<paddle::dialect::DenseTensorType>()) {
     auto tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
     std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
+    VLOG(10) << "[translator][data insertion] before type: " << tensor_type;
+    std::transform(shape.cbegin(), shape.cend(), shape.begin(), [](int64_t s) {
+      return abs(s);
+    });
+    auto normalized_tensor_type =
+        dialect::DenseTensorType::get(ctx_,
+                                      tensor_type.dtype(),
+                                      common::make_ddim(shape),
+                                      tensor_type.data_layout(),
+                                      tensor_type.lod(),
+                                      tensor_type.offset());
+    VLOG(10) << "[translator][data insertion] after type: "
+             << normalized_tensor_type;
+
     auto data_op = builder.Build<paddle::dialect::DataOp>(
         "data_" + nano_timestamp(),
         shape,
-        paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
+        paddle::dialect::TransToPhiDataType(normalized_tensor_type.dtype()),
         phi::CPUPlace());
-    data_op.out().set_type(type);
+    data_op.out().set_type(normalized_tensor_type);
     return data_op.operation();
   } else if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
     auto array_type = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();

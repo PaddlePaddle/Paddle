@@ -31,14 +31,7 @@ class FcElementwiseLayerNormFusePattern
                {
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                    {"activation_type", pat.Attr("activation_type")},
-                   {"use_mkldnn", pat.Attr("use_mkldnn")},
                    {"padding_weights", pat.Attr("padding_weights")},
-                   {"use_quantizer", pat.Attr("use_quantizer")},
-                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                   {"scale_in", pat.Attr("scale_in")},
-                   {"scale_weights", pat.Attr("scale_weights")},
-                   {"scale_out", pat.Attr("scale_out")},
-                   {"force_fp32_output", pat.Attr("force_fp32_output")},
                });
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &layernorm =
@@ -104,14 +97,7 @@ class FcElementwiseLayerNormFuse2Pattern
                {
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                    {"activation_type", pat.Attr("activation_type")},
-                   {"use_mkldnn", pat.Attr("use_mkldnn")},
                    {"padding_weights", pat.Attr("padding_weights")},
-                   {"use_quantizer", pat.Attr("use_quantizer")},
-                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                   {"scale_in", pat.Attr("scale_in")},
-                   {"scale_weights", pat.Attr("scale_weights")},
-                   {"scale_out", pat.Attr("scale_out")},
-                   {"force_fp32_output", pat.Attr("force_fp32_output")},
                });
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &layernorm =

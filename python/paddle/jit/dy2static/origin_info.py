@@ -19,7 +19,7 @@ from paddle.base import core
 from paddle.base.framework import Program
 from paddle.utils import gast
 
-from .utils import ORIGI_INFO, unwrap
+from .utils import ORIGI_INFO
 
 __all__ = []
 
@@ -95,7 +95,7 @@ class OriginInfoAttacher(gast.NodeTransformer):
 
     def __init__(self, root, func):
         self.root = root
-        self.func = unwrap(func)
+        self.func = inspect.unwrap(func)
         self.filepath = inspect.getsourcefile(self.func)
         self.source_code = inspect.getsource(self.func)
         self.current_func = []

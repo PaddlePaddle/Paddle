@@ -155,10 +155,13 @@ namespace plat = paddle::platform;
 REGISTER_OP_XPU_KERNEL(
     matmul,
     ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, plat::bfloat16>,
     ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>);
 REGISTER_OP_XPU_KERNEL(
     matmul_grad,
     ops::MatMulGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::MatMulGradXPUKernel<paddle::platform::XPUDeviceContext,
+                             plat::bfloat16>,
     ops::MatMulGradXPUKernel<paddle::platform::XPUDeviceContext,
                              plat::float16>);
 #endif

@@ -384,6 +384,104 @@ def monkey_patch_tensor():
         return np.array(self.grad)
 
     @framework.dygraph_only
+    def apply_(self, func):
+        """
+        Inplace apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
+                >>> f = lambda x: 3*x+2
+                >>> x.apply_(f)
+                >>> print(x)
+                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+                       [[2.90000004, 3.50000000, 2.30000000],
+                        [4.69999993, 4.69999993, 4.09999996],
+                        [3.20000002, 4.40000004, 2.60000001]])
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float16")
+                >>> x.apply_(f)
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
+                >>> x.apply_(f)
+
+
+                >>> if paddle.is_compiled_with_cuda():
+                >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("gpu", "float32")
+                >>>     x.apply_(f)
+        """
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        return self._apply_(func)
+
+    def apply(self, func):
+        """
+        Apply the python function to the tensor.
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
+                >>> f = lambda x: 3*x+2
+                >>> y = x.apply(f)
+                >>> print(y)
+                Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+                       [[2.90000004, 3.50000000, 2.30000000],
+                        [4.69999993, 4.69999993, 4.09999996],
+                        [3.20000002, 4.40000004, 2.60000001]])
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "float16")
+                >>> y = x.apply(f)
+
+
+                >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
+                >>> y = x.apply(f)
+
+
+                >>> if paddle.is_compiled_with_cuda():
+                >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
+                >>>        [0.9, 0.9, 0.7],
+                >>>        [0.4, 0.8, 0.2]]).to("gpu", "float32")
+                >>>     y = x.apply(f)
+
+        """
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        return self._apply(func)
+
+    @framework.dygraph_only
     def register_hook(self, hook):
         """
         Registers a backward hook for current Tensor.
@@ -1139,6 +1237,8 @@ def monkey_patch_tensor():
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
         ("gradient", gradient),
+        ("apply_", apply_),
+        ("apply", apply),
         ("register_hook", register_hook),
         ("__str__", __str__),
         ("__repr__", __str__),

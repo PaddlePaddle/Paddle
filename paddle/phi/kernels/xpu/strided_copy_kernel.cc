@@ -10,8 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/strided_copy_kernel.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
