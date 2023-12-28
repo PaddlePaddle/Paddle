@@ -147,6 +147,13 @@ def OpNameNormalizerInitialization(
         "grad_bias_grad": "DDBias",
         "grad_out": "DY",
     }
+    op_arg_name_mappings["matmul"] = {"x": "X", "y": "Y", "out": "Out"}
+
+    op_arg_name_mappings["matrix_rank"] = {
+        "x": "X",
+        "atol_tensor": "TolTensor",
+        "out": "Out",
+    }
 
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:

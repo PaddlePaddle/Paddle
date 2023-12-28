@@ -307,6 +307,7 @@ def launch():
         from ..auto_tuner.tuner import AutoTuner
         from ..auto_tuner.utils import (
             add_overlap_performance,
+            find_error_from_log,
             gen_new_args,
             gen_new_ctx,
             read_log,
@@ -435,7 +436,7 @@ def launch():
 
         is_first_task = True
         # build history recorder
-        recorder = HistoryRecorder()
+        recorder = HistoryRecorder(tuner_cfg)
 
         job_id = 0
         error_task_nums = 0
@@ -575,10 +576,10 @@ def launch():
 
             end_time = time.time()
             ctx.logger.info(
-                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
             )
             logger.info(
-                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
             )
 
         # build AutoTuner to get new config
@@ -897,6 +898,15 @@ def launch():
                     )
                 )
                 amp = tuner_cfg["search_algo"]["conversion"].get("amp", False)
+                num_gpus = int(cur_cfg["num_gpus"])
+                seq_length = int(
+                    tuner_cfg["model_cfg"].get("max_seq_length", 2048)
+                )
+                cur_cfg[f"unified_{tuner_cfg['metric_cfg']['name']}"] = (
+                    round(single_dp_performance / num_gpus * seq_length, 2)
+                    if single_dp_performance
+                    else None
+                )
                 for bw in comm_bw:
                     if amp:
                         comm_time = model_size_b * (4 + 2) / bw
@@ -915,11 +925,73 @@ def launch():
                     cur_cfg[
                         f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = multi_dp_performace
+                    cur_cfg[
+                        f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
+                    ] = (
+                        round(multi_dp_performace / num_gpus * seq_length, 2)
+                        if multi_dp_performace
+                        else None
+                    )
+                    if recorder.additional_metric_key is None:
+                        recorder.additional_metric_key = (
+                            f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
+                        )
 
+            error_info = None
             cur_cfg["has_error"] = has_error
             if has_error:
+                error_info = []
                 error_task_nums += 1
-            error_info = None
+                if OOM_flag:
+                    error_info.append("Out of memory")
+                else:
+                    if actual_nnodes > 1:
+                        path = f"auto_tuner/error/{job_id}/{ip}"
+                        single_error_info = find_error_from_log(
+                            ctx.args.log_dir
+                        )
+                        if len(single_error_info) > 0:
+                            while not client.put(
+                                path, single_error_info.encode('latin-1')
+                            ):
+                                time.sleep(1)
+                            ctx.logger.info(
+                                f"Put Error info: {single_error_info} to {path}"
+                            )
+                            logger.info(
+                                f"Put Error info: {single_error_info} to {path}"
+                            )
+                        else:
+                            while not client.put(path, "OK".encode('latin-1')):
+                                time.sleep(1)
+                            ctx.logger.info(f"Put OK to {path}")
+                            logger.info(f"Put OK to {path}")
+
+                        result = list(
+                            client.get_prefix(f"auto_tuner/error/{job_id}/")
+                        )
+                        size = len(result)
+                        while size != actual_nnodes:
+                            time.sleep(1)
+                            result = list(
+                                client.get_prefix(f"auto_tuner/error/{job_id}/")
+                            )
+                            size = len(result)
+
+                        status = [
+                            i[0].decode()
+                            for i in result
+                            if "OK" not in i[0].decode()
+                        ]
+                        error_info = list(set(status))
+                        ctx.logger.info(
+                            f"Status of auto_tuner/error/{job_id}/: {error_info}"
+                        )
+                        logger.info(
+                            f"Status of auto_tuner/error/{job_id}/: {error_info}"
+                        )
+                    else:
+                        error_info.append(find_error_from_log(ctx.args.log_dir))
             cur_cfg["error_info"] = error_info
             task_nums = len(auto_tuner.algo.all_tasks)
             cur_task_id = auto_tuner.algo.idx
@@ -1046,8 +1118,8 @@ def launch():
         assert best_cfg and best_cfg["time"] != -1
 
         end_time = time.time()
-        ctx.logger.info(f"AutoTuner ended in {end_time-start_time}s.")
-        logger.info(f"AutoTuner ended in {end_time-start_time}s.")
+        ctx.logger.info(f"AutoTuner ended in {end_time - start_time}s.")
+        logger.info(f"AutoTuner ended in {end_time - start_time}s.")
         # launch best cfg
         # estimation search need not run best cfg
         if not tuner_cfg.get("run_best", True) or tuner_cfg["search_algo"].get(

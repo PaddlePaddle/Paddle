@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/fluid/pir/dialect/operator/interface/reify_infer_shape.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -227,50 +227,12 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
   }
 };
 
-// Fold dim of an operation that implements the ReifyInferShapeInterface
+// Fold dim of an operation that implements the InferSymbolicShapeInterface
 template <typename OpTy>
 struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
   using OpRewritePattern<OpTy>::OpRewritePattern;
 
   bool MatchAndRewrite(OpTy dim_op, PatternRewriter& rewriter) const override {
-    OpResult dim_value = dim_op.source().template dyn_cast<OpResult>();
-    if (!dim_value) return false;
-
-    auto shaped_type_op =
-        dim_value.owner()
-            ->dyn_cast<paddle::dialect::ReifyInferShapeInterface>();
-    if (!shaped_type_op) return false;
-
-    std::optional<int64_t> dim_index = dim_op.GetConstantIndex();
-    if (!dim_index) return false;
-
-    std::vector<Value> reified_result_shapes;
-    if (!shaped_type_op.ReifyInferShape(
-            rewriter, shaped_type_op->operands(), reified_result_shapes))
-      return false;
-
-    if (reified_result_shapes.size() != shaped_type_op->num_results())
-      return false;
-
-    Value result_shape = reified_result_shapes[dim_value.index()];
-    auto result_shape_type = result_shape.type().dyn_cast<DenseTensorType>();
-    auto shaped_type = result_shape_type.dyn_cast<ShapedTypeInterface>();
-    if (!result_shape_type || !shaped_type.GetElementType().IsIntOrIndex())
-      return false;
-
-    // TODO(zhangbopd): BuildOrFold required.
-    std::vector<Value> indices;
-    indices.push_back(rewriter.Build<shape::ConstantIndexOp>(*dim_index).out());
-
-    Value new_value =
-        rewriter.Build<shape::ExtractOp>(result_shape, indices).out();
-
-    if (!new_value.type().isa<IndexType>())
-      new_value =
-          rewriter.Build<shape::IndexCastOp>(rewriter.index_type(), new_value)
-              .out();
-
-    rewriter.ReplaceOp(dim_op, {new_value});
     return true;
   }
 };
@@ -349,19 +311,6 @@ bool ShapeComputationIRAnalysis::Run() {
   // Make sure only run once.
   if (initialized_) return false;
   initialized_ = true;
-  // auto build_shape_func =
-  //     std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
-  //               this,
-  //               std::placeholders::_1);
-  // if (!RunOnRegion(&(m_->region(0)), build_shape_func)) return false;
-  // auto apply_op_constraint_func =
-  //     std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
-  //               this,
-  //               std::placeholders::_1);
-  // // TODO(zhangbopd): Delete the following 1 line and fix UT
-  // // `shape_optimization_test`
-  // return true;
-  // if (!RunOnRegion(&(m_->region(0)), apply_op_constraint_func)) return false;
   return true;
 }
 
@@ -508,13 +457,123 @@ bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
   return true;
 }
 
+void PrintProgram(pir::ModuleOp m, std::string mgs) {
+  std::ostringstream print_stream;
+  print_stream << "\n\n";
+  m.program()->Print(print_stream);
+  print_stream << "\n\n";
+  VLOG(3) << "===================== " << mgs << " =====================\n"
+          << print_stream.str();
+}
+
+void DebugPrintOpInfo(
+    pir::Operation* op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+  VLOG(0) << op->name() << ", num_operands: " << op->num_operands();
+  for (auto& res : op->results()) {
+    auto value_id = pir::GetValueId(&res);
+    std::ostringstream print_stream;
+
+    print_stream << ">>>> result(" << res.index() << ") 's ID: " << value_id;
+    if (shape_analysis != nullptr) {
+      auto shape_data = shape_analysis->value_id_to_shapeordata_[value_id];
+      print_stream << ", ShapeOrData.shape: [";
+
+      for (auto str : shape_data.shape()) {
+        int64_t* i = std::get_if<int64_t>(&str);
+        std::string* s = std::get_if<std::string>(&str);
+        if (i) {
+          print_stream << *i << ", ";
+        } else if (s) {
+          print_stream << *s << ", ";
+        }
+      }
+
+      print_stream << "], ShapeOrData.data: [";
+      if (shape_data.data().has_value()) {
+        for (auto str : shape_data.data().value()) {
+          int64_t* i = std::get_if<int64_t>(&str);
+          std::string* s = std::get_if<std::string>(&str);
+          if (i) {
+            print_stream << *i << ", ";
+          } else if (s) {
+            print_stream << *s << ", ";
+          }
+        }
+      }
+      print_stream << "]\n";
+    }
+    VLOG(0) << print_stream.str();
+  }
+}
+
+void InferSymExprForAllValues(ModuleOp module_op) {
+  auto shape_analysis_mgr = ShapeAnalysisManager::Instance();
+  ShapeConstraintIRAnalysis& shape_analysis =
+      shape_analysis_mgr.Get(module_op.program());
+  for (int i = 0; i < module_op->num_regions(); i++) {
+    for (auto& block : module_op->region(i)) {
+      for (auto& op : block) {
+        if (op.num_operands() == 0) {
+          for (auto& res : op.results()) {
+            auto value_id = pir::GetValueId(&res);
+
+            std::vector<int64_t> dims = common::vectorize(
+                res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+            std::vector<symbol::DimExpr> shapes;
+            for (int64_t dim : dims) {
+              symbol::DimExpr dim_expr;
+              if (dim == -1) {
+                symbol::DimExpr res_dim_expr(shape_analysis.GetNextSymName());
+                dim_expr = res_dim_expr;
+              } else {
+                symbol::DimExpr res_dim_expr(dim);
+                dim_expr = res_dim_expr;
+              }
+              shapes.push_back(dim_expr);
+            }
+
+            if (op.name() == "pd_op.full_int_array") {
+              auto attributes = op.attributes();
+              auto attr = attributes["value"];
+              auto arr = attr.dyn_cast<ArrayAttribute>();
+              const auto& vec = arr.AsVector();
+              for (auto item : vec) {
+                int64_t i = item.dyn_cast<Int64Attribute>().data();
+                shapes.push_back(symbol::DimExpr(i));
+              }
+            }
+            symbol::ShapeOrDataDimExprs shape_data{shapes};
+            shape_analysis.value_id_to_shapeordata_[value_id] = shape_data;
+          }
+        } else {
+          auto infer_symbolic_shape_interface =
+              op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+          if (infer_symbolic_shape_interface) {
+            PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
+                &shape_analysis));
+          }
+        }
+
+        DebugPrintOpInfo(&op, &shape_analysis);
+      }
+    }
+  }
+}
+
 class ShapeOptimizationPass : public pir::Pass {
  public:
   ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
 
   void Run(pir::Operation* op) override {
+    VLOG(3) << "===================== ShapeOptimizationPass Run start... "
+               "=============================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
+    PrintProgram(module_op, "Origin Program");
+
+    InferSymExprForAllValues(module_op);
     MaterializeShapeComputation(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
@@ -523,6 +582,8 @@ class ShapeOptimizationPass : public pir::Pass {
     // if (!OptimizeShapeComputation(module_op, runner)) {
     //   return;
     // }
+    VLOG(3) << "===================== ShapeOptimizationPass Run End. "
+               "=============================";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

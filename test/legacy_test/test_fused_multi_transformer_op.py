@@ -60,7 +60,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.__class__.no_need_check_grad = False
 
         bias_attr = paddle.base.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(value=0.0005)
+            initializer=paddle.nn.initializer.Constant(value=0.0005)
         )
         self.q_proj = Linear(
             self.embed_dim,
@@ -1383,16 +1383,16 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
         self.has_attn_mask = False
         self.x_type = np.float32
         self.weight_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
+            initializer=paddle.nn.initializer.Constant(0.0)
         )
         self.bias_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0005)
+            initializer=paddle.nn.initializer.Constant(0.0005)
         )
         self.ln_w_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(1.0)
+            initializer=paddle.nn.initializer.Constant(1.0)
         )
         self.ln_b_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
+            initializer=paddle.nn.initializer.Constant(0.0)
         )
 
     def test_fused_multi_transformer_op(self):

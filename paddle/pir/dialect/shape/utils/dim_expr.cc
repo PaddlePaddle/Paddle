@@ -17,21 +17,37 @@
 namespace symbol {
 
 DimExpr DimExpr::operator+(const DimExpr& other) const {
-  return Add<DimExpr>(std::vector{*this, other});
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    return this->dyn_cast<std::int64_t>() + other.dyn_cast<std::int64_t>();
+  }
+  return Add<DimExpr>{List<DimExpr>{*this, other}};
 }
 
 DimExpr DimExpr::operator-(const DimExpr& other) const {
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    return this->dyn_cast<std::int64_t>() - other.dyn_cast<std::int64_t>();
+  }
   const DimExpr& neg = Negative<DimExpr>(other);
-  return Add<DimExpr>(std::vector{*this, neg});
+  return Add<DimExpr>{List<DimExpr>{*this, neg}};
 }
 
 DimExpr DimExpr::operator*(const DimExpr& other) const {
-  return Mul<DimExpr>(std::vector{*this, other});
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    return this->dyn_cast<std::int64_t>() * other.dyn_cast<std::int64_t>();
+  }
+  return Mul<DimExpr>{List<DimExpr>{*this, other}};
 }
 
 DimExpr DimExpr::operator/(const DimExpr& other) const {
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    std::int64_t num = this->dyn_cast<std::int64_t>();
+    std::int64_t dem = other.dyn_cast<std::int64_t>();
+    if (num % dem == 0) {
+      return num / dem;
+    }
+  }
   const DimExpr& reciprocal = Reciprocal<DimExpr>(other);
-  return Mul<DimExpr>(std::vector{*this, reciprocal});
+  return Mul<DimExpr>{List<DimExpr>{*this, reciprocal}};
 }
 
 namespace {
@@ -53,11 +69,11 @@ bool DimExprEqual(const Reciprocal<DimExpr>& lhs,
 
 template <template <typename> class Op>
 bool DimExprEqual(const Op<DimExpr>& lhs, const Op<DimExpr>& rhs) {
-  if (lhs->size() != rhs->size()) {
+  if (lhs.operands->size() != rhs.operands->size()) {
     return false;
   }
-  for (std::size_t i = 0; i < lhs->size(); ++i) {
-    if (lhs->at(i) != rhs->at(i)) {
+  for (std::size_t i = 0; i < lhs.operands->size(); ++i) {
+    if (lhs.operands->at(i) != rhs.operands->at(i)) {
       return false;
     }
   }
@@ -106,6 +122,66 @@ bool DimExpr::operator==(const DimExpr& other) const {
 
 bool DimExpr::operator!=(const DimExpr& other) const {
   return !(*this == other);
+}
+
+namespace {
+
+std::string ToStringImpl(std::int64_t dim_expr) {
+  return std::to_string(dim_expr);
+}
+
+std::string ToStringImpl(const std::string& dim_expr) { return dim_expr; }
+
+std::string ToStringImpl(const Negative<DimExpr>& dim_expr) {
+  return "-" + ToString(dim_expr->data);
+}
+
+std::string ToStringImpl(const Reciprocal<DimExpr>& dim_expr) {
+  return "1 / (" + ToString(dim_expr->data) + ")";
+}
+
+std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
+                                const std::string& delim = ", ") {
+  std::string ret;
+  for (std::size_t i = 0; i < dim_exprs->size(); ++i) {
+    if (i > 0) {
+      ret += delim;
+    }
+    ret += ToString(dim_exprs->at(i));
+  }
+  return ret;
+}
+
+std::string ToStringImpl(const Add<DimExpr>& dim_expr) {
+  return "Add(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Mul<DimExpr>& dim_expr) {
+  return "Mul(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Max<DimExpr>& dim_expr) {
+  return "Max(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Min<DimExpr>& dim_expr) {
+  return "Min(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Broadcast<DimExpr>& dim_expr) {
+  return "Broadcast(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+}  // namespace
+
+std::string ToString(const DimExpr& dim_expr) {
+  return std::visit([](const auto& impl) { return ToStringImpl(impl); },
+                    dim_expr.variant());
+}
+
+std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
+  stream << ToString(dim_expr);
+  return stream;
 }
 
 }  // namespace symbol
