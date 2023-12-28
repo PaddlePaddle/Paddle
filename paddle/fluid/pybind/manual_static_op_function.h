@@ -181,7 +181,7 @@ static PyObject *static_api_array_read(PyObject *self,
 
     PyObject *i_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value i;
-    if (PyObject_CheckIROpResult(i_obj)) {
+    if (PyObject_CheckIRValue(i_obj)) {
       i = CastPyArg2Value(i_obj, "array_read", 1);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_read", 1);
@@ -215,7 +215,7 @@ static PyObject *static_api_array_write_(PyObject *self,
     auto x = CastPyArg2Value(x_obj, "array_write_", 1);
     PyObject *i_obj = PyTuple_GET_ITEM(args, 2);
     pir::Value i;
-    if (PyObject_CheckIROpResult(i_obj)) {
+    if (PyObject_CheckIRValue(i_obj)) {
       i = CastPyArg2Value(i_obj, "array_write_", 2);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_write_", 2);

@@ -36,13 +36,13 @@ int getSMVersion() {
 }
 
 class FusedWeightOnlyLinearPattern
-    : public pir::drr::DrrPatternBase<FusedWeightOnlyLinearPattern> {
+    : public paddle::drr::DrrPatternBase<FusedWeightOnlyLinearPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
     //
-    pir::drr::SourcePattern src = ctx->SourcePattern();
+    paddle::drr::SourcePattern src = ctx->SourcePattern();
     const auto &matmul =
         src.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", src.Attr("matmul_transpose_x")},
@@ -57,60 +57,69 @@ class FusedWeightOnlyLinearPattern
     //
     // Constraints.
     //
-    src.RequireNativeCall([](const pir::drr::MatchContext &match_ctx) -> bool {
-      bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
-      bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
-      if (matmul_trans_x || matmul_trans_y) return false;
+    src.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
+          bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
+          if (matmul_trans_x || matmul_trans_y) return false;
 
-      if (!(match_ctx.Tensor("w").Shape().size() == 2 &&
-            match_ctx.Tensor("x").Shape().size() >= 2 &&
-            match_ctx.Tensor("bias").Shape().size() == 1)) {
-        return false;
-      }
+          if (!(match_ctx.Tensor("w").Shape().size() == 2 &&
+                match_ctx.Tensor("x").Shape().size() >= 2 &&
+                match_ctx.Tensor("bias").Shape().size() == 1)) {
+            return false;
+          }
 
-      auto w_dims = match_ctx.Tensor("w").Shape();
-      if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
+          auto w_dims = match_ctx.Tensor("w").Shape();
+          if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
 
-      auto w_dtype = match_ctx.Tensor("w").Dtype().get();
-      if (!w_dtype.isa<pir::Float16Type>() && !w_dtype.isa<pir::BFloat16Type>())
-        return false;
+          auto w_dtype = match_ctx.Tensor("w").Dtype().get();
+          if (!w_dtype.isa<pir::Float16Type>() &&
+              !w_dtype.isa<pir::BFloat16Type>())
+            return false;
 
-      auto x_dims = match_ctx.Tensor("x").Shape();
-      if (x_dims.at(x_dims.size() - 1) != w_dims.at(1)) return false;
+          auto x_dims = match_ctx.Tensor("x").Shape();
+          if (x_dims.at(x_dims.size() - 1) != w_dims.at(1)) return false;
 
-      return true;
-    });
+          return true;
+        });
     //
     // Result Pattern.
     //
-    pir::drr::ResultPattern res = src.ResultPattern();
+    paddle::drr::ResultPattern res = src.ResultPattern();
 
     // quantize weight
     const auto &weight_only_int8_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
           return "weight_only_int8";
         });
 
     const auto &arch_attr =
-        res.Attr([&](const pir::drr::MatchContext &match_ctx) -> int {
+        res.Attr([&](const paddle::drr::MatchContext &match_ctx) -> int {
           return getSMVersion();
         });
 
+    const auto &group_size_attr = res.Attr(
+        [](const paddle::drr::MatchContext &match_ctx) -> int { return -1; });
+
     const auto &weight_quantize =
         res.Op(paddle::dialect::WeightQuantizeOp::name(),
-               {{"algo", weight_only_int8_attr}, {"arch", arch_attr}});
+               {{"algo", weight_only_int8_attr},
+                {"arch", arch_attr},
+                {"group_size", group_size_attr}});
     weight_quantize({&res.Tensor("w")},
                     {&res.Tensor("quanted_weight_tensor"),
                      &res.Tensor("weight_scale_tensor")});
 
     const auto &weight_dtype_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
           return "int8";
         });
 
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
-               {{"weight_dtype", weight_dtype_attr}, {"arch", arch_attr}});
+               {{"weight_dtype", weight_dtype_attr},
+                {"arch", arch_attr},
+                {"group_size", group_size_attr}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
                         &res.Tensor("bias"),

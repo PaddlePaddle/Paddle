@@ -45,6 +45,7 @@ from paddle.distributed.auto_parallel.static.utils import (
 from paddle.framework import core
 
 from .placement_type import check_placements_equal, get_shard_spec
+from .random import determinate_rng, rng_state
 
 # There are the auto parallel API of the unified version of dynamic and static mode.
 # Some APIs have the same name with the previous APIs implementation, which are
@@ -171,19 +172,48 @@ def shard_tensor(
     # `paddle.to_tensor` supports both dynamic and static mode
     if stop_gradient is None:
         stop_gradient = getattr(data, "stop_gradient", True)
-    tensor = paddle.to_tensor(
-        data, dtype=dtype, place=place, stop_gradient=stop_gradient
-    )
+    if isinstance(data, EagerParamBase) and not data._is_initialized():
+        assert (
+            data._init_func is not None
+        ), "Get an uninitialized param with an unregistered init_func."
+        tensor = data
+    else:
+        tensor = paddle.to_tensor(
+            data, dtype=dtype, place=place, stop_gradient=stop_gradient
+        )
 
     if paddle.in_dynamic_mode():
         # here the dist tensor is deep copy constructed
         if isinstance(data, EagerParamBase):
-            return EagerParamBase.from_tensor(
+
+            def lazy_init_hook(param, origin_hook):
+                # lazy init hook with randomness controlling
+                def _init_func(var, block):
+                    # get the unique rng name
+                    rng_name = determinate_rng(
+                        dist.get_rank(),
+                        process_mesh=param.process_mesh,
+                        placements=param.placements,
+                    )
+                    # real call the init function
+                    with rng_state(rng_name):
+                        origin_hook(var, block)
+
+                return _init_func
+
+            dist_param = EagerParamBase.from_tensor(
                 tensor,
                 process_mesh=mesh,
                 placements=placements,
                 **tensor.__dict__,
             )
+            if tensor._init_func is not None:
+                origin_init_func = tensor._init_func
+                dist_param.set_init_func(
+                    lazy_init_hook(dist_param, origin_init_func)
+                )
+
+            return dist_param
         else:
             return paddle.Tensor(
                 tensor, process_mesh=mesh, placements=placements, place=place
@@ -515,9 +545,7 @@ class _ShardOptimizer:
         optimizer.helper = paddle.base.layer_helper.LayerHelper(
             optimizer.__class__.__name__
         )
-        # solve global_clip for auto_parallel
         self._shard_clip = False
-        self._generate_flag = False
         if (
             hasattr(optimizer, "_grad_clip")
             and optimizer._grad_clip is not None
@@ -564,40 +592,15 @@ class _ShardOptimizer:
                         placements=placements,
                     )
 
-    def generate_pp_mesh(self, all_process_ids=[]):
-        pp_mesh = None
-        if len(all_process_ids) <= 1:
-            return pp_mesh
-        else:
-            mesh = np.array(all_process_ids)
-            for i in range(mesh.shape[-1]):
-                ranks = mesh[:, i].tolist()
-                if dist.get_rank() in ranks:
-                    pp_mesh = dist.ProcessMesh(ranks)
-        return pp_mesh
-
     def step(self):
         if not isinstance(self._inner_opt._parameter_list[0], dict):
             params_grads = []
-            all_process_ids = []
             for param in self._inner_opt._parameter_list:
                 if param.stop_gradient:
                     continue
                 if param._grad_ivar() is not None:
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
-                if (
-                    not self._generate_flag
-                    and self._shard_clip
-                    and param.is_dist()
-                ):
-                    if param.process_mesh.process_ids not in all_process_ids:
-                        all_process_ids.append(param.process_mesh.process_ids)
-            if not self._generate_flag and self._shard_clip:
-                self._inner_opt._grad_clip._pp_mesh = self.generate_pp_mesh(
-                    all_process_ids
-                )
-                self._generate_flag = True
             for p, g in params_grads:
                 self._shard_accumulator(p)
             self._inner_opt._apply_optimize(
@@ -606,36 +609,13 @@ class _ShardOptimizer:
         else:
             for param_group in self._inner_opt._param_groups:
                 params_grads = defaultdict(lambda: [])
-                all_process_ids = []
-                shard_clip_flag = False
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
                         params_grads['params'].append((param, grad_var))
-                    if (
-                        not self._generate_flag
-                        and "grad_clip" in param_group.keys()
-                        and isinstance(
-                            param_group["grad_clip"],
-                            paddle.nn.ClipGradByGlobalNorm,
-                        )
-                        and param.is_dist()
-                    ):
-                        if (
-                            param.process_mesh.process_ids
-                            not in all_process_ids
-                        ):
-                            all_process_ids.append(
-                                param.process_mesh.process_ids
-                            )
-                            shard_clip_flag = True
 
-                if shard_clip_flag:
-                    param_group["grad_clip"]._pp_mesh = self.generate_pp_mesh(
-                        all_process_ids
-                    )
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
@@ -1309,15 +1289,13 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            # TODO(pangengzheng): construct dist_tensor with _dtensor_from_local api when it is ready.
-            global_tensor = paddle.zeros(global_shape, dtype=local_tensor.dtype)
             mesh = dist.ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )
             )
             placements = to_placements(dist_attr["dims_mapping"], mesh)
-            dist_tensor = dist.shard_tensor(global_tensor, mesh, placements)
+            dist_tensor = dtensor_from_local(local_tensor, mesh, placements)
             assert (
                 dist_tensor._local_value().shape == local_tensor.shape
             ), f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"
@@ -1485,3 +1463,73 @@ def to_static(
     dist_loader = dist_model.dist_loader
 
     return dist_model, dist_loader
+
+
+def unshard_dtensor(dist_tensor):
+    """
+    Converts a distributed tensor to a dense tensor. ``unshard_dtensor``
+    first make the ``dist_tensor`` be ``Replicate`` state on all processes and
+    then converts it to a dense ``paddle.Tensor``. It can be treated as a
+    reverse operation of ``shard_tensor``.
+
+    Args:
+        dist_tensor (paddle.Tensor): The distributed tensor which is constructed
+            from a dense tensor with ``shard_tensor``.
+
+    Returns:
+        paddle.Tensor: The original dense tensor of the input ``dist_tensor``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed import Replicate, Shard
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> original_tensor = paddle.rand([4, 1024, 512])
+            >>> dist_tensor = dist.shard_tensor(original_tensor, mesh, [Shard(0)])
+            >>> # dense_tensor's shape is the same as original_tensor
+            >>> dense_tensor = dist.unshard_dtensor(dist_tensor)
+    """
+    if paddle.in_dynamic_mode():
+        # if the input is not a distributed
+        # tensor, return it directly
+        if dist_tensor.is_dist() is False:
+            raise ValueError("The input should be a distributed tensor.")
+
+        mesh = dist_tensor.process_mesh
+        placements = dist_tensor.placements
+        replicate_placements = [dist.Replicate()] * len(placements)
+        r_dist_tensor = reshard(dist_tensor, mesh, replicate_placements)
+
+        if isinstance(dist_tensor, EagerParamBase):
+            return EagerParamBase.from_tensor(
+                r_dist_tensor._local_value(),
+                **dist_tensor.__dict__,
+            )
+        else:
+            return paddle.Tensor(r_dist_tensor._local_value())
+
+    else:
+        assert isinstance(
+            dist_tensor, Variable
+        ), "the input type of 'unshard_dtensor' should be Variable, but got [{}]".format(
+            dist_tensor
+        )
+        # in static mode, 'distributed tensor' and 'dense tensor' are all
+        # Varialble type, the distributed attribute is a property of the Varibale.
+        # So, it's no need to convert the distributed tensor to a dense tensor.
+        # We only need to modify its distributed attribute.
+        empty_dist_attr = (
+            dist.auto_parallel.static.dist_attribute.TensorDistAttr()
+        )
+        dist_tensor.dist_attr = empty_dist_attr
+
+        # remove the distributed tensor from dist_context
+        default_dist_ctx = get_default_distributed_context()
+        serial_tensor_id = dist_tensor.desc.original_id()
+        default_dist_ctx._dist_tensors_for_program.pop(serial_tensor_id, None)
+
+        return dist_tensor

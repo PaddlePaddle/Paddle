@@ -17,7 +17,7 @@
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/drr_rewrite_pattern.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 template <typename DrrPattern>
@@ -26,7 +26,7 @@ class DrrPatternBase {
   virtual ~DrrPatternBase() = default;
 
   // Define the Drr Pattern.
-  virtual void operator()(pir::drr::DrrPatternContext* ctx) const = 0;
+  virtual void operator()(paddle::drr::DrrPatternContext* ctx) const = 0;
 
   std::unique_ptr<DrrRewritePattern> Build(
       pir::IrContext* ir_context, pir::PatternBenefit benefit = 1) const {
@@ -39,4 +39,4 @@ class DrrPatternBase {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

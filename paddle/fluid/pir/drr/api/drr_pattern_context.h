@@ -24,7 +24,7 @@
 
 #include "paddle/fluid/pir/drr/api/match_context.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class Op;
@@ -334,4 +334,4 @@ class SourcePattern {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle
