@@ -404,8 +404,12 @@ class ConstantFoldingPass : public pir::Pass {
     pir::RewritePatternSet ps(context);
 
     if (Has("train_mode") && Get<bool>("train_mode")) {
-      ps.Add<ConstantFoldingPatternForTrain>(
-          context, &counter_, phi::CPUPlace{}, scope_, &exe_config_, &deleted_vars_);
+      ps.Add<ConstantFoldingPatternForTrain>(context,
+                                             &counter_,
+                                             phi::CPUPlace{},
+                                             scope_,
+                                             &exe_config_,
+                                             &deleted_vars_);
     } else {
       ps.Add<ConstantFoldingPattern>(
           context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
