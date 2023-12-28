@@ -21,6 +21,7 @@ import warnings
 import weakref
 from typing import TYPE_CHECKING
 
+import paddle
 import paddle.pir.core as ir_static
 from paddle import decomposition, get_flags
 from paddle.base import core, framework
@@ -30,11 +31,11 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.framework import CUDAPinnedPlace, in_dynamic_mode, use_pir_api
+from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.pir import Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
-from paddle.utils import flatten, gast, map_structure
+from paddle.utils import flatten, gast
 
 from . import error, logging_utils
 from .function_spec import (
@@ -58,6 +59,7 @@ from .utils import (
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
     backend_guard,
+    cuda_pinned_tensors_move_to_excepted_place,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
@@ -710,29 +712,12 @@ class SymbolicStaticFunction(StaticFunction):
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None
 
-    def _copy_cuda_pinned_tensors(self, inputs):
-        expected_place = framework._current_expected_place()
-        cuda_pinned_place = CUDAPinnedPlace()
-
-        def copy_cuda_pinned(value):
-            if (
-                isinstance(value, core.eager.Tensor)
-                and value.stop_gradient
-                and value.place._equals(cuda_pinned_place)
-            ):
-                var = value._copy_to(expected_place, False)
-                var.stop_gradient = True
-            else:
-                var = value
-            return var
-
-        return map_structure(copy_cuda_pinned, inputs)
-
     def _perform_call(self, *args, **kwargs):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-        args = self._copy_cuda_pinned_tensors(args)
+        if paddle.is_compiled_with_cuda():
+            args = cuda_pinned_tensors_move_to_excepted_place(args)
 
         (
             input_args_with_spec,
