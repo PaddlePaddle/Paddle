@@ -169,8 +169,14 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     const uint32_t w = (uint32_t)x << 24;
     const uint32_t sign = w & UINT32_C(0x80000000);
     const uint32_t nonsign = w & UINT32_C(0x7FFFFFFF);
+#ifdef PADDLE_WITH_CUDA
+    // nonsign will not exceed the range of int32 here
+    uint32_t renorm_shift = nonsign != 0 ? __clz(static_cast<int>(nonsign))
+                                         : sizeof(uint32_t) * CHAR_BIT;
+#else
     uint32_t renorm_shift =
         nonsign != 0 ? __builtin_clz(nonsign) : sizeof(uint32_t) * CHAR_BIT;
+#endif
     renorm_shift = renorm_shift > 4 ? renorm_shift - 4 : 0;
     const int32_t inf_nan_mask =
         ((int32_t)(nonsign + 0x01000000) >> 8) & INT32_C(0x7F800000);
