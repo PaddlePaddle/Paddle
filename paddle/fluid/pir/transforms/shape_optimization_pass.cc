@@ -237,20 +237,6 @@ struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
   }
 };
 
-bool MaterializeShapeComputation(pir::ModuleOp m) {
-  // if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
-  // TODO(zhangbopd): add rewitter pattern for reifyInferShape.
-  RewritePatternSet patterns(m.ir_context());
-
-  patterns.Add<ExpandShapeOfOpPattern,
-               DimOfShapedTypeOpInterfacePattern<shape::TensorDimOp>>(
-      patterns.ir_context());
-
-  IR_ENFORCE(ApplyPatternsGreedily(m, std::move(patterns)).first,
-             "fail to materialize shape computation\n");
-  return true;
-}
-
 using PassPipelineRunner =
     std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
@@ -443,20 +429,6 @@ bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
   return true;
 }
 
-bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
-  // TODO(zhangbopd): Do some Canonicalizer.
-  pir::SymbolicDimMgr mgr(m);
-  IR_ENFORCE(mgr.Load(),
-             "SymbolicDimMgr Load failed in OptimizeShapeComputation.");
-  ShapeComputationIRAnalysis analysis(m, mgr);
-  if (!analysis.Run()) {
-    return false;
-  }
-  IR_ENFORCE(mgr.Save(),
-             "SymbolicDimMgr save failed in OptimizeShapeComputation.");
-  return true;
-}
-
 void PrintProgram(pir::ModuleOp m, std::string mgs) {
   std::ostringstream print_stream;
   print_stream << "\n\n";
@@ -514,48 +486,12 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   for (int i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
-        if (op.num_operands() == 0) {
-          for (auto& res : op.results()) {
-            auto value_id = pir::GetValueId(&res);
-
-            std::vector<int64_t> dims = common::vectorize(
-                res.type().dyn_cast<pir::DenseTensorType>().dims());
-
-            std::vector<symbol::DimExpr> shapes;
-            for (int64_t dim : dims) {
-              symbol::DimExpr dim_expr;
-              if (dim == -1) {
-                symbol::DimExpr res_dim_expr(shape_analysis.GetNextSymName());
-                dim_expr = res_dim_expr;
-              } else {
-                symbol::DimExpr res_dim_expr(dim);
-                dim_expr = res_dim_expr;
-              }
-              shapes.push_back(dim_expr);
-            }
-
-            if (op.name() == "pd_op.full_int_array") {
-              auto attributes = op.attributes();
-              auto attr = attributes["value"];
-              auto arr = attr.dyn_cast<ArrayAttribute>();
-              const auto& vec = arr.AsVector();
-              for (auto item : vec) {
-                int64_t i = item.dyn_cast<Int64Attribute>().data();
-                shapes.push_back(symbol::DimExpr(i));
-              }
-            }
-            symbol::ShapeOrDataDimExprs shape_data{shapes};
-            shape_analysis.value_id_to_shapeordata_[value_id] = shape_data;
-          }
-        } else {
-          auto infer_symbolic_shape_interface =
-              op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-          if (infer_symbolic_shape_interface) {
-            PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
-                &shape_analysis));
-          }
+        auto infer_symbolic_shape_interface =
+            op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+        if (infer_symbolic_shape_interface) {
+          PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
+              &shape_analysis));
         }
-
         DebugPrintOpInfo(&op, &shape_analysis);
       }
     }
@@ -574,14 +510,11 @@ class ShapeOptimizationPass : public pir::Pass {
     PrintProgram(module_op, "Origin Program");
 
     InferSymExprForAllValues(module_op);
-    MaterializeShapeComputation(module_op);
+
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
       return pm.Run(m.program());
     };
-    // if (!OptimizeShapeComputation(module_op, runner)) {
-    //   return;
-    // }
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
                "=============================";
   }

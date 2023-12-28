@@ -158,6 +158,41 @@ bool Reshape_OpInferSymbolicShape(
   return ReshapeOpInferSymbolicShape(op, shape_analysis);
 }
 
+bool FullIntArrayOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  for (auto &res : op->results()) {
+    std::string value_id = pir::GetValueId(&res);
+    std::vector<int64_t> dims =
+        common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+    std::vector<symbol::DimExpr> shapes;
+    for (int64_t dim : dims) {
+      symbol::DimExpr dim_expr;
+      if (dim == -1) {
+        symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+        dim_expr = res_dim_expr;
+      } else {
+        symbol::DimExpr res_dim_expr(dim);
+        dim_expr = res_dim_expr;
+      }
+      shapes.push_back(dim_expr);
+    }
+
+    auto attributes = op->attributes();
+    pir::Attribute attr = attributes["value"];
+    const auto &vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+
+    for (auto item : vec) {
+      int64_t i = item.dyn_cast<pir::Int64Attribute>().data();
+      shapes.push_back(symbol::DimExpr(i));
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{shapes};
+    shape_analysis->value_id_to_shapeordata_[value_id] = shape_data;
+    return true;
+  }
+}
+
 }  // namespace paddle::dialect
 namespace cinn::dialect {
 

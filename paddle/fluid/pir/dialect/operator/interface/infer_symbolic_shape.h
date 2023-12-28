@@ -101,6 +101,9 @@ bool ReshapeOpInferSymbolicShape(
 bool Reshape_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
+bool FullIntArrayOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {

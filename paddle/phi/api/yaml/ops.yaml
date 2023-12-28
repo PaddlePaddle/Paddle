@@ -1041,6 +1041,7 @@
     param : [value, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
