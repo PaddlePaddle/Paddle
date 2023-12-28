@@ -21,7 +21,6 @@ import warnings
 import weakref
 from typing import TYPE_CHECKING
 
-import paddle
 import paddle.pir.core as ir_static
 from paddle import decomposition, get_flags
 from paddle.base import core, framework
@@ -716,8 +715,7 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-        if paddle.is_compiled_with_cuda():
-            cuda_pinned_tensors_move_to_excepted_place(args)
+        cuda_pinned_tensors_move_to_excepted_place(args)
 
         (
             input_args_with_spec,

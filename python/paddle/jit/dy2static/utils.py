@@ -1285,15 +1285,16 @@ def tensor_name_guard(tensors, names):
 
 
 def cuda_pinned_tensors_move_to_excepted_place(inputs):
-    expected_place = framework._current_expected_place()
-    cuda_pinned_place = CUDAPinnedPlace()
+    if paddle.is_compiled_with_cuda():
+        expected_place = framework._current_expected_place()
+        cuda_pinned_place = CUDAPinnedPlace()
 
-    for value in flatten(inputs):
-        if (
-            isinstance(value, core.eager.Tensor)
-            and value.stop_gradient
-            and value.place._equals(cuda_pinned_place)
-        ):
-            var = value._copy_to(expected_place, False)
-            var.stop_gradient = True
-            var._share_buffer_to(value)
+        for value in flatten(inputs):
+            if (
+                isinstance(value, core.eager.Tensor)
+                and value.stop_gradient
+                and value.place._equals(cuda_pinned_place)
+            ):
+                var = value._copy_to(expected_place, False)
+                var.stop_gradient = True
+                var._share_buffer_to(value)
