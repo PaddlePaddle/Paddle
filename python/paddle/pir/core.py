@@ -332,3 +332,14 @@ def static_op_arg_cast_guard(hook):
         yield
     finally:
         set_static_op_arg_pre_cast_hook(original_callback)
+
+
+def get_value_by_name_from_block(block, value_name):
+    for op in block.ops:
+        if op.name() == "pd_op.data":
+            if op.attr()["name"] == value_name:
+                return op.result(0)
+        elif op.name() == "builtin.parameter":
+            if op.attr()["parameter_name"] == value_name:
+                return op.result(0)
+    return None

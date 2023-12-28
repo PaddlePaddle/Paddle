@@ -16,6 +16,8 @@ import struct
 
 import numpy as np
 
+from paddle import pir
+
 from ..pir import Value
 from ..pir.core import ParameterMeta
 from . import core
@@ -419,19 +421,40 @@ class DataFeeder:
         self.feed_names = []
         self.feed_shapes = []
         self.feed_lod_level = []
-        if program is None:
-            program = default_main_program()
-        for each_var in feed_list:
-            if isinstance(each_var, str):
-                each_var = program.block(0).var(each_var)
-            if not isinstance(each_var, Variable):
-                raise TypeError("Feed list should contain a list of variable")
-            self.feed_dtypes.append(each_var.dtype)
-            self.feed_names.append(each_var.name)
-            self.feed_lod_level.append(each_var.lod_level)
-            self.feed_shapes.append(each_var.shape)
-
         self.place = place
+        if in_pir_mode():
+            if program is None:
+                program = pir.core.default_main_program()
+            for each_var in feed_list:
+                if isinstance(each_var, str):
+                    each_var = pir.core.get_value_by_name_from_block(
+                        program.global_block(), each_var
+                    )
+                    if each_var is None:
+                        raise ValueError(
+                            "Value %s is not in program or can't be got name from Python."
+                            % each_var
+                        )
+                if not isinstance(each_var, Value):
+                    raise TypeError("Feed list should contain a list of Value")
+                self.feed_dtypes.append(each_var.dtype)
+                self.feed_names.append(each_var.name)
+                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_shapes.append(each_var.shape)
+        else:
+            if program is None:
+                program = default_main_program()
+            for each_var in feed_list:
+                if isinstance(each_var, str):
+                    each_var = program.block(0).var(each_var)
+                if not isinstance(each_var, Variable):
+                    raise TypeError(
+                        "Feed list should contain a list of variable"
+                    )
+                self.feed_dtypes.append(each_var.dtype)
+                self.feed_names.append(each_var.name)
+                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_shapes.append(each_var.shape)
 
     def feed(self, iterable):
         """
