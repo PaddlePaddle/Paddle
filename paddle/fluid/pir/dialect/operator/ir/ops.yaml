@@ -1464,6 +1464,15 @@
      func: number_count
      data_type: numbers
 
+- op: onednn_to_paddle_layout
+  args: (Tensor x, int dst_layout)
+  output: Tensor(out)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: onednn_to_paddle_layout
+
 - op: sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
   output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
