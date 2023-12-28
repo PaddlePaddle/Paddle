@@ -562,7 +562,7 @@ class OpcodeExecutorBase:
 
         opname = instr.opname if instr.opname != "PRECALL" else "PRECALL__CALL"
         assert opname != "CALL", "CALL should fused with PRECALL"
-        with EventGuard(f"{opname}", event_level=1):
+        with EventGuard(f"{opname}", event_level=2):
             return getattr(self, opname)(instr)  # run single step.
 
     def indexof(self, instr: Instruction):

@@ -857,10 +857,12 @@ if(WITH_HETERPS)
 endif()
 
 if(WIN32)
-  cc_test(
-    cc_imp_py_test
-    SRCS cc_imp_py_test.cc
-    DEPS python)
+  paddle_test(cc_imp_py_test SRCS cc_imp_py_test.cc)
+  if(WITH_ONNXRUNTIME)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(cc_imp_py_test)
+  endif()
 endif()
 
 set_tests_properties(
