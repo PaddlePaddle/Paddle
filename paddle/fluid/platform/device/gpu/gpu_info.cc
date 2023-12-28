@@ -46,11 +46,12 @@ limitations under the License. */
 #endif
 #endif
 
-COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
-COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
-COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
-COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
-COMMON_DECLARE_uint64(gpu_memory_limit_mb);
+PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PHI_DECLARE_bool(enable_cublas_tensor_op_math);
+PHI_DECLARE_uint64(gpu_memory_limit_mb);
+PHI_DECLARE_uint64(cuda_memory_async_pool_realease_threshold);
 
 PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
                          false,
@@ -262,15 +263,17 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaDeviceGetDefaultMemPool(&memPool_, dev_id_));
       uint64_t thresholdVal = ULLONG_MAX;
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemPoolSetAttribute(
-          memPool_, cudaMemPoolAttrReleaseThreshold, (void *)&thresholdVal));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemPoolSetAttribute(memPool_,
+                                  cudaMemPoolAttrReleaseThreshold,
+                                  reinterpret_cast<void *>(&thresholdVal)));
     });
 
     gpuError_t result;
     result = cudaMallocAsync(ptr, size, stream);
-    VLOG(1) << "[cudaMallocAsync] ptr = " << (*ptr)
-            << " size = " << static_cast<double>(size) / (1 << 20)
-            << " MB result = " << result << " stream = " << stream;
+    VLOG(10) << "[cudaMallocAsync] ptr = " << (*ptr)
+             << " size = " << static_cast<double>(size) / (1 << 20)
+             << " MB result = " << result << " stream = " << stream;
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
@@ -338,9 +341,9 @@ class RecordedGpuMallocHelper {
     // cudaFree succeeds.
     CUDADeviceGuard guard(dev_id_);
     auto err = cudaFreeAsync(ptr, stream);
-    VLOG(1) << "[cudaFreeAsync] ptr = " << ptr
-            << "size =" << static_cast<double>(size) / (1 << 20)
-            << " MB result = "<< err << " stream = " << stream;
+    VLOG(10) << "[cudaFreeAsync] ptr = " << ptr
+             << " size =" << static_cast<double>(size) / (1 << 20)
+             << " MB result = " << err << " stream = " << stream;
     if (err != cudaErrorCudartUnloading) {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);

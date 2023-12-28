@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdint>
 #include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
+#include <cstdint>
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -33,45 +34,42 @@ namespace memory {
 namespace allocation {
 bool CUDAMallocAsyncAllocator::IsAllocThreadSafe() const { return true; }
 void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* allocation) {
-  CUDAMallocAsyncAllocation* allocation_ =
+  auto* casted_allocation =
       dynamic_cast<CUDAMallocAsyncAllocation*>(allocation);
 
-  if ((UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()))) {
-    // If the graph is in capturing mode, only the memory blocks owned by the
-    // graph should be freed. Meanwhile, the blocks that are not owned by
-    // the graph are retained and will be released once the capturing is
-    // complete.
-    auto id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
-    if (graph_owned_allocation[id].find(allocation_) ==
-        graph_owned_allocation[id].end()) {
-      VLOG(0) << "Cache block ptr = " << allocation->ptr()
-              << " to release after capturing.";
-      cached_blocks_during_capturing.insert(allocation_);
+  // During graph capturing, only free the memory blocks owned by the graph;
+  // others are cached.
+  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+    if (graph_owned_allocations_.find(casted_allocation) ==
+        graph_owned_allocations_.end()) {
+      // If the block is not owned by the graph, cache it for release after
+      // capturing.
+      phi::backends::gpu::CUDAGraph::AddPostCaptureCallbackDuringCapturing(
+          [=]() {
+            // Release this block after capturing
+            VLOG(0) << "[PostCaptureCallback] Releasing ptr = "
+                    << allocation->ptr() << " size = " << allocation->size();
+            platform::RecordedGpuFreeAsync(
+                allocation->ptr(),
+                allocation->size(),
+                place_.device,
+                casted_allocation->GetOwningStream());
+            delete allocation;
+          });
+
       return;
     }
   }
 
-  PADDLE_ENFORCE_EQ(
-      allocation->place(),
-      place_,
-      platform::errors::PermissionDenied(
-          "GPU memory is freed in incorrect device. This may be a bug"));
+  // If not capturing or if the block is graph-owned, free it immediately.
   platform::RecordedGpuFreeAsync(allocation->ptr(),
                                  allocation->size(),
                                  place_.device,
-                                 allocation_->GetOwningStream());
+                                 casted_allocation->GetOwningStream());
+  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+    graph_owned_allocations_.erase(casted_allocation);
+  }
   delete allocation;
-}
-
-void CUDAMallocAsyncAllocator::FlushCachedBlockDuringCapturing(
-    int64_t graph_id) {
-  if ((UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()))) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "This API should be called after the graph is captured."));
-  }
-  for (auto allocation : graph_owned_allocation[graph_id]) {
-    FreeImpl(allocation);
-  }
 }
 
 phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
@@ -81,12 +79,13 @@ phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
   auto result =
       platform::RecordedGpuMallocAsync(&ptr, size, place_.device, stream_);
   if (LIKELY(result == gpuSuccess)) {
-    auto allocation = new CUDAMallocAsyncAllocation(
+    auto* allocation = new CUDAMallocAsyncAllocation(
         ptr, size, platform::Place(place_), stream_);
 
-    if ((UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()))) {
-      auto id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
-      graph_owned_allocation[id].insert(allocation);
+    // If capturing, associate allocation with the current graph.
+    if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+      // auto graph_id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
+      graph_owned_allocations_.insert(allocation);
     }
     return allocation;
   }

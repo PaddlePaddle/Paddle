@@ -46,9 +46,9 @@ from functools import partial
 
 import paddle
 from paddle import framework, nn
-from paddle.incubate.distributed.fleet import recompute_hybrid
 from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
 from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
+from paddle.incubate.distributed.fleet import recompute_hybrid
 
 __all__ = []
 
@@ -233,6 +233,7 @@ class PipelineLayerChunk(nn.Layer):
             "Please call forward function of PipelineLayer."
         )
 
+
 class PipelineSublayers(nn.Layer):
     def __init__(self, run_function):
         super().__init__()
@@ -340,7 +341,7 @@ class PipelineLayer(nn.Layer):
         recompute_interval=0,
         recompute_ctx=None,
         num_virtual_pipeline_stages=None,
-        use_cudagraph=False
+        use_cudagraph=False,
     ):
         super().__init__()
         if num_stages is None and topology is None:
@@ -700,8 +701,12 @@ class PipelineLayer(nn.Layer):
 
         def flush_into_run_function():
             if len(self.groupable_layers) > 0:
-                print(f"flush {len(self.groupable_layers)} of layers into run_function")
-                pipeline_sublayer = PipelineSublayers(self.groupable_layers.copy())
+                print(
+                    f"flush {len(self.groupable_layers)} of layers into run_function"
+                )
+                pipeline_sublayer = PipelineSublayers(
+                    self.groupable_layers.copy()
+                )
                 if self.use_cudagraph:
                     pipeline_sublayer = CUDAGraphedLayer(pipeline_sublayer)
                 run_function.append(pipeline_sublayer)
@@ -716,7 +721,7 @@ class PipelineLayer(nn.Layer):
             paddle.seed(self._base_seed + layer_index)
 
             if isinstance(layer, nn.Layer):
-                self.groupable_layers.append(model)
+                self.groupable_layers.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
                     # Only add sublayer for 1f1b scheduler,
                     # for interleave, PipelineLayerChunk will do this

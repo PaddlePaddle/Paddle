@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include <cstdint>
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
@@ -93,6 +94,14 @@ PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator,
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_malloc_async_allocator,
                             false,
                             "Enable CUDAMallocAsyncAllocator");
+
+PADDLE_DEFINE_EXPORTED_bool(
+    auto_free_cudagraph_allocations_on_launch,
+    false,
+    "When enabling CUDA Graph with CUDAMallocAsyncAllocator, we add "
+    "cudaGraphInstantiateFlagAutoFreeOnLaunch so it would automatically "
+    "release "
+    "graph-owned blocks that have not freed before relaunching.");
 
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             false,

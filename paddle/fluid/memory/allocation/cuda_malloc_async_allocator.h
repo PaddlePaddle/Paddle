@@ -29,7 +29,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
                             size_t size,
                             platform::Place place,
                             gpuStream_t owning_stream)
-      : Allocation(ptr, size, place), owning_stream_(owning_stream){};
+      : Allocation(ptr, size, place), owning_stream_(owning_stream) {}
   gpuStream_t GetOwningStream() const { return owning_stream_; }
 
  private:
@@ -46,27 +46,19 @@ class CUDAMallocAsyncAllocator : public Allocator {
   gpuStream_t GetDefaultStream() const;
   void SetDefaultStream(gpuStream_t stream);
 
-  // After capturing, we call this api to ensure the cached blocks are released.
-  void FlushCachedBlockDuringCapturing(int64_t graph_id);
-
  protected:
+  // Implementation of freeing an allocation.
   void FreeImpl(phi::Allocation* allocation) override;
+  // Implementation of allocating memory of a certain size.
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  platform::CUDAPlace place_;
-  gpuStream_t stream_;
-  std::once_flag once_flag_;
+  platform::CUDAPlace place_;  // The CUDA place (device context)
+  gpuStream_t stream_;         // Default stream associated with this allocator
+  std::once_flag once_flag_;   // Flag to ensure some actions are done only once
 
-  // a map from graph id to its owned allocations
-  std::unordered_map<int64_t, std::unordered_set<CUDAMallocAsyncAllocation*>>
-      graph_owned_allocation;
-
-  // If the graph is in capturing mode, only the memory blocks owned by the
-  // graph should be freed. Meanwhile, the blocks that are not owned by
-  // the graph are retained and will be released once the capturing is
-  // complete.
-  std::unordered_set<CUDAMallocAsyncAllocation*> cached_blocks_during_capturing;
+  // Map from graph ID to the set of allocations it owns.
+  std::unordered_set<CUDAMallocAsyncAllocation*> graph_owned_allocations_;
 };
 
 }  // namespace allocation
