@@ -109,9 +109,6 @@ class Gamma(exponential_family.ExponentialFamily):
         if not paddle.all(self.rate > 0):
             raise ValueError("The arg of `rate` must be positive.")
 
-        # self.concentration, self.rate = paddle.broadcast_tensors(
-        #     [concentration, rate]
-        # )
         super().__init__(self.concentration.shape)
 
     @property
