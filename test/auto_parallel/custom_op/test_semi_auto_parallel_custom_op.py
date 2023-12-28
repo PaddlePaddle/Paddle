@@ -22,9 +22,11 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.framework import core
 
 
-class TestParallelCrossEntropyHybrid(test_base.CommunicationTestDistBase):
+class TestCusomOp(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=4, timeout=200, nnode=1)
+        super().setUp(num_of_devices=2, timeout=200, nnode=1)
+        self._default_envs = {"dtype": "float32", "seed": "2023"}
+        self._changeable_envs = {"backend": ["cpu", "gpu"]}
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # compile, install the custom op egg into site-packages under background
         if os.name == 'nt':
@@ -37,13 +39,19 @@ class TestParallelCrossEntropyHybrid(test_base.CommunicationTestDistBase):
 
     # test dynamic auto parallel run
     def test_dynamic_auto_parallel(self):
-        pass
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_custom_op.py",
+                user_defined_envs=envs,
+            )
 
     # test static spmd rule register
     def test_static_rule(self):
         import custom_relu
         assert core.contains_spmd_rule("custom_relu")
-
 
 if __name__ == "__main__":
     unittest.main()
