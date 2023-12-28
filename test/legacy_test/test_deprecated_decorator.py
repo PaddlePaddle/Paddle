@@ -34,13 +34,6 @@ paddle.version.full_version = '0.0.0'
 print("current paddle version: ", paddle.__version__)
 
 
-# NOTE(SigureMo): After Python 3.7, Python hide the DeprecationWarning if the
-# module is not __main__. So we need to enables warnings manually.
-# See more details from https://peps.python.org/pep-0565/#recommended-filter-settings-for-test-runners
-if not sys.warnoptions:
-    warnings.simplefilter("default")
-
-
 def get_warning_index(api):
     """
     Given an paddle API, return the index of the Warinng information in its doc string if exists;

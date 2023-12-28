@@ -24,6 +24,18 @@ import paddle
 __all__ = []
 
 
+class VisibleDeprecationWarning(UserWarning):
+    """Visible deprecation warning.
+
+    After Python 3.7, Python hide the DeprecationWarning if the module is not
+    __main__. So we use this warning to make the deprecation warning visible.
+
+    See more details from https://peps.python.org/pep-0565/
+    """
+
+    ...
+
+
 def deprecated(update_to="", since="", reason="", level=0):
     """Decorate a function to signify its deprecation.
 
@@ -108,7 +120,7 @@ def deprecated(update_to="", since="", reason="", level=0):
                 or v_current >= v_since
             ):
                 warnings.warn(
-                    warningmsg, category=DeprecationWarning, stacklevel=2
+                    warningmsg, category=VisibleDeprecationWarning, stacklevel=2
                 )
 
             return func(*args, **kwargs)
