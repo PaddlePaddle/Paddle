@@ -16,17 +16,17 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 namespace phi {
 template <typename T, typename Context>
 void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
   std::vector<const DenseTensor*> inputs = {&x, &y};
   std::vector<DenseTensor*> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
+  dev_ctx.template Alloc<U>(out);
+  funcs::BroadcastKernel<U>(
       dev_ctx, inputs, &outputs, phi::CopySignFunctor<T>());
 }
 }  // namespace phi
@@ -35,8 +35,13 @@ PD_REGISTER_KERNEL(copysign,
                    GPU,
                    ALL_LAYOUT,
                    phi::CopySignKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
                    float,
                    double,
-                   int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

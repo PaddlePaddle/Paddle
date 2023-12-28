@@ -16,21 +16,21 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 namespace phi {
 template <typename T, typename Context>
 void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+  dev_ctx.template Alloc<U>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<phi::CopySignFunctor<T>, T>(
+    funcs::ElementwiseCompute<phi::CopySignFunctor<T>, T, U>(
         dev_ctx, x, y, phi::CopySignFunctor<T>(), out);
   } else {
-    funcs::ElementwiseCompute<phi::InverseCopySignFunctor<T>, T>(
+    funcs::ElementwiseCompute<phi::InverseCopySignFunctor<T>, T, U>(
         dev_ctx, x, y, phi::InverseCopySignFunctor<T>(), out);
   }
 }
@@ -40,8 +40,13 @@ PD_REGISTER_KERNEL(copysign,
                    CPU,
                    ALL_LAYOUT,
                    phi::CopySignKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
                    float,
                    double,
-                   int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

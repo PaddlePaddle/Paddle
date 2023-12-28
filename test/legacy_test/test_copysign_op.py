@@ -23,6 +23,12 @@ from paddle.base import core
 np.random.seed(100)
 paddle.seed(100)
 
+out_dtype_need_convert = ['bool', 'uint8', 'int8', 'int32', 'int64']
+adjust_out_dtype = {
+    'float16': 'float32',
+    'float64': 'float32',
+}
+
 
 def ref_copysign(x, y):
     return np.copysign(x, y)
@@ -146,7 +152,10 @@ class TestCopySignAPI(unittest.TestCase):
 
             out_ref = ref_copysign(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
-            np.testing.assert_equal((out_ref.dtype == res[0].dtype), True)
+            out_ref_dtype = out_ref.dtype
+            if str(self.x.dtype) in out_dtype_need_convert:
+                out_ref_dtype = adjust_out_dtype[str(out_ref_dtype)]
+            np.testing.assert_equal((out_ref_dtype == res[0].dtype), True)
         paddle.disable_static()
 
     def test_dygraph_api(self):
@@ -156,9 +165,60 @@ class TestCopySignAPI(unittest.TestCase):
         out = paddle.copysign(x, y)
         out_ref = ref_copysign(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
-        np.testing.assert_equal((out_ref.dtype == out.numpy().dtype), True)
+        out_ref_dtype = out_ref.dtype
+        if str(self.x.dtype) in out_dtype_need_convert:
+            out_ref_dtype = adjust_out_dtype[str(out_ref_dtype)]
+        np.testing.assert_equal((out_ref_dtype == out.numpy().dtype), True)
         paddle.enable_static()
 
+
+class TestCopySignBool(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.bool_
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignUint8(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.uint8
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignInt8(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.int8
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignInt16(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.int16
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignInt32(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.int32
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignInt64(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.int64
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignFloat16(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.float16
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
 
 class TestCopySignFloat32(TestCopySignAPI):
@@ -171,13 +231,6 @@ class TestCopySignFloat32(TestCopySignAPI):
 class TestCopySignFloat64(TestCopySignAPI):
     def input_init(self):
         dtype = np.float64
-        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
-        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
-
-
-class TestCopySignFloat16(TestCopySignAPI):
-    def input_init(self):
-        dtype = np.float16
         self.x = (np.random.randn(10, 20) * 10).astype(dtype)
         self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 

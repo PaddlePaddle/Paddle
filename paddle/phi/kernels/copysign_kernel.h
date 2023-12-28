@@ -14,11 +14,11 @@
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-
 namespace phi {
 
 using float16 = phi::dtype::float16;
