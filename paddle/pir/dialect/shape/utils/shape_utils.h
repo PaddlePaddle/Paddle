@@ -76,11 +76,6 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
 
-  std::unordered_map<
-      std::string,
-      std::pair<std::vector<std::string>, std::vector<std::string>>>
-      value_to_valueshape_expr_;
-
   inline const std::string GetNextSymName() {
     return "S" + std::to_string(next_sym_idx_++);
   }
@@ -88,6 +83,9 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // const symbol::ShapeOrData& GetShapeOrDataForValue() const;
 
   symbol::DimExprBuilder CreateDimExprBuilder() override;
+
+  std::unordered_map<std::string, symbol::ShapeOrDataDimExprs>
+      value_id_to_shapeordata_;
 
  private:
   // The operation this analysis runs on.
@@ -98,9 +96,6 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
-
-  std::unordered_map<std::string, symbol::ShapeOrDataDimExprs>
-      value_id_to_shapeordata;
 
   int64_t next_sym_idx_ = 0;
   std::vector<symbol::DimExprConstraint> constraints_;

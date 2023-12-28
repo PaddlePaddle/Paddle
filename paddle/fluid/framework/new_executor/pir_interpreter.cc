@@ -34,6 +34,9 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -684,9 +687,8 @@ void PirInterpreter::BuildInstruction() {
       }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
-        auto skip_gc_vars = execution_config_.skip_gc_vars;
         vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
+            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
@@ -696,9 +698,8 @@ void PirInterpreter::BuildInstruction() {
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
-        auto skip_gc_vars = execution_config_.skip_gc_vars;
         vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
+            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
              dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
@@ -729,6 +730,22 @@ void PirInterpreter::BuildInstruction() {
       } else {
         CREATE_INSTR(PhiKernelInstruction);
       }
+#ifdef PADDLE_WITH_DNNL
+    } else if (op.dialect()->name() == "pd_onednn_kernel") {
+      auto op_name = op.attributes()
+                         .at("op_name")
+                         .dyn_cast<::pir::StrAttribute>()
+                         .AsString();
+      VLOG(6) << "process " << op_name;
+
+      if (op.isa<paddle::dialect::OneDNNPhiKernelOp>()) {
+        CREATE_INSTR(OneDNNPhiKernelInstruction);
+      } else if (op.isa<paddle::dialect::OneDNNMixedPhiKernelOp>()) {
+        CREATE_INSTR(OneDNNMixedPhiKernelInstruction);
+      } else {
+        CREATE_INSTR(OneDNNLegacyKernelInstruction);
+      }
+#endif
 #ifdef PADDLE_WITH_CINN
     } else if (op.dialect()->name() == "cinn_runtime") {
       CREATE_INSTR(CinnJitInstruction);

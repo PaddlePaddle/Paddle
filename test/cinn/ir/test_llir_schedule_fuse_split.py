@@ -37,7 +37,7 @@ def test_fuse():
     def elementwise_fuse_assign_loop_gt(
         X: DataArray((128, 128, 128)), Y: DataArray((128, 128, 128))
     ):
-        for i in range(2097152):
+        for i in range(((1 * 128) * 128) * 128):
             with ir.ScheduleBlockContext("Y") as block_y:
                 i1_1, j1_1, k1_1 = ir.AxisMap(
                     "SSS", [(i / 128) / 128, (i / 128) % 128, i % 128]

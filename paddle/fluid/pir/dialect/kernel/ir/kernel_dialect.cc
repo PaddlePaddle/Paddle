@@ -169,9 +169,76 @@ void CustomKernelDialect::PrintOperation(pir::Operation *op,
   os << " -> ";
   printer.PrintOpReturnType(op);
 }
+#ifdef PADDLE_WITH_DNNL
+OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<OneDNNKernelDialect>()) {
+  initialize();
+}
+
+void OneDNNKernelDialect::initialize() {
+  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
+                paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedDenseTensorArrayType>();
+  RegisterOps<dialect::OneDNNPhiKernelOp,
+              dialect::OneDNNMixedPhiKernelOp,
+              dialect::OneDNNLegacyKernelOp>();
+  RegisterAttributes<paddle::dialect::KernelAttribute>();
+}
+
+void OneDNNKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
+  PrintKernelType(type, os);
+}
+
+void OneDNNKernelDialect::PrintAttribute(pir::Attribute attr,
+                                         std::ostream &os) const {
+  PrintKernelAttribute(attr, os);
+}
+
+void OneDNNKernelDialect::PrintOperation(pir::Operation *op,
+                                         pir::IrPrinter &printer) const {
+  if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
+    auto &os = printer.os;
+    printer.PrintOpResult(op);
+    os << " =";
+    if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
+      std::string kernel_name = phi_kernel_op.kernel_name();
+      if (op->attributes().count("is_inplace") != 0 &&
+          op->attributes()
+              .at("is_inplace")
+              .dyn_cast<pir::BoolAttribute>()
+              .data()) {
+        kernel_name = kernel_name + "_";
+      }
+      os << " \"" << kernel_name << "(phi_kernel)\"";
+    } else {
+      auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
+      std::string kernel_name = legacy_kernel_op.kernel_name();
+      if (op->attributes().count("is_inplace") != 0 &&
+          op->attributes()
+              .at("is_inplace")
+              .dyn_cast<pir::BoolAttribute>()
+              .data()) {
+        kernel_name = kernel_name + "_";
+      }
+      os << " \"" << kernel_name << "(legacy_kernel)\"";
+    }
+    printer.PrintOpOperands(op);
+    printer.PrintAttributeMap(op);
+    os << " :";
+    printer.PrintOperandsType(op);
+    os << " -> ";
+    printer.PrintOpReturnType(op);
+  } else {
+    printer.PrintGeneralOperation(op);
+  }
+}
+#endif
 
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)
+#ifdef PADDLE_WITH_DNNL
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
+#endif

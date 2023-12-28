@@ -33,16 +33,30 @@ namespace {
 
 class ParamsSyncAmongDevicesPass : public pir::Pass {
  public:
-  ParamsSyncAmongDevicesPass(const phi::Place& place,
-                             paddle::framework::Scope* scope)
-      : pir::Pass("params_sync_among_devices_pass", 0),
-        place_(place),
-        scope_(scope) {
+  ParamsSyncAmongDevicesPass()
+      : pir::Pass("params_sync_among_devices_pass", 0) {}
+
+  bool Initialize(pir::IrContext* context) override {
+    IR_ENFORCE(Has(pir::kPlaceAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, place attribute is required!"
+               "Use Set method to set the place attribute.");
+    IR_ENFORCE(Has(pir::kParamScopeAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, scope attribute is required!"
+               "Use Set method to set the scope attribute.");
+
+    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
+
+    PADDLE_ENFORCE_NOT_NULL(
+        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
     PADDLE_ENFORCE(
         paddle::platform::is_gpu_place(place_) ||
             paddle::platform::is_cpu_place(place_),
         phi::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on cpu or gpu."));
+    return true;
   }
 
   void Run(pir::Operation* op) override {
@@ -94,9 +108,8 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<pir::Pass> CreateParamsSyncAmongDevicesPass(
-    const phi::Place& place, paddle::framework::Scope* scope) {
-  return std::make_unique<ParamsSyncAmongDevicesPass>(place, scope);
+std::unique_ptr<pir::Pass> CreateParamsSyncAmongDevicesPass() {
+  return std::make_unique<ParamsSyncAmongDevicesPass>();
 }
 
 }  // namespace pir

@@ -39,7 +39,12 @@ void BindSchedule(py::module *m) {
           "make",
           [](ir::LoweredFunc &ir_func) {
             ir::ModuleExpr *module_expr = new ir::ModuleExpr({ir_func->body});
-            auto scheduler = std::make_unique<ir::IRSchedule>(*module_expr);
+            auto scheduler = std::make_unique<ir::IRSchedule>(
+                *module_expr,
+                /* rand_seed = */ -1,
+                /* debug_flag = */ false,
+                /* err_msg_level = */ utils::ErrorMessageLevel::kGeneral,
+                /* is_dynamic_shape = */ true);
             return scheduler;
           })
       .def("fuse",

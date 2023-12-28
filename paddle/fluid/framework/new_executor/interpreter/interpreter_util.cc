@@ -641,6 +641,10 @@ void BuildOpFuncList(const platform::Place& place,
         auto runtime_attrs = op->RuntimeAttrs();
         runtime_attrs.insert(std::make_pair("used_for_inference", true));
         op->SetRuntimeAttributeMap(runtime_attrs);
+      } else if (op->Type() == "conditional_block") {
+        auto runtime_attrs = op->RuntimeAttrs();
+        runtime_attrs.insert(std::make_pair("used_for_inference", true));
+        op->SetRuntimeAttributeMap(runtime_attrs);
       }
     }
 

@@ -40,7 +40,51 @@ static std::unordered_map<std::string, std::string> kCustomTypeMap = {
     {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
     {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
     {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
+struct CombineOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    symbol::ShapeOrDataDimExprs value_shape;
 
+    // for (auto operand_source : op->operands_source()) {
+    //   std::string operand_source_id = pir::GetValueId(&operand_source);
+    //   auto source_shape_vec =
+    //       shape_analysis->value_id_to_shapeordata_[operand_source_id];
+    //   for (int i = 0; i < source_shape_vec.size(); i++) {
+    //     value_shape.second.emplace_back(source_shape_vec[i]);
+    //   }
+    // }
+
+    auto res = op->result(0);
+    auto res_id = pir::GetValueId(&res);
+
+    shape_analysis->value_id_to_shapeordata_[res_id] = value_shape;
+    return true;
+  }
+
+  CombineOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+OperatorDialect::OperatorDialect(pir::IrContext* ctx)
+    : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
+  initialize();
+  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+  auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::CombineOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               CombineOpInferSymbolicShapeInterfaceModel>()));
+}
+
+void OperatorDialect::initialize() {
+  RegisterTypes<paddle::dialect::DenseTensorType,
+                paddle::dialect::SelectedRowsType,
+                paddle::dialect::DenseTensorArrayType>();
+}
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
   os << type.dialect().name();
   os << '.';
@@ -389,7 +433,6 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
-
 }  // namespace dialect
 }  // namespace paddle
 

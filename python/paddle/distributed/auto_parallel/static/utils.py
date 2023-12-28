@@ -2313,6 +2313,31 @@ def is_sequential_run():
     )
 
 
+def get_pp_degree(dist_context):
+    if len(dist_context.process_meshes) < 2:
+        return 0
+
+    process_ids = set()
+    process_meshes = copy.deepcopy(dist_context.process_meshes)
+
+    for pm in process_meshes:
+        process_ids |= set(pm.process_ids)
+
+    global_pm_idx = []
+    has_sub_pm = False
+    for idx, pm in enumerate(process_meshes):
+        if len(set(pm.process_ids)) == len(process_ids):
+            global_pm_idx.append(idx)
+        elif set(pm.process_ids) < process_ids:
+            has_sub_pm = True
+
+    if has_sub_pm:
+        for idx in reversed(global_pm_idx):
+            process_meshes.pop(idx)
+
+    return len(process_meshes)
+
+
 def get_pp_stage(dist_context, rank):
     pp_idx = None
     for idx, process_mesh in enumerate(dist_context.process_meshes):
