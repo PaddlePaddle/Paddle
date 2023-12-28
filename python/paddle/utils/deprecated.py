@@ -48,7 +48,7 @@ def deprecated(update_to="", since="", reason="", level=0):
 
     def decorator(func):
         # TODO(zhiqiu): temporally disable the warnings
-        return func
+        # return func
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
