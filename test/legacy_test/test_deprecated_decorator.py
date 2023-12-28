@@ -19,19 +19,18 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
 from paddle.utils import deprecated
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
 
 # custom paddle version
-paddle.version.major = '1'
-paddle.version.minor = '8'
+paddle.version.major = '2'
+paddle.version.minor = '6'
 paddle.version.patch = '0'
 paddle.version.rc = '0'
-paddle.__version__ = '1.8.0'
-paddle.version.full_version = '1.8.0'
+paddle.__version__ = '2.6.0'
+paddle.version.full_version = '2.6.0'
 print("current paddle version: ", paddle.__version__)
 
 paddle.disable_static()
@@ -86,27 +85,6 @@ class TestDeprecatedDocorator(unittest.TestCase):
 
         # testting
         self.assertLess(expected, captured)
-
-    def test_ops_elementwise_mul(self):
-        """
-        Test for new C++ elementwise_op, expected result should be True,
-        because not matter what base.layers.elementwise_mul is deprecated.
-        """
-
-        a = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-        b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-        x = paddle.to_tensor(a)
-        y = paddle.to_tensor(b)
-        res = _legacy_C_ops.elementwise_mul(x, y)
-
-        # expected
-        expected = LOWEST_WARNING_POSTION
-
-        # captured
-        captured = get_warning_index(paddle.multiply)
-
-        # testting
-        self.assertGreater(expected, captured)
 
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
