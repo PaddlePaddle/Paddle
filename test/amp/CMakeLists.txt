@@ -18,7 +18,7 @@ function(py_test_modules TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS}
+          ENABLE_FALL_BACK=False ${py_test_modules_ENVS}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
           ${PYTHON_EXECUTABLE} -m coverage run --branch -p
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}

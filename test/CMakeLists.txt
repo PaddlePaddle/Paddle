@@ -30,7 +30,7 @@ function(py_test_modules TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+          ENABLE_FALL_BACK=False ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
