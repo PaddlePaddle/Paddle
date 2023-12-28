@@ -389,6 +389,7 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   } else {
     predictor_id_ = inference::GetUniqueId();
   }
+  root_predictor_id_ = predictor_id_;
 }
 
 bool AnalysisPredictor::Init(
@@ -402,10 +403,6 @@ bool AnalysisPredictor::Init(
     platform::NvprofEnableRecordEvent();
   }
 #endif
-
-  if (!status_is_cloned_) {
-    root_predictor_id_ = predictor_id_;
-  }
 
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
@@ -660,10 +657,6 @@ bool AnalysisPredictor::PrepareScope(
   setenv("XPU_PADDLE_L3_SIZE", "0", 0);
 #endif
   if (parent_scope) {
-    PADDLE_ENFORCE_NOT_NULL(
-        parent_scope,
-        platform::errors::PreconditionNotMet(
-            "Both program and parent_scope should be set in Clone mode."));
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
@@ -2833,7 +2826,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
         "function has received a stream parameter."));
   }
   x->predictor_stream_ = stream;
-  x->Init(scope_, inference_program_);
+  x->Init(nullptr, inference_program_);
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
 #endif
