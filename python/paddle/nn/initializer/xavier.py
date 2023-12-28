@@ -105,6 +105,11 @@ class XavierInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
+        out_var_shape = (
+            var._local_shape
+            if (isinstance(var, framework.EagerParamBase) and var.is_dist())
+            else var.shape
+        )
         # to be compatible of fp16 initalizers
         if var.dtype == core.VarDesc.VarType.FP16 or (
             var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
@@ -114,9 +119,7 @@ class XavierInitializer(Initializer):
                 name=unique_name.generate(
                     ".".join(['xavier_init', var.name, 'tmp'])
                 ),
-                shape=var._local_shape
-                if (isinstance(var, framework.EagerParamBase) and var.is_dist())
-                else var.shape,
+                shape=out_var_shape,
                 dtype=out_dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
@@ -135,7 +138,7 @@ class XavierInitializer(Initializer):
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = _C_ops.uniform(
-                    out_var.shape,
+                    out_var_shape,
                     out_dtype,
                     -limit,
                     limit,
@@ -147,7 +150,12 @@ class XavierInitializer(Initializer):
 
                 place = _current_expected_place()
                 out_var = _C_ops.gaussian(
-                    out_var.shape, 0.0, std, self._seed, out_dtype, place
+                    out_var_shape,
+                    0.0,
+                    std,
+                    self._seed,
+                    out_dtype,
+                    place,
                 )
 
             if var.dtype == core.VarDesc.VarType.FP16 or (
