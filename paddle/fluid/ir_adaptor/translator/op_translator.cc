@@ -2958,6 +2958,14 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
     param_map->PushValue(output_vars[0],
                          VariableDefiningInfo(scale_op.out(), false, -1));
   }
+
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "transpose_x" || info.name == "transpose_y") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
 };
 
 struct CEmbeddingOpTranscriber : public OpTranscriber {
@@ -3011,6 +3019,7 @@ OpTranslator::OpTranslator() {
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
+  special_handlers["matmul"] = LegacyMatmulOpTranscriber();
   special_handlers["matrix_rank"] = MatrixRankOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
