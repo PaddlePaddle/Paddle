@@ -77,13 +77,14 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
-                    const std::vector<pir::Value> &inputs);
+                    const std::vector<pir::Value> &inputs,
+                    bool construct_body = true);
   TEST_API pir::Block &body();
   pir::Value cond();
   const pir::Block::ArgListType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
-  void VerifySig() {}
-  void VerifyRegion() {}
+  void VerifySig();
+  void VerifyRegion();
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
