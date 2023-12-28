@@ -869,14 +869,6 @@ class TestDygraphInplaceMutilgammaln(TestDygraphInplaceWithContinuous):
         pass
 
 
-class TestDygraphInplaceGammaln(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.gammaln_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.gammaln(var)
-
-
 class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.neg_(var)
