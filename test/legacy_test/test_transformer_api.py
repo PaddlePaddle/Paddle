@@ -820,6 +820,84 @@ class TestTransformer(unittest.TestCase):
                 src, tgt, src_mask, tgt_mask, memory_mask
             )
 
+    # @test_with_pir_api
+    def test_transformer_static(self):
+        (
+            batch_size,
+            d_model,
+            n_head,
+            dim_feedforward,
+            dropout,
+            _,
+            _,
+            source_length,
+            target_length,
+        ) = generate_basic_params(mode="decoder_layer")
+        # if not paddle.framework.in_pir_mode():
+        #     return
+        paddle.enable_static()
+        # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            transformer = Transformer(
+                d_model,
+                n_head,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+            )
+            dtype = "float32"
+            feed = {}
+            src = paddle.static.data(
+                "src", [batch_size, source_length, d_model], dtype
+            )
+            feed["src"] = np.random.rand(
+                batch_size, source_length, d_model
+            ).astype("float32")
+            tgt = paddle.static.data(
+                "tgt", [batch_size, target_length, d_model], dtype
+            )
+            feed["tgt"] = np.random.rand(
+                batch_size, target_length, d_model
+            ).astype("float32")
+
+            src_mask = paddle.static.data(
+                "src_mask",
+                [batch_size, n_head, source_length, source_length],
+                dtype,
+            )
+            feed["src_mask"] = np.zeros(
+                (batch_size, n_head, source_length, source_length)
+            ).astype("float32")
+            feed["src_mask"][0][0][0][0] = -np.inf
+
+            tgt_mask = paddle.static.data(
+                "tgt_mask",
+                [batch_size, n_head, target_length, target_length],
+                dtype,
+            )
+            feed["tgt_mask"] = np.zeros(
+                (batch_size, n_head, target_length, target_length)
+            ).astype("float32")
+            feed["tgt_mask"][0][0][0][0] = -1e9
+
+            memory_mask = paddle.static.data(
+                "memory_mask",
+                [batch_size, n_head, target_length, source_length],
+                dtype,
+            )
+            feed["memory_mask"] = np.zeros(
+                (batch_size, n_head, target_length, source_length)
+            ).astype("float32")
+            feed["memory_mask"][0][0][0][0] = -1e9
+            # print(batch_size, source_length, target_length, d_model, n_head)
+            trans_output = transformer(
+                src, tgt, src_mask, tgt_mask, memory_mask
+            )
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            (res,) = exe.run(feed=feed, fetch_list=[trans_output])
+            # print(res)
+            paddle.disable_static()
+
     def test_transformer_attr_1(self):
         (
             batch_size,
