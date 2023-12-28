@@ -422,6 +422,11 @@ inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
 }
 
 void ProgramTranslator::InsertDataOpForSingleBlock(const BlockDesc& block) {
+  std::unordered_set<std::string> all_var_names;
+  for (auto& var : block.AllVars()) {
+    all_var_names.insert(var->Name());
+  }
+
   std::unordered_set<std::string> inner_outputs;
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
@@ -429,8 +434,8 @@ void ProgramTranslator::InsertDataOpForSingleBlock(const BlockDesc& block) {
       for (const auto& var_name : input_var_names) {
         if (param_map_.count(var_name) != 0) continue;
         if (no_cast_var_names.count(var_name) != 0) continue;
-        bool is_unseen_variable = (inner_outputs.count(var_name) == 0);
-        if (is_unseen_variable) {
+        if (all_var_names.count(var_name) == 0) continue;
+        if (inner_outputs.count(var_name) == 0) {
           CreateUndefinedVariable(var_name, block);
         }
       }
