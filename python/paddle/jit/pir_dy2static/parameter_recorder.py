@@ -81,7 +81,7 @@ class InplaceMap:
             return None
         root_var = inplace_dict[value]
         saved = []
-        while inplace_dict.__contains__(root_var):
+        while root_var in inplace_dict:
             saved.append(root_var)
             root_var = inplace_dict[root_var]
         for var in saved:

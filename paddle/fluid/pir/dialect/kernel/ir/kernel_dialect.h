@@ -36,7 +36,29 @@ class KernelDialect : public pir::Dialect {
   void initialize();
 };
 
+#ifdef PADDLE_WITH_DNNL
+class OneDNNKernelDialect : public pir::Dialect {
+ public:
+  explicit OneDNNKernelDialect(pir::IrContext* context);
+
+  static const char* name() { return "pd_onednn_kernel"; }
+
+  void PrintType(pir::Type type, std::ostream& os) const override;
+
+  void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
+
+  void PrintOperation(pir::Operation* op,
+                      pir::IrPrinter& printer) const override;  // NOLINT
+
+ private:
+  void initialize();
+};
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
+#ifdef PADDLE_WITH_DNNL
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
+#endif

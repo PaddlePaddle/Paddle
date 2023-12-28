@@ -1,0 +1,9 @@
+- op : quantize
+  args : (Tensor input, bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false)
+  output : Tensor(output)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : quantize
+    data_type : input
