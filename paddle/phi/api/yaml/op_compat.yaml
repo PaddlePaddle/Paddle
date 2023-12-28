@@ -1050,12 +1050,8 @@
     bias : Bias
   outputs :
     out : Out
-  attrs :
-    scale_in : Scale_in
-    scale_weights : Scale_weights
-    scale_out : Scale_out
   extra :
-    [bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
 
 - op : feed
   outputs: {out: Out}
@@ -2466,6 +2462,15 @@
   outputs :
     {q : Q, r : R}
 
+- op : quantize
+  backward : quantize_grad
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift, include_self: Include_self}
+
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
@@ -3366,6 +3371,12 @@
     out : Out
 
 - op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_min
   inputs :
     x : X
   outputs :
