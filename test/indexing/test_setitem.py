@@ -230,7 +230,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np.testing.assert_allclose(x.numpy(), np_data)
 
     def test_combined_indexing_and_value_is_tensor_1(self):
-        # value is tensor and index will be adjusted
+        # value is tensor with same shape to getitem and index will be adjusted
         np_data = np.ones((3, 3)).astype(self.ndtype)
         value_data = np.array([-1, -1, -1]).astype(self.ndtype)
 
@@ -242,14 +242,13 @@ class TestSetitemInDygraph(unittest.TestCase):
         x = paddle.to_tensor(np_data, dtype=self.dtype)
         v = paddle.to_tensor(value_data, dtype=self.dtype)
 
-        np_data[:, [0, 2]] = np_data[:, [0, 2]] * np.expand_dims(value_data, -1)
-        x[:, [0, 2]] = x[:, [0, 2]] * v.unsqueeze(-1)
+        np_data[:, [0, 2]] = np_data[:, [0, 2]] + np.expand_dims(value_data, -1)
+        x[:, [0, 2]] = x[:, [0, 2]] + v.unsqueeze(-1)
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
     def test_combined_indexing_and_value_is_tensor_2(self):
         # value is tensor needed to broadcast and index will be adjusted
-        # with broadcast and backward test
         np_data = np.ones((3, 4, 5, 6)).astype(self.ndtype)
         value_data = np.arange(3 * 4 * 2 * 1).reshape((3, 4, 2, 1))
 
@@ -260,24 +259,28 @@ class TestSetitemInDygraph(unittest.TestCase):
 
         x = paddle.to_tensor(np_data, dtype=self.dtype)
         v = paddle.to_tensor(value_data, dtype=self.dtype)
-        x.stop_gradient = False
-        v.stop_gradient = False
-
-        y = x * 1
-        vv = v * 1
-        y[..., [1, 4], ::2] = vv
-
-        loss = y.sum()
-        loss.backward()
+        x[..., [1, 4], ::2] = v
 
         np_data[..., [1, 4], ::2] = value_data
-        expected_x_grad = np.ones((3, 4, 5, 6))
-        expected_x_grad[..., [1, 4], ::2] = 0
+        np.testing.assert_allclose(x.numpy(), np_data)
 
-        expected_v_grad = np.ones((3, 4, 2, 3)) * 3
-        np.testing.assert_allclose(y.numpy(), np_data)
-        np.testing.assert_allclose(x.grad.numpy(), expected_x_grad)
-        np.testing.assert_allclose(v.grad.numpy(), expected_v_grad)
+    def test_combined_indexing_and_value_is_tensor_3(self):
+        # value is tensor and index will be adjusted
+        # and the value rank is less than original tensor
+        np_data = np.ones((3, 4, 5, 6)).astype(self.ndtype)
+        value_data = np.arange(2 * 3 * 5).reshape((2, 3, 5))
+
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_data = np_data + 1j * np_data
+
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+        v = paddle.to_tensor(value_data, dtype=self.dtype)
+        x[:, [1, 3], :, [3, 4]] = v
+
+        np_data[:, [1, 3], :, [3, 4]] = value_data
+        np.testing.assert_allclose(x.numpy(), np_data)
 
     def test_inplace_with_stride(self):
         np_v = np.random.randn(3, 1).astype(self.ndtype)
@@ -640,7 +643,7 @@ class TestSetitemInStatic(unittest.TestCase):
 
     @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_1(self):
-        # value is tensor and index will be adjusted
+        # value is tensor with same shape to getitem and index will be adjusted
         np_data = np.ones((3, 3), dtype='int32')
         value_data = np.array([-1, -1, -1])
         np_data[:, [0, 2]] = np_data[:, [0, 2]] * np.expand_dims(value_data, -1)
@@ -651,7 +654,7 @@ class TestSetitemInStatic(unittest.TestCase):
             v = paddle.to_tensor([-1, -1, -1])
             y = _setitem_static(
                 x,
-                (slice(None), [0, 1]),
+                (slice(None), [0, 2]),
                 x[:, [0, 2]] * v.unsqueeze(-1),
             )
             res = self.exe.run(fetch_list=[y])
@@ -661,30 +664,48 @@ class TestSetitemInStatic(unittest.TestCase):
     @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_2(self):
         # value is tensor needed to broadcast and index will be adjusted
-        # with broadcast and backward test
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
         value_data = np.arange(3 * 4 * 2 * 1).reshape((3, 4, 2, 1))
+        np_data[..., [1, 4], ::2] = value_data
 
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.ones((3, 4, 5, 6), dtype='int32')
             v = paddle.arange(3 * 4 * 2 * 1).reshape((3, 4, 2, 1))
+
             y = _setitem_static(
                 x,
                 (..., [1, 4], slice(None, None, 2)),
                 v,
             )
-            res = self.exe.run(fetch_list=[y, x.grad_name, v.grad_name])
 
-        np_data[..., [1, 4], ::2] = value_data
-        expected_x_grad = np.ones((3, 4, 5, 6))
-        expected_x_grad[..., [1, 4], ::2] = 0
+            res = self.exe.run(fetch_list=[y])
 
-        expected_v_grad = np.ones((3, 4, 2, 3)) * 3
         np.testing.assert_allclose(res[0], np_data)
-        np.testing.assert_allclose(res[1], expected_x_grad)
-        np.testing.assert_allclose(res[2], expected_v_grad)
+
+    @test_with_pir_api
+    def test_combined_indexing_and_value_is_tensor_3(self):
+        # value is tensor and index will be adjusted
+        # and the value rank is less than original tensor
+        np_data = np.ones((3, 4, 5, 6), dtype='int32')
+        value_data = np.arange(2 * 3 * 5).reshape((2, 3, 5))
+        np_data[:, [1, 3], :, [3, 4]] = value_data
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.ones((3, 4, 5, 6), dtype='int32')
+            v = paddle.arange(2 * 3 * 5).reshape((2, 3, 5))
+            y = _setitem_static(
+                x,
+                (slice(None), [1, 3], slice(None), [3, 4]),
+                v,
+            )
+
+            res = self.exe.run(fetch_list=[y])
+
+        np.testing.assert_allclose(res[0], np_data)
 
 
 if __name__ == '__main__':

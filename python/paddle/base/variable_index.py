@@ -170,7 +170,7 @@ def _setitem_for_tensor_array(var, item, value):
         )
 
 
-def deal_advanced_index(ori_tensor, indices, is_for_setitem):
+def deal_advanced_index(ori_tensor, indices, is_for_setitem, values):
     """
     Transpose origin Tensor and advanced indices to the front.
 
@@ -180,6 +180,7 @@ def deal_advanced_index(ori_tensor, indices, is_for_setitem):
         trans_back_dim (List): order of axes to transpose back to original order. Only used in __setitem__.
         pos_of_new_dim (int):  axis of new dim in the result. Only used in __getitem__.
         rank_of_new_dim (int): rank of new dim in the result. Only used in __getitem__.
+        transed_value_tensor (Tensor): value tensor transed to the front. Only used in __setitem__.
     """
     transed_dim = []
     transed_index = []
@@ -191,16 +192,15 @@ def deal_advanced_index(ori_tensor, indices, is_for_setitem):
 
     for i, indice in enumerate(indices):
         if indice is not None:
-            if not is_for_setitem:
-                if i == 0:
-                    # case 1: advanced indices at axis 0, the new dim will be at first.
-                    pos_of_new_dim = 0
-                if i > 0 and len(transed_dim) > 0 and transed_dim[-1] != i - 1:
-                    # case 2: there are not adjacent advanced indices, the new dim will be at first.
-                    pos_of_new_dim = 0
-                else:
-                    pos_of_new_dim = min(pos_of_new_dim, i)
-                rank_of_new_dim = max(rank_of_new_dim, indice[1].ndim)
+            if i == 0:
+                # case 1: advanced indices at axis 0, the new dim will be at first.
+                pos_of_new_dim = 0
+            if i > 0 and len(transed_dim) > 0 and transed_dim[-1] != i - 1:
+                # case 2: there are not adjacent advanced indices, the new dim will be at first.
+                pos_of_new_dim = 0
+            else:
+                pos_of_new_dim = min(pos_of_new_dim, i)
+            rank_of_new_dim = max(rank_of_new_dim, indice[1].ndim)
             transed_dim.append(i)
             transed_index.append(indice[1])
     for i in range(ori_tensor.ndim):
@@ -210,12 +210,22 @@ def deal_advanced_index(ori_tensor, indices, is_for_setitem):
 
     trans_back_dim = np.argsort(transed_dim).tolist() if is_for_setitem else []
 
+    transed_value_tensor = None
+    if is_for_setitem:
+        if values.ndim > 1 and pos_of_new_dim != 0:
+            # If the value tensor is not a scalar / 1-D Tensor, and the src tensor was
+            # transposed at 1st dim, the value tensor should be transposed too.
+            transed_value_tensor = values.transpose(transed_dim)
+        else:
+            transed_value_tensor = values
+
     return (
         transed_tensor,
         transed_index,
         trans_back_dim,
         pos_of_new_dim,
         rank_of_new_dim,
+        transed_value_tensor,
     )
 
 
@@ -546,6 +556,11 @@ def _setitem_static(x, indices, values):
         #   3. assign values to the sliced result by index_put OP;
         #   4. transpose back and assign the result to original tensor by set_value OP.
 
+        if not isinstance(
+            values, (Variable, paddle.pir.Value, paddle.pir.OpResult)
+        ):
+            values = paddle.assign(values).astype(x.dtype)
+
         sub_tensor = get_tensor_with_basic_indexing(
             x,
             axes,
@@ -562,9 +577,8 @@ def _setitem_static(x, indices, values):
             transback_dim,
             _,
             _,
-        ) = deal_advanced_index(sub_tensor, advanced_index, True)
-        if not isinstance(values, (Variable, paddle.pir.Value)):
-            values = paddle.assign(values).astype(transed_sub_tensor.dtype)
+            values,
+        ) = deal_advanced_index(sub_tensor, advanced_index, True, values)
 
         if values.dtype != transed_sub_tensor.dtype:
             values = values.astype(transed_sub_tensor.dtype)
@@ -787,7 +801,8 @@ def _getitem_static(x, indices):
             _,
             pos_of_new_dim,
             rank_of_new_dim,
-        ) = deal_advanced_index(out, advanced_index, False)
+            _,
+        ) = deal_advanced_index(out, advanced_index, False, None)
 
         # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
         if (

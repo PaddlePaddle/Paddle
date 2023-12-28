@@ -1375,7 +1375,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
   // step3: Dealing with advanced indexing
   std::vector<paddle::Tensor> transed_index;
-  std::vector<int> trans_back_dim;
+  std::vector<int> trans_back_dim, trans_dim;
   int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
 
   paddle::Tensor transed_tensor = dealWithAdvancedIndex(out,
@@ -1385,7 +1385,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &transed_index,
                                                         &trans_back_dim,
                                                         &pos_of_new_dim,
-                                                        &rank_of_new_dim);
+                                                        &rank_of_new_dim,
+                                                        &trans_dim);
 
   if (transed_index.size() == 1 &&
       transed_index[0].dtype() == phi::DataType::BOOL) {
@@ -1679,9 +1680,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                                                            &use_strided_slice);
 
     std::vector<paddle::Tensor> transed_index;
-    std::vector<int> trans_back_dim;
+    std::vector<int> trans_back_dim, trans_dim;
 
-    int pos_of_new_dim = 0, rank_of_new_dim = 0;
+    int pos_of_new_dim = INT_MAX, rank_of_new_dim = 1;
 
     paddle::Tensor transed_sub_tensor =
         dealWithAdvancedIndex(sub_tensor,
@@ -1691,7 +1692,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &transed_index,
                               &trans_back_dim,
                               &pos_of_new_dim,
-                              &rank_of_new_dim);
+                              &rank_of_new_dim,
+                              &trans_dim);
 
     // Release gil and do tracing
     py::gil_scoped_release release;
@@ -1712,6 +1714,10 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (self->tensor.dtype() != value_tensor.dtype()) {
         value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
       }
+    }
+
+    if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
+      value_tensor = transpose_ad_func(value_tensor, trans_dim);
     }
 
     // TODO(zoooo0820) 1.Using inplace version index_put
