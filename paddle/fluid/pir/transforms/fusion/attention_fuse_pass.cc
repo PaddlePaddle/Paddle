@@ -22,13 +22,13 @@
 namespace {
 
 class MultiHeadMatmulFusePattern
-    : public pir::drr::DrrPatternBase<MultiHeadMatmulFusePattern> {
+    : public paddle::drr::DrrPatternBase<MultiHeadMatmulFusePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
     //
-    pir::drr::SourcePattern src = ctx->SourcePattern();
+    paddle::drr::SourcePattern src = ctx->SourcePattern();
     // The first path to matmul with scale (q).
     const auto &matmul_1 =
         src.Op("pd_op.matmul",
@@ -115,7 +115,8 @@ class MultiHeadMatmulFusePattern
     //
     // Constraints.
     //
-    src.RequireNativeCall([](const pir::drr::MatchContext &match_ctx) -> bool {
+    src.RequireNativeCall([](const paddle::drr::MatchContext &match_ctx)
+                              -> bool {
       const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
       if (softmax_axis != -1 && softmax_axis != 3) return false;
 
@@ -145,7 +146,7 @@ class MultiHeadMatmulFusePattern
     //
     // Result Pattern.
     //
-    pir::drr::ResultPattern res = src.ResultPattern();
+    paddle::drr::ResultPattern res = src.ResultPattern();
     // W combine.
     const auto &combine_1 = res.Op("builtin.combine");
     combine_1({&res.Tensor("matmul_1_in_2"),
@@ -153,11 +154,11 @@ class MultiHeadMatmulFusePattern
                &res.Tensor("matmul_3_in_2")},
               {&res.Tensor("combine_1_out")});
     const auto &concat_axis = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> int { return 0; });
+        [](const paddle::drr::MatchContext &match_ctx) -> int { return 0; });
     const auto &concat_1 = res.Op("pd_op.concat", {{"axis", concat_axis}});
     res.Tensor("concat_1_out") = concat_1(res.Tensor("combine_1_out"));
     const auto &reshape_5_shape = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
+        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           auto matmul_1_in_2 = match_ctx.Tensor("matmul_1_in_2").Shape();
           return {-1, 3, matmul_1_in_2.at(1)};
         });
@@ -175,7 +176,7 @@ class MultiHeadMatmulFusePattern
     const auto &concat_2 = res.Op("pd_op.concat", {{"axis", concat_axis}});
     res.Tensor("concat_2_out") = concat_2(res.Tensor("combine_2_out"));
     const auto &reshape_6_shape = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
+        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           return {3, -1};
         });
     const auto &reshape_6 =
@@ -184,28 +185,31 @@ class MultiHeadMatmulFusePattern
               {&res.Tensor("reshape_6_out"), &res.NoneTensor()});
 
     const auto &head_number =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> int {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> int {
           const auto &full_int_array_1_value =
               match_ctx.Attr<std::vector<int64_t>>("full_int_array_1_value");
           return full_int_array_1_value.at(2);
         });
     const auto &alpha =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("full_1_value");
         });
-    const auto &multihead_matmul = res.Op(
-        "pd_op.multihead_matmul",
-        {{"transpose_q", res.Attr([](const pir::drr::MatchContext &match_ctx) {
-            return false;
-          })},
-         {"transpose_k", res.Attr([](const pir::drr::MatchContext &match_ctx) {
-            return true;
-          })},
-         {"transpose_v", res.Attr([](const pir::drr::MatchContext &match_ctx) {
-            return false;
-          })},
-         {"head_number", head_number},
-         {"alpha", alpha}});
+    const auto &multihead_matmul =
+        res.Op("pd_op.multihead_matmul",
+               {{"transpose_q",
+                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
+                   return false;
+                 })},
+                {"transpose_k",
+                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
+                   return true;
+                 })},
+                {"transpose_v",
+                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
+                   return false;
+                 })},
+                {"head_number", head_number},
+                {"alpha", alpha}});
     multihead_matmul({&res.Tensor("matmul_1_in_1"),
                       &res.Tensor("reshape_5_out"),
                       &res.Tensor("reshape_6_out"),
