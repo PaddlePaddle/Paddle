@@ -109,7 +109,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
     def setUp(self):
         self.config()
         if self.dtype == "bfloat16" or self.weight_dtype == "int4":
-            self.atol = 1.5e-1
+            self.atol = 1.3e-1
         x = np.random.random((self.batch, self.token, self.in_features))
         self.x = paddle.to_tensor(x, dtype=self.dtype)
         if self.bias:
@@ -615,6 +615,21 @@ class WeightOnlyLinearTestCase27(WeightOnlyLinearTestCase):
         super().config()
         self.dtype = 'float16'
         self.weight_dtype = "int4"
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase28(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.token = 300
         self.group_size = 128
 
 
