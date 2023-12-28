@@ -166,11 +166,13 @@ def save_state_dict(
         local_state_dict = {}
         local_state_dict_metadata = {}
         local_storage_metadata = {}
+        structured_to_param_name = {}
         for key, val in flat_state_dict.items():
             if isinstance(val, paddle.Tensor):
                 # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
                 if not val._is_initialized():
                     continue
+                structured_to_param_name[key] = val.name
                 if val.is_dist():
                     # when val is scalar, the shape is []
                     (
@@ -205,9 +207,11 @@ def save_state_dict(
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))
                 ] = file_name
+
         global_state_dict_metadata = []
         global_storage_metadata = []
         global_flatten_mapping = []
+        global_structured_to_param_name = []
         if use_dist:
             paddle.distributed.all_gather_object(
                 global_state_dict_metadata,
@@ -220,16 +224,25 @@ def save_state_dict(
             paddle.distributed.all_gather_object(
                 global_flatten_mapping, mapping, process_group
             )
+            paddle.distributed.all_gather_object(
+                global_structured_to_param_name,
+                structured_to_param_name,
+                process_group,
+            )
         else:
             global_state_dict_metadata.append(local_state_dict_metadata)
             global_storage_metadata.append(local_storage_metadata)
             global_flatten_mapping.append(mapping)
+            global_structured_to_param_name.append(structured_to_param_name)
 
         metadata.state_dict_metadata = merge_state_dict_metadata(
             global_state_dict_metadata
         )
         metadata.storage_metadata = dedup_key_in_dict(global_storage_metadata)
         metadata.flat_mapping = dedup_key_in_dict(global_flatten_mapping)
+        metadata.structured_to_parameter_name = dedup_key_in_dict(
+            global_structured_to_param_name
+        )
         if coordinator_rank == paddle.distributed.get_rank():
             logger.debug(f"metadata:{metadata}")
             paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))

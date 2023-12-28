@@ -410,144 +410,189 @@ def load_state_dict(
             >>> # doctest: -SKIP
     """
     with paddle.base.dygraph.guard():
-        assert isinstance(
-            state_dict, dict
-        ), "The state_dict should be a dictionary."
-        flat_state_dict, mapping = flatten_state_dict(state_dict)
-        if len(flat_state_dict) > 0:
-            for val in flat_state_dict.values():
-                assert isinstance(
-                    val, paddle.Tensor
-                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
-
-        use_dist = True if paddle.distributed.get_world_size() > 1 else False
-
-        if use_dist and process_group is None and not is_initialized():
-            # Init the default global process group
-            paddle.distributed.init_parallel_env()
-
-        if use_dist:
-            # sync to avoid some ranks not write path yet
-            paddle.distributed.barrier(process_group)
-
-        rank_to_files, missing_keys = get_rank_to_files(
-            path, flat_state_dict, process_group, use_dist
+        load_succ = _load_state_dict(
+            state_dict, path, process_group, coordinator_rank
         )
-        if len(missing_keys) > 0:
-            logger.warning(
-                f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
-            )
-        if len(rank_to_files) <= 0:
-            return
-        local_load_files = get_local_load_files(rank_to_files)
-        # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
-        load_infos = get_load_infos(
-            path, local_load_files, process_group, use_dist
-        )
-        # read_items: [ReadItem(local_tensor_index, rank, cur_offsets, storage_offsets, lengths)],
-        # slice the storage local tensor in (storage_offsets, lengths) to assign the current tensor in (cur_offsets, lengths) in rank.
-        read_items = get_read_items(
-            path, flat_state_dict, process_group, use_dist
-        )
-        storage_file_to_state_dict = {}
-        logger.debug(
-            f"before load, state_dict:{flat_state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
-        )
-        state_dict_in_cpu = []
-        for k, v in flat_state_dict.items():
-            if v.place.is_cpu_place():
-                state_dict_in_cpu.append(k)
-                flat_state_dict[k] = v.cuda()
-        for item in read_items:
+        if not load_succ:
+            logger.warning("Try to load state_dict again")
+            accessible_files = os.listdir(path)
+            metadata_files = [
+                file for file in accessible_files if file.endswith(".metadata")
+            ]
             assert (
-                item.local_tensor_index in load_infos
-            ), f"item:{item}, load_infos:{load_infos}"
-            src_rank, file_name = load_infos[item.local_tensor_index]
-            storage_chunk_tensor = None
-            cur_chunk_tensor = None
-            # The src rank need to load the state_dict.
-            if src_rank == paddle.distributed.get_rank():
-                if file_name not in storage_file_to_state_dict:
-                    # The value in state_dict is not distributed tensor but a normal tensor.
-                    storage_file_to_state_dict[file_name] = paddle.load(
-                        os.path.join(path, file_name)
+                len(metadata_files) > 0
+            ), f"No metadata file found in the checkpoint directory:{path}."
+            strutured_to_parameter_names = {}
+            for metadata_file in metadata_files:
+                metadata = paddle.load(os.path.join(path, metadata_file))
+                if metadata.structured_to_parameter_name is not None:
+                    assert isinstance(
+                        metadata.structured_to_parameter_name, dict
                     )
-                storage_state_dict = storage_file_to_state_dict[file_name]
-                assert item.local_tensor_index.tensor_key in storage_state_dict
-                storage_local_tensor = storage_state_dict[
+                    strutured_to_parameter_names.update(
+                        metadata.structured_to_parameter_name
+                    )
+            parameter_name_to_strutured = {
+                v: k for k, v in strutured_to_parameter_names.items()
+            }
+            if len(strutured_to_parameter_names) > 0 and list(
+                strutured_to_parameter_names.keys()
+            ) != list(strutured_to_parameter_names.values()):
+                # dynamic save static load
+                new_keys = []
+                origin_keys = list(state_dict.keys())
+                for k, v in state_dict.items():
+                    if k in parameter_name_to_strutured:
+                        new_keys.append(parameter_name_to_strutured[k])
+                if len(new_keys) == len(state_dict):
+                    tmp_state_dict = dict(
+                        zip(new_keys, list(state_dict.values()))
+                    )
+                    _load_state_dict(
+                        tmp_state_dict, path, process_group, coordinator_rank
+                    )
+
+
+def _load_state_dict(
+    state_dict,
+    path,
+    process_group=None,
+    coordinator_rank=0,
+):
+    assert isinstance(
+        state_dict, dict
+    ), "The state_dict should be a dictionary."
+    flat_state_dict, mapping = flatten_state_dict(state_dict)
+    if len(flat_state_dict) > 0:
+        for val in flat_state_dict.values():
+            assert isinstance(
+                val, paddle.Tensor
+            ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
+
+    use_dist = True if paddle.distributed.get_world_size() > 1 else False
+
+    if use_dist and process_group is None and not is_initialized():
+        # Init the default global process group
+        paddle.distributed.init_parallel_env()
+
+    if use_dist:
+        # sync to avoid some ranks not write path yet
+        paddle.distributed.barrier(process_group)
+
+    rank_to_files, missing_keys = get_rank_to_files(
+        path, flat_state_dict, process_group, use_dist
+    )
+    if len(missing_keys) > 0:
+        logger.warning(
+            f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
+        )
+    if len(rank_to_files) <= 0:
+        return False
+    local_load_files = get_local_load_files(rank_to_files)
+    # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
+    load_infos = get_load_infos(path, local_load_files, process_group, use_dist)
+    # read_items: [ReadItem(local_tensor_index, rank, cur_offsets, storage_offsets, lengths)],
+    # slice the storage local tensor in (storage_offsets, lengths) to assign the current tensor in (cur_offsets, lengths) in rank.
+    read_items = get_read_items(path, flat_state_dict, process_group, use_dist)
+    storage_file_to_state_dict = {}
+    logger.debug(
+        f"before load, state_dict:{flat_state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
+    )
+    state_dict_in_cpu = []
+    for k, v in flat_state_dict.items():
+        if v.place.is_cpu_place():
+            state_dict_in_cpu.append(k)
+            flat_state_dict[k] = v.cuda()
+    for item in read_items:
+        assert (
+            item.local_tensor_index in load_infos
+        ), f"item:{item}, load_infos:{load_infos}"
+        src_rank, file_name = load_infos[item.local_tensor_index]
+        storage_chunk_tensor = None
+        cur_chunk_tensor = None
+        # The src rank need to load the state_dict.
+        if src_rank == paddle.distributed.get_rank():
+            if file_name not in storage_file_to_state_dict:
+                # The value in state_dict is not distributed tensor but a normal tensor.
+                storage_file_to_state_dict[file_name] = paddle.load(
+                    os.path.join(path, file_name)
+                )
+            storage_state_dict = storage_file_to_state_dict[file_name]
+            assert item.local_tensor_index.tensor_key in storage_state_dict
+            storage_local_tensor = storage_state_dict[
+                item.local_tensor_index.tensor_key
+            ]
+            storage_offsets = item.storage_offset
+            storage_lengths = item.lengths
+            storage_ends = [
+                storage_offset + storage_length
+                for storage_offset, storage_length in zip(
+                    storage_offsets, storage_lengths
+                )
+            ]
+            # The storage_chunk_tensor and storage_local_tensor share the same memory.
+            if len(storage_lengths) > 0:
+                storage_chunk_tensor = paddle.slice(
+                    storage_local_tensor,
+                    list(range(len(storage_lengths))),
+                    storage_offsets,
+                    storage_ends,
+                )
+            else:
+                storage_chunk_tensor = storage_local_tensor
+        # The read item rank need to be assigned
+        if item.rank == paddle.distributed.get_rank():
+            assert (
+                item.local_tensor_index.tensor_key in flat_state_dict
+            ), f"item:{item}, state_dict:{flat_state_dict}"
+            cur_local_tensor = (
+                flat_state_dict[
                     item.local_tensor_index.tensor_key
-                ]
-                storage_offsets = item.storage_offset
-                storage_lengths = item.lengths
-                storage_ends = [
-                    storage_offset + storage_length
-                    for storage_offset, storage_length in zip(
-                        storage_offsets, storage_lengths
-                    )
-                ]
-                # The storage_chunk_tensor and storage_local_tensor share the same memory.
-                if len(storage_lengths) > 0:
-                    storage_chunk_tensor = paddle.slice(
-                        storage_local_tensor,
-                        list(range(len(storage_lengths))),
-                        storage_offsets,
-                        storage_ends,
-                    )
-                else:
-                    storage_chunk_tensor = storage_local_tensor
-            # The read item rank need to be assigned
-            if item.rank == paddle.distributed.get_rank():
-                assert (
-                    item.local_tensor_index.tensor_key in flat_state_dict
-                ), f"item:{item}, state_dict:{flat_state_dict}"
-                cur_local_tensor = (
-                    flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ]._local_value()
-                    if use_dist
-                    and flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ].is_dist()
-                    else flat_state_dict[item.local_tensor_index.tensor_key]
+                ]._local_value()
+                if use_dist
+                and flat_state_dict[
+                    item.local_tensor_index.tensor_key
+                ].is_dist()
+                else flat_state_dict[item.local_tensor_index.tensor_key]
+            )
+            cur_offsets = item.cur_offset
+            cur_lengths = item.lengths
+            cur_ends = [
+                cur_offset + cur_length
+                for cur_offset, cur_length in zip(cur_offsets, cur_lengths)
+            ]
+            # The cur_chunk_tensor and cur_local_tensor share the same memory.
+            if len(cur_lengths) > 0:
+                cur_chunk_tensor = paddle.slice(
+                    cur_local_tensor,
+                    list(range(len(cur_lengths))),
+                    cur_offsets,
+                    cur_ends,
                 )
-                cur_offsets = item.cur_offset
-                cur_lengths = item.lengths
-                cur_ends = [
-                    cur_offset + cur_length
-                    for cur_offset, cur_length in zip(cur_offsets, cur_lengths)
-                ]
-                # The cur_chunk_tensor and cur_local_tensor share the same memory.
-                if len(cur_lengths) > 0:
-                    cur_chunk_tensor = paddle.slice(
-                        cur_local_tensor,
-                        list(range(len(cur_lengths))),
-                        cur_offsets,
-                        cur_ends,
-                    )
-                else:
-                    cur_chunk_tensor = cur_local_tensor
             else:
-                cur_chunk_tensor = paddle.zeros(
-                    item.lengths,
-                    dtype=flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ].dtype,
+                cur_chunk_tensor = cur_local_tensor
+        else:
+            cur_chunk_tensor = paddle.zeros(
+                item.lengths,
+                dtype=flat_state_dict[item.local_tensor_index.tensor_key].dtype,
+            )
+
+        if src_rank == item.rank:
+            # assign value locally
+            paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
+        else:
+            # assign value remotely
+            if src_rank == paddle.distributed.get_rank():
+                paddle.distributed.broadcast(
+                    storage_chunk_tensor, src=src_rank, group=process_group
+                )
+            else:
+                paddle.distributed.broadcast(
+                    cur_chunk_tensor, src=src_rank, group=process_group
                 )
 
-            if src_rank == item.rank:
-                # assign value locally
-                paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
-            else:
-                # assign value remotely
-                if src_rank == paddle.distributed.get_rank():
-                    paddle.distributed.broadcast(
-                        storage_chunk_tensor, src=src_rank, group=process_group
-                    )
-                else:
-                    paddle.distributed.broadcast(
-                        cur_chunk_tensor, src=src_rank, group=process_group
-                    )
+    for k, v in flat_state_dict.items():
+        if k in state_dict_in_cpu:
+            state_dict[k] = v.cpu()
 
-        for k, v in flat_state_dict.items():
-            if k in state_dict_in_cpu:
-                state_dict[k] = v.cpu()
+    return True
