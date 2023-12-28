@@ -15,7 +15,6 @@
 #pragma once
 
 #include <stdint.h>
-
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -162,7 +161,8 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
   // Conversion operators
   HOSTDEVICE inline operator float() const {
 #ifdef PADDLE_CUDA_FP8
-    return float(*reinterpret_cast<const __nv_fp8_e4m3*>(&x));  // NOLINT
+    return static_cast<float>(
+        *reinterpret_cast<const __nv_fp8_e4m3*>(&x));  // NOLINT
 #else
     // refer to
     // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e4m3fn.h
@@ -170,9 +170,31 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     const uint32_t sign = w & UINT32_C(0x80000000);
     const uint32_t nonsign = w & UINT32_C(0x7FFFFFFF);
 #ifdef PADDLE_WITH_CUDA
-    // nonsign will not exceed the range of int32 here
-    uint32_t renorm_shift = nonsign != 0 ? __clz(static_cast<int>(nonsign))
-                                         : sizeof(uint32_t) * CHAR_BIT;
+    uint32_t nonsign_tmp = nonsign;
+    uint32_t renorm_shift = 0;
+    if (nonsign_tmp == 0) {
+      renorm_shift = sizeof(uint32_t) * CHAR_BIT;
+    } else {
+      if ((nonsign_tmp & 0xFFFF0000) == 0) {
+        renorm_shift += 16;
+        nonsign_tmp <<= 16;
+      }
+      if ((nonsign_tmp & 0xFF000000) == 0) {
+        renorm_shift += 8;
+        nonsign_tmp <<= 8;
+      }
+      if ((nonsign_tmp & 0xF0000000) == 0) {
+        renorm_shift += 4;
+        nonsign_tmp <<= 4;
+      }
+      if ((nonsign_tmp & 0xC0000000) == 0) {
+        renorm_shift += 2;
+        nonsign_tmp <<= 2;
+      }
+      if ((nonsign_tmp & 0x80000000) == 0) {
+        renorm_shift += 1;
+      }
+    }
 #else
     uint32_t renorm_shift =
         nonsign != 0 ? __builtin_clz(nonsign) : sizeof(uint32_t) * CHAR_BIT;
