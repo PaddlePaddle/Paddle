@@ -100,9 +100,9 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
-    'sequence_mask',
     'number_count',
     'assign_value',
+    'onednn_to_paddle_layout',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -136,6 +136,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'sparse_momentum',
     'soft_relu',
     'uniform_random_batch_size_like',
+    'c_reduce_min',
+    'c_reduce_min_',
 ]
 
 

@@ -94,32 +94,15 @@ class SqueezeFcFusePattern
     const auto &false_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
 
-    const auto &fc = res.Op(
-        paddle::dialect::FcOp::name(),
-        {{
-            {"in_num_col_dims", in_num_col_dims_attr},
-            {"activation_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return ""; })},
-            {"use_mkldnn", false_attr},
-            {"padding_weights", false_attr},
-            {"use_quantizer", false_attr},
-            {"mkldnn_data_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return "float32"; })},
-            {"scale_in",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"scale_weights",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::vector<float> { return {1.0f}; })},
-            {"scale_out",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"force_fp32_output", false_attr},
-        }});
+    const auto &fc =
+        res.Op(paddle::dialect::FcOp::name(),
+               {{
+                   {"in_num_col_dims", in_num_col_dims_attr},
+                   {"activation_type",
+                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                                 -> std::string { return ""; })},
+                   {"padding_weights", false_attr},
+               }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
        {&res.Tensor("add_out")});
   }
@@ -248,32 +231,15 @@ class ReshapeFcFusePattern
     const auto &false_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
 
-    const auto &fc = res.Op(
-        paddle::dialect::FcOp::name(),
-        {{
-            {"in_num_col_dims", in_num_col_dims_attr},
-            {"activation_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return ""; })},
-            {"use_mkldnn", false_attr},
-            {"padding_weights", false_attr},
-            {"use_quantizer", false_attr},
-            {"mkldnn_data_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return "float32"; })},
-            {"scale_in",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"scale_weights",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::vector<float> { return {1.0f}; })},
-            {"scale_out",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"force_fp32_output", false_attr},
-        }});
+    const auto &fc =
+        res.Op(paddle::dialect::FcOp::name(),
+               {{
+                   {"in_num_col_dims", in_num_col_dims_attr},
+                   {"activation_type",
+                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                                 -> std::string { return ""; })},
+                   {"padding_weights", false_attr},
+               }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
        {&res.Tensor("add_out")});
   }
@@ -336,32 +302,15 @@ class FlattenFcFusePattern
     const auto &false_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
 
-    const auto &fc = res.Op(
-        paddle::dialect::FcOp::name(),
-        {{
-            {"in_num_col_dims", in_num_col_dims_attr},
-            {"activation_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return ""; })},
-            {"use_mkldnn", false_attr},
-            {"padding_weights", false_attr},
-            {"use_quantizer", false_attr},
-            {"mkldnn_data_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return "float32"; })},
-            {"scale_in",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"scale_weights",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::vector<float> { return {1.0f}; })},
-            {"scale_out",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"force_fp32_output", false_attr},
-        }});
+    const auto &fc =
+        res.Op(paddle::dialect::FcOp::name(),
+               {{
+                   {"in_num_col_dims", in_num_col_dims_attr},
+                   {"activation_type",
+                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                                 -> std::string { return ""; })},
+                   {"padding_weights", false_attr},
+               }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
        {&res.Tensor("add_out")});
   }
