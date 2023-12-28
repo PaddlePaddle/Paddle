@@ -73,7 +73,6 @@ class IR_API Block {
   Iterator insert(ConstIterator iterator, Operation *op);
   Iterator erase(ConstIterator position);
   void clear();
-  operator Region::Iterator() { return position_; }
 
   // Assign the operation underlying in position with parameter op,
   // meanwhile, destroy the original operation.
@@ -145,7 +144,7 @@ class IR_API Block {
 
   // Allow access to 'SetParent'.
   friend class Region;
-  void SetParent(Region *parent, Region::Iterator position);
+  void SetParent(Region *parent);
 
   // Take out corresponding Operation and its ownershipe.
   friend class Operation;
@@ -154,7 +153,6 @@ class IR_API Block {
   static bool TopoOrderCheck(const OpListType &op_list);
 
  private:
-  Region::Iterator position_;
   BlockOperand first_use_;
   OpListType ops_;         // owned
   ArgListType arguments_;  // owned

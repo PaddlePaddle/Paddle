@@ -73,10 +73,7 @@ Operation *Block::Take(Operation *op) {
   return op;
 }
 
-void Block::SetParent(Region *parent, Region::Iterator position) {
-  parent_ = parent;
-  position_ = position;
-}
+void Block::SetParent(Region *parent) { parent_ = parent; }
 
 Block::UseIterator Block::use_begin() const { return first_use_; }
 
