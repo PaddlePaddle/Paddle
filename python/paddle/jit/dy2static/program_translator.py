@@ -717,7 +717,7 @@ class SymbolicStaticFunction(StaticFunction):
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         if paddle.is_compiled_with_cuda():
-            args = cuda_pinned_tensors_move_to_excepted_place(args)
+            cuda_pinned_tensors_move_to_excepted_place(args)
 
         (
             input_args_with_spec,
