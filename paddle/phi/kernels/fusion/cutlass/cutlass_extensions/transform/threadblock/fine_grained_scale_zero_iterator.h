@@ -125,7 +125,7 @@ class FineGrainedScaleZeroIterator<Shape_,
 
     /// Construct the Params object given a pitch-linear tensor's layout
     CUTLASS_HOST_DEVICE
-    explicit Params(Layout const& layout) : stride_(layout.stride(0)) {
+    Params(Layout const& layout) : stride_(layout.stride(0)) {  // NOLINT
       inc_advance_ = Shape::kRow * stride_ * sizeof_bits<Element>::value / 8;
     }
   };
@@ -179,20 +179,6 @@ class FineGrainedScaleZeroIterator<Shape_,
     const LongIndex tb_col_byte_offset =
         threadblock_offset.column() * sizeof_bits<Element>::value / 8;
 
-#ifdef _DEBUG_CUTLASS_FINE_GRAINED_SCALE_ZERO_ITERATOR
-    int blockIdx_x = blockIdx.x;
-    int threadIdx_x = threadIdx.x;
-    if (blockIdx_x == 0 && threadIdx_x == 0) {
-      printf("FineGrainedScaleZeroIterator init  \n");
-      printf("row_groupsize64_: %d, group_size_: %d\n",
-             row_groupsize64_,
-             group_size_);
-      printf("tb_row_byte_offset: %d, tb_col_byte_offset: %d\n",
-             tb_row_byte_offset,
-             tb_col_byte_offset);
-    }
-#endif
-
     pointer_scale_ += (tb_row_byte_offset + tb_col_byte_offset);
 
     // TODO(freeliuzc): support ZERO
@@ -210,17 +196,6 @@ class FineGrainedScaleZeroIterator<Shape_,
     const LongIndex thread_col_byte_offset =
         thread_col * kAlignment * sizeof_bits<Element>::value / 8;
 
-#ifdef _DEBUG_CUTLASS_FINE_GRAINED_SCALE_ZERO_ITERATOR
-    if (blockIdx_x == 0 && threadIdx_x == 0) {
-      printf("THREADS_PER_ROW: %d, thread_row: %d, thread_col: %d \n",
-             THREADS_PER_ROW,
-             thread_row,
-             thread_col);
-      printf("thread_row_byte_offset: %d, thread_col_byte_offset: %d\n",
-             thread_row_byte_offset,
-             thread_col_byte_offset);
-    }
-#endif
     pointer_scale_ += (thread_row_byte_offset + thread_col_byte_offset);
     // TODO(freeliuzc): support ZERO
     // if (pointer_zero_ != nullptr)
@@ -236,12 +211,6 @@ class FineGrainedScaleZeroIterator<Shape_,
     const int global_row = threadblock_offset.row() + thread_row;
     const int global_col =
         threadblock_offset.column() + thread_col * kAlignment;
-
-#ifdef _DEBUG_CUTLASS_FINE_GRAINED_SCALE_ZERO_ITERATOR
-    if (blockIdx_x == 0 && threadIdx_x == 0) {
-      printf("global_row: %d, global_col: %d\n", global_row, global_col);
-    }
-#endif
 
     const bool row_in_bounds =
         global_row < extent.row() && thread_row < Shape::kRow;
@@ -272,17 +241,6 @@ class FineGrainedScaleZeroIterator<Shape_,
         tile_offset.column() * Shape::kColumn * sizeof_bits<Element>::value / 8;
     pointer_scale_ += row_byte_offset + col_byte_offset;
 
-#ifdef _DEBUG_CUTLASS_FINE_GRAINED_SCALE_ZERO_ITERATOR
-    int blockIdx_x = blockIdx.x;
-    int threadIdx_x = threadIdx.x;
-    if (blockIdx_x == 0 && threadIdx_x == 0) {
-      printf(
-          "tile_offset: [%d, %d]\n", tile_offset.row(), tile_offset.column());
-      printf("row_byte_offset: %d, col_byte_offset: %d\n",
-             row_byte_offset,
-             col_byte_offset);
-    }
-#endif
     // TODO(freeliuzc): support ZERO
     // if (pointer_zero_ != nullptr)
     // {

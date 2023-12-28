@@ -552,7 +552,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag,
   std::vector<int> occupancies(candidate_configs.size());
 
   for (size_t ii = 0; ii < candidate_configs.size(); ++ii) {
-    dispatch_to_arch<EpilogueTag, FinaGrained>(A,
+    dispatch_to_arch<EpilogueTag, FineGrained>(A,
                                                B,
                                                weight_scales,
                                                biases,
@@ -584,7 +584,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag,
                                             is_weight_only,
                                             sm_);
 
-  dispatch_to_arch<EpilogueTag, FinaGrained>(A,
+  dispatch_to_arch<EpilogueTag, FineGrained>(A,
                                              B,
                                              weight_scales,
                                              biases,

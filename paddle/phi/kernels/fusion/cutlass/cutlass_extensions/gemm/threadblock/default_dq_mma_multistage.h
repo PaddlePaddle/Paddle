@@ -255,7 +255,8 @@ struct DqMma<ElementA,
       typename MmaCore::MmaPolicy,
       kStages,
       Converter,
-      SharedMemoryClear>;
+      SharedMemoryClear,
+      OperatorInfo::FineGrained>;
 };
 
 template <
@@ -444,7 +445,8 @@ struct DqMma<ElementA,
       typename MmaCore::MmaPolicy,
       kStages,
       Converter,
-      SharedMemoryClear>;
+      SharedMemoryClear,
+      OperatorInfo::FineGrained>;
 };
 
 }  // namespace threadblock

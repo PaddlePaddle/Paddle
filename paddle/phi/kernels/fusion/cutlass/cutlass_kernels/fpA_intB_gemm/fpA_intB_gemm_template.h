@@ -406,6 +406,7 @@ struct dispatch_stages<T,
                        WeightType,
                        arch,
                        EpilogueTag,
+                       FineGrained,
                        ThreadblockShape,
                        WarpShape,
                        2> {
