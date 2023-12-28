@@ -57,11 +57,16 @@ def fused_attention_kernel(
     l_prev = tl.zeros([BLOCK_M], dtype=tl.float32)
     acc = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=tl.float32)
     # load q: it will stay in SRAM throughout
+    
     q = tl.load(q_ptrs)
+    #q = tl.load(q_ptrs, mask=offs_m[:, None] < seq_len, other=0.0)
+    
     # loop over k, v and update accumulator
     for start_n in range(0, (start_m + 1) * BLOCK_M, BLOCK_N):
         # -- compute qk ----
         k = tl.load(k_ptrs)
+        #k = tl.load(k_ptrs, mask=(start_n + offs_n[None, :] < seq_len), other=0.0)
+
         qk = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)
         qk += tl.dot(q, k)
         qk *= sm_scale
@@ -79,7 +84,10 @@ def fused_attention_kernel(
         acc *= (l_prev * l_rcp)[:, None]
         # update acc
         p = p.to(Q.dtype.element_ty)
+
         v = tl.load(v_ptrs)
+        #v = tl.load(v_ptrs, mask=(start_n + offs_n[:, None] < seq_len), other=0.0)
+
         acc += tl.dot(p, v)
         # update m_i and l_i
         l_prev = l_curr
@@ -99,7 +107,7 @@ def fused_attention_kernel(
     offs_n = tl.arange(0, BLOCK_DMODEL)
     off_o = off_hz * stride_h + offs_m[:, None] * BLOCK_DMODEL + offs_n[None, :]
     out_ptrs = Out + off_o
-    tl.store(out_ptrs, acc)
+    tl.store(out_ptrs, acc, mask=offs_m[:, None] < seq_len)
 
 
 def fused_attention(q, k, v, sm_scale, o_buf=None, l_buf=None, m_buf=None):
