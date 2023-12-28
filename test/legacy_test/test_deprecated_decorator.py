@@ -25,12 +25,12 @@ LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
 
 # custom paddle version
-paddle.version.major = '2'
-paddle.version.minor = '6'
+paddle.version.major = '0'
+paddle.version.minor = '0'
 paddle.version.patch = '0'
 paddle.version.rc = '0'
-paddle.__version__ = '2.6.0'
-paddle.version.full_version = '2.6.0'
+paddle.__version__ = '0.0.0'
+paddle.version.full_version = '0.0.0'
 print("current paddle version: ", paddle.__version__)
 
 paddle.disable_static()
