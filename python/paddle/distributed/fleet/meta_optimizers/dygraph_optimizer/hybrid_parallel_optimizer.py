@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import distutils.util
 import os
 
 import paddle
@@ -47,9 +46,6 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
-        self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
-            os.getenv('FLAGS_force_align_vpp_grad_sum_order', '0')
-        )
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         # sharding first
@@ -103,10 +99,6 @@ class HybridParallelClipGrad:
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
-        if self._force_align_vpp_grad_sum_order:
-            chunk_num = self._get_vpp_chunk_num(params_grads)
-            if chunk_num > 0:
-                return self._vpp_dygraph_clip(params_grads, chunk_num)
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -233,12 +225,8 @@ class HybridParallelClipGrad:
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
-        # bf16 is not supported on XPU now
-        if not (
-            paddle.is_compiled_with_xpu()
-            or isinstance(
-                paddle.framework._current_expected_place(), paddle.CustomPlace
-            )
+        if not isinstance(
+            paddle.framework._current_expected_place(), paddle.CustomPlace
         ):
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
@@ -249,10 +237,6 @@ class HybridParallelClipGrad:
             if g.dtype == paddle.float16:
                 g.multiply_(clip_var_fp16)
             elif g.dtype == paddle.bfloat16:
-                if paddle.is_compiled_with_xpu():
-                    raise NotImplementedError(
-                        "BF16 is not supported on XPU now"
-                    )
                 g.multiply_(clip_var_bf16)
             else:
                 g.multiply_(clip_var)

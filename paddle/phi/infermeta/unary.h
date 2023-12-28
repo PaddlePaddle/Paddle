@@ -477,6 +477,7 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
                              const int32_t arch,
+                             const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale);
 
@@ -788,6 +789,10 @@ void UnStackInferMeta(const MetaTensor& x,
                       int axis,
                       int num,
                       std::vector<MetaTensor*> outs);
+
+void NumberCountInferMeta(const MetaTensor& x,
+                          int upper_range,
+                          MetaTensor* out);
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 

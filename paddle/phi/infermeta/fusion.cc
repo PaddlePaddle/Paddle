@@ -132,9 +132,23 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& rope_emb,
                                       const MetaTensor& mask,
                                       const MetaTensor& tgt_mask,
+                                      const MetaTensor& cache_k_quant_scales,
+                                      const MetaTensor& cache_v_quant_scales,
+                                      const MetaTensor& cache_k_dequant_scales,
+                                      const MetaTensor& cache_v_dequant_scales,
+                                      const MetaTensor& qkv_out_scale,
+                                      const MetaTensor& qkv_bias,
+                                      const MetaTensor& out_shift,
+                                      const MetaTensor& out_smooth,
                                       int max_seq_len,
                                       int block_size,
                                       bool use_neox_style,
+                                      bool dynamic_cachekv_quant,
+                                      const int quant_round_type,
+                                      const float quant_max_bound,
+                                      const float quant_min_bound,
+                                      const float out_scale,
+                                      const std::string& compute_dtype,
                                       MetaTensor* fmha_out,
                                       MetaTensor* qkv_out,
                                       MetaTensor* key_cache_out,
@@ -159,13 +173,74 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
           "The input_dims[1] must be equal to 3 * num_head * dim_head"));
 
   fmha_out->set_dims({input_dims[0], num_head * dim_head});
-  fmha_out->set_dtype(qkv.dtype());
   qkv_out->set_dims(qkv.dims());
-  qkv_out->set_dtype(qkv.dtype());
   key_cache_out->set_dims(key_cache_dims);
   key_cache_out->set_dtype(key_cache.dtype());
   value_cache_out->set_dims(key_cache_dims);
   value_cache_out->set_dtype(value_cache.dtype());
+
+  auto FBADtypeCheck = [](const MetaTensor& check_tensor,
+                          const std::string& tensor_name,
+                          const std::string& compute_dtype) {
+    if (compute_dtype == "bf16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::BFLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp32") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT32,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    }
+  };
+
+  // In the case of quantization enabled, the dtype for computation is
+  // determined based on compute_dtype.
+  if (qkv.dtype() == phi::DataType::INT32) {
+    PADDLE_ENFORCE_NE(
+        compute_dtype,
+        "default",
+        phi::errors::InvalidArgument(
+            "If Input(x) dtype is INT32, Attr(compute_dtype) must be set."));
+    if (out_scale > 0) {
+      fmha_out->set_dtype(phi::DataType::INT8);
+    } else {
+      if (compute_dtype == "bf16") {
+        fmha_out->set_dtype(phi::DataType::BFLOAT16);
+      } else if (compute_dtype == "fp16") {
+        fmha_out->set_dtype(phi::DataType::FLOAT16);
+      } else if (compute_dtype == "fp32") {
+        fmha_out->set_dtype(phi::DataType::FLOAT32);
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "In the case of quantization enabled with Input(x) INT32, "
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+            "but get compute_dtype (%s)",
+            compute_dtype));
+      }
+    }
+  } else {
+    if (compute_dtype != "default") {
+      FBADtypeCheck(qkv, "qkv", compute_dtype);
+    }
+    if (out_scale > 0) {
+      fmha_out->set_dtype(phi::DataType::INT8);
+    } else {
+      fmha_out->set_dtype(qkv.dtype());
+    }
+  }
 }
 
 void Conv1dXPUInferMeta(const MetaTensor& x,
@@ -3350,14 +3425,7 @@ void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& bias,
                  const int in_num_col_dims,
                  const std::string& activation_type,
-                 const bool use_mkldnn,
                  const bool padding_weights,
-                 const bool use_quantizer,
-                 const std::string& mkldnn_data_type,
-                 const float scale_in,
-                 const std::vector<float>& sclae_weights,
-                 const float scale_out,
-                 const bool force_fp32_output,
                  MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       in_num_col_dims,
@@ -3366,15 +3434,7 @@ void FCInferMeta(const MetaTensor& input,
           "The in_num_col_dims is expected to equal or greater than 1. "
           "But received the in_num_col_dims is %d. ",
           in_num_col_dims));
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
+
   auto w_dims = w.dims();
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
@@ -3445,18 +3505,6 @@ void FCInferMeta(const MetaTensor& input,
                           "The attribute activation_type of fc is expected "
                           "to be \"relu\", but received %s.",
                           activation_type.c_str()));
-  }
-
-  if (use_mkldnn) {
-    PADDLE_ENFORCE_EQ(
-        in_dims.size() >= 2 && in_dims.size() <= 4,
-        true,
-        phi::errors::Unimplemented(
-            "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
-            "use_mkldnn is set. But received the number of Input's "
-            "dimensions is %d, Input's shape is %s.",
-            in_dims.size(),
-            in_dims));
   }
 
   std::vector<int64_t> output_dims;
@@ -3583,4 +3631,60 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
   out->set_layout(query.layout());
 }
 
+void QKVAttentionXPUInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              const MetaTensor& q_max,
+                              const MetaTensor& k_max,
+                              const MetaTensor& v_max,
+                              float alpha,
+                              int head_num,
+                              int head_dim,
+                              DataType out_dtype,
+                              MetaTensor* qkv,
+                              MetaTensor* qkv_max) {
+  auto q_dims = q.dims();
+  auto k_dims = k.dims();
+  auto v_dims = v.dims();
+  // input shape : {B, L, 3*H*D}
+  PADDLE_ENFORCE_EQ(q_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument("The dim of q should be 3! "
+                                                 "But received ."));
+  PADDLE_ENFORCE_EQ(k_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument("The dim of k should be 3! "
+                                                 "But received ."));
+  PADDLE_ENFORCE_EQ(v_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument("The dim of v should be 3! "
+                                                 "But received ."));
+  for (int i = 0; i < q_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        q_dims[i],
+        k_dims[i],
+        phi::errors::InvalidArgument("The shape of q, k   should be the same! "
+                                     "But received ."));
+    PADDLE_ENFORCE_EQ(
+        k_dims[i],
+        v_dims[i],
+        phi::errors::InvalidArgument("The shape of k , v should be the same! "
+                                     "But received ."));
+  }
+  PADDLE_ENFORCE_EQ(
+      q_dims[2],
+      3 * head_num * head_dim,
+      phi::errors::InvalidArgument("To support do_fc_qkv_fusion,"
+                                   "The shape of q should be [B, L, 3*H*D]! "
+                                   "But received q_dims[2]: [%d] != 3*H*D.",
+                                   q_dims[2]));
+
+  // output shape: {B, L, HD}
+  qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
+  qkv->set_dtype(out_dtype);
+  qkv->set_layout(q.layout());
+  qkv_max->set_dims(phi::make_ddim({6}));
+  qkv_max->set_dtype(out_dtype);
+  qkv_max->set_layout(q.layout());
+}
 }  // namespace phi

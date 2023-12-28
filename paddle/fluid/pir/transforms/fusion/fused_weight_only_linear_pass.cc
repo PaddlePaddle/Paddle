@@ -24,8 +24,8 @@
 namespace {
 
 int getSMVersion() {
-  int sm_version = 80;
-#if defined(PADDLE_WITH_CUDA)
+  int sm_version = -1;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
 #else
@@ -71,9 +71,8 @@ class FusedWeightOnlyLinearPattern
       auto w_dims = match_ctx.Tensor("w").Shape();
       if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
 
-      auto w_dtype = match_ctx.Tensor("w").Dtype();
-      if (!w_dtype.dtype().isa<pir::Float16Type>() &&
-          !w_dtype.dtype().isa<pir::BFloat16Type>())
+      auto w_dtype = match_ctx.Tensor("w").Dtype().get();
+      if (!w_dtype.isa<pir::Float16Type>() && !w_dtype.isa<pir::BFloat16Type>())
         return false;
 
       auto x_dims = match_ctx.Tensor("x").Shape();
@@ -97,9 +96,14 @@ class FusedWeightOnlyLinearPattern
           return getSMVersion();
         });
 
+    const auto &group_size_attr = res.Attr(
+        [](const pir::drr::MatchContext &match_ctx) -> int { return -1; });
+
     const auto &weight_quantize =
         res.Op(paddle::dialect::WeightQuantizeOp::name(),
-               {{"algo", weight_only_int8_attr}, {"arch", arch_attr}});
+               {{"algo", weight_only_int8_attr},
+                {"arch", arch_attr},
+                {"group_size", group_size_attr}});
     weight_quantize({&res.Tensor("w")},
                     {&res.Tensor("quanted_weight_tensor"),
                      &res.Tensor("weight_scale_tensor")});
@@ -111,7 +115,9 @@ class FusedWeightOnlyLinearPattern
 
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
-               {{"weight_dtype", weight_dtype_attr}, {"arch", arch_attr}});
+               {{"weight_dtype", weight_dtype_attr},
+                {"arch", arch_attr},
+                {"group_size", group_size_attr}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
                         &res.Tensor("bias"),

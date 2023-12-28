@@ -1949,6 +1949,27 @@ def _get_no_grad_set_name(no_grad_set):
     return no_grad_set_name
 
 
+def _get_no_grad_set_value(no_grad_set):
+    no_grad_set_value = paddle.autograd.backward_utils.ValueSet()
+    if no_grad_set is not None:
+        if isinstance(no_grad_set, (set, list, tuple)):
+            for i, no_grad_value in enumerate(no_grad_set):
+                if isinstance(no_grad_value, paddle.pir.Value):
+                    no_grad_set_value.add(no_grad_value)
+                else:
+                    raise TypeError(
+                        "The type of no_grad_set's member must be paddle.pir.Value, but received %s."
+                        % (type(no_grad_value))
+                    )
+        else:
+            raise TypeError(
+                "The type of no_grad_set should be set or list or tuple, but received {}".format(
+                    type(no_grad_set)
+                )
+            )
+    return no_grad_set_value
+
+
 @framework.static_only
 def append_backward(
     loss,
@@ -2762,15 +2783,16 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         targets = _as_list(targets)
         inputs = _as_list(inputs)
         target_gradients = _as_list(target_gradients)
-        if no_grad_set is None:
-            no_grad_set = set()
-        elif no_grad_set is not set:
-            no_grad_set = set(no_grad_set)
-        else:
-            no_grad_set = no_grad_set
+
+        from paddle.autograd.backward_utils import ValueSet
         from paddle.autograd.ir_backward import (
             calc_gradient as pir_calc_gradient,
         )
+
+        if no_grad_set is None:
+            no_grad_set = ValueSet()
+        else:
+            no_grad_set = ValueSet(no_grad_set)
 
         input_grad = pir_calc_gradient(
             targets, inputs, target_gradients, no_grad_set

@@ -167,6 +167,26 @@ struct Complex64AttributeStorage : public AttributeStorage {
   phi::dtype::complex<float> data_;
 };
 
+struct Complex64AttributeStorage : public AttributeStorage {
+  using ParamKey = phi::dtype::complex<float>;
+  explicit Complex64AttributeStorage(const ParamKey &key) { data_ = key; }
+  static Complex64AttributeStorage *Construct(const ParamKey &key) {
+    return new Complex64AttributeStorage(key);
+  }
+  static std::size_t HashValue(const ParamKey &key) {
+    std::stringstream complex_str;
+    complex_str << key.real << "+" << key.imag << "i";
+    return std::hash<std::string>{}(complex_str.str());
+  }
+
+  bool operator==(ParamKey key) const { return data_ == key; }
+
+  phi::dtype::complex<float> data() const { return data_; }
+
+ private:
+  phi::dtype::complex<float> data_;
+};
+
 struct Complex128AttributeStorage : public AttributeStorage {
   using ParamKey = phi::dtype::complex<double>;
   explicit Complex128AttributeStorage(const ParamKey &key) { data_ = key; }
@@ -174,7 +194,9 @@ struct Complex128AttributeStorage : public AttributeStorage {
     return new Complex128AttributeStorage(key);
   }
   static std::size_t HashValue(const ParamKey &key) {
-    return std::hash<double>{}(key.real + key.imag);
+    std::stringstream complex_str;
+    complex_str << key.real << "+" << key.imag << "i";
+    return std::hash<std::string>{}(complex_str.str());
   }
 
   bool operator==(ParamKey key) const { return data_ == key; }

@@ -27,8 +27,11 @@ function collect_failed_tests() {
     done
 }
 
+# disable test: 
+
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
+^test_dist_fuse_resunit_pass$|\
 ^test_dygraph_dataparallel_bf16$|\
 ^test_dygraph_sharding_stage1_fp16$|\
 ^test_dygraph_sharding_stage1_bf16$|\
@@ -62,7 +65,6 @@ parallel_list="^init_phi_test$|\
 ^test_custom_kernel$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
-^test_dist_fuse_resunit_pass$|\
 ^test_executor_feed_non_tensor$|\
 ^test_flash_attention$|\
 ^test_fuse_resunit_pass$|\

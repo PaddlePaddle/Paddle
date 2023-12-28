@@ -85,14 +85,6 @@
   kernel :
     func : any
 
-- op : assert
-  args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
-  output :
-  kernel :
-    func : assert
-    param : [cond, data, summarize]
-    data_type : cond
-
 - op : assign
   args : (Tensor x)
   output : Tensor
@@ -221,6 +213,16 @@
     func : c_identity
   inplace : (x -> out)
 
+- op : c_reduce_min
+  args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_reduce_min
+  inplace : (x -> out)
+
 - op : c_reduce_sum
   args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
   output : Tensor(out)
@@ -273,6 +275,7 @@
     data_type : x
   inplace: (x -> out)
   backward : cast_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : channel_shuffle
   args : (Tensor x, int groups, str data_format="NCHW")
@@ -380,6 +383,7 @@
     func : dropout
     data_type : x
   optional : seed_tensor
+  intermediate : mask
   backward : dropout_grad
 
 - op : einsum
@@ -988,6 +992,18 @@
     data_type : dtype
     backend : place
 
+- op : read_file
+  args : (str filename = "", DataType dtype=DataType::UINT8, Place place=CPUPlace())
+  output : Tensor(out)
+  infer_meta :
+    func : ReadFileInferMeta
+    param : [filename]
+  kernel :
+    func : read_file
+    param : [filename]
+    data_type : dtype
+    backend : place
+
 - op : recv_v2
   args : (int[] out_shape = {}, DataType dtype = DataType::FLOAT32, int peer = 0, int ring_id = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output : Tensor(out)
@@ -1039,6 +1055,7 @@
   view: (x -> out)
   intermediate : xshape
   backward: reshape_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
@@ -1209,6 +1226,7 @@
     func : subtract
   inplace : (x -> out)
   backward : subtract_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sum
   args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
@@ -1387,6 +1405,16 @@
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
 
+- op: c_softmax_with_cross_entropy
+  args: (Tensor logits, Tensor label,  int64_t ignore_index=-100, int ring_id=0, int rank=0, int nranks=0)
+  output: Tensor(softmax), Tensor(loss)
+  infer_meta:
+    func : CSoftmaxWithCrossEntropyInferMeta
+  kernel:
+    func: c_softmax_with_cross_entropy
+    data_type : logits
+  backward: c_softmax_with_cross_entropy_grad
+
 - op: dpsgd
   args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
   output: Tensor(param_out)
@@ -1427,6 +1455,36 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
+
+- op: lars_momentum
+  args: (Tensor param,  Tensor velocity, Tensor grad, Tensor learning_rate, Tensor master_param, float mu, float lars_coeff=0.001f, float[] lars_weight_decay={0.0005}, float epsilon=0, bool multi_precision=false, float rescale_grad=1.0f)
+  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  infer_meta:
+    func: SparseMomentumInferMeta
+    param: [param, learning_rate, velocity]
+  kernel:
+    func: lars_momentum
+    param: [param, velocity, learning_rate, grad, master_param, lars_weight_decay, mu, lars_coeff, epsilon, multi_precision, rescale_grad]
+    data_type: param
+  optional: master_param, master_param_out
+
+- op: number_count
+  args: (Tensor numbers, int upper_range)
+  output: Tensor(out)
+  infer_meta:
+     func: NumberCountInferMeta
+  kernel:
+     func: number_count
+     data_type: numbers
+
+- op: onednn_to_paddle_layout
+  args: (Tensor x, int dst_layout)
+  output: Tensor(out)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: onednn_to_paddle_layout
 
 - op: sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
