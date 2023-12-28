@@ -18,6 +18,8 @@ import paddle
 import paddle.distributed as dist
 from paddle.framework import core
 
+import custom_relu  # noqa: F401 # pylint: disable=unused-import # isort:skip
+
 assert core.contains_spmd_rule("custom_relu")
 
 

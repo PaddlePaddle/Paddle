@@ -50,6 +50,8 @@ class TestCusomOp(test_base.CommunicationTestDistBase):
 
     # test static spmd rule register
     def test_static_rule(self):
+        import custom_relu  # noqa: F401 # pylint: disable=unused-import
+
         assert core.contains_spmd_rule("custom_relu")
 
 
