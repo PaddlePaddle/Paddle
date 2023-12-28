@@ -334,6 +334,11 @@ class SliceArrayDenseOp
   static OpInfoTuple GetOpInfo();
   void VerifySig();
 
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    pir::Value starts);
+
   static phi::DataType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DataType &tensor_dtype,
