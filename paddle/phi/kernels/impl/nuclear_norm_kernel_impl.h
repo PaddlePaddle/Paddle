@@ -40,15 +40,14 @@ void NuclearNormKernel(const Context& dev_ctx,
                        bool keepdim,
                        bool reduce_all UNUSED,
                        DenseTensor* out) {
-  std::cout << "C++++++++\n";
+  dev_ctx.template Alloc<T>(out);
+
   auto in_dims = x.dims();
   int x_rank = x.dims().size();
 
   int m = axis[0] >= 0 ? axis[0] : static_cast<int>(axis[0] + x_rank);
   int n = axis[1] >= 0 ? axis[1] : static_cast<int>(axis[1] + x_rank);
-  if (m > n) {
-    std::swap(m, n);
-  }
+
   // axis put back
   std::vector<int> formated_axis(x_rank);
   int cur = 0;
@@ -57,8 +56,6 @@ void NuclearNormKernel(const Context& dev_ctx,
   }
   formated_axis[x_rank - 2] = m;
   formated_axis[x_rank - 1] = n;
-
-  std::cout << "m,n:" << m << " " << n << std::endl;
 
   // transpose dims
   phi::DDim trans_dims(x.dims());
@@ -94,9 +91,15 @@ void NuclearNormKernel(const Context& dev_ctx,
   SvdKernel<T, Context>(
       dev_ctx, x_input, false, &u_tensor, &singular_tensor, &vh_tensor);
 
-  dev_ctx.template Alloc<T>(out);
+  if (keepdim) {
+    singular_tensor.Resize(detail::NewAxisDim(singular_tensor.dims(), 1));
+    phi::SumKernel<T, Context>(
+        dev_ctx, singular_tensor, {-2}, singular_tensor.dtype(), keepdim, out);
+  } else {
+    phi::SumKernel<T, Context>(
+        dev_ctx, singular_tensor, {-1}, singular_tensor.dtype(), keepdim, out);
+  }
 
-  phi::SumKernel<T, Context>(
-      dev_ctx, singular_tensor, {-1}, singular_tensor.dtype(), false, out);
+  std::cout << "sum_grad.dims():" << singular_tensor.dims() << std::endl;
 }
 }  // namespace phi

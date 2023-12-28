@@ -53,9 +53,9 @@ void NuclearNormGradKernel(const Context& dev_ctx,
 
   int m = axis[0] >= 0 ? axis[0] : static_cast<int>(axis[0] + x_rank);
   int n = axis[1] >= 0 ? axis[1] : static_cast<int>(axis[1] + x_rank);
-  if (m > n) {
-    std::swap(m, n);
-  }
+  // if (m > n) {
+  //   std::swap(m, n);
+  // }
   // axis put back
   std::vector<int> formated_axis(x_rank);
   int cur = 0;
@@ -64,8 +64,6 @@ void NuclearNormGradKernel(const Context& dev_ctx,
   }
   formated_axis[x_rank - 2] = m;
   formated_axis[x_rank - 1] = n;
-
-  std::cout << "m,n:" << m << " " << n << std::endl;
 
   // transpose dims
   phi::DDim trans_dims(x.dims());
@@ -82,7 +80,6 @@ void NuclearNormGradKernel(const Context& dev_ctx,
   int M = trans_dims[x_rank - 2];
   int N = trans_dims[x_rank - 1];
   int K = std::min(M, N);
-  std::cout << "M,N,K:" << M << " " << N << " " << K << std::endl;
   // singular
   DenseTensor singular_tensor;
   singular_tensor.Resize(detail::GetEigenvalueDim(x_input.dims(), K));

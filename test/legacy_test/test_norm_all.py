@@ -42,24 +42,9 @@ def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
         else:
             r = np.linalg.norm(x, ord=porder, keepdims=keepdims)
     elif isinstance(axis, list or tuple) and len(axis) == 2:
-        if porder == np.inf:
+        if isinstance(axis, list):
             axis = tuple(axis)
-            r = np.amax(np.abs(x), axis=axis, keepdims=keepdims)
-        elif porder == -np.inf:
-            axis = tuple(axis)
-            r = np.amin(np.abs(x), axis=axis, keepdims=keepdims)
-        elif porder == 0:
-            axis = tuple(axis)
-            r = x.astype(bool)
-            r = np.sum(r, axis, keepdims=keepdims)
-        elif porder == 1:
-            axis = tuple(axis)
-            r = np.sum(np.abs(x), axis, keepdims=keepdims)
-        else:
-            axis = tuple(axis)
-            xp = np.power(np.abs(x), porder)
-            s = np.sum(xp, axis=axis, keepdims=keepdims)
-            r = np.power(s, 1.0 / porder)
+        r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
     else:
         if isinstance(axis, list):
             axis = tuple(axis)
@@ -80,8 +65,21 @@ def numpy_frobenius_norm(x, axis=None, keepdims=False):
     return r
 
 
+def numpy_nuclear_norm(x, axis=None, keepdims=False):
+    if isinstance(axis, list):
+        axis = tuple(axis)
+    r = np.linalg.norm(x, ord='nuc', axis=axis, keepdims=keepdims).astype(
+        x.dtype
+    )
+    return r
+
+
 def frobenius_norm(x, dim, keep_dim, reduce_all):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
+
+
+def nuclear_norm(x, dim, keep_dim, reduce_all):
+    return paddle.linalg.norm(x, p='nuc', axis=dim, keepdim=keep_dim)
 
 
 class TestFrobeniusNormOp(OpTest):
@@ -127,6 +125,51 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
+
+
+# class TestNuclearNormOp(OpTest):
+#     def setUp(self):
+#         self.python_api = nuclear_norm
+#         self.op_type = "nuclear_norm"
+#         self.init_test_case()
+#         self.init_dtype()
+#         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
+#         norm = numpy_nuclear_norm(x, self.axis, self.keepdim)
+#         self.reduce_all = len(self.axis) == len(self.shape)
+#         self.inputs = {'X': x}
+#         self.attrs = {
+#             'dim': list(self.axis),
+#             'keep_dim': self.keepdim,
+#             'reduce_all': self.reduce_all,
+#         }
+#         self.outputs = {'Out': norm}
+
+#     def test_check_output(self):
+#         self.check_output(check_pir=True)
+
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out', check_pir=True)
+
+#     def init_test_case(self):
+#         self.shape = [2, 3, 4, 5]
+#         self.axis = (1, 2)
+#         self.keepdim = False
+
+#     def init_dtype(self):
+#         self.dtype = "float64"
+
+
+# class TestNuclearNormOp2(TestNuclearNormOp):
+#     def init_test_case(self):
+#         self.shape = [5, 5, 5]
+#         self.axis = (0, 1)
+#         self.keepdim = True
+
+#     def init_dtype(self):
+#         self.dtype = "float32"
+
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestPnormOp(OpTest):
@@ -433,6 +476,30 @@ def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         )
 
 
+def run_nuc(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
+    with base.program_guard(base.Program()):
+        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
+        out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
+        expected_result = numpy_nuclear_norm(
+            np_input, axis=axis, keepdims=keep_dim
+        )
+        (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
+    self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
+    print(f'result:{result}')
+    print(f'expected_result:{expected_result}')
+    if keep_dim and check_dim:
+        self.assertEqual(
+            (
+                np.abs(np.array(result.shape) - np.array(expected_result.shape))
+                < 1e-6
+            ).all(),
+            True,
+        )
+
+
 def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
     with base.program_guard(base.Program()):
         data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
@@ -508,6 +575,16 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
+            run_nuc(
+                self,
+                p='nuc',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype='float64',
+                keep_dim=keep,
+                check_dim=True,
+            )
+
             run_pnorm(
                 self,
                 p=2,

@@ -2997,7 +2997,7 @@ void PMatrixNormInferMeta(const MetaTensor& x,
                           bool keepdim,
                           bool asvector,
                           MetaTensor* out) {
-  std::cout << "infermate axis:" << axis[0] << " " << axis[1] << std::endl;
+  // std::cout << "infermate axis:" << axis[0] << " " << axis[1] << std::endl;
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
 
@@ -3052,15 +3052,21 @@ void PMatrixNormInferMeta(const MetaTensor& x,
   int m = axis[0], n = axis[1];
   if (m < 0) m = m + x_rank;
   if (n < 0) n = n + x_rank;
-  if (m > n) {
-    std::swap(m, n);
-  }
-  for (int i = 0; i < x_rank; i++) {
-    if (i != m && i != n)
-      out_dim_vector.emplace_back(static_cast<int>(x_dim[i]));
-  }
 
-  // if(std::is_same<x.d, >::value)
+  if (!keepdim) {
+    for (int i = 0; i < x_rank; i++) {
+      if (i != m && i != n)
+        out_dim_vector.emplace_back(static_cast<int>(x_dim[i]));
+    }
+  } else {
+    for (int i = 0; i < x_dim.size(); ++i) {
+      if (i != m && i != n) {
+        out_dim_vector.emplace_back(x_dim[i]);
+      } else {
+        out_dim_vector.emplace_back(1);
+      }
+    }
+  }
 
   out->set_dims(common::make_ddim(out_dim_vector));
   out->set_dtype(x.dtype());
@@ -3071,7 +3077,6 @@ void NuclearNormInferMeta(const MetaTensor& x,
                           bool keepdim,
                           bool reduce_all,
                           MetaTensor* out) {
-  std::cout << "infermate axis:" << axis[0] << " " << axis[1] << std::endl;
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
 
@@ -3126,15 +3131,21 @@ void NuclearNormInferMeta(const MetaTensor& x,
   int m = axis[0], n = axis[1];
   if (m < 0) m = m + x_rank;
   if (n < 0) n = n + x_rank;
-  if (m > n) {
-    std::swap(m, n);
-  }
-  for (int i = 0; i < x_rank; i++) {
-    if (i != m && i != n)
-      out_dim_vector.emplace_back(static_cast<int>(x_dim[i]));
-  }
 
-  // if(std::is_same<x.d, >::value)
+  if (keepdim) {
+    for (int i = 0; i < x_dim.size(); ++i) {
+      if (i != m && i != n) {
+        out_dim_vector.emplace_back(x_dim[i]);
+      } else {
+        out_dim_vector.emplace_back(1);
+      }
+    }
+  } else {
+    for (int i = 0; i < x_rank; i++) {
+      if (i != m && i != n)
+        out_dim_vector.emplace_back(static_cast<int>(x_dim[i]));
+    }
+  }
 
   out->set_dims(common::make_ddim(out_dim_vector));
   out->set_dtype(x.dtype());

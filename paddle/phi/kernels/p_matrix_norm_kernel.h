@@ -24,7 +24,7 @@ void PMatrixNormKernel(const Context& dev_ctx,
                        float porder,
                        const std::vector<int>& axis,
                        float epsilon UNUSED,
-                       bool keepdim UNUSED,
+                       bool keepdim,
                        bool asvector,
                        DenseTensor* out);
 }  // namespace phi
