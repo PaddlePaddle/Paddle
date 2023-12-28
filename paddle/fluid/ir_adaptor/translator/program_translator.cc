@@ -157,7 +157,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t end_id,
                                        TranslationContext* translation_ctx,
                                        pir::Block* dst_block) {
-  VLOG(8) << "=============>start to translate a block";
+  VLOG(8) << "=============>start to translate a block: " << &src_block;
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
       platform::errors::NotFound(
