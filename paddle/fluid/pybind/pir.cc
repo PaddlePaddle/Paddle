@@ -317,10 +317,14 @@ void BindBlock(py::module *m) {
         The constructor of Block should not be invoked directly. You can
         use `Program.block()` to get a block.
   )DOC");
-  block
+  block.def("empty", &Block::empty)
       .def(
           "front",
           [](Block &self) { return &self.front(); },
+          return_value_policy::reference)
+      .def(
+          "back",
+          [](Block &self) { return &self.back(); },
           return_value_policy::reference)
       .def_property_readonly(
           "parent_op",
@@ -527,14 +531,8 @@ void BindOperation(py::module *m) {
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
-      .def("as_while_op", [](Operation &self) -> WhileOp {
-        auto while_op = self.dyn_cast<WhileOp>();
-        if (!while_op) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Can't cast non-while type Operation to WhileOp."));
-        }
-        return while_op;
-      });
+      .def("as_while_op",
+           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.

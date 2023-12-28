@@ -57,23 +57,44 @@ pir::Type GetDataTypeFromValue(pir::Value value);
 /**
  * @brief Get an operation that defines the specific input of the operation.
  *
- * @param Operation* pointer to an operation
+ * @param const Operation* const pointer to an operation
  * @param uint32_t index of operand of the operation
  *
  * @return Operation*
  */
+
 TEST_API Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
 
 /**
  * @brief Get operations and the index of designative op operand (op result)
  that use the specific output of the operation.
  *
- * @param Operation* pointer to an operation
+ * @param const Operation* cosnt pointer to an operation
  * @param uint32_t index of result of the operation
 
  * @return std::vector<std::pair<Operation*, int32_t>>
  */
-std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
-                                                               uint32_t index);
+std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
+    const Operation* op, uint32_t index);
+
+/**
+* @brief Get the value of the input and output of the specified op in the
+external block.
+*
+* @param const Operation& const reference to an operation
+
+* @return std::vector<Value>
+*/
+std::vector<Value> GetUsedExternalValue(const Operation& op);
+
+/**
+ * @brief Get the external value of the input and output of all op which in the
+ specified block.
+ *
+ * @param const Block& const reference to an block
+
+ * @return std::vector<Value>
+ */
+std::vector<Value> GetUsedExternalValue(const Block& block);
 
 }  // namespace pir
