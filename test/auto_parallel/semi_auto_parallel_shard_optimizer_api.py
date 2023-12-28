@@ -179,6 +179,61 @@ class TestSemiAutoParallelShardOptimizerAPI:
             assert v.is_dist()
             assert v.shape[-1] == v._local_shape[-1] * 2
 
+        # save load
+        ckpt_state_dict = opt.state_dict()
+        dist.save_state_dict(ckpt_state_dict, self._ckpt_path)
+        paddle.distributed.barrier()
+        expected_local_state_dict = {}
+        expected_local_state_dict.setdefault("master_weights", {})
+        need_load_state_dict = {}
+        need_load_state_dict.setdefault("master_weights", {})
+        for k, v in ckpt_state_dict.items():
+            if k == "LR_Scheduler":
+                continue
+            elif k == "master_weights":
+                assert isinstance(v, dict), v
+                for mk, mv in v.items():
+                    expected_local_state_dict[k][mk] = mv._local_value().clone()
+                    need_load_state_dict[k][mk] = paddle.zeros_like(mv)
+            else:
+                expected_local_state_dict[k] = v._local_value().clone()
+                need_load_state_dict[k] = paddle.zeros_like(v)
+        opt.set_state_dict(need_load_state_dict)
+        after_set_state_dict = opt.state_dict()
+        for k, v in after_set_state_dict.items():
+            if k == "master_weights":
+                assert isinstance(v, dict), v
+                for mk, mv in v.items():
+                    assert (
+                        mv.numpy().sum() == 0.0
+                    ), f"state_dict {k} in master_weights is not zero"
+                    assert (
+                        need_load_state_dict[k][mk].numpy().sum() == 0.0
+                    ), f"state_dict {k} in master_weights is not zero"
+            else:
+                assert v.numpy().sum() == 0.0, f"state_dict {k} is not zero"
+                assert k in need_load_state_dict, f"state_dict {k} is not found"
+                assert (
+                    need_load_state_dict[k].numpy().sum() == 0.0
+                ), f"state_dict {k} is not zero"
+        dist.load_state_dict(need_load_state_dict, self._ckpt_path)
+        opt.set_state_dict(need_load_state_dict)
+        new_state_dict = opt.state_dict()
+        assert "master_weights" in new_state_dict, new_state_dict
+        for k, v in new_state_dict.items():
+            assert k in expected_local_state_dict
+            if k == "master_weights":
+                for mk, mv in v.items():
+                    np.testing.assert_equal(
+                        mv._local_value().numpy(),
+                        expected_local_state_dict[k][mk].numpy(),
+                    )
+            else:
+                np.testing.assert_equal(
+                    v._local_value().numpy(),
+                    expected_local_state_dict[k].numpy(),
+                )
+
     def test_shard_optimizer_params_group(self):
         paddle.seed(self._seed)
         linear = paddle.nn.Linear(10, 10)

@@ -881,6 +881,7 @@
     func : exp
   inplace : (x -> out)
   backward : exp_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expand
   args : (Tensor x, IntArray shape = {})
@@ -2395,6 +2396,7 @@
            shape_sr {selected_rows -> dense}
   data_transform:
     skip_transform : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shard_index
   args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
@@ -2578,6 +2580,7 @@
   kernel :
     func : stack
   backward : stack_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stanh
   args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)

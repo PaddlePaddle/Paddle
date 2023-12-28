@@ -27,7 +27,6 @@ import types
 import warnings
 from importlib.machinery import SourceFileLoader
 
-import astor
 import numpy as np
 
 import paddle
@@ -43,7 +42,6 @@ from .utils_helper import (  # noqa: F401
     DYGRAPH_MODULE_PREFIX,
     DYGRAPH_TO_STATIC_MODULE_PREFIX,
     PADDLE_MODULE_PREFIX,
-    NodeVarType,
     _is_api_in_module_helper,
     index_in_list,
     is_api_in_module,
@@ -320,7 +318,7 @@ def is_paddle_func(func, ignore_white_list=True):
 
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
-    func_src = astor.to_source(gast.gast_to_ast(node.func))
+    func_src = ast_to_source_code(node.func)
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -398,7 +396,7 @@ def update_args_of_func(node, dygraph_node, method_name):
             "The method name of class to update args should be '__init__' or 'forward'"
         )
 
-    class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
+    class_src = ast_to_source_code(dygraph_node.func)
 
     if method_name == "__init__" or eval(
         f"issubclass({class_src}, paddle.nn.Layer)"
@@ -454,7 +452,7 @@ def get_attribute_full_name(node):
     assert isinstance(
         node, gast.Attribute
     ), "Input non-Attribute node to get attribute full name"
-    return astor.to_source(gast.gast_to_ast(node)).strip()
+    return ast_to_source_code(node).strip()
 
 
 def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
