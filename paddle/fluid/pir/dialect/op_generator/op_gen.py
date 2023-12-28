@@ -1873,7 +1873,7 @@ def OpGenerator(
     n = len(op_list_strs) // 2
     first_part_op_info = op_list_strs[:n]
     second_part_op_info = op_list_strs[n:]
-    
+
     # op_info_str = CC_OP_INFO_FILE_TEMPLATE.format(
     #     op_declare=",".join(op_list_strs).replace("\n", ""),
     #     op_to_multi_kernels_map=op_to_multi_kernels_map_str,
