@@ -69,6 +69,24 @@ void Region::clear() {
     blocks_.pop_back();
   }
 }
+
+void Region::swap(Region &&other) {
+  blocks_.swap(other.blocks_);
+  for (auto iter = begin(); iter != end(); ++iter) {
+    iter->SetParent(this, iter);
+  }
+  for (auto iter = other.begin(); iter != other.end(); ++iter) {
+    iter->SetParent(&other, iter);
+  }
+}
+
+template <WalkOrder Order, typename FuncT>
+void Region::Walk(FuncT &&callback) {
+  for (auto &block : *this) {
+    block.Walk<Order>(callback);
+  }
+}
+
 Program *Region::parent_program() const {
   return parent_ ? parent_->GetParentProgram() : nullptr;
 }

@@ -60,7 +60,6 @@ from .creation import (  # noqa: F401
     zeros,
     zeros_like,
 )
-
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
     bincount,
@@ -187,6 +186,7 @@ from .manipulation import (  # noqa: F401
     select_scatter,
     shard_index,
     slice,
+    slice_scatter,
     split,
     squeeze,
     squeeze_,
@@ -358,6 +358,7 @@ from .math import (  # noqa: F401
     sigmoid,
     sigmoid_,
     sign,
+    signbit,
     sin,
     sin_,
     sinh,
@@ -613,6 +614,7 @@ tensor_method_func = [
     'scatter_nd',
     'shard_index',
     'slice',
+    'slice_scatter',
     'split',
     'tensor_split',
     'hsplit',
@@ -784,6 +786,7 @@ tensor_method_func = [
     'masked_scatter',
     'masked_scatter_',
     "combinations",
+    'signbit',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

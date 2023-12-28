@@ -702,8 +702,8 @@ void BindVjp(pybind11::module *m) {
       "call_vjp",
       [](pir::Operation &fwd_op,
          const std::vector<std::vector<pir::Value>> &inputs,
-         const std::vector<std::vector<pir::OpResult>> &outputs,
-         const std::vector<std::vector<pir::OpResult>> &out_grads,
+         const std::vector<std::vector<pir::Value>> &outputs,
+         const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
         paddle::dialect::VjpInterface vjp_interface =
@@ -785,7 +785,8 @@ void BindDecomp(pybind11::module *m) {
            VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
            py::list res;
            DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
-           auto tar_vars = decomp_object.decomp_program();
+           decomp_object.decomp_program();
+           std::vector<pir::OpResult> tar_vars = decomp_object.get_dst_vars();
            for (size_t i = 0; i < tar_vars.size(); ++i) {
              if (!tar_vars[i]) {
                res.append(nullptr);

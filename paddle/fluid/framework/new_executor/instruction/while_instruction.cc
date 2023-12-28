@@ -205,6 +205,8 @@ void WhileInstruction::ShareDatasToOutputs() {
     if (out_var->IsType<phi::DenseTensor>()) {
       outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
           out_var->Get<phi::DenseTensor>());
+      VLOG(6) << "share data from " << out_var_name << "[" << out_var << "]"
+              << " -> " << i << " output[" << outputs_[i] << "]";
     } else if (out_var->IsType<phi::TensorArray>()) {
       const auto& inner_array = out_var->Get<phi::TensorArray>();
       auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();

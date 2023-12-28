@@ -18,6 +18,7 @@
 #include <functional>
 
 #include "paddle/pir/core/dll_decl.h"
+#include "paddle/utils/test_macros.h"
 
 namespace pir {
 
@@ -109,7 +110,7 @@ TypeId TypeId::get() {
   namespace pir {                               \
   namespace detail {                            \
   template <>                                   \
-  class TypeIdResolver<TYPE_CLASS> {            \
+  class TEST_API TypeIdResolver<TYPE_CLASS> {   \
    public:                                      \
     static TypeId Resolve() { return id_; }     \
     static UniqueingId id_;                     \

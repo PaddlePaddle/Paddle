@@ -452,6 +452,13 @@
   outputs :
     out : Out
 
+- op : c_softmax_with_cross_entropy
+  backward : c_softmax_with_cross_entropy_grad
+  inputs :
+    {logits : Logits, label : Label}
+  outputs :
+    {softmax : Softmax, loss : Loss}
+
 - op : cast
   inputs :
     x : X
@@ -1043,12 +1050,8 @@
     bias : Bias
   outputs :
     out : Out
-  attrs :
-    scale_in : Scale_in
-    scale_weights : Scale_weights
-    scale_out : Scale_out
   extra :
-    [bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
 
 - op : feed
   outputs: {out: Out}
@@ -3400,6 +3403,14 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: distribute_fpn_proposals
+  inputs :
+    {fpn_rois: FpnRois, rois_num: RoisNum}
+  outputs :
+    multi_fpn_rois : MultiFpnRois
+    multi_level_rois_num: MultiLevelRoIsNum
+    restore_index: RestoreIndex
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3439,6 +3450,18 @@
   outputs :
     out : Out
 
+- op: identity_loss
+  inputs :
+    x: X
+  outputs :
+    out : Out
+
+- op: lars_momentum
+  inputs:
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
 - op: lod_array_length
   inputs :
     {x: X}
@@ -3469,6 +3492,12 @@
 - op: memcpy_d2h
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: number_count
+  inputs :
+    {numbers: numbers}
   outputs :
     out : Out
 

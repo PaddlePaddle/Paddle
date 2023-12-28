@@ -42,6 +42,8 @@ class Config:
     use_flash_attention = False
     sequence_parallel = False
     rope = True
+    recompute = False
+    recompute_granularity = None
 
 
 class RandomDataset(Dataset):
@@ -69,13 +71,25 @@ def create_optimizer(model, lr_scheduler):
     def apply_decay_param_fun(x):
         return x in decay_parameters
 
-    optimizer = paddle.optimizer.adamw.AdamW(
-        learning_rate=lr_scheduler,
-        apply_decay_param_fun=apply_decay_param_fun,
-        parameters=model.parameters(),
-        weight_decay=0.01,
-        grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
-    )
+    # test global_clip in auto_parallel
+    if os.getenv("use_param_group") == "true":
+        param_group = {}
+        param_group["params"] = list(model.parameters())
+        param_group["weight_decay"] = 0.01
+        param_group["grad_clip"] = paddle.nn.ClipGradByGlobalNorm(1.0)
+        optimizer = paddle.optimizer.adamw.AdamW(
+            learning_rate=lr_scheduler,
+            apply_decay_param_fun=apply_decay_param_fun,
+            parameters=[param_group],
+        )
+    else:
+        optimizer = paddle.optimizer.adamw.AdamW(
+            learning_rate=lr_scheduler,
+            apply_decay_param_fun=apply_decay_param_fun,
+            parameters=model.parameters(),
+            weight_decay=0.01,
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
+        )
     return optimizer
 
 
@@ -87,6 +101,9 @@ class TestLlamaAuto:
         self.pp = int(os.getenv("pp"))
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
+        if os.getenv("recompute") == "true":
+            self.config.recompute = True
+        self.config.recompute_granularity = os.getenv("recompute_granularity")
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
 
         self.init_dist_env()
@@ -108,7 +125,7 @@ class TestLlamaAuto:
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
         set_global_mesh(global_mesh)
 
-    def run_dynamic(self):
+    def run_llama(self, to_static=0):
         model = LlamaForCausalLMAuto(self.config)
         criterion = LlamaPretrainingCriterionAuto(self.config)
 
@@ -134,83 +151,56 @@ class TestLlamaAuto:
         global_step = 1
         tr_loss = float(0)
 
-        model.train()
-        for epoch_idx in range(1):
-            for step, inputs in enumerate(train_dataloader):
-                input_ids, labels = inputs
-                logits = model(input_ids)
-                tr_loss_step = criterion(logits, labels)
+        if not to_static:
+            model.train()
+            for epoch_idx in range(1):
+                for step, inputs in enumerate(train_dataloader):
+                    input_ids, labels = inputs
+                    logits = model(input_ids)
+                    tr_loss_step = criterion(logits, labels)
 
-                if self.gradient_accumulation_steps > 1:
-                    tr_loss_step /= self.gradient_accumulation_steps
+                    if self.gradient_accumulation_steps > 1:
+                        tr_loss_step /= self.gradient_accumulation_steps
 
-                tr_loss_step.backward()
-                tr_loss += tr_loss_step
+                    tr_loss_step.backward()
+                    tr_loss += tr_loss_step
 
-                if global_step % self.gradient_accumulation_steps == 0:
-                    print(
-                        f"step: {global_step // self.gradient_accumulation_steps}  loss: {tr_loss.numpy()}"
-                    )
-                    optimizer.step()
-                    optimizer.clear_grad()
-                    lr_scheduler.step()
-                    tr_loss = 0
+                    if global_step % self.gradient_accumulation_steps == 0:
+                        print(
+                            f"step: {global_step // self.gradient_accumulation_steps}  loss: {tr_loss.numpy()}"
+                        )
+                        optimizer.step()
+                        optimizer.clear_grad()
+                        lr_scheduler.step()
+                        tr_loss = 0
 
-                global_step += 1
-                if global_step // self.gradient_accumulation_steps >= 10:
-                    break
-
-    def run_dy2static(self):
-        model = LlamaForCausalLMAuto(self.config)
-        criterion = LlamaPretrainingCriterionAuto(self.config)
-
-        lr_scheduler = paddle.optimizer.lr.LinearWarmup(
-            learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
-        )
-        optimizer = create_optimizer(model, lr_scheduler)
-        optimizer = dist.shard_optimizer(optimizer)
-
-        train_dataset = RandomDataset(self.config.seq_length)
-        train_sampler = BatchSampler(
-            train_dataset,
-            batch_size=2,
-            shuffle=True,
-            drop_last=True,
-        )
-        train_dataloader = DataLoader(
-            train_dataset,
-            batch_sampler=train_sampler,
-            num_workers=0,
-        )
-
-        if isinstance(optimizer, dist.auto_parallel.api._ShardOptimizer):
-            opt = optimizer._inner_opt
+                    global_step += 1
+                    if global_step // self.gradient_accumulation_steps >= 10:
+                        break
         else:
-            opt = optimizer
+            strategy = None
+            if self.gradient_accumulation_steps > 1:
+                strategy = dist.Strategy()
+                strategy.pipeline.accumulate_steps = (
+                    self.gradient_accumulation_steps
+                )
 
-        strategy = None
-        if self.gradient_accumulation_steps > 1:
-            strategy = dist.Strategy()
-            strategy.pipeline.accumulate_steps = (
-                self.gradient_accumulation_steps
+            dist_model, dist_loader = dist.to_static(
+                model, train_dataloader, criterion, optimizer, strategy=strategy
             )
 
-        dist_model, dist_loader = dist.to_static(
-            model, train_dataloader, criterion, opt, strategy=strategy
-        )
+            dist_model.train()
+            for step, inputs in enumerate(dist_loader()):
+                input_ids, labels = inputs
+                loss = dist_model(input_ids, labels)
+                print(step, loss)
 
-        dist_model.train()
-        for step, inputs in enumerate(dist_loader()):
-            input_ids, labels = inputs
-            loss = dist_model(input_ids, labels)
-            print(step, loss)
-
-            if step >= 10:
-                break
+                if step >= 10:
+                    break
 
     def run_test_cases(self):
-        self.run_dynamic()
-        self.run_dy2static()
+        self.run_llama(to_static=0)
+        self.run_llama(to_static=1)
 
 
 if __name__ == '__main__':

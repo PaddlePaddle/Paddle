@@ -1137,7 +1137,7 @@ def dropout(
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
-            out, mask = _C_ops.dropout(
+            out = _C_ops.dropout(
                 x,
                 None,
                 p,
@@ -1960,9 +1960,9 @@ def linear(x, weight, bias=None, name=None):
         return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
-        out = paddle._pir_ops.matmul(x, weight, False, False)
+        out = _C_ops.matmul(x, weight, False, False)
         if bias is not None:
-            return paddle._pir_ops.add(out, bias)
+            return _C_ops.add(out, bias)
         else:
             return out
     else:
@@ -2401,7 +2401,7 @@ def fold(
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fold(
             x, output_sizes, kernel_sizes, strides, paddings, dilations
         )

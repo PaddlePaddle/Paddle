@@ -123,6 +123,16 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           MetaTensor* logits_grad,
                                           MetaConfig config = MetaConfig());
 
+void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
+                                           const MetaTensor& label,
+                                           const MetaTensor& loss_grad,
+                                           int64_t ignore_index,
+                                           int ring_id,
+                                           int rank,
+                                           int nranks,
+                                           MetaTensor* logits_grad,
+                                           MetaConfig config = MetaConfig());
+
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,
@@ -459,6 +469,7 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
                                    const int32_t arch,
+                                   const int32_t group_size,
                                    MetaTensor* x_grad);
 
 void YoloLossGradInferMeta(const MetaTensor& x,
