@@ -19,15 +19,17 @@
 namespace paddle {
 namespace dialect {
 
-class KernelDialect : public pir::Dialect {
+class OneDNNOperatorDialect : public pir::Dialect {
  public:
-  explicit KernelDialect(pir::IrContext* context);
+  explicit OneDNNOperatorDialect(pir::IrContext* context);
 
-  static const char* name() { return "pd_kernel"; }
+  static const char* name() { return "pd_onednn_op"; }
+
+  pir::Type ParseType(pir::IrParser& parser) override;            // NOLINT
+  pir::Attribute ParseAttribute(pir::IrParser& parser) override;  // NOLINT
 
   void PrintType(pir::Type type, std::ostream& os) const override;
-
-  void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
+  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
   void PrintOperation(pir::Operation* op,
                       pir::IrPrinter& printer) const override;  // NOLINT
@@ -35,30 +37,8 @@ class KernelDialect : public pir::Dialect {
  private:
   void initialize();
 };
-
-#ifdef PADDLE_WITH_DNNL
-class OneDNNKernelDialect : public pir::Dialect {
- public:
-  explicit OneDNNKernelDialect(pir::IrContext* context);
-
-  static const char* name() { return "pd_onednn_kernel"; }
-
-  void PrintType(pir::Type type, std::ostream& os) const override;
-
-  void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
-
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
-
- private:
-  void initialize();
-};
-#endif
 
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
-#ifdef PADDLE_WITH_DNNL
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
-#endif
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNOperatorDialect)
