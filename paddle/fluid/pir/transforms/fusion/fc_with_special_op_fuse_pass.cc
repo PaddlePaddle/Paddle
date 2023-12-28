@@ -31,10 +31,10 @@
 namespace {
 
 class SqueezeFcFusePattern
-    : public pir::drr::DrrPatternBase<SqueezeFcFusePattern> {
+    : public paddle::drr::DrrPatternBase<SqueezeFcFusePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &squeeze_op = pat.Op(paddle::dialect::SqueezeOp::name());
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("transpose_x")},
@@ -46,7 +46,7 @@ class SqueezeFcFusePattern
            {&pat.Tensor("matmul_out")});
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("bias"));
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto axis_type = match_ctx.Tensor("axis").Dtype().get();
       if (axis_type.isa<pir::VectorType>() &&
           axis_type.dyn_cast<pir::VectorType>().size() != 2) {
@@ -87,19 +87,23 @@ class SqueezeFcFusePattern
       return false;
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &in_num_col_dims_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> std::any { return 1; });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &in_num_col_dims_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
+          return 1;
+        });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &fc =
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", in_num_col_dims_attr},
                    {"activation_type",
-                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
                                  -> std::string { return ""; })},
                    {"padding_weights", false_attr},
                }});
@@ -109,10 +113,10 @@ class SqueezeFcFusePattern
 };
 
 class ReshapeFcFusePattern
-    : public pir::drr::DrrPatternBase<ReshapeFcFusePattern> {
+    : public paddle::drr::DrrPatternBase<ReshapeFcFusePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &reshape_op = pat.Op(paddle::dialect::ReshapeOp::name());
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("transpose_x")},
@@ -124,7 +128,7 @@ class ReshapeFcFusePattern
            {&pat.Tensor("matmul_out")});
     add({&pat.Tensor("matmul_out"), &pat.Tensor("bias")},
         {&pat.Tensor("add_out")});
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       if (match_ctx.Tensor("w").Shape().size() != 2 ||
           match_ctx.Attr<bool>("transpose_x") == true ||
           match_ctx.Attr<bool>("transpose_y") == true) {
@@ -212,10 +216,10 @@ class ReshapeFcFusePattern
       }
       return true;
     });
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &in_num_col_dims_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
           int i = match_ctx.Tensor("x").Shape().size() - 1;
           int target =
               match_ctx.Tensor("reshape_out")
@@ -228,15 +232,17 @@ class ReshapeFcFusePattern
           }
           return i;
         });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &fc =
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", in_num_col_dims_attr},
                    {"activation_type",
-                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
                                  -> std::string { return ""; })},
                    {"padding_weights", false_attr},
                }});
@@ -246,10 +252,10 @@ class ReshapeFcFusePattern
 };
 
 class FlattenFcFusePattern
-    : public pir::drr::DrrPatternBase<FlattenFcFusePattern> {
+    : public paddle::drr::DrrPatternBase<FlattenFcFusePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &flatten_op = pat.Op(paddle::dialect::FlattenOp::name(),
                                     {{"start_axis", pat.Attr("start_axis")},
                                      {"stop_axis", pat.Attr("stop_axis")}});
@@ -263,7 +269,7 @@ class FlattenFcFusePattern
            {&pat.Tensor("matmul_out")});
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("bias"));
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       bool flatten_flag = false;
 
       if (match_ctx.Tensor("x").Shape().size() == 4 &&
@@ -295,19 +301,23 @@ class FlattenFcFusePattern
       return false;
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &in_num_col_dims_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> std::any { return 1; });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &in_num_col_dims_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
+          return 1;
+        });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &fc =
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", in_num_col_dims_attr},
                    {"activation_type",
-                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
                                  -> std::string { return ""; })},
                    {"padding_weights", false_attr},
                }});
