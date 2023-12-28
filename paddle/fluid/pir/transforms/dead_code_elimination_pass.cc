@@ -58,6 +58,9 @@ class DeadCodeEliminationPass : public pir::Pass {
         }
       }
     }
+    if (!deleted_ops.empty()) {
+      EraseOp(block, num_erasers);
+    }
   }
 };
 
