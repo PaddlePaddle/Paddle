@@ -46,8 +46,10 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   StaticShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const cinn::common::Target& target)
-      : GroupScheduler(ir_sch, output_tensor_names, target) {}
+      const cinn::common::Target& target,
+      std::shared_ptr<GroupTileInfo> group_tile_info)
+      : GroupScheduler(ir_sch, output_tensor_names, target),
+        group_tile_info_(group_tile_info) {}
 
   void Schedule() override;
 
@@ -58,6 +60,10 @@ class StaticShapeGroupScheduler : public GroupScheduler {
  private:
   // Automatically align loops for each ScheduleBlock.
   void DoLoopAlignment();
+
+  void LoopReorderAligment();
+
+  void Tiling();
 
   // Automatically inline some ScheduleBlock which meets the conditions.
   void DoComputeInline();
@@ -72,6 +78,8 @@ class StaticShapeGroupScheduler : public GroupScheduler {
 
   // Automatically bind cuda axis on loops.
   void BindCudaAxis();
+
+  // void BindCudaBlockThread();
 
   // Automatically allocate storage locations for variables to optimize IO.
   void AllocateStorage();
@@ -134,6 +142,8 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   // All feasible conditions.
   std::vector<FeasibleCondition> feasible_conditions_;
 
+  bool NeedOrderLoops();
+
   /**
    * The order of blocks and their control statements,
    * only For, IfThenElse and ScheduleBlock is considered.
@@ -159,6 +169,8 @@ class StaticShapeGroupScheduler : public GroupScheduler {
    *   [0, 2, 1]: block4
    */
   std::map<std::vector<int>, ir::Expr> blocks_order_with_ctrl_stmt_;
+
+  std::shared_ptr<GroupTileInfo> group_tile_info_;
 };
 
 }  // namespace ir

@@ -82,6 +82,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -1578,16 +1579,19 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
 
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pass_manager.AddPass(
+      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
   pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
 
-  if (has_dynamic_shape) {
-    pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
-  }
+  // if (has_dynamic_shape) {
+  //   pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
+  // }
 
   pass_manager.AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
 
+  pass_manager.EnableIRPrinting();
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
 #else

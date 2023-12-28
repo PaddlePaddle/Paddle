@@ -170,6 +170,19 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
       group->shape_analysis = shape_analysis_;
+
+      // unique group ops
+      std::vector<::pir::Operation*> uniq_ops;
+      std::unordered_set<::pir::Operation*> ops_set;
+      for (auto* op : group->ops) {
+        if (!ops_set.count(op)) {
+          uniq_ops.push_back(op);
+
+          ops_set.insert(op);
+        }
+      }
+      group->ops.swap(uniq_ops);
+
       if (FLAGS_cinn_enable_map_expr) {
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }

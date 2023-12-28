@@ -22,6 +22,21 @@ namespace ir {
 
 using SymbolicPredicate = Expr;
 
+struct GroupTileInfo {
+  GroupTileInfo() {}
+
+  std::vector<int64_t> reduce_axis_;
+  int64_t data_rank;
+
+  int64_t block_num;
+  int64_t warp_num;
+  int64_t flatten_inner_num;
+  int64_t reduce_inner_num;
+
+  std::set<std::string> reduce_var_names;
+  std::set<std::string> temp_var_names;
+};
+
 /**
  * The base class used for scheduling fusion groups.
  */
@@ -40,7 +55,8 @@ class GroupScheduler {
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
       const cinn::common::Target& target,
-      bool is_dy_shape = false);
+      bool is_dy_shape = false,
+      std::shared_ptr<GroupTileInfo> group_tile_info = nullptr);
 
   virtual ~GroupScheduler() = default;
 

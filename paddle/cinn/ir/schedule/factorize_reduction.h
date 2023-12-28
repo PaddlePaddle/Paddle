@@ -111,7 +111,7 @@ class ReduceBlockCreater {
     VLOG(4) << "new_update_block_realize:\n" << new_update_block_realize_;
   }
 
-  Expr CreateLoops() {
+  Expr CreateLoops(bool with_init = true) {
     int num_loops = original_loops_.size();
     std::vector<Expr> new_loops(num_loops);
     Expr body = new_update_block_realize_;
@@ -127,7 +127,7 @@ class ReduceBlockCreater {
         continue;
       }
       // Add reduce init block.
-      if (!has_add_init_block && is_spatial_loop) {
+      if (!has_add_init_block && is_spatial_loop && with_init) {
         body = Block::Make({new_init_block_realize_, body});
         has_add_init_block = true;
       }

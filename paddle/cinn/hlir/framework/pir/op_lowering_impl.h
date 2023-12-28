@@ -230,6 +230,9 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value);
 
+  std::shared_ptr<cinn::ir::GroupTileInfo> GetGroupTileInfo(
+      const GroupPtr& group);
+
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,
                          std::vector<std::vector<int>>* out_shapes,

@@ -65,6 +65,9 @@ class ScheduleBlockNode : public cinn::common::GraphNode {
     downstream_nodes_.insert(node_id);
   }
 
+  // int32_t ReduceType() const { return reduce_type; }
+
+  // void SetReduceType( int32_t reduce_type) { reduce_type_ = reduce_type; }
  private:
   std::vector<cinn::common::Shared<cinn::common::GraphEdge>> OrderedInLinks()
       const;
@@ -73,6 +76,7 @@ class ScheduleBlockNode : public cinn::common::GraphNode {
 
  private:
   std::string id_;
+  // int32_t reduce_type_{-1};  // 0 for warp reduce, 1 for block reduce
   std::unordered_set<std::string> upstream_nodes_;
   std::unordered_set<std::string> downstream_nodes_;
   const IRSchedule& ir_sch_;

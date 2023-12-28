@@ -52,7 +52,8 @@ if(WITH_TESTING AND WITH_CINN)
     pir_transforms
     cinn_op_dialect
     pd_to_cinn_pass
-    add_broadcast_to_elementwise_pass)
+    add_broadcast_to_elementwise_pass
+    merge_reshape_with_broadcast_pass)
 
   paddle_test(
     test_group_op

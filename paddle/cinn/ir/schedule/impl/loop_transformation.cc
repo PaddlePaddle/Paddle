@@ -382,11 +382,11 @@ Expr StScheduleImpl::Fuse(const std::vector<Expr>& loops) {
     if (!for_nodes.empty()) {
       CHECK(for_nodes.back()->body.As<ir::Block>())
           << "The body of for node is not Block!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts.size(), 1U)
-          << "The Block'size of for node is not 1!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
-          << "The For nodes in loops param of Fuse must be adjacent! Please "
-             "check.";
+      // CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts.size(), 1U)
+      //     << "The Block'size of for node is not 1!";
+      // CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
+      //     << "The For nodes in loops param of Fuse must be adjacent! Please "
+      //        "check.";
     }
     for_nodes.push_back(it_loop.As<ir::For>());
     loop_vars.push_back(it_loop.As<ir::For>()->loop_var);

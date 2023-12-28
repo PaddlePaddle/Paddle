@@ -355,6 +355,8 @@ int32_t Operation::ComputeOpResultOffset(uint32_t index) const {
 
 int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
   if (index >= num_operands_) {
+    std::cerr << "index " << index << "\t num operand " << num_operands_
+              << std::endl;
     LOG(FATAL) << "index exceeds OP op operand range.";
   }
   return static_cast<int32_t>(index * sizeof(OpOperandImpl) +

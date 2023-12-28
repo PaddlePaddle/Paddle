@@ -19,4 +19,14 @@ if(NOT CINN_ONLY)
     pir
     cinn_op_dialect
     op_dialect_vjp)
+
+  cinn_cc_library(
+    merge_reshape_with_broadcast_pass
+    SRCS
+    merge_reshape_with_broadcast_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
 endif()
