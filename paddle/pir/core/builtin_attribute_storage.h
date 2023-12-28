@@ -149,23 +149,6 @@ struct ArrayAttributeStorage : public AttributeStorage {
   Attribute *data_;
   const size_t size_;
 };
-struct Complex64AttributeStorage : public AttributeStorage {
-  using ParamKey = phi::dtype::complex<float>;
-  explicit Complex64AttributeStorage(const ParamKey &key) { data_ = key; }
-  static Complex64AttributeStorage *Construct(const ParamKey &key) {
-    return new Complex64AttributeStorage(key);
-  }
-  static std::size_t HashValue(const ParamKey &key) {
-    return std::hash<float>{}(key.real + key.imag);
-  }
-
-  bool operator==(ParamKey key) const { return data_ == key; }
-
-  phi::dtype::complex<float> data() const { return data_; }
-
- private:
-  phi::dtype::complex<float> data_;
-};
 
 struct Complex64AttributeStorage : public AttributeStorage {
   using ParamKey = phi::dtype::complex<float>;
