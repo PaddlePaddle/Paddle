@@ -62,6 +62,9 @@ static DataTypeMap* InitDataTypeMap() {
   _ForEachDataType_(RegType);
   // Register pstring individually
   RegType(pstring, proto::VarType::PSTRING);
+  RegType(::paddle::platform::float8_e5m2, proto::VarType::FP8_E5M2);
+  RegType(::paddle::platform::float8_e4m3fn, proto::VarType::FP8_E4M3FN);
+
 #undef RegType
   return retv;
 }
