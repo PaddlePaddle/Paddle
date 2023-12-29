@@ -1773,6 +1773,16 @@
     data_type : x
   optional : boxes_num
 
+- backward_op : pull_sparse_v2_grad
+  forward : (Tensor[] ids, Tensor[] w, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true) -> Tensor[](out)
+  args : (Tensor[] ids, Tensor out, Tensor out_grad, int embeddingdim, int tableid, str accessorclass, str ctrlabelname, int paddingid, bool scalesparsegrad , str[] inputnames, bool is_distributed)
+  output : Tensor[](ids_grad)
+  infer_meta :
+    func : PullSparseV2InferMeta
+    param : [ids, w, embeddingdim, tableid, accessorclass, ctrlabelname, paddingid, scalesparsegrad, inputnames, is_distributed]
+  kernel :
+    func : pull_sparse_v2_grad
+
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
