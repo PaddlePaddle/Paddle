@@ -14,7 +14,7 @@
 
 import os
 
-from auto_parallel.hybrid_strategy.save_state_dict import (
+from auto_parallel.hybrid_strategy.semi_auto_save_state_dict import (
     check_structure_name_mapping,
 )
 from auto_parallel.semi_auto_parallel_simple_net import (
