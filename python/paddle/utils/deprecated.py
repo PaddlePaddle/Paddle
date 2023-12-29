@@ -16,6 +16,7 @@ decorator to deprecate a function or class
 """
 
 import functools
+import inspect
 import sys
 import warnings
 
@@ -85,11 +86,11 @@ def deprecated(update_to="", since="", reason="", level=0):
             )
             msg += f' Please use "{_update_to}" instead.'
         if len(_reason) > 0:
-            msg += f"\n        Reason: {_reason}"
+            msg += f"\n    Reason: {_reason}"
         if func.__doc__:
             func.__doc__ = (
-                '\n\n    Warning:\n        ' + msg + '\n'
-            ) + func.__doc__
+                '\n\nWarning:\n    ' + msg + '\n\n'
+            ) + inspect.cleandoc(func.__doc__)
 
         if level == 0:
             return func

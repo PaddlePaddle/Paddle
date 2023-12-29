@@ -50,7 +50,7 @@ def get_warning_index(api):
     for idx, val in enumerate(doc_lst):
         next_val = doc_lst[idx + 1] if idx + 1 < len(doc_lst) else ""
         if (
-            val == ("    Warning:")
+            val == ("Warning:")
             and next_val.endswith(" instead.")
             and "and will be removed in future versions." in next_val
         ):
@@ -83,6 +83,17 @@ class TestDeprecatedDecorator(unittest.TestCase):
 
         # testting
         self.assertLess(expected, captured)
+
+    def test_indent_level(self):
+        # test for different indent_level
+        dataset = paddle.base.DatasetFactory().create_dataset("InMemoryDataset")
+        with warnings.catch_warnings(record=True):
+            dataset.set_merge_by_lineid()
+            print(paddle.base.InMemoryDataset.set_merge_by_lineid.__doc__)
+            assert (
+                '\nSet merge by'
+                in paddle.base.InMemoryDataset.set_merge_by_lineid.__doc__
+            )
 
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
