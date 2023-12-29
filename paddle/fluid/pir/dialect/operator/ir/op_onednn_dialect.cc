@@ -45,7 +45,11 @@ void OneDNNOperatorDialect::initialize() {
   // NOTE(Ruting)GET_MANUAL_OP_LIST is define in manual_op.h"
   // use RegisterOps when list has more than two ops.
   RegisterOps<
-#define GET_OP_LIST
+#define GET_OP_LIST1
+#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+      >();
+  RegisterOps<
+#define GET_OP_LIST2
 #include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
       >();
 }
