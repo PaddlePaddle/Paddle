@@ -1500,7 +1500,7 @@ OpInfoTuple ArrayReadOp::GetOpInfo() {
                   false,
                   false,
                   false,
-                  false),
+                  true),
       OpInputInfo(
           "i", "paddle::dialect::ScalarAttribute", false, false, true, false)};
 
@@ -1559,6 +1559,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
       dense_out.lod());
   argument_outputs.push_back(out_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayReadOp::Build(pir::Builder &builder,
@@ -1668,7 +1669,7 @@ OpInfoTuple ArrayWrite_Op::GetOpInfo() {
                   false,
                   false),
       OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false, false),
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true),
       OpInputInfo(
           "i", "paddle::dialect::ScalarAttribute", false, false, true, false)};
 
@@ -1733,6 +1734,7 @@ void ArrayWrite_Op::Build(pir::Builder &builder,
       dense_out.layout());
   argument_outputs.push_back(out_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayWrite_Op::VerifySig() {

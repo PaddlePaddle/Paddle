@@ -346,8 +346,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         feed_i = np.ones(1).astype('float32')
         feed_x = np.ones(1).astype('float32')
         data = np.asarray([2]).astype('float32')
-        ans = np.asarray([1]).astype('float32')
-        x1_grad = np.asarray([1]).astype('float32')
         i_grad = np.asarray([3]).astype('float32')
         x_grad = np.asarray([2]).astype('float32')
 

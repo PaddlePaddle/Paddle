@@ -940,7 +940,6 @@ phi::KernelKey GetKernelKey(
           auto combine_op_res =
               combine_op->operand_source(j).dyn_cast<pir::OpResult>();
           if (!combine_op_res) {
-            VLOG(0) << "!combine_op_res";
             continue;
           }
           if (combine_op_res.type().isa<DenseTensorType>()) {
