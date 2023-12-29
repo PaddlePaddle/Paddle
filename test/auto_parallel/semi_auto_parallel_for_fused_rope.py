@@ -45,10 +45,10 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         self._sin_cos_shape = [1, self._seq_len, 1, self._head_dim]
         self._position_ids_shape = [self._bs, self._seq_len]
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
+    def check_placements(self, output, expected_placements):
         assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
 
     def test_only_q_input(self):
         paddle.seed(self._seed)
@@ -66,7 +66,7 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
             q, use_neox_rotary_style=False
         )
         self.check_tensor_eq(out_q, dist_out_q)
-        self.check_dim_mapping(dist_out_q, [0, -1, -1, -1])
+        self.check_placements(dist_out_q, [dist.Shard(0)])
 
         dist_out_q.backward()
         out_q.backward()

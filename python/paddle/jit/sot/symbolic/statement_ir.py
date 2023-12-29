@@ -19,10 +19,12 @@ use interface in symbolic_context.py first.
 """
 from __future__ import annotations
 
+import functools
 import weakref
 from typing import Any, Callable
 
-from paddle.utils import is_sequence, map_structure
+import paddle
+from paddle.utils import flatten, map_structure
 
 from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
 
@@ -85,7 +87,7 @@ class Statement:
         outputs: list[Symbol],
         stacks: list[str],
     ):
-        assert type in ["call", "api", "method", "layer"]
+        assert type in ["call", "api", "method", "layer", "AST"]
         self.name = name
         self.inputs = inputs  # (list of Symbols, dict of Symbols)
         self.outputs = outputs  # list of Symbol | PythonObj
@@ -96,9 +98,9 @@ class Statement:
 
     def __str__(self):
         def to_string(inps):
-            if isinstance(inps, str) or not is_sequence(inps):
-                return inps.__str__()
-            inps = (x.__str__() for x in inps)
+            inps = [x.__str__() for x in flatten(inps) if isinstance(x, Symbol)]
+            if len(inps) == 0:
+                return "(Empty)"
             return ", ".join(inps)
 
         return "{} || {} = {} ({}) ".format(
@@ -158,10 +160,42 @@ class LayerStatement(Statement):
         outputs: list[Symbol],
         stacks: list[str],
     ):
+        if isinstance(layer, Reference):
+            name = layer().__class__.__name__
+        else:
+            name = layer.__class__.__name__
         super().__init__(
-            "layer", layer.__class__.__name__, inputs, outputs, stacks
+            "layer",
+            name,
+            inputs,
+            outputs,
+            stacks,
         )
         self.layer = layer
+
+
+class ASTStatement(Statement):
+    def __init__(
+        self,
+        static_function,
+        inputs: list[Symbol],
+        outputs: list[Symbol],
+        stacks: list[str],
+    ):
+        # this dygraph_function always has attr __code__, which is checked before
+        dygraph_func = static_function.dygraph_function
+        super().__init__(
+            "AST",
+            dygraph_func.__code__.co_name,
+            inputs,
+            outputs,
+            stacks,
+        )
+        converted_func = paddle.jit.dy2static.convert_to_static(dygraph_func)
+        func_self = getattr(dygraph_func, '__self__', None)
+        if func_self is not None:
+            converted_func = functools.partial(converted_func, func_self)
+        self.converted_func = converted_func
 
 
 class StatementIR:
@@ -181,6 +215,8 @@ class StatementIR:
         self.outputs = []  # list of Symbol | PythonObj
         self.statements = []  # list of Statement
 
+        self.symbol_meta_map = {}
+
     def __len__(self):
         return len(self.statements)
 
@@ -189,7 +225,13 @@ class StatementIR:
         new_sir.inputs = list(self.inputs)
         new_sir.outputs = list(self.outputs)
         new_sir.statements = list(self.statements)
+        new_sir.symbol_meta_map = dict(self.symbol_meta_map.items())
         return new_sir
+
+    def set_symbol_meta_map(self, meta_map):
+        # if the meta of a input symbol inplace changed, we should get the origin meta as input of SIR
+        meta_map.update(self.symbol_meta_map)
+        self.symbol_meta_map = meta_map
 
     def add_input(self, input):
         self.inputs.append(input)
@@ -229,10 +271,6 @@ class StatementIR:
 
     def __repr__(self):
         return self.__str__()
-
-    def graph_size(self):
-        call_layers = [x for x in self.statements if x.type == "layer"]
-        return len(self.statements) + len(call_layers)
 
 
 @Singleton

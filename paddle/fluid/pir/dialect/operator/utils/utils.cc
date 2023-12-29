@@ -16,6 +16,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -48,6 +49,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceSum_Op::name(),
     CAllreduceMax_Op::name(),
     CAllgatherOp::name(),
+    CSoftmaxWithCrossEntropyOp::name(),
+    CSoftmaxWithCrossEntropyGradOp::name(),
     SeedOp::name(),
     ShareDataOp::name(),
     SparseMomentumOp::name(),
@@ -55,8 +58,10 @@ const std::unordered_set<std::string> LegacyOpList = {
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
-    SoftReluGradOp::name()};
+    SoftReluGradOp::name(),
+    CReduceMinOp::name()};
 
+const std::unordered_set<std::string> OneDNNLegacyOpList = {};
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -217,6 +222,12 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
+#ifdef PADDLE_WITH_DNNL
+bool IsOneDNNLegacyOp(const std::string& name) {
+  return OneDNNLegacyOpList.count(name);
+}
+#endif
+
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
 }
@@ -270,10 +281,13 @@ std::string GetValueDataType(const pir::Value& value) {
   } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
+  } else if (value.type().isa<DenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype()));
   } else {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("Currently, we can only get dtype for "
-                                     "DenseTensorType and SelectedRowsType."));
+        phi::errors::InvalidType("Currently, we can only get dtype for "
+                                 "DenseTensorType and SelectedRowsType."));
   }
 }
 
@@ -287,7 +301,7 @@ void DoValueCheck(const pir::Value& value,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidType(
         "Check data type error for op: %s, input: %s, %s.dtype: %s, and "
         "expected_dtype: %s",
         op_name,
@@ -329,7 +343,7 @@ void CheckDataType(const phi::DataType& dtype,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidType(
         "Check data type error for op: %s, dtype: %s, and "
         "expected_dtype: %s",
         op_name,

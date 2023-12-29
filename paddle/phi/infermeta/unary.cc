@@ -1859,6 +1859,7 @@ void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
                               product(x.dims())));
   out->set_dims(x.dims());
   out->share_lod(x);
+  out->set_layout(x.layout());
   out->set_dtype(x.dtype());
 }
 
@@ -3627,6 +3628,7 @@ void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
           "The rank of input should be less than 7, but received %d.",
           in_dims.size()));
   out->set_dims(in_dims);
+  out->set_dtype(x.dtype());
 }
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
@@ -4022,6 +4024,7 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({1});
+  out->set_dtype(x.dtype());
 }
 
 void SqueezeInferMeta(const MetaTensor& x,
@@ -5202,6 +5205,7 @@ void UnStackInferMeta(const MetaTensor& x,
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,
                              const int32_t arch,
+                             const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
   PADDLE_ENFORCE_EQ(
@@ -5228,7 +5232,21 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The second dimension of input must be divisible by 16, but got[%d]",
           x_dims[1]));
-  std::vector<int64_t> dim_scale({x_dims[1]});
+  PADDLE_ENFORCE_EQ(
+      ((group_size == -1) || (group_size == 64) || (group_size == 128)),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, group_size only support -1, 64 or 128."));
+
+  std::vector<int64_t> dim_scale;
+  if (group_size != -1) {
+    int64_t scale_dim0 = (x_dims[0] + (group_size - 1)) / group_size;
+    int64_t scale_dim1 = x_dims[1];
+    dim_scale = std::vector<int64_t>({scale_dim0, scale_dim1});
+  } else {
+    dim_scale = std::vector<int64_t>({x_dims[1]});
+  }
+
   std::vector<int64_t> dim_out;
   if (algo == "weight_only_int8" || algo == "llm.int8") {
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
@@ -5311,6 +5329,12 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
   out->set_strides(x.strides());
+}
+
+void NumberCountInferMeta(const MetaTensor& x,
+                          int upper_range,
+                          MetaTensor* out) {
+  out->share_meta(x);
 }
 
 }  // namespace phi

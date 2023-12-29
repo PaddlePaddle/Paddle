@@ -17,7 +17,7 @@ from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import Variable
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -90,7 +90,7 @@ def reindex_graph(
         True if value_buffer is not None and index_buffer is not None else False
     )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
@@ -212,7 +212,7 @@ def reindex_heter_graph(
         True if value_buffer is not None and index_buffer is not None else False
     )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         neighbors = paddle.concat(neighbors, axis=0)
         count = paddle.concat(count, axis=0)
         reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(

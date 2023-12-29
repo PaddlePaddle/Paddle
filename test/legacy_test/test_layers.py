@@ -986,6 +986,7 @@ class TestLayer(LayerTest):
 
         _test_errors()
 
+    @test_with_pir_api
     def test_spectral_norm(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -2184,6 +2185,7 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
+    @test_with_pir_api
     def test_affine_grid(self):
         with self.static_graph():
             data = paddle.static.data(

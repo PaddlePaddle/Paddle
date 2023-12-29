@@ -48,7 +48,9 @@ class TestAssignOp(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
         paddle.disable_static()
 
 
@@ -77,7 +79,9 @@ class TestAssignFP16Op(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
         paddle.disable_static()
 
 
@@ -103,7 +107,9 @@ class TestAssignBFP16Op(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
         paddle.disable_static()
 
 

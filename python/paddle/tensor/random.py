@@ -429,7 +429,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
                     op_type_for_check, supported_dtypes, dtype
                 )
             )
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
@@ -648,7 +648,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
-            Defaule is 1.0
+            Default is 1.0
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
@@ -858,7 +858,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
                 )
             )
 
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():

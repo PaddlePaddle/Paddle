@@ -129,6 +129,10 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
   return res;
 }
 
+int64_t hash_with_seed(int64_t value, int64_t seed) {
+  return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
+}
+
 inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
@@ -155,7 +159,18 @@ inline void run_program_ad_func(
   auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(x_tmp, params_tmp, out, step_scope, require_any_grad, attrs);
+  int64_t place_hash_key = 0;
+  for (const paddle::Tensor& tensor : x) {
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
+  }
+  RunProgramAPI(x_tmp,
+                params_tmp,
+                out,
+                step_scope,
+                require_any_grad,
+                attrs,
+                place_hash_key);
   VLOG(2) << "start run run_program grad";
   auto is_test = false;
   if (attrs.count("is_test")) {
@@ -167,6 +182,9 @@ inline void run_program_ad_func(
 
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
+
+    // Set place hash keys for backward
+    grad_node->SetPlaceHashKey(place_hash_key);
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
@@ -266,9 +284,23 @@ inline void pir_run_program_ad_func(
 
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  PirRunProgramAPI(
-      x, params, out, middles, step_scope, require_any_grad, attrs);
+  int64_t place_hash_key = 0x9e3779b9;
+  for (const paddle::Tensor& tensor : x) {
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
+  }
+  PirRunProgramAPI(x,
+                   params,
+                   out,
+                   middles,
+                   step_scope,
+                   require_any_grad,
+                   attrs,
+                   place_hash_key);
   if (!is_test && require_any_grad) {
+    // Set place hash keys for backward
+    grad_node->SetPlaceHashKey(place_hash_key);
+
     // Set Attributes
     grad_node->SetAttrMap(attrs);
 
