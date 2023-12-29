@@ -72,43 +72,45 @@ class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
         self.shape = (1, 128, 2, 32)
-        self.dtype = 'float32'
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False
-        self.rtol = 1e-3
-        self.atol = 1e-3
 
     def test_all(self):
+        self.run_case(dtype="float32", rtol=5e-4, atol=5e-4)
+        self.run_case(dtype="float16", rtol=1e-3, atol=1e-3)
+        self.run_case(dtype="bfloat16", rtol=1e-2, atol=1e-2)
+
+    def run_case(self, dtype, rtol, atol):
         # TODO(houj04) remove debug codes after correctness check
-        print(f"Test case shape {self.shape} dtype {self.dtype}")
+        print(f"Test case shape {self.shape} dtype {dtype}")
 
         # test dynamic
         paddle.disable_static()
 
         np.random.seed(2023)
-        query = np.random.random(self.shape)
-        key = np.random.random(self.shape)
-        value = np.random.random(self.shape)
+        query = np.random.uniform(-1.0, 1.0, self.shape)
+        key = np.random.uniform(-1.0, 1.0, self.shape)
+        value = np.random.uniform(-1.0, 1.0, self.shape)
 
         q = paddle.to_tensor(
-            query, place=self.place, dtype=self.dtype, stop_gradient=False
+            query, place=self.place, dtype=dtype, stop_gradient=False
         )
         k = paddle.to_tensor(
-            key, place=self.place, dtype=self.dtype, stop_gradient=False
+            key, place=self.place, dtype=dtype, stop_gradient=False
         )
         v = paddle.to_tensor(
-            value, place=self.place, dtype=self.dtype, stop_gradient=False
+            value, place=self.place, dtype=dtype, stop_gradient=False
         )
 
         q_ = paddle.to_tensor(
-            query, place=self.place, dtype=self.dtype, stop_gradient=False
+            query, place=self.place, dtype=dtype, stop_gradient=False
         )
         k_ = paddle.to_tensor(
-            key, place=self.place, dtype=self.dtype, stop_gradient=False
+            key, place=self.place, dtype=dtype, stop_gradient=False
         )
         v_ = paddle.to_tensor(
-            value, place=self.place, dtype=self.dtype, stop_gradient=False
+            value, place=self.place, dtype=dtype, stop_gradient=False
         )
 
         out, _ = flash_attention(
@@ -124,9 +126,16 @@ class TestFlashAttentionAPI(unittest.TestCase):
         float_out = paddle.cast(out, "float32")
         float_out_ = paddle.cast(out_, "float32")
 
-        np.testing.assert_allclose(
-            float_out, float_out_, rtol=self.rtol, atol=self.atol
+        np.testing.assert_allclose(float_out, float_out_, rtol=rtol, atol=atol)
+        # TODO(houj04) remove debug codes after correctness check
+        max_diff_forward = np.max(
+            np.abs(float_out.numpy() - float_out_.numpy())
         )
+        mean_diff_forward = np.mean(
+            np.abs(float_out.numpy() - float_out_.numpy())
+        )
+        print("max_diff_forward:", max_diff_forward)
+        print("mean_diff_forward:", mean_diff_forward)
 
         # backward shape
         self.assertEqual(q.grad.shape, q.shape)
@@ -173,40 +182,44 @@ class TestFlashAttentionAPI(unittest.TestCase):
         print("mean_diff_v_grad:", mean_diff_v_grad)
 
         np.testing.assert_allclose(
-            float_q_grad, float_q_grad_, rtol=self.rtol, atol=self.atol
+            float_q_grad, float_q_grad_, rtol=rtol, atol=atol
         )
         np.testing.assert_allclose(
-            float_k_grad, float_k_grad_, rtol=self.rtol, atol=self.atol
+            float_k_grad, float_k_grad_, rtol=rtol, atol=atol
         )
         np.testing.assert_allclose(
-            float_v_grad, float_v_grad_, rtol=self.rtol, atol=self.atol
+            float_v_grad, float_v_grad_, rtol=rtol, atol=atol
         )
 
 
-class TestFlashAttentionAPITestFP16(TestFlashAttentionAPI):
-    def setUp(self):
-        self.place = paddle.XPUPlace(0)
-        self.shape = (1, 128, 2, 32)
-        self.dtype = 'float16'
-        self.dropout = 0.0
-        self.causal = True
-        self.return_softmax = False
-        # TODO(houj04) fix ut threshold after correctness check
-        self.rtol = 5e-3
-        self.atol = 5e-3
+# TODO(houj04) un-comment following REAL cases after correctness check
+# class TestFlashAttentionAPITestEB(TestFlashAttentionAPI):
+#    def setUp(self):
+#        self.place = paddle.XPUPlace(0)
+#        self.shape = (4, 4096, 4, 128)
+#        self.dropout = 0.0
+#        self.causal = True
+#        self.return_softmax = False
 
 
-class TestFlashAttentionAPITestBF16(TestFlashAttentionAPI):
-    def setUp(self):
-        self.place = paddle.XPUPlace(0)
-        self.shape = (1, 128, 2, 32)
-        self.dtype = 'bfloat16'
-        self.dropout = 0.0
-        self.causal = True
-        self.return_softmax = False
-        # TODO(houj04) fix ut threshold after correctness check
-        self.rtol = 1e-1
-        self.atol = 1e-1
+# TODO(houj04) un-comment following REAL cases after correctness check
+# class TestFlashAttentionAPITestLlama7B(TestFlashAttentionAPI):
+#    def setUp(self):
+#        self.place = paddle.XPUPlace(0)
+#        self.shape = (2, 2048, 16, 128)
+#        self.dropout = 0.0
+#        self.causal = True
+#        self.return_softmax = False
+
+
+# TODO(houj04) un-comment following REAL cases after correctness check
+# class TestFlashAttentionAPITestLlama65B(TestFlashAttentionAPI):
+#    def setUp(self):
+#        self.place = paddle.XPUPlace(0)
+#        self.shape = (2, 8192, 8, 128)
+#        self.dropout = 0.0
+#        self.causal = True
+#        self.return_softmax = False
 
 
 if __name__ == '__main__':
