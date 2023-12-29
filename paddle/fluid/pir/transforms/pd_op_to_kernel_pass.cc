@@ -942,13 +942,19 @@ phi::KernelKey GetKernelKey(
           if (!combine_op_res) {
             continue;
           }
-          if (combine_op_res.type().isa<DenseTensorType>()) {
-            kernel_dtype = TransToPhiDataType(
-                combine_op_res.type().dyn_cast<DenseTensorType>().dtype());
-          } else if (combine_op_res.type().isa<DenseTensorArrayType>()) {
-            kernel_dtype = TransToPhiDataType(
-                combine_op_res.type().dyn_cast<DenseTensorArrayType>().dtype());
+
+          if (kernel_dtype == phi::DataType::UNDEFINED) {
+            if (combine_op_res.type().isa<DenseTensorType>()) {
+              kernel_dtype = TransToPhiDataType(
+                  combine_op_res.type().dyn_cast<DenseTensorType>().dtype());
+            } else if (combine_op_res.type().isa<DenseTensorArrayType>()) {
+              kernel_dtype =
+                  TransToPhiDataType(combine_op_res.type()
+                                         .dyn_cast<DenseTensorArrayType>()
+                                         .dtype());
+            }
           }
+
           if (combine_op_res.owner()->isa<DataOp>()) {
             auto data_op = combine_op_res.owner();
             auto data_place =
