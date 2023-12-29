@@ -1445,8 +1445,20 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
         static_cast<phi::SelectedRows*>(self->tensor.impl().get());
     ptr = static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
   } else if (self->tensor.is_dist_tensor()) {
-    ptr = static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
-              ->unsafe_mutable_value();
+#ifdef PADDLE_WITH_DISTRIBUTE
+    VLOG(6) << "Getting DistTensor's item value from offset";
+    auto* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    auto dense_tensor = ReshardXToReplicated(dist_tensor);
+    ptr = static_cast<phi::DenseTensor*>(&dense_tensor);
+#else
+    PADDLE_THROW(
+        platform::errors::Unavailable("The `item()` method of (Dist)Tensor "
+                                      "is not supported in the current "
+                                      "PaddlePaddle, please recompile and "
+                                      "installPaddlePaddle with the option "
+                                      "of `WITH_DISTRIBUTE=ON`."));
+#endif
   } else {
     ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   }
