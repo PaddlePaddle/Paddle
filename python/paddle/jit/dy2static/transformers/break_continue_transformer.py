@@ -85,7 +85,7 @@ class ForToWhileTransformer(BaseTransformer):
         return init_stmts
 
 
-class BreakContinueTransformer(BaseNodeVisitor):
+class BreakContinueTransformer(BaseTransformer):
     """
     Rewrite 'break' and 'continue' key words in a if-else python way to make
     it equivalent to original control flow
