@@ -97,8 +97,8 @@ class TestSemiAutoParallelMutualLoadBetweenDynamicAndStatic(
         expected_state_dict = {}
         with paddle.base.dygraph.guard():
             for k, v in saved_dy_layer_state_dict.items():
-                expected_state_dict[v.name] = v._local_value().clone()
-                need_load_state_dict[v.name] = paddle.zeros_like(v)
+                expected_state_dict[k] = v._local_value().clone()
+                need_load_state_dict[k] = paddle.zeros_like(v)
         dist_model.set_state_dict(need_load_state_dict)
         state_dict_to_load = dist_model.state_dict(mode="param")
         assert len(state_dict_to_load) == len(expected_state_dict)

@@ -37,10 +37,15 @@ class ReadItem:
     lengths: Tuple[int]
 
 
-def get_rank_to_files(path, state_dict, process_group, use_dist):
-    """
-    Get the mapping of rank to its accessible files.
-    """
+METADATA_FILES = None
+LOCAL_DATA_FILES = None
+
+
+def get_checkpoint_files(path):
+    global METADATA_FILES
+    global LOCAL_DATA_FILES
+    if METADATA_FILES is not None and LOCAL_DATA_FILES is not None:
+        return METADATA_FILES, LOCAL_DATA_FILES
     accessible_files = os.listdir(path)
     metadata_files = [
         file for file in accessible_files if file.endswith(".metadata")
@@ -48,6 +53,22 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     assert (
         len(metadata_files) > 0
     ), f"No metadata file found in the checkpoint directory:{path}."
+    local_data_files = [
+        file for file in accessible_files if file.endswith(".distcp")
+    ]
+    assert (
+        len(local_data_files) > 0
+    ), f"No data file found in the checkpoint directory:{path}."
+    METADATA_FILES = metadata_files
+    LOCAL_DATA_FILES = local_data_files
+    return metadata_files, local_data_files
+
+
+def get_rank_to_files(path, state_dict, process_group, use_dist):
+    """
+    Get the mapping of rank to its accessible files.
+    """
+    metadata_files, local_data_files = get_checkpoint_files(path)
     # The neccesary files to be read
     tensor_key_list = []
     necessary_files = []
@@ -69,9 +90,6 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         return {}, missing_keys
 
     # allgather all accessible files
-    local_data_files = [
-        file for file in accessible_files if file.endswith(".distcp")
-    ]
     global_data_files = []
     if use_dist:
         paddle.distributed.all_gather_object(
@@ -204,13 +222,7 @@ def get_local_load_files(rank_to_files):
 
 def get_load_infos(path, local_load_files, process_group, use_dist):
     load_info = {}
-    accessible_files = os.listdir(path)
-    metadata_files = [
-        file for file in accessible_files if file.endswith(".metadata")
-    ]
-    assert (
-        len(metadata_files) > 0
-    ), "No metadata file found in the checkpoint directory:{path}."
+    metadata_files, _ = get_checkpoint_files(path)
     for metadata_file in metadata_files:
         metadata = paddle.load(os.path.join(path, metadata_file))
         for local_tensor_index, file_name in metadata.storage_metadata.items():
@@ -285,14 +297,8 @@ def not_overlap(
 
 
 def get_read_items(path, state_dict, process_group, use_dist):
-    accessible_files = os.listdir(path)
-    metadata_files = [
-        file for file in accessible_files if file.endswith(".metadata")
-    ]
-    assert (
-        len(metadata_files) > 0
-    ), "No metadata file found in the checkpoint directory:{path}."
     storage_state_dict_metadata = {}
+    metadata_files, _ = get_checkpoint_files(path)
     for metadata_file in metadata_files:
         metadata = paddle.load(os.path.join(path, metadata_file))
         for (
@@ -414,15 +420,11 @@ def load_state_dict(
             state_dict, path, process_group, coordinator_rank
         )
         if not load_succ:
-            logger.warning("Try to load state_dict again")
-            accessible_files = os.listdir(path)
-            metadata_files = [
-                file for file in accessible_files if file.endswith(".metadata")
-            ]
-            assert (
-                len(metadata_files) > 0
-            ), f"No metadata file found in the checkpoint directory:{path}."
+            logger.warning(
+                "Load static_dict fail once. Check if we load dynamic graph state_dict in static graph mode, Try to load state_dict again with structure names"
+            )
             strutured_to_parameter_names = {}
+            metadata_files, _ = get_checkpoint_files(path)
             for metadata_file in metadata_files:
                 metadata = paddle.load(os.path.join(path, metadata_file))
                 if metadata.structured_to_parameter_name is not None:
@@ -439,17 +441,20 @@ def load_state_dict(
                 strutured_to_parameter_names.keys()
             ) != list(strutured_to_parameter_names.values()):
                 # dynamic save static load
-                new_keys = []
-                origin_keys = list(state_dict.keys())
-                for k, v in state_dict.items():
-                    if k in parameter_name_to_strutured:
-                        new_keys.append(parameter_name_to_strutured[k])
-                if len(new_keys) == len(state_dict):
-                    tmp_state_dict = dict(
-                        zip(new_keys, list(state_dict.values()))
+                structured_names = [
+                    parameter_name_to_strutured[k]
+                    for k in state_dict.keys()
+                    if k in parameter_name_to_strutured
+                ]
+                if len(structured_names) == len(state_dict):
+                    structured_name_state_dict = dict(
+                        zip(structured_names, list(state_dict.values()))
                     )
                     _load_state_dict(
-                        tmp_state_dict, path, process_group, coordinator_rank
+                        structured_name_state_dict,
+                        path,
+                        process_group,
+                        coordinator_rank,
                     )
 
 
