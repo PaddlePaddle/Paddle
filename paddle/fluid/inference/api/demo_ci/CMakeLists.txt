@@ -254,7 +254,7 @@ if(WITH_GPU)
 endif()
 
 if(CUSTOM_OPERATOR_FILES)
-  cuda_add_library(pd_infer_custom_op ${CUSTOM_OPERATOR_FILES} SHARED)
+  add_library(pd_infer_custom_op SHARED ${CUSTOM_OPERATOR_FILES})
   set(DEPS ${DEPS} pd_infer_custom_op)
 endif()
 
