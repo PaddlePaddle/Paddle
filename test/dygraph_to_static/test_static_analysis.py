@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.jit.dy2static import NodeVarType, StaticAnalysisVisitor
+from paddle.jit.dy2static import StaticAnalysisVisitor
 from paddle.utils import gast
 
 
@@ -42,7 +42,7 @@ def func_to_test2(x):
         return x
 
 
-result_var_type2 = {'m': {NodeVarType.INT}}
+result_var_type2 = {'m': {"INT"}}
 
 
 def func_to_test3():
@@ -61,18 +61,18 @@ def func_to_test3():
 
 
 result_var_type3 = {
-    'a': {NodeVarType.INT},
-    'b': {NodeVarType.FLOAT},
-    'c': {NodeVarType.FLOAT},
-    'd': {NodeVarType.FLOAT},
-    'e': {NodeVarType.BOOLEAN},
-    'f': {NodeVarType.INT},
-    'g': {NodeVarType.STRING},
-    'h': {NodeVarType.NONE},
-    'i': {NodeVarType.BOOLEAN},
-    'j': {NodeVarType.UNKNOWN},
-    'k': {NodeVarType.FLOAT},
-    'l': {NodeVarType.PADDLE_RETURN_TYPES},
+    'a': {"INT"},
+    'b': {"FLOAT"},
+    'c': {"FLOAT"},
+    'd': {"FLOAT"},
+    'e': {"BOOLEAN"},
+    'f': {"INT"},
+    'g': {"STRING"},
+    'h': {"NONE"},
+    'i': {"BOOLEAN"},
+    'j': {"UNKNOWN"},
+    'k': {"FLOAT"},
+    'l': {"PADDLE_RETURN_TYPES"},
 }
 
 
@@ -85,10 +85,10 @@ def func_to_test4():
 
 
 result_var_type4 = {
-    'a': {NodeVarType.NUMPY_NDARRAY},
-    'b': {NodeVarType.NUMPY_NDARRAY},
-    'c': {NodeVarType.TENSOR},
-    'd': {NodeVarType.TENSOR},
+    'a': {"NUMPY_NDARRAY"},
+    'b': {"NUMPY_NDARRAY"},
+    'c': {"TENSOR"},
+    'd': {"TENSOR"},
 }
 
 
@@ -112,13 +112,13 @@ def func_to_test5():
 
 
 result_var_type5 = {
-    'a': {NodeVarType.INT},
-    'b': {NodeVarType.FLOAT, NodeVarType.BOOLEAN},
-    'c': {NodeVarType.UNKNOWN},
-    'd': {NodeVarType.PADDLE_RETURN_TYPES},
-    'inner_int_func': {NodeVarType.INT},
-    'inner_bool_float_func': {NodeVarType.FLOAT, NodeVarType.BOOLEAN},
-    'inner_unknown_func': {NodeVarType.UNKNOWN},
+    'a': {"INT"},
+    'b': {"FLOAT", "BOOLEAN"},
+    'c': {"UNKNOWN"},
+    'd': {"PADDLE_RETURN_TYPES"},
+    'inner_int_func': {"INT"},
+    'inner_bool_float_func': {"FLOAT", "BOOLEAN"},
+    'inner_unknown_func': {"UNKNOWN"},
 }
 
 
@@ -136,10 +136,10 @@ def func_to_test6(x, y=1):
 
 
 result_var_type6 = {
-    'i': {NodeVarType.INT},
-    'x': {NodeVarType.INT},
-    'y': {NodeVarType.INT},
-    'add': {NodeVarType.INT},
+    'i': {"INT"},
+    'x': {"INT"},
+    'y': {"INT"},
+    'add': {"INT"},
 }
 
 
@@ -150,13 +150,13 @@ def func_to_test7(a: int, b: float, c: paddle.Tensor, d: float = 'diff'):
 
 
 result_var_type7 = {
-    'a': {NodeVarType.BOOLEAN},
-    'b': {NodeVarType.FLOAT},
-    'c': {NodeVarType.TENSOR},
-    'd': {NodeVarType.STRING},
-    'e': {NodeVarType.PADDLE_RETURN_TYPES},
-    'f': {NodeVarType.PADDLE_RETURN_TYPES},
-    'g': {NodeVarType.TENSOR},
+    'a': {"BOOLEAN"},
+    'b': {"FLOAT"},
+    'c': {"TENSOR"},
+    'd': {"STRING"},
+    'e': {"PADDLE_RETURN_TYPES"},
+    'f': {"PADDLE_RETURN_TYPES"},
+    'g': {"TENSOR"},
 }
 
 test_funcs = [
