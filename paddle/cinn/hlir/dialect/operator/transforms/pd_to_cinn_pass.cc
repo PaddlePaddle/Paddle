@@ -138,6 +138,17 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
 
   bool MatchAndRewrite(paddle::dialect::ScaleOp op,
                        pir::PatternRewriter &rewriter) const override {
+    auto input_dim = op->operand_source(0)
+                         .type()
+                         .dyn_cast<paddle::dialect::DenseTensorType>()
+                         .dims();
+
+    for (size_t i = 0; i < input_dim.size(); ++i) {
+      if (input_dim[i] == -1) {
+        return false;
+      }
+    }
+
     auto scale_factor_gen_op =
         op->operand_source(1).dyn_cast<pir::OpResult>().owner();
 
@@ -613,13 +624,13 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(MinOpPattern().Build(context));
   ps.Add(ProdOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
-  ps.Add<ConcatOpPattern>(context);
-  ps.Add<SliceOpPattern>(context);
+  // ps.Add<ConcatOpPattern>(context);
+  //  ps.Add<SliceOpPattern>(context);
   ps.Add<PowOpPattern>(context);
-  ps.Add<SplitWithNumOpPattern>(context);
+  // ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
-  ps.Add<SplitOpPattern>(context);
-  ps.Add<ExpandOpPattern>(context);
+  // ps.Add<SplitOpPattern>(context);
+  // ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 

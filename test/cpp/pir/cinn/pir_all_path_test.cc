@@ -375,69 +375,71 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
 //   EXPECT_EQ(res0, true);
 // }
 
-// std::shared_ptr<::pir::Program> BuildScaleTensorGroupProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// // std::shared_ptr<::pir::Program> BuildScaleTensorGroupProgram() {
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+// //   auto program = std::make_shared<::pir::Program>(ctx);
+// //   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-//   // full -> softmax(max -> subtract -> exp -> sum -> divide)
-//   const float value_one = 0.5;
-//   const std::vector<int64_t> shape = {16, 16};
-//   auto x = builder
-//                .Build<paddle::dialect::FullOp>(
-//                    shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
-//                .result(0);
-//   auto scale = builder
-//                    .Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
-//                                                    0.0,
-//                                                    phi::DataType::FLOAT32,
-//                                                    phi::GPUPlace())
-//                    .result(0);
-//   auto factor = builder.Build<paddle::dialect::CosOp>(scale).result(0);
-//   auto out =
-//       builder.Build<paddle::dialect::ScaleOp>(x, factor, 0.0,
-//       false).result(0);
+// //   // full -> softmax(max -> subtract -> exp -> sum -> divide)
+// //   const float value_one = 0.5;
+// //   const std::vector<int64_t> shape = {16, 16};
+// //   auto x = builder
+// //                .Build<paddle::dialect::FullOp>(
+// //                    shape, value_one, phi::DataType::FLOAT32,
+// phi::GPUPlace())
+// //                .result(0);
+// //   auto scale = builder
+// // .Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+// //                                                    0.0,
+// //                                                    phi::DataType::FLOAT32,
+// //                                                    phi::GPUPlace())
+// //                    .result(0);
+// //   auto factor = builder.Build<paddle::dialect::CosOp>(scale).result(0);
+// //   auto out =
+// //       builder.Build<paddle::dialect::ScaleOp>(x, factor, 0.0,
+// //       false).result(0);
 
-//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
-//   return program;
-// }
+// //   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+// //   return program;
+// // }
 
-// TEST(GroupOp, TestBuildScaleTensor) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildScaleTensorGroupProgram();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+// // TEST(GroupOp, TestBuildScaleTensor) {
+// //   // Step 1: Construct pir::Program
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   std::shared_ptr<::pir::Program> program =
+// BuildScaleTensorGroupProgram();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+// //   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-//   pir::PassManager pm(ctx);
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-//   pm.AddPass(pir::CreateBuildCinnPass());
-//   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-//   CHECK_EQ(pm.Run(program.get()), true);
+// //   pir::PassManager pm(ctx);
+// //   pm.AddPass(
+// // std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+// //   pm.AddPass(pir::CreateBuildCinnPass());
+// //   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+// //   CHECK_EQ(pm.Run(program.get()), true);
 
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+// //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+// //   auto kernel_program =
+// //       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-//   paddle::framework::Scope exe_scope;
+// //   paddle::framework::Scope exe_scope;
 
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+// //   paddle::framework::InterpreterCore executor(
+// //       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-//   executor.Run({}, true);
+// //   executor.Run({}, true);
 
-//   auto out_tensor =
-//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+// //   auto out_tensor =
+// // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-//   bool res0 = simple_cmp(out_tensor.data<float>()[0], 0.5);
-//   EXPECT_EQ(res0, true);
-// }
+// //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 0.5);
+// //   EXPECT_EQ(res0, true);
+// // }
 
 // std::shared_ptr<::pir::Program> BuildPowerProgram() {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -509,198 +511,204 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
 //   EXPECT_EQ(res0, true);
 // }
 
-// std::shared_ptr<::pir::Program> BuildLayerNorm2Program() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+std::shared_ptr<::pir::Program> BuildLayerNorm2Program() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-//   std::vector<int64_t> axes{-1};
-//   auto x =
-//       builder
-//           .Build<paddle::dialect::FullOp>(std::vector<int64_t>({128, 128,
-//           768}),
-//                                           1.0,
-//                                           phi::DataType::FLOAT32,
-//                                           phi::GPUPlace())
-//           .result(0);
+  std::vector<int64_t> axes{-1};
+  auto x =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>({128, 128, 768}),
+                                          1.0,
+                                          phi::DataType::FLOAT32,
+                                          phi::GPUPlace())
+          .result(0);
 
-//   auto bias = builder
-//                   .Build<paddle::dialect::FullOp>(std::vector<int64_t>({768}),
-//                                                   1.0,
-//                                                   phi::DataType::FLOAT32,
-//                                                   phi::GPUPlace())
-//                   .result(0);
+  auto bias = builder
+                  .Build<paddle::dialect::FullOp>(std::vector<int64_t>({768}),
+                                                  1.0,
+                                                  phi::DataType::FLOAT32,
+                                                  phi::GPUPlace())
+                  .result(0);
 
-//   auto scale = builder
-//                    .Build<paddle::dialect::FullOp>(std::vector<int64_t>({768}),
-//                                                    1.0,
-//                                                    phi::DataType::FLOAT32,
-//                                                    phi::GPUPlace())
-//                    .result(0);
+  auto scale = builder
+                   .Build<paddle::dialect::FullOp>(std::vector<int64_t>({768}),
+                                                   1.0,
+                                                   phi::DataType::FLOAT32,
+                                                   phi::GPUPlace())
+                   .result(0);
 
-//   auto num =
-//       builder
-//           .Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 128, 1},
-//                                           768.0,
-//                                           phi::DataType::FLOAT32,
-//                                           phi::CPUPlace())
-//           .result(0);
-//   auto sum =
-//       builder
-//           .Build<paddle::dialect::SumOp>(x, axes, phi::DataType::FLOAT32,
-//           true) .result(0);
+  auto num =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 128, 1},
+                                          768.0,
+                                          phi::DataType::FLOAT32,
+                                          phi::CPUPlace())
+          .result(0);
+  auto sum =
+      builder
+          .Build<paddle::dialect::SumOp>(x, axes, phi::DataType::FLOAT32, true)
+          .result(0);
 
-//   auto mean = builder.Build<paddle::dialect::DivideOp>(sum, num).result(0);
+  auto mean = builder.Build<paddle::dialect::DivideOp>(sum, num).result(0);
 
-//   auto diff = builder.Build<paddle::dialect::SubtractOp>(x, mean).result(0);
+  auto diff = builder.Build<paddle::dialect::SubtractOp>(x, mean).result(0);
 
-//   auto power = builder.Build<paddle::dialect::MultiplyOp>(diff,
-//   diff).result(0); auto power_sum = builder
-//                        .Build<paddle::dialect::SumOp>(
-//                            power, axes, phi::DataType::FLOAT32, true)
-//                        .result(0);
-//   auto num2 =
-//       builder
-//           .Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 128, 1},
-//                                           768.0,
-//                                           phi::DataType::FLOAT32,
-//                                           phi::CPUPlace())
-//           .result(0);
-//   auto var2 =
-//       builder.Build<paddle::dialect::DivideOp>(power_sum, num2).result(0);
+  auto power = builder.Build<paddle::dialect::MultiplyOp>(diff, diff).result(0);
+  auto power_sum = builder
+                       .Build<paddle::dialect::SumOp>(
+                           power, axes, phi::DataType::FLOAT32, true)
+                       .result(0);
+  auto num2 =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 128, 1},
+                                          768.0,
+                                          phi::DataType::FLOAT32,
+                                          phi::CPUPlace())
+          .result(0);
+  auto var2 =
+      builder.Build<paddle::dialect::DivideOp>(power_sum, num2).result(0);
 
-//   auto t1 = builder.Build<paddle::dialect::ScaleOp>(var2, 1.0,
-//   1e-5).result(0); auto factor = builder
-//                     .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1},
-//                                                     -0.5,
-//                                                     phi::DataType::FLOAT32,
-//                                                     phi::CPUPlace())
-//                     .result(0);
-//   auto t2 =
-//       builder.Build<paddle::dialect::ElementwisePowOp>(t1, factor).result(0);
-//   // auto t2 = builder.Build<paddle::dialect::RsqrtOp>(t1).result(0);
-//   auto t3 = builder.Build<paddle::dialect::MultiplyOp>(diff, t2).result(0);
-//   auto t5 = builder.Build<paddle::dialect::MultiplyOp>(t3, scale).result(0);
-//   auto out = builder.Build<paddle::dialect::AddOp>(t5, bias).result(0);
-//   auto mean_out =
-//       builder
-//           .Build<paddle::dialect::ReshapeOp>(mean,
-//           std::vector<int64_t>({-1})) .result(0);
-//   auto mean2_out =
-//       builder
-//           .Build<paddle::dialect::ReshapeOp>(var2,
-//           std::vector<int64_t>({-1})) .result(0);
+  auto t1 = builder.Build<paddle::dialect::ScaleOp>(var2, 1.0, 1e-5).result(0);
+  auto factor = builder
+                    .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1},
+                                                    -0.5,
+                                                    phi::DataType::FLOAT32,
+                                                    phi::CPUPlace())
+                    .result(0);
+  auto t2 =
+      builder.Build<paddle::dialect::ElementwisePowOp>(t1, factor).result(0);
+  // auto t2 = builder.Build<paddle::dialect::RsqrtOp>(t1).result(0);
+  auto t3 = builder.Build<paddle::dialect::MultiplyOp>(diff, t2).result(0);
+  auto t5 = builder.Build<paddle::dialect::MultiplyOp>(t3, scale).result(0);
+  auto out = builder.Build<paddle::dialect::AddOp>(t5, bias).result(0);
+  auto mean_out =
+      builder
+          .Build<paddle::dialect::ReshapeOp>(mean, std::vector<int64_t>({-1}))
+          .result(0);
+  auto mean2_out =
+      builder
+          .Build<paddle::dialect::ReshapeOp>(var2, std::vector<int64_t>({-1}))
+          .result(0);
 
-//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
-//   builder.Build<paddle::dialect::FetchOp>(mean_out, "mean", 0);
-//   builder.Build<paddle::dialect::FetchOp>(mean2_out, "var", 0);
-//   return program;
-// }
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(mean_out, "mean", 0);
+  builder.Build<paddle::dialect::FetchOp>(mean2_out, "var", 0);
+  return program;
+}
 
-// TEST(GroupOp, TestBuildLayerNorm2) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildLayerNorm2Program();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+TEST(GroupOp, TestBuildLayerNorm2) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildLayerNorm2Program();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+  cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-//   pir::PassManager pm(ctx);
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-//   pm.AddPass(pir::CreateBuildCinnPass());
-//   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-//   CHECK_EQ(pm.Run(program.get()), true);
+  pir::PassManager pm(ctx);
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
 
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  pm.AddPass(pir::CreateBuildCinnPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
 
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+  pm.EnableIRPrinting();
+  CHECK_EQ(pm.Run(program.get()), true);
 
-//   paddle::framework::Scope exe_scope;
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-//   // TODO(phlrain): fix exec error
-//   executor.Run({}, true);
+  paddle::framework::Scope exe_scope;
 
-//   //   auto out_tensor =
-//   // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-// }
+  paddle::framework::InterpreterCore executor(
+      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-// std::shared_ptr<::pir::Program> BuildSum2GroupProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+  // TODO(phlrain): fix exec error
+  executor.Run({}, true);
 
-//   auto x = builder
-//                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16,
-//                16}),
-//                                                0.0,
-//                                                phi::DataType::FLOAT32,
-//                                                phi::GPUPlace())
-//                .result(0);
+  //   auto out_tensor =
+  // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+}
 
-//   auto cos = builder.Build<paddle::dialect::CosOp>(x).result(0);
+// // std::shared_ptr<::pir::Program> BuildSum2GroupProgram() {
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// //   auto program = std::make_shared<::pir::Program>(ctx);
+// //   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-//   auto y = builder
-//                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({8, 8}),
-//                                                0.0,
-//                                                phi::DataType::FLOAT32,
-//                                                phi::GPUPlace())
-//                .result(0);
+// //   auto x = builder
+// //                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16,
+// //                16}),
+// //                                                0.0,
+// //                                                phi::DataType::FLOAT32,
+// //                                                phi::GPUPlace())
+// //                .result(0);
 
-//   auto sin = builder.Build<paddle::dialect::SinOp>(y).result(0);
+// //   auto cos = builder.Build<paddle::dialect::CosOp>(x).result(0);
 
-//   builder.Build<paddle::dialect::FetchOp>(cos, "out", 0);
-//   builder.Build<paddle::dialect::FetchOp>(sin, "out2", 0);
-//   return program;
-// }
+// //   auto y = builder
+// //                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({8,
+// 8}),
+// //                                                0.0,
+// //                                                phi::DataType::FLOAT32,
+// //                                                phi::GPUPlace())
+// //                .result(0);
 
-// TEST(GroupOp, TestBuildSum2Group) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildSum2GroupProgram();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+// //   auto sin = builder.Build<paddle::dialect::SinOp>(y).result(0);
 
-//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+// //   builder.Build<paddle::dialect::FetchOp>(cos, "out", 0);
+// //   builder.Build<paddle::dialect::FetchOp>(sin, "out2", 0);
+// //   return program;
+// // }
 
-//   pir::PassManager pm(ctx);
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-//   pm.AddPass(pir::CreateBuildCinnPass());
-//   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-//   CHECK_EQ(pm.Run(program.get()), true);
+// // TEST(GroupOp, TestBuildSum2Group) {
+// //   // Step 1: Construct pir::Program
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   std::shared_ptr<::pir::Program> program = BuildSum2GroupProgram();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+// //   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+// //   pir::PassManager pm(ctx);
+// //   pm.AddPass(
+// // std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+// //   pm.AddPass(pir::CreateBuildCinnPass());
+// //   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+// //   CHECK_EQ(pm.Run(program.get()), true);
 
-//   paddle::framework::Scope exe_scope;
+// //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+// //   auto kernel_program =
+// //       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-//   executor.Run({}, true);
+// //   paddle::framework::Scope exe_scope;
 
-//   auto out_tensor =
-//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+// //   paddle::framework::InterpreterCore executor(
+// //       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-//   auto out_tensor2 =
-//       executor.local_scope()->FindVar("out2@fetch")->Get<phi::DenseTensor>();
+// //   executor.Run({}, true);
 
-//   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0);
-//   EXPECT_EQ(res0, true);
+// //   auto out_tensor =
+// // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-//   bool res1 = (out_tensor2.data<float>()[0] == 0.0);
-//   EXPECT_EQ(res1, true);
-// }
+// //   auto out_tensor2 =
+// // executor.local_scope()->FindVar("out2@fetch")->Get<phi::DenseTensor>();
+
+// //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0);
+// //   EXPECT_EQ(res0, true);
+
+// //   bool res1 = (out_tensor2.data<float>()[0] == 0.0);
+// //   EXPECT_EQ(res1, true);
+// // }
 
 // std::shared_ptr<::pir::Program> BuildConcatProgram() {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -1033,7 +1041,7 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
 //   EXPECT_EQ(res0, true);
 // }
 
-// std::shared_ptr<::pir::Program> BuildGroupProgram() {
+// std::shared_ptr<::pir::Program> BuildAddSumProgram() {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
@@ -1042,78 +1050,7 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
 
 //   // full -> softmax(max -> subtract -> exp -> sum -> divide)
 //   const float value_one = 1.0;
-//   const std::vector<int64_t> shape = {128 * 12, 128, 128};
-//   auto x = builder
-//                .Build<paddle::dialect::UniformOp>(
-//                    shape, phi::DataType::FLOAT32, -0.5, 0.5, 0,
-//                    phi::GPUPlace())
-//                .result(0);
-
-//   auto max =
-//       builder.Build<paddle::dialect::MaxOp>(x, std::vector<int64_t>{-1},
-//       true)
-//           .result(0);
-//   auto sub = builder.Build<paddle::dialect::SubtractOp>(x, max).result(0);
-//   auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
-//   auto sum =
-//       builder
-//           .Build<paddle::dialect::SumOp>(
-//               exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
-//           .result(0);
-//   auto out = builder.Build<paddle::dialect::DivideOp>(exp, sum).result(0);
-
-//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
-//   return program;
-// }
-
-// TEST(GroupOp, TestBuild) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildGroupProgram();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-
-//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
-
-//   pir::PassManager pm(ctx);
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-//   pm.AddPass(pir::CreateBuildCinnPass());
-//   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-//   // pm.EnableIRPrinting();
-//   CHECK_EQ(pm.Run(program.get()), true);
-
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
-//   paddle::framework::Scope exe_scope;
-
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
-
-//   executor.Run({}, true);
-
-//   auto out_tensor =
-//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
-//   // std::cerr << out_tensor << std::endl;
-
-// //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
-// //   EXPECT_EQ(res0, true);
-// }
-
-// std::shared_ptr<::pir::Program> BuildGroupProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
-
-//   // full -> softmax(max -> subtract -> exp -> sum -> divide)
-//   const float value_one = 1.0;
-//   const std::vector<int64_t> shape = {256, 128, 128};
+//   const std::vector<int64_t> shape = {256, 128, 256};
 //   auto x = builder
 //                .Build<paddle::dialect::UniformOp>(
 //                    shape, phi::DataType::FLOAT32, -0.5, 0.5, 0,
@@ -1137,10 +1074,10 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
 //   return program;
 // }
 
-// TEST(GroupOp, TestBuild) {
+// TEST(GroupOp, TestAddSum) {
 //   // Step 1: Construct pir::Program
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildGroupProgram();
+//   std::shared_ptr<::pir::Program> program = BuildAddSumProgram();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
@@ -1171,241 +1108,173 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
 
 //   // std::cerr << out_tensor << std::endl;
 
-// //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
-// //   EXPECT_EQ(res0, true);
-// }
-
-std::shared_ptr<::pir::Program> BuildAddSumProgram() {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-  auto program = std::make_shared<::pir::Program>(ctx);
-  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
-
-  // full -> softmax(max -> subtract -> exp -> sum -> divide)
-  const float value_one = 1.0;
-  const std::vector<int64_t> shape = {256, 128, 256};
-  auto x = builder
-               .Build<paddle::dialect::UniformOp>(
-                   shape, phi::DataType::FLOAT32, -0.5, 0.5, 0, phi::GPUPlace())
-               .result(0);
-
-  auto y = builder
-               .Build<paddle::dialect::UniformOp>(
-                   shape, phi::DataType::FLOAT32, -0.5, 0.5, 0, phi::GPUPlace())
-               .result(0);
-
-  auto add = builder.Build<paddle::dialect::AddOp>(x, y).result(0);
-  auto sum =
-      builder
-          .Build<paddle::dialect::SumOp>(
-              add, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
-          .result(0);
-
-  builder.Build<paddle::dialect::FetchOp>(sum, "out", 0);
-  return program;
-}
-
-TEST(GroupOp, TestAddSum) {
-  // Step 1: Construct pir::Program
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::shared_ptr<::pir::Program> program = BuildAddSumProgram();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-
-  cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
-
-  pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-  pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-  // pm.EnableIRPrinting();
-  CHECK_EQ(pm.Run(program.get()), true);
-
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
-  paddle::framework::Scope exe_scope;
-
-  paddle::framework::InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
-
-  executor.Run({}, true);
-
-  auto out_tensor =
-      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
-  // std::cerr << out_tensor << std::endl;
-
-  //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
-  //   EXPECT_EQ(res0, true);
-}
-
-// std::shared_ptr<::pir::Program> BuildReshapeAddProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
-
-//   // full -> softmax(max -> subtract -> exp -> sum -> divide)
-//   const float value_one = 1.0;
-//   const std::vector<int64_t> shape = {32, 64, 256, 128};
-//   auto x =
-//       builder
-//           .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({64, 128}),
-//                                              phi::DataType::FLOAT32,
-//                                              -0.5,
-//                                              0.5,
-//                                              0,
-//                                              phi::GPUPlace())
-//           .result(0);
-
-//   auto y = builder
-//                .Build<paddle::dialect::UniformOp>(
-//                    shape, phi::DataType::FLOAT32, -0.5, 0.5, 0,
-//                    phi::GPUPlace())
-//                .result(0);
-
-//   auto reshape = builder
-//                      .Build<paddle::dialect::ReshapeOp>(
-//                          x, std::vector<int64_t>({64, -1, 128}))
-//                      .result(0);
-//   auto add = builder.Build<paddle::dialect::AddOp>(reshape, y).result(0);
-
-//   builder.Build<paddle::dialect::FetchOp>(add, "out", 0);
-//   return program;
-// }
-
-// TEST(GroupOp, TestReshapeAdd) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildReshapeAddProgram();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-
-//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
-
-//   pir::PassManager pm(ctx);
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
-//   pm.AddPass(pir::CreateDeadCodeEliminationPass());
-
-//   pm.AddPass(pir::CreateBuildCinnPass());
-//   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-//   pm.EnableIRPrinting();
-//   CHECK_EQ(pm.Run(program.get()), true);
-
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
-//   paddle::framework::Scope exe_scope;
-
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
-
-//   executor.Run({}, true);
-
-//   auto out_tensor =
-//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
-//   // std::cerr << out_tensor << std::endl;
-
 //   //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
 //   //   EXPECT_EQ(res0, true);
 // }
 
-// std::shared_ptr<::pir::Program> BuildSharedBufferProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// // std::shared_ptr<::pir::Program> BuildReshapeAddProgram() {
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+// //   auto program = std::make_shared<::pir::Program>(ctx);
+// //   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-//   // full -> softmax(max -> subtract -> exp -> sum -> divide)
-//   const float value_one = 1.0;
-//   const std::vector<int64_t> shape = {256, 512};
-//   auto x =
-//       builder
-//           .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({256,
-//           512}),
-//                                              phi::DataType::FLOAT32,
-//                                              -0.5,
-//                                              0.5,
-//                                              0,
-//                                              phi::GPUPlace())
-//           .result(0);
+// //   // full -> softmax(max -> subtract -> exp -> sum -> divide)
+// //   const float value_one = 1.0;
+// //   const std::vector<int64_t> shape = {32, 64, 256, 128};
+// //   auto x =
+// //       builder
+// //           .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({64,
+// 128}),
+// //                                              phi::DataType::FLOAT32,
+// //                                              -0.5,
+// //                                              0.5,
+// //                                              0,
+// //                                              phi::GPUPlace())
+// //           .result(0);
 
-//   auto y = builder
-//                .Build<paddle::dialect::UniformOp>(
-//                    shape, phi::DataType::FLOAT32, -0.5, 0.5, 0,
-//                    phi::GPUPlace())
-//                .result(0);
-//   // auto scale = builder
-//   // .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({768}),
-//   //                                                1.0,
-//   //                                                phi::DataType::FLOAT32,
-//   //                                                phi::GPUPlace())
-//   //                .result(0);
-//   auto sum = builder
-//                  .Build<paddle::dialect::SumOp>(
-//                      x, std::vector<int64_t>{-1}, phi::DataType::FLOAT32,
-//                      true)
-//                  .result(0);
-//   auto t1 = builder.Build<paddle::dialect::ScaleOp>(sum, 1.0,
-//   1e-5).result(0);
+// //   auto y = builder
+// //                .Build<paddle::dialect::UniformOp>(
+// //                    shape, phi::DataType::FLOAT32, -0.5, 0.5, 0,
+// //                    phi::GPUPlace())
+// //                .result(0);
 
-//   auto add = builder.Build<paddle::dialect::AddOp>(t1, y).result(0);
+// //   auto reshape = builder
+// //                      .Build<paddle::dialect::ReshapeOp>(
+// //                          x, std::vector<int64_t>({64, -1, 128}))
+// //                      .result(0);
+// //   auto add = builder.Build<paddle::dialect::AddOp>(reshape, y).result(0);
 
-//   builder.Build<paddle::dialect::FetchOp>(add, "out", 0);
-//   return program;
-// }
+// //   builder.Build<paddle::dialect::FetchOp>(add, "out", 0);
+// //   return program;
+// // }
 
-// TEST(GroupOp, TestSharedBuffer) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildSharedBufferProgram();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+// // TEST(GroupOp, TestReshapeAdd) {
+// //   // Step 1: Construct pir::Program
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   std::shared_ptr<::pir::Program> program = BuildReshapeAddProgram();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+// //   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-//   pir::PassManager pm(ctx);
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
-//   pm.AddPass(pir::CreateDeadCodeEliminationPass());
+// //   pir::PassManager pm(ctx);
+// //   pm.AddPass(
+// // std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+// //   pm.AddPass(
+// // std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
+// //   pm.AddPass(pir::CreateDeadCodeEliminationPass());
 
-//   pm.AddPass(pir::CreateBuildCinnPass());
-//   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-//   // pm.EnableIRPrinting();
-//   CHECK_EQ(pm.Run(program.get()), true);
+// //   pm.AddPass(pir::CreateBuildCinnPass());
+// //   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+// //   pm.EnableIRPrinting();
+// //   CHECK_EQ(pm.Run(program.get()), true);
 
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+// //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+// //   auto kernel_program =
+// //       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-//   paddle::framework::Scope exe_scope;
+// //   paddle::framework::Scope exe_scope;
 
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+// //   paddle::framework::InterpreterCore executor(
+// //       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-//   executor.Run({}, true);
+// //   executor.Run({}, true);
 
-//   auto out_tensor =
-//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+// //   auto out_tensor =
+// // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-//   // std::cerr << out_tensor << std::endl;
+// //   // std::cerr << out_tensor << std::endl;
 
-//   //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
-//   //   EXPECT_EQ(res0, true);
-// }
+// //   //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
+// //   //   EXPECT_EQ(res0, true);
+// // }
+
+// // std::shared_ptr<::pir::Program> BuildSharedBufferProgram() {
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+// //   auto program = std::make_shared<::pir::Program>(ctx);
+// //   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+// //   // full -> softmax(max -> subtract -> exp -> sum -> divide)
+// //   const float value_one = 1.0;
+// //   const std::vector<int64_t> shape = {256, 512};
+// //   auto x =
+// //       builder
+// //           .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({256,
+// //           512}),
+// //                                              phi::DataType::FLOAT32,
+// //                                              -0.5,
+// //                                              0.5,
+// //                                              0,
+// //                                              phi::GPUPlace())
+// //           .result(0);
+
+// //   auto y = builder
+// //                .Build<paddle::dialect::UniformOp>(
+// //                    shape, phi::DataType::FLOAT32, -0.5, 0.5, 0,
+// //                    phi::GPUPlace())
+// //                .result(0);
+// //   // auto scale = builder
+// //   // .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({768}),
+// //   //                                                1.0,
+// //   // phi::DataType::FLOAT32,
+// //   //                                                phi::GPUPlace())
+// //   //                .result(0);
+// //   auto sum = builder
+// //                  .Build<paddle::dialect::SumOp>(
+// //                      x, std::vector<int64_t>{-1}, phi::DataType::FLOAT32,
+// //                      true)
+// //                  .result(0);
+// //   auto t1 = builder.Build<paddle::dialect::ScaleOp>(sum, 1.0,
+// //   1e-5).result(0);
+
+// //   auto add = builder.Build<paddle::dialect::AddOp>(t1, y).result(0);
+
+// //   builder.Build<paddle::dialect::FetchOp>(add, "out", 0);
+// //   return program;
+// // }
+
+// // TEST(GroupOp, TestSharedBuffer) {
+// //   // Step 1: Construct pir::Program
+// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+// //   std::shared_ptr<::pir::Program> program = BuildSharedBufferProgram();
+// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+// //   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+
+// //   pir::PassManager pm(ctx);
+// //   pm.AddPass(
+// // std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+// //   pm.AddPass(
+// // std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
+// //   pm.AddPass(pir::CreateDeadCodeEliminationPass());
+
+// //   pm.AddPass(pir::CreateBuildCinnPass());
+// //   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+// //   // pm.EnableIRPrinting();
+// //   CHECK_EQ(pm.Run(program.get()), true);
+
+// //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+
+// //   auto kernel_program =
+// //       paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+
+// //   paddle::framework::Scope exe_scope;
+
+// //   paddle::framework::InterpreterCore executor(
+// //       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+
+// //   executor.Run({}, true);
+
+// //   auto out_tensor =
+// // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+
+// //   // std::cerr << out_tensor << std::endl;
+
+// //   //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
+// //   //   EXPECT_EQ(res0, true);
+// // }

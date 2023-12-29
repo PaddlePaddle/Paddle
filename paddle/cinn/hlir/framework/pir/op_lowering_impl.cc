@@ -208,7 +208,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   group_tile_info->flatten_inner_num = flatten_inner_num;
   group_tile_info->reduce_inner_num = reduce_inner_num;
 
-  if (reduce_block == reduce_numel) {
+  if (reduce_block > 1 && flatten_block > 1) {
     group_tile_info->reduce_type = 0;
   }
 
