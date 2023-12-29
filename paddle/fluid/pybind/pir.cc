@@ -777,6 +777,18 @@ void BindValue(py::module *m) {
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("detach",
+           [](Value self) {
+             auto share_data_op =
+                 ApiBuilder::Instance()
+                     .GetBuilder()
+                     ->Build<paddle::dialect::ShareDataOp>(self);
+             auto out = share_data_op.out();
+             out.set_attribute(
+                 kAttrStopGradients,
+                 BoolAttribute::get(pir::IrContext::Instance(), false));
+             return out;
+           })
       .def("__repr__", &Value2String);
 }
 
