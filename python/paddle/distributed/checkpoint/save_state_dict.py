@@ -166,13 +166,11 @@ def save_state_dict(
         local_state_dict = {}
         local_state_dict_metadata = {}
         local_storage_metadata = {}
-        structured_to_param_name = {}
         for key, val in flat_state_dict.items():
             if isinstance(val, paddle.Tensor):
                 # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
                 if not val._is_initialized():
                     continue
-                structured_to_param_name[key] = val.name
                 if val.is_dist():
                     # when val is scalar, the shape is []
                     (

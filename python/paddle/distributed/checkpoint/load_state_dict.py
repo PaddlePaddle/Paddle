@@ -444,7 +444,7 @@ def load_state_dict(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
             )
         if len(rank_to_files) <= 0:
-            return False
+            return
         local_load_files = get_local_load_files(rank_to_files)
         # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
         load_infos = get_load_infos(
@@ -557,5 +557,3 @@ def load_state_dict(
         for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
                 state_dict[k] = v.cpu()
-
-        return True
