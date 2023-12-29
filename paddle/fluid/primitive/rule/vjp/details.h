@@ -301,6 +301,22 @@ void scatter_grad(const Tensor& index,
 }
 
 template <typename T>
+void scatter_nd_add_grad(const Tensor& index,
+                         const Tensor& updates,
+                         const Tensor& out_grad,
+                         Tensor* x_grad,
+                         Tensor* updates_grad) {
+  if (x_grad) {
+    by_pass<T>(out_grad, x_grad);
+  }
+  if (updates_grad) {
+    // Gradient by Gather: dUpdates = dO[Ids]
+    auto tmp_updates_grad = gather_nd<T>(out_grad, index);
+    set_output<T>(tmp_updates_grad, updates_grad);
+  }
+}
+
+template <typename T>
 void sin_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   auto x_grad_tmp = cos<T>(x) * out_grad;
   set_output<T>(x_grad_tmp, x_grad);

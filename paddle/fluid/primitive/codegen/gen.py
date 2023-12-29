@@ -90,6 +90,7 @@ OTHER_PRIM_VJP_OPS = [
     'pad_grad',
     'max_grad',
     'scatter_grad',
+    'scatter_nd_add_grad',
     'slice_grad',
     'tile_grad',
     'topk_grad',
