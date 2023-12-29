@@ -13,7 +13,6 @@
 # limitations under the License.
 import argparse
 import re
-from typing import List
 
 # this is a file's header part
 CommonHead = '''
@@ -126,7 +125,8 @@ EpilogueTags = {
     # "biasReLU": "EpilogueOpBiasReLU",
 }
 
-finegrained_types = ["true", "false"]
+FineGrainedTypes = ["true", "false"]
+FineGrainedTypes_sm70 = ["false"]
 
 
 def SubstituteTemplate(template, values):
@@ -186,24 +186,26 @@ def generate_source_cu(
     element_type: str,
     arch: int,
     epilogue_tag: str,
-    finegrained_types: List,
     stages: int,
 ):
     all_code = CommonHead
     ThreadblockShapes_arch = ThreadblockShapes
     WarpShapes_arch = WarpShapes
+    FineGrainedTypes_arch = FineGrainedTypes
+
     if arch < 80:
         ThreadblockShapes_arch = ThreadblockShapes_sm70
         WarpShapes_arch = WarpShapes_sm70
+        FineGrainedTypes_arch = FineGrainedTypes_sm70
     for WeightType in WeightTypes:
         for i in range(len(ThreadblockShapes_arch)):
-            for j in range(len(finegrained_types)):
+            for j in range(len(FineGrainedTypes_arch)):
                 value_dict = {
                     "T": ElementTypes[element_type],
                     "WeightType": WeightType,
                     "arch": Archs[arch],
                     "EpilogueTag": EpilogueTags[epilogue_tag],
-                    "FineGrained": finegrained_types[j],
+                    "FineGrained": FineGrainedTypes_arch[j],
                     "ThreadblockShape": ThreadblockShapes_arch[i],
                     "WarpShape": WarpShapes_arch[i],
                     "Stages": str(stages),
@@ -239,7 +241,6 @@ if __name__ == "__main__":
                             element_type,
                             arch,
                             epilogue_tag,
-                            finegrained_types,
                             stages,
                         )
                         with open(file_name, "w") as f:
