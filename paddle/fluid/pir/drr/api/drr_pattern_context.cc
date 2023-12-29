@@ -17,7 +17,7 @@
 #include "paddle/fluid/pir/drr/pattern_graph.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 DrrPatternContext::DrrPatternContext() {
@@ -28,6 +28,7 @@ DrrPatternContext::DrrPatternContext() {
 drr::SourcePattern DrrPatternContext::SourcePattern() {
   return drr::SourcePattern(this);
 }
+
 const Op& DrrPatternContext::SourceOpPattern(
     const std::string& op_type,
     const std::unordered_map<std::string, Attribute>& attributes) {
@@ -167,4 +168,4 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
 }
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle
