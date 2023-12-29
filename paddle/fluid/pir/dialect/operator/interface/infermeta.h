@@ -25,7 +25,11 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
   struct Concept {
     explicit Concept(void (*infer_meta)(phi::InferMetaContext *))
         : infer_meta_(infer_meta) {}
+    explicit Concept(std::vector<pir::Type> (*infer_meta)(const std::vector<pir::Value>&))
+        : infer_meta_by_value_(infer_meta) {}
+
     void (*infer_meta_)(phi::InferMetaContext *);
+    std::vector<pir::Type> (*infer_meta_by_value_)(const std::vector<pir::Value>&);
   };
 
   template <class ConcreteOp>
@@ -37,12 +41,25 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
     Model() : Concept(InferMeta) {}
   };
 
+  template <class ConcreteOp>
+  struct Model : public Concept {
+    static inline void std::vector<pir::Type> InferMeta(const std::vector<pir::Value>& input_values) {
+      return ConcreteOp::InferMeta(input_values);
+    }
+
+    Model() : Concept(InferMeta) {}
+  };
+
   /// Constructor
   InferMetaInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferMetaInterface>(op), impl_(impl) {}
 
   void InferMeta(phi::InferMetaContext *infer_meta) {
     impl_->infer_meta_(infer_meta);
+  }
+
+  std::vector<pir::Type> InferMeta(const std::vector<pir::Value>& input_values) {
+    impl_->infer_meta_by_value_(input_values);
   }
 
  private:

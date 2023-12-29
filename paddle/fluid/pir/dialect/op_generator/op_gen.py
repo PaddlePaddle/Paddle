@@ -22,6 +22,7 @@ import yaml
 from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
 from infer_symbolic_shape_gen import gen_infer_symbolic_shape_str
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
+from op_infermeta_gen import gen_infermeta_func_str
 from op_interface_gen import (
     gen_exclusive_interface_str,
     gen_op_infer_meta_str,
@@ -1614,6 +1615,29 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     op_info, op_class_name, op_info_items
                 )
 
+                op_infer_meta_from_type_str = ""
+                if op_infer_meta_map is not None:
+                    muta_attr_is_input = (
+                        True
+                        if len(op_mutable_attribute_name_list) > 0
+                        else False
+                    )
+                    op_infer_meta_from_type_str = gen_infermeta_func_str(
+                        op_class_name,
+                        op_input_name_list,
+                        op_input_type_list,
+                        op_input_optional_list,
+                        op_mutable_attribute_name_list,
+                        op_mutable_attribute_type_list,
+                        op_output_name_list,
+                        op_output_type_list,
+                        op_output_size_list,
+                        op_output_optional_list,
+                        op_infer_meta_map,
+                        op_inplace_map,
+                        muta_attr_is_input,
+                    )
+
                 # =================================== #
                 #         gen Vjp func str      #
                 # =================================== #
@@ -1654,6 +1678,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
 
                     ops_defined_list.append(op_verify_str)
                     ops_defined_list.append(op_infer_meta_str)
+                    ops_defined_list.append(op_infer_meta_from_type_str)
                     ops_defined_list.append(op_get_kernel_type_for_var_str)
                     ops_defined_list.append(parse_kernel_key_define_str)
                     ops_defined_list.append(infer_symbolic_shape_define_str)

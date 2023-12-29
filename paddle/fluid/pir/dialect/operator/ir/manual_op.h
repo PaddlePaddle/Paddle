@@ -52,6 +52,8 @@ class AddNOp : public pir::Op<AddNOp,
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  std::vector<pir::Type> InferMeta(const std::vector<pir::Value>& input_values);
+
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,

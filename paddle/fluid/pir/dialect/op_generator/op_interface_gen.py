@@ -295,6 +295,7 @@ def gen_exclusive_interface_str(op_info, op_info_items):
     if op_info.infer_meta_func:
         exclusive_interface_str += (
             "  static void InferMeta( phi::InferMetaContext *infer_meta );"
+            "  static std::vector<pir::Value> InferMeta( std::vector<pir::Value> input_types );"
         )
     elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
         if op_info_items[op_info.invoke_map['func']].infer_meta_func:

@@ -361,6 +361,17 @@ static const phi::DataType GetKernelTypeforVar(
   return (*expected_kernel_key).dtype();
 }
 
+static const std::vector<pir::Type> InferMetaByValue(pir::Operation* op, const std::vector<pir::Value>& input_values){
+  pir::OpInfo op_info =
+      pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
+  auto infer_meta_interface = op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
+  if (infer_meta_interface) {
+    std::vector<pir::Type> output_types =
+        infer_meta_interface->infer_meta_by_value_(input_values);
+    return output_types;
+  }
+}
+
 template <class IrType>
 std::tuple<phi::Backend, phi::DataLayout> parse_kernel_info(pir::Type type) {
   phi::Backend backend =
@@ -1338,7 +1349,8 @@ void HandleForSpecialOp(
 std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
                                     const std::string& kernel_fn_str,
                                     const phi::KernelKey& kernel_key,
-                                    pir::IrContext* ctx) {
+                                    pir::IrContext* ctx,
+                                    std::vector<pir::Value> new_vec_inputs) {
   if (op_item->num_results() == 0) {
     return {};
   }
@@ -1362,59 +1374,79 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
             op_item->name()));
   }
 
+  std::vector<pir::Value> input_values;
+  for (size_t i = 0; i < op_item->num_operands(); ++i){
+    input_values.emplace_back(op_item->operand(i).source());
+  }
+  std::vector<pir::Type> output_types = InferMetaByValue(op_item, input_values);
+
+  bool is_ouput_changed = false;
   for (size_t i = 0; i < op_item->num_results(); ++i) {
-    phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
-    if ((!UnchangeOutputOps.count(op_item->name())) &&
-        (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
-      out_place = phi::TransToPhiPlace(output_defs[i].backend);
-    }
-
-    auto result_type = op_item->result(i).type();
-    if (!result_type) {
-      op_output_types.push_back(result_type);
-    } else if (result_type.isa<DenseTensorType>() ||
-               result_type.isa<SelectedRowsType>() ||
-               result_type.isa<DenseTensorArrayType>()) {
-      op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
-    } else if (result_type.isa<pir::VectorType>()) {
-      std::vector<pir::Type> vec_inner_types;
-      auto base_types = result_type.dyn_cast<pir::VectorType>().data();
-      for (auto& base_type : base_types) {
-        if (base_type) {
-          if (base_type.isa<DenseTensorType>() ||
-              base_type.isa<SelectedRowsType>()) {
-            vec_inner_types.push_back(
-                BuildOutputType(base_type, out_place, ctx));
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor and selected rows in vector type "
-                "for now"));
-          }
-        } else {
-          // NOTE(phlrain), kernel not support a nullptr in output
-          pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-          phi::DDim dims = {};
-          phi::DataLayout data_layout = phi::DataLayout::NCHW;
-          phi::LoD lod = {{}};
-          size_t offset = 0;
-          auto dense_tensor_dtype = DenseTensorType::get(
-              ctx, fp32_dtype, dims, data_layout, lod, offset);
-          auto allocated_dense_tensor_dtype =
-              AllocatedDenseTensorType::get(ctx, out_place, dense_tensor_dtype);
-          vec_inner_types.push_back(allocated_dense_tensor_dtype);
-        }
-      }
-
-      pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
-      op_output_types.push_back(t1);
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Result type only support DenseTensorType, SelectedRowType and "
-          "VectorType"));
+    if (output_types[i] != op_item->result(i).type()) {
+      is_ouput_changed = true;
+      break;
     }
   }
 
-  return op_output_types;
+  if (is_ouput_changed)
+  {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
+      if ((!UnchangeOutputOps.count(op_item->name())) &&
+          (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
+        out_place = phi::TransToPhiPlace(output_defs[i].backend);
+      }
+
+      auto result_type = op_item->result(i).type();
+      if (!result_type) {
+        op_output_types.push_back(result_type);
+      } else if (result_type.isa<DenseTensorType>() ||
+                result_type.isa<SelectedRowsType>() ||
+                result_type.isa<DenseTensorArrayType>()) {
+        op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
+      } else if (result_type.isa<pir::VectorType>()) {
+        std::vector<pir::Type> vec_inner_types;
+        auto base_types = result_type.dyn_cast<pir::VectorType>().data();
+        for (auto& base_type : base_types) {
+          if (base_type) {
+            if (base_type.isa<DenseTensorType>() ||
+                base_type.isa<SelectedRowsType>()) {
+              vec_inner_types.push_back(
+                  BuildOutputType(base_type, out_place, ctx));
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "only support dense tensor and selected rows in vector type "
+                  "for now"));
+            }
+          } else {
+            // NOTE(phlrain), kernel not support a nullptr in output
+            pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+            phi::DDim dims = {};
+            phi::DataLayout data_layout = phi::DataLayout::NCHW;
+            phi::LoD lod = {{}};
+            size_t offset = 0;
+            auto dense_tensor_dtype = DenseTensorType::get(
+                ctx, fp32_dtype, dims, data_layout, lod, offset);
+            auto allocated_dense_tensor_dtype =
+                AllocatedDenseTensorType::get(ctx, out_place, dense_tensor_dtype);
+            vec_inner_types.push_back(allocated_dense_tensor_dtype);
+          }
+        }
+
+        pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
+        op_output_types.push_back(t1);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Result type only support DenseTensorType, SelectedRowType and "
+            "VectorType"));
+      }
+    }
+    return op_output_types;
+  }
+  else{
+    std::vector<pir::Type> output_types = InferMetaByValue(op_item, input_values);
+    return output_types;
+  }
 }
 
 std::vector<pir::Value> BuildInputs(
@@ -1835,10 +1867,9 @@ void ProcessBlock(
         &op_item, place, kernel_name, *map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
-    // build output type
-    auto op_output_types = BuildOutputs(&op_item, kernel_name, kernel_key, ctx);
+
     // build input
-    auto vec_inputs = BuildInputs(&op_item,
+    auto new_vec_inputs = BuildInputs(&op_item,
                                   kernel_name,
                                   kernel_key,
                                   place,
@@ -1848,10 +1879,13 @@ void ProcessBlock(
                                   map_value_pair,
                                   new_block);
 
+    // build output type
+    auto op_output_types = BuildOutputs(&op_item, kernel_name, kernel_key, ctx, new_vec_inputs);
+
     // build op
     pir::Operation* op = BuildKernelOp(kernel_name,
                                        kernel_key,
-                                       vec_inputs,
+                                       new_vec_inputs,
                                        op_output_types,
                                        &op_item,
                                        new_block,

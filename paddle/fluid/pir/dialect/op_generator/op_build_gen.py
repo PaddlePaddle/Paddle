@@ -298,7 +298,28 @@ def GenBuildAttributes(
     return attr_str
 
 
-def GenBuildOutputs(
+def GenBuildOutputsPart1(
+    op_input_name_list, op_input_type_list, op_input_optional_list
+):
+    build_output_str = '  VLOG(4) << "Builder construction outputs";\n'
+    # Prepar input type
+    for idx in range(len(op_input_name_list)):
+        # is a vector<Tensor>
+        if 'pir::VectorType' in op_input_type_list[idx]:
+            if op_input_optional_list[idx] == 'false':
+                build_output_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
+                    name=op_input_name_list[idx]
+                )
+        # is a Tensor
+        else:
+            if op_input_optional_list[idx] == 'false':
+                build_output_str += "  {type} {name} = {name}_.type().dyn_cast<{type}>(); (void){name};\n".format(
+                    type=op_input_type_list[idx], name=op_input_name_list[idx]
+                )
+    return build_output_str
+
+
+def GenBuildOutputsPart2(
     op_class_name,
     op_input_name_list,
     op_input_type_list,
@@ -311,9 +332,8 @@ def GenBuildOutputs(
     op_output_optional_list,
     op_infer_meta_map,
     op_inplace_map,
-    mutable_attr_is_input=False,
+    mutable_attr_is_input,
 ):
-    build_output_str = '  VLOG(4) << "Builder construction outputs";\n'
     CREATE_INPUT_METATENSOR_TEMPLATE = """
   VLOG(4) << "Builder construction  dense_{name}";
   paddle::dialect::IrTensor ir_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
@@ -457,21 +477,7 @@ def GenBuildOutputs(
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
 """
-    # Prepar input type
-    for idx in range(len(op_input_name_list)):
-        # is a vector<Tensor>
-        if 'pir::VectorType' in op_input_type_list[idx]:
-            if op_input_optional_list[idx] == 'false':
-                build_output_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
-                    name=op_input_name_list[idx]
-                )
-        # is a Tensor
-        else:
-            if op_input_optional_list[idx] == 'false':
-                build_output_str += "  {type} {name} = {name}_.type().dyn_cast<{type}>(); (void){name};\n".format(
-                    type=op_input_type_list[idx], name=op_input_name_list[idx]
-                )
-
+    build_output_str = ""
     # Prepare mutable attributes
     if mutable_attr_is_input:
         for idx in range(len(op_mutable_attribute_name_list)):
@@ -652,10 +658,52 @@ def GenBuildOutputs(
                 build_output_str += CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE.format(
                     type=op_output_type_list[idx], name=output_name
                 )
+    return build_output_str
 
-    build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
+
+def GenBuildOutputsPart3():
+    build_output_str = "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
     # NOTE(Aurelius84): PassStopGradients must be placed after argument.AddOutputs.
     build_output_str += "  ::pir::PassStopGradientsDefaultly(argument);\n"
+    return build_output_str
+
+
+def GenBuildOutputs(
+    op_class_name,
+    op_input_name_list,
+    op_input_type_list,
+    op_input_optional_list,
+    op_mutable_attribute_name_list,
+    op_mutable_attribute_type_list,
+    op_output_name_list,
+    op_output_type_list,
+    op_output_size_list,
+    op_output_optional_list,
+    op_infer_meta_map,
+    op_inplace_map,
+    mutable_attr_is_input=False,
+):
+    build_output_str = GenBuildOutputsPart1(
+        op_input_name_list, op_input_type_list, op_input_optional_list
+    )
+
+    build_output_str += GenBuildOutputsPart2(
+        op_class_name,
+        op_input_name_list,
+        op_input_type_list,
+        op_input_optional_list,
+        op_mutable_attribute_name_list,
+        op_mutable_attribute_type_list,
+        op_output_name_list,
+        op_output_type_list,
+        op_output_size_list,
+        op_output_optional_list,
+        op_infer_meta_map,
+        op_inplace_map,
+        mutable_attr_is_input,
+    )
+
+    build_output_str += GenBuildOutputsPart3()
 
     return build_output_str
 

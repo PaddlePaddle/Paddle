@@ -173,6 +173,48 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+std::vector<pir::Type> AddNOp::InferMeta(const std::vector<pir::Value>& input_values) {
+  pir::Value inputs = input_values[0];
+  VLOG(4) << "Builder construction outputs";
+  pir::VectorType x = inputs.type().dyn_cast<pir::VectorType>();
+
+  std::vector<paddle::dialect::IrTensor> vec_dense_x;
+  for (size_t i = 0; i < x.size(); i++) {
+    vec_dense_x.push_back(paddle::dialect::IrTensor(
+        TransToPhiDataType(
+            x[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+        x[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
+  }
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_x;
+  for (size_t i = 0; i < vec_dense_x.size(); i++) {
+    vec_meta_x.push_back(paddle::dialect::IrMetaTensor(&vec_dense_x[i]));
+  }
+
+  std::vector<const phi::MetaTensor *> meta_x;
+  for (size_t i = 0; i < static_cast<size_t>(vec_meta_x.size()); i++) {
+    meta_x.push_back(&vec_meta_x[i]);
+  }
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::AddNInferMeta(meta_x, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  return argument_outputs;
+}
+
 OpInfoTuple AddN_Op::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
