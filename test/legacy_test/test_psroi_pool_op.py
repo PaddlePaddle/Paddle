@@ -400,13 +400,7 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
 class TestPSROIPoolStaticAPI_NOLOD(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
-        self.x_placeholder = paddle.static.data(
-            name='x', shape=[2, 490, 28, 28]
-        )
         self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
-        self.boxes_placeholder = paddle.static.data(
-            name='boxes_nolod', shape=[3, 4]
-        )
         self.boxes = np.array(
             [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]]
         ).astype(np.float32)
@@ -414,28 +408,37 @@ class TestPSROIPoolStaticAPI_NOLOD(unittest.TestCase):
 
     def test_function_in_static(self):
         with paddle.pir_utils.IrGuard():
-            output_size = 7
-            out = paddle.vision.ops.psroi_pool(
-                self.x_placeholder,
-                self.boxes_placeholder,
-                self.boxes_num,
-                output_size,
-            )
-            expect_out = calc_psroi_pool(
-                self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
-            )
-            places = [paddle.CPUPlace()]
-            if paddle.base.core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
-            for place in places:
-                exe = paddle.static.Executor(place)
-                boxes_data = paddle.to_tensor(self.boxes, place=place)
-                (out_res,) = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'x': self.x, 'boxes_nolod': boxes_data},
-                    fetch_list=[out.name],
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                output_size = 7
+                x_placeholder = paddle.static.data(
+                    name='x', shape=[2, 490, 28, 28]
                 )
-                np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
+                boxes_placeholder = paddle.static.data(
+                    name='boxes_nolod', shape=[3, 4]
+                )
+                boxes_num = paddle.to_tensor(self.boxes_num, 'int32')
+                out = paddle.vision.ops.psroi_pool(
+                    x_placeholder,
+                    boxes_placeholder,
+                    boxes_num,
+                    output_size,
+                )
+                expect_out = calc_psroi_pool(
+                    self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
+                )
+                places = [paddle.CPUPlace()]
+                if paddle.base.core.is_compiled_with_cuda():
+                    places.append(paddle.CUDAPlace(0))
+                for place in places:
+                    exe = paddle.static.Executor(place)
+                    (out_res,) = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={'x': self.x, 'boxes_nolod': self.boxes},
+                        fetch_list=[out],
+                    )
+                    np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
 
 
 if __name__ == '__main__':
