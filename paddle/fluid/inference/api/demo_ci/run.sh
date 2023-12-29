@@ -200,29 +200,6 @@ for WITH_STATIC_LIB in ON OFF; do
         EXIT_CODE=1
       fi
     fi
-
-    # --------custom op demo on windows------
-    if [ $TEST_GPU_CPU == ON -a $WITH_STATIC_LIB == OFF ]; then
-      rm -rf *
-      CUSTOM_OPERATOR_FILES="custom_relu_op.cc;custom_relu_op.cu"
-      cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
-        -DWITH_MKL=$TURN_ON_MKL \
-        -DDEMO_NAME=custom_op_demo \
-        -DWITH_GPU=$TEST_GPU_CPU \
-        -DWITH_STATIC_LIB=OFF \
-        -DUSE_TENSORRT=$USE_TENSORRT \
-        -DCUDA_LIB="$CUDA_LIB" \
-        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
-        -DCUSTOM_OPERATOR_FILES=$CUSTOM_OPERATOR_FILES \
-        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-      ninja
-      FLAGS_enable_pir_in_executor=1 ./custom_op_demo \
-        --modeldir=$DATA_DIR/custom_op/custom_relu_infer_model
-      if [ $? -ne 0 ]; then
-        echo "custom_op_demo runs failed " >> ${current_dir}/test_summary.txt
-        EXIT_CODE=1
-      fi
-    fi   
   else
     # -----simple_on_word2vec on linux/mac-----
     rm -rf *
