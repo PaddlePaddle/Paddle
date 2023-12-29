@@ -1,12 +1,19 @@
 cmake_minimum_required(VERSION 3.0)
-project(cpp_inference_demo CXX C)
+project(cpp_inference_demo CXX C CUDA)
 option(WITH_MKL "Compile demo with MKL/OpenBlas support, default use MKL." ON)
 option(WITH_GPU "Compile demo with GPU/CPU, default use CPU." OFF)
 option(WITH_STATIC_LIB
-       "Compile demo with static/shared library, default use static." ON)
+       "Compile demo with static/shared library, default don't use static." OFF)
 option(USE_TENSORRT "Compile demo with TensorRT." OFF)
-option(WITH_ONNXRUNTIME "Compile demo with ONNXRuntime" OFF)
 option(WITH_SHARED_PHI "Compile demo with phi shared lib" ON)
+option(WITH_ROCM "Compile demo with rocm." OFF)
+option(WITH_ONNXRUNTIME "Compile demo with ONNXRuntime" OFF)
+option(WITH_ARM "Compile demo with ARM" OFF)
+option(WITH_MIPS "Compile demo with MIPS" OFF)
+option(WITH_LOONGARCH "Compile demo with LOONGARCH" OFF)
+option(WITH_SW "Compile demo with SW" OFF)
+option(WITH_XPU "Compile demo with xpu" OFF)
+option(WITH_NPU "Compile demo with npu" OFF)
 option(CUSTOM_OPERATOR_FILES "List of file names for custom operators" "")
 
 if(NOT WITH_STATIC_LIB)
@@ -39,24 +46,28 @@ include_directories("${PADDLE_LIB}/paddle/include")
 set(PADDLE_LIB_THIRD_PARTY_PATH "${PADDLE_LIB}/third_party/install/")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
-include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/include")
 
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
-link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
-if(WITH_ONNXRUNTIME)
-  include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/include")
-  include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/include")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib")
 
-  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib")
-  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib")
+if(WITH_GPU)
+  find_package(CUDA REQUIRED)
+  add_definitions("-DPADDLE_WITH_CUDA")
+endif()
+
+if(USE_TENSORRT)
+  add_definitions("-DPADDLE_WITH_TENSORRT")
 endif()
 
 if(WIN32)
@@ -66,12 +77,10 @@ if(WIN32)
     if(WITH_MKL)
       set(FLAG_OPENMP "/openmp")
     endif()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4251 /wd4267 /wd4305")
     set(CMAKE_C_FLAGS_DEBUG
         "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd ${FLAG_OPENMP}")
     set(CMAKE_C_FLAGS_RELEASE
         "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT ${FLAG_OPENMP}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4251 /wd4267 /wd4305")
     set(CMAKE_CXX_FLAGS_DEBUG
         "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd ${FLAG_OPENMP}")
     set(CMAKE_CXX_FLAGS_RELEASE
@@ -90,23 +99,20 @@ endif()
 
 if(WITH_GPU)
   if(NOT WIN32)
-    set(CUDA_LIB
-        "/usr/local/cuda/lib64/"
-        CACHE STRING "CUDA Library")
-  else()
-    set(CUDA_LIB
-        ""
-        CACHE STRING "CUDA_LIB")
-    if("${CUDA_LIB}" STREQUAL "")
-      if(DEFINED ENV{CUDA_PATH})
-        set(CUDA_LIB "$ENV{CUDA_PATH}\\lib\\x64")
-      else()
-        set(CUDA_LIB
-            "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.2\\lib\\x64"
-        )
-      endif()
+    include_directories("/usr/local/cuda/include")
+    if(CUDA_LIB STREQUAL "")
+      set(CUDA_LIB
+          "/usr/local/cuda/lib64/"
+          CACHE STRING "CUDA Library")
     endif()
-    message(STATUS "Current CUDA lib path: ${CUDA_LIB}")
+  else()
+    include_directories(
+      "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\include")
+    if(CUDA_LIB STREQUAL "")
+      set(CUDA_LIB
+          "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64"
+      )
+    endif()
   endif()
 endif()
 
@@ -163,7 +169,7 @@ if(WITH_MKL)
       set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libdnnl.so.3)
     endif()
   endif()
-else()
+elseif((NOT (WITH_MIPS OR WITH_LOONGARCH)) AND (NOT WITH_SW))
   set(OPENBLAS_LIB_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}openblas")
   include_directories("${OPENBLAS_LIB_PATH}/include/openblas")
   if(WIN32)
@@ -191,7 +197,21 @@ else()
 endif()
 
 if(WITH_ONNXRUNTIME)
-  set(DEPS ${DEPS} onnxruntime paddle2onnx)
+  if(WIN32)
+    set(DEPS
+        ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.lib
+        paddle2onnx)
+  elseif(APPLE)
+    set(DEPS
+        ${DEPS}
+        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.1.10.0.dylib
+        paddle2onnx)
+  else()
+    set(DEPS
+        ${DEPS}
+        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.so.1.10.0
+        paddle2onnx)
+  endif()
 endif()
 
 if(NOT WIN32)
@@ -205,7 +225,6 @@ if(NOT WIN32)
       protobuf
       xxhash
       cryptopp
-      utf8proc
       ${EXTERNAL_LIB})
   if(WITH_SHARED_PHI)
     set(DEPS ${DEPS}
@@ -221,7 +240,6 @@ else()
       libprotobuf
       xxhash
       cryptopp-static
-      utf8proc_static
       ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
 endif()
@@ -242,7 +260,7 @@ if(WITH_GPU)
                ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_STATIC_LIBRARY_SUFFIX})
       set(DEPS ${DEPS}
                ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
-      if(${TENSORRT_MAJOR_VERSION} EQUAL 7)
+      if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
         set(DEPS ${DEPS}
                  ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_STATIC_LIBRARY_SUFFIX})
       endif()
@@ -253,6 +271,41 @@ if(WITH_GPU)
   endif()
 endif()
 
+if(WITH_ROCM AND NOT WIN32)
+  set(DEPS ${DEPS} ${ROCM_LIB}/libamdhip64${CMAKE_SHARED_LIBRARY_SUFFIX})
+endif()
+
+if(WITH_XPU AND NOT WIN32)
+  set(XPU_INSTALL_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}xpu")
+  set(DEPS ${DEPS}
+           ${XPU_INSTALL_PATH}/lib/libxpuapi${CMAKE_SHARED_LIBRARY_SUFFIX})
+  set(DEPS ${DEPS}
+           ${XPU_INSTALL_PATH}/lib/libxpurt${CMAKE_SHARED_LIBRARY_SUFFIX})
+endif()
+
+if(WITH_NPU AND NOT WIN32)
+  set(DEPS
+      ${DEPS}
+      ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64/libgraph${CMAKE_SHARED_LIBRARY_SUFFIX}
+  )
+  set(DEPS
+      ${DEPS}
+      ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64/libge_runner${CMAKE_SHARED_LIBRARY_SUFFIX}
+  )
+  set(DEPS
+      ${DEPS}
+      ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64/libascendcl${CMAKE_SHARED_LIBRARY_SUFFIX}
+  )
+  set(DEPS
+      ${DEPS}
+      ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64/libascendcl${CMAKE_SHARED_LIBRARY_SUFFIX}
+  )
+  set(DEPS
+      ${DEPS}
+      ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64/libacl_op_compiler${CMAKE_SHARED_LIBRARY_SUFFIX}
+  )
+endif()
+
 if(CUSTOM_OPERATOR_FILES)
   add_library(pd_infer_custom_op SHARED ${CUSTOM_OPERATOR_FILES})
   set(DEPS ${DEPS} pd_infer_custom_op)
@@ -260,32 +313,28 @@ endif()
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})
-if(WIN32)
-  if("${CMAKE_GENERATOR}" MATCHES "Ninja")
-    set(LIB_PATH ${CMAKE_BINARY_DIR})
-  else()
-    set(LIB_PATH ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
-  endif()
 
+if(WIN32)
   if(USE_TENSORRT)
     add_custom_command(
       TARGET ${DEMO_NAME}
       POST_BUILD
       COMMAND
         ${CMAKE_COMMAND} -E copy
-        ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_SHARED_LIBRARY_SUFFIX} ${LIB_PATH}
+        ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
       COMMAND
         ${CMAKE_COMMAND} -E copy
         ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
-        ${LIB_PATH})
-    if(${TENSORRT_MAJOR_VERSION} EQUAL 7)
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+    if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
       add_custom_command(
         TARGET ${DEMO_NAME}
         POST_BUILD
         COMMAND
           ${CMAKE_COMMAND} -E copy
           ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_SHARED_LIBRARY_SUFFIX}
-          ${LIB_PATH})
+          ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
     endif()
   endif()
   if(WITH_MKL)
@@ -293,17 +342,17 @@ if(WIN32)
       TARGET ${DEMO_NAME}
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/mklml.dll
-              ${LIB_PATH}
+              ${CMAKE_BINARY_DIR}/Release
       COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll
-              ${LIB_PATH}
+              ${CMAKE_BINARY_DIR}/Release
       COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll
-              ${LIB_PATH})
+              ${CMAKE_BINARY_DIR}/Release)
   else()
     add_custom_command(
       TARGET ${DEMO_NAME}
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll
-              ${LIB_PATH})
+              ${CMAKE_BINARY_DIR}/Release)
   endif()
   if(WITH_ONNXRUNTIME)
     add_custom_command(
@@ -312,17 +361,19 @@ if(WIN32)
       COMMAND
         ${CMAKE_COMMAND} -E copy
         ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.dll
-        ${LIB_PATH}
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
       COMMAND
         ${CMAKE_COMMAND} -E copy
         ${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib/paddle2onnx.dll
-        ${LIB_PATH})
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
   endif()
   if(NOT WITH_STATIC_LIB)
     add_custom_command(
       TARGET ${DEMO_NAME}
       POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy
-              "${PADDLE_LIB}/paddle/lib/paddle_inference.dll" ${LIB_PATH})
+      COMMAND
+        ${CMAKE_COMMAND} -E copy
+        "${PADDLE_LIB}/paddle/lib/paddle_inference.dll"
+        ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
   endif()
 endif()
