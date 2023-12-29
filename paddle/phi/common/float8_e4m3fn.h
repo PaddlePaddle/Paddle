@@ -169,11 +169,14 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     const uint32_t w = (uint32_t)x << 24;
     const uint32_t sign = w & UINT32_C(0x80000000);
     const uint32_t nonsign = w & UINT32_C(0x7FFFFFFF);
-#ifdef PADDLE_WITH_CUDA
+
+    // get the leading 0-bits in nonsin.
+    // have no idea why __builtin_clz identifier not found windows-openblas ci.
+    // so use a naive implementation temporarily.
     uint32_t nonsign_tmp = nonsign;
     uint32_t renorm_shift = 0;
     if (nonsign_tmp == 0) {
-      renorm_shift = sizeof(uint32_t) * CHAR_BIT;
+      renorm_shift = 32;
     } else {
       if ((nonsign_tmp & 0xFFFF0000) == 0) {
         renorm_shift += 16;
@@ -195,10 +198,7 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
         renorm_shift += 1;
       }
     }
-#else
-    uint32_t renorm_shift =
-        nonsign != 0 ? __builtin_clz(nonsign) : sizeof(uint32_t) * CHAR_BIT;
-#endif
+
     renorm_shift = renorm_shift > 4 ? renorm_shift - 4 : 0;
     const int32_t inf_nan_mask =
         ((int32_t)(nonsign + 0x01000000) >> 8) & INT32_C(0x7F800000);
