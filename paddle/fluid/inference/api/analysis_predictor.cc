@@ -690,10 +690,7 @@ bool AnalysisPredictor::PrepareProgram(
       // LoadParameters(), still need to create other persistable variables. So
       // in both case, create persistable variables at first.
 #ifdef PADDLE_WITH_DNNL
-    if (config_.use_mkldnn_) {
-      executor_->CreateVariables(
-          *inference_program_, 0, true, sub_scope_, true);
-    }
+    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_, true);
 #else
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 #endif
@@ -960,9 +957,7 @@ bool AnalysisPredictor::CommInit() {
   }
   framework::NaiveExecutor e(place_);
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) {
-    e.CreateVariables(*comm_init_program, 0, true, scope_.get(), true);
-  }
+  e.CreateVariables(*comm_init_program, 0, true, scope_.get(), true);
 #else
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
 #endif
