@@ -63,7 +63,6 @@ class TestSaveStateDict:
         w1, w2 = list(global_state_dict.values())
         state_dict = dict(zip(keys, [w1, w2]))
         save_state_dict(state_dict, self._ckpt_path)
-        paddle.distributed.barrier()
         check_structure_name_mapping(self._ckpt_path, state_dict)
 
     def test_save_state_dict_with_four_devices(self):
