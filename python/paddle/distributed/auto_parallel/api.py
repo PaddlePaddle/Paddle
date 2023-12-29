@@ -525,8 +525,7 @@ def shard_layer(
     else:
         # TODO(chenweihang): Support static mode branch later.
         raise NotImplementedError(
-            "`paddle.distributed.shard_layer` only supports dynamic graph mode "
-            "now. It will be supported for static graph mode later."
+            "`paddle.distributed.shard_layer` only supports dynamic graph mode."
         )
 
 
