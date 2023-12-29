@@ -55,6 +55,7 @@ BACKENDS_BLACK_LIST = [
 
 # prim op with one input and one output, with no attribute
 UNARY_PRIM_VJP_OPS = [
+    'abs_grad',
     'erf_grad',
     'exp_grad',
     'floor_grad',
@@ -106,7 +107,6 @@ CUSTOM_VJP = [
     'silu_grad',
     'softmax_grad',
     'sqrt_grad',
-    'abs_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
