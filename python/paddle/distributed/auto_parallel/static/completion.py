@@ -17,7 +17,6 @@ import copy
 import logging
 import os
 import re
-import warnings
 
 import paddle
 from paddle.base.core import (  # noqa: F401
@@ -1121,7 +1120,9 @@ class Completer:
         block = serial_main_program.global_block()
         ops = block.ops
 
-        # 1. search seg_method in op's struct_name, and get all ops of segments
+        # Step1: search seg_method in op's struct_name
+        # 1. get op_idx of each segment
+        # 2. get process_mesh or each segment
         seg_op_deps = collections.OrderedDict()  # struct_name -> [idx]
         seg_op_mesh = collections.OrderedDict()  # struct_name -> process_mesh
         regex = re.compile(seg_method, re.IGNORECASE)
@@ -1153,7 +1154,9 @@ class Completer:
             seg_method, len(seg_op_deps), num_chunks
         )
 
-        # whether the pp_stage is non-decreasing among segments
+        # Step2: analysis whether the pp_stage is non-decreasing among segments
+        # 1. if non_decreasing is True, the ops' process_mesh will be changed by vpp strategy
+        # 2. if non_decreasing is False, the ops's process_mesh will not be changed.
         non_decreasing = True
         seg_pp_stages = [-1]
         for seg_pm in seg_op_mesh.values():
@@ -1165,11 +1168,13 @@ class Completer:
             seg_pp_stages.append(pp_stage)
 
         if not non_decreasing:
-            warnings.warn("cannot use auto vpp")
+            _logger.info("Cannot Use Auto VPP")
         else:
-            warnings.warn("using auto vpp")
+            _logger.info("Using Auto VPP")
 
-        # 2. get boundary index of each chunk
+        # Step3: Get op index boundary, pp_stage, chunk_id, struct_names of each segment
+        seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
+        seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
         part_size = len(seg_op_deps) // num_chunks
         segment_struct_names = []
         segment_parts = [0] * (num_chunks + 1)
@@ -1185,10 +1190,7 @@ class Completer:
                 struct_name = []
             segment_parts[num_chunks] = len(ops)
 
-        seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
-        seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
-
-        # 3. set right chunk_id for each op
+        # Step4: set right chunk_id and process_mesh for each op and var
         var_to_chunk_id = {}
         var_to_process_mesh = {}
         for seg_id in range(len(segment_parts) - 1):
