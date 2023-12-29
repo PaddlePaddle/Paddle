@@ -115,8 +115,8 @@ class TestLoadStateDict:
         cur_rank = paddle.distributed.get_rank()
         local_shape, global_offset = compute_local_shape_and_global_offset(
             sharded_w1.shape,
-            sharded_w1.dist_attr.process_mesh,
-            sharded_w1.dist_attr.dims_mapping,
+            sharded_w1.process_mesh,
+            sharded_w1.placements,
         )
         end_offset = [
             offset + length

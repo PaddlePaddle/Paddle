@@ -350,10 +350,11 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
                     2.94269347)
 
     """
-    if anchor.size == 0:
-        raise ValueError("The dims of anchor should be greater than 0.")
-    if positive.size == 0:
-        raise ValueError("The dims of positive should be greater than 0.")
+    if in_dynamic_mode():
+        if anchor.size == 0:
+            raise ValueError("The dims of anchor should be greater than 0.")
+        if positive.size == 0:
+            raise ValueError("The dims of positive should be greater than 0.")
     check_variable_and_dtype(
         anchor, 'anchor', ['float32', 'float64'], 'npair_loss'
     )
@@ -658,7 +659,7 @@ def binary_cross_entropy(
             % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.bce_loss(input, label)
         if weight is not None:
             out = _C_ops.multiply(out, weight, 'axis', -1)
@@ -983,7 +984,7 @@ def hsigmoid_loss(
     if num_classes < 2:
         raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
             label,
@@ -1102,7 +1103,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
@@ -1328,7 +1329,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             "received %s, which is not allowed." % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         unreduced = _C_ops.abs(_C_ops.subtract(input, label))
 
         if reduction == 'mean':
@@ -1687,7 +1688,7 @@ def kl_div(input, label, reduction='mean', name=None):
     ):
         label = paddle.cast(label, 'float64')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.kldiv_loss(input, label, 'none')
         if reduction == 'mean':
             out = paddle.mean(out)
@@ -2313,7 +2314,7 @@ def margin_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits,
             label,
@@ -3175,7 +3176,7 @@ def sigmoid_focal_loss(
                 )
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         one = _C_ops.full(logit.shape, 1.0, logit.dtype, place)
 
@@ -3192,7 +3193,10 @@ def sigmoid_focal_loss(
             ),
         )
 
-        alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        if in_dynamic_mode():
+            alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        else:
+            alpha = paddle.to_tensor(alpha, dtype=loss.dtype)
         alpha_t = _C_ops.add(
             _C_ops.multiply(alpha, label),
             _C_ops.multiply(
@@ -3201,7 +3205,8 @@ def sigmoid_focal_loss(
         )
         loss = _C_ops.multiply(alpha_t, loss)
 
-        gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        if in_dynamic_mode():
+            gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
         gamma_t = _C_ops.pow(_C_ops.subtract(one, p_t), gamma)
         loss = _C_ops.multiply(gamma_t, loss)
 

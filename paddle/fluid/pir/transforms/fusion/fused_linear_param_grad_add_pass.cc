@@ -22,10 +22,10 @@ namespace {
 
 // add_grad + matmul_grad + add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulAddGradAddPattern
-    : public pir::drr::DrrPatternBase<FusedMatmulAddGradAddPattern> {
+    : public paddle::drr::DrrPatternBase<FusedMatmulAddGradAddPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul0 = pat.Op(paddle::dialect::MatmulOp::name(),
                                  {{"transpose_x", pat.Attr("trans_x")},
                                   {"transpose_y", pat.Attr("trans_y")}});
@@ -48,7 +48,7 @@ class FusedMatmulAddGradAddPattern
     pat.Tensor("add_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &x_trans = match_ctx.Attr<bool>("trans_x");
       const auto &y_trans = match_ctx.Attr<bool>("trans_y");
       return (match_ctx.Tensor("weight_grad").Shape() ==
@@ -58,17 +58,21 @@ class FusedMatmulAddGradAddPattern
               x_trans == false && y_trans == false);
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
           return !(match_ctx.Tensor("dweight").Dtype() ==
                    match_ctx.Tensor("weight_grad").Dtype());
         });
 
-    const auto &true_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &true_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &matmul =
         res.Op(paddle::dialect::MatmulOp::name(),
@@ -89,10 +93,10 @@ class FusedMatmulAddGradAddPattern
 
 // matmul_grad + add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulGradAddPattern
-    : public pir::drr::DrrPatternBase<FusedMatmulGradAddPattern> {
+    : public paddle::drr::DrrPatternBase<FusedMatmulGradAddPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_grad = pat.Op(paddle::dialect::MatmulGradOp::name(),
                                      {{"transpose_x", pat.Attr("trans_x")},
                                       {"transpose_y", pat.Attr("trans_y")}});
@@ -104,7 +108,7 @@ class FusedMatmulGradAddPattern
     pat.Tensor("add_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &x_trans = match_ctx.Attr<bool>("trans_x");
       const auto &y_trans = match_ctx.Attr<bool>("trans_y");
       return (match_ctx.Tensor("weight_grad").Shape() ==
@@ -112,18 +116,22 @@ class FusedMatmulGradAddPattern
               x_trans == false && y_trans == false);
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &muti_precision_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
           return !(match_ctx.Tensor("dweight").Dtype() ==
                    match_ctx.Tensor("weight_grad").Dtype());
         });
 
-    const auto &true_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &true_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &matmul =
         res.Op(paddle::dialect::MatmulOp::name(),
@@ -145,10 +153,10 @@ class FusedMatmulGradAddPattern
 
 // matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
 class FusedMatmulAddaPattern
-    : public pir::drr::DrrPatternBase<FusedMatmulAddaPattern> {
+    : public paddle::drr::DrrPatternBase<FusedMatmulAddaPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -159,22 +167,26 @@ class FusedMatmulAddaPattern
     pat.Tensor("add_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Tensor("weight_grad").Shape() ==
               match_ctx.Tensor("dweight").Shape());
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
           return !(match_ctx.Tensor("dweight").Dtype() ==
                    match_ctx.Tensor("weight_grad").Dtype());
         });
 
-    const auto &true_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &true_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &fused_linear_param_grad_add = res.Op(
         paddle::dialect::FusedLinearParamGradAddOp::name(),
@@ -190,10 +202,10 @@ class FusedMatmulAddaPattern
 
 // matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
 class FusedMatmulAddbPattern
-    : public pir::drr::DrrPatternBase<FusedMatmulAddbPattern> {
+    : public paddle::drr::DrrPatternBase<FusedMatmulAddbPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -204,22 +216,26 @@ class FusedMatmulAddbPattern
     pat.Tensor("add_out") =
         add_(pat.Tensor("weight_grad"), pat.Tensor("dweight"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Tensor("weight_grad").Shape() ==
               match_ctx.Tensor("dweight").Shape());
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
           return !(match_ctx.Tensor("dweight").Dtype() ==
                    match_ctx.Tensor("weight_grad").Dtype());
         });
 
-    const auto &true_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &true_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &fused_linear_param_grad_add = res.Op(
         paddle::dialect::FusedLinearParamGradAddOp::name(),
@@ -235,10 +251,10 @@ class FusedMatmulAddbPattern
 
 // add_grad + matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
 class FusedMatmulAddGradAddaPattern
-    : public pir::drr::DrrPatternBase<FusedMatmulAddGradAddaPattern> {
+    : public paddle::drr::DrrPatternBase<FusedMatmulAddGradAddaPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -261,21 +277,23 @@ class FusedMatmulAddGradAddaPattern
     pat.Tensor("dweight_out") =
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Tensor("weight_grad").Shape() ==
                   match_ctx.Tensor("dweight").Shape() &&
               match_ctx.Tensor("out").Shape() ==
                   match_ctx.Tensor("dadd_out").Shape());
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
           return !(match_ctx.Tensor("dweight").Dtype() ==
                    match_ctx.Tensor("weight_grad").Dtype());
         });
-    const auto &true_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
+    const auto &true_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
     const auto &fused_linear_param_grad_add = res.Op(
         paddle::dialect::FusedLinearParamGradAddOp::name(),
         {{{"multi_precision", muti_precision_attr}, {"has_bias", true_attr}}});
@@ -290,10 +308,10 @@ class FusedMatmulAddGradAddaPattern
 
 // add_grad + matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
 class FusedMatmulAddGradAddbPattern
-    : public pir::drr::DrrPatternBase<FusedMatmulAddGradAddbPattern> {
+    : public paddle::drr::DrrPatternBase<FusedMatmulAddGradAddbPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -316,21 +334,23 @@ class FusedMatmulAddGradAddbPattern
     pat.Tensor("dweight_out") =
         add_(pat.Tensor("weight_grad"), pat.Tensor("dweight"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Tensor("weight_grad").Shape() ==
                   match_ctx.Tensor("dweight").Shape() &&
               match_ctx.Tensor("out").Shape() ==
                   match_ctx.Tensor("dadd_out").Shape());
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
           return !(match_ctx.Tensor("dweight").Dtype() ==
                    match_ctx.Tensor("weight_grad").Dtype());
         });
-    const auto &true_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
+    const auto &true_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
     const auto &fused_linear_param_grad_add = res.Op(
         paddle::dialect::FusedLinearParamGradAddOp::name(),
         {{{"multi_precision", muti_precision_attr}, {"has_bias", true_attr}}});

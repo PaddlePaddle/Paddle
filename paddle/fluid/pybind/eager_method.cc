@@ -1754,6 +1754,30 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_apply(TensorObject* self,
+                              PyObject* args,
+                              PyObject* kwargs) {
+  EAGER_TRY
+  PyObject* apply_func = PyTuple_GET_ITEM(args, 0);
+  PyTensorHook func = PyTensorHook(apply_func);
+  paddle::Tensor out = func(self->tensor);
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_apply_(TensorObject* self,
+                               PyObject* args,
+                               PyObject* kwargs) {
+  EAGER_TRY
+  PyObject* apply_func = PyTuple_GET_ITEM(args, 0);
+  PyTensorHook func = PyTensorHook(apply_func);
+  paddle::Tensor out = func(self->tensor);
+  self->tensor.set_impl(out.impl());
+  Py_INCREF(self);
+  return reinterpret_cast<PyObject*>(self);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* args,
                                            PyObject* kwargs) {
@@ -2876,6 +2900,10 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {
+    if (meta && !meta->Grad().initialized() && meta->Grad().impl() &&
+        meta->Grad().is_dist_tensor()) {
+      return ToPyObject(meta->Grad(), false);
+    }
     RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -3165,6 +3193,14 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_setitem_dygraph",
      (PyCFunction)(void (*)())tensor__setitem_dygraph,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_apply",
+     (PyCFunction)(void (*)())tensor_apply,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_apply_",
+     (PyCFunction)(void (*)())tensor_apply_,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_register_grad_hook",

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.autograd.backward_utils import ValueDict
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -65,28 +66,26 @@ class InplaceMap:
         self.params_dict = {}
 
     @synchronized
-    def add(self, program, id, param):
-        """use the default_program as key, append param the parameter list."""
+    def add(self, program, origin_value, new_value):
         key = _program_hash(program)
         if key not in self.params_dict:
-            self.params_dict[key] = {}
+            self.params_dict[key] = ValueDict()
+        inplace_dict = self.params_dict[key]
+        inplace_dict[origin_value] = new_value
 
-        params = self.params_dict[key]
-        params[id] = param
-
-    def get(self, program, id):
-        params = self.params_dict.get(_program_hash(program))
-        if params is None:
+    def get(self, program, value):
+        inplace_dict = self.params_dict.get(_program_hash(program))
+        if inplace_dict is None:
             return None
-        if id not in params:
+        if value not in inplace_dict:
             return None
-        root_var = params[id]
+        root_var = inplace_dict[value]
         saved = []
-        while id(root_var) in params.keys():
+        while root_var in inplace_dict:
             saved.append(root_var)
-            root_var = params[id(root_var)]
+            root_var = inplace_dict[root_var]
         for var in saved:
-            params[id(var)] = root_var
+            inplace_dict[var] = root_var
         return root_var
 
     def restore_checkpoint(self, checkpoint):

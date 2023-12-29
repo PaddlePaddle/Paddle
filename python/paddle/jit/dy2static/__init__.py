@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .assert_transformer import AssertTransformer  # noqa: F401
-from .ast_transformer import DygraphToStaticAst  # noqa: F401
 from .convert_call_func import convert_call as Call  # noqa: F401
 from .convert_operators import (  # noqa: F401
     convert_assert as Assert,
@@ -32,7 +30,8 @@ from .convert_operators import (  # noqa: F401
     unpack_by_structure as Unpack,
 )
 from .program_translator import convert_to_static  # noqa: F401
-from .static_analysis import NodeVarType, StaticAnalysisVisitor  # noqa: F401
+from .static_analysis import StaticAnalysisVisitor  # noqa: F401
+from .transformers import DygraphToStaticAst  # noqa: F401
 from .utils import UndefinedVar, ast_to_source_code, saw  # noqa: F401
 from .variable_trans_func import (  # noqa: F401
     create_bool_as_type,
