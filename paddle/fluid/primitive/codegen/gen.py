@@ -84,6 +84,7 @@ OTHER_PRIM_VJP_OPS = [
     'transpose_grad',
     'concat_grad',
     'expand_grad',
+    'gather_grad',
     'gather_nd_grad',
     'pad_grad',
     'max_grad',

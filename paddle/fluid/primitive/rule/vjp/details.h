@@ -819,6 +819,52 @@ void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void gather_grad(const Tensor& x,
+                 const Tensor& index,
+                 const Tensor& out_grad,
+                 const Scalar& axis,
+                 Tensor* grad_x) {
+  auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+  std::vector<int> tmp_perm;
+
+  // change axis to rank 0
+  int axis_value = axis.to<int>();
+  tmp_perm.push_back(axis_value);
+  // make other ranks
+  for (int i = 0; i < x.dims().size(); ++i) {
+    if (i != axis_value) {
+      tmp_perm.push_back(i);
+    }
+  }
+  std::vector<int> reverse_perm(tmp_perm);
+  // make origin ranks
+  for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
+    if (tmp_perm[i] >= 0) {
+      reverse_perm[tmp_perm[i]] = i;
+    } else {
+      reverse_perm[tmp_perm[i] + tmp_perm.size()] = i;
+    }
+  }
+
+  // transpose out_grad and zero grad to target rank.
+  auto tmp_zero_x_grad = zero_tensor;
+  auto tmp_out_grad = out_grad;
+  if (zero_tensor.dims().size() > 0) {
+    tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
+  }
+  if (out_grad.dims().size() > 0) {
+    tmp_out_grad = transpose<T>(out_grad, tmp_perm);
+  }
+  // scatter grad to grad_x
+  auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
+  auto tmp_grad_x_tranposed = tmp_grad_x;
+  if (tmp_grad_x.dims().size() > 0) {
+    tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+  }
+  set_output<T>(tmp_grad_x_tranposed, grad_x);
+}
+
+template <typename T>
 void gather_nd_grad(const Tensor& x,
                     const Tensor& index,
                     const Tensor& out_grad,
