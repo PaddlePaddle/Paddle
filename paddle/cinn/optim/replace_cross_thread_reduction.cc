@@ -146,6 +146,11 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     }
 
     std::cerr << "reduce type " << schedule_block->reduce_type << std::endl;
+    ir::Expr return_warp(false);
+
+    if (schedule_block->reduce_type == 0) {
+      return_warp = ir::Expr(true);
+    }
 
 #define REPLACE_TO_EXTERNAL_CALL(Op)                                     \
   if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {            \
@@ -163,8 +168,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     tmp_buffer->dtype = tmp_dtype;                                       \
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;                 \
     shm_buffer_.insert(tmp_buffer);                                      \
-    original_update_stmt.As<ir::Store>()->value =                        \
-        lang::CallExtern(reduce_func_name, {node->b(), tmp_buffer});     \
+    original_update_stmt.As<ir::Store>()->value = lang::CallExtern(      \
+        reduce_func_name, {node->b(), tmp_buffer, return_warp});         \
   }
 
     REPLACE_TO_EXTERNAL_CALL(ir::Add)

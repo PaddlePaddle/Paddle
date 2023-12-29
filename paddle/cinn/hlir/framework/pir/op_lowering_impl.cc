@@ -208,6 +208,10 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   group_tile_info->flatten_inner_num = flatten_inner_num;
   group_tile_info->reduce_inner_num = reduce_inner_num;
 
+  if (reduce_block == reduce_numel) {
+    group_tile_info->reduce_type = 0;
+  }
+
   for (auto op : group->ops) {
     if (CompatibleInfo::OpKind(*op) == OpPatternKind::kReduction) {
       group_tile_info->reduce_var_names.insert(ValueName(op->result(0)));

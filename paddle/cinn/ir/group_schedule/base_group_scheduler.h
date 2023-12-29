@@ -38,6 +38,8 @@ struct GroupTileInfo {
 
   std::set<std::string> shared_var_names;
   std::vector<std::string> thread_sync_before_names;
+
+  int reduce_type{-1};
 };
 
 /**

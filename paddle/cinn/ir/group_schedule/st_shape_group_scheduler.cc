@@ -563,7 +563,9 @@ void StaticShapeGroupScheduler::Tiling() {
       auto block = ir_sch_->GetBlock(name)
                        .As<ir::ScheduleBlockRealize>()
                        ->schedule_block.As<ir::ScheduleBlock>();
-      block->reduce_type = 1;
+      if (group_tile_info_->reduce_type == 0) {
+        block->reduce_type = 0;
+      }
       std::cerr << "block type " << block->reduce_type << std::endl;
     }
   }
