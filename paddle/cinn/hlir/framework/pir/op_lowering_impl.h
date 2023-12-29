@@ -258,6 +258,9 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   Target target_;
 
   PrettyNamer* name_gene_;
+
+  std::set<std::string> shared_var_names;
+  std::vector<std::string> thread_sync_before_names;
 };
 
 }  // namespace pir

@@ -116,8 +116,6 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
       ScheduleBlockNode* producer_node = RetrieveNode(producer_id);
       CHECK(producer_node) << "producer node: " << producer_id
                            << " does not exist in the graph";
-      std::cerr << "before control" << node->id() << std::endl;
-      std::cerr << "producer_node " << producer_node->id() << std::endl;
       producer_node->Controls(node);
       for (const std::string& upstream_node_id :
            producer_node->UpstreamNodes()) {

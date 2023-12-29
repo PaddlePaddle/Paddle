@@ -510,13 +510,22 @@ void StaticShapeGroupScheduler::Tiling() {
     if (!output_tensor_names_.count(name)) {
       std::cerr << "temp name " << name << std::endl;
       auto block = ir_sch_->GetBlock(name);
-      ir_sch_->SetBuffer(block, "local", false);
+      if (group_tile_info_->shared_var_names.count(name)) {
+        ir_sch_->SetBuffer(block, "shared", false);
+      } else {
+        ir_sch_->SetBuffer(block, "local", false);
+      }
     }
 
     if (group_tile_info_->reduce_var_names.count(name)) {
       auto block = ir_sch_->GetBlock(name + "_rf");
       ir_sch_->SetBuffer(block, "local", false);
     }
+  }
+
+  for (auto& name : group_tile_info_->thread_sync_before_names) {
+    auto loops = ir_sch_->GetLoops(name);
+    ir_sch_->SyncThreads(loops.front(), false);
   }
 
   // set unroll

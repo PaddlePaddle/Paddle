@@ -84,9 +84,9 @@ class CINNLayerNormSubGraphNet(paddle.nn.Layer):
         super().__init__()
         self.fn = layer_norm
         self.weight = self.create_parameter(
-            shape=[hidden_size], dtype="float32"
+            shape=[hidden_size], dtype="float64"
         )
-        self.bias = self.create_parameter(shape=[hidden_size], dtype="float32")
+        self.bias = self.create_parameter(shape=[hidden_size], dtype="float64")
 
     def forward(self, x, weight, bias):
         out = paddle.nn.functional.layer_norm(
@@ -103,9 +103,9 @@ class CINNAddDropoutLayerNormSubGraphNet(paddle.nn.Layer):
         self.layer_norm = paddle.nn.functional.layer_norm
 
         self.weight = self.create_parameter(
-            shape=[hidden_size], dtype="float32"
+            shape=[hidden_size], dtype="float64"
         )
-        self.bias = self.create_parameter(shape=[hidden_size], dtype="float32")
+        self.bias = self.create_parameter(shape=[hidden_size], dtype="float64")
 
     def forward(self, x, y, weight, bias):
         # t1 = self.add(x, y)
@@ -140,9 +140,9 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [64, 128]
+        self.shape = [2048, 256]
         self.axis = -1
-        self.x = paddle.randn(self.shape, dtype="float32")
+        self.x = paddle.randn(self.shape, dtype="float64")
         self.x.stop_gradient = False
 
     def eval(self, use_cinn):
@@ -181,9 +181,9 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
         paddle.seed(2022)
         net = CINNLayerNormSubGraphNet(self.shape[-1])
         net = apply_to_static(net, use_cinn)
-        # net.eval()
-        weight = paddle.ones(shape=[self.shape[-1]], dtype="float32")
-        bias = paddle.ones(shape=[self.shape[-1]], dtype="float32")
+        net.eval()
+        weight = paddle.ones(shape=[self.shape[-1]], dtype="float64")
+        bias = paddle.ones(shape=[self.shape[-1]], dtype="float64")
         out = net(self.x, weight, bias)
         return out
 

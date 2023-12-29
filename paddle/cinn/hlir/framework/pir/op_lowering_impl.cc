@@ -222,6 +222,9 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     // }
   }
 
+  group_tile_info->shared_var_names = shared_var_names;
+  group_tile_info->thread_sync_before_names = thread_sync_before_names;
+
   return group_tile_info;
 }
 
@@ -501,8 +504,32 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                                                &tensor_map,
                                                &tmp_tensor_info);
 
+  std::unordered_set<::pir::Value> inner_genevalue;
+  for (auto* op : ops) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      inner_genevalue.insert(op->result(i));
+    }
+  }
+
+  std::unordered_set<::pir::Operation*> not_used_op;
+  for (auto* op : ops) {
+    if (CompatibleInfo::OpKind(*op) == framework::kBroadcast) {
+      if (op->operand_source(0).dyn_cast<::pir::OpResult>().owner()->name() ==
+          "cinn_op.reduce_sum") {
+        continue;
+      }
+
+      if (inner_genevalue.count(op->operand_source(0))) {
+        shared_var_names.insert(ValueName(op->operand_source(0)));
+        thread_sync_before_names.push_back(ValueName(op->result(0)));
+      }
+    }
+  }
+
   // 2.Do group schedule.
   for (size_t i = 0; i < func_bodies.size(); ++i) {
+    std::cerr << ops[i]->name() << std::endl;
+    std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
     std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
   }
   ir::ModuleExpr mod_expr(func_bodies);
