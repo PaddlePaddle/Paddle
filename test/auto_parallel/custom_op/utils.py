@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import os
+from site import getsitepackages
 
 import numpy as np
-from site import getsitepackages
+
 # Test for extra compile args
 extra_cc_args = ['-w', '-g']
 extra_nvcc_args = ['-O3']
@@ -65,7 +66,7 @@ def get_paddle_includes():
     paddle_includes.append(f"{env_dict.get('CMAKE_BINARY_DIR')}")
     paddle_includes.append(f"{env_dict.get('PROTOBUF_INCLUDE_DIR')}")
     paddle_includes.append(f"{paddle_source_dir}")
-    
+
     # mkldnn
     if env_dict.get("WITH_MKLDNN") == 'ON':
         paddle_includes.append(f"{env_dict.get('MKLDNN_INSTALL_DIR')}/include")
@@ -80,7 +81,7 @@ def get_paddle_includes():
         paddle_includes.append(
             os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
         )
-        
+
     return paddle_includes
 
 
