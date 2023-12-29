@@ -31,13 +31,40 @@ def clone(x):
     return x
 
 
-def detach(x):
-    """Detaches a Paddle Tensor from the computation graph, preserving the stop_gradient property."""
-    if isinstance(x, paddle.Tensor):
-        x_detached = x.detach()
-        x_detached.stop_gradient = x.stop_gradient
-        return x_detached
-    return x
+def detach(input_var):
+    """
+    Detaches a Paddle Tensor or collection of Tensors from the computation graph.
+    It preserves the 'stop_gradient' property for individual tensors.
+
+    Args:
+        input_var (paddle.Tensor | list | tuple | dict): A Paddle Tensor or a collection
+        of Tensors (list, tuple, or dictionary) to be detached from the computation graph.
+
+    Returns:
+        A single detached Tensor or a collection of detached Tensors (matching the input type)
+        with the 'stop_gradient' property preserved.
+    """
+
+    def detach_tensor(tensor):
+        # Detach an individual tensor and preserve its 'stop_gradient' property
+        if isinstance(tensor, paddle.Tensor):
+            detached_tensor = tensor.detach()
+            detached_tensor.stop_gradient = tensor.stop_gradient
+            return detached_tensor
+        return tensor
+
+    # Process input based on its type (Tensor, list, tuple, or dict)
+    if isinstance(input_var, paddle.Tensor):
+        return detach_tensor(input_var)
+    elif isinstance(input_var, list):
+        return [detach_tensor(item) for item in input_var]
+    elif isinstance(input_var, tuple):
+        return tuple(detach_tensor(item) for item in input_var)
+    elif isinstance(input_var, dict):
+        return {key: detach_tensor(value) for key, value in input_var.items()}
+
+    # Return the input as-is if it's not a Tensor or collection of Tensors
+    return input_var
 
 
 def get_grad(x):
@@ -183,6 +210,10 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
     """
     A custom layer that integrates CUDA Graph recording and execution into PaddlePaddle's autograd system.
     It handles forward and backward operations differently based on the CUDA graph layer status.
+
+    Input of the Layer: paddle.Tensor or List/Tuple of paddle.Tensor 
+    Output of the Layer: paddle.Tensor or List/Tuple of paddle.Tensor 
+
     """
 
     @staticmethod
@@ -192,14 +223,13 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         context's status: warmup, recording, or CUDA graph step.
         """
         # Detach all inputs from the computational graph
-        args = [detach(x) for x in args]
-        kwargs = {k: detach(v) for k, v in kwargs.items()}
-
+        args = detach(args)
+        kwargs = detach(kwargs)
         if context.is_warmup_step():
             # In warmup step, perform the operation with gradient tracking
             with paddle.enable_grad():
                 y = context.layer(*args, **kwargs)
-            context.queue_push((args, y))
+            context.queue_push((args, y, None))
 
         elif context.is_record_step():
             # In record step, record the forward pass in CUDA graph
@@ -225,7 +255,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             context.next_graph()
 
         ctx.save_for_backward(context)
-        return y.detach()
+        return detach(y)
 
     @staticmethod
     def backward(ctx, dy):
@@ -235,14 +265,28 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         """
         (context,) = ctx.saved_tensor()
 
+        args, input_var, g = context.queue_pop()
+
+        y = None
+        # Check the type of input_var and select an appropriate tensor for the backward operation
+        if isinstance(input_var, paddle.Tensor):
+            # Directly use the tensor if input_var itself is a tensor and eligible for gradient computation
+            y = input_var
+        elif isinstance(input_var, (list, tuple)):
+            # Iterate through the list or tuple to find an eligible tensor for the backward operation
+            for v in input_var:
+                if isinstance(v, paddle.Tensor) and (not v.stop_gradient):
+                    y = v  # Select the first eligible tensor
+                    break  # Exit the loop once an eligible tensor is found
+
+        assert isinstance(y, paddle.Tensor)
+
         if context.is_warmup_step():
             # In warmup step, perform standard backward operation
-            args, y = context.queue_pop()
             y.backward(dy)
         elif context.is_record_step():
             # In record step, record the backward pass in CUDA graph
             print(f"{id(context)} BW (cudagraph-record)".center(100, "-"))
-            args, y, g = context.queue_pop()
 
             def backward(y, dy):
                 y.backward(dy)
@@ -251,12 +295,10 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         else:
             # In CUDA graph step, replay the recorded graph for backward pass
             # print(f"{id(context)} BW (cudagraph)".center(100, "-"))
-            args, y, g = context.queue_pop()
             g.replay(y, dy)
 
         args_grad = tuple(get_grad(x) for x in args)
         # Step the global state if the queue is empty
-
         if len(context.saved_tensor) == 0:
             if context.is_record_step() or context.is_cuda_graph_step():
                 context.reset_graph_index()
