@@ -21,6 +21,7 @@ from .base import BaseTransformer
 
 class RegisterHookTransformer(BaseTransformer):
     def __init__(self, root):
+        super().__init__()
         self.register_hook_pos_map = collections.defaultdict(list)
         self.assignment_pos_map = collections.defaultdict(list)
         self.root = root

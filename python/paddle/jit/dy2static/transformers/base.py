@@ -31,6 +31,7 @@ __all__ = []
 
 class BaseTransformer(gast.NodeTransformer):
     def __init__(self):
+        super().__init__()
         self.ancestor_nodes = []
 
     def visit(self, node):
@@ -60,6 +61,7 @@ class NameNodeReplaceTransformer(BaseTransformer):
     """
 
     def __init__(self, root_node, target_name, replace_node):
+        super().__init__()
         assert isinstance(target_name, str)
 
         # NOTE(liym27):
@@ -115,6 +117,7 @@ class ForLoopTuplePreTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
 
     def transform(self):

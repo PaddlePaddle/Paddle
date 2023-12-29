@@ -32,6 +32,7 @@ class ForToWhileTransformer(BaseTransformer):
     """
 
     def __init__(self, parent_node, loop_node, condition_node):
+        super().__init__()
         assert isinstance(
             loop_node, gast.For
         ), "loop_node is not gast.For in ForToWhileTransformer"
@@ -113,7 +114,6 @@ class BreakContinueTransformer(BaseTransformer):
 
     def __init__(self, root):
         super().__init__()
-
         self.root = root
 
     def transform(self):
