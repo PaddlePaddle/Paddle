@@ -441,15 +441,16 @@ void PrintProgram(pir::ModuleOp m, std::string mgs) {
 void DebugPrintOpInfo(
     pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
-  VLOG(0) << op->name() << ", num_operands: " << op->num_operands();
   for (auto& res : op->results()) {
     auto value_id = pir::GetValueId(&res);
     std::ostringstream print_stream;
 
-    print_stream << ">>>> result(" << res.index() << ") 's ID: " << value_id;
+    print_stream << "result(" << res.index() << ") "
+                 << "ShapeOrData: ";
+
     if (shape_analysis != nullptr) {
       auto shape_data = shape_analysis->value_id_to_shapeordata_[value_id];
-      print_stream << ", ShapeOrData.shape: [";
+      print_stream << "shape: [";
 
       for (auto str : shape_data.shape()) {
         int64_t* i = std::get_if<int64_t>(&str);
@@ -461,7 +462,7 @@ void DebugPrintOpInfo(
         }
       }
 
-      print_stream << "], ShapeOrData.data: [";
+      print_stream << "], data: [";
       if (shape_data.data().has_value()) {
         for (auto str : shape_data.data().value()) {
           int64_t* i = std::get_if<int64_t>(&str);
@@ -489,6 +490,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
         auto infer_symbolic_shape_interface =
             op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
         if (infer_symbolic_shape_interface) {
+          VLOG(0) << op.name() << " has InferSymbolicShapeInterface.";
           PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
               &shape_analysis));
         }
@@ -517,6 +519,7 @@ class ShapeOptimizationPass : public pir::Pass {
     };
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
                "=============================";
+    PrintProgram(module_op, "ShapeOptimizationPass Program");
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

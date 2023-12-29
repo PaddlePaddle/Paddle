@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 namespace pir::shape {
@@ -33,6 +34,18 @@ void ShapeDialect::initialize() {
               ExtractOp,
               ConstantOp,
               IndexCastOp>();
+
+  RegisterAttributes<SymbolAttribute>();
+}
+
+void ShapeDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
+  if (attr.isa<SymbolAttribute>()) {
+    SymbolAttribute symbol_attr = attr.dyn_cast<SymbolAttribute>();
+    os << "(shape_or_data)";
+    for (size_t i = 0; i < symbol_attr.data().shape().size(); ++i) {
+      os << symbol::ToString(symbol_attr.data().shape()[i]);
+    }
+  }
 }
 
 void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {

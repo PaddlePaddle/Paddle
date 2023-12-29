@@ -12,29 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
 namespace pir::shape {
-///
-/// \brief Shape Dialect:
-///
-class IR_API ShapeDialect : public Dialect {
- public:
-  explicit ShapeDialect(IrContext* context);
 
-  static const char* name() { return "shape"; }
+symbol::ShapeOrDataDimExprs SymbolAttribute::data() const {
+  return storage()->data();
+}
 
-  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
-
-  void PrintOperation(Operation* op,
-                      IrPrinter& printer) const override;  // NOLINT
-
- private:
-  void initialize();
-};
+SymbolAttribute SymbolAttribute::get(pir::IrContext* ctx,
+                                     const symbol::ShapeOrDataDimExprs& value) {
+  return AttributeManager::get<SymbolAttribute>(ctx, value);
+}
 
 }  // namespace pir::shape
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::SymbolAttribute)

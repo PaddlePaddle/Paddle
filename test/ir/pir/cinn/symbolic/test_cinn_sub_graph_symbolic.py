@@ -117,9 +117,10 @@ class TestCinnDyShapeBase(TestCinnSubGraphBase):
         import os
 
         is_debug = os.getenv('IS_DEBUG_DY_SHAPE')
+        is_debug = True
         if is_debug:
             cinn_out = self.eval_symbolic(use_cinn=True)
-            # print("cinn_out:", cinn_out)
+            print("cinn_out:", cinn_out)
 
         # dy_out = self.eval_symbolic(use_cinn=False)
         # print("dy_out:", dy_out)

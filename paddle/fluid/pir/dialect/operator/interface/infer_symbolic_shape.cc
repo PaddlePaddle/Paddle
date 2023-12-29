@@ -15,7 +15,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
 namespace paddle::dialect {
 
@@ -61,6 +61,20 @@ bool AbsOpInferSymbolicShape(pir::Operation *op,
 bool Abs_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return InferSymbolicShapeAllEqualUnary(op, shape_analysis);
+}
+
+bool DataOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  symbol::ShapeOrDataDimExprs sss;
+
+  op->set_attribute(
+      "sym_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), sss));
+
+  // auto attributes = op->attributes();
+  // pir::Attribute attr = attributes["shape"];
+  // const auto &vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+  return true;
 }
 
 bool CastOpInferSymbolicShape(pir::Operation *op,
@@ -186,6 +200,10 @@ bool FullIntArrayOpInferSymbolicShape(
       int64_t i = item.dyn_cast<pir::Int64Attribute>().data();
       shapes.push_back(symbol::DimExpr(i));
     }
+
+    // for (auto &item : shapes) {
+    //   VLOG(0) << symbol::ToString(item);
+    // }
 
     symbol::ShapeOrDataDimExprs shape_data{shapes};
     shape_analysis->value_id_to_shapeordata_[value_id] = shape_data;
