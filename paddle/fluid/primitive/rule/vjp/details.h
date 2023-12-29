@@ -244,6 +244,23 @@ void reshape_grad(const Tensor& xshape,
 }
 
 template <typename T>
+void roll_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& shifts,
+               const std::vector<int64_t>& axis,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto shifts_ = shifts.GetData();
+    int64_t nums = shifts_.size();
+    for (int64_t i = 0; i < nums; i++) {
+      shifts_[i] = 0 - shifts_[i];
+    }
+    auto x_grad_output = roll<T>(out_grad, shifts_, axis);
+    set_output<T>(x_grad_output, x_grad);
+  }
+}
+
+template <typename T>
 void transpose_grad(const Tensor& grad_out,
                     const std::vector<int>& perm,
                     Tensor* grad_x) {
