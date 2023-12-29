@@ -1625,8 +1625,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
-
-  VLOG(3) << "after BuildCinnPass, program:\n" << program;
+  VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
+          << ", shape_analysis: " << shape_analysis;
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "

@@ -275,11 +275,12 @@ class RunableProgram:
         def pass_fn(forward_program, backward_program):
             return forward_program, backward_program
         """
-        program_name_attr = self.program_name_attr
         origin_fwd = self.forward_program
         origin_bwd = self.backward_program
+        # NOTE(dev): Add this line to trigger program_name_attr logic
+        program_name_attr = self.program_name_attr
         self.forward_program, self.backward_program = pass_fn(
-            origin_fwd, origin_bwd, program_name_attr
+            origin_fwd, origin_bwd
         )
 
     # cached property can ensure program is splited only once.
@@ -543,7 +544,7 @@ class PartialProgramLayer:
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
 
-            def pass_fn(forward_program, backward_program, name_attr):
+            def pass_fn(forward_program, backward_program):
                 pm = paddle.base.libpaddle.pir.PassManager()
                 if self._build_strategy.build_cinn_pass:
                     paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
@@ -562,8 +563,7 @@ class PartialProgramLayer:
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
 
-            # (NOTE:@xiongkun) HOW TO APPLY PASS: this is a example for forward/backward clone pass, just replace with your cases.
-            def pass_fn(forward_program, backward_program, name_attr):
+            def pass_fn(forward_program, backward_program):
                 fwd_pm = paddle.base.libpaddle.pir.PassManager()
                 bwd_pm = paddle.base.libpaddle.pir.PassManager()
 
@@ -574,7 +574,6 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.add_cinn_pass(
                         bwd_pm, backward_program
                     )
-                    # pm.add("pass_name") to apply more pass strategy
                     fwd_pm.run(forward_program)
                     bwd_pm.run(backward_program)
                 return forward_program, backward_program
@@ -699,7 +698,7 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for idx, op in finded_ops:
+            for _, op in finded_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
