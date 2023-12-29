@@ -23,6 +23,13 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bilateral_slice
+  backward : bilateral_slice_grad
+  inputs :
+    {x:X, grid:Grid, guide:Guide}
+  outputs :
+    out : Out
+
 - op : accuracy
   inputs :
     {x : Out , indices : Indices, label: Label}

@@ -20,6 +20,15 @@
     param: [inputs]
   backward: add_n_grad
 
+- op : bilateral_slice
+  args : (Tensor x, Tensor grid, Tensor guide, bool has_offset=false)
+  output : Tensor(out)
+  infer_meta:
+    func: BilateralSliceInferMeta
+  kernel:
+    func: bilateral_slice
+  backward: bilateral_slice_grad
+
 - op : assert
   args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
   output :

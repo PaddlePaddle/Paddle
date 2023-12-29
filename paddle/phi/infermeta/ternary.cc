@@ -146,6 +146,50 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void BilateralSliceInferMeta(const MetaTensor& x,
+const MetaTensor& grid, const MetaTensor& guide, bool has_offset, MetaTensor* out){
+  auto input_dims = x.dims();
+    auto grid_dims = grid.dims();
+    auto guide_dims = guide.dims();
+    int64_t h = guide_dims[1];
+    int64_t w = guide_dims[2];
+    int64_t bs = grid_dims[0];
+    int64_t coeffs_chans = grid_dims[1];
+    int64_t input_chans = input_dims[1];
+
+    int64_t output_chans = 0;
+    if (((coeffs_chans < 0) || (input_chans < 0))) {
+      output_chans = -1;
+    } else {
+      if (has_offset) {
+        PADDLE_ENFORCE_EQ((coeffs_chans % (input_chans + 1)),
+                          0,
+                          phi::errors::InvalidArgument(
+                              "Slicing with affine offset, coefficients grid "
+                              "should have n_out*(n_in+1) channels, but got %d",
+                              coeffs_chans));
+        output_chans = coeffs_chans / (input_chans + 1);
+      } else {
+        PADDLE_ENFORCE_EQ(
+            (coeffs_chans % input_chans),
+            0,
+            phi::errors::InvalidArgument(
+                "Slicing without affine offset, coefficients grid "
+                "should have n_out*n_in channels, but got %d .",
+                coeffs_chans));
+        output_chans = coeffs_chans / input_chans;
+      }
+    }
+
+    std::vector<int64_t> output_dims;
+    output_dims.push_back(bs);
+    output_dims.push_back(output_chans);
+    output_dims.push_back(h);
+    output_dims.push_back(w);
+
+    out->set_dims(phi::make_ddim(output_dims));
+}
+
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
                        const MetaTensor& target_box,

@@ -36,6 +36,9 @@ void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad);
 
+void BilateralSliceGradInferMeta(const MetaTensor& x,
+const MetaTensor& grid, const MetaTensor& guide, MetaTensor * x_grad, MetaTensor* grid_grad, MetaTensor* guide_grad);
+
 void BilinearGradInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            const MetaTensor& weight,

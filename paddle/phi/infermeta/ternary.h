@@ -53,6 +53,9 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& step,
                      MetaTensor* out);
 
+void BilateralSliceInferMeta(const MetaTensor& x,
+const MetaTensor& grid, const MetaTensor& guide, bool has_offset, MetaTensor* out);
+
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
                        const MetaTensor& target_box,
@@ -62,6 +65,8 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const std::vector<float>& variance,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
+
+
 
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
