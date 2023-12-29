@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
-#include "paddle/utils/flags.h"
+#include "paddle/phi/core/flags.h"
 
 #if CUDA_VERSION < 11000
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
@@ -22,9 +22,8 @@ cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
 }
 #endif
 
-PD_DECLARE_bool(use_cuda_malloc_async_allocator);
-
-PD_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
+PHI_DECLARE_bool(use_cuda_malloc_async_allocator);
+PHI_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
 namespace phi {
 namespace backends {

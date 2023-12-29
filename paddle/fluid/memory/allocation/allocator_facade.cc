@@ -91,27 +91,17 @@ PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator,
                             true,
                             "Enable StreamSafeCUDAAllocator");
 
-PADDLE_DEFINE_EXPORTED_bool(use_cuda_malloc_async_allocator,
-                            false,
-                            "Enable CUDAMallocAsyncAllocator");
-
-PADDLE_DEFINE_EXPORTED_bool(
-    auto_free_cudagraph_allocations_on_launch,
-    false,
-    "When enabling CUDA Graph with CUDAMallocAsyncAllocator, we add "
-    "cudaGraphInstantiateFlagAutoFreeOnLaunch so it would automatically "
-    "release "
-    "graph-owned blocks that have not freed before relaunching.");
-
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             false,
                             "Whether to use CUDAManagedAllocator to allocate "
                             "managed memory, only available for auto_growth "
                             "strategy");
 
-COMMON_DECLARE_string(allocator_strategy);
-COMMON_DECLARE_uint64(auto_growth_chunk_size_in_mb);
-COMMON_DECLARE_bool(use_auto_growth_pinned_allocator);
+PHI_DECLARE_string(allocator_strategy);
+PHI_DECLARE_uint64(auto_growth_chunk_size_in_mb);
+PHI_DECLARE_bool(use_auto_growth_pinned_allocator);
+PHI_DECLARE_bool(use_cuda_malloc_async_allocator);
+PHI_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
 namespace paddle {
 namespace memory {
