@@ -44,6 +44,7 @@ void OneDNNOperatorDialect::initialize() {
   // paddle/fluid/pir/dialect/CMakeLists.txt.
   // NOTE(Ruting)GET_MANUAL_OP_LIST is define in manual_op.h"
   // use RegisterOps when list has more than two ops.
+#ifdef WIN32
   RegisterOps<
 #define GET_OP_LIST1
 #include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
@@ -52,6 +53,12 @@ void OneDNNOperatorDialect::initialize() {
 #define GET_OP_LIST2
 #include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
       >();
+#else
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+      >();
+#endif
 }
 
 void OneDNNOperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
