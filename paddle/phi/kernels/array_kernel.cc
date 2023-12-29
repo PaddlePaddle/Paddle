@@ -30,12 +30,14 @@ void CreateArrayKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CreateArrayLikeKernel(const Context& dev_ctx,
                            const TensorArray& input,
-                           const Scalar& val,
+                           float val,
                            TensorArray* out) {
   out->resize(input.size());
   for (size_t i = 0; i < input.size(); i++) {
     DenseTensor input_i = input[i];
-    FullLikeKernel<T, Context>(dev_ctx, input_i, val, val.dtype(), &out->at(i));
+    out->at(i).Resize(input_i.dims());
+    FullLikeKernel<T, Context>(
+        dev_ctx, input_i, val, input_i.dtype(), &out->at(i));
   }
 }
 

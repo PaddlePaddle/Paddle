@@ -28,7 +28,7 @@ void CreateArrayKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CreateArrayLikeKernel(const Context& dev_ctx,
                            const TensorArray& input,
-                           const Scalar& val,
+                           float val,
                            TensorArray* out);
 
 template <typename T, typename Context>

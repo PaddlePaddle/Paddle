@@ -156,7 +156,7 @@ static PyObject *static_api_create_array_like(PyObject *self,
 
     // Get Value from args
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
-    auto x = CastPyArg2Value(input_obj, "create_array_like", 0);
+    auto input = CastPyArg2Value(input_obj, "create_array_like", 0);
 
     // Parse Attributes
     PyObject *value_obj = PyTuple_GET_ITEM(args, 1);
@@ -299,6 +299,29 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
   }
 }
 
+PyObject *static_api_add_n_array(PyObject *self,
+                                 PyObject *args,
+                                 PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add add_n_array op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *inputs_obj = PyTuple_GET_ITEM(args, 0);
+    auto inputs = CastPyArg2VectorOfValue(inputs_obj, "add_n", 0);
+
+    // Parse Attributes
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::add_n_array(inputs);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
@@ -332,6 +355,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_array_to_tensor,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for array_to_tensor."},
+    {"add_n_array",
+     (PyCFunction)(void (*)(void))static_api_add_n_array,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for add_n_array."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

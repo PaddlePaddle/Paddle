@@ -74,5 +74,7 @@ std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
                                                          int axis,
                                                          bool use_stack);
 
+pir::OpResult add_n_array(const std::vector<pir::Value>& inputs);
+
 }  // namespace dialect
 }  // namespace paddle

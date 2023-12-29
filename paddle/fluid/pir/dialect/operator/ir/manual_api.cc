@@ -173,5 +173,13 @@ std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
   return std::make_tuple(array_to_tensor.result(0), array_to_tensor.result(1));
 }
 
+pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
+  auto inputs_combine_op =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs);
+  paddle::dialect::AddNArrayOp add_n_array_op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::AddNArrayOp>(
+          inputs_combine_op.out());
+  return add_n_array_op.result(0);
+}
 }  // namespace dialect
 }  // namespace paddle
