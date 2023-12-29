@@ -136,7 +136,8 @@ void BuildScope(const pir::Block& block,
 void DeepCopyVariable(const Variable* src_var,
                       Variable* dst_var,
                       ValueExecutionInfo* value_exe_info,
-                      uint32_t stack_size);
+                      uint32_t stack_size,
+                      bool is_optional);
 
 void BuildRuntimeContext(pir::Operation* op,
                          const ValueExecutionInfo& value_exec_info,

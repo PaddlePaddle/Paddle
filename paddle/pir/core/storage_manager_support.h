@@ -32,11 +32,13 @@ namespace storage_helper_base_impl {
 /// \brief Returns true if this given trait id matches the ids of any of the
 /// provided trait.
 ///
-template <template <typename T> class... Traits>
+template <class... Traits>
 bool hasTrait(TypeId traitID) {
-  TypeId traitIDs[] = {TypeId::get<Traits>()...};
-  for (unsigned i = 0, e = sizeof...(Traits); i != e; ++i)
-    if (traitIDs[i] == traitID) return true;
+  if constexpr (sizeof...(Traits) != 0) {
+    TypeId traitIDs[] = {TypeId::get<Traits>()...};
+    for (unsigned i = 0, e = sizeof...(Traits); i != e; ++i)
+      if (traitIDs[i] == traitID) return true;
+  }
   return false;
 }
 

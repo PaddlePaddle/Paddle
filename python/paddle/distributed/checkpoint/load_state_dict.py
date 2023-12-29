@@ -306,8 +306,8 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 ) = (
                     compute_local_shape_and_global_offset(
                         val.shape,
-                        val.dist_attr.process_mesh,
-                        val.dist_attr.dims_mapping,
+                        val.process_mesh,
+                        val.placements,
                     )
                     if len(val.shape) > 0
                     else ((), ())
@@ -405,9 +405,9 @@ def load_state_dict(
         assert isinstance(
             state_dict, dict
         ), "The state_dict should be a dictionary."
-        state_dict = flatten_state_dict(state_dict)
-        if len(state_dict) > 0:
-            for val in state_dict.values():
+        flat_state_dict, mapping = flatten_state_dict(state_dict)
+        if len(flat_state_dict) > 0:
+            for val in flat_state_dict.values():
                 assert isinstance(
                     val, paddle.Tensor
                 ), f"Only support dygraph Tensor now, but is {val}"
@@ -423,7 +423,7 @@ def load_state_dict(
             paddle.distributed.barrier(process_group)
 
         rank_to_files = get_rank_to_files(
-            path, state_dict, process_group, use_dist
+            path, flat_state_dict, process_group, use_dist
         )
         if len(rank_to_files) <= 0:
             return
@@ -434,16 +434,18 @@ def load_state_dict(
         )
         # read_items: [ReadItem(local_tensor_index, rank, cur_offsets, storage_offsets, lengths)],
         # slice the storage local tensor in (storage_offsets, lengths) to assign the current tensor in (cur_offsets, lengths) in rank.
-        read_items = get_read_items(path, state_dict, process_group, use_dist)
+        read_items = get_read_items(
+            path, flat_state_dict, process_group, use_dist
+        )
         storage_file_to_state_dict = {}
         logger.debug(
-            f"before load, state_dict:{state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
+            f"before load, state_dict:{flat_state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
         )
         state_dict_in_cpu = []
-        for k, v in state_dict.items():
+        for k, v in flat_state_dict.items():
             if v.place.is_cpu_place():
                 state_dict_in_cpu.append(k)
-                state_dict[k] = v.cuda()
+                flat_state_dict[k] = v.cuda()
         for item in read_items:
             assert (
                 item.local_tensor_index in load_infos
@@ -484,15 +486,17 @@ def load_state_dict(
             # The read item rank need to be assigned
             if item.rank == paddle.distributed.get_rank():
                 assert (
-                    item.local_tensor_index.tensor_key in state_dict
-                ), f"item:{item}, state_dict:{state_dict}"
+                    item.local_tensor_index.tensor_key in flat_state_dict
+                ), f"item:{item}, state_dict:{flat_state_dict}"
                 cur_local_tensor = (
-                    state_dict[
+                    flat_state_dict[
                         item.local_tensor_index.tensor_key
                     ]._local_value()
                     if use_dist
-                    and state_dict[item.local_tensor_index.tensor_key].is_dist()
-                    else state_dict[item.local_tensor_index.tensor_key]
+                    and flat_state_dict[
+                        item.local_tensor_index.tensor_key
+                    ].is_dist()
+                    else flat_state_dict[item.local_tensor_index.tensor_key]
                 )
                 cur_offsets = item.cur_offset
                 cur_lengths = item.lengths
@@ -513,7 +517,9 @@ def load_state_dict(
             else:
                 cur_chunk_tensor = paddle.zeros(
                     item.lengths,
-                    dtype=state_dict[item.local_tensor_index.tensor_key].dtype,
+                    dtype=flat_state_dict[
+                        item.local_tensor_index.tensor_key
+                    ].dtype,
                 )
 
             if src_rank == item.rank:
@@ -530,6 +536,6 @@ def load_state_dict(
                         cur_chunk_tensor, src=src_rank, group=process_group
                     )
 
-        for k, v in state_dict.items():
+        for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
                 state_dict[k] = v.cpu()

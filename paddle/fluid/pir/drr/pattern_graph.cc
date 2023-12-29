@@ -19,7 +19,7 @@
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 const drr::OpCall &PatternGraph::AddOpCall(
@@ -238,4 +238,4 @@ std::ostream &operator<<(std::ostream &os, const PatternGraph &pattern_graph) {
 }
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

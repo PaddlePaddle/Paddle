@@ -20,7 +20,7 @@
 #include "paddle/fluid/pir/drr/match_context_impl.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class OperationFactory {
@@ -31,7 +31,7 @@ class OperationFactory {
   }
 
   using operation_create_fn =
-      std::function<pir::Operation*(const std::vector<Value>&,
+      std::function<pir::Operation*(const std::vector<pir::Value>&,
                                     const pir::AttributeMap&,
                                     pir::PatternRewriter&)>;
 
@@ -42,7 +42,7 @@ class OperationFactory {
 
   pir::Operation* CreateOperation(
       const std::string& op_name,
-      const std::vector<Value>& inputs,
+      const std::vector<pir::Value>& inputs,
       const pir::AttributeMap& attrs,
       pir::PatternRewriter& rewriter) const {  // NOLINT
     auto iter = op_creator_map.find(op_name);
@@ -79,4 +79,4 @@ pir::Operation* CreateOperation(const OpCall& op_call,
                                 MatchContextImpl* res_match_ctx);
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

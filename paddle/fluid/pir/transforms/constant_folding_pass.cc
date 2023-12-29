@@ -83,8 +83,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         continue;
       }
       // 2. inputs must come from parameter op or constant op
-      if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::ParameterOp>() ||
-            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>())) {
+      auto* prev_op = pir::GetDefiningOpForInput(op, i);
+      if (!prev_op || !(prev_op->isa<pir::ParameterOp>() ||
+                        prev_op->isa<pir::ConstantTensorOp>())) {
         return false;
       }
       // 3. inputs must be a dense tensor type
@@ -140,7 +141,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     core.Run({});
 
-    rewriter.SetInsertionPointToStart(rewriter.block());
+    // ParameterOp and ConstantTensorOp should be created in the top-level block
+    rewriter.SetInsertionPointToStart(
+        rewriter.block()->parent_program()->block());
 
     bool use_parameter_op = ReplaceResultByParameterOp(op);
 
@@ -168,14 +171,15 @@ class ConstantFoldingPattern : public pir::RewritePattern {
             paddle::framework::TensorCopySync(
                 temp_tensor, place_, output_tensor);
           }
-          auto parameter_op = rewriter.Build<pir::ParameterOp>(
-              output_var_name, op->result(i).type());
-          parameter_op->set_attribute(
-              kAttrIsPersisable,
-              rewriter.array_attr({rewriter.bool_attr(true)}));
-
-          rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
         }
+
+        auto parameter_op = rewriter.Build<pir::ParameterOp>(
+            output_var_name, op->result(i).type());
+        parameter_op->set_attribute(
+            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+        rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
+
       } else {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
@@ -305,15 +309,28 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  explicit ConstantFoldingPass(const phi::Place& place,
-                               paddle::framework::Scope* scope)
-      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope) {
-    PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
-  }
+  ConstantFoldingPass()
+      : pir::Pass("constant_folding_pass", 1),
+        place_(phi::CPUPlace{}),
+        scope_(nullptr) {}
 
  private:
   bool Initialize(pir::IrContext* context) override {
+    IR_ENFORCE(Has(pir::kPlaceAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, place attribute is required!"
+               "Use Set method to set the place attribute.");
+    IR_ENFORCE(Has(pir::kParamScopeAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, scope attribute is required!"
+               "Use Set method to set the scope attribute.");
+
+    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
+
+    PADDLE_ENFORCE_NOT_NULL(
+        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+
     pir::RewritePatternSet ps(context);
     ps.Add<ConstantFoldingPattern>(
         context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
@@ -336,11 +353,6 @@ class ConstantFoldingPass : public pir::Pass {
     paddle::memory::Release(phi::CPUPlace{});
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
-    // TODO(liuyuanle): remove op->isa<::pir::ModuleOp>()
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
  private:
   size_t counter_{0};
   phi::Place place_;
@@ -355,9 +367,8 @@ class ConstantFoldingPass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope) {
-  return std::make_unique<ConstantFoldingPass>(place, scope);
+std::unique_ptr<Pass> CreateConstantFoldingPass() {
+  return std::make_unique<ConstantFoldingPass>();
 }
 
 }  // namespace pir

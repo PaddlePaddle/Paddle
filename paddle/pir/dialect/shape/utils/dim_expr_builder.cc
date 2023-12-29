@@ -43,15 +43,15 @@ DimExpr DimExprBuilder::Div(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 DimExpr DimExprBuilder::Max(const DimExpr& lhs, const DimExpr& rhs) {
-  return MaxDimExpr(std::vector{lhs, rhs});
+  return MaxDimExpr{List<DimExpr>{lhs, rhs}};
 }
 
 DimExpr DimExprBuilder::Min(const DimExpr& lhs, const DimExpr& rhs) {
-  return MinDimExpr(std::vector{lhs, rhs});
+  return MinDimExpr{List<DimExpr>{lhs, rhs}};
 }
 
 DimExpr DimExprBuilder::Broadcast(const DimExpr& lhs, const DimExpr& rhs) {
-  return BroadcastDimExpr(std::vector{lhs, rhs});
+  return BroadcastDimExpr{List<DimExpr>{lhs, rhs}};
 }
 
 std::vector<DimExpr> DimExprBuilder::ConstShape(

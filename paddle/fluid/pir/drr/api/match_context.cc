@@ -19,7 +19,7 @@
 #include "paddle/fluid/pir/drr/ir_operation.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 MatchContext::MatchContext(std::shared_ptr<const MatchContextImpl> impl)
@@ -46,4 +46,4 @@ template std::vector<int64_t> MatchContext::Attr<std::vector<int64_t>>(
     const std::string&) const;
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

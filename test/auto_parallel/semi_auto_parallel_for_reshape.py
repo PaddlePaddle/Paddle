@@ -27,10 +27,10 @@ class TestReshapeSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
+    def check_placements(self, output, expected_placements):
         assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
 
     def test_reshape_forward(self):
         shape = [200, 30]
@@ -44,8 +44,8 @@ class TestReshapeSemiAutoParallel(SemiAutoParallelTestBase):
         output = paddle.reshape(input, shape)
         output.backward()
 
-        self.check_dim_mapping(output, [0, -1])
-        self.check_dim_mapping(input.grad, [0, -1, -1])
+        self.check_placements(output, [dist.Shard(0)])
+        self.check_placements(input.grad, [dist.Shard(0)])
 
     def run_test_case(self):
         if self._backend == "cpu":
