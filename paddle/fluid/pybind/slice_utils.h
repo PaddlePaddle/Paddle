@@ -609,9 +609,9 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
                  tensor.dtype() == phi::DataType::INT16 ||
                  tensor.dtype() == phi::DataType::INT8 ||
                  tensor.dtype() == phi::DataType::UINT8) {
-        values->push_back(value_obj_tmp.cast<int32_t>());
+        values->push_back(value_obj_tmp.cast<float>());
       } else if (tensor.dtype() == phi::DataType::INT64) {
-        values->push_back(value_obj_tmp.cast<int64_t>());
+        values->push_back(value_obj_tmp.cast<double>());
       } else if (tensor.dtype() == phi::DataType::BOOL) {
         values->push_back(value_obj_tmp.cast<bool>());
       } else if (tensor.dtype() == phi::DataType::COMPLEX64) {
