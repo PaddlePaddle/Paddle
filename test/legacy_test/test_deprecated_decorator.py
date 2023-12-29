@@ -47,11 +47,10 @@ def get_warning_index(api):
     """
 
     doc_lst = api.__doc__.splitlines()
-    doc_iter = iter(doc_lst)
-    for idx, val in enumerate(doc_iter):
-        next_val = next(doc_iter, None)
+    for idx, val in enumerate(doc_lst):
+        next_val = doc_lst[idx + 1] if idx + 1 < len(doc_lst) else ""
         if (
-            val == ("    Warning:\n")
+            val == ("    Warning:")
             and next_val.endswith(" instead.")
             and "and will be removed in future versions." in next_val
         ):
