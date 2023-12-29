@@ -48,7 +48,8 @@ std::vector<paddle::DataType> TritonFMHAInferDtype(const paddle::DataType& q_dty
 PD_BUILD_OP(triton_fmha)
     .Inputs({"q", "k", "v"})
     .Outputs({"out"})
-    .Attrs({"scale: float"})
+    .Attrs({"scale:float"})
     .SetKernelFn(PD_KERNEL(TritonFMHA))
     .SetInferShapeFn(PD_INFER_SHAPE(TritonFMHAInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(TritonFMHAInferDtype));
+    

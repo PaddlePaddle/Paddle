@@ -45,10 +45,11 @@ setup(
     ext_modules=CUDAExtension(
         sources=[
             #"./matmul.cu",
-            # "./fmha_triton.cu",
-            # "./fmha2_triton.cu",
-            # "./fmha3_triton.cu",
+            "./fmha_triton.cu",
+            "./fmha2_triton.cu",
+            "./fmha3_triton.cu",
             "./FcRelu_triton.cu",
+            "./Fc_triton.cu",
         ] + generated_cu,
         extra_compile_args={
             "cc": ["-lcuda"],
