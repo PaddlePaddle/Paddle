@@ -15,7 +15,7 @@
 import os
 
 import numpy as np
-
+from site import getsitepackages
 # Test for extra compile args
 extra_cc_args = ['-w', '-g']
 extra_nvcc_args = ['-O3']
@@ -65,32 +65,22 @@ def get_paddle_includes():
     paddle_includes.append(f"{env_dict.get('CMAKE_BINARY_DIR')}")
     paddle_includes.append(f"{env_dict.get('PROTOBUF_INCLUDE_DIR')}")
     paddle_includes.append(f"{paddle_source_dir}")
-    paddle_includes.append(f"{paddle_source_dir}/paddle")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/api")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/api/ext")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/api/include")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/api/common")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/common")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/include")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/backends")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/core")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/infermeta")
-    paddle_includes.append(
-        f"{paddle_source_dir}/paddle/phi/infermeta/spmd_rules"
-    )
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/kernels")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/capi")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/utils")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/phi/api/profiler")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/fluid")
-    paddle_includes.append(f"{paddle_source_dir}/paddle/fluid/platform")
+    
     # mkldnn
     if env_dict.get("WITH_MKLDNN") == 'ON':
         paddle_includes.append(f"{env_dict.get('MKLDNN_INSTALL_DIR')}/include")
     if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
         paddle_includes.append(f"{env_dict.get('externalError_INCLUDE_DIR')}")
     paddle_includes.append(f"{env_dict.get('PYBIND_INCLUDE_DIR')}")
+
+    for site_packages_path in getsitepackages():
+        paddle_includes.append(
+            os.path.join(site_packages_path, 'paddle', 'include')
+        )
+        paddle_includes.append(
+            os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
+        )
+        
     return paddle_includes
 
 
