@@ -389,7 +389,6 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   } else {
     predictor_id_ = inference::GetUniqueId();
   }
-  root_predictor_id_ = predictor_id_;
 }
 
 bool AnalysisPredictor::Init(
@@ -404,6 +403,10 @@ bool AnalysisPredictor::Init(
   }
 #endif
 
+  if (!status_is_cloned_) {
+    root_predictor_id_ = predictor_id_;
+  }
+
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
@@ -416,7 +419,6 @@ bool AnalysisPredictor::Init(
   if (!CreateExecutor()) {
     return false;
   }
-
   if (!PrepareProgram(program)) {
     return false;
   }
@@ -467,7 +469,6 @@ bool AnalysisPredictor::Init(
 #endif
 
   inference::DisplayMemoryInfo(place_, "Init predictor");
-
   return true;
 }
 
@@ -681,14 +682,21 @@ bool AnalysisPredictor::PrepareProgram(
     const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
     if (!LoadProgramDesc()) return false;
-    // If not cloned, the parameters should be loaded.
-    // If config_.ir_optim() is True, parameters is loaded in
-    // OptimizeInferenceProgram(), but other persistable variables
-    // (like RAW type var) are not created in scope.
-    // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
-    // still need to create other persistable variables.
-    // So in both case, create persistable variables at first.
+      // If not cloned, the parameters should be loaded.
+      // If config_.ir_optim() is True, parameters is loaded in
+      // OptimizeInferenceProgram(), but other persistable variables
+      // (like RAW type var) are not created in scope.
+      // If config_.ir_optim() is False, parameters is loaded in
+      // LoadParameters(), still need to create other persistable variables. So
+      // in both case, create persistable variables at first.
+#ifdef PADDLE_WITH_DNNL
+    if (config_.use_mkldnn_) {
+      executor_->CreateVariables(
+          *inference_program_, 0, true, sub_scope_, true);
+    }
+#else
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+#endif
 
     // if enable_ir_optim_ is false,
     // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
@@ -951,7 +959,13 @@ bool AnalysisPredictor::CommInit() {
     order += 1;
   }
   framework::NaiveExecutor e(place_);
+#ifdef PADDLE_WITH_DNNL
+  if (config_.use_mkldnn_) {
+    e.CreateVariables(*comm_init_program, 0, true, scope_.get(), true);
+  }
+#else
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
+#endif
   e.Prepare(scope_.get(), *comm_init_program, 0);
   e.Run();
   VLOG(3) << "Comm init successful.";
@@ -1848,6 +1862,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
+  config_.PartiallyRelease();
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
@@ -2818,7 +2833,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   VLOG(3) << "AnalysisPredictor::Clone";
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
-
+  x->status_is_cloned_ = true;
   x->root_predictor_id_ = this->root_predictor_id_;
   x->config_.apply_optim_ = false;
   if (config_.use_external_stream_ && stream == nullptr) {
@@ -2831,9 +2846,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
         "function has received a stream parameter."));
   }
   x->predictor_stream_ = stream;
-  x->Init(nullptr);
-  x->status_is_cloned_ = true;
-
+  x->Init(scope_, inference_program_);
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
 #endif

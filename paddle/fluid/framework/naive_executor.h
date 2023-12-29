@@ -71,7 +71,8 @@ class NaiveExecutor {
   void CreateVariables(const ProgramDesc& desc,
                        int block_id,
                        bool persistable,
-                       Scope* scope);
+                       Scope* scope,
+                       bool init_mkldnn_memdesc = false);
 
   // Run all the operators.
   void Run();
