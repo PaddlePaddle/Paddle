@@ -159,7 +159,7 @@ class TestArrayReadWriteApi(unittest.TestCase):
 
 
 class TestPirArrayOp(unittest.TestCase):
-    def _test_array(self):
+    def test_array(self):
         paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             main_program = paddle.pir.Program()
@@ -193,7 +193,7 @@ class TestPirArrayOp(unittest.TestCase):
         )
 
     @test_with_pir_api
-    def _test_array_backward(self):
+    def test_array_backward(self):
         np.random.seed(2013)
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()

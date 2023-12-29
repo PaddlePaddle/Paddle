@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/pir/drr/drr_rewrite_pattern.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 bool DrrRewritePattern::MatchAndRewrite(
     pir::Operation* op,
-    PatternRewriter& rewriter) const {  // NOLINT
+    pir::PatternRewriter& rewriter) const {  // NOLINT
   std::shared_ptr<MatchContextImpl> src_match_ctx =
       std::make_shared<MatchContextImpl>();
   if (PatternGraphMatch(op, src_match_ctx.get())) {
@@ -41,8 +41,8 @@ bool DrrRewritePattern::PatternGraphMatch(
     return false;
   }
   std::vector<const OpCall*> drr_output_sequence;
-  std::vector<Operation*> ir_output_sequence;
-  std::unordered_map<const OpCall*, Operation*> output_op_map;
+  std::vector<pir::Operation*> ir_output_sequence;
+  std::unordered_map<const OpCall*, pir::Operation*> output_op_map;
   for (const auto& pair : bind_map) {
     drr_output_sequence.push_back(pair.first);
   }
@@ -50,8 +50,8 @@ bool DrrRewritePattern::PatternGraphMatch(
   auto permute = [&](auto&& permute, size_t index) -> bool {
     if (index == drr_output_sequence.size()) {
       // avoiding duplicate binding of ir op
-      std::unordered_set<Operation*> ir_output_set;
-      for (Operation* op : ir_output_sequence) {
+      std::unordered_set<pir::Operation*> ir_output_set;
+      for (pir::Operation* op : ir_output_sequence) {
         auto pr = ir_output_set.insert(op);
         if (pr.second == false) {
           return false;
@@ -64,7 +64,7 @@ bool DrrRewritePattern::PatternGraphMatch(
                      drr_output_sequence.end(),
                      ir_output_sequence.begin(),
                      std::inserter(output_op_map, output_op_map.end()),
-                     [](const OpCall* drr_op, Operation* ir_op) {
+                     [](const OpCall* drr_op, pir::Operation* ir_op) {
                        return std::make_pair(drr_op, ir_op);
                      });
       if (MatchFromOutputToInput(
@@ -214,12 +214,12 @@ void DrrRewritePattern::DfsVisitor(
 }
 
 bool DrrRewritePattern::MatchFromOutputToInput(
-    std::unordered_map<const OpCall*, Operation*> output_op_map,
+    std::unordered_map<const OpCall*, pir::Operation*> output_op_map,
     const SourcePatternGraph& source_pattern_graph,
     const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
   VLOG(6) << "MatchFromOutputToInput Start";
   std::unordered_set<const OpCall*> drr_visited;
-  std::unordered_set<Operation*> ir_visited;
+  std::unordered_set<pir::Operation*> ir_visited;
   std::queue<const OpCall*> drr_q;
   std::queue<pir::Operation*> ir_q;
   bool matched = true;
@@ -385,8 +385,8 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
   }
 
-  std::vector<std::vector<Operation*>> temp_program;
-  std::unordered_map<Operation*, size_t> op_2_temp_program_index;
+  std::vector<std::vector<pir::Operation*>> temp_program;
+  std::unordered_map<pir::Operation*, size_t> op_2_temp_program_index;
   for (auto& op : *rewriter.block()) {
     op_2_temp_program_index[&op] = temp_program.size();
     temp_program.push_back({&op});
@@ -397,14 +397,14 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
     // set insert point
     size_t max_input_op_index = 0;
-    Operation* max_index_op = nullptr;
+    pir::Operation* max_index_op = nullptr;
     for (const Tensor* input : op_call.inputs()) {
       if (input->is_none()) {
         continue;
       }
       auto ir_val = res_match_ctx.GetIrValue(input->name());
       if (ir_val) {
-        Operation* ir_input_op = ir_val.dyn_cast<pir::OpResult>().owner();
+        pir::Operation* ir_input_op = ir_val.dyn_cast<pir::OpResult>().owner();
         if (op_2_temp_program_index.count(ir_input_op) == 0) {
           max_input_op_index = 0UL;
         } else if (max_input_op_index <
@@ -431,7 +431,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
     if (max_input_op_index == 0UL) {
       VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
-      Operation* source_patter_first_op =
+      pir::Operation* source_patter_first_op =
           src_match_ctx.Operation(source_pattern_graph.owned_op_call()[0].get())
               .get();
       max_input_op_index = op_2_temp_program_index[source_patter_first_op];
@@ -440,7 +440,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       rewriter.SetInsertionPointAfter(max_index_op);
     }
 
-    Operation* new_op =
+    pir::Operation* new_op =
         CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
     op_2_temp_program_index[new_op] = max_input_op_index + 1;
     if (max_input_op_index + 1 >= temp_program.size()) {
@@ -487,11 +487,11 @@ void DrrRewritePattern::DeleteSourcePatternOp(
     const ResultPatternGraph& result_pattern_graph,
     const MatchContextImpl& src_match_ctx,
     pir::PatternRewriter& rewriter) const {  // NOLINT
-  std::queue<Operation*> delete_ops_que;
-  std::unordered_set<Operation*> delete_ops_set;
+  std::queue<pir::Operation*> delete_ops_que;
+  std::unordered_set<pir::Operation*> delete_ops_set;
   GraphTopo graph_topo_visit(&source_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
-    Operation* op = src_match_ctx.Operation(&op_call).get();
+    pir::Operation* op = src_match_ctx.Operation(&op_call).get();
     VLOG(5) << "DRR delete op: " << op->name() << " pointer: " << op;
     if (delete_ops_set.count(op) == 0 && op->use_empty()) {
       delete_ops_que.push(op);
@@ -500,9 +500,9 @@ void DrrRewritePattern::DeleteSourcePatternOp(
   });
 
   while (!delete_ops_que.empty()) {
-    Operation* op = delete_ops_que.front();
+    pir::Operation* op = delete_ops_que.front();
     delete_ops_que.pop();
-    std::vector<Value> inputs = op->operands_source();
+    std::vector<pir::Value> inputs = op->operands_source();
     VLOG(5) << "Delete (" << op->name() << " @" << op
             << ") in source_pattern_graph.";
     rewriter.EraseOp(op);
@@ -517,4 +517,4 @@ void DrrRewritePattern::DeleteSourcePatternOp(
 }
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle
