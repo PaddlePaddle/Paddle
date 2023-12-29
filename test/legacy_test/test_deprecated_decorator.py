@@ -46,13 +46,16 @@ def get_warning_index(api):
         index (int): the index of the Warinng information in its doc string if exists.
     """
 
-    doc_lst = api.__doc__.splitlines()
-    for idx, val in enumerate(doc_lst):
-        next_val = doc_lst[idx + 1] if idx + 1 < len(doc_lst) else ""
+    doc_list = api.__doc__.splitlines()
+    if len(doc_list) < 2:
+        return ERROR_WARNING_POSTION
+    for idx, (current_line, next_line) in enumerate(
+        zip(doc_list[:-1], doc_list[1:])
+    ):
         if (
-            val == ("Warning:")
-            and next_val.endswith(" instead.")
-            and "and will be removed in future versions." in next_val
+            current_line == "Warning:"
+            and next_line.endswith(" instead.")
+            and "and will be removed in future versions." in next_line
         ):
             return idx
     return ERROR_WARNING_POSTION
@@ -89,7 +92,6 @@ class TestDeprecatedDecorator(unittest.TestCase):
         dataset = paddle.base.DatasetFactory().create_dataset("InMemoryDataset")
         with warnings.catch_warnings(record=True):
             dataset.set_merge_by_lineid()
-            print(paddle.base.InMemoryDataset.set_merge_by_lineid.__doc__)
             assert (
                 '\nSet merge by'
                 in paddle.base.InMemoryDataset.set_merge_by_lineid.__doc__
