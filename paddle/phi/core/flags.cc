@@ -1112,7 +1112,7 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
 /*
  * Inference switch stream related FLAG
  * Name: FLAGS_inference_switch_stream
- * Since Version: 2.6
+ * Since Version: 2.7
  * Value Range: bool, default=false
  * Example: FLAGS_inference_switch_stream=true would switch
  * It is possible for this flag to be set to true in RunWithExternalStream API.

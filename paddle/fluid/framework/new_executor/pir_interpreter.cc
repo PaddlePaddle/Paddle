@@ -77,6 +77,9 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DECLARE_bool(inference_switch_stream);
+#endif
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
 
@@ -1305,6 +1308,12 @@ paddle::framework::FetchList PirInterpreter::Run(
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (FLAGS_inference_switch_stream) {
+        BuildInstruction();
+        FLAGS_inference_switch_stream = false;
+      }
+#endif
       LOG_FIRST_N(INFO, 1)
           << "pir interpreter is running by multi-thread mode ...";
       MultiThreadRunImpl();
@@ -1396,6 +1405,12 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (FLAGS_inference_switch_stream) {
+      BuildInstruction();
+      FLAGS_inference_switch_stream = false;
+    }
+#endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
