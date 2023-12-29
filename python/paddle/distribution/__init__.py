@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import transform
 from .bernoulli import Bernoulli
 from .beta import Beta
 from .binomial import Binomial
@@ -72,17 +73,6 @@ __all__ = [
     'Geometric',
     'Binomial',
     'Poisson',
-    'Transform',
-    'AbsTransform',
-    'AffineTransform',
-    'ChainTransform',
-    'ExpTransform',
-    'IndependentTransform',
-    'PowerTransform',
-    'ReshapeTransform',
-    'SigmoidTransform',
-    'SoftmaxTransform',
-    'StackTransform',
-    'StickBreakingTransform',
-    'TanhTransform',
 ]
+
+__all__.extend(transform.__all__)

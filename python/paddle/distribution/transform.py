@@ -25,6 +25,22 @@ from paddle.distribution import (
     variable,
 )
 
+__all__ = [
+    'Transform',
+    'AbsTransform',
+    'AffineTransform',
+    'ChainTransform',
+    'ExpTransform',
+    'IndependentTransform',
+    'PowerTransform',
+    'ReshapeTransform',
+    'SigmoidTransform',
+    'SoftmaxTransform',
+    'StackTransform',
+    'StickBreakingTransform',
+    'TanhTransform',
+]
+
 
 class Type(enum.Enum):
     """Mapping type of a transformation."""
