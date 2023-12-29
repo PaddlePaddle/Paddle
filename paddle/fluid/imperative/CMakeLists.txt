@@ -1,11 +1,11 @@
 cc_library(
   imperative_flag
   SRCS flags.cc
-  DEPS phi)
+  DEPS phi common)
 cc_library(
   var_helper
   SRCS var_helper.cc
-  DEPS tensor phi)
+  DEPS tensor phi common)
 if(WITH_XPU)
   cc_library(
     prepared_operator
@@ -19,8 +19,8 @@ if(WITH_XPU)
          var_type_traits
          op_kernel_type
          data_transform
-         nan_inf_utils
          phi
+         common
          var_helper
          profiler
          place)
@@ -36,8 +36,8 @@ else()
          var_type_traits
          op_kernel_type
          data_transform
-         nan_inf_utils
          phi
+         common
          var_helper
          profiler
          place)
@@ -45,14 +45,19 @@ endif()
 cc_library(
   layer
   SRCS layer.cc
-  DEPS prepared_operator phi imperative_flag variable_helper op_registry
+  DEPS prepared_operator
+       phi
+       common
+       imperative_flag
+       variable_helper
+       op_registry
        var_helper)
 add_subdirectory(jit)
 if(WITH_GPU)
   cc_library(
     layout_autotune
     SRCS layout_autotune.cc
-    DEPS op_info phi)
+    DEPS op_info phi common)
 else()
   cc_library(
     layout_autotune
@@ -75,19 +80,20 @@ cc_library(
        var_helper
        layout_autotune
        ops_extra_info
-       phi)
+       phi
+       common)
 cc_library(
   basic_engine
   SRCS basic_engine.cc
-  DEPS layer gradient_accumulator phi)
+  DEPS layer gradient_accumulator phi common)
 cc_library(
   engine
   SRCS basic_engine.cc partial_grad_engine.cc
-  DEPS layer gradient_accumulator phi)
+  DEPS layer gradient_accumulator phi common)
 cc_library(
   imperative_profiler
   SRCS profiler.cc
-  DEPS phi)
+  DEPS phi common)
 if(NOT WIN32)
   if(WITH_NCCL OR WITH_RCCL)
     cc_library(
@@ -150,7 +156,7 @@ if(NOT WIN32)
   cc_library(
     data_loader
     SRCS data_loader.cc
-    DEPS enforce)
+    DEPS enforce common)
 endif()
 if(WITH_GLOO)
   cc_library(
@@ -173,4 +179,10 @@ endif()
 cc_library(
   gradient_accumulator
   SRCS gradient_accumulator.cc
-  DEPS operator lod_tensor selected_rows_utils var_type_traits layer phi)
+  DEPS operator
+       lod_tensor
+       selected_rows_utils
+       var_type_traits
+       layer
+       phi
+       common)

@@ -18,9 +18,10 @@
 #include <map>
 #include <type_traits>
 
+#include "paddle/common/enforce.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/utils.h"
 
@@ -52,6 +53,7 @@ DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(BoolAttributeStorage, bool);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(FloatAttributeStorage, float);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(DoubleAttributeStorage, double);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int32AttributeStorage, int32_t);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(IndexAttributeStorage, int64_t);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int64AttributeStorage, int64_t);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(PointerAttributeStorage, void *);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(TypeAttributeStorage, Type);
@@ -141,10 +143,50 @@ struct ArrayAttributeStorage : public AttributeStorage {
                size_);
     return data_[index];
   }
+  Attribute operator[](size_t index) const { return data_[index]; }
 
  private:
   Attribute *data_;
   const size_t size_;
 };
 
+struct Complex64AttributeStorage : public AttributeStorage {
+  using ParamKey = phi::dtype::complex<float>;
+  explicit Complex64AttributeStorage(const ParamKey &key) { data_ = key; }
+  static Complex64AttributeStorage *Construct(const ParamKey &key) {
+    return new Complex64AttributeStorage(key);
+  }
+  static std::size_t HashValue(const ParamKey &key) {
+    std::stringstream complex_str;
+    complex_str << key.real << "+" << key.imag << "i";
+    return std::hash<std::string>{}(complex_str.str());
+  }
+
+  bool operator==(ParamKey key) const { return data_ == key; }
+
+  phi::dtype::complex<float> data() const { return data_; }
+
+ private:
+  phi::dtype::complex<float> data_;
+};
+
+struct Complex128AttributeStorage : public AttributeStorage {
+  using ParamKey = phi::dtype::complex<double>;
+  explicit Complex128AttributeStorage(const ParamKey &key) { data_ = key; }
+  static Complex128AttributeStorage *Construct(const ParamKey &key) {
+    return new Complex128AttributeStorage(key);
+  }
+  static std::size_t HashValue(const ParamKey &key) {
+    std::stringstream complex_str;
+    complex_str << key.real << "+" << key.imag << "i";
+    return std::hash<std::string>{}(complex_str.str());
+  }
+
+  bool operator==(ParamKey key) const { return data_ == key; }
+
+  phi::dtype::complex<double> data() const { return data_; }
+
+ private:
+  phi::dtype::complex<double> data_;
+};
 }  // namespace pir

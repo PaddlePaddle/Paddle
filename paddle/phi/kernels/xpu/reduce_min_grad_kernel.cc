@@ -63,18 +63,20 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   T* brocast1 = nullptr;
   T* brocast2 = nullptr;
   bool* equal = nullptr;
-  PADDLE_ENFORCE_EQ(
-      xpu_malloc(reinterpret_cast<void**>(&brocast1), x.numel() * sizeof(T)),
-      XPU_SUCCESS,
-      errors::ResourceExhausted("XPU has no enough memory"));
-  PADDLE_ENFORCE_EQ(
-      xpu_malloc(reinterpret_cast<void**>(&equal), x.numel() * sizeof(bool)),
-      XPU_SUCCESS,
-      errors::ResourceExhausted("XPU has no enough memory"));
-  PADDLE_ENFORCE_EQ(
-      xpu_malloc(reinterpret_cast<void**>(&brocast2), x.numel() * sizeof(T)),
-      XPU_SUCCESS,
-      errors::ResourceExhausted("XPU has no enough memory"));
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
+  brocast1 = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+  PADDLE_ENFORCE_NOT_NULL(
+      brocast1, errors::ResourceExhausted("XPU has no enough memory"));
+
+  equal = RAII_GUARD.alloc_l3_or_gm<bool>(x.numel());
+  PADDLE_ENFORCE_NOT_NULL(
+      equal, errors::ResourceExhausted("XPU has no enough memory"));
+
+  brocast2 = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+  PADDLE_ENFORCE_NOT_NULL(
+      brocast2, errors::ResourceExhausted("XPU has no enough memory"));
 
   // use [1] to replace [], because xpu not support []
   if (xdims.size() == 0) {
@@ -107,13 +109,6 @@ void ReduceMinGradKernel(const Context& dev_ctx,
                      xdims,
                      xdims);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
-
-  if (dev_ctx.x_context()->xpu_stream) {
-    dev_ctx.Wait();
-  }
-  xpu_free(brocast1);
-  xpu_free(brocast2);
-  xpu_free(equal);
 }
 
 }  // namespace phi

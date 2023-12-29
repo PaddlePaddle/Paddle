@@ -31,6 +31,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
   w_grad->Resize(w.dims());
   dev_ctx.template Alloc(w_grad, w.dtype());
   T* table_grad_data = static_cast<T*>(w_grad->data());
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   size_t table_t_mem_size = w.numel() * phi::SizeOf(w_grad->dtype());
   size_t table_grad_t_mem_size = w_grad->numel() * phi::SizeOf(w_grad->dtype());
@@ -40,8 +41,10 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
            << ", table_grad_t memory_size:" << table_grad_t_mem_size
            << ", start_index:" << start_index;
 
-  int r = xpu::constant(
-      dev_ctx.x_context(), table_grad_data, w_grad->numel(), (T)0);
+  int r = xpu::constant(dev_ctx.x_context(),
+                        reinterpret_cast<XPUType*>(table_grad_data),
+                        w_grad->numel(),
+                        (XPUType)0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   const T* d_output_data = out_grad.data<T>();
 
@@ -51,9 +54,9 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32) {
     r = xpu::embedding_grad(dev_ctx.x_context(),
-                            d_output_data,
+                            reinterpret_cast<const XPUType*>(d_output_data),
                             ids.data<int32_t>(),
-                            table_grad_data,
+                            reinterpret_cast<XPUType*>(table_grad_data),
                             height,
                             width,
                             ids.numel(),
@@ -61,9 +64,9 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                             static_cast<int32_t>(start_index));
   } else if (index_type == phi::DataType::INT64) {
     r = xpu::embedding_grad(dev_ctx.x_context(),
-                            d_output_data,
+                            reinterpret_cast<const XPUType*>(d_output_data),
                             ids.data<int64_t>(),
-                            table_grad_data,
+                            reinterpret_cast<XPUType*>(table_grad_data),
                             height,
                             width,
                             ids.numel(),
@@ -78,5 +81,10 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    c_embedding_grad, XPU, ALL_LAYOUT, phi::CEmbeddingGradKernel, float) {}
+PD_REGISTER_KERNEL(c_embedding_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CEmbeddingGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

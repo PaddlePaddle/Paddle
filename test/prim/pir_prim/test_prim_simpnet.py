@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import _pir_ops, nn
 from paddle.autograd.ir_backward import grad
-from paddle.decomposition import decompose
+from paddle.decomposition import decomp
 from paddle.framework import core
 
 paddle.enable_static()
@@ -62,7 +62,7 @@ class TestPrimMode(unittest.TestCase):
             l2_w = paddle.static.data('l2_w', self.shape_l2_w, dtype='float32')
             divide_out = paddle.divide(x, y)
             res = net(divide_out, l1_w, l2_w)
-            [res2] = decompose(main_program, [res])
+            [res2] = decomp.decompose(main_program, [res])
             gradients = grad(res2, (x, y))
             exe = paddle.static.Executor()
             outs = exe.run(

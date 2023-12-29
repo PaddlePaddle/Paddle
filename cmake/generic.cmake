@@ -88,9 +88,8 @@
 # To build a unit test binary, which is an executable binary with libpaddle.so
 # automatically linked:
 #
-#   paddle_test(example SHARED)
+#   paddle_test(example SRCS example_test.cc)
 #
-
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # including io directory for inference lib paddle_api.h
@@ -499,12 +498,15 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cudnn_deterministic=true)
+    set_property(
+      TEST ${TARGET_NAME}
+      PROPERTY
+        ENVIRONMENT
+        FLAGS_cpu_deterministic=true
+        FLAGS_init_allocated_mem=true
+        FLAGS_cudnn_deterministic=true
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+    )
     # No unit test should exceed 2 minutes.
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
@@ -593,9 +595,13 @@ function(paddle_test_build TARGET_NAME)
     add_executable(${TARGET_NAME} ${paddle_test_SRCS})
     get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
     target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:${paddle_lib}>
-                          ${paddle_test_DEPS} paddle_gtest_main_new)
-    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS}
+                          ${paddle_test_DEPS} common paddle_gtest_main_new)
+    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS} common
                      paddle_gtest_main_new)
+    if(WITH_MKLDNN)
+      target_link_libraries(${TARGET_NAME} mkldnn)
+      add_dependencies(${TARGET_NAME} mkldnn)
+    endif()
     if(WITH_SHARED_PHI)
       target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:phi>)
       add_dependencies(${TARGET_NAME} phi)
@@ -620,7 +626,7 @@ function(paddle_test_build TARGET_NAME)
     if(APPLE)
       target_link_libraries(
         ${TARGET_NAME}
-        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,$<TARGET_FILE_DIR:common>"
       )
     endif()
     common_link(${TARGET_NAME})
@@ -726,6 +732,7 @@ function(nv_test TARGET_NAME)
     # 2. cuda_add_executable does not support ccache.
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
                           ${os_dependency_modules} paddle_gtest_main phi)
@@ -830,7 +837,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       glog
       phi
@@ -840,7 +846,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)
@@ -937,7 +942,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog
@@ -947,7 +951,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)

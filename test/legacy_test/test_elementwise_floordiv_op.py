@@ -45,7 +45,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -105,6 +105,7 @@ def device_guard(device=None):
 
 class TestFloorDivideOp(unittest.TestCase):
     def test_name(self):
+        paddle.enable_static()
         with paddle_static_guard():
             with base.program_guard(base.Program()):
                 x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
@@ -112,6 +113,7 @@ class TestFloorDivideOp(unittest.TestCase):
 
                 y_1 = paddle.floor_divide(x, y, name='div_res')
                 self.assertEqual(('div_res' in y_1.name), True)
+            paddle.disable_static()
 
     def test_dygraph(self):
         paddle.disable_static()

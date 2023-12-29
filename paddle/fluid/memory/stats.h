@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/thread_data_registry.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -121,6 +122,9 @@ int64_t HostMemoryStatPeakValue(const std::string& stat_type, int dev_id);
 void HostMemoryStatUpdate(const std::string& stat_type,
                           int dev_id,
                           int64_t increment);
+
+void LogDeviceMemoryStats(const platform::Place& place,
+                          const std::string& op_name);
 
 #define DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)              \
   case id:                                                          \

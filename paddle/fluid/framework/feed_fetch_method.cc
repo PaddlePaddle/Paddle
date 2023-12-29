@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
 
 namespace phi {
@@ -30,6 +30,21 @@ namespace framework {
 
 class Variable;
 
+void SetVariable(Scope* scope,
+                 const phi::DenseTensor& input,
+                 const std::string& var_name) {
+  Variable* target_var = scope->FindVar(var_name);
+  if (target_var && !target_var->IsType<phi::DenseTensor>()) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The variable you want to set is not a phi::DenseTensor, but here "
+        "you tried to convert its type to phi::DenseTensor."));
+  }
+  target_var = scope->Var(var_name);
+  auto tensor = target_var->GetMutable<phi::DenseTensor>();
+  tensor->ShareDataWith(input);
+  tensor->set_lod(input.lod());
+}
+
 void SetFeedVariable(Scope* scope,
                      const phi::DenseTensor& input,
                      const std::string& var_name,
@@ -37,7 +52,7 @@ void SetFeedVariable(Scope* scope,
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
-  if (FLAGS_enable_new_ir_in_executor) {
+  if (FLAGS_enable_pir_in_executor) {
     // shared data with input tensor
     auto feed_ele = scope->Var(var_name);
     if (!feed_ele->IsType<phi::DenseTensor>()) {

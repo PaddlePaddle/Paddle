@@ -14,16 +14,6 @@
     func : abs_double_grad
     data_type : grad_x_grad
 
-- backward_op : bilateral_slice_grad
-  forward : bilateral_slice(Tensor x, Tensor grid, Tensor guide, bool has_offset=false) -> Tensor(out)
-  args : (Tensor x, Tensor grid, Tensor guide, Tensor out_grad, bool has_offset=false)
-  output : Tensor(x_grad), Tensor(grid_grad), Tensor(guide_grad)
-  infer_meta :
-    func : BilateralSliceGradInferMeta
-    param : [x, grid, guide]
-  kernel :
-    func : bilateral_slice_grad
-
 - backward_op : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -204,6 +194,16 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- backward_op : bilateral_slice_grad
+  forward : bilateral_slice(Tensor x, Tensor grid, Tensor guide, bool has_offset=false) -> Tensor(out)
+  args : (Tensor x, Tensor grid, Tensor guide, Tensor out_grad, bool has_offset=false)
+  output : Tensor(x_grad), Tensor(grid_grad), Tensor(guide_grad)
+  infer_meta :
+    func : BilateralSliceGradInferMeta
+    param : [x, grid, guide]
+  kernel :
+    func : bilateral_slice_grad
+
 - backward_op : bilinear_grad
   forward : bilinear (Tensor x, Tensor y, Tensor weight, Tensor bias) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor weight, Tensor out_grad)
@@ -351,6 +351,7 @@
   infer_meta :
     func : UnchangedMultiInferMeta
     param : [x]
+    spmd_rule: ConcatGradInferSpmdDynamic
   kernel :
     func : concat_grad
     data_type : out_grad
@@ -442,6 +443,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : cos_grad
   backward : cos_double_grad
@@ -487,6 +489,7 @@
   output : Tensor(input_grad)
   infer_meta :
     func : CrossEntropyWithSoftmaxGradInferMeta
+    spmd_rule : CrossEntropyWithSoftmaxGradInferSpmd
   kernel :
     func : cross_entropy_with_softmax_grad
     data_type : loss_grad
@@ -504,24 +507,26 @@
     data_type : out_grad
 
 - backward_op : cummax_grad
-  forward : cummax(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  forward : cummax(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : cummax_grad
+    data_type : out_grad
 
 - backward_op : cummin_grad
-  forward : cummin(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  forward : cummin(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : cummin_grad
+    data_type : out_grad
 
 - backward_op : cumprod_grad
   forward : cumprod (Tensor x, int dim) -> Tensor(out)
@@ -718,6 +723,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : exp_grad
   inplace : (out_grad -> x_grad)
@@ -835,6 +841,7 @@
   infer_meta :
     func : FlashAttnGradInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttGradInferSpmd
   kernel :
     func : flash_attn_grad
     data_type: q
@@ -857,7 +864,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func :  KernelWithXShapeInferMeta
-    param : [xshape]
+    param : [xshape, out_grad]
   kernel :
     func : flatten_grad
     data_type : out_grad
@@ -948,6 +955,8 @@
     func : gather_nd_grad
   composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
+  data_transform :
+    skip_transform : index
 
 - backward_op : gaussian_inplace_grad
   forward : gaussian_inplace(Tensor x, float mean=0, float std=1.0, int seed=0) -> Tensor(out)
@@ -1099,6 +1108,17 @@
   kernel :
     func : i1e_grad
 
+- backward_op : identity_loss_grad
+  forward : identity_loss (Tensor x, int reduction) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int reduction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : IdentityLossGradInferMeta
+  kernel :
+    func : identity_loss_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -1129,6 +1149,8 @@
   kernel :
     func : index_put_grad
     data_type : out_grad
+  data_transform :
+    skip_transform : indices
 
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
@@ -1252,6 +1274,7 @@
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : LayerNormGradInferMeta
+    spmd_rule : LayerNormGradInferSpmd
     param : [x, scale, bias]
   kernel :
     func : layer_norm_grad
@@ -1571,6 +1594,8 @@
     func : multiplex_grad
     param : [index, out_grad]
     data_type : out_grad
+  data_transform :
+    skip_transform : index
 
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
@@ -1716,6 +1741,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule: PowGradInferSpmd
   kernel :
     func : pow_grad
     data_type : out_grad
@@ -1758,8 +1784,8 @@
   optional : boxes_num
 
 - backward_op : put_along_axis_grad
-  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign") -> Tensor(out)
-  args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
+  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
+  args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
   output : Tensor(arr_grad), Tensor(values_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -1827,6 +1853,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : relu_grad
   backward: relu_double_grad
@@ -1916,6 +1943,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : rsqrt_grad
   backward : rsqrt_double_grad
@@ -2071,6 +2099,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : silu_grad
   backward : silu_double_grad
@@ -2097,6 +2126,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sin_grad
   backward : sin_double_grad
@@ -2244,6 +2274,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : square_grad
   backward : square_double_grad
@@ -2272,7 +2303,8 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param: [xshape]
+    param: [xshape, out_grad]
+    spmd_rule : SqueezeGradInferSpmd
   kernel :
     func : squeeze_grad
     data_type : out_grad
@@ -2286,6 +2318,7 @@
   infer_meta :
     func : StackGradInferMeta
     param: [out_grad, axis]
+    spmd_rule : StackGradInferSpmd
   kernel :
     func : stack_grad
     param : [out_grad, axis]
@@ -2516,7 +2549,8 @@
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
-    param: [xshape]
+    param: [xshape, out_grad]
+    spmd_rule : UnsqueezeGradInferSpmd
   kernel :
     func : unsqueeze_grad
     param : [xshape, out_grad]
@@ -2579,8 +2613,8 @@
   no_need_buffer : input
 
 - backward_op : weight_only_linear_grad
-  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype) -> Tensor(out)
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype)
+  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch, int group_size) -> Tensor(out)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch, int group_size)
   output : Tensor(x_grad)
   infer_meta :
     func : WeightOnlyLinearGradInferMeta
@@ -2597,6 +2631,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule: WhereGradInferSpmd
   kernel :
     func : where_grad
   no_need_buffer : x, y

@@ -52,11 +52,11 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places,
     std::vector<ir::Graph *> graphs)
-    : strategy_(std::move(strategy)),
-      local_scopes_(std::move(local_scopes)),
+    : strategy_(strategy),
+      local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
-      places_(std::move(places)),
+      places_(places),
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(),

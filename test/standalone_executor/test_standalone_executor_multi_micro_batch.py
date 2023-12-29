@@ -185,20 +185,14 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
             for program_id in range(program_num):
                 job = Job(f"P{program_id}")
                 job.set_micro_batch_id(micro_batch_id)
-                # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
-                if program_id == program_num - 1:
-                    fetch_op_id_to_col_attr = {}
-                    for i in range(fetch_op_num):
-                        job.set_col_attr_for_fetch_op(
-                            fetch_op_indics[i],
-                            i * micro_batch_num + micro_batch_id,
-                        )
                 job_list.append(job)
 
-        type_to_program = {}
+        job_types = []
         for program_id in range(program_num):
-            type_to_program[f"P{program_id}"] = programs[program_id]
-        set_skip_gc_vars(micro_batch_num, type_to_program, job_list)
+            job_types.append(f"P{program_id}")
+        type_to_program = set_skip_gc_vars(
+            micro_batch_num, job_types, programs, job_list
+        )
 
         for type in type_to_program.keys():
             type_to_program[type] = type_to_program[type].desc

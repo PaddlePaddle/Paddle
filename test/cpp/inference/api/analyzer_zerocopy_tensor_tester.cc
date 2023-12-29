@@ -26,7 +26,6 @@ TEST(test_zerocopy_tensor, zerocopy_tensor) {
   AnalysisConfig config;
   config.SetModel(FLAGS_infer_model + "/__model__",
                   FLAGS_infer_model + "/__params__");
-  config.SwitchUseFeedFetchOps(false);
 
   auto predictor = CreatePaddlePredictor(config);
   int batch_size = 1;

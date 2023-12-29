@@ -85,12 +85,12 @@ std::vector<std::string> InplaceOpVarPass::GetControlFlowVarNames(
   for (auto* node : graph->Nodes()) {
     if (!node->IsOp() || control_flow_ops_.count(node->Op()->Type()) == 0)
       continue;
-    for (auto in_names : node->Op()->Inputs()) {
+    for (auto const& in_names : node->Op()->Inputs()) {
       auto var_names = in_names.second;
       control_flow_var_names.insert(
           control_flow_var_names.end(), var_names.begin(), var_names.end());
     }
-    for (auto out_names : node->Op()->Outputs()) {
+    for (auto const& out_names : node->Op()->Outputs()) {
       auto var_names = out_names.second;
       control_flow_var_names.insert(
           control_flow_var_names.end(), var_names.begin(), var_names.end());

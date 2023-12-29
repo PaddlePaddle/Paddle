@@ -12,23 +12,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from .amp_optimizer import AMPOptimizer
-from .asp_optimizer import ASPOptimizer
-from .qat_optimizer import QATOptimizer
-from .recompute_optimizer import RecomputeOptimizer
-from .gradient_merge_optimizer import GradientMergeOptimizer
-from .ps_optimizer import ParameterServerOptimizer
-from .pipeline_optimizer import PipelineOptimizer
-from .localsgd_optimizer import LocalSGDOptimizer
-from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
-from .lars_optimizer import LarsOptimizer
-from .dgc_optimizer import DGCOptimizer
-from .dgc_optimizer import DGCMomentumOptimizer
-from .lamb_optimizer import LambOptimizer
-from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
-from .sharding_optimizer import ShardingOptimizer
-from .dygraph_optimizer import HybridParallelOptimizer
-from .dygraph_optimizer import HeterParallelOptimizer
-from .dygraph_optimizer import HybridParallelGradScaler
-from .tensor_parallel_optimizer import TensorParallelOptimizer
-from .raw_program_optimizer import RawProgramOptimizer
+from .amp_optimizer import AMPOptimizer  # noqa: F401
+from .asp_optimizer import ASPOptimizer  # noqa: F401
+from .dgc_optimizer import (  # noqa: F401
+    DGCMomentumOptimizer,
+    DGCOptimizer,
+)
+from .dygraph_optimizer import (  # noqa: F401
+    HeterParallelOptimizer,
+    HybridParallelGradScaler,
+    HybridParallelOptimizer,
+)
+from .fp16_allreduce_optimizer import FP16AllReduceOptimizer  # noqa: F401
+from .gradient_merge_optimizer import GradientMergeOptimizer  # noqa: F401
+from .lamb_optimizer import LambOptimizer  # noqa: F401
+from .lars_optimizer import LarsOptimizer  # noqa: F401
+from .localsgd_optimizer import (  # noqa: F401
+    AdaptiveLocalSGDOptimizer,
+    LocalSGDOptimizer,
+)
+from .pipeline_optimizer import PipelineOptimizer  # noqa: F401
+from .ps_optimizer import ParameterServerOptimizer  # noqa: F401
+from .qat_optimizer import QATOptimizer  # noqa: F401
+from .raw_program_optimizer import RawProgramOptimizer  # noqa: F401
+from .recompute_optimizer import RecomputeOptimizer  # noqa: F401
+from .sharding_optimizer import ShardingOptimizer  # noqa: F401
+from .tensor_parallel_optimizer import TensorParallelOptimizer  # noqa: F401

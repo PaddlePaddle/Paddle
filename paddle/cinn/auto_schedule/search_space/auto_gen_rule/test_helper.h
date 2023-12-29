@@ -45,7 +45,7 @@ class TestAutoGenRuleBase : public ::testing::Test {
     Context::Global().ResetNameId();
   }
   // Initialize context for specified target
-  void Initialize(const common::Target& target);
+  void Initialize(const cinn::common::Target& target);
 
   // construct an ir::IRSchedule by lowering the specified for following
   // AutoGenRule test
@@ -68,7 +68,7 @@ class TestAutoGenRuleBase : public ::testing::Test {
   raw_func_type GenExecutableKernel(const ir::Module& ir_module);
 
  protected:
-  common::Target target_;
+  cinn::common::Target target_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   std::unique_ptr<backends::Compiler> backend_compier_;
 };
@@ -92,7 +92,7 @@ void CheckResult(raw_func_type test_func,
                  const std::vector<std::string>& output_names,
                  const std::vector<std::vector<int>>& input_shapes,
                  const std::vector<std::vector<int>>& output_shapes,
-                 const common::Target& target);
+                 const cinn::common::Target& target);
 
 }  // namespace auto_schedule
 }  // namespace cinn

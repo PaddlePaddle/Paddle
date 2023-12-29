@@ -92,8 +92,6 @@ def _generate_doc_string_(
         buf.write('\n')
 
     skip_attrs = OpProtoHolder.generated_op_attr_names()
-    # attr use_mkldnn and is_test also should not be visible to users.
-    skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
     skip_attrs.add("use_cudnn")
 
@@ -193,7 +191,7 @@ def generate_layer_fn(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {0} must input same dtype. {1} vs {2}".format(
+                        "operator {} must input same dtype. {} vs {}".format(
                             op_type, dtype, each.dtype
                         )
                     )
@@ -214,7 +212,7 @@ def generate_layer_fn(op_type):
 
         dtype = infer_and_check_dtype(op_proto, *args, **kwargs)
 
-        inputs = dict()
+        inputs = {}
         for ipt in op_proto.inputs:
             name = _convert_(ipt.name)
             val = kwargs.pop(name, [])
@@ -225,7 +223,7 @@ def generate_layer_fn(op_type):
                 args = args[1:]
             inputs[ipt.name] = val
 
-        outputs = dict()
+        outputs = {}
         out = kwargs.pop(_convert_(o_name), [])
         if out:
             out_var = out[0] if (isinstance(out, (list, tuple))) else out
@@ -329,7 +327,7 @@ def generate_inplace_fn(inplace_op_type):
                 and x.is_view_var
             ):
                 raise ValueError(
-                    'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You mast find the location of the strided API be called, and call {} = {}.assign().'.format(
+                    'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {} = {}.assign().'.format(
                         inplace_op_type, x.name, x.name, x.nameb
                     )
                 )
@@ -337,8 +335,8 @@ def generate_inplace_fn(inplace_op_type):
 
     func.__name__ = inplace_op_type
     func.__doc__ = """
-Inplace version of ``{0}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_base_layers_{1}`.
+Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
+Please refer to :ref:`api_paddle_base_layers_{}`.
 """.format(
         origin_op_type, origin_op_type
     )

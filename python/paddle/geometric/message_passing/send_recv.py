@@ -22,7 +22,7 @@ from paddle.base.data_feeder import (
 )
 from paddle.base.framework import Variable
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 from .utils import (
     convert_out_size_to_list,
@@ -127,8 +127,8 @@ def send_u_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dynamic_mode():
-        out_size = convert_out_size_to_list(out_size)
+    if in_dynamic_or_pir_mode():
+        out_size = convert_out_size_to_list(out_size, 'graph_send_recv')
         return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
@@ -312,8 +312,8 @@ def send_ue_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dynamic_mode():
-        out_size = convert_out_size_to_list(out_size)
+    if in_dynamic_or_pir_mode():
+        out_size = convert_out_size_to_list(out_size, 'graph_send_ue_recv')
         return _C_ops.send_ue_recv(
             x,
             y,
@@ -472,7 +472,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         message_op = 'mul'
         y = 1.0 / (y + 1e-12)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
         helper = LayerHelper("graph_send_uv", **locals())

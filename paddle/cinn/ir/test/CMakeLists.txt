@@ -19,3 +19,9 @@ cinn_cc_test(test_ir_compare SRCS ir_compare_test.cc DEPS cinncore)
 cinn_cc_test(test_ir_copy SRCS ir_copy_test.cc DEPS cinncore)
 cinn_cc_test(test_schedule_block_graph SRCS schedule_block_graph_test.cc DEPS
              cinncore)
+
+if(WITH_CUDA)
+  cinn_cc_test(
+    test_static_shape_group_scheduler SRCS st_shape_group_scheduler_test.cc
+    DEPS cinncore decomposer_test_helper)
+endif()

@@ -29,8 +29,8 @@ void QrKernel(const Context& ctx,
               const std::string& mode,
               DenseTensor* q,
               DenseTensor* r) {
-  bool compute_q;
-  bool reduced_mode;
+  bool compute_q = false;
+  bool reduced_mode = false;
   std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
   auto numel = x.numel();
   PADDLE_ENFORCE_GT(

@@ -20,20 +20,15 @@ namespace phi {
 class DeviceGuard {
  public:
   explicit inline DeviceGuard(const Place& place)
-      : dev_type_(place.GetDeviceType()) {
-    prev_id = DeviceManager::GetDevice(dev_type_);
-    cur_id = place.GetDeviceId();
-
-    if (cur_id != prev_id) {
-      DeviceManager::SetDevice(dev_type_, cur_id);
-    }
+      : cur_id(place.GetDeviceId()), dev_type_(place.GetDeviceType()) {
+    DeviceManager::SetDevice(dev_type_, cur_id);
   }
 
   DeviceGuard(const DeviceGuard& o) = delete;
   DeviceGuard& operator=(const DeviceGuard& o) = delete;
 
  private:
-  size_t prev_id, cur_id;
+  size_t cur_id;
   std::string dev_type_;
 };
 

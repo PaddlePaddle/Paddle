@@ -183,9 +183,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
     if pretrained:
         assert (
             arch in model_urls
-        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch
-        )
+        ), f"{arch} model do not have a pretrained model now, you should set pretrained=False"
         weight_path = get_weights_path_from_url(
             model_urls[arch][0], model_urls[arch][1]
         )

@@ -114,11 +114,19 @@ class XavierInitializer(Initializer):
                 name=unique_name.generate(
                     ".".join(['xavier_init', var.name, 'tmp'])
                 ),
-                shape=var.shape,
+                shape=var._local_shape
+                if (isinstance(var, framework.EagerParamBase) and var.is_dist())
+                else var.shape,
                 dtype=out_dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
+        elif (
+            var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+            and not self._uniform
+        ):
+            out_dtype = core.DataType.FLOAT32
+            out_var = var
         else:
             out_dtype = var.dtype
             out_var = var
@@ -145,22 +153,45 @@ class XavierInitializer(Initializer):
             if var.dtype == core.VarDesc.VarType.FP16 or (
                 var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
             ):
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
+                out_var = _C_ops.cast(out_var, var.dtype)
+            if isinstance(var, framework.EagerParamBase) and var.is_dist():
+                # lazy init for dist tensor
+                out_var = (
+                    paddle.distributed.auto_parallel.api.dtensor_from_local(
+                        out_var, var.process_mesh, var.placements
+                    )
+                )
+            out_var._share_underline_tensor_to(var)
             return None
         elif in_pir_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                return paddle._pir_ops.uniform(
-                    var.shape,
-                    var.dtype,
+                out_var = paddle._pir_ops.uniform(
+                    out_var.shape,
+                    out_dtype,
                     -limit,
                     limit,
                     self._seed,
                     _current_expected_place(),
                 )
+            else:
+                std = math.sqrt(2.0 / float(fan_in + fan_out))
+                out_var = _C_ops.gaussian(
+                    out_var.shape,
+                    0.0,
+                    std,
+                    self._seed,
+                    out_dtype,
+                    _current_expected_place(),
+                )
+
+            if (
+                var.dtype in (core.DataType.FLOAT16, core.DataType.BFLOAT16)
+                and not self._uniform
+            ):
+                return _C_ops.cast(out_var, var.dtype)
+
+            return out_var
         else:
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))

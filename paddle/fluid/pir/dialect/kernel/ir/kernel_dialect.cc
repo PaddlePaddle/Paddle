@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/platform/init_phi.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/core/ir_printer.h"
 
 REGISTER_FILE_SYMBOLS(kernel_dialect);
@@ -32,9 +32,9 @@ KernelDialect::KernelDialect(pir::IrContext *context)
 }
 
 void KernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
-                paddle::dialect::AllocatedSelectedRowsType>();
+                paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedDenseTensorArrayType>();
   RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
   RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
@@ -46,7 +46,7 @@ void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
 
     os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
     os << "tensor<";
-    for (auto d : phi::vectorize(tensor_type.dims())) {
+    for (auto d : common::vectorize(tensor_type.dims())) {
       os << d;
       os << "x";
     }
@@ -58,11 +58,19 @@ void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
 
     os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
     os << "tensor<";
-    for (auto d : phi::vectorize(tensor_type.dims())) {
+    for (auto d : common::vectorize(tensor_type.dims())) {
       os << d;
       os << "x";
     }
     tensor_type.dtype().Print(os);
+    os << ">";
+  } else if (type.isa<AllocatedDenseTensorArrayType>()) {
+    AllocatedDenseTensorArrayType tensor_array_type =
+        type.dyn_cast<AllocatedDenseTensorArrayType>();
+
+    os << phi::AllocationTypeStr(tensor_array_type.place().GetType()) << "_";
+    os << "tensor_array<";
+    tensor_array_type.dtype().Print(os);
     os << ">";
   }
 }
@@ -114,7 +122,110 @@ void KernelDialect::PrintOperation(pir::Operation *op,
   }
 }
 
+#ifdef PADDLE_WITH_DNNL
+OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<OneDNNKernelDialect>()) {
+  initialize();
+}
+
+void OneDNNKernelDialect::initialize() {
+  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
+                paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedDenseTensorArrayType>();
+  RegisterOps<dialect::OneDNNPhiKernelOp,
+              dialect::OneDNNMixedPhiKernelOp,
+              dialect::OneDNNLegacyKernelOp>();
+  RegisterAttributes<paddle::dialect::KernelAttribute>();
+}
+
+void OneDNNKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
+  if (type.isa<AllocatedDenseTensorType>()) {
+    AllocatedDenseTensorType tensor_type =
+        type.dyn_cast<AllocatedDenseTensorType>();
+
+    os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
+    os << "tensor<";
+    for (auto d : common::vectorize(tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    tensor_type.dtype().Print(os);
+    os << ">";
+  } else if (type.isa<AllocatedSelectedRowsType>()) {
+    AllocatedSelectedRowsType tensor_type =
+        type.dyn_cast<AllocatedSelectedRowsType>();
+
+    os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
+    os << "tensor<";
+    for (auto d : common::vectorize(tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    tensor_type.dtype().Print(os);
+    os << ">";
+  } else if (type.isa<AllocatedDenseTensorArrayType>()) {
+    AllocatedDenseTensorArrayType tensor_array_type =
+        type.dyn_cast<AllocatedDenseTensorArrayType>();
+
+    os << phi::AllocationTypeStr(tensor_array_type.place().GetType()) << "_";
+    os << "tensor_array<";
+    tensor_array_type.dtype().Print(os);
+    os << ">";
+  }
+}
+
+void OneDNNKernelDialect::PrintAttribute(pir::Attribute attr,
+                                         std::ostream &os) const {
+  phi::KernelKey kernel = attr.dyn_cast<KernelAttribute>().data();
+
+  os << "<backend:" << kernel.backend() << "|layout:" << kernel.layout()
+     << "|dtype:" << kernel.dtype() << ">";
+}
+
+void OneDNNKernelDialect::PrintOperation(pir::Operation *op,
+                                         pir::IrPrinter &printer) const {
+  if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
+    auto &os = printer.os;
+    printer.PrintOpResult(op);
+    os << " =";
+    if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
+      std::string kernel_name = phi_kernel_op.kernel_name();
+      if (op->attributes().count("is_inplace") != 0 &&
+          op->attributes()
+              .at("is_inplace")
+              .dyn_cast<pir::BoolAttribute>()
+              .data()) {
+        kernel_name = kernel_name + "_";
+      }
+      os << " \"" << kernel_name << "(phi_kernel)\"";
+    } else {
+      auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
+      std::string kernel_name = legacy_kernel_op.kernel_name();
+      if (op->attributes().count("is_inplace") != 0 &&
+          op->attributes()
+              .at("is_inplace")
+              .dyn_cast<pir::BoolAttribute>()
+              .data()) {
+        kernel_name = kernel_name + "_";
+      }
+      os << " \"" << kernel_name << "(legacy_kernel)\"";
+    }
+    printer.PrintOpOperands(op);
+    printer.PrintAttributeMap(op);
+    os << " :";
+    printer.PrintOperandsType(op);
+    os << " -> ";
+    printer.PrintOpReturnType(op);
+  } else {
+    printer.PrintGeneralOperation(op);
+  }
+}
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
+#ifdef PADDLE_WITH_DNNL
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
+#endif

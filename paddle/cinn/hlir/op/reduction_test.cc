@@ -39,13 +39,16 @@
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
+
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -88,7 +91,7 @@ std::pair<ir::Module, std::string> GenReduceCode(
     }
   }
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto impl = OpStrategy::SelectImpl(
       strategy(attrs, inputs, out_type, {output_shape}, target));
 
@@ -96,7 +99,8 @@ std::pair<ir::Module, std::string> GenReduceCode(
   std::vector<std::string> input_output_nodes{"X", op_name};
   func = GetFuncFromImpl(
       impl,
-      common::CINNValuePack{{common::CINNValue(X), common::CINNValue(op_name)}},
+      cinn::common::CINNValuePack{
+          {cinn::common::CINNValue(X), cinn::common::CINNValue(op_name)}},
       inputs,
       input_output_nodes,
       func_name,
@@ -350,8 +354,9 @@ void TestCaseForReduce(const float init_val,
   // auto func_0   = reinterpret_cast<void (*)(cinn_pod_value_t*,
   // int)>(fn_reduce_sum);
   auto buffer_x =
-      common::BufferBuilder(Float(32), {n, c, h, w}).set_random().Build();
-  auto buffer_z = common::BufferBuilder(Float(32), {c}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {n, c, h, w}).set_random().Build();
+  auto buffer_z =
+      cinn::common::BufferBuilder(Float(32), {c}).set_random().Build();
 
   void *dev_x = nullptr, *dev_z = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
@@ -362,6 +367,9 @@ void TestCaseForReduce(const float init_val,
   dim3 block;
   grid = {c, 1, 1};
   int block_dim_x = n * w * h > 1024 ? 1024 : n * w * h;
+  if (FLAGS_cinn_new_group_scheduler) {
+    block_dim_x = 1;
+  }
   block = {block_dim_x, 1, 1};
 
   void* args[] = {&dev_x, &dev_z};
@@ -449,8 +457,9 @@ TEST(Operator, Operator_Reduction_Case_7) {
 
   srand(time(NULL));
   auto buffer_x =
-      common::BufferBuilder(Float(32), {n, c, h, w}).set_random().Build();
-  auto buffer_y = common::BufferBuilder(Float(32), {h, w}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {n, c, h, w}).set_random().Build();
+  auto buffer_y =
+      cinn::common::BufferBuilder(Float(32), {h, w}).set_random().Build();
 
   void *dev_x = nullptr, *dev_y = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
@@ -522,35 +531,37 @@ TEST(Operator, Operator_Reduction_Case_11) {
 }
 
 TEST(Operator, Operator_Reduction_Case_Warp_Reduce) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {warp_reduce_threshold + 10, 256};
   std::vector<int> dim = {1};
 
   auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce");
-  CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Block_Reduce) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {warp_reduce_threshold - 10, 33};
   std::vector<int> dim = {1};
 
   auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce");
-  CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Warp_Reduce_Case_1) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {(warp_reduce_threshold + 32) / 2, 2, 10, 256};
@@ -558,13 +569,14 @@ TEST(Operator, Operator_Reduction_Case_Warp_Reduce_Case_1) {
 
   auto res =
       GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce_Case_1");
-  CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Block_Reduce_Case_1) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {(warp_reduce_threshold - 32) / 2, 2, 10, 33};
@@ -572,7 +584,8 @@ TEST(Operator, Operator_Reduction_Case_Block_Reduce_Case_1) {
 
   auto res =
       GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce_Case_2");
-  CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }
 }  // namespace framework
 }  // namespace hlir

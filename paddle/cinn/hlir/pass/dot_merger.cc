@@ -22,7 +22,7 @@ namespace hlir {
 namespace pass {
 namespace {
 
-using common::GraphNode;
+using cinn::common::GraphNode;
 using framework::Node;
 using framework::NodeData;
 using framework::Operator;
@@ -33,7 +33,7 @@ using infershape_t = std::function<std::vector<framework::shape_t>(
     const std::vector<framework::shape_t>&, const framework::AttrMapType&)>;
 using inferdtype_t = std::function<std::vector<Type>(
     const std::vector<Type>&, const framework::AttrMapType&)>;
-using dtype_dict_t = absl::flat_hash_map<std::string, common::Type>;
+using dtype_dict_t = absl::flat_hash_map<std::string, cinn::common::Type>;
 using shape_dict_t = absl::flat_hash_map<std::string, framework::shape_t>;
 
 bool accessible(GraphNode* start, GraphNode* end) {
@@ -130,7 +130,7 @@ class DotBuilder {
   const shape_dict_t& shape_dict() const { return shape_dict_; }
 
   // Currently the constructor of `NodeData` needs to pass in `Shared<Node>`.
-  NodeData* Var(common::Shared<Node>& producer) {  // NOLINT
+  NodeData* Var(cinn::common::Shared<Node>& producer) {  // NOLINT
     auto* res = new NodeData(producer, 0, 0, node_name("var"), false);
     graph_->RegisterNode(producer->id(), res);
     graph_->RegisterNode(res->id(), producer.get());
@@ -141,7 +141,7 @@ class DotBuilder {
 
   NodeData* Concat(int axis, std::vector<NodeData*> inputs) {
     const std::string type{"concat"};
-    auto instr = common::Shared<Node>(
+    auto instr = cinn::common::Shared<Node>(
         new Node(framework::Operator::Get(type), type, node_name(type)));
     instr->attrs.attr_store["axis"] = axis;
     for (auto* in : inputs) {
@@ -158,7 +158,7 @@ class DotBuilder {
                    NodeData* lhs,
                    NodeData* rhs) {
     const std::string type{dot_type_};
-    auto instr = common::Shared<Node>(
+    auto instr = cinn::common::Shared<Node>(
         new Node(framework::Operator::Get(type), type, node_name(type)));
     matmul_ = instr.get();
     instr->attrs.attr_store["trans_a"] = trans_a;
@@ -177,7 +177,7 @@ class DotBuilder {
                   NodeData* input,
                   NodeData* output) {
     const std::string type{"slice"};
-    auto instr = common::Shared<Node>(
+    auto instr = cinn::common::Shared<Node>(
         new Node(framework::Operator::Get(type), type, node_name(type)));
     instr->attrs.attr_store["axes"] = std::move(axes);
     instr->attrs.attr_store["starts"] = std::move(starts);

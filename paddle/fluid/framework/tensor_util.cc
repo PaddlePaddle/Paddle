@@ -274,7 +274,7 @@ void TensorCopyImpl(const TENSOR& src,
                     const platform::Place& dst_place,
                     TENSOR* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx;
+  const platform::DeviceContext* dev_ctx = nullptr;
   if (platform::is_gpu_place(dst_place) ||
       platform::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
@@ -307,8 +307,6 @@ void TensorCopySync(const phi::DenseTensor& src,
     return;
   }
 
-  VLOG(3) << "TensorCopySync " << src.dims() << " from " << src.place()
-          << " to " << dst_place;
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
@@ -466,7 +464,7 @@ void TensorToStream(std::ostream& os,
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
     desc.set_data_type(framework::TransToProtoVarType(tensor.dtype()));
-    auto dims = phi::vectorize(tensor.dims());
+    auto dims = common::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
     std::copy(dims.begin(), dims.end(), pb_dims->begin());
@@ -585,7 +583,7 @@ void TensorFromStream(std::istream& is,
                       const platform::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
-  uint32_t version;
+  uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
 
   PADDLE_ENFORCE_EQ(
@@ -598,7 +596,7 @@ void TensorFromStream(std::istream& is,
   proto::VarType::TensorDesc desc;
   {  // int32_t size
     // proto buffer
-    int32_t size;
+    int32_t size = 0;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
     std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
@@ -608,11 +606,11 @@ void TensorFromStream(std::istream& is,
         platform::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
-    tensor->Resize(phi::make_ddim(shape));
+    tensor->Resize(common::make_ddim(shape));
     size_t seekg = seek * framework::SizeOfType(desc.data_type());
     is.seekg(seekg, is.cur);  // NOLINT
 
-    void* buf;
+    void* buf = nullptr;
     phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
@@ -621,7 +619,7 @@ void TensorFromStream(std::istream& is,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
-      cpu_tensor.Resize(phi::make_ddim(shape));
+      cpu_tensor.Resize(common::make_ddim(shape));
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
@@ -652,7 +650,7 @@ void TensorFromStream(std::istream& is,
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
                       const platform::DeviceContext& dev_ctx) {
-  uint32_t version;
+  uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(
       version,
@@ -684,8 +682,8 @@ void TensorFromStream(std::istream& is,
     std::vector<int64_t> dims;
     dims.reserve(static_cast<size_t>(desc.dims().size()));
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
-    tensor->Resize(phi::make_ddim(dims));
-    void* buf;
+    tensor->Resize(common::make_ddim(dims));
+    void* buf = nullptr;
     phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
@@ -694,7 +692,7 @@ void TensorFromStream(std::istream& is,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
-      cpu_tensor.Resize(phi::make_ddim(dims));
+      cpu_tensor.Resize(common::make_ddim(dims));
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
@@ -802,14 +800,14 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
             dl_tensor.shape + dl_tensor.ndim,
             std::back_inserter(vec));
 
-  framework::DDim vddim = phi::make_ddim(vec);
+  framework::DDim vddim = common::make_ddim(vec);
 
   dst->Resize(vddim);
   ::DLDataType type = dl_tensor.dtype;
   void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
 
   auto src_ptr = static_cast<const void*>(dl_tensor.data);
-  auto size = phi::product(vddim) * type.bits / 8;
+  auto size = common::product(vddim) * type.bits / 8;
 
   if (dl_tensor.device.device_type == kDLCPU) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
@@ -841,12 +839,12 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
             src->dl_tensor.shape + src->dl_tensor.ndim,
             std::back_inserter(vec));
 
-  framework::DDim vddim = phi::make_ddim(vec);
+  framework::DDim vddim = common::make_ddim(vec);
   dst->Resize(vddim);
   ::DLDataType type = src->dl_tensor.dtype;
 
   auto src_ptr = static_cast<const void*>(src->dl_tensor.data);
-  auto size = phi::product(vddim) * type.bits / 8;
+  auto size = common::product(vddim) * type.bits / 8;
 
   if (src->dl_tensor.device.device_type == kDLCPU) {
     platform::CPUPlace dst_place = platform::CPUPlace();
@@ -964,13 +962,23 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
 }
 
 TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
+  if (!t.valid()) {
+    os << "invalid\n";
+    return os;
+  }
+
   if (!t.lod().empty()) {
     os << "  - lod: " << t.lod() << "\n";
   }
+  os << "  - shape: [" << t.dims() << "]\n";
+  os << "  - layout: " << common::DataLayoutToString(t.layout()) << "\n";
+
+  if (!t.initialized()) {
+    os << "uninited\n";
+    return os;
+  }
 
   os << "  - place: " << t.place() << "\n";
-  os << "  - shape: [" << t.dims() << "]\n";
-  os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
 
   DenseTensor tensor;
   tensor.Resize(t.dims());

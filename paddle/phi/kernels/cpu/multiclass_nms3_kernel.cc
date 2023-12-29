@@ -381,7 +381,7 @@ void MultiClassNMS(const Context& ctx,
   *num_nmsed_out = num_det;
   const T* scores_data = scores.data<T>();
   if (keep_top_k > -1 && num_det > keep_top_k) {
-    const T* sdata;
+    const T* sdata = nullptr;
     std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
     for (const auto& it : *indices) {
       int label = it.first;
@@ -441,7 +441,7 @@ void MultiClassOutput(const Context& ctx,
   auto* scores_data = scores.data<T>();
   auto* bboxes_data = bboxes.data<T>();
   auto* odata = out->data<T>();
-  const T* sdata;
+  const T* sdata = nullptr;
   DenseTensor bbox;
   bbox.Resize({scores.dims()[0], box_size});
   int count = 0;
@@ -456,7 +456,7 @@ void MultiClassOutput(const Context& ctx,
 
     for (auto idx : indices) {
       odata[count * out_dim] = label;  // label
-      const T* bdata;
+      const T* bdata = nullptr;
       if (scores_size == 3) {
         bdata = bboxes_data + idx * box_size;
         odata[count * out_dim + 1] = sdata[idx];  // score
@@ -494,7 +494,7 @@ void MultiClassNMSKernel(const Context& ctx,
                          DenseTensor* nms_rois_num) {
   bool return_index = index != nullptr;
   bool has_roisnum = rois_num.get_ptr() != nullptr;
-  auto score_dims = phi::vectorize<int>(scores.dims());
+  auto score_dims = common::vectorize<int>(scores.dims());
   auto score_size = score_dims.size();
 
   std::vector<std::map<int, std::vector<int>>> all_indices;

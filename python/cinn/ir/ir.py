@@ -17,7 +17,7 @@ from cinn import ir
 from .ir_context import ForContext
 
 
-# Python's rang() function calls the sequential()
+# Python's range() function calls the sequential()
 def sequential(min, extent=None):
     if extent is None:
         extent = min

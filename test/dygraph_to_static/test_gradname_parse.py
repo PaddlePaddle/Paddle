@@ -16,7 +16,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle.nn import BatchNorm, Linear
@@ -41,8 +44,7 @@ class SimpleNet(paddle.nn.Layer):
         return dx[0]
 
 
-@dy2static_unittest
-class TestGradNameParse(unittest.TestCase):
+class TestGradNameParse(Dy2StTestBase):
     def test_grad_name_parse(self):
         net = SimpleNet()
         opt = paddle.optimizer.Adam(
@@ -69,8 +71,7 @@ def tanh_high_order_grad(x):
     return paddle.grad(y, x, create_graph=True)[0]
 
 
-@dy2static_unittest
-class TestTanhHighOrderGrad(unittest.TestCase):
+class TestTanhHighOrderGrad(Dy2StTestBase):
     def setUp(self):
         self.func = tanh_high_order_grad
 
@@ -84,18 +85,22 @@ class TestTanhHighOrderGrad(unittest.TestCase):
         self.dy2st_input = (x2,)
         self.dy2st_grad_input = (x2,)
 
+    @test_legacy_and_pt_and_pir
     def test_run(self):
         try:
             dy_out = self.func(*self.dy_input)
-            dy_grad = paddle.grad(dy_out, self.dy_grad_input)
+            dy_grad = paddle.grad(dy_out, self.dy_grad_input, allow_unused=True)
         except:
             dy_grad = [None for i in self.dy_grad_input]
         dy_grad = [
             t.numpy() if isinstance(t, paddle.Tensor) else t for t in dy_grad
         ]
 
-        dy2st_out = paddle.jit.to_static(self.func)(*self.dy2st_input)
-        dy2st_grad = paddle.grad(dy2st_out, self.dy2st_grad_input)
+        tmp_func = paddle.jit.to_static(self.func, full_graph=True)
+        dy2st_out = tmp_func(*self.dy2st_input)
+        dy2st_grad = paddle.grad(
+            dy2st_out, self.dy2st_grad_input, allow_unused=True
+        )
         dy2st_grad = [
             t.numpy() if isinstance(t, paddle.Tensor) else t for t in dy_grad
         ]
@@ -114,11 +119,10 @@ class TestTanhHighOrderGrad(unittest.TestCase):
 
 def matmul_high_order_grad(x, y):
     z = paddle.matmul(x, y)
-    g = paddle.grad(z, [x, y], create_graph=True)
-    return g[0]
+    g = paddle.grad(z, [x], create_graph=True, allow_unused=True)
+    return g
 
 
-@dy2static_unittest
 class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):
     def setUp(self):
         self.func = matmul_high_order_grad
@@ -138,7 +142,6 @@ class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):
         self.dy2st_grad_input = (x2,)
 
 
-@dy2static_unittest
 class TestMatMulHighOrderGrad2(TestTanhHighOrderGrad):
     def setUp(self):
         self.func = matmul_high_order_grad

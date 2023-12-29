@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/masked_select_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -54,13 +56,19 @@ void MaskedSelectKernel(const Context& dev_ctx,
                      mask.place(),
                      static_cast<void*>(out_size),
                      sizeof(int32_t));
-
+  if (std::getenv("XPUSIM_SKIP_RUN") &&
+      std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
+    VLOG(3) << "WARNING: In the simulator mode, the variable out_size_cpu "
+               "stores an uninitialized value. To avoid allocating a memory of "
+               "random size, we assign numel to out_size_cpu";
+    out_size_cpu = mask.numel();
+  }
   DDim out_dim{out_size_cpu};
   out->Resize(out_dim);
   auto out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  auto input_shape = vectorize<int>(input_dim);
-  auto mask_shape = vectorize<int>(mask_dim);
+  auto input_shape = common::vectorize<int>(input_dim);
+  auto mask_shape = common::vectorize<int>(mask_dim);
   if (input_dim.size() == 0) {
     input_shape = std::vector<int>({1});
   }

@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 
@@ -45,6 +45,22 @@ using InverseAddFunctor = AddFunctor<T>;
 template <typename T, typename Ty = T>
 struct MultiPrecisionAddFunctor {
   inline HOSTDEVICE T operator()(const T x, const Ty y) const {
+    return x + static_cast<T>(y);
+  }
+};
+
+// Float32Bfloat16Add
+template <typename T>
+struct Float32Bfloat16AddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const phi::bfloat16 y) {
+    return x + static_cast<T>(y);
+  }
+};
+
+// Float32Float16Add
+template <typename T>
+struct Float32Float16AddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const phi::float16 y) {
     return x + static_cast<T>(y);
   }
 };

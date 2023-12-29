@@ -402,231 +402,6 @@ static inline void GetPaddings(int* paddings,
     std::copy(pads.begin(), pads.end(), paddings);
   }
 }
-
-template <typename T, typename DeviceContext>
-class Pad2dCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    std::array<int, 4> pads;
-    GetPaddings(pads.data(), context);
-    auto mode = context.Attr<std::string>("mode");
-    auto data_format = context.Attr<std::string>("data_format");
-    T value = static_cast<T>(context.Attr<float>("pad_value"));
-
-    auto* x = context.Input<phi::DenseTensor>("X");
-    auto in_dims = x->dims();
-    const T* in_data = x->data<T>();
-
-    auto* out = context.Output<phi::DenseTensor>("Out");
-    if (data_format == "NCHW") {
-      out->Resize({in_dims[0],
-                   in_dims[1],
-                   in_dims[2] + pads[0] + pads[1],
-                   in_dims[3] + pads[2] + pads[3]});
-    } else {
-      out->Resize({in_dims[0],
-                   in_dims[1] + pads[0] + pads[1],
-                   in_dims[2] + pads[2] + pads[3],
-                   in_dims[3]});
-    }
-    auto out_dims = out->dims();
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-
-    const int pad_top = pads[0];
-    const int pad_left = pads[2];
-    const int num = static_cast<int>(in_dims[0]);
-    if (data_format == "NCHW") {
-      const int channels = static_cast<int>(in_dims[1]);
-      const int in_height = static_cast<int>(in_dims[2]);
-      const int in_width = static_cast<int>(in_dims[3]);
-      const int out_height = static_cast<int>(out_dims[2]);
-      const int out_width = static_cast<int>(out_dims[3]);
-      if (mode == "reflect") {
-        Pad2DReflectNCHW(in_data,
-                         num,
-                         channels,
-                         in_height,
-                         in_width,
-                         out_height,
-                         out_width,
-                         pad_top,
-                         pad_left,
-                         out_data);
-      } else if (mode == "edge") {
-        Pad2DEdgeNCHW(in_data,
-                      num,
-                      channels,
-                      in_height,
-                      in_width,
-                      out_height,
-                      out_width,
-                      pad_top,
-                      pad_left,
-                      out_data);
-      } else {
-        Pad2DConstNCHW(in_data,
-                       num,
-                       channels,
-                       in_height,
-                       in_width,
-                       out_height,
-                       out_width,
-                       pad_top,
-                       pad_left,
-                       value,
-                       out_data);
-      }
-    } else {
-      const int channels = static_cast<int>(in_dims[3]);
-      const int in_height = static_cast<int>(in_dims[1]);
-      const int in_width = static_cast<int>(in_dims[2]);
-      const int out_height = static_cast<int>(out_dims[1]);
-      const int out_width = static_cast<int>(out_dims[2]);
-      if (mode == "reflect") {
-        Pad2DReflectNHWC(in_data,
-                         num,
-                         channels,
-                         in_height,
-                         in_width,
-                         out_height,
-                         out_width,
-                         pad_top,
-                         pad_left,
-                         out_data);
-      } else if (mode == "edge") {
-        Pad2DEdgeNHWC(in_data,
-                      num,
-                      channels,
-                      in_height,
-                      in_width,
-                      out_height,
-                      out_width,
-                      pad_top,
-                      pad_left,
-                      out_data);
-      } else {
-        Pad2DConstNHWC(in_data,
-                       num,
-                       channels,
-                       in_height,
-                       in_width,
-                       out_height,
-                       out_width,
-                       pad_top,
-                       pad_left,
-                       value,
-                       out_data);
-      }
-    }
-  }
-};
-
-template <typename T, typename DeviceContext>
-class Pad2dGradCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    std::array<int, 4> pads;
-    GetPaddings(pads.data(), context);
-    auto mode = context.Attr<std::string>("mode");
-    auto data_format = context.Attr<std::string>("data_format");
-    auto* d_out =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* d_in = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto d_in_dims = d_in->dims();
-    auto d_out_dims = d_out->dims();
-    const T* d_out_data = d_out->data<T>();
-    T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
-    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
-    set_zero(context.template device_context<phi::CPUContext>(),
-             d_in,
-             static_cast<T>(0));
-    const int pad_top = pads[0];
-    const int pad_left = pads[2];
-    const int num = static_cast<int>(d_in_dims[0]);
-    if (data_format == "NCHW") {
-      const int channels = static_cast<int>(d_in_dims[1]);
-      const int in_height = static_cast<int>(d_in_dims[2]);
-      const int in_width = static_cast<int>(d_in_dims[3]);
-      const int out_height = static_cast<int>(d_out_dims[2]);
-      const int out_width = static_cast<int>(d_out_dims[3]);
-      if (mode == "reflect") {
-        Pad2DGradReflectNCHW(d_in_data,
-                             num,
-                             channels,
-                             in_height,
-                             in_width,
-                             out_height,
-                             out_width,
-                             pad_top,
-                             pad_left,
-                             d_out_data);
-      } else if (mode == "edge") {
-        Pad2DGradEdgeNCHW(d_in_data,
-                          num,
-                          channels,
-                          in_height,
-                          in_width,
-                          out_height,
-                          out_width,
-                          pad_top,
-                          pad_left,
-                          d_out_data);
-      } else {
-        Pad2DGradConstNCHW(d_in_data,
-                           num,
-                           channels,
-                           in_height,
-                           in_width,
-                           out_height,
-                           out_width,
-                           pad_top,
-                           pad_left,
-                           d_out_data);
-      }
-    } else {
-      const int channels = static_cast<int>(d_in_dims[3]);
-      const int in_height = static_cast<int>(d_in_dims[1]);
-      const int in_width = static_cast<int>(d_in_dims[2]);
-      const int out_height = static_cast<int>(d_out_dims[1]);
-      const int out_width = static_cast<int>(d_out_dims[2]);
-      if (mode == "reflect") {
-        Pad2DGradReflectNHWC(d_in_data,
-                             num,
-                             channels,
-                             in_height,
-                             in_width,
-                             out_height,
-                             out_width,
-                             pad_top,
-                             pad_left,
-                             d_out_data);
-      } else if (mode == "edge") {
-        Pad2DGradEdgeNHWC(d_in_data,
-                          num,
-                          channels,
-                          in_height,
-                          in_width,
-                          out_height,
-                          out_width,
-                          pad_top,
-                          pad_left,
-                          d_out_data);
-      } else {
-        Pad2DGradConstNHWC(d_in_data,
-                           num,
-                           channels,
-                           in_height,
-                           in_width,
-                           out_height,
-                           out_width,
-                           pad_top,
-                           pad_left,
-                           d_out_data);
-      }
-    }
-  }
-};
-
 class Pad2dOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -692,7 +467,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -724,7 +499,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
       return phi::KernelKey(tensor.place(),
-                            phi::StringToDataLayout(data_format),
+                            common::StringToDataLayout(data_format),
                             expected_kernel_type.dtype());
     }
 #endif
@@ -872,8 +647,3 @@ REGISTER_OPERATOR(pad2d,
 REGISTER_OPERATOR(pad2d_grad,
                   ops::Pad2dOpGrad,
                   ops::Pad2dOpGradNoNeedBufferVarsInferer);
-
-PD_REGISTER_STRUCT_KERNEL(
-    pad2d, CPU, ALL_LAYOUT, ops::Pad2dCPUKernel, float, double, int, int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(
-    pad2d_grad, CPU, ALL_LAYOUT, ops::Pad2dGradCPUKernel, float, double) {}

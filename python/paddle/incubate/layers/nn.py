@@ -532,7 +532,7 @@ def partial_concat(input, start_index=0, length=-1):
 
     Args:
         input(list): List of input Tensors with data type float32, float64, int32,
-            int64.
+            int64, complex64, complex128.
         start_index(int32, optional): The start index of each instance for partial concatenation.
             Default is 0.
         length(int32, optional): The length of each instance for partial concatenation. Default is -1.
@@ -560,7 +560,15 @@ def partial_concat(input, start_index=0, length=-1):
         check_variable_and_dtype(
             x,
             'input[' + str(id) + ']',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'partial_concat',
         )
     check_type(start_index, 'start_index', (int), 'partial_concat')

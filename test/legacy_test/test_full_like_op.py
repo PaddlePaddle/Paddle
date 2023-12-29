@@ -22,6 +22,7 @@ import paddle.framework.dtype as dtypes
 from paddle.base import core
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -45,11 +46,12 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
 class TestFullOp(unittest.TestCase):
     """Test fill_any_like op(whose API is full_like) for attr out."""
 
+    @test_with_pir_api
     def test_attr_tensor_API(self):
         paddle.enable_static()
-        startup_program = Program()
-        train_program = Program()
-        with program_guard(train_program, startup_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
             fill_value = 2.0
             input = paddle.static.data(
                 name='input', dtype='float32', shape=[2, 3]
@@ -148,7 +150,7 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def if_enable_cinn(self):
         pass

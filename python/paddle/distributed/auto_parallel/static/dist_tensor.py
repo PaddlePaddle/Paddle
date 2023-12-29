@@ -42,9 +42,7 @@ class DistributedTensor:
             and all(isinstance(x, int) and x >= 0 for x in sizes)
         ):
             raise ValueError(
-                "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".format(
-                    sizes
-                )
+                f"The sizes must be list or tuple and item in sizes must be non-negative integer, but got {sizes}"
             )
         if not (
             isinstance(dims_mapping, (list, tuple))
@@ -404,6 +402,7 @@ class DistributedTensor:
         )
 
         str += f", is_parameter: {self.serial_tensor.is_parameter}"
+        str += f", chunk_id: {self.dist_attr.chunk_id}"
 
         if self.dist_attr.is_annotated("dims_mapping"):
             annotated_str = "annotated"

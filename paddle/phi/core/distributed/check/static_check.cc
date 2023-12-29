@@ -17,9 +17,9 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace phi {
 namespace distributed {

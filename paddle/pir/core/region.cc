@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pir/core/region.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 
 namespace pir {
@@ -22,30 +22,39 @@ Region::~Region() { clear(); }
 
 void Region::push_back(Block *block) { insert(blocks_.end(), block); }
 
-Block *Region::emplace_back() {
+Block &Region::emplace_back() {
   auto block = new Block;
   insert(blocks_.end(), block);
-  return block;
+  return *block;
 }
 
 void Region::push_front(Block *block) { insert(blocks_.begin(), block); }
 
-Region::iterator Region::insert(const_iterator position, Block *block) {
-  Region::iterator iter = blocks_.insert(position, block);
-  block->SetParent(this, iter);
+Region::Iterator Region::insert(ConstIterator position, Block *block) {
+  Region::Iterator iter = blocks_.insert(position, block);
+  block->SetParent(this);
   return iter;
 }
 
-Region::iterator Region::erase(const_iterator position) {
-  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this region.");
-  delete *position;
+Region::Iterator Region::erase(ConstIterator position) {
+  IR_ENFORCE(position->GetParent() == this, "iterator not own this region.");
+  delete position;
   return blocks_.erase(position);
+}
+
+std::unique_ptr<pir::Block> Region::TakeBack() {
+  Block *block = nullptr;
+  if (!blocks_.empty()) {
+    block = blocks_.back();
+    blocks_.pop_back();
+  }
+  return std::unique_ptr<pir::Block>(block);
 }
 void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
   for (auto iter = blocks_.begin(); iter != blocks_.end(); ++iter) {
-    (*iter)->SetParent(this, iter);
+    (*iter)->SetParent(this);
   }
 }
 
@@ -61,8 +70,28 @@ void Region::clear() {
   }
 }
 
+void Region::swap(Region &&other) {
+  blocks_.swap(other.blocks_);
+  for (auto &block : *this) {
+    block.SetParent(this);
+  }
+  for (auto &block : other) {
+    block.SetParent(&other);
+  }
+}
+
+template <WalkOrder Order, typename FuncT>
+void Region::Walk(FuncT &&callback) {
+  for (auto &block : *this) {
+    block.Walk<Order>(callback);
+  }
+}
+
+Program *Region::parent_program() const {
+  return parent_ ? parent_->GetParentProgram() : nullptr;
+}
 IrContext *Region::ir_context() const {
-  IR_ENFORCE(parent_, "Region is not attached to a container.");
+  IR_ENFORCE(parent_, "Region is not attached to a operation.");
   return parent_->ir_context();
 }
 }  // namespace pir

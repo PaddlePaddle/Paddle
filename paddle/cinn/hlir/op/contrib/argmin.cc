@@ -39,12 +39,12 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValue;
+using cinn::common::CINNValue;
 using framework::shape_t;
 using ir::Tensor;
 
 std::vector<Tensor> Argmin(const Tensor &in_tensor,
-                           const common::Target &target,
+                           const cinn::common::Target &target,
                            poly::StageMap stages,
                            const int &axis,
                            const bool &keep_dims,
@@ -115,7 +115,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
       [=](lang::Args args, lang::RetValue *ret) {
         CHECK(!args.empty())
             << "The input argument of argmin compute is empty! Please check.";
-        common::CINNValuePack pack_args = args[0];
+        cinn::common::CINNValuePack pack_args = args[0];
         CHECK_GE(pack_args.size(), 1U)
             << "There should be 1 input args for argmax compute";
         Expr in_expr = pack_args[0];
@@ -133,14 +133,14 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
                                            CINNValue(out_tensor[1]),
                                            CINNValue(out_tensor[2]),
                                            CINNValue(stages)};
-        *ret = common::CINNValuePack{cinn_values};
+        *ret = cinn::common::CINNValuePack{cinn_values};
       });
 
   framework::CINNSchedule argmin_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
     CHECK(!args.empty())
         << "The input argument of arange_schedule is empty! Please check.\n";
-    common::CINNValuePack arg_pack = args[0];
+    cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -158,6 +158,26 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
     // variables, because the size will exceed the limit.
     ir_sch.SetBuffer(blocks[0], "local");
     ir_sch.SetBuffer(blocks[1], "local");
+
+    int iter_var_size = blocks[0]
+                            .As<ir::ScheduleBlockRealize>()
+                            ->schedule_block.As<ir::ScheduleBlock>()
+                            ->iter_vars.size();
+    int real_axis = axis;
+    if (real_axis < 0) {
+      real_axis += iter_var_size;
+    }
+    blocks[0]
+        .As<ir::ScheduleBlockRealize>()
+        ->schedule_block.As<ir::ScheduleBlock>()
+        ->iter_vars[real_axis]
+        ->is_reduce_axis = true;
+    blocks[1]
+        .As<ir::ScheduleBlockRealize>()
+        ->schedule_block.As<ir::ScheduleBlock>()
+        ->iter_vars[real_axis]
+        ->is_reduce_axis = true;
+
     int64_t prod_size = std::accumulate(output_shapes[0].begin(),
                                         output_shapes[0].end(),
                                         1,
@@ -165,9 +185,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
     if (prod_size > 1 && target.arch == Target::Arch::X86) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
     }
-    std::vector<common::CINNValue> res{
-        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = common::CINNValuePack{res};
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

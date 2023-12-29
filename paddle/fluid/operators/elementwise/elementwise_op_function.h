@@ -473,7 +473,7 @@ void FusedElemwiseAndActComputeNoBroadcast(
     CompoundFunctor compound_functor,
     phi::DenseTensor *out,
     phi::DenseTensor *intermediate_out) {
-  size_t N = static_cast<size_t>(phi::product(x_dim));
+  size_t N = static_cast<size_t>(common::product(x_dim));
 
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
@@ -654,7 +654,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
-  size_t N = static_cast<size_t>(phi::product(x_dim));
+  size_t N = static_cast<size_t>(common::product(x_dim));
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
   const T *x_data = nullptr;

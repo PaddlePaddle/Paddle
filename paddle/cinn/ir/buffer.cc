@@ -55,7 +55,7 @@ Buffer _Buffer_::Make(Var data,
   CHECK(dtype.valid());
   CHECK(!dtype.is_unk());
   CHECK(!dtype.is_void());
-  auto *node = common::make_shared<_Buffer_>();
+  auto *node = cinn::common::make_shared<_Buffer_>();
   node->shape = shape;
   node->strides = strides;
   node->elem_offset = elem_offset;
@@ -69,7 +69,7 @@ Buffer _Buffer_::Make(Var data,
 }
 
 Buffer _Buffer_::Make(const std::string &name, const std::vector<Expr> &shape) {
-  auto *node = common::make_shared<_Buffer_>();
+  auto *node = cinn::common::make_shared<_Buffer_>();
   node->name = name;
   node->shape = shape;
   node->dtype = Void();
@@ -77,7 +77,7 @@ Buffer _Buffer_::Make(const std::string &name, const std::vector<Expr> &shape) {
 }
 
 Buffer _Buffer_::Make() {
-  auto *node = common::make_shared<_Buffer_>();
+  auto *node = cinn::common::make_shared<_Buffer_>();
   node->dtype = Void();
   return Buffer(node);
 }

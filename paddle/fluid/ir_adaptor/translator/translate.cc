@@ -22,6 +22,9 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
+#endif
 namespace paddle {
 
 using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
@@ -31,11 +34,15 @@ std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
+#ifdef PADDLE_WITH_DNNL
+  ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
+#endif
   auto program = std::make_unique<Program>(ctx);
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());
+  VLOG(6) << "begin to translate";
   program_translator.Translate();
-
+  VLOG(6) << "translate done";
   return program;
 }
 

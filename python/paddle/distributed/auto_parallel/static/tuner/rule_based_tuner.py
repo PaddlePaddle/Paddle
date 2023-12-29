@@ -28,7 +28,7 @@ import numpy as np
 import paddle
 from paddle.base import program_guard
 from paddle.base.backward import append_backward
-from paddle.base.framework import Parameter, unique_name
+from paddle.base.framework import Parameter
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.cluster_v2 import DeviceMesh
 from paddle.distributed.auto_parallel.static.completion import Completer
@@ -54,6 +54,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from ....utils.log_utils import get_logger
 from ..graph import Graph
+from ..utils import _g_gradient_clip_ops
 
 _PATTERNS = {}
 
@@ -1161,7 +1162,7 @@ class RuleBasedTuner:
             with program_guard(
                 self.full_main_program, self.full_startup_program
             ):
-                with unique_name.guard("opt_"):
+                with self.full_main_program.switch_name_generator_guard("opt_"):
                     optimizer_ops = optimizer.apply_gradients(params_grads)
 
             # op original id to grad op id
@@ -1644,13 +1645,7 @@ class RuleBasedTuner:
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 if is_gradient_clip_op(op):
-                    if op.type in [
-                        "sum",
-                        "sqrt",
-                        "fill_constant",
-                        "elementwise_max",
-                        "elementwise_div",
-                    ]:
+                    if op.type in _g_gradient_clip_ops:
                         op_dist_attr = OperatorDistAttr()
                         op_dist_attr.process_mesh = world_ranks
                         for in_name in op.input_arg_names:

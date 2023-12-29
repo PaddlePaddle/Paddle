@@ -2,7 +2,7 @@
 
 library(reticulate) # call Python library
 
-use_python("/opt/python3.7/bin/python")
+use_python("/opt/python3.8/bin/python")
 
 np <- import("numpy")
 paddle <- import("paddle.base.core")
