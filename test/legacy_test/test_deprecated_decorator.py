@@ -47,11 +47,13 @@ def get_warning_index(api):
     """
 
     doc_lst = api.__doc__.splitlines()
-    for idx, val in enumerate(doc_lst):
+    doc_iter = iter(doc_lst)
+    for idx, val in enumerate(doc_iter):
+        next_val = next(doc_iter, None)
         if (
-            val.startswith("Warning: ")
-            and val.endswith(" instead.")
-            and "and will be removed in future versions." in val
+            val.startswith("    Warning:")
+            and next_val.endswith(" instead.")
+            and "and will be removed in future versions." in next_val
         ):
             return idx
     return ERROR_WARNING_POSTION

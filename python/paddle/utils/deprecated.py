@@ -85,9 +85,11 @@ def deprecated(update_to="", since="", reason="", level=0):
             )
             msg += f' Please use "{_update_to}" instead.'
         if len(_reason) > 0:
-            msg += f"\nreason: {_reason}"
+            msg += f"\n        Reason: {_reason}"
         if func.__doc__:
-            func.__doc__ = ('\n\nWarning: ' + msg + '\n') + func.__doc__
+            func.__doc__ = (
+                '\n\n    Warning:\n        ' + msg + '\n'
+            ) + func.__doc__
 
         if level == 0:
             return func
