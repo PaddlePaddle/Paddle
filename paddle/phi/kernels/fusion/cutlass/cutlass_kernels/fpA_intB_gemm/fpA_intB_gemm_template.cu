@@ -645,9 +645,10 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
         "Activation_type = relu for fpA_intB gemm is not instantiated."));
   } else if (activation_type == "none") {
     if (group_size > 0) {
-      PADDLE_ENFORCE(sm_ >= 80,
-                     phi::errors::Unimplemented(
-                         "Groupwise mode is not supported on SM < 8.0"));
+      PADDLE_ENFORCE_GE(sm_,
+                        80,
+                        phi::errors::Unimplemented(
+                            "Groupwise mode is not supported on SM < 8.0"));
       run_gemm<EpilogueOpBias, true>(A,
                                      B,
                                      weight_scales,
@@ -692,9 +693,10 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm(const T* A,
                                                    const size_t workspace_bytes,
                                                    cudaStream_t stream) {
   if (group_size > 0) {
-    PADDLE_ENFORCE(sm_ >= 80,
-                   phi::errors::Unimplemented(
-                       "Groupwise mode is not supported on SM < 8.0"));
+    PADDLE_ENFORCE_GE(sm_,
+                      80,
+                      phi::errors::Unimplemented(
+                          "Groupwise mode is not supported on SM < 8.0"));
     run_gemm<EpilogueOpNoBias, true>(A,
                                      B,
                                      weight_scales,
