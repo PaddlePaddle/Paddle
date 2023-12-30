@@ -60,7 +60,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluOp::name(),
     SoftReluGradOp::name(),
     NceOp::name(),
-    NceGradOp::name()};
+    NceGradOp::name(),
     CReduceMinOp::name()};
 
 const std::unordered_set<std::string> OneDNNLegacyOpList = {};
