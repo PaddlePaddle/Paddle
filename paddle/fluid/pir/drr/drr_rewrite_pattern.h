@@ -31,7 +31,7 @@
 #include "paddle/pir/core/type_name.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class DrrRewritePattern : public pir::RewritePattern {
@@ -57,8 +57,9 @@ class DrrRewritePattern : public pir::RewritePattern {
                                      "source pattern definition code."));
   }
 
-  bool MatchAndRewrite(pir::Operation* op,
-                       PatternRewriter& rewriter) const override;  // // NOLINT
+  bool MatchAndRewrite(
+      pir::Operation* op,
+      pir::PatternRewriter& rewriter) const override;  // // NOLINT
 
  private:
   bool PatternGraphMatch(pir::Operation* op,
@@ -78,7 +79,7 @@ class DrrRewritePattern : public pir::RewritePattern {
           output_op_bind_map) const;
 
   bool MatchFromOutputToInput(
-      std::unordered_map<const OpCall*, Operation*> output_op_map,
+      std::unordered_map<const OpCall*, pir::Operation*> output_op_map,
       const SourcePatternGraph& source_pattern_graph,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const;
 
@@ -113,4 +114,4 @@ class DrrRewritePattern : public pir::RewritePattern {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

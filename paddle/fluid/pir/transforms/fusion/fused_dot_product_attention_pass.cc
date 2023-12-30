@@ -22,10 +22,10 @@
 namespace {
 
 class FusedDotProductAttentionPattern
-    : public pir::drr::DrrPatternBase<FusedDotProductAttentionPattern> {
+    : public paddle::drr::DrrPatternBase<FusedDotProductAttentionPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern src = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern src = ctx->SourcePattern();
 
     // q[b, s, head, head_dim] -> transpose -> q[b, head, s, head_dim] -> scale
     const auto &q_transpose = src.Op("pd_op.transpose");
@@ -82,40 +82,45 @@ class FusedDotProductAttentionPattern
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall([](const pir::drr::MatchContext &match_ctx) -> bool {
-      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-      if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+          if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-      bool qk_matmul_transpose_x =
-          match_ctx.Attr<bool>("qk_matmul_transpose_x");
-      bool qk_matmul_transpose_y =
-          match_ctx.Attr<bool>("qk_matmul_transpose_y");
-      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+          bool qk_matmul_transpose_x =
+              match_ctx.Attr<bool>("qk_matmul_transpose_x");
+          bool qk_matmul_transpose_y =
+              match_ctx.Attr<bool>("qk_matmul_transpose_y");
+          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-      bool context_matmul_transpose_x =
-          match_ctx.Attr<bool>("context_matmul_transpose_x");
-      bool context_matmul_transpose_y =
-          match_ctx.Attr<bool>("context_matmul_transpose_y");
-      if (context_matmul_transpose_x || context_matmul_transpose_y)
-        return false;
+          bool context_matmul_transpose_x =
+              match_ctx.Attr<bool>("context_matmul_transpose_x");
+          bool context_matmul_transpose_y =
+              match_ctx.Attr<bool>("context_matmul_transpose_y");
+          if (context_matmul_transpose_x || context_matmul_transpose_y)
+            return false;
 
-      return true;
-    });
+          return true;
+        });
 
     // Result pattern
-    pir::drr::ResultPattern res = src.ResultPattern();
+    paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
         });
     const auto &dropout_prob =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return static_cast<float>(0.0);
         });
-    const auto &is_training = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &is_causal_masking = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &is_training =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &is_causal_masking =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
@@ -135,10 +140,10 @@ class FusedDotProductAttentionPattern
 };
 
 class FusedDotProductAttentionGradPattern
-    : public pir::drr::DrrPatternBase<FusedDotProductAttentionGradPattern> {
+    : public paddle::drr::DrrPatternBase<FusedDotProductAttentionGradPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern src = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern src = ctx->SourcePattern();
 
     // q[b, s, head, head_dim] -> transpose -> q[b, head, s, head_dim] -> scale
     const auto &q_transpose = src.Op("pd_op.transpose");
@@ -239,40 +244,45 @@ class FusedDotProductAttentionGradPattern
                      {&src.Tensor("k_grad")});
 
     // Constraints
-    src.RequireNativeCall([](const pir::drr::MatchContext &match_ctx) -> bool {
-      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-      if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+          if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-      bool qk_matmul_transpose_x =
-          match_ctx.Attr<bool>("qk_matmul_transpose_x");
-      bool qk_matmul_transpose_y =
-          match_ctx.Attr<bool>("qk_matmul_transpose_y");
-      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+          bool qk_matmul_transpose_x =
+              match_ctx.Attr<bool>("qk_matmul_transpose_x");
+          bool qk_matmul_transpose_y =
+              match_ctx.Attr<bool>("qk_matmul_transpose_y");
+          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-      bool context_matmul_transpose_x =
-          match_ctx.Attr<bool>("context_matmul_transpose_x");
-      bool context_matmul_transpose_y =
-          match_ctx.Attr<bool>("context_matmul_transpose_y");
-      if (context_matmul_transpose_x || context_matmul_transpose_y)
-        return false;
+          bool context_matmul_transpose_x =
+              match_ctx.Attr<bool>("context_matmul_transpose_x");
+          bool context_matmul_transpose_y =
+              match_ctx.Attr<bool>("context_matmul_transpose_y");
+          if (context_matmul_transpose_x || context_matmul_transpose_y)
+            return false;
 
-      return true;
-    });
+          return true;
+        });
 
     // Result pattern
-    pir::drr::ResultPattern res = src.ResultPattern();
+    paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
         });
     const auto &dropout_prob =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return static_cast<float>(0.0);
         });
-    const auto &is_training = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &is_causal_masking = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &is_training =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &is_causal_masking =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
@@ -307,11 +317,11 @@ class FusedDotProductAttentionGradPattern
 };
 
 class FusedDotProductAttentionWithDropoutPattern
-    : public pir::drr::DrrPatternBase<
+    : public paddle::drr::DrrPatternBase<
           FusedDotProductAttentionWithDropoutPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern src = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern src = ctx->SourcePattern();
 
     // q[b, s, head, head_dim] -> transpose -> q[b, head, s, head_dim] -> scale
     const auto &q_transpose = src.Op("pd_op.transpose");
@@ -376,40 +386,45 @@ class FusedDotProductAttentionWithDropoutPattern
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall([](const pir::drr::MatchContext &match_ctx) -> bool {
-      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-      if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+          if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-      bool qk_matmul_transpose_x =
-          match_ctx.Attr<bool>("qk_matmul_transpose_x");
-      bool qk_matmul_transpose_y =
-          match_ctx.Attr<bool>("qk_matmul_transpose_y");
-      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+          bool qk_matmul_transpose_x =
+              match_ctx.Attr<bool>("qk_matmul_transpose_x");
+          bool qk_matmul_transpose_y =
+              match_ctx.Attr<bool>("qk_matmul_transpose_y");
+          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-      bool context_matmul_transpose_x =
-          match_ctx.Attr<bool>("context_matmul_transpose_x");
-      bool context_matmul_transpose_y =
-          match_ctx.Attr<bool>("context_matmul_transpose_y");
-      if (context_matmul_transpose_x || context_matmul_transpose_y)
-        return false;
+          bool context_matmul_transpose_x =
+              match_ctx.Attr<bool>("context_matmul_transpose_x");
+          bool context_matmul_transpose_y =
+              match_ctx.Attr<bool>("context_matmul_transpose_y");
+          if (context_matmul_transpose_x || context_matmul_transpose_y)
+            return false;
 
-      return true;
-    });
+          return true;
+        });
 
     // Result pattern
-    pir::drr::ResultPattern res = src.ResultPattern();
+    paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
         });
     const auto &dropout_prob =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return static_cast<float>(0.0);
         });
-    const auto &is_training = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &is_causal_masking = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &is_training =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &is_causal_masking =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
@@ -429,11 +444,11 @@ class FusedDotProductAttentionWithDropoutPattern
 };
 
 class FusedDotProductAttentionGradWithDropoutPattern
-    : public pir::drr::DrrPatternBase<
+    : public paddle::drr::DrrPatternBase<
           FusedDotProductAttentionGradWithDropoutPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern src = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern src = ctx->SourcePattern();
 
     // q[b, s, head, head_dim] -> transpose -> q[b, head, s, head_dim] -> scale
     const auto &q_transpose = src.Op("pd_op.transpose");
@@ -548,36 +563,41 @@ class FusedDotProductAttentionGradWithDropoutPattern
                      {&src.Tensor("k_grad")});
 
     // Constraints
-    src.RequireNativeCall([](const pir::drr::MatchContext &match_ctx) -> bool {
-      const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-      if (softmax_axis != -1 && softmax_axis != 3) return false;
+    src.RequireNativeCall(
+        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
+          if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-      bool qk_matmul_transpose_x =
-          match_ctx.Attr<bool>("qk_matmul_transpose_x");
-      bool qk_matmul_transpose_y =
-          match_ctx.Attr<bool>("qk_matmul_transpose_y");
-      if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
+          bool qk_matmul_transpose_x =
+              match_ctx.Attr<bool>("qk_matmul_transpose_x");
+          bool qk_matmul_transpose_y =
+              match_ctx.Attr<bool>("qk_matmul_transpose_y");
+          if (qk_matmul_transpose_x || !qk_matmul_transpose_y) return false;
 
-      bool context_matmul_transpose_x =
-          match_ctx.Attr<bool>("context_matmul_transpose_x");
-      bool context_matmul_transpose_y =
-          match_ctx.Attr<bool>("context_matmul_transpose_y");
-      if (context_matmul_transpose_x || context_matmul_transpose_y)
-        return false;
+          bool context_matmul_transpose_x =
+              match_ctx.Attr<bool>("context_matmul_transpose_x");
+          bool context_matmul_transpose_y =
+              match_ctx.Attr<bool>("context_matmul_transpose_y");
+          if (context_matmul_transpose_x || context_matmul_transpose_y)
+            return false;
 
-      return true;
-    });
+          return true;
+        });
 
     // Result pattern
-    pir::drr::ResultPattern res = src.ResultPattern();
+    paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
         });
-    const auto &is_training = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &is_causal_masking = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &is_training =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return true;
+        });
+    const auto &is_causal_masking =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
