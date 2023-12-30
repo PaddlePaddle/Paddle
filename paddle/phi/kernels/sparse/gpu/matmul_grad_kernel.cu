@@ -159,66 +159,26 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
     perm = {0, 2, 1};
   }
 
-  // cusparseSpGEMM  only support 32-bit index.
-  SparseCsrTensor dout_tmp;
-  CastCsrKernel<T, Context>(
-      dev_ctx, dout, DataType::INT32, dout.values().dtype(), &dout_tmp);
-
   // dx{SparseCsr} = dout{SparseCsr} * y'{SparseCsr}
   if (dx) {
-    SparseCsrTensor x_tmp, dx_tmp;
-    CastCsrKernel<T, Context>(
-        dev_ctx, x, DataType::INT32, x.values().dtype(), &x_tmp);
-
-    EmptyLikeCsrKernel<T, Context>(dev_ctx, x_tmp, &dx_tmp);
-
     // cusparseSpGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
-    SparseCsrTensor trans_y, trans_y_tmp;
+    // transopse y before cusparseSpGEMM computation.
+    SparseCsrTensor trans_y;
     TransposeCsrKernel<T, Context>(dev_ctx, y, perm, &trans_y);
-    CastCsrKernel<T, Context>(dev_ctx,
-                              trans_y,
-                              DataType::INT32,
-                              trans_y.values().dtype(),
-                              &trans_y_tmp);
 
-    sparse_blas.SPGEMM(false,
-                       false,
-                       static_cast<T>(1),
-                       dout_tmp,
-                       trans_y_tmp,
-                       static_cast<T>(0),
-                       &dx_tmp);
-
-    CastCsrKernel<T, Context>(
-        dev_ctx, dx_tmp, DataType::INT64, dx_tmp.values().dtype(), dx);
+    sparse_blas.SPGEMM(
+        false, false, static_cast<T>(1), dout, trans_y, static_cast<T>(0), dx);
   }
 
   // dy{SparseCsr} = x'{SparseCsr} * dout{SparseCsr}
   if (dy) {
-    SparseCsrTensor y_tmp, dy_tmp;
-    CastCsrKernel<T, Context>(
-        dev_ctx, y, DataType::INT32, y.values().dtype(), &y_tmp);
-    EmptyLikeCsrKernel<T, Context>(dev_ctx, y_tmp, &dy_tmp);
-
     // cusparseSpGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
-    SparseCsrTensor trans_x, trans_x_tmp;
+    // transopse x before cusparseSpGEMM computation.
+    SparseCsrTensor trans_x;
     TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &trans_x);
-    CastCsrKernel<T, Context>(dev_ctx,
-                              trans_x,
-                              DataType::INT32,
-                              trans_x.values().dtype(),
-                              &trans_x_tmp);
 
-    sparse_blas.SPGEMM(false,
-                       false,
-                       static_cast<T>(1),
-                       trans_x_tmp,
-                       dout_tmp,
-                       static_cast<T>(0),
-                       &dy_tmp);
-
-    CastCsrKernel<T, Context>(
-        dev_ctx, dy_tmp, DataType::INT64, dy_tmp.values().dtype(), dy);
+    sparse_blas.SPGEMM(
+        false, false, static_cast<T>(1), trans_x, dout, static_cast<T>(0), dy);
   }
 #else
 #ifdef PADDLE_WITH_CUDA
@@ -236,7 +196,7 @@ void MatmulCooCooGradKernel(const Context& dev_ctx,
                             const SparseCooTensor& dout,
                             SparseCooTensor* dx,
                             SparseCooTensor* dy) {
-  // cusparseSpGEMM only support CSR now, so use COO->CSR->COO
+  // cusparseSpGEMM only support CSR now, so use COO->CSR->COO.
   SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
   SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
   SparseCsrTensor dout_csr = CooToCsr<T, Context>(dev_ctx, dout);

@@ -26,6 +26,7 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
@@ -493,6 +494,80 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
 #endif
 
 /************* SPARSE*SPARSE->SPARSE MATMUL ************/
+template <typename T>
+class CuSparseSpGEMMCsrDescriptor {
+ public:
+  explicit CuSparseSpGEMMCsrDescriptor(const phi::SparseCsrTensor& x,
+                                       const phi::GPUContext& dev_ctx)
+      : dev_ctx_(dev_ctx) {
+    std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+    auto x_ndims = xdim_vec.size();
+
+    int64_t M = xdim_vec[x_ndims - 2];
+    int64_t N = xdim_vec[x_ndims - 1];
+    int batch_size = 1;
+    for (int i = 0; i < x_ndims - 2; i++) {
+      batch_size *= xdim_vec[i];
+    }
+
+    const int32_t *crows_data, *cols_data;
+    if (x.crows().dtype() == phi::DataType::INT32) {
+      crows_data = x.crows().data<int32_t>();
+      cols_data = x.cols().data<int32_t>();
+    } else {
+      phi::MetaTensor crows_meta(&crows_int);
+      crows_meta.set_dims(x.crows().dims());
+
+      phi::MetaTensor cols_meta(&cols_int);
+      cols_meta.set_dims(x.cols().dims());
+
+      phi::CastKernel<int64_t>(
+          dev_ctx, x.crows(), phi::DataType::INT32, &crows_int);
+      phi::CastKernel<int64_t>(
+          dev_ctx, x.cols(), phi::DataType::INT32, &cols_int);
+
+      crows_data = crows_int.data<int32_t>();
+      cols_data = cols_int.data<int32_t>();
+    }
+
+    const T* values_data = x.values().data<T>();
+    int64_t batch_nnz = x.nnz() / batch_size;
+    cudaDataType_t gpu_type = GetGpuDataType<T>();
+    dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
+      phi::dynload::cusparseCreateCsr(&descriptor_,
+                                      M,
+                                      N,
+                                      batch_nnz,
+                                      const_cast<int32_t*>(crows_data),
+                                      const_cast<int32_t*>(cols_data),
+                                      const_cast<T*>(values_data),
+                                      CUSPARSE_INDEX_32I,
+                                      CUSPARSE_INDEX_32I,
+                                      CUSPARSE_INDEX_BASE_ZERO,
+                                      gpu_type);
+    });
+
+    VLOG(6) << "Create csr cusparseSpMatDescr_t " << &descriptor_;
+  }
+
+  ~CuSparseSpGEMMCsrDescriptor() {
+    dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+      phi::dynload::cusparseDestroySpMat(descriptor_);
+    });
+    VLOG(6) << "Destroy cusparseSpMatDescr_t " << &descriptor_;
+  }
+
+  const cusparseSpMatDescr_t& descriptor() const { return descriptor_; }
+
+ private:
+  const phi::GPUContext& dev_ctx_;
+  cusparseSpMatDescr_t descriptor_;
+
+  // temporarily save crows and cols for int64_t index csr
+  DenseTensor crows_int;
+  DenseTensor cols_int;
+};
+
 template <>
 template <typename T>
 void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
@@ -502,9 +577,26 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          const SparseCsrTensor& mat_b,
                                          T beta,
                                          SparseCsrTensor* mat_out) const {
-  auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
-  auto b_descriptor = CuSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
-  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+  DenseTensor* mat_out_crows = mat_out->mutable_crows();
+  DenseTensor* mat_out_cols = mat_out->mutable_cols();
+  DenseTensor* mat_out_values = mat_out->mutable_values();
+
+  MetaTensor out_crows_meta(mat_out_crows);
+  out_crows_meta.set_dtype(phi::DataType::INT32);
+  out_crows_meta.set_dims(mat_a.crows().dims());
+  dev_ctx_.template Alloc<int32_t>(mat_out_crows);
+
+  MetaTensor out_cols_meta(mat_out_cols);
+  out_cols_meta.set_dtype(phi::DataType::INT32);
+  dev_ctx_.template Alloc<int32_t>(mat_out_cols);
+
+  MetaTensor out_values_meta(mat_out_values);
+  out_values_meta.set_dtype(mat_a.values().dtype());
+  dev_ctx_.template Alloc<T>(mat_out_values);
+
+  auto a_descriptor = CuSparseSpGEMMCsrDescriptor<T>(mat_a, dev_ctx_);
+  auto b_descriptor = CuSparseSpGEMMCsrDescriptor<T>(mat_b, dev_ctx_);
+  auto out_descriptor = CuSparseSpGEMMCsrDescriptor<T>(*mat_out, dev_ctx_);
 
   cudaDataType_t gpu_type = GetGpuDataType<T>();
   size_t buffer_a_size = 0, buffer_b_size = 0;
@@ -587,14 +679,25 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          tmp_buffer_b_ptr);
   });
 
-  int64_t num_rows, num_cols, nnz;
+  int64_t out_crows_size, out_cols_size, out_values_size;
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
-    phi::dynload::cusparseSpMatGetSize(
-        out_descriptor.descriptor(), &num_rows, &num_cols, &nnz);
+    phi::dynload::cusparseSpMatGetSize(out_descriptor.descriptor(),
+                                       &out_crows_size,
+                                       &out_cols_size,
+                                       &out_values_size);
   });
-  *(mat_out->mutable_cols()) = phi::Empty<int32_t>(dev_ctx_, {nnz});
-  *(mat_out->mutable_values()) = phi::Empty<T>(dev_ctx_, {nnz});
-  auto res_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+
+  // Reallocate space for cols and values of mat_out
+  mat_out_cols->Resize(make_dim(out_values_size));
+  dev_ctx_.template Alloc<int32_t>(mat_out_cols);
+  mat_out_values->Resize(make_dim(out_values_size));
+  dev_ctx_.template Alloc<T>(mat_out_values);
+
+  phi::dynload::cusparseCsrSetPointers(
+      out_descriptor.descriptor(),
+      const_cast<int32_t*>(mat_out_crows->data<int32_t>()),
+      const_cast<int32_t*>(mat_out_cols->data<int32_t>()),
+      const_cast<T*>(mat_out_values->data<T>()));
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpGEMM_copy(handle,
@@ -604,11 +707,19 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                       a_descriptor.descriptor(),
                                       b_descriptor.descriptor(),
                                       &beta,
-                                      res_descriptor.descriptor(),
+                                      out_descriptor.descriptor(),
                                       gpu_type,
                                       CUSPARSE_SPGEMM_DEFAULT,
                                       spgemmDesc);
   });
+
+  if (mat_a.crows().dtype() == phi::DataType::INT64 ||
+      mat_b.crows().dtype() == phi::DataType::INT64) {
+    phi::CastKernel<int32_t>(
+        dev_ctx_, *mat_out_crows, phi::DataType::INT64, mat_out_crows);
+    phi::CastKernel<int32_t>(
+        dev_ctx_, *mat_out_cols, phi::DataType::INT64, mat_out_cols);
+  }
 
   phi::dynload::cusparseSpGEMM_destroyDescr(spgemmDesc);
 }

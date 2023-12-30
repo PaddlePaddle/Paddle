@@ -159,40 +159,14 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
 
-  // cusparseSpGEMM  only support 32-bit index.
-  SparseCsrTensor x_tmp, y_tmp, out_tmp;
-  CastCsrKernel<T, Context>(
-      dev_ctx, x, DataType::INT32, x.values().dtype(), &x_tmp);
-  CastCsrKernel<T, Context>(
-      dev_ctx, y, DataType::INT32, y.values().dtype(), &y_tmp);
-
-  std::vector<int64_t> out_dim_vec = phi::vectorize(out->dims());
-  int batch_size = 1;
-  for (int i = 0; i < out_dim_vec.size() - 2; i++) {
-    batch_size *= out_dim_vec[i];
-  }
-  int64_t out_crows_size = batch_size * (xdim_vec[x_ndims - 2] + 1);
-  DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx, {out_crows_size});
-  DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx, {0});
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {0});
-  out_tmp.SetMember(out_crows, out_cols, out_values, out->dims());
-
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
-  sparse_blas.SPGEMM(false,
-                     false,
-                     static_cast<T>(1),
-                     x_tmp,
-                     y_tmp,
-                     static_cast<T>(0),
-                     &out_tmp);
-
-  CastCsrKernel<T, Context>(
-      dev_ctx, out_tmp, DataType::INT64, out_tmp.values().dtype(), out);
+  sparse_blas.SPGEMM(
+      false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 
 #else
 #ifdef PADDLE_WITH_CUDA
   PADDLE_THROW(phi::errors::Unimplemented(
-      "forward of 'sparse.matmul' use cusparseSPGEMM, "
+      "forward of 'sparse.matmul' use cusparseSpGEMM, "
       "which is supported from CUDA 11.0"));
 #endif
 #endif
@@ -203,7 +177,7 @@ void MatmulCooCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const SparseCooTensor& y,
                         SparseCooTensor* out) {
-  // 'cusparseSPGEMM' only support CSR now, so use COO->CSR->COO,
+  // 'cusparseSPGEMM' only support CSR now, so use COO->CSR->COO.
   SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
   SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
   SparseCsrTensor out_csr;

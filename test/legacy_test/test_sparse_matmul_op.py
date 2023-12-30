@@ -93,9 +93,9 @@ class TestMatmulSparseDense(unittest.TestCase):
         self.check_result([8, 16, 12], [8, 12, 10], 'csr')
 
 
-class TestMatmulCsrCsr(unittest.TestCase):
-    # x: csr sparse, y: csr sparse, out: csr sparse
-    def check_result(self, x_shape, y_shape):
+class TestMatmulSparseSparseIndex64(unittest.TestCase):
+    # x: sparse, y: sparse, out: sparse
+    def check_result(self, x_shape, y_shape, format):
         mask = paddle.randint(0, 2, x_shape)
         origin_x = paddle.rand(x_shape) * mask
         origin_y = paddle.rand(y_shape)
@@ -106,8 +106,12 @@ class TestMatmulCsrCsr(unittest.TestCase):
         dense_y.stop_gradient = False
         dense_out = paddle.matmul(dense_x, dense_y)
 
-        sp_x = origin_x.detach().to_sparse_csr()
-        sp_y = origin_y.detach().to_sparse_csr()
+        if format == "coo":
+            sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+            sp_y = origin_y.detach().to_sparse_coo(len(y_shape))
+        else:
+            sp_x = origin_x.detach().to_sparse_csr()
+            sp_y = origin_y.detach().to_sparse_csr()
 
         sp_x.stop_gradient = False
         sp_y.stop_gradient = False
@@ -134,19 +138,21 @@ class TestMatmulCsrCsr(unittest.TestCase):
         "only support cuda>=11.0",
     )
     def test_matmul_2d(self):
-        self.check_result([16, 12], [12, 10])
+        self.check_result([16, 12], [12, 10], 'coo')
+        self.check_result([16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
         "only support cuda>=11.8",
     )
     def test_matmul_3d(self):
-        self.check_result([8, 16, 12], [8, 12, 10])
+        self.check_result([8, 16, 12], [8, 12, 10], 'coo')
+        self.check_result([8, 16, 12], [8, 12, 10], 'csr')
 
 
-class TestMatmulCooCoo(unittest.TestCase):
-    # x: coo sparse, y: coo sparse, out: coo sparse
-    def check_result(self, x_shape, y_shape):
+class TestMatmulSparseSparseIndex32(unittest.TestCase):
+    # x: sparse, y: sparse, out: sparse
+    def check_result(self, x_shape, y_shape, format):
         mask = paddle.randint(0, 2, x_shape)
         origin_x = paddle.rand(x_shape) * mask
         origin_y = paddle.rand(y_shape)
@@ -157,17 +163,45 @@ class TestMatmulCooCoo(unittest.TestCase):
         dense_y.stop_gradient = False
         dense_out = paddle.matmul(dense_x, dense_y)
 
-        sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
-        sp_y = origin_y.detach().to_sparse_coo(len(y_shape))
+        if format == "coo":
+            sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+            # cast to 32-bit index.
+            sp_x_indices = paddle.cast(sp_x.indices(), "int32")
+            sp_x = paddle.sparse.sparse_coo_tensor(
+                sp_x_indices, sp_x.values(), sp_x.shape
+            )
+
+            sp_y = origin_y.detach().to_sparse_coo(len(y_shape))
+            # cast to 32-bit index.
+            sp_y_indices = paddle.cast(sp_y.indices(), "int32")
+            sp_y = paddle.sparse.sparse_coo_tensor(
+                sp_y_indices, sp_y.values(), sp_y.shape
+            )
+        else:
+            sp_x = origin_x.detach().to_sparse_csr()
+            # cast to 32-bit index.
+            sp_x_crows = paddle.cast(sp_x.crows(), "int32")
+            sp_x_cols = paddle.cast(sp_x.cols(), "int32")
+            sp_x = paddle.sparse.sparse_csr_tensor(
+                sp_x_crows, sp_x_cols, sp_x.values(), sp_x.shape
+            )
+
+            sp_y = origin_y.detach().to_sparse_csr()
+            # cast to 32-bit index.
+            sp_y_crows = paddle.cast(sp_y.crows(), "int32")
+            sp_y_cols = paddle.cast(sp_y.cols(), "int32")
+            sp_y = paddle.sparse.sparse_csr_tensor(
+                sp_y_crows, sp_y_cols, sp_y.values(), sp_y.shape
+            )
 
         sp_x.stop_gradient = False
         sp_y.stop_gradient = False
 
         sp_out = paddle.sparse.matmul(sp_x, sp_y)
+
         np.testing.assert_allclose(
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
         )
-
         if get_cuda_version() >= 11030:
             dense_out.backward()
             sp_out.backward()
@@ -185,14 +219,16 @@ class TestMatmulCooCoo(unittest.TestCase):
         "only support cuda>=11.0",
     )
     def test_matmul_2d(self):
-        self.check_result([16, 12], [12, 10])
+        self.check_result([16, 12], [12, 10], 'coo')
+        self.check_result([16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
         "only support cuda>=11.8",
     )
     def test_matmul_3d(self):
-        self.check_result([8, 16, 12], [8, 12, 10])
+        self.check_result([8, 16, 12], [8, 12, 10], 'coo')
+        self.check_result([8, 16, 12], [8, 12, 10], 'csr')
 
 
 class TestMaskedMatmul(unittest.TestCase):

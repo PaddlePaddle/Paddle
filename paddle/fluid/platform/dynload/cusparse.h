@@ -51,6 +51,7 @@ namespace dynload {
   __macro(cusparseSpMV_bufferSize);       \
   __macro(cusparseSpMV);                  \
   __macro(cusparseSpMatGetSize);          \
+  __macro(cusparseCsrSetPointers);        \
   __macro(cusparseSpGEMM_createDescr);    \
   __macro(cusparseSpGEMM_compute);        \
   __macro(cusparseSpGEMM_workEstimation); \
