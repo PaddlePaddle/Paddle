@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -74,7 +75,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
     context_ = context;
     enable_low_precision_io_ = false;
     SetDefaultBlacklist();
-    SetDefaultWhitelist();
     return true;
   }
 
@@ -122,23 +122,15 @@ class AutoMixedPrecisionPass : public pir::Pass {
   int insert_cast_op_num_ = 0;
 
   void SetDefaultBlacklist() {
-    // black_list_.insert({
-    //     paddle::dialect::ExpOp::name(),
-    //     paddle::dialect::SquareOp::name(),
-    //     paddle::dialect::LogOp::name(),
-    //     // paddle::dialect::FetchOp::name(),
-
-    //     // paddle::dialect::Mean::name(),
-    //     // paddle::dialect::Sum::name(),
-    //     paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
-    // });
-  }
-
-  void SetDefaultWhitelist() {
-    // white_list_.insert({paddle::dialect::FullOp::name(),
-    //                     paddle::dialect::Conv2dOp::name(),
-    //                     paddle::dialect::TransposeOp::name()});
-    // return;
+    black_list_.insert({
+        paddle::dialect::ExpOp::name(),
+        paddle::dialect::SquareOp::name(),
+        paddle::dialect::LogOp::name(),
+        paddle::dialect::MeanOp::name(),
+        paddle::dialect::SumOp::name(),
+        paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
+        paddle::dialect::CrossEntropyWithSoftmax_Op::name(),
+    });
   }
 
   void ProcessBlock(pir::Block* block, pir::Builder& builder) {  // NOLINT
