@@ -440,18 +440,6 @@ class ClipGradByValue(ClipGradBase):
             params_and_grads.append((p, new_grad))
         return params_and_grads
 
-    def _pir_clip(self, params_grads):
-        params_and_grads = []
-        for p, g in params_grads:
-            if g is None:
-                continue
-            if getattr(p, 'need_clip', True) is False:
-                params_and_grads.append((p, g))
-                continue
-            new_grad = paddle.clip(x=g, min=self.min, max=self.max)
-            params_and_grads.append((p, new_grad))
-        return params_and_grads
-
     def _static_clip(self, params_grads):
         params_and_grads = []
         param_new_grad_name_dict = {}
