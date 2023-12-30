@@ -17,13 +17,13 @@ import math
 # TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.framework import core
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.framework import (
     _current_expected_place,
+    core,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
@@ -147,7 +147,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
             >>> prob = paddle.randn((10,1))
             >>> cost = F.log_loss(input=prob, label=label)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
@@ -238,12 +238,12 @@ def base_softmax_with_cross_entropy(
                               is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
-        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
-                                                    `return_softmax` is False, otherwise the tuple \
-                                                    (loss, softmax), softmax is in the same shape \
-                                                    with input logits and cross entropy loss is in \
-                                                    the same shape with input logits except shape \
-                                                    in dimension :attr:`axis` as 1.
+        - If `return_softmax` is False, return the cross entropy loss as a ``Tensor``.
+          The dtype is the same as the input ``logits``. The shape is consistent with ``logits`` except in dimension :attr:`axis` as 1.
+        - If `return_softmax` is True, return a tuple of two ``Tensor``: the cross entropy loss and the softmax result.
+          The dtype of the cross entropy loss is the same as the input ``logits``, and the shape is consistent with ``logits``
+          except in dimension :attr:`axis` as 1. The dtype and shape of the softmax result are the same as the input ``logits``.
+
 
     Examples:
         .. code-block:: python
@@ -271,7 +271,7 @@ def base_softmax_with_cross_entropy(
         )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.cross_entropy_with_softmax(
             logits,
             label,
@@ -350,10 +350,11 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
                     2.94269347)
 
     """
-    if anchor.size == 0:
-        raise ValueError("The dims of anchor should be greater than 0.")
-    if positive.size == 0:
-        raise ValueError("The dims of positive should be greater than 0.")
+    if in_dynamic_mode():
+        if anchor.size == 0:
+            raise ValueError("The dims of anchor should be greater than 0.")
+        if positive.size == 0:
+            raise ValueError("The dims of positive should be greater than 0.")
     check_variable_and_dtype(
         anchor, 'anchor', ['float32', 'float64'], 'npair_loss'
     )
@@ -658,7 +659,7 @@ def binary_cross_entropy(
             % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.bce_loss(input, label)
         if weight is not None:
             out = _C_ops.multiply(out, weight, 'axis', -1)
@@ -800,7 +801,7 @@ def binary_cross_entropy_with_logits(
             % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         one = _C_ops.full(
             [1],
             1.0,
@@ -983,7 +984,7 @@ def hsigmoid_loss(
     if num_classes < 2:
         raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
             label,
@@ -1102,7 +1103,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
@@ -1197,11 +1198,11 @@ def margin_ranking_loss(
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.subtract(other, input)
         out = _C_ops.multiply(out, label)
         if margin != 0.0:
-            margin = base.dygraph.base.to_variable([margin], dtype=out.dtype)
+            margin = paddle.to_tensor([margin], dtype=out.dtype)
             out = _C_ops.add(out, margin)
         out = _C_ops.relu(out)
         if reduction == 'sum':
@@ -1328,7 +1329,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             "received %s, which is not allowed." % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         unreduced = _C_ops.abs(_C_ops.subtract(input, label))
 
         if reduction == 'mean':
@@ -1440,7 +1441,7 @@ def nll_loss(
 
     n = input_shape[0]
     c = input_shape[1]
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if input_dims != 2 and input_dims != 4:
             input = _C_ops.reshape(input, [n, c, 1, -1])
             label = _C_ops.reshape(label, [n, 1, -1])
@@ -1687,7 +1688,7 @@ def kl_div(input, label, reduction='mean', name=None):
     ):
         label = paddle.cast(label, 'float64')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.kldiv_loss(input, label, 'none')
         if reduction == 'mean':
             out = paddle.mean(out)
@@ -1893,7 +1894,7 @@ def ctc_loss(
         input_length=None,
         label_length=None,
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if input_length is None or label_length is None:
                 raise ValueError(
                     "input_length and label_length must not be None in dygraph mode!"
@@ -2017,7 +2018,7 @@ def rnnt_loss(
     def warprnnt(
         input, label, input_length, label_length, blank=0, fastemit_lambda=0.001
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             loss_out = _C_ops.warprnnt(
                 input,
                 label,
@@ -2313,7 +2314,7 @@ def margin_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits,
             label,
@@ -2458,12 +2459,12 @@ def softmax_with_cross_entropy(
                               is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
-        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
-                                                    `return_softmax` is False, otherwise the tuple \
-                                                    (loss, softmax), softmax is in the same shape \
-                                                    with input logits and cross entropy loss is in \
-                                                    the same shape with input logits except shape \
-                                                    in dimension :attr:`axis` as 1.
+        - If `return_softmax` is False, return the cross entropy loss as a ``Tensor``.
+          The dtype is the same as the input ``logits``. The shape is consistent with ``logits`` except in dimension :attr:`axis` as 1.
+        - If `return_softmax` is True, return a tuple of two ``Tensor``: the cross entropy loss and the softmax result.
+          The dtype of the cross entropy loss is the same as the input ``logits``, and the shape is consistent with ``logits``
+          except in dimension :attr:`axis` as 1. The dtype and shape of the softmax result are the same as the input ``logits``.
+
 
     Examples:
         .. code-block:: python
@@ -3175,7 +3176,7 @@ def sigmoid_focal_loss(
                 )
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         one = _C_ops.full(logit.shape, 1.0, logit.dtype, place)
 
@@ -3192,7 +3193,10 @@ def sigmoid_focal_loss(
             ),
         )
 
-        alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        if in_dynamic_mode():
+            alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        else:
+            alpha = paddle.to_tensor(alpha, dtype=loss.dtype)
         alpha_t = _C_ops.add(
             _C_ops.multiply(alpha, label),
             _C_ops.multiply(
@@ -3201,7 +3205,8 @@ def sigmoid_focal_loss(
         )
         loss = _C_ops.multiply(alpha_t, loss)
 
-        gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        if in_dynamic_mode():
+            gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
         gamma_t = _C_ops.pow(_C_ops.subtract(one, p_t), gamma)
         loss = _C_ops.multiply(gamma_t, loss)
 

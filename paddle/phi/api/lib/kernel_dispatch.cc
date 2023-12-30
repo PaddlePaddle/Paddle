@@ -71,6 +71,13 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    } else if (backend_key == Backend::GPU &&
+               phi::distributed::DistTensor::classof(&t) &&
+               static_cast<const phi::distributed::DistTensor&>(t)
+                   .value()
+                   .meta()
+                   .use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
     return backend_set;
   }
@@ -78,10 +85,10 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 }
 
 std::size_t CountLeadingZeros(uint32_t val) {
-#if defined(__clang__) || defined(__GNUC__)
   if (val == 0) {
     return 32;
   }
+#if defined(__clang__) || defined(__GNUC__)
   return __builtin_clz(val);
 #elif defined(_MSC_VER)
   // windows don't have built-in clz/ctz function
@@ -89,9 +96,6 @@ std::size_t CountLeadingZeros(uint32_t val) {
   _BitScanReverse(&Index, val);
   return (uint32_t)Index ^ 31;
 #else
-  if (val == 0) {
-    return 32;
-  }
   std::size_t zero_bits = 0;
   for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
     uint32_t tmp = val >> shift;
@@ -170,11 +174,12 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
              : ParseBackend(tensor);
 }
 
-DataLayout ParseLayout(DataLayout layout) { return layout; }
-DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+phi::DataLayout ParseLayout(phi::DataLayout layout) { return layout; }
+phi::DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
 
-DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
-  return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
+phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
+                                          const Tensor& tensor) {
+  return layout != phi::DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
 }
 
 }  // namespace experimental

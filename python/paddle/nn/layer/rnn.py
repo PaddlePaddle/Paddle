@@ -24,13 +24,15 @@ from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
     default_startup_program,
-    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     program_guard,
 )
 from paddle.common_ops_import import Variable
 from paddle.framework import core
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
+from paddle.nn import (
+    functional as F,
+    initializer as I,
+)
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList
@@ -104,7 +106,7 @@ def rnn(
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -391,7 +393,7 @@ def birnn(
         outputs (Tensor): the outputs of the bidirectional RNN. It is the
             concatenation of the outputs from the forward RNN and backward
             RNN along the last axis.
-            If time major is True, the shape is `[time_steps, batch_size, size]`,
+            If time_major is True, the shape is `[time_steps, batch_size, size]`,
             else the shape is `[batch_size, time_steps, size]`, where size is
             `cell_fw.hidden_size + cell_bw.hidden_size`.
         final_states (tuple): A tuple of the final states of the forward
@@ -1278,12 +1280,12 @@ class RNN(Layer):
             time steps. Defaults to False.
 
     Inputs:
-        - **inputs** (Tensor): A (possibly nested structure of) tensor[s]. The input sequences. If time major is False, the shape is `[batch_size, time_steps, input_size]`. If time major is True, the shape is `[time_steps, batch_size, input_size]` where `input_size` is the input size of the cell.
+        - **inputs** (Tensor): A (possibly nested structure of) tensor[s]. The input sequences. If time_major is False, the shape is `[batch_size, time_steps, input_size]`. If time_major is True, the shape is `[time_steps, batch_size, input_size]` where `input_size` is the input size of the cell.
         - **initial_states** (Tensor|list|tuple, optional): Tensor of a possibly nested structure of tensors, representing the initial state for the rnn cell. If not provided, `cell.get_initial_states` would be called to produce the initial states. Defaults to None.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None.If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
         - **kwargs**: Additional keyword arguments to pass to `forward` of the cell.
 
-    Returns:
+    Outputs:
         - **outputs** (Tensor|list|tuple): the output sequences. If `time_major` is True, the shape is `[time_steps, batch_size, hidden_size]`, else `[batch_size, time_steps, hidden_size]`.
         - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with intial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
 
@@ -1357,7 +1359,7 @@ class BiRNN(Layer):
         - **kwargs**: Additional keyword arguments. Arguments passed to `forward` for each cell.
 
     Outputs:
-        - **outputs** (Tensor): the outputs of the bidirectional RNN. It is the concatenation of the outputs from the forward RNN and backward RNN along the last axis. If time major is True, the shape is `[time_steps, batch_size, size]`, else the shape is `[batch_size, time_steps, size]`, where size is `cell_fw.hidden_size + cell_bw.hidden_size`.
+        - **outputs** (Tensor): the outputs of the bidirectional RNN. It is the concatenation of the outputs from the forward RNN and backward RNN along the last axis. If time_major is True, the shape is `[time_steps, batch_size, size]`, else the shape is `[batch_size, time_steps, size]`, where size is `cell_fw.hidden_size + cell_bw.hidden_size`.
         - **final_states** (tuple): A tuple of the final states of the forward cell and backward cell.
 
     Notes:
@@ -1588,7 +1590,7 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             out, _, state = _C_ops.rnn(
                 inputs,
                 initial_states,
@@ -1602,29 +1604,6 @@ class RNNBase(LayerList):
                 self.num_layers,
                 self.mode,
                 0,
-                not self.training,
-            )
-        elif in_dynamic_mode():
-            _, _, out, state = _legacy_C_ops.rnn(
-                inputs,
-                initial_states,
-                self._all_weights,
-                sequence_length,
-                self._dropout_state,
-                self.state_components,
-                'dropout_prob',
-                self.dropout,
-                'is_bidirec',
-                self.num_directions == 2,
-                'input_size',
-                self.input_size,
-                'hidden_size',
-                self.hidden_size,
-                'num_layers',
-                self.num_layers,
-                'mode',
-                self.mode,
-                'is_test',
                 not self.training,
             )
         else:

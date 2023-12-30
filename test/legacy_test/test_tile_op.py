@@ -424,6 +424,7 @@ class TestTileDoubleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -455,6 +456,7 @@ class TestTileTripleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -516,16 +518,17 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 class Testfp16TileOp(unittest.TestCase):
     @test_with_pir_api
     def testfp16(self):
+        if not paddle.is_compiled_with_cuda():
+            return
         input_x = (np.random.random([1, 2, 3])).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
             repeat_times = [2, 2]
             out = paddle.tile(x, repeat_times=repeat_times)
-            if paddle.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(feed={'x': input_x}, fetch_list=[out])
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 if __name__ == "__main__":

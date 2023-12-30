@@ -32,6 +32,14 @@ void* PointerAttribute::data() const { return storage()->data(); }
 
 Type TypeAttribute::data() const { return storage()->data(); }
 
+phi::dtype::complex<float> Complex64Attribute::data() const {
+  return storage()->data();
+}
+
+phi::dtype::complex<double> Complex128Attribute::data() const {
+  return storage()->data();
+}
+
 bool StrAttribute::operator<(const StrAttribute& right) const {
   return storage() < right.storage();
 }
@@ -53,6 +61,9 @@ bool ArrayAttribute::empty() const { return storage()->empty(); }
 
 Attribute ArrayAttribute::at(size_t index) const {
   return storage()->at(index);
+}
+Attribute ArrayAttribute::operator[](size_t index) const {
+  return storage()->operator[](index);
 }
 
 ArrayAttribute ArrayAttribute::get(IrContext* ctx,
@@ -81,6 +92,18 @@ ArrayAttributeStorage::~ArrayAttributeStorage() {
   }
 }
 
+bool TensorNameAttribute::operator<(const TensorNameAttribute& right) const {
+  return storage() < right.storage();
+}
+std::string TensorNameAttribute::data() const { return storage()->AsString(); }
+
+size_t TensorNameAttribute::size() const { return storage()->size(); }
+
+TensorNameAttribute TensorNameAttribute::get(pir::IrContext* ctx,
+                                             const std::string& tensor_name) {
+  return AttributeManager::get<TensorNameAttribute>(ctx, tensor_name);
+}
+
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::StrAttribute)
@@ -93,3 +116,6 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::Int64Attribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ArrayAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::PointerAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::TypeAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::TensorNameAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::Complex64Attribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::Complex128Attribute)

@@ -14,11 +14,11 @@
 
 #include "paddle/phi/kernels/roll_kernel.h"
 
+#include "paddle/common/array.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/gpu/roll_kernel_impl.h"
 
 namespace phi {
@@ -37,7 +37,7 @@ void RollKernel(const Context& dev_ctx,
 
   int64_t numel = x.numel();
   auto input_dim = x.dims();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
 
   std::vector<int64_t> strides(rank), sizes(rank);
   if (axis.size() == 0) {

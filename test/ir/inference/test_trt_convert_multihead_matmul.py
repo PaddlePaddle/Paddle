@@ -985,7 +985,7 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        program_config.set_input_type(np.int8)
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             1e-3,

@@ -188,7 +188,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 # set new seed_var's dist_attr
                 seed_var_dims_mapping = [-1]
                 seed_var_dist_attr = set_var_dist_attr(
-                    ctx, seed_var, seed_var_dims_mapping, process_mesh
+                    ctx,
+                    seed_var,
+                    seed_var_dims_mapping,
+                    process_mesh,
+                    chunk_id=op_dist_attr.chunk_id,
                 )
 
                 # adopt for recompute
@@ -205,7 +209,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 seed_op._set_attr('op_namescope', 'auto_tensor_parallel_seed')
                 # set new seed op's dist_attr
                 naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                    seed_op, process_mesh, seed_var_dims_mapping, ctx
+                    seed_op,
+                    process_mesh,
+                    seed_var_dims_mapping,
+                    ctx,
+                    chunk_id=op_dist_attr.chunk_id,
                 )
 
                 # modify dropout op

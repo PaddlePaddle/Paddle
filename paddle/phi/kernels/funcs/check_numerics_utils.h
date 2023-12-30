@@ -224,7 +224,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
                                  float* values_ptr) {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
   // Use maximum 4 threads to collect the nan and inf information.
   int num_threads = std::max(omp_get_num_threads(), 1);
   num_threads = std::min(num_threads, 4);
@@ -239,11 +239,11 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
   std::vector<MT> thread_max_value(num_threads, static_cast<MT>(value_ptr[0]));
   std::vector<MT> thread_mean_value(num_threads, static_cast<MT>(0));
 
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel num_threads(num_threads)
 #endif
   {
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
     int64_t tid = omp_get_thread_num();
     int64_t chunk_size = (numel + num_threads - 1) / num_threads;
     int64_t begin = tid * chunk_size;
@@ -338,7 +338,7 @@ void CheckNumericsCpuImpl(const T* value_ptr,
 
   RealType real_sum = 0.0f, imag_sum = 0.0f;
 
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for reduction(+ : real_sum) reduction(+ : imag_sum)
 #endif
   for (int64_t i = 0; i < numel; ++i) {

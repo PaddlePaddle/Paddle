@@ -17,11 +17,13 @@ from typing import Optional, Union
 
 import paddle
 from paddle import Tensor
+from paddle.base.framework import Variable
+from paddle.pir import Value
 
 
 def hz_to_mel(
-    freq: Union[Tensor, float], htk: bool = False
-) -> Union[Tensor, float]:
+    freq: Union[Tensor, Value, Variable, float], htk: bool = False
+) -> Union[Tensor, Value, Variable, float]:
     """Convert Hz to Mels.
 
     Args:
@@ -43,7 +45,7 @@ def hz_to_mel(
     """
 
     if htk:
-        if isinstance(freq, Tensor):
+        if isinstance(freq, (Tensor, Variable, Value)):
             return 2595.0 * paddle.log10(1.0 + freq / 700.0)
         else:
             return 2595.0 * math.log10(1.0 + freq / 700.0)
@@ -60,7 +62,7 @@ def hz_to_mel(
     min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
     logstep = math.log(6.4) / 27.0  # step size for log region
 
-    if isinstance(freq, Tensor):
+    if isinstance(freq, (Tensor, Variable, Value)):
         target = (
             min_log_mel + paddle.log(freq / min_log_hz + 1e-10) / logstep
         )  # prevent nan with 1e-10
@@ -76,8 +78,8 @@ def hz_to_mel(
 
 
 def mel_to_hz(
-    mel: Union[float, Tensor], htk: bool = False
-) -> Union[float, Tensor]:
+    mel: Union[float, Tensor, Variable, Value], htk: bool = False
+) -> Union[float, Tensor, Variable, Value]:
     """Convert mel bin numbers to frequencies.
 
     Args:
@@ -108,7 +110,7 @@ def mel_to_hz(
     min_log_hz = 1000.0  # beginning of log region (Hz)
     min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
     logstep = math.log(6.4) / 27.0  # step size for log region
-    if isinstance(mel, Tensor):
+    if isinstance(mel, (Tensor, Variable, Value)):
         target = min_log_hz * paddle.exp(logstep * (mel - min_log_mel))
         mask = (mel > min_log_mel).astype(mel.dtype)
         freqs = target * mask + freqs * (
@@ -126,7 +128,7 @@ def mel_frequencies(
     f_max: float = 11025.0,
     htk: bool = False,
     dtype: str = 'float32',
-) -> Tensor:
+) -> Union[Tensor, Variable, Value]:
     """Compute mel frequencies.
 
     Args:
@@ -257,11 +259,11 @@ def compute_fbank_matrix(
 
 
 def power_to_db(
-    spect: Tensor,
+    spect: Union[Tensor, Variable, Value],
     ref_value: float = 1.0,
     amin: float = 1e-10,
     top_db: Optional[float] = 80.0,
-) -> Tensor:
+) -> Union[Tensor, Variable, Value]:
     """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
 
     Args:

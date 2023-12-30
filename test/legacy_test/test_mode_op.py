@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def _mode1D(a):
@@ -112,12 +113,12 @@ class TestModeOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
         grad = self.init_numeric_grads()
-        self.check_grad({'X'}, 'Out', user_defined_grads=[grad])
+        self.check_grad({'X'}, 'Out', user_defined_grads=[grad], check_pir=True)
 
 
 @unittest.skipIf(
@@ -148,7 +149,7 @@ class TestModeBF16Op(TestModeOp):
         place = core.CUDAPlace(0)
         paddle.enable_static()
         if core.is_bfloat16_supported(place):
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -157,7 +158,7 @@ class TestModeBF16Op(TestModeOp):
 
         if core.is_bfloat16_supported(place):
             self.check_grad_with_place(
-                place, {'X'}, 'Out', user_defined_grads=[grad]
+                place, {'X'}, 'Out', user_defined_grads=[grad], check_pir=True
             )
 
 
@@ -243,6 +244,7 @@ class TestModeOpInStatic(unittest.TestCase):
             np.random.random((2, 10, 10)) * 1000, dtype=np.float64
         )
 
+    @test_with_pir_api
     def test_run_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(

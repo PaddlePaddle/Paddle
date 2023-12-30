@@ -57,6 +57,11 @@ void AllReduceKernel(const Context& dev_ctx,
     case ReduceType::kRedProd:
       red_type = ncclProd;
       break;
+    case ReduceType::kRedAll:
+      // NOTE(zhonghui): There is no reduce_all type of ncclRedOp_t, just use
+      // min to replace
+      red_type = ncclMin;
+      break;
   }
   comm_ctx->AllReduce(out, x, red_type, stream);
 #else

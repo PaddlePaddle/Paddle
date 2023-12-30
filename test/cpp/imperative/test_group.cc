@@ -99,7 +99,7 @@ void GroupConcatSplit(Place place, size_t size) {
 
   {  // concat
     auto* tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
-    tensor->Resize(phi::make_ddim({group.all_length_}))
+    tensor->Resize(common::make_ddim({group.all_length_}))
         .mutable_data(place, framework::TransToPhiDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 

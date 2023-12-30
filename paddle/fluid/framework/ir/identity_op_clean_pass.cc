@@ -130,7 +130,8 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
                             ->assert_more([](Node* x) {
                               const auto& var_type = x->Var()->GetDataType();
                               return var_type != proto::VarType::INT32 &&
-                                     var_type != proto::VarType::INT64;
+                                     var_type != proto::VarType::INT64 &&
+                                     var_type != proto::VarType::BOOL;
                             });
   auto* cast_op_2 = pattern->NewNode(cast_op_2_repr())->assert_is_op("cast");
   auto* cast_op_2_out = pattern->NewNode(cast_op_2_out_repr())->assert_is_var();
@@ -138,7 +139,6 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
   cast_op_1->LinksFrom({pre_op_out}).LinksTo({cast_op_1_out});
   cast_op_2->LinksFrom({cast_op_1_out}).LinksTo({cast_op_2_out});
 }
-
 }  // namespace patterns
 
 int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {

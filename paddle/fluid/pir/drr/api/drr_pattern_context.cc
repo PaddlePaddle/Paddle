@@ -17,7 +17,7 @@
 #include "paddle/fluid/pir/drr/pattern_graph.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 DrrPatternContext::DrrPatternContext() {
@@ -28,6 +28,7 @@ DrrPatternContext::DrrPatternContext() {
 drr::SourcePattern DrrPatternContext::SourcePattern() {
   return drr::SourcePattern(this);
 }
+
 const Op& DrrPatternContext::SourceOpPattern(
     const std::string& op_type,
     const std::unordered_map<std::string, Attribute>& attributes) {
@@ -123,6 +124,17 @@ Tensor& Op::operator()(const Tensor& arg1, const Tensor& arg2) const {
   return out;
 }
 
+Tensor& Op::operator()(const Tensor& arg0,
+                       const Tensor& arg1,
+                       const Tensor& arg2) const {
+  std::vector<const Tensor*> inputs{&arg0, &arg1, &arg2};
+  auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
+      prefix + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
+  std::vector<const Tensor*> outputs{&out};
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
+  return out;
+}
+
 Tensor& Op::operator()() const {
   std::vector<const Tensor*> inputs{};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
@@ -156,4 +168,4 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
 }
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

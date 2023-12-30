@@ -65,6 +65,11 @@ class XPUQuantizeSquashPass : public FusePassBase {
    */
   void QuantOpSquash(Graph* graph) const;
 
+  /*
+   * Squash quantize(branch) + dequantize(out) in conv2d_xpu
+   */
+  void QuantConv2dFusionDequantSquash(Graph* graph) const;
+
   const std::string name_scope_{"squash"};
 };
 

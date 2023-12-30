@@ -21,6 +21,9 @@ limitations under the License. */
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#ifdef PADDLE_WITH_XPU_BKCL
+#include "xpu/bkcl.h"
+#endif
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"

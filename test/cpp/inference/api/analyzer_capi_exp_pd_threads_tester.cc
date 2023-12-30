@@ -70,7 +70,7 @@ void* run(void* thread_param) {
   PD_TensorDestroy(tensor);
   PD_OneDimArrayCstrDestroy(input_names);
   LOG(INFO) << "Thread " << param->thread_index << " end run!";
-  return NULL;
+  return nullptr;
 }
 void threads_run(int thread_num) {
   auto model_dir = FLAGS_infer_model;
@@ -94,12 +94,12 @@ void threads_run(int thread_num) {
     params[i].shape_size = 4;
     params[i].input_data = input;
     params[i].out_size = 0;
-    params[i].out_data = NULL;
+    params[i].out_data = nullptr;
     params[i].thread_index = i;
-    pthread_create(&(threads[i]), NULL, run, (params + i));
+    pthread_create(&(threads[i]), nullptr, run, (params + i));
   }
   for (int i = 0; i < thread_num; ++i) {
-    pthread_join(threads[i], NULL);
+    pthread_join(threads[i], nullptr);
   }
   ASSERT_GT(params[0].out_size, 0);
 

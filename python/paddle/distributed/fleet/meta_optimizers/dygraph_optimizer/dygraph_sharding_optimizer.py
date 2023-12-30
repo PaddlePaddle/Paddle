@@ -14,10 +14,13 @@
 
 ######
 import os
+import warnings
+from distutils.util import strtobool
 from functools import reduce
 
 import paddle
 from paddle import framework
+from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
 
@@ -113,6 +116,23 @@ class DygraphShardingOptimizer:
             self._set_inner_opt_attr('_parameter_list', local_params)
             self._set_inner_opt_attr('_param_groups', local_params)
         else:
+            if self.fuse_optimizer:
+                lr = None
+                for param in self._origin_parameter_list:
+                    if hasattr(param, "optimize_attr"):
+                        param_lr = param.optimize_attr['learning_rate']
+                        if lr is None:
+                            lr = param_lr
+                        elif lr != param_lr:
+                            warnings.warn(
+                                "Parameters have different learning rate, "
+                                "won't do fusion on the optimizer."
+                            )
+                            self.fuse_optimizer = False
+                            break
+            self.origin_decay_param_fun = getattr(
+                self._inner_opt, '_apply_decay_param_fun', None
+            )
             self._tensor_fusion()
 
             decay_params = [
@@ -136,10 +156,7 @@ class DygraphShardingOptimizer:
                 # Without comm overlap, all grads will be communicated after check_finite,
                 # which means each sharding rank should do check_finite to all grads.
                 self._local_parameter_list = local_fused_params
-            origin_decay_param_fun = getattr(
-                self._inner_opt, '_apply_decay_param_fun', None
-            )
-            if origin_decay_param_fun is not None:
+            if self.origin_decay_param_fun is not None:
                 self._set_inner_opt_attr(
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
@@ -189,6 +206,7 @@ class DygraphShardingOptimizer:
                 dst=dst,
                 acc_step=self.accumulate_steps,
                 scale_after_comm=False,
+                apply_decay_param_fun=self.origin_decay_param_fun,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
@@ -212,7 +230,17 @@ class DygraphShardingOptimizer:
         for rank_ in range(self._sharding_world_size):
             mapping[rank_] = []
         sizes = [0] * self._sharding_world_size
-        for param in self._parameter_list:
+
+        parameters = list(self._parameter_list)
+        need_sort_parameters = strtobool(
+            os.getenv('FLAGS_sharding_sort_parameters', '1')
+        )
+        if need_sort_parameters:
+            parameters.sort(
+                key=lambda p: reduce(lambda x, y: x * y, p.shape), reverse=True
+            )
+
+        for param in parameters:
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
             numel = reduce(lambda x, y: x * y, param.shape, 1)
@@ -289,7 +317,6 @@ class DygraphShardingOptimizer:
         """
         # TODO speed up this functional
 
-        logger.debug("sharding start sync parameters")
         with framework.no_grad():
             # TODO detach not need (?)
             valid_rank_to_params = (
@@ -297,16 +324,20 @@ class DygraphShardingOptimizer:
                 if not self.tensor_fusion
                 else self._rank2fused
             )
+            broadcast_tasks = []
             for rank, params in valid_rank_to_params.items():
                 for param in params:
-                    paddle.distributed.broadcast(
+                    task = paddle.distributed.broadcast(
                         param,
                         # the collective API need src rank to be the global rank id
                         # instead of the relative logic rank id within group
                         src=self._hcg.get_sharding_parallel_group().ranks[rank],
                         group=self._hcg.get_sharding_parallel_group(),
-                        sync_op=True,
+                        sync_op=False,
                     )
+                    broadcast_tasks.append(task)
+            for task in broadcast_tasks:
+                task.wait()
 
     def _update_trainable(self):
         """
@@ -336,6 +367,8 @@ class DygraphShardingOptimizer:
 
         return result
 
+    @imperative_base.no_grad
+    @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
@@ -364,7 +397,6 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-
             if g_shard_norm_align_dp:
                 params_grads = self._inner_opt._grad_clip(params_grads)
                 # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
@@ -488,32 +520,76 @@ class DygraphShardingOptimizerV2:
             self._create_slice_param(p) for p in optimizer._parameter_list
         ]
 
+        # Accessing user defined strategy
         strategy = fleet.fleet._user_defined_strategy
-        self.tensor_fusion = strategy.hybrid_configs[
-            'sharding_configs'
-        ].tensor_fusion
+        sharding_config = strategy.hybrid_configs['sharding_configs']
+        pp_config = strategy.hybrid_configs['pp_configs']
 
+        # Asserting tensor fusion not supported
+        self.tensor_fusion = sharding_config.tensor_fusion
         assert not self.tensor_fusion, "not supported yet"
 
-        self.accumulate_steps = strategy.hybrid_configs[
-            'sharding_configs'
-        ].accumulate_steps
-        self.comm_overlap = strategy.hybrid_configs[
-            'sharding_configs'
-        ].comm_overlap
+        # Setting accumulate steps and communication overlap
+        acc_steps = sharding_config.accumulate_steps
+        self.comm_overlap = sharding_config.comm_overlap
 
-        self.pp_overlap = strategy.hybrid_configs[
-            'pp_configs'
-        ].sharding_comm_overlap
+        # Setting pipeline parallelism overlap
+        self.pp_overlap = pp_config.sharding_comm_overlap
+        self.pp_release_grads = pp_config.release_gradients
 
-        # TODO(liuzhenhai):support it latter
-        assert not self.comm_overlap, "not supported yet"
+        self._build_comm_buffers(acc_steps)
+        # NOTE(shenliang03): Sort the comm_buffers by dst rank,
+        # it will improve the performance in reduce communicate. Default
+        # g_shard_sort_reduce_root is True.
+        self._comm_buffer_list.sort(key=lambda x: x._dst)
 
-        self._build_comm_buffers()
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
         self._set_inner_opt_attr('_param_groups', self._local_parameter_list)
 
-    def _build_comm_buffers(self, group_size=256 * 1024 * 1024):
+        # Ensure acc_steps is greater than 0 when comm_overlap is used
+        if self.comm_overlap:
+            assert (
+                acc_steps > 0
+            ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
+
+        # Ensure pp_overlap and comm_overlap are not both True
+        assert not (
+            self.pp_overlap and self.comm_overlap
+        ), "pp_overlap and comm_overlap should not be True at the same time"
+
+        # Determine the use of pipeline parallelism
+        self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
+
+        # Ensure pipelie parallel and comm_overlap are not used together
+        if self._use_pipeline_parallel:
+            assert (
+                not self.comm_overlap
+            ), "You should not use pipeline parallel and comm_overlap at the same time"
+
+        # Register reduce overlap hook if comm_overlap is used without pp_overlap
+        if not self.pp_overlap and self.comm_overlap:
+            self.register_reduce_overlap_hook(use_comm=True)
+
+    def register_reduce_overlap_hook(self, use_comm):
+        # Register backward hooks for each parameter in the buffer
+        for buffer in self._comm_buffer_list:
+            for param in buffer._params:
+                # Directly register the hook function with necessary parameters
+                param._register_backward_hook(
+                    self._create_backward_hook(buffer, param, use_comm)
+                )
+
+    def _create_backward_hook(self, buffer, param, use_comm):
+        """Creates a backward hook function for autograd."""
+
+        @paddle.autograd.no_grad()
+        def fused_allreduce(*_):
+            # Directly add gradient to the buffer
+            buffer.add_grad(param, use_comm=use_comm)
+
+        return fused_allreduce
+
+    def _build_comm_buffers(self, acc_steps, group_size=256 * 1024 * 1024):
         if self.pp_overlap:
             return
 
@@ -524,7 +600,9 @@ class DygraphShardingOptimizerV2:
                 group_idx,
                 parameters,
                 comm_group,
+                acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
+                release_grads=self.pp_release_grads,
             )
             self._comm_buffer_list.append(buffer)
 
@@ -532,7 +610,8 @@ class DygraphShardingOptimizerV2:
         """
         should clear grad for all parameters in model
         """
-        assert set_to_zero, "should not erase grad buffer"
+        if not self.pp_release_grads:
+            assert set_to_zero, "should not erase grad buffer"
 
         def clear_grad_func(p):
             if hasattr(p, "main_grad") and p.main_grad is not None:
@@ -555,6 +634,10 @@ class DygraphShardingOptimizerV2:
         for p in self._parameter_list:
             clear_grad_func(p)
 
+        if self.pp_release_grads and not self.pp_overlap:
+            for comm_buffer in self._comm_buffer_list:
+                comm_buffer._clear_grad_storage()
+
     def filter_parameters(self, parameter_list, hcg):
         parameter_list = [
             self._slice_params[param.name] for param in parameter_list
@@ -569,7 +652,13 @@ class DygraphShardingOptimizerV2:
         logger.debug("sharding start gradients sync")
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
-                comm_buffer._comm_grads()
+                if self.pp_release_grads and comm_buffer.grad_storage is None:
+                    for param in comm_buffer.params:
+                        comm_buffer._copy_grad_to_buffer(param)
+
+                if not self.comm_overlap:
+                    comm_buffer._comm_grads()
+
                 comm_buffer.scale_grads()
 
     def _sharding_sync_parameters(self):
@@ -632,6 +721,9 @@ class DygraphShardingOptimizerV2:
             for param in comm_buffer.params:
                 assert param.name in self._slice_params
                 slice_param = self._slice_params[param.name]
+                if self.pp_release_grads and hasattr(slice_param, "main_grad"):
+                    assert not slice_param.main_grad._is_initialized()
+                    del slice_param.main_grad
                 comm_buffer.assign_slice_grad(param, slice_param)
 
         assert param_num == len(self._parameter_list)

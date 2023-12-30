@@ -29,9 +29,11 @@ from paddle.autograd import no_grad
 from paddle.base import core
 from paddle.base.dygraph.base import to_variable
 from paddle.base.executor import global_scope
-from paddle.base.framework import Variable
-from paddle.base.framework import _current_expected_place as _get_device
-from paddle.base.framework import _get_paddle_place
+from paddle.base.framework import (
+    Variable,
+    _current_expected_place as _get_device,
+    _get_paddle_place,
+)
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.framework import in_dynamic_mode
@@ -1827,6 +1829,7 @@ class Model:
             .. code-block:: python
                 :name: code-example3
 
+                >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
                 >>> from paddle.vision.datasets import MNIST
@@ -1859,12 +1862,14 @@ class Model:
                 ...             batch_size=64,
                 ...             save_dir='mnist_checkpoint')
                 ...
+
             2. An example use DataLoader, batch size and shuffle is set in
                DataLoader.
 
             .. code-block:: python
                 :name: code-example4
 
+                >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
                 >>> from paddle.vision.datasets import MNIST

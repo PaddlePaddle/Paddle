@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import ValueSet
 
 paddle.enable_static()
 
@@ -41,7 +42,6 @@ def get_ir_program():
 class TestPybind(unittest.TestCase):
     def test_program(self):
         pir_program = get_ir_program()
-        print(pir_program)
 
         block = pir_program.global_block()
         program = block.program
@@ -54,16 +54,16 @@ class TestPybind(unittest.TestCase):
         ops = block.ops
         self.assertEqual(
             len(ops), 6
-        )  # pir program add "builtin.get_parameter" by default, so size is 4
+        )  # pir program add "builtin.parameter" by default, so size is 4
         block.remove_op(ops[5])
         self.assertEqual(len(block.ops), 5)
 
     def test_operation(self):
         pir_program = get_ir_program()
         ops = pir_program.global_block().ops
-        matmul_op = pir_program.global_block().ops[1]
-        add_op = pir_program.global_block().ops[2]
-        tanh_op = pir_program.global_block().ops[3]
+        matmul_op = ops[1]
+        add_op = ops[2]
+        tanh_op = ops[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.ops)
         self.assertEqual(parent_ops_num, 6)
@@ -71,6 +71,12 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(matmul_op.get_input_names()), 2)
         self.assertEqual(len(matmul_op.get_attr_names()), 2)
         self.assertEqual(len(matmul_op.get_output_names()), 1)
+        # test oprand.index
+        self.assertEqual(matmul_op.operand(0).index(), 0)
+        self.assertEqual(matmul_op.operand(1).index(), 1)
+        self.assertEqual(add_op.operand(0).index(), 0)
+        self.assertEqual(add_op.operand(1).index(), 1)
+        self.assertEqual(tanh_op.operand(0).index(), 0)
 
     def test_value(self):
         pir_program = get_ir_program()
@@ -92,7 +98,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(matmul_op.result(0).stop_gradient, True)
 
         # test opresult hash
-        result_set = set()
+        result_set = ValueSet()
         for opresult in matmul_op.results():
             result_set.add(opresult)
         # test opresult hash and hash(opresult) == hash(operesult)
@@ -100,22 +106,26 @@ class TestPybind(unittest.TestCase):
         # test value hash and hash(value) == hash(operesult)
         self.assertTrue(add_op.operands_source()[0] in result_set)
         # test value == value
-        self.assertEqual(
-            add_op.operands_source()[0], add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(add_op.operands_source()[0])
         )
         # test value == opresult
-        self.assertEqual(add_op.operands_source()[0], matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(matmul_op.results()[0])
+        )
         # test opresult print
         self.assertTrue(
             'dtype=pd_op.tensor<4x4xf32>'
             in add_op.operands_source()[0].__str__()
         )
         # test opresult == value
-        self.assertEqual(
-            add_op.operands()[0].source(), add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(add_op.operands_source()[0])
         )
         # test opresult == opresult
-        self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(matmul_op.results()[0])
+        )
 
         # test opresult print
         self.assertEqual(
@@ -141,10 +151,15 @@ class TestPybind(unittest.TestCase):
         pir_program = get_ir_program()
         matmul_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
-        print(matmul_op.result(0).type())
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
         )
+        add_op.result(0).set_type(
+            paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
+                add_op.result(0).type()
+            )
+        )
+        self.assertEqual(add_op.result(0).is_selected_row_type(), True)
 
     def test_attr(self):
         main_program, start_program = (
@@ -167,7 +182,6 @@ class TestPybind(unittest.TestCase):
             )
 
         pir_program = pir.translate_to_pir(main_program.desc)
-        print(pir_program)
         conv_attr = pir_program.global_block().ops[3].attrs()
         full_attr = pir_program.global_block().ops[8].attrs()
         self.assertEqual(conv_attr["stop_gradient"], [False])
@@ -204,6 +218,38 @@ class TestPybind(unittest.TestCase):
 
         p.global_seed(10)
         self.assertEqual(p._seed, 10)
+
+    def test_opresult_id(self):
+        with paddle.pir_utils.IrGuard():
+            a = paddle.static.data(name='a', shape=[4, 4], dtype='float32')
+            result = paddle.tanh(a)
+
+        self.assertIsInstance(a.id, str)
+        self.assertIsInstance(result.id, str)
+
+    def test_operation_get_input_names_error(self):
+        """It will Raise error if operation `builtin.set_parameter` calls `get_input_names`. Because `builtin.set_parameter` does not have OpYamlInfoInterface"""
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                param1 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    name="param1",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+
+                block = startup.global_block()
+                set_parameter_ops = [
+                    op
+                    for op in block.ops
+                    if op.name() == 'builtin.set_parameter'
+                ]
+                set_parameter_op = set_parameter_ops[0]
+                parameter_name = set_parameter_op.attrs()["parameter_name"]
+                with self.assertRaises(ValueError):
+                    input_names = set_parameter_op.get_input_names()
 
 
 if __name__ == "__main__":

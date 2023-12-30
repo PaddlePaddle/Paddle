@@ -24,7 +24,7 @@
 
 #include "paddle/fluid/pir/drr/api/match_context.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class Op;
@@ -152,6 +152,9 @@ class Op {
 
   Tensor& operator()(const Tensor& arg) const;
   Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
+  Tensor& operator()(const Tensor& arg0,
+                     const Tensor& arg1,
+                     const Tensor& arg2) const;
   void operator()(const std::vector<const Tensor*>& args,
                   const std::vector<const Tensor*>& outputs) const;
   // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
@@ -331,4 +334,4 @@ class SourcePattern {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

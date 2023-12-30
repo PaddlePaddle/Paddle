@@ -570,7 +570,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
 
     @test_with_pir_api
     @prog_scope()
-    def func_static(self, place):
+    def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
         eps = 0.005
         dtype = np.float32
@@ -583,19 +583,6 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-
-    @test_with_pir_api
-    @prog_scope()
-    def func_dygraph(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        eps = 0.005
-        dtype = np.float32
-
-        data = paddle.static.data('data', [3, 4, 5], dtype)
-        data.persistable = True
-        out = paddle.mean(data)
-        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
-
         gradient_checker.double_grad_check_for_dygraph(
             self.mean_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -606,8 +593,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func_static(p)
-            self.func_dygraph(p)
+            self.func(p)
 
 
 class TestMeanTripleGradCheck(unittest.TestCase):
@@ -616,7 +602,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
 
     @test_with_pir_api
     @prog_scope()
-    def func_static(self, place):
+    def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
         eps = 0.005
         dtype = np.float32
@@ -629,19 +615,6 @@ class TestMeanTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-
-    @test_with_pir_api
-    @prog_scope()
-    def func_dygraph(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        eps = 0.005
-        dtype = np.float32
-
-        data = paddle.static.data('data', [3, 4, 5], dtype)
-        data.persistable = True
-        out = paddle.mean(data)
-        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
-
         gradient_checker.triple_grad_check_for_dygraph(
             self.mean_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -652,8 +625,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func_static(p)
-            self.func_dygraph(p)
+            self.func(p)
 
 
 if __name__ == "__main__":

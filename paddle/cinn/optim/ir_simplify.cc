@@ -34,9 +34,9 @@
 namespace cinn {
 namespace optim {
 using namespace ir;  // NOLINT
-using common::bfloat16;
-using common::ExprToGinacConverter;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::ExprToGinacConverter;
+using cinn::common::float16;
 using utils::GetStreamCnt;
 using utils::Replace;
 
@@ -48,16 +48,16 @@ namespace {
 //! them.
 void PartialSimplify(
     Expr* expr,
-    const absl::flat_hash_map<std::string, common::CasInterval>& var_intervals =
-        {}) {
-  *expr = common::AutoSimplify(*expr, var_intervals);
+    const absl::flat_hash_map<std::string, cinn::common::CasInterval>&
+        var_intervals = {}) {
+  *expr = cinn::common::AutoSimplify(*expr, var_intervals);
 }
 
 //! Simplify the expression but Load.
 struct SimplifyNoPureMathMutator : public ir::IRMutator<ir::Expr*> {
-  common::cas_intervals_t& var_intervals;
+  cinn::common::cas_intervals_t& var_intervals;
   explicit SimplifyNoPureMathMutator(
-      common::cas_intervals_t& var_intervals)  // NOLINT
+      cinn::common::cas_intervals_t& var_intervals)  // NOLINT
       : var_intervals(var_intervals) {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
@@ -79,7 +79,8 @@ struct SimplifyNoPureMathMutator : public ir::IRMutator<ir::Expr*> {
 
   void Visit(const PolyFor* op, Expr* expr) override {
     auto* node = expr->As<ir::PolyFor>();
-    node->condition = common::SolveInequality(op->condition, op->iterator);
+    node->condition =
+        cinn::common::SolveInequality(op->condition, op->iterator);
 
     Visit(&node->body, &node->body);
   }
@@ -93,10 +94,10 @@ struct SimplifyNoPureMathMutator : public ir::IRMutator<ir::Expr*> {
     if (min_i && extent_i && extent_i->value > min_i->value) {
       var_intervals.emplace(
           op->loop_var->name,
-          common::CasInterval{min_i->value, extent_i->value - 1});
+          cinn::common::CasInterval{min_i->value, extent_i->value - 1});
     } else {
       var_intervals.emplace(op->loop_var->name,
-                            common::CasInterval{op->min, op->extent - 1});
+                            cinn::common::CasInterval{op->min, op->extent - 1});
     }
 
     Visit(&node->body, &node->body);
@@ -123,7 +124,7 @@ struct SimplifyLoadMutator : public ir::IRMutator<ir::Expr*> {
   void Visit(const Load* expr, Expr* op) override {
     auto* node = op->As<Load>();
     for (auto& idx : node->indices) {
-      if (common::IsPureMath(idx)) {
+      if (cinn::common::IsPureMath(idx)) {
         PartialSimplify(&idx, var_intervals_);
       } else {
         SimplifyNoPureMathMutator mutator(var_intervals_);
@@ -138,7 +139,7 @@ struct SimplifyLoadMutator : public ir::IRMutator<ir::Expr*> {
     if (min_i && extent_i && extent_i->value > min_i->value) {
       var_intervals_.emplace(
           op->loop_var->name,
-          common::CasInterval{min_i->value, extent_i->value - 1});
+          cinn::common::CasInterval{min_i->value, extent_i->value - 1});
     }
 
     auto* node = expr->As<For>();
@@ -151,7 +152,7 @@ struct SimplifyLoadMutator : public ir::IRMutator<ir::Expr*> {
     }
   }
 
-  common::cas_intervals_t var_intervals_;
+  cinn::common::cas_intervals_t var_intervals_;
 };
 
 struct SimplifyStoreMutator : public ir::IRMutator<ir::Expr*> {
@@ -161,7 +162,7 @@ struct SimplifyStoreMutator : public ir::IRMutator<ir::Expr*> {
     auto* node = op->As<Store>();
 
     for (auto& idx : node->indices) {
-      if (common::IsPureMath(idx)) {
+      if (cinn::common::IsPureMath(idx)) {
         PartialSimplify(&idx, var_intervals_);
       } else {
         SimplifyNoPureMathMutator mutator(var_intervals_);
@@ -176,7 +177,7 @@ struct SimplifyStoreMutator : public ir::IRMutator<ir::Expr*> {
     if (min_i && extent_i) {
       var_intervals_.emplace(
           op->loop_var->name,
-          common::CasInterval{min_i->value, extent_i->value - 1});
+          cinn::common::CasInterval{min_i->value, extent_i->value - 1});
     }
 
     auto* node = expr->As<For>();
@@ -189,7 +190,7 @@ struct SimplifyStoreMutator : public ir::IRMutator<ir::Expr*> {
     }
   }
 
-  common::cas_intervals_t var_intervals_;
+  cinn::common::cas_intervals_t var_intervals_;
 };
 
 struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
@@ -198,9 +199,9 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
   void Visit(const Ramp* op, Expr* expr) override {
     auto* node = expr->As<ir::Ramp>();
 
-    CHECK(common::IsPureMath(node->base))
+    CHECK(cinn::common::IsPureMath(node->base))
         << node->base << "is not a pure math!";
-    CHECK(common::IsPureMath(node->stride))
+    CHECK(cinn::common::IsPureMath(node->stride))
         << node->stride << "is not a pure math!";
 
     PartialSimplify(&node->base);
@@ -215,8 +216,9 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
     auto b_ramp = b.As<ir::Ramp>();
 
     if (a_ramp && b_ramp && a_ramp->lanes == b_ramp->lanes) {
-      Expr base_add = common::AutoSimplify(a_ramp->base + b_ramp->base);
-      Expr stride_add = common::AutoSimplify(a_ramp->stride + b_ramp->stride);
+      Expr base_add = cinn::common::AutoSimplify(a_ramp->base + b_ramp->base);
+      Expr stride_add =
+          cinn::common::AutoSimplify(a_ramp->stride + b_ramp->stride);
       *expr = ir::Ramp::Make(base_add, stride_add, a_ramp->lanes);
     }
   }
@@ -229,7 +231,7 @@ struct SimplifyIfThenElseMutator : public ir::IRMutator<> {
 
   void Visit(const IfThenElse* op, Expr* expr) override {
     auto* node = expr->As<ir::IfThenElse>();
-    node->condition = common::AutoSimplify(node->condition);
+    node->condition = cinn::common::AutoSimplify(node->condition);
 
     auto* condition_int = node->condition.As<ir::IntImm>();
     auto* condition_uint = node->condition.As<ir::UIntImm>();
@@ -335,7 +337,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
 };
 
 struct SimplifyForLoopsMutator : public ir::IRMutator<> {
-  absl::flat_hash_map<std::string, common::CasInterval> var_intervals;
+  absl::flat_hash_map<std::string, cinn::common::CasInterval> var_intervals;
   SimplifyForLoopsMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
@@ -353,7 +355,8 @@ struct SimplifyForLoopsMutator : public ir::IRMutator<> {
       VLOG(6) << "Simplify current For Loop";
       std::string var_name = node->loop_var->name;
       var_intervals.emplace(
-          var_name, common::CasInterval{min_i->value, extent_i->value - 1});
+          var_name,
+          cinn::common::CasInterval{min_i->value, extent_i->value - 1});
 
       *expr = node->body;
 
@@ -468,7 +471,7 @@ void Simplify(Expr* expr) {
   SimplifyStoreMutator()(expr);
   SimplifyIfThenElseMutator()(expr);
 
-  common::cas_intervals_t var_intervals;
+  cinn::common::cas_intervals_t var_intervals;
   SimplifyNoPureMathMutator mutator(var_intervals);
   mutator(expr);
 

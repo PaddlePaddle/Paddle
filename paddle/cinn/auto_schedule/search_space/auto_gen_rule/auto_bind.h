@@ -27,7 +27,7 @@ namespace auto_schedule {
 // Auto bind GPU index(BlockIdx, ThreadIdx) to the loops around the block
 class AutoBind : public AutoGenRule {
  public:
-  explicit AutoBind(const common::Target& target) : AutoGenRule(target) {}
+  explicit AutoBind(const cinn::common::Target& target) : AutoGenRule(target) {}
   ~AutoBind() = default;
 
   RuleApplyType Init(ir::IRSchedule* init_schedule) override;

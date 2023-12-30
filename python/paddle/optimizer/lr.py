@@ -55,6 +55,26 @@ class LRScheduler:
 
     LRScheduler Base class. Define the common interface of a learning rate scheduler.
 
+    There are currently 17 strategies implemented in paddle based on this base class, which are:
+
+    - ``NoamDecay``: Related algorithms are derived from `*Attention Is All You Need* <http://blog.inkypy.com>`_ . Please refer to :ref:`api_paddle_optimizer_lr_NoamDecay`.
+    - ``ExponentialDecay``: The next learning rate is obtained by multiplying the current learning rate by a given decay rate. Please refer to :ref:`api_paddle_optimizer_lr_ExponentialDecay`.
+    - ``NaturalExpDecay``: Each time the current learning rate is multiplied by the natural index of the given decay rate to obtain the next learning rate. Please refer to :ref:`api_paddle_optimizer_lr_NaturalExpDecay`.
+    - ``InverseTimeDecay``: The resulting learning rate is inversely proportional to the current number of decays. Please refer to :ref:`api_paddle_optimizer_lr_InverseTimeDecay`.
+    - ``PolynomialDecay``: The resulting learning rate is the interpolation of the score points between the initial learning rate and the given final learning determined by polynomial computation weights. Please refer to :ref:`api_paddle_optimizer_lr_PolynomialDecay`.
+    - ``PiecewiseDecay``: Segments decay in a step-like fashion by a given number of steps, and each segment has the same learning rate. Please refer to :ref:`api_paddle_optimizer_lr_PiecewiseDecay`.
+    - ``CosineAnnealingDecay``: The learning rate varies periodically with the number of steps as a cosine function. Please refer to :ref:`api_paddle_optimizer_lr_CosineAnnealingDecay`.
+    - ``LinearWarmup``: The learning rate increases linearly with the number of steps to the specified learning rate. Please refer to :ref:`api_paddle_optimizer_lr_LinearWarmup`.
+    - ``StepDecay``: The learning rate decays every fixed interval number of steps, and the number of step intervals needs to be specified. Please refer to :ref:`api_paddle_optimizer_lr_StepDecay`.
+    - ``MultiStepDecay``: The learning rate decays at a specific number of steps, and the node location at which the decay occurs needs to be specified. Please refer to :ref:`api_paddle_optimizer_lr_MultiStepDecay`.
+    - ``LambdaDecay``: The learning rate decays according to a custom lambda function. Please refer to :ref:`api_paddle_optimizer_lr_LambdaDecay`.
+    - ``ReduceOnPlateau``: The learning rate is adaptively adjusted according to the current metric (typically loss), and the learning rate is attenuated when the loss becomes stable. Please refer to :ref:`api_paddle_optimizer_lr_ReduceOnPlateau`.
+    - ``MultiplicativeDecay``: The resulting learning rate is obtained by multiplying the current learning rate each time by a lambda function. Please refer to :ref:`api_paddle_optimizer_lr_MultiplicativeDecay`.
+    - ``OneCycleLR``: The learning rate goes up to the maximum and then down to the minimum. Please refer to :ref:`api_paddle_optimizer_lr_OneCycleLR`.
+    - ``CyclicLR``: Think of the process of learning rate change as a cycle, with the learning rate changing between the minimum and maximum learning rates according to a fixed frequency. Please refer to :ref:`api_paddle_optimizer_lr_CyclicLR`.
+    - ``LinearLR``: The learning rate increases linearly with the number of steps to the specified learning rate. Please refer to :ref:`api_paddle_optimizer_lr_LinearLR`.
+    - ``CosineAnnealingWarmRestarts``: The learning rate varies periodically with the number of steps as a cosine function. Please refer to :ref:`api_paddle_optimizer_lr_CosineAnnealingWarmRestarts`.
+
     User can import it by ``from paddle.optimizer.lr import LRScheduler`` ,
 
     then overload it for your subclass and have a custom implementation of ``get_lr()`` .

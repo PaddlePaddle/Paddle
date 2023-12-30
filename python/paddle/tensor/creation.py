@@ -16,7 +16,6 @@
 
 import math
 import re
-import warnings
 
 import numpy as np
 
@@ -1186,7 +1185,9 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.eager.Tensor))):
+        if isinstance(
+            attr, ((Variable, core.eager.Tensor, paddle.pir.OpResult))
+        ):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
@@ -1202,7 +1203,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     else:
         num_columns = num_rows
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.eye(
             num_rows, num_columns, dtype, _current_expected_place()
         )
@@ -1836,7 +1837,7 @@ def diagflat(x, offset=0, name=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-1
+            :name: diagflat-example-1
 
             >>> import paddle
 
@@ -1865,7 +1866,7 @@ def diagflat(x, offset=0, name=None):
              [0, 0, 3, 0]])
 
         .. code-block:: python
-            :name: code-example-2
+            :name: diagflat-example-2
 
             >>> import paddle
 
@@ -1895,6 +1896,7 @@ def diagflat(x, offset=0, name=None):
              [0, 2, 0, 0, 0],
              [0, 0, 3, 0, 0],
              [0, 0, 0, 4, 0]])
+
     """
     if in_dynamic_or_pir_mode():
         if len(x.shape) <= 1:
@@ -1969,7 +1971,7 @@ def diag(x, offset=0, padding_value=0, name=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-1
+            :name: diag-example-1
 
             >>> import paddle
 
@@ -1998,7 +2000,7 @@ def diag(x, offset=0, padding_value=0, name=None):
              [6, 6, 3]])
 
         .. code-block:: python
-            :name: code-example-2
+            :name: diag-example-2
 
             >>> import paddle
 
@@ -2198,6 +2200,15 @@ def empty_like(x, dtype=None, name=None):
         )
         out.stop_gradient = True
         return out
+    elif in_pir_mode():
+        shape = paddle.shape(x)
+        out = _C_ops.empty(
+            shape,
+            convert_np_dtype_to_dtype_(dtype),
+            _current_expected_place(),
+        )
+        out.stop_gradient = True
+        return out
     else:
         helper = LayerHelper("empty_like", **locals())
         check_variable_and_dtype(
@@ -2349,6 +2360,8 @@ def assign(x, output=None):
                     'uint8',
                     'int8',
                     'bool',
+                    'complex64',
+                    'complex128',
                 ],
                 'assign',
                 '(When the type of input in assign is Variable.)',
@@ -2396,44 +2409,23 @@ def assign(x, output=None):
             )
 
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == core.VarDesc.VarType.FP64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.VarDesc.VarType.FP32
-
-        if dtype == core.DataType.FLOAT64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.DataType.FLOAT32
-
-        if dtype in [core.VarDesc.VarType.BOOL, core.DataType.BOOL]:
-            value_name = "bool_values"
-            values = [int(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.FP32, core.DataType.FLOAT32]:
-            value_name = "fp32_values"
-            values = [float(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.INT32, core.DataType.INT32]:
-            value_name = "int32_values"
-            values = [int(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
-            value_name = "int64_values"
-            values = [int(v) for v in input.flat]
-        else:
-            raise TypeError(
-                "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
-                "received %s." % convert_dtype(dtype)
-            )
+        check_dtype(
+            dtype,
+            'input',
+            [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'assign',
+            '(When the type of input in assign is numpy array.)',
+        )
+        value_name = "values"
+        values = input.ravel().tolist()
         if input.size > 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "

@@ -31,6 +31,24 @@ class SToSReshardFunction final : public ReshardFunction {
             const DistTensor& in,
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
+
+  std::string Name() override { return "SToSReshard"; }
+};
+
+class SToSReshardFunctionCrossMesh final : public ReshardFunction {
+ public:
+  SToSReshardFunctionCrossMesh() = default;
+  ~SToSReshardFunctionCrossMesh() = default;
+
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+
+  std::string Name() override { return "SToSReshardCrossMesh"; }
 };
 
 }  // namespace distributed

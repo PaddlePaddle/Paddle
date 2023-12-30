@@ -26,8 +26,8 @@ namespace phi {
 
 template <typename T>
 __global__ void SetZeroCudaKernel(int64_t** indices,
-                                  phi::Array<int64_t, DDim::kMaxRank> stride,
-                                  phi::Array<int64_t, DDim::kMaxRank> shape,
+                                  Array<int64_t, DDim::kMaxRank> stride,
+                                  Array<int64_t, DDim::kMaxRank> shape,
                                   const int rank,
                                   const int64_t numel,
                                   T* out) {
@@ -56,14 +56,13 @@ __global__ void SetZeroCudaKernel(int64_t** indices,
 }
 
 template <typename T>
-__global__ void IndexPutGradCudaKernel(
-    const T* out_grad,
-    int64_t** indices,
-    phi::Array<int64_t, DDim::kMaxRank> stride,
-    phi::Array<int64_t, DDim::kMaxRank> shape,
-    const int rank,
-    const int64_t numel,
-    T* value_grad) {
+__global__ void IndexPutGradCudaKernel(const T* out_grad,
+                                       int64_t** indices,
+                                       Array<int64_t, DDim::kMaxRank> stride,
+                                       Array<int64_t, DDim::kMaxRank> shape,
+                                       const int rank,
+                                       const int64_t numel,
+                                       T* value_grad) {
   int64_t idx =
       static_cast<int64_t>(threadIdx.x) +
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x);
@@ -103,10 +102,10 @@ void LaunchIndexPutGradCudaKernel(
       T* x_grad_data = x_grad->data<T>();
 
       auto x_grad_dims = x_grad->dims();
-      auto x_grad_stride = phi::stride(x_grad_dims);
+      auto x_grad_stride = common::stride(x_grad_dims);
 
-      phi::Array<int64_t, DDim::kMaxRank> stride_array;
-      phi::Array<int64_t, DDim::kMaxRank> shape_array;
+      Array<int64_t, DDim::kMaxRank> stride_array;
+      Array<int64_t, DDim::kMaxRank> shape_array;
       for (int i = 0; i < rank; ++i) {
         stride_array[i] = x_grad_stride[i];
         shape_array[i] = x_grad_dims[i];
@@ -125,10 +124,10 @@ void LaunchIndexPutGradCudaKernel(
   }
 
   auto out_grad_dims = out_grad.dims();
-  auto out_grad_stride = phi::stride(out_grad_dims);
+  auto out_grad_stride = common::stride(out_grad_dims);
 
-  phi::Array<int64_t, DDim::kMaxRank> stride_array;
-  phi::Array<int64_t, DDim::kMaxRank> shape_array;
+  Array<int64_t, DDim::kMaxRank> stride_array;
+  Array<int64_t, DDim::kMaxRank> shape_array;
   for (int i = 0; i < rank; ++i) {
     stride_array[i] = out_grad_stride[i];
     shape_array[i] = out_grad_dims[i];
@@ -199,8 +198,9 @@ void LaunchIndexPutGradCudaKernel(
                                                       numel,
                                                       tmp_value_grad_data);
 
-      std::vector<int64_t> after_dims = phi::vectorize(tmp_value_grad.dims());
-      std::vector<int64_t> before_dims = phi::vectorize(value_grad->dims());
+      std::vector<int64_t> after_dims =
+          common::vectorize(tmp_value_grad.dims());
+      std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
 
@@ -208,7 +208,7 @@ void LaunchIndexPutGradCudaKernel(
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
 
       auto pre_dims = value_grad->dims();
-      value_grad->Resize(phi::make_ddim(dims_without_1));
+      value_grad->Resize(common::make_ddim(dims_without_1));
       IntArray v_axis(compress_dims);
       SumKernel<T, Context>(dev_ctx,
                             tmp_value_grad,
@@ -245,7 +245,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
-                             phi::vectorize(value_grad->dims()),
+                             common::vectorize(value_grad->dims()),
                              0.0f,
                              value_grad->dtype(),
                              value_grad);
@@ -255,7 +255,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
 
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
-  std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
+  std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> range_tensor_v;

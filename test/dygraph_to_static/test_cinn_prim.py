@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -96,7 +96,10 @@ class TestPrimForward(Dy2StTestBase):
     @test_ast_only
     def test_cinn_prim_forward(self):
         dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        use_cinn = False
+        if paddle.is_compiled_with_cinn():
+            use_cinn = True
+        cinn_res = self.train(use_prim=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
@@ -162,7 +165,10 @@ class TestPrimForwardAndBackward(Dy2StTestBase):
     @test_ast_only
     def test_cinn_prim(self):
         dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        use_cinn = False
+        if paddle.is_compiled_with_cinn():
+            use_cinn = True
+        cinn_res = self.train(use_prim=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
@@ -171,10 +177,13 @@ class TestPrimForwardAndBackward(Dy2StTestBase):
 
 
 class TestBackend(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_backend(self):
         x = paddle.randn([2, 4])
-        out1 = self.forward(x, 'CINN')
+        if paddle.is_compiled_with_cinn():
+            out1 = self.forward(x, 'CINN')
+        else:
+            out1 = self.forward(x, None)
         out2 = self.forward(x, None)
         np.testing.assert_allclose(out1, out2, rtol=1e-6)
 

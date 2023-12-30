@@ -28,6 +28,7 @@ void AsStridedKernel(const Context& dev_ctx,
   out->set_strides(DDim(stride.data(), static_cast<int>(stride.size())));
   out->set_offset(offset);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 }  // namespace phi

@@ -25,8 +25,8 @@ using framework::NodeData;
 using framework::OpPatternKind;
 using framework::shape_t;
 
-using common::GraphEdge;
-using common::GraphNode;
+using cinn::common::GraphEdge;
+using cinn::common::GraphNode;
 
 using AlterFunction =
     std::function<void(const FusionHelperBase*, Graph*, Node*)>;

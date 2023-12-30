@@ -257,7 +257,10 @@ class Converter:
         else:
             pre_dims_mapping = pre_dist_attr["dims_mapping"]
             cur_dims_mapping = cur_dist_attr["dims_mapping"]
-            if len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping:
+
+            if len(pre_dims_mapping) and (
+                len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping
+            ):
                 # merge tensor
                 tensor = Converter.merge_with_dist_attr(
                     tensor_list, pre_dist_attr
@@ -266,7 +269,9 @@ class Converter:
                 # skip merge tensor
                 tensor = tensor_list[0]
 
-            if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
+            if len(cur_dims_mapping) and (
+                len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping
+            ):
                 # slice tensor
                 tensor = Converter.slice_with_dist_attr(tensor, cur_dist_attr)
 

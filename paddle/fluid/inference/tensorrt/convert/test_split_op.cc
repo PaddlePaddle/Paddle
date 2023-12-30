@@ -28,20 +28,20 @@ void TensorRTSplitTest(const std::vector<int> &in_shape,
   framework::Scope scope;
   TRTConvertValidation validator(BatchSize + 1, parameters, scope, 10000);
 
-  auto make_dim = [](const std::vector<int> &shape) {
+  auto common::make_dim = [](const std::vector<int> &shape) {
     nvinfer1::Dims3 dim;
     dim.c() = shape[0];
     dim.h() = shape[1];
     dim.w() = shape[2];
     return dim;
   };
-  validator.DeclInputVar("split_input", make_dim(in_shape));
+  validator.DeclInputVar("split_input", common::make_dim(in_shape));
   std::vector<std::string> output_vars;
   for (size_t i = 0; i < sections.size(); ++i) {
     auto out_shape = in_shape;
     out_shape[Axis - 1] = sections[i];
     std::string output_name = "split_out" + std::to_string(i);
-    validator.DeclOutputVar(output_name, make_dim(out_shape));
+    validator.DeclOutputVar(output_name, common::make_dim(out_shape));
     output_vars.push_back(output_name);
   }
 

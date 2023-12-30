@@ -49,12 +49,7 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
         # run forward and backward
         image, label = self.init_input_data()
         if shard_input:
-            image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
-                ),
-            )
+            image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
 
         for i in range(2):
             out = layer(image)

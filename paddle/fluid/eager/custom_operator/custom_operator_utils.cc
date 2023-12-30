@@ -227,7 +227,8 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
         auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
         result.push_back({ctx.InputAt(duplicable_input_pair.first).dims()});
       } else {
-        result.push_back({phi::make_ddim(output_shapes[output_shape_idx++])});
+        result.push_back(
+            {common::make_ddim(output_shapes[output_shape_idx++])});
       }
     }
   }
@@ -436,7 +437,7 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
   meta.dims = dims;
   meta.dtype = dtype;
 
-  auto dist_attr = phi::distributed::TensorDistAttr(phi::vectorize(dims));
+  auto dist_attr = phi::distributed::TensorDistAttr(common::vectorize(dims));
   dist_attr.set_process_mesh(process_mesh);
 
   auto dist_t = std::make_shared<phi::distributed::DistTensor>(
@@ -466,46 +467,10 @@ std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
   const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(op_info);
 
   std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
-  std::vector<Tensor> x = *all_inputs;
-  const phi::distributed::ProcessMesh* mesh = nullptr;
-  for (auto& input : x) {
-    if (input.is_dist_tensor()) {
-      mesh = &(
-          std::dynamic_pointer_cast<phi::distributed::DistTensor>(input.impl())
-              ->dist_attr()
-              .process_mesh());
-      break;
-    }
-  }
-
-  if (mesh) {
-    for (auto& input : x) {
-      if (input.is_dist_tensor()) {
-        PADDLE_ENFORCE_EQ(
-            std::dynamic_pointer_cast<phi::distributed::DistTensor>(
-                input.impl())
-                ->dist_attr()
-                .process_mesh(),
-            *mesh,
-            phi::errors::InvalidArgument(
-                "Input %s has different mesh. However all inputs should "
-                "have the same mesh.",
-                input.name()));
-      } else {
-        PADDLE_ENFORCE_EQ(
-            phi::DenseTensor::classof(input.impl().get()),
-            true,
-            phi::errors::InvalidArgument("Failed to convert input %s impl "
-                                         "to phi::distributed::DistTensor "
-                                         "as it's not phi::DenseTensor.",
-                                         input.name()));
-        phi::distributed::TensorDistAttr dist_attr(
-            phi::vectorize(input.impl()->dims()));
-        dist_attr.set_process_mesh(*mesh);
-        auto dense_t = std::static_pointer_cast<phi::DenseTensor>(input.impl());
-        input.set_impl(
-            std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
-      }
+  std::vector<Tensor> x;
+  for (auto& t : *all_inputs) {
+    if (t.impl().get()) {
+      x.emplace_back(t);
     }
   }
 
@@ -640,7 +605,7 @@ void TransCtxTensorsToDistTensors(
     for (size_t i = 0; i < output_all->size(); ++i) {
       auto& tensor = output_all->at(i);
       phi::distributed::TensorDistAttr dist_attr =
-          phi::distributed::TensorDistAttr(phi::vectorize(tensor.dims()));
+          phi::distributed::TensorDistAttr(common::vectorize(tensor.dims()));
       dist_attr.set_process_mesh(current_process_mesh);
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
@@ -651,7 +616,7 @@ void TransCtxTensorsToDistTensors(
     for (size_t i = 0; i < input_all->size(); ++i) {
       auto& tensor = input_all->at(i);
       phi::distributed::TensorDistAttr dist_attr =
-          phi::distributed::TensorDistAttr(phi::vectorize(tensor.dims()));
+          phi::distributed::TensorDistAttr(common::vectorize(tensor.dims()));
       dist_attr.set_process_mesh(current_process_mesh);
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),

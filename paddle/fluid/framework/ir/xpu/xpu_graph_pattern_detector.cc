@@ -112,6 +112,32 @@ PDNode *patterns::MultipleQuantizeXPU::operator()() {
   return prev_out;
 }
 
+PDNode *patterns::QuantConv2dFusionDequantXPU::operator()() {
+  auto *quant_in = pattern->NewNode(quant_in_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("quantize_xpu", "x");
+  auto *quant_op =
+      pattern->NewNode(quant_op_repr())->assert_is_op("quantize_xpu");
+
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("quantize_xpu", "y")
+                        ->assert_is_op_input("conv2d_xpu", "branch");
+
+  auto *conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d_xpu");
+  quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
+  auto *conv_out = pattern->NewNode(conv_out_repr())
+                       ->assert_is_op_output("conv2d_xpu", "out");
+  conv_op->LinksFrom({quant_out}).LinksTo({conv_out});
+  auto *dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize_xpu");
+  auto *dequant_out = pattern->NewNode(dequant_out_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("dequantize_xpu", "y");
+  dequant_op->LinksFrom({conv_out}).LinksTo({dequant_out});
+  return dequant_out;
+}
+
 }  // namespace patterns
 }  // namespace ir
 }  // namespace framework

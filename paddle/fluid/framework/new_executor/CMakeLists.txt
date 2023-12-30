@@ -1,31 +1,60 @@
-add_subdirectory(garbage_collector)
-add_subdirectory(instruction)
-add_subdirectory(interpreter)
-add_subdirectory(workqueue)
-add_subdirectory(pir_adaptor)
+file(GLOB_RECURSE standalone_executor_srcs "*.cc")
 
-set(STANDALONE_EXECUTOR_SRCS
-    feed_fetch_utils.cc interpretercore.cc new_executor_defs.cc
-    standalone_executor.cc program_interpreter.cc pir_interpreter.cc)
+if(NOT (WITH_CINN AND NOT CINN_ONLY))
+  list(REMOVE_ITEM standalone_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
+endif()
 
-set(STANDALONE_EXECUTOR_DEPS
-    interpreter
-    interpretercore_garbage_collector
-    workqueue
-    op_dialect_vjp
-    pir_transforms
-    pir_adaptor
-    program_translator
-    instruction_base
+if(NOT WITH_MKLDNN)
+  list(
+    REMOVE_ITEM
+    standalone_executor_srcs
+    ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_legacy_kernel_instruction.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_phi_kernel_instruction.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_mixed_phi_kernel_instruction.cc
+  )
+endif()
+
+set(standalone_executor_deps
     pir
-    plan)
+    program_translator
+    op_dialect_vjp
+    global_utils
+    buffered_reader
+    framework_io
+    garbage_collector
+    executor_gc_helper
+    device_event_base
+    framework_proto)
+
+if(WITH_CINN AND NOT CINN_ONLY)
+  set(standalone_executor_deps
+      ${standalone_executor_deps}
+      cinn_runtime_dialect
+      phi
+      common
+      cinnapi
+      device_context
+      op_registry
+      ${DEVICE_EVENT_LIBS})
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  set(standalone_executor_deps ${standalone_executor_deps}
+                               device_event_custom_device)
+endif()
+
+if(WITH_GPU)
+  set(standalone_executor_deps ${standalone_executor_deps} device_event_gpu)
+endif()
 
 cc_library(
   standalone_executor
-  SRCS ${STANDALONE_EXECUTOR_SRCS}
-  DEPS ${STANDALONE_EXECUTOR_DEPS})
+  SRCS ${standalone_executor_srcs}
+  DEPS ${standalone_executor_deps})
 
-cc_library(
-  staticgraph_executor_statistics
-  SRCS executor_statistics.cc
-  DEPS enforce glog phi)
+add_dependencies(standalone_executor xxhash framework_proto)
+
+if(WITH_MKLDNN)
+  add_dependencies(standalone_executor mkldnn)
+endif()

@@ -143,7 +143,9 @@ class TestSumOp1(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -252,7 +254,9 @@ class TestSumOpExclusive1(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -351,7 +355,9 @@ class TestSumOpExclusiveFP16(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = np.float16
@@ -390,7 +396,9 @@ class TestSumOpReverseExclusive(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
@@ -411,7 +419,13 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
             self.check_output(check_pir=True)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestCumsumFP16Op.__name__ = cls_name
@@ -459,6 +473,7 @@ def create_test_bf16_class(parent):
                 check_prim=True,
                 numeric_grad_delta=0.05,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16")
@@ -562,20 +577,22 @@ class TestTensorAxis(unittest.TestCase):
 class TestCumSumOpFp16(unittest.TestCase):
     @test_with_pir_api
     def test_fp16(self):
-        paddle.enable_static()
-        x_np = np.random.random((100, 100)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[100, 100], name='x', dtype='float16')
-            y1 = paddle.cumsum(x)
-            y2 = paddle.cumsum(x, axis=0)
-            y3 = paddle.cumsum(x, axis=-1)
-            y4 = paddle.cumsum(x, axis=-2)
-            if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
+            paddle.enable_static()
+            x_np = np.random.random((100, 100)).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    shape=[100, 100], name='x', dtype='float16'
+                )
+                y1 = paddle.cumsum(x)
+                y2 = paddle.cumsum(x, axis=0)
+                y3 = paddle.cumsum(x, axis=-1)
+                y4 = paddle.cumsum(x, axis=-2)
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
-        paddle.disable_static()
+            paddle.disable_static()
 
 
 if __name__ == '__main__':

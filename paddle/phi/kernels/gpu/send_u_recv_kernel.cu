@@ -24,6 +24,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 
 namespace phi {
@@ -47,11 +48,11 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
     }
   } else {
     // Set out dim following out_size.
-    std::vector<int64_t> dims_ = phi::vectorize(out->dims());
+    std::vector<int64_t> dims_ = common::vectorize(out->dims());
     if (dims_.size() > 0) {
       dims_[0] = out_size;
     }
-    out->Resize(phi::make_ddim(dims_));
+    out->Resize(common::make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
@@ -60,24 +61,13 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   ctx.template Alloc<T>(out);
   T* p_output = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
+  funcs::SetConstant<Context, T> constant_functor;
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
-#ifdef PADDLE_WITH_HIP
-    hipMemset(p_output, 0, memset_bytes);
-#else
-    cudaMemset(p_output, 0, memset_bytes);
-#endif
+    constant_functor(ctx, out, static_cast<T>(0));
   } else if (reduce_op == "MAX") {
-    thrust::device_ptr<T> p_output_ptr(p_output);
-    thrust::fill(thrust::device,
-                 p_output_ptr,
-                 p_output_ptr + memset_size,
-                 std::numeric_limits<T>::lowest());
+    constant_functor(ctx, out, std::numeric_limits<T>::lowest());
   } else if (reduce_op == "MIN") {
-    thrust::device_ptr<T> p_output_ptr(p_output);
-    thrust::fill(thrust::device,
-                 p_output_ptr,
-                 p_output_ptr + memset_size,
-                 std::numeric_limits<T>::max());
+    constant_functor(ctx, out, std::numeric_limits<T>::max());
   }
 
   if (index_size == 0) return;
@@ -135,7 +125,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_dst_count, 0, input_size * sizeof(int));
 #else
-    cudaMemset(p_dst_count, 0, input_size * sizeof(int));
+    cudaMemsetAsync(p_dst_count, 0, input_size * sizeof(int), ctx.stream());
 #endif
 
     int64_t grid_count = (index_size + block - 1) / block;

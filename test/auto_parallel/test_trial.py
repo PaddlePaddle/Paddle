@@ -14,8 +14,10 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.static.tuner import trial as tr
-from paddle.distributed.auto_parallel.static.tuner import tunable_space as ts
+from paddle.distributed.auto_parallel.static.tuner import (
+    trial as tr,
+    tunable_space as ts,
+)
 
 
 class TestTiral(unittest.TestCase):

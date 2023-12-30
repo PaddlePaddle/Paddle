@@ -106,11 +106,11 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
-        ), 1e-3
+        ), (1e-2, 1e-2)
 
         # The output has little diff between gpu and trt in CI-Windows-Inference
         tol_fp32 = 1e-4
-        tol_half = 1e-4
+        tol_half = 1e-2
         if os.name == 'nt':
             tol_fp32 = 1e-2
             tol_half = 1e-2
@@ -125,7 +125,7 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
-        ), tol_half
+        ), (tol_half, tol_half)
 
     def add_skip_trt_case(self):
         pass

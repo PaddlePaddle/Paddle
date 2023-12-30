@@ -174,7 +174,7 @@ class ReadFromArrayOp : public ArrayOp {
 
       framework::AttributeMap attrs;
       attrs["dtype"] = framework::TransToProtoVarType(fw_var_tensor.dtype());
-      attrs["shape"] = phi::vectorize<int>(fw_var_tensor.dims());
+      attrs["shape"] = common::vectorize<int>(fw_var_tensor.dims());
       attrs["value"] = 0.0f;
 
       auto zero_op = framework::OpRegistry::CreateOp(
