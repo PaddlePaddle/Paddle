@@ -688,9 +688,9 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
   });
 
   // Reallocate space for cols and values of mat_out
-  mat_out_cols->Resize(make_dim(out_values_size));
+  mat_out_cols->Resize(common::make_dim(out_values_size));
   dev_ctx_.template Alloc<int32_t>(mat_out_cols);
-  mat_out_values->Resize(make_dim(out_values_size));
+  mat_out_values->Resize(common::make_dim(out_values_size));
   dev_ctx_.template Alloc<T>(mat_out_values);
 
   phi::dynload::cusparseCsrSetPointers(
