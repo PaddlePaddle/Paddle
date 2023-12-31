@@ -547,6 +547,16 @@ class CuSparseSpGEMMCsrDescriptor {
                                       gpu_type);
     });
 
+#if CUDA_VERSION >= 11080
+    dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
+      phi::dynload::cusparseCsrSetStridedBatch(
+          descriptor_, batch_size, M + 1, batch_nnz);
+    });
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Batch Sparse matmul use 'cusparseCsrSetStridedBatch', which is "
+        "supported from CUDA 11.8"));
+#endif
     VLOG(6) << "Create csr cusparseSpMatDescr_t " << &descriptor_;
   }
 

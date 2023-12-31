@@ -60,16 +60,16 @@ __global__ void TransposeCsr2DCudaKernel(const IntT *x_crows_data,
       IntT j = x_cols_data[i];
       out_crows_data[j + 2]++;
     }
-    for (int i = 0; i < out_dims[0]; i += 1) {
+    for (int64_t i = 0; i < out_dims[0]; i += 1) {
       out_crows_data[i + 1] += out_crows_data[i];
     }
     // compute out_cols_data and out_values_data by out_crows_data and x
     for (int i = 0; i < x_dims[0]; ++i) {
       IntT start = x_crows_data[i];
       IntT end = x_crows_data[i + 1];
-      for (int64_t j = start; j < end; ++j) {
-        int64_t x_cols_j = x_cols_data[j] + 1;
-        int64_t jjj = out_crows_data[x_cols_j];
+      for (IntT j = start; j < end; ++j) {
+        IntT x_cols_j = x_cols_data[j] + 1;
+        IntT jjj = out_crows_data[x_cols_j];
         out_cols_data[jjj] = i;
         out_values_data[jjj] = x_values_data[j];
         out_crows_data[x_cols_j]++;
@@ -112,9 +112,9 @@ __global__ void TransposeCsr3DCudaKernel(const IntT *x_crows_data,
         for (int i = 0; i < x_n_rows; ++i) {
           IntT start = x_crows_data[i];
           IntT end = x_crows_data[i + 1];
-          for (int64_t j = start; j < end; ++j) {
-            int64_t x_cols_j = x_cols_data[j] + 1;
-            int64_t jjj = out_crows_data[x_cols_j];
+          for (IntT j = start; j < end; ++j) {
+            IntT x_cols_j = x_cols_data[j] + 1;
+            IntT jjj = out_crows_data[x_cols_j];
             out_cols_data[jjj] = i;
             out_values_data[jjj] = x_values_data[j];
             out_crows_data[x_cols_j]++;
@@ -131,9 +131,9 @@ __global__ void TransposeCsr3DCudaKernel(const IntT *x_crows_data,
         int x_cols_offset = 0;
         int out_cols_index = 0;
         for (int i = 0; i < x_dims[0]; ++i) {
-          IntT x_crows_index = i * (x_n_rows + 1);
-          IntT start = x_crows_data[x_crows_index + k];
-          IntT end = x_crows_data[x_crows_index + 1 + k];
+          int x_crows_index = i * (x_n_rows + 1);
+          int start = x_crows_data[x_crows_index + k];
+          int end = x_crows_data[x_crows_index + 1 + k];
           out_crows_data[i + 1] = end - start;
           for (int j = start; j < end; ++j) {
             out_cols_data[out_cols_index] = x_cols_data[x_cols_offset + j];
