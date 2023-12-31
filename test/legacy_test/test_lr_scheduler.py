@@ -1231,6 +1231,38 @@ class TestLRScheduler(unittest.TestCase):
                 natural_lr.step()
             natural_lr_warmup.step()
 
+    def test_pir_linear_warmup_lr(self):
+        params = {
+            'learning_rate': 0.5,
+            'warmup_steps': 10,
+            'start_lr': 0,
+            'end_lr': 0.5,
+        }
+        scheduler = paddle.optimizer.lr.LinearWarmup(**params)
+        adam = paddle.optimizer.Adam(learning_rate=scheduler)
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[3, 4, 5])
+                loss = paddle.mean(x)
+                adam.minimize(loss)
+                lr_var = adam._global_learning_rate()
+
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            for epoch in range(5):
+                for batch_id in range(2):
+                    out = exe.run(
+                        main_prog,
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                        fetch_list=[lr_var],
+                    )
+                self.assertEqual(
+                    out, np.array(linear_warmup_lr(epoch, **params))
+                )
+                scheduler.step()
+
 
 if __name__ == '__main__':
     paddle.enable_static()

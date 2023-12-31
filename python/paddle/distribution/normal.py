@@ -104,9 +104,9 @@ class Normal(distribution.Distribution):
                     float,
                     np.ndarray,
                     Variable,
+                    paddle.pir.Value,
                     list,
                     tuple,
-                    paddle.base.libpaddle.pir.Value,
                 ),
                 'Normal',
             )
@@ -118,9 +118,9 @@ class Normal(distribution.Distribution):
                     float,
                     np.ndarray,
                     Variable,
+                    paddle.pir.Value,
                     list,
                     tuple,
-                    paddle.base.libpaddle.pir.Value,
                 ),
                 'Normal',
             )

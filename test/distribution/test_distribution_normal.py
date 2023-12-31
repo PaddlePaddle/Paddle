@@ -655,10 +655,12 @@ class TestNormalSampleDygraph(unittest.TestCase):
 
 @place(config.DEVICES)
 @parameterize_cls(
-    (TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand((4,)), xrand((4,)))]
+    (TEST_CASE_NAME, 'loc', 'scale'),
+    [('sample', xrand((4,)), xrand((4,)))],
+    test_pir=True,
 )
 class TestNormalSampleStaic(unittest.TestCase):
-    def setUp(self):
+    def build_program(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -682,50 +684,12 @@ class TestNormalSampleStaic(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
-    def test_sample(self):
-        samples_mean = self.samples.mean(axis=0)
-        samples_var = self.samples.var(axis=0)
-        np.testing.assert_allclose(samples_mean, self.mean, rtol=0.1, atol=0)
-        np.testing.assert_allclose(samples_var, self.variance, rtol=0.1, atol=0)
-
-        batch_shape = (self.loc + self.scale).shape
-        self.assertEqual(self.samples.shape, self.sample_shape + batch_shape)
-
-        for i in range(len(self.scale)):
-            self.assertTrue(
-                kstest(self.loc[i], self.scale[i], self.samples[:, i])
-            )
-
-
-@place(config.DEVICES)
-@parameterize_cls(
-    (TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand((4,)), xrand((4,)))]
-)
-class TestNormalSampleStaicPIR(unittest.TestCase):
     def setUp(self):
-        paddle.enable_static()
-        with paddle.pir_utils.IrGuard():
-            startup_program = paddle.static.Program()
-            main_program = paddle.static.Program()
-            executor = paddle.static.Executor(self.place)
-            with paddle.static.program_guard(main_program, startup_program):
-                loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
-                scale = paddle.static.data(
-                    'scale', self.scale.shape, self.scale.dtype
-                )
-                n = 100000
-                self.sample_shape = (n,)
-                self.paddle_normal = Normal(loc=loc, scale=scale)
-                mean = self.paddle_normal.mean
-                variance = self.paddle_normal.variance
-                samples = self.paddle_normal.sample(self.sample_shape)
-            fetch_list = [mean, variance, samples]
-            self.feeds = {'loc': self.loc, 'scale': self.scale}
-
-            executor.run(startup_program)
-            [self.mean, self.variance, self.samples] = executor.run(
-                main_program, feed=self.feeds, fetch_list=fetch_list
-            )
+        if self.test_pir:
+            with paddle.pir_utils.IrGuard():
+                self.build_program()
+        else:
+            self.build_program()
 
     def test_sample(self):
         samples_mean = self.samples.mean(axis=0)
@@ -787,10 +751,12 @@ class TestNormalRSampleDygraph(unittest.TestCase):
 
 @place(config.DEVICES)
 @parameterize_cls(
-    (TEST_CASE_NAME, 'loc', 'scale'), [('rsample', xrand((4,)), xrand((4,)))]
+    (TEST_CASE_NAME, 'loc', 'scale'),
+    [('rsample', xrand((4,)), xrand((4,)))],
+    test_pir=True,
 )
 class TestNormalRSampleStaic(unittest.TestCase):
-    def setUp(self):
+    def build_program(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -814,52 +780,12 @@ class TestNormalRSampleStaic(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
-    def test_rsample(self):
-        rsamples_mean = self.rsamples.mean(axis=0)
-        rsamples_var = self.rsamples.var(axis=0)
-        np.testing.assert_allclose(rsamples_mean, self.mean, rtol=0.1, atol=0)
-        np.testing.assert_allclose(
-            rsamples_var, self.variance, rtol=0.1, atol=0
-        )
-
-        batch_shape = (self.loc + self.scale).shape
-        self.assertEqual(self.rsamples.shape, self.rsample_shape + batch_shape)
-
-        for i in range(len(self.scale)):
-            self.assertTrue(
-                kstest(self.loc[i], self.scale[i], self.rsamples[:, i])
-            )
-
-
-@place(config.DEVICES)
-@parameterize_cls(
-    (TEST_CASE_NAME, 'loc', 'scale'), [('rsample', xrand((4,)), xrand((4,)))]
-)
-class TestNormalRSampleStaicPIR(unittest.TestCase):
     def setUp(self):
-        paddle.enable_static()
-        with paddle.pir_utils.IrGuard():
-            startup_program = paddle.static.Program()
-            main_program = paddle.static.Program()
-            executor = paddle.static.Executor(self.place)
-            with paddle.static.program_guard(main_program, startup_program):
-                loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
-                scale = paddle.static.data(
-                    'scale', self.scale.shape, self.scale.dtype
-                )
-                n = 100000
-                self.rsample_shape = (n,)
-                self.paddle_normal = Normal(loc=loc, scale=scale)
-                mean = self.paddle_normal.mean
-                variance = self.paddle_normal.variance
-                rsamples = self.paddle_normal.rsample(self.rsample_shape)
-            fetch_list = [mean, variance, rsamples]
-            self.feeds = {'loc': self.loc, 'scale': self.scale}
-
-            executor.run(startup_program)
-            [self.mean, self.variance, self.rsamples] = executor.run(
-                main_program, feed=self.feeds, fetch_list=fetch_list
-            )
+        if self.test_pir:
+            with paddle.pir_utils.IrGuard():
+                self.build_program()
+        else:
+            self.build_program()
 
     def test_rsample(self):
         rsamples_mean = self.rsamples.mean(axis=0)
