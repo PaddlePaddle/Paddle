@@ -194,16 +194,6 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
-- backward_op : bilateral_slice_grad
-  forward : bilateral_slice(Tensor x, Tensor grid, Tensor guide, bool has_offset=false) -> Tensor(out)
-  args : (Tensor x, Tensor grid, Tensor guide, Tensor out_grad, bool has_offset=false)
-  output : Tensor(x_grad), Tensor(grid_grad), Tensor(guide_grad)
-  infer_meta :
-    func : BilateralSliceGradInferMeta
-    param : [x, grid, guide]
-  kernel :
-    func : bilateral_slice_grad
-
 - backward_op : bilinear_grad
   forward : bilinear (Tensor x, Tensor y, Tensor weight, Tensor bias) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor weight, Tensor out_grad)
