@@ -434,6 +434,14 @@ void Pad3dInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void PartialSendInferMeta(const MetaTensor& x,
+                          int ring_id,
+                          int peer,
+                          bool use_calc_stream,
+                          int num,
+                          int id,
+                          MetaTensor* out);
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,

@@ -2917,6 +2917,37 @@ void Pad3dInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void PartialSendInferMeta(const MetaTensor& x,
+                          int ring_id,
+                          int peer,
+                          bool use_calc_stream,
+                          int num,
+                          int id,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      phi::errors::InvalidArgument(
+          "The peer (%d) for partial_send op must be non-negative.", peer));
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      phi::errors::InvalidArgument(
+          "The ring_id (%d) for partial_send op must be non-negative.",
+          ring_id));
+  PADDLE_ENFORCE_GE(num,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The num (%d) for partial_send op must >=1", num));
+  PADDLE_ENFORCE_EQ(
+      (id >= 0 && id < num),
+      true,
+      phi::errors::InvalidArgument(
+          "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+}
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
