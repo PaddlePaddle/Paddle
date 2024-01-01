@@ -25,6 +25,8 @@ if(WITH_TESTING AND WITH_CINN)
 
   paddle_test(test_compilation_task SRCS compilation_task_test.cc)
 
+  paddle_test(test_generate_shape_util_test SRCS generate_shape_util_test.cc)
+
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.
   set(cinn_unit_tests
@@ -37,7 +39,8 @@ if(WITH_TESTING AND WITH_CINN)
       test_pir_all_path
       test_group_op
       test_pir_build_cinn_pass
-      test_compilation_task)
+      test_compilation_task
+      test_generate_shape_util_test)
 
   foreach(test_name ${cinn_unit_tests})
     get_property(
