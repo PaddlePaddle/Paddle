@@ -254,16 +254,22 @@ struct MatmulDescriptor {
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
 
-    if (std::is_same<T, int8_t>::value) {
-      out_mat_type = phi::backends::gpu::ToCudaDataType<int32_t>();
-      scale_type = phi::backends::gpu::ToCudaDataType<int32_t>();
-    }
-
     // Create operation descriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; just need to set the transforms for A and B
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulDescCreate(&op_desc, compute_type, scale_type));
     SetFusedEpilogueOpDescriptor(planner, trans_x, trans_y, N);
+
+    if (std::is_same<T, int8_t>::value) {
+      out_mat_type = phi::backends::gpu::ToCudaDataType<int32_t>();
+      scale_type = phi::backends::gpu::ToCudaDataType<int32_t>();
+      cublasOperation_t op_transpose = CUBLAS_OP_T;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulDescSetAttribute(op_desc,
+                                                  CUBLASLT_MATMUL_DESC_TRANSA,
+                                                  &op_transpose,
+                                                  sizeof(op_transpose)));
+    }
 
     // Create matrix descriptors
     CreateMatrixLayout(&x_desc, mat_type, M, K, trans_x);
