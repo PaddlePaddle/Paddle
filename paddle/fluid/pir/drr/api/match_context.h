@@ -20,7 +20,7 @@
 #include "paddle/fluid/pir/drr/api/tensor_interface.h"
 #include "paddle/fluid/pir/drr/ir_operation.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class TensorInterface;
@@ -40,4 +40,4 @@ class MatchContext final {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle
