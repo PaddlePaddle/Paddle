@@ -21,7 +21,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class Constraint;
@@ -105,4 +105,4 @@ class GraphTopo {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

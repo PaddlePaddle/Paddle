@@ -15,11 +15,12 @@
 from paddle.utils import gast
 
 from .utils_helper import (
-    NodeVarType,
+    binary_op_output_type,
     index_in_list,
     is_dygraph_api,
     is_numpy_api,
     is_paddle_api,
+    type_from_annotation,
 )
 
 __all__ = []
@@ -37,7 +38,7 @@ class AstNodeWrapper:
         self.node = node
         self.parent = None
         self.children = []
-        self.node_var_type = {NodeVarType.UNKNOWN}
+        self.node_var_type = {"UNKNOWN"}
 
 
 class StaticAnalysisVisitor:
@@ -87,7 +88,7 @@ class StaticAnalysisVisitor:
         return self.node_to_wrapper_map
 
     def is_tensor_node(self, node):
-        tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
+        tensor_types = {"TENSOR", "PADDLE_RETURN_TYPES"}
         node_wrapper = self.node_to_wrapper_map.get(node, None)
         if node_wrapper is None:
             return False
@@ -101,17 +102,17 @@ class StaticAnalysisVisitor:
         )
         # singleton: None, True or False
         if node.value is None:
-            return {NodeVarType.NONE}
+            return {"NONE"}
         if isinstance(node.value, bool):
-            return {NodeVarType.BOOLEAN}
+            return {"BOOLEAN"}
         if isinstance(node.value, int):
-            return {NodeVarType.INT}
+            return {"INT"}
         if isinstance(node.value, float):
-            return {NodeVarType.FLOAT}
+            return {"FLOAT"}
         if isinstance(node.value, str):
-            return {NodeVarType.STRING}
+            return {"STRING"}
 
-        return {NodeVarType.UNKNOWN}
+        return {"UNKNOWN"}
 
     def _get_node_var_type(self, cur_wrapper):
         node = cur_wrapper.node
@@ -119,14 +120,14 @@ class StaticAnalysisVisitor:
             return self._get_constant_node_type(node)
 
         if isinstance(node, gast.BoolOp):
-            return {NodeVarType.BOOLEAN}
+            return {"BOOLEAN"}
         if isinstance(node, gast.Compare):
-            return {NodeVarType.BOOLEAN}
+            return {"BOOLEAN"}
 
         if isinstance(node, gast.Dict):
-            return {NodeVarType.DICT}
+            return {"DICT"}
         if isinstance(node, gast.Set):
-            return {NodeVarType.SET}
+            return {"SET"}
 
         if isinstance(node, gast.UnaryOp):
             return self.node_to_wrapper_map[node.operand].node_var_type
@@ -137,7 +138,7 @@ class StaticAnalysisVisitor:
             result_type = set()
             for l in left_type:
                 for r in right_type:
-                    result_type.add(NodeVarType.binary_op_output_type(l, r))
+                    result_type.add(binary_op_output_type(l, r))
             return result_type
 
         if isinstance(node, gast.Assign):
@@ -157,16 +158,13 @@ class StaticAnalysisVisitor:
         if isinstance(node, gast.AnnAssign):
             # TODO(0x45f): To determine whether need to support assignment statements
             # like `self.x: float = 2.1`.
-            ret_type = {NodeVarType.type_from_annotation(node.annotation)}
+            ret_type = {type_from_annotation(node.annotation)}
             # if annotation and value(Constant) are diffent type, we use value type
             if node.value:
                 node_value_type = self.node_to_wrapper_map[
                     node.value
                 ].node_var_type
-                if not (
-                    node_value_type
-                    & {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}
-                ):
+                if not (node_value_type & {"UNKNOWN", "STATEMENT"}):
                     ret_type = node_value_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type
@@ -174,9 +172,9 @@ class StaticAnalysisVisitor:
 
         if isinstance(node, gast.Name):
             if node.id == "None":
-                return {NodeVarType.NONE}
+                return {"NONE"}
             if node.id in {"True", "False"}:
-                return {NodeVarType.BOOLEAN}
+                return {"BOOLEAN"}
             # If node is child of functionDef.arguments
             parent_node_wrapper = cur_wrapper.parent
             if parent_node_wrapper and isinstance(
@@ -184,33 +182,33 @@ class StaticAnalysisVisitor:
             ):
                 return self._get_func_argument_type(parent_node_wrapper, node)
 
-            return {NodeVarType.UNKNOWN}
+            return {"UNKNOWN"}
 
         if isinstance(node, gast.Return):
             # If return nothing:
             if node.value is None:
-                return {NodeVarType.NONE}
+                return {"NONE"}
 
-            return {NodeVarType.UNKNOWN}
+            return {"UNKNOWN"}
 
         if isinstance(node, gast.Call):
             if is_dygraph_api(node):
                 if isinstance(node.func, gast.Attribute):
                     if node.func.attr == "to_variable":
-                        return {NodeVarType.TENSOR}
+                        return {"TENSOR"}
             if is_paddle_api(node):
-                return {NodeVarType.PADDLE_RETURN_TYPES}
+                return {"PADDLE_RETURN_TYPES"}
             if is_numpy_api(node):
                 # In this simple version we assume numpy api returns nd-array
-                return {NodeVarType.NUMPY_NDARRAY}
+                return {"NUMPY_NDARRAY"}
 
             if isinstance(node.func, gast.Name):
-                return {NodeVarType.UNKNOWN}
+                return {"UNKNOWN"}
         if isinstance(node, gast.Subscript):
             if self.is_tensor_node(node.value):
-                return {NodeVarType.TENSOR}
+                return {"TENSOR"}
 
-        return {NodeVarType.STATEMENT}
+        return {"STATEMENT"}
 
     def _get_func_argument_type(self, parent_node_wrapper, node):
         """
@@ -232,9 +230,9 @@ class StaticAnalysisVisitor:
         assert isinstance(node, gast.Name)
 
         parent_node = parent_node_wrapper.node
-        var_type = {NodeVarType.UNKNOWN}
+        var_type = {"UNKNOWN"}
         if node.annotation is not None:
-            var_type = {NodeVarType.type_from_annotation(node.annotation)}
+            var_type = {type_from_annotation(node.annotation)}
 
         # if annotation and value(Constant) are diffent type, we use value type
         if parent_node.defaults:
