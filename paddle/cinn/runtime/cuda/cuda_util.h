@@ -96,6 +96,7 @@ void cinn_call_cuda_memcpy(void* v_args,
                            void* stream = nullptr);
 
 int32_t cinn_get_value_in_cuda_kernel_args(void* v_args, int idx);
+void set_value(int32_t** v, int row, int col, int32_t value);
 
 /**
  * Call a CUDA compiled kernel.

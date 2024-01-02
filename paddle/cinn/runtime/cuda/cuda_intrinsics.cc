@@ -434,6 +434,15 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<int>()     // index
       .End();
 
+  using cinn::runtime::cuda::set_value;
+  REGISTER_EXTERN_FUNC_HELPER(set_value, cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<int32_t **>()
+      .AddInputType<int>()
+      .AddInputType<int>()
+      .AddInputType<int32_t>()
+      .End();
+
   using cinn::runtime::cuda::cinn_call_cuda_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_kernel,
                               cinn::common::DefaultHostTarget())

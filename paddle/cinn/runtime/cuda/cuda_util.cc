@@ -2748,6 +2748,9 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   cudnnDestroyPoolingDescriptor(pooling_desc);
 }
 
+void set_value(int32_t **v, int row, int col, int32_t value) {
+  v[row][col] = value;
+}
 void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
                             cinn_buffer_t *input,
                             cinn_buffer_t *output,

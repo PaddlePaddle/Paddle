@@ -70,11 +70,12 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @param apply_group_schedule Whether to schedule at group level.
    * @return The lowered funcs.
    */
-  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>> BucketLower(
-      const GroupPtr& group,
-      bool apply_op_schedule = false,
-      bool apply_group_schedule = true,
-      bool apply_pass = true);
+  std::vector<std::pair<ir::SymbolicPredicate,
+                        std::pair<ir::LoweredFunc, ir::LoweredFunc>>>
+  BucketLower(const GroupPtr& group,
+              bool apply_op_schedule = false,
+              bool apply_group_schedule = true,
+              bool apply_pass = true);
 
   void InsertNameGeneToScope(std::shared_ptr<Scope> scope);
 
