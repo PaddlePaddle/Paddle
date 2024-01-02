@@ -153,14 +153,21 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super().__init__(while_op.helper.main_program)
+        if not in_pir_mode():
+            super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
+        if in_pir_mode():
+            self.block = build_while_op(self.while_op.cond_var, []).body()
+            return self.block.__enter__()
         self.while_op.status = While.IN_WHILE_BLOCK
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if in_pir_mode():
+            cf_yield([self.while_op.cond_var])
+            return self.block.__exit__(exc_type, exc_val, exc_tb)
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
@@ -509,8 +516,7 @@ class While:
     AFTER_WHILE_BLOCK = 2
 
     def __init__(self, cond, is_test=False, name=None):
-        self.helper = LayerHelper("while", name=name)
-        self.status = While.BEFORE_WHILE_BLOCK
+        self.cond_var = cond
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
@@ -518,7 +524,10 @@ class While:
                     list(cond.shape)
                 )
             )
-        self.cond_var = cond
+        if in_pir_mode():
+            return
+        self.status = While.BEFORE_WHILE_BLOCK
+        self.helper = LayerHelper("while", name=name)
         self.is_test = is_test
 
     def block(self):
@@ -1870,5 +1879,4 @@ class Switch:
         self.inside_scope = False
         if exc_type is not None:
             return False  # re-raise exception
-
         return True

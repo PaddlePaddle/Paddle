@@ -31,10 +31,7 @@ endif()
 # skip win32 since wget is not installed by default on windows machine.
 
 if(NOT WIN32)
-  cc_test(
-    test_vjp_pir
-    SRCS test_vjp.cc
-    DEPS op_dialect_vjp pir)
+  paddle_test(test_vjp_pir SRCS test_vjp.cc)
 endif()
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

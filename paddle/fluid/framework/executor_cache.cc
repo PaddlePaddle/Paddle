@@ -326,7 +326,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
       place, program_desc.Block(0), scope, execution_config));
 
   auto &cached_value = interpretercore_info_cache.GetMutable(
-      program_id, scope, place_hash_key, is_grad);
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/false);
   cached_value.core_ = core;
   return core;
 }
@@ -355,7 +355,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
       place, {}, ir_program->block(), scope, execution_config));
 
   auto &cached_value = interpretercore_info_cache.GetMutable(
-      program_id, scope, place_hash_key, is_grad);
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/true);
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;

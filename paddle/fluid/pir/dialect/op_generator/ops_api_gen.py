@@ -102,6 +102,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'print',
     'number_count',
     'assign_value',
+    'share_data',
+    'onednn_to_paddle_layout',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -135,6 +137,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'sparse_momentum',
     'soft_relu',
     'uniform_random_batch_size_like',
+    'c_reduce_min',
+    'c_reduce_min_',
 ]
 
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 
 namespace ir {
 class Operation;
@@ -39,7 +40,7 @@ class WhileInstruction : public InstructionBase {
                    const platform::Place& place,
                    ::pir::Operation* op,
                    ValueExecutionInfo* parent_exe_info,
-                   const std::set<std::string>& skip_gc_vars);
+                   interpreter::ExecutionConfig execution_config);
 
   void Run() override;
 

@@ -537,9 +537,6 @@ class DygraphShardingOptimizerV2:
         self.pp_overlap = pp_config.sharding_comm_overlap
         self.pp_release_grads = pp_config.release_gradients
 
-        # TODO(liuzhenhai):support it latter
-        assert not self.comm_overlap, "not supported yet"
-
         self._build_comm_buffers(acc_steps)
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default

@@ -45,6 +45,7 @@ from paddle.distributed.auto_parallel.static.utils import (
 from paddle.framework import core
 
 from .placement_type import check_placements_equal, get_shard_spec
+from .random import determinate_rng, rng_state
 
 # There are the auto parallel API of the unified version of dynamic and static mode.
 # Some APIs have the same name with the previous APIs implementation, which are
@@ -171,19 +172,48 @@ def shard_tensor(
     # `paddle.to_tensor` supports both dynamic and static mode
     if stop_gradient is None:
         stop_gradient = getattr(data, "stop_gradient", True)
-    tensor = paddle.to_tensor(
-        data, dtype=dtype, place=place, stop_gradient=stop_gradient
-    )
+    if isinstance(data, EagerParamBase) and not data._is_initialized():
+        assert (
+            data._init_func is not None
+        ), "Get an uninitialized param with an unregistered init_func."
+        tensor = data
+    else:
+        tensor = paddle.to_tensor(
+            data, dtype=dtype, place=place, stop_gradient=stop_gradient
+        )
 
     if paddle.in_dynamic_mode():
         # here the dist tensor is deep copy constructed
         if isinstance(data, EagerParamBase):
-            return EagerParamBase.from_tensor(
+
+            def lazy_init_hook(param, origin_hook):
+                # lazy init hook with randomness controlling
+                def _init_func(var, block):
+                    # get the unique rng name
+                    rng_name = determinate_rng(
+                        dist.get_rank(),
+                        process_mesh=param.process_mesh,
+                        placements=param.placements,
+                    )
+                    # real call the init function
+                    with rng_state(rng_name):
+                        origin_hook(var, block)
+
+                return _init_func
+
+            dist_param = EagerParamBase.from_tensor(
                 tensor,
                 process_mesh=mesh,
                 placements=placements,
                 **tensor.__dict__,
             )
+            if tensor._init_func is not None:
+                origin_init_func = tensor._init_func
+                dist_param.set_init_func(
+                    lazy_init_hook(dist_param, origin_init_func)
+                )
+
+            return dist_param
         else:
             return paddle.Tensor(
                 tensor, process_mesh=mesh, placements=placements, place=place
@@ -495,8 +525,7 @@ def shard_layer(
     else:
         # TODO(chenweihang): Support static mode branch later.
         raise NotImplementedError(
-            "`paddle.distributed.shard_layer` only supports dynamic graph mode "
-            "now. It will be supported for static graph mode later."
+            "`paddle.distributed.shard_layer` only supports dynamic graph mode."
         )
 
 

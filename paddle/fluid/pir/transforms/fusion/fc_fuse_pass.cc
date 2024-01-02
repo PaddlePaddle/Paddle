@@ -21,10 +21,10 @@
 
 namespace {
 
-class MatmulAddPattern : public pir::drr::DrrPatternBase<MatmulAddPattern> {
+class MatmulAddPattern : public paddle::drr::DrrPatternBase<MatmulAddPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("transpose_x")},
                                  {"transpose_y", pat.Attr("transpose_y")}});
@@ -32,7 +32,7 @@ class MatmulAddPattern : public pir::drr::DrrPatternBase<MatmulAddPattern> {
     matmul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("matmul_out")});
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("y"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       if (match_ctx.Tensor("w").Shape().size() != 2 ||
           match_ctx.Tensor("x").Shape().size() < 2) {
         return false;
@@ -56,21 +56,23 @@ class MatmulAddPattern : public pir::drr::DrrPatternBase<MatmulAddPattern> {
       return false;
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &in_num_col_dims_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
           return match_ctx.Tensor("x").Shape().size() - 1;
         });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
     const auto &fc =
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", in_num_col_dims_attr},
                    {"activation_type",
-                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
                                  -> std::string { return ""; })},
                    {"padding_weights", false_attr},
                }});
@@ -79,10 +81,11 @@ class MatmulAddPattern : public pir::drr::DrrPatternBase<MatmulAddPattern> {
   }
 };
 
-class FcWithReluPattern : public pir::drr::DrrPatternBase<FcWithReluPattern> {
+class FcWithReluPattern
+    : public paddle::drr::DrrPatternBase<FcWithReluPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fc =
         pat.Op(paddle::dialect::FcOp::name(),
                {{
@@ -96,18 +99,18 @@ class FcWithReluPattern : public pir::drr::DrrPatternBase<FcWithReluPattern> {
     relu({&pat.Tensor("fc_out")}, {&pat.Tensor("relu_out")});
 
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return match_ctx.Attr<std::string>("activation_type").empty();
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fc_with_relu =
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                    {"activation_type",
-                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
                                  -> std::string { return "relu"; })},
                    {"padding_weights", pat.Attr("padding_weights")},
                }});

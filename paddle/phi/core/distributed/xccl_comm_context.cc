@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 
+#include <list>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -24,6 +26,29 @@
 
 namespace phi {
 namespace distributed {
+
+std::list<XCCLCommContext*> g_xccl_comm_contexts;
+std::mutex g_xccl_comm_contexts_mutex;
+
+void XCCLCommContext::ReleaseAll() {
+  std::unique_lock lock(g_xccl_comm_contexts_mutex);
+  for (auto xccl_comm_ctx : g_xccl_comm_contexts) {
+    phi::DeviceManager::CCLDestroyComm(xccl_comm_ctx->GetDeviceType(),
+                                       xccl_comm_ctx->GetXcclComm());
+    xccl_comm_ctx->xccl_comm_ = nullptr;
+  }
+  g_xccl_comm_contexts.clear();
+}
+
+XCCLCommContext::~XCCLCommContext() {
+  std::unique_lock lock(g_xccl_comm_contexts_mutex);
+  if (phi::DeviceManager::HasDeviceType(this->GetDeviceType()) &&
+      xccl_comm_ != nullptr) {
+    phi::DeviceManager::CCLDestroyComm(this->GetDeviceType(), xccl_comm_);
+    xccl_comm_ = nullptr;
+  }
+  g_xccl_comm_contexts.remove(this);
+}
 
 XCCLCommContext::XCCLCommContext(const phi::Place& place,
                                  int rank,
@@ -38,6 +63,8 @@ XCCLCommContext::XCCLCommContext(const phi::Place& place,
                                       &xccl_comm_);
   stream_ = std::make_shared<phi::stream::Stream>();
   stream_->Init(place_);
+  std::unique_lock lock(g_xccl_comm_contexts_mutex);
+  g_xccl_comm_contexts.push_back(this);
 }
 
 void XCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
