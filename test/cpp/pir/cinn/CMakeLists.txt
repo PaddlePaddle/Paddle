@@ -25,7 +25,8 @@ if(WITH_TESTING AND WITH_CINN)
 
   paddle_test(test_compilation_task SRCS compilation_task_test.cc)
 
-  paddle_test(test_generate_shape_util_test SRCS generate_shape_util_test.cc)
+  paddle_test(test_generate_shape_util_test SRCS generate_shape_util_test.cc
+              DEPS cinn_op_dialect)
 
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.

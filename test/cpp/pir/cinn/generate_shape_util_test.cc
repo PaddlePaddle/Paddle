@@ -38,11 +38,9 @@ DimExpr CreateExampleDimExpr() {
 
 TEST(DimExprUtil, Convert) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  pir::Program program(ctx);
-  pir::Builder builder = pir::Builder(ctx, program.block());
 
   DimExpr dim_expr = CreateExampleDimExpr();
-  ::pir::Attribute attr = ConvertDimExprToAttribute(&builder, dim_expr);
+  ::pir::Attribute attr = ConvertDimExprToAttribute(ctx, dim_expr);
   std::optional<DimExpr> opt_expr = ConvertAttributeToDimExpr(attr);
   ASSERT_TRUE(opt_expr.has_value());
   ASSERT_EQ(opt_expr.value(), dim_expr);
