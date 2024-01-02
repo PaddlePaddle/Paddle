@@ -381,7 +381,30 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 }
 
 #ifdef PADDLE_WITH_DNNL
-const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
+const dnnl::memory::desc& DenseTensor::mem_desc() const {
+  if (storage_properties_ == nullptr) {
+    static dnnl::memory::desc undef_desc = dnnl::memory::desc();
+    return undef_desc;
+  }
+  return this->storage_properties<OneDNNStorageProperties>().mem_desc;
+}
+
+void DenseTensor::set_mem_desc(const dnnl::memory::desc& mem_desc) {
+  if (storage_properties_ == nullptr) {
+    storage_properties_ = std::make_unique<OneDNNStorageProperties>();
+    static_cast<OneDNNStorageProperties*>(storage_properties_.get())->mem_desc =
+        mem_desc;
+    meta_.layout = DataLayout::ONEDNN;
+  } else if (OneDNNStorageProperties::classof(storage_properties_.get())) {
+    static_cast<OneDNNStorageProperties*>(storage_properties_.get())->mem_desc =
+        mem_desc;
+    meta_.layout = DataLayout::ONEDNN;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The actual type of storage_properties is inconsistent with the type "
+        "of the template parameter passed in."));
+  }
+}
 #endif
 
 // NOTE: For historical reasons, this interface has a special behavior,
@@ -398,9 +421,6 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.strides = src.meta_.strides;
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = src.mem_desc_;
-#endif
   return *this;
 }
 
