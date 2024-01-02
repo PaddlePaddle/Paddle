@@ -549,6 +549,22 @@ class TensorVariable(VariableBase):
         return None
 
 
+class ParameterVariable(TensorVariable):
+    def __init__(
+        self,
+        param: paddle.Tensor | MetaInfo,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(param, graph, tracker)
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, (paddle.base.framework.EagerParamBase)):
+            return ParameterVariable(value, graph, tracker)
+        return None
+
+
 class ObjectVariable(VariableBase):
     """
     ObjectVariable is a subclass of VariableBase used to wrap a Variable of the object type.
