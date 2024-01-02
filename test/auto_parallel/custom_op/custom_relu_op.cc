@@ -99,12 +99,16 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
 PD_BUILD_OP(custom_relu)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(ReluForward));
+    .SetKernelFn(PD_KERNEL(ReluForward))
+    .SetInferSpmdFn(
+        PD_INFER_SPMD_RULE(phi::distributed::ElementwiseUnaryInferSpmd));
 
 PD_BUILD_GRAD_OP(custom_relu)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
-    .SetKernelFn(PD_KERNEL(ReluBackward));
+    .SetKernelFn(PD_KERNEL(ReluBackward))
+    .SetInferSpmdFn(
+        PD_INFER_SPMD_RULE(phi::distributed::ElementwiseUnaryGradInferSpmd));
 
 PD_REGISTER_SPMD_RULE(
     custom_relu,

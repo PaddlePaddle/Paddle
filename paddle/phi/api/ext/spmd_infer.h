@@ -134,4 +134,7 @@ struct SpmdInferImpl<phi::distributed::SpmdInfo (*)(Args...), impl_fn> {
   };
 };
 
+#define PD_INFER_SPMD_RULE(...) \
+  ::paddle::SpmdInferImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::InferSpmd
+
 }  // namespace paddle
