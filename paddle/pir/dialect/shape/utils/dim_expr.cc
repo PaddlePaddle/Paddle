@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/core/utils.h"
 
 namespace symbol {
 
@@ -182,6 +183,57 @@ std::string ToString(const DimExpr& dim_expr) {
 std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
   stream << ToString(dim_expr);
   return stream;
+}
+
+namespace {
+
+std::size_t GetHashValueImpl(const std::int64_t& dim_expr) { return dim_expr; }
+
+std::size_t GetHashValueImpl(const std::string& dim_expr) {
+  return std::hash<std::string>()(dim_expr);
+}
+
+std::size_t GetHashValueImpl(const Negative<DimExpr>& dim_expr) {
+  return -GetHashValue(dim_expr->data);
+}
+
+std::size_t GetHashValueImpl(const Reciprocal<DimExpr>& dim_expr) {
+  return pir::hash_combine(1, -GetHashValue(dim_expr->data));
+}
+
+std::size_t GetHashValueImpl(const List<DimExpr>& exprs) {
+  std::size_t ret = 0;
+  for (const auto& expr : *exprs) {
+    ret = pir::hash_combine(ret, GetHashValue(expr));
+  }
+  return ret;
+}
+
+std::size_t GetHashValueImpl(const Add<DimExpr>& dim_expr) {
+  return pir::hash_combine(1, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Mul<DimExpr>& dim_expr) {
+  return pir::hash_combine(2, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Max<DimExpr>& dim_expr) {
+  return pir::hash_combine(3, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Min<DimExpr>& dim_expr) {
+  return pir::hash_combine(4, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Broadcast<DimExpr>& dim_expr) {
+  return pir::hash_combine(5, GetHashValueImpl(dim_expr.operands));
+}
+
+}  // namespace
+
+std::size_t GetHashValue(const DimExpr& dim_expr) {
+  return std::visit([](const auto& impl) { return GetHashValueImpl(impl); },
+                    dim_expr.variant());
 }
 
 }  // namespace symbol
