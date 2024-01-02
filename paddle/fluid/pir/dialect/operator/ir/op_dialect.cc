@@ -84,6 +84,10 @@ void OperatorDialect::initialize() {
   // paddle/fluid/pir/dialect/CMakeLists.txt.
   // NOTE(Ruting)GET_MANUAL_OP_LIST is define in manual_op.h"
   // use RegisterOps when list has more than two ops.
+
+  // NOTE(cocoshe): GET_OP_LIST is too long when compiling on MSVC, which
+  // causes "fatal error C1202: recursive type or function dependency context
+  // too complex" error, so here split into two GET_OP_LIST on WIN32.
 #ifdef WIN32
   RegisterOps<
 #define GET_OP_LIST1
