@@ -99,13 +99,29 @@ class Normal(distribution.Distribution):
             check_type(
                 loc,
                 'loc',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Normal',
             )
             check_type(
                 scale,
                 'scale',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Normal',
             )
 

@@ -400,7 +400,7 @@ def get_xpu_xccl_version():
 
 
 def get_xpu_xhpc_version():
-    with_xpu_xhpc = env_dict.get("WITH_XPU_XHPC")
+    with_xpu_xhpc = env_dict.get("WITH_XPU")
     if with_xpu_xhpc == 'ON':
         return env_dict.get("XPU_XHPC_BASE_DATE")
     else:
@@ -1465,6 +1465,7 @@ def get_setup_parameters():
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
+        'paddle.jit.dy2static.transformers',
         'paddle.jit.pir_dy2static',
         'paddle.jit.sot',
         'paddle.jit.sot.opcode_translator',

@@ -365,15 +365,19 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
 
-  std::vector<int64_t> slice_shape;
-  for (int64_t i = begin_norm_axis; i < static_cast<int64_t>(x_dim.size());
-       i++) {
-    slice_shape.push_back(x_dim[i]);
+  std::vector<int64_t> slice_shape_l;
+  std::vector<int64_t> slice_shape_r;
+  for (int64_t i = 0; i < static_cast<int64_t>(x_dim.size()); i++) {
+    if (i < begin_norm_axis) {
+      slice_shape_l.push_back(x_dim[i]);
+    } else {
+      slice_shape_r.push_back(x_dim[i]);
+    }
   }
   Tensor scale_cast;
   if (scale_ptr) {
-    if (slice_shape != scale_ptr->shape()) {
-      scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    if (slice_shape_r != scale_ptr->shape()) {
+      scale_cast = reshape<T>(*scale_ptr, slice_shape_r);
     } else {
       scale_cast = *scale_ptr;
     }
@@ -384,8 +388,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   }
   Tensor bias_cast;
   if (bias_ptr) {
-    if (slice_shape != bias_ptr->shape()) {
-      bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    if (slice_shape_r != bias_ptr->shape()) {
+      bias_cast = reshape<T>(*bias_ptr, slice_shape_r);
     } else {
       bias_cast = *bias_ptr;
     }
@@ -394,8 +398,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     }
     out = out + bias_cast;
   }
-  mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
-  variance = reshape<T>(variance, std::vector<int64_t>({-1}));
+  mean_ = reshape<T>(mean_, slice_shape_l);
+  variance = reshape<T>(variance, slice_shape_l);
 
   // same as LayerNormInferMeta
   // x: float32 --> out: float32, mean: float32, variance: float32

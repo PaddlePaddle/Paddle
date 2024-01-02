@@ -25,7 +25,7 @@
 #include "paddle/fluid/pir/drr/ir_value.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class MatchContextImpl final {
@@ -131,4 +131,4 @@ class MatchContextImpl final {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

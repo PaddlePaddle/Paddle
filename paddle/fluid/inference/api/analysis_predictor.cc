@@ -56,6 +56,8 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
@@ -786,6 +788,12 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
+      if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
+        VLOG(4) << "[Prim] Decomp program in predictor begin.";
+        DecompProgram decomp_object(pir_program_.get());
+        decomp_object.decomp_program();
+      }
+
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
         //----------------------------------------------------------------------------------------------//
@@ -806,9 +814,18 @@ bool AnalysisPredictor::PrepareExecutor() {
 
         //----------------------------------------------------------------------------------------------//
         // Basic pass required by the framework
-        gpu_pm.AddPass(
-            ::pir::CreateParamsSyncAmongDevicesPass(place_, sub_scope_));
-        gpu_pm.AddPass(::pir::CreateConstantFoldingPass(place_, sub_scope_));
+        auto params_sync_among_devices_pass =
+            ::pir::CreateParamsSyncAmongDevicesPass();
+        params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
+                                                    sub_scope_);
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
+        gpu_pm.AddPass(std::move(constant_folding_pass));
         gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//

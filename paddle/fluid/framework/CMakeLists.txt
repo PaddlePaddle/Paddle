@@ -340,7 +340,7 @@ if(WITH_XPU)
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi
@@ -367,7 +367,7 @@ else()
          op_kernel_type
          op_call_stack
          unused_var_check
-         nan_inf_utils
+         detail_op_handle
          phi_utils
          infershape_utils
          phi
@@ -873,15 +873,7 @@ target_link_libraries(
 cc_library(
   parallel_executor
   SRCS parallel_executor.cc
-  DEPS threaded_ssa_graph_executor
-       scope_buffered_ssa_graph_executor
-       parallel_ssa_graph_executor
-       async_ssa_graph_executor
-       graph
-       build_strategy
-       bind_threaded_ssa_graph_executor
-       collective_helper
-       fast_threaded_ssa_graph_executor
+  DEPS ssa_graph_executor graph build_strategy collective_helper
        variable_helper)
 
 cc_library(

@@ -16,7 +16,7 @@
 
 #include <cstdint>
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class IrValue;
@@ -60,4 +60,4 @@ class TensorInterface {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

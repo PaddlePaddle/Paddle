@@ -98,8 +98,135 @@ phi::KernelKey LegacyKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
 }
 
+#ifdef PADDLE_WITH_DNNL
+const char* OneDNNPhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
+    "op_name",
+    "kernel_name",
+    "kernel_key"};
+
+void OneDNNPhiKernelOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: OneDNNPhiKernelOp.";
+
+  auto& attributes = this->attributes();
+
+  PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
+                     attributes.at("op_name").isa<pir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: op_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
+                     attributes.at("kernel_name").isa<pir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
+                     attributes.at("kernel_key").isa<KernelAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_key is not right."));
+}
+
+std::string OneDNNPhiKernelOp::op_name() {
+  return attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+}
+std::string OneDNNPhiKernelOp::kernel_name() {
+  return attributes()
+      .at("kernel_name")
+      .dyn_cast<pir::StrAttribute>()
+      .AsString();
+}
+phi::KernelKey OneDNNPhiKernelOp::kernel_key() {
+  return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
+}
+
+const char* OneDNNMixedPhiKernelOp::attributes_name[attributes_num] =
+    {  // NOLINT
+        "op_name",
+        "kernel_name",
+        "kernel_key"};
+
+void OneDNNMixedPhiKernelOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: "
+             "OneDNNMixedPhiKernelOp.";
+
+  auto& attributes = this->attributes();
+
+  PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
+                     attributes.at("op_name").isa<pir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: op_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
+                     attributes.at("kernel_name").isa<pir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
+                     attributes.at("kernel_key").isa<KernelAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_key is not right."));
+}
+
+std::string OneDNNMixedPhiKernelOp::op_name() {
+  return attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+}
+std::string OneDNNMixedPhiKernelOp::kernel_name() {
+  return attributes()
+      .at("kernel_name")
+      .dyn_cast<pir::StrAttribute>()
+      .AsString();
+}
+phi::KernelKey OneDNNMixedPhiKernelOp::kernel_key() {
+  return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
+}
+
+const char* OneDNNLegacyKernelOp::attributes_name[attributes_num] = {  // NOLINT
+    "op_name",
+    "kernel_name",
+    "kernel_key"};
+
+void OneDNNLegacyKernelOp::VerifySig() {
+  VLOG(4)
+      << "Verifying inputs, outputs and attributes for: OneDNNLegacyKernelOp.";
+
+  auto& attributes = this->attributes();
+
+  PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
+                     attributes.at("op_name").isa<pir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: op_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
+                     attributes.at("kernel_name").isa<pir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
+                     attributes.at("kernel_key").isa<KernelAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_key is not right."));
+}
+
+std::string OneDNNLegacyKernelOp::op_name() {
+  return attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+}
+std::string OneDNNLegacyKernelOp::kernel_name() {
+  return attributes()
+      .at("kernel_name")
+      .dyn_cast<pir::StrAttribute>()
+      .AsString();
+}
+phi::KernelKey OneDNNLegacyKernelOp::kernel_key() {
+  return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
+}
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
+#ifdef PADDLE_WITH_DNNL
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNPhiKernelOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNMixedPhiKernelOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNLegacyKernelOp)
+#endif
