@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_build_gen import GenBuildOutputsPart2
+from op_build_gen import GenBuildOutputsPart2, GetAttributes
 
 OP_INFERMETA_TEMPLATE = """
-std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values) {{
+std::vector<pir::Type> {op_name}::InferMeta(std::vector<pir::Value>& input_values, pir::AttributeMap attributes) {{
 {infermeta_inputs}
+{get_attributes_str}
 {infermeta_outputs}
   return argument_outputs;
 }}
@@ -32,17 +33,34 @@ GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
 
 
 def get_infermeta_inputs_str(
-    op_input_name_list, op_input_type_list, op_input_optional_list
+    op_input_name_list,
+    op_input_type_list,
+    op_input_optional_list,
+    op_mutable_attribute_name_list,
+    mutable_attr_is_input,
 ):
+    op_input_name_list_size = len(op_input_name_list)
+    if mutable_attr_is_input:
+        op_input_name_list_size += len(op_mutable_attribute_name_list)
+
     infermeta_inputs_str = GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
-        op_input_name_list_size=str(len(op_input_name_list)),
+        op_input_name_list_size=str(op_input_name_list_size),
     )
 
     for i in range(len(op_input_name_list)):
         infermeta_inputs_str += CREATE_INPUT_VALUE_TEMPLATE.format(
             input_name=op_input_name_list[i], index=str(i)
         )
-    infermeta_inputs_str += "\n\n"
+
+    if mutable_attr_is_input:
+        # add mutable attributes as inputs
+        if len(op_mutable_attribute_name_list) > 0:
+            for i in range(len(op_mutable_attribute_name_list)):
+                infermeta_inputs_str += CREATE_INPUT_VALUE_TEMPLATE.format(
+                    input_name=op_mutable_attribute_name_list[i],
+                    index=str(i + len(op_input_name_list)),
+                )
+    infermeta_inputs_str += "\n"
 
     infermeta_inputs_str += '  VLOG(4) << "Builder construction outputs";\n'
     # Prepar input type
@@ -59,6 +77,7 @@ def get_infermeta_inputs_str(
                 infermeta_inputs_str += "  {type} {name} = {name}_.type().dyn_cast<{type}>(); (void){name};\n".format(
                     type=op_input_type_list[idx], name=op_input_name_list[idx]
                 )
+
     return infermeta_inputs_str
 
 
@@ -75,10 +94,33 @@ def gen_infermeta_func_str(
     op_output_optional_list,
     op_infer_meta_map,
     op_inplace_map,
+    op_attribute_name_list,
+    op_attribute_type_list,
+    op_attribute_build_arg_type_list,
+    op_non_mutable_attribute_name_list,
+    op_non_mutable_attribute_type_list,
+    op_non_mutable_attribute_build_arg_type_list,
     muta_attr_is_input=False,
+    attr_args_is_map=True,
 ):
     infermeta_inputs_str = get_infermeta_inputs_str(
-        op_input_name_list, op_input_type_list, op_input_optional_list
+        op_input_name_list,
+        op_input_type_list,
+        op_input_optional_list,
+        op_mutable_attribute_name_list,
+        muta_attr_is_input,
+    )
+
+    get_attributes_str = GetAttributes(
+        op_class_name,
+        muta_attr_is_input,
+        op_attribute_name_list,
+        op_attribute_type_list,
+        op_attribute_build_arg_type_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_type_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        attr_args_is_map,
     )
 
     infermeta_outputs_str = GenBuildOutputsPart2(
@@ -100,6 +142,7 @@ def gen_infermeta_func_str(
     infermeta_func = OP_INFERMETA_TEMPLATE.format(
         op_name=op_class_name,
         infermeta_inputs=infermeta_inputs_str,
+        get_attributes_str=get_attributes_str,
         infermeta_outputs=infermeta_outputs_str,
     )
 

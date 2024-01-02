@@ -1719,7 +1719,14 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         op_output_optional_list,
                         op_infer_meta_map,
                         op_inplace_map,
+                        op_attribute_name_list,
+                        op_attribute_type_list,
+                        op_attribute_build_arg_type_list,
+                        op_non_mutable_attribute_name_list,
+                        op_non_mutable_attribute_type_list,
+                        op_non_mutable_attribute_build_arg_type_list,
                         muta_attr_is_input,
+                        attr_args_is_map=True,
                     )
 
                 # =================================== #
