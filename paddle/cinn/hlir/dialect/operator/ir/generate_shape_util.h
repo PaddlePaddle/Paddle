@@ -18,6 +18,8 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include <vector>
+#include <functional>
 
 namespace cinn::dialect {
 
@@ -45,5 +47,18 @@ MakeGetterDimExpr4SymbolName(
     const GenerateShapeOp::SymbolBindings& symbol_bindings,
     const std::function<const symbol::ShapeOrDataDimExprs&(int in_tensor_idx)>&
         DimExpr4InputDim);
+
+using ShapeOrDataDimExprs4ValueT =
+    std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
+
+// Returns true if success.
+bool MakeGenerateShapeOpAttribute(
+    pir::IrContext* ir_context,
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
+    const std::vector<symbol::DimExpr>& out_dim_exprs,
+    const std::vector<pir::Value>& origin_inputs,
+    std::vector<pir::Value>* minial_inputs,
+    std::vector<pir::Attribute>* output_dim_expr_attrs,
+    GenerateShapeOp::SymbolBindings* symbol_bindings);
 
 }  // namespace cinn::dialect
