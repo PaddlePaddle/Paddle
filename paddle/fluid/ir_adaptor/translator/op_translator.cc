@@ -83,6 +83,7 @@ constexpr char kTargetDialectPrefix[] = "pd_op.";  // NOLINT
 #ifdef PADDLE_WITH_DNNL
 constexpr char kOneDNNTargetDialectPrefix[] = "pd_onednn_op.";  // NOLINT
 #endif
+constexpr char kCustomOpDialectPrefix[] = "custom_op.";
 constexpr char kEmptyVarName[] = "@EMPTY@";  // NOLINT
 
 static const std::unordered_set<std::string> SpecialNonInplaceOps = {};
@@ -229,16 +230,27 @@ inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
   return create_array_op.operation();
 }
 
+inline bool HasOpInfo(pir::IrContext* ctx,
+                      const OpDesc& op_desc,
+                      std::string prefix) {
+  std::string target_op_name = prefix + OpNameCompatibleMapping(op_desc.Type());
+  if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
+    target_op_name += "_";
+  }
+  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  if (op_info) {
+    return true;
+  }
+  return false;
+}
+
 inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
+  if (HasOpInfo(ctx, op_desc, kCustomOpDialectPrefix)) {
+    return kCustomOpDialectPrefix;
+  }
 #ifdef PADDLE_WITH_DNNL
   if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-    std::string target_op_name =
-        kOneDNNTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
-    if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
-      target_op_name += "_";
-    }
-    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-    if (!op_info) {
+    if (!HasOpInfo(ctx, op_desc, kOneDNNTargetDialectPrefix)) {
       VLOG(3) << op_desc.Type()
               << "'s use_mkldnn == True, but PIR not support OneDNN for this "
                  "op right now.";
@@ -284,7 +296,7 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
   std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
-      op_info_concept->get_op_info_();
+      op_info_concept->get_op_info_(op_info.name());
 
   auto& op_normalizer = OpNameNormalizer::instance();
   std::vector<std::string> need_inputs_sig;
@@ -355,9 +367,6 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
-  VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
-          << target_op_name;
-  op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
     IR_THROW("Op %d should have corresponding OpInfo %d",
              op_desc.Type(),
@@ -792,8 +801,9 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
+
   std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
-      op_info_concept->get_op_info_();
+      op_info_concept->get_op_info_(op_info.name());
 
   this->InsertSliceOperationForInput(
       ctx, param_map, op_desc, input_infos, block);
@@ -810,7 +820,6 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
       this->TranslateOpAttribute(ctx, op_info.name(), attr_infos, op_desc);
   TranslateOpDistAttribute(op_desc, &attribute_map);
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
-
   pir::Operation* operation = pir::Operation::Create(
       op_inputs, attribute_map, op_output_types, op_info);
   VLOG(4) << "[general op][" << op_desc.Type() << "] opearation creation end.";
@@ -940,7 +949,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
     std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
-        op_info_concept->get_op_info_();
+        op_info_concept->get_op_info_(op_info.name());
     std::unordered_map<std::string, OpAttributeInfo> attr_info_maps;
     for (auto const& info : attr_infos) {
       attr_info_maps.insert({info.name, info});
@@ -1274,7 +1283,7 @@ struct FetchOpTranscriber : public OpTranscriber {
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
     std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
-        op_info_concept->get_op_info_();
+        op_info_concept->get_op_info_(op_info.name());
 
     this->InsertSliceOperationForInput(
         ctx, param_map, op_desc, input_infos, block);
