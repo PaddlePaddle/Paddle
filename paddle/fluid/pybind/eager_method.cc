@@ -1078,12 +1078,17 @@ static PyObject* tensor__share_underline_tensor_to(TensorObject* self,
   EAGER_TRY
   paddle::Tensor* src_ptr =
       &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
-  PADDLE_ENFORCE_EQ(self->tensor.initialized(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Tensor %s has not been initialized! please initialize "
-                        "src tensor before share_buffer_with to other.",
-                        self->tensor.name()));
+  if (!self->tensor.initialized()) {
+    PADDLE_ENFORCE(self->tensor.is_dist_tensor() &&
+                       !phi::distributed::IsCurRankInMesh(
+                           static_cast<phi::distributed::DistTensor*>(
+                               self->tensor.impl().get())
+                               ->process_mesh()),
+                   platform::errors::InvalidArgument(
+                       "Tensor %s has not been initialized! Please initialize "
+                       "src tensor before share_buffer_with to other.",
+                       self->tensor.name()));
+  }
   src_ptr->set_impl(self->tensor.impl());
   RETURN_PY_NONE
 
