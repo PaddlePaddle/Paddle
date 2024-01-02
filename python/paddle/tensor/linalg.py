@@ -524,7 +524,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             return reduce_out
 
-    def p_matrix_norm(input, porder=2, axis=axis, keepdim=False, name=None):
+    def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
         """
         NOTE:
             This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
