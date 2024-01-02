@@ -111,8 +111,10 @@ class InferSymbolicShapePass : public pir::Pass {
     if (it != infer_sym_shape_map.end()) {
       it->second(op, shape_analysis_);
     } else {
-      LOG(WARNING) << "[" << op.name()
-                   << "] is not supported for infer_symbolic_shape pass.";
+      if (!op.HasInterface<paddle::dialect::InferSymbolicShapeInterface>()) {
+        LOG(WARNING) << "[" << op.name()
+                     << "] is not supported for infer_symbolic_shape pass.";
+      }
     }
   }
 
@@ -442,41 +444,40 @@ void DebugPrintOpInfo(
     pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
   for (auto& res : op->results()) {
-    auto value_id = pir::GetValueId(&res);
     std::ostringstream print_stream;
 
     print_stream << "result(" << res.index() << ") "
                  << "ShapeOrData: ";
 
     if (shape_analysis != nullptr) {
-      auto shape_data = shape_analysis->value_id_to_shapeordata_[value_id];
+      auto shape_data = shape_analysis->value_to_shape_or_data_[res];
       print_stream << "shape: [";
 
-      for (auto str : shape_data.shape()) {
-        int64_t* i = std::get_if<int64_t>(&str);
-        std::string* s = std::get_if<std::string>(&str);
-        if (i) {
-          print_stream << *i << ", ";
-        } else if (s) {
-          print_stream << *s << ", ";
+      for (size_t i = 0; i < shape_data.shape().size(); ++i) {
+        if (i != shape_data.shape().size() - 1) {
+          print_stream << symbol::ToString(shape_data.shape()[i]) << ",";
+        } else {
+          print_stream << symbol::ToString(shape_data.shape()[i]);
         }
       }
 
       print_stream << "], data: [";
       if (shape_data.data().has_value()) {
-        for (auto str : shape_data.data().value()) {
-          int64_t* i = std::get_if<int64_t>(&str);
-          std::string* s = std::get_if<std::string>(&str);
-          if (i) {
-            print_stream << *i << ", ";
-          } else if (s) {
-            print_stream << *s << ", ";
+        for (size_t i = 0; i < shape_data.data().value().size(); ++i) {
+          if (i != shape_data.data().value().size() - 1) {
+            print_stream << symbol::ToString(shape_data.data().value()[i])
+                         << ",";
+          } else {
+            print_stream << symbol::ToString(shape_data.data().value()[i]);
           }
         }
+      } else {
+        print_stream << "nullopt";
       }
+
       print_stream << "]\n";
     }
-    VLOG(0) << print_stream.str();
+    VLOG(3) << print_stream.str();
   }
 }
 
@@ -490,7 +491,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
         auto infer_symbolic_shape_interface =
             op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
         if (infer_symbolic_shape_interface) {
-          VLOG(0) << op.name() << " has InferSymbolicShapeInterface.";
+          VLOG(3) << op.name() << " has InferSymbolicShapeInterface.";
           PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
               &shape_analysis));
         }
