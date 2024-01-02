@@ -25,6 +25,10 @@ if(NOT WITH_GPU)
   # We should remove this after fix the performance issue.
   list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
   list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
+  # disable some model test on CPU to avoid timeout
+  list(REMOVE_ITEM TEST_OPS test_resnet)
+  list(REMOVE_ITEM TEST_OPS test_build_strategy)
+  list(REMOVE_ITEM TEST_OPS test_bert)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -37,30 +41,24 @@ set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
-set_tests_properties(test_bert PROPERTIES TIMEOUT 180)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
-set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
-#set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
-set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
 endif()
 
 if(APPLE)
   set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 300)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
 endif()
 
 # Legacy IR only tests for dygraph_to_static

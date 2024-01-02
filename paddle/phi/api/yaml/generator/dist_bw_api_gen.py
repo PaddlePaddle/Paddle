@@ -126,7 +126,7 @@ INPLACE_OUT_CREATION_TEMPLATE = """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({name});
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
-    if (dense_out_{idx} && !rank_is_in_current_mesh && dist_out_{idx}->defined()) {{
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
       *dense_out_{idx} = phi::DenseTensor(
         std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
         phi::DenseTensorMeta());
@@ -137,7 +137,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
         CreateKernelDistOutput({name}, !rank_is_in_current_mesh, spmd_info.second[{idx}]);
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
-    if (dense_out_{idx} && !rank_is_in_current_mesh && dist_out_{idx}->defined()) {{
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
       *dense_out_{idx} = phi::DenseTensor(
           std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
           phi::DenseTensorMeta());
@@ -176,6 +176,9 @@ RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
 
 RESHARD_VECTOR_OUTPUT_TEMPLATE = """
       ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+
+NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
+    // API `{}` does not need to reshard output."""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
@@ -344,6 +347,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     f"{self.api} : Output error: the output should not be empty."
                 )
         else:
+            reshard_output_code += NONEED_TO_RESHARD_OUTPUT_TEMPLATE.format(
+                self.kernel['func'][0]
+            )
             # do nothing
             pass
 
@@ -419,6 +425,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include "{fw_header_file_path}"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/fusion.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"

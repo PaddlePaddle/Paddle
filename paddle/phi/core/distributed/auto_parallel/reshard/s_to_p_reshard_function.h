@@ -31,5 +31,18 @@ class SToPReshardFunction final : public ReshardFunction {
   std::string Name() override { return "SToPReshard"; }
 };
 
+class SToPReshardFunctionCrossMesh final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+
+  std::string Name() override { return "SToPReshardCrossMesh"; }
+};
+
 }  // namespace distributed
 }  // namespace phi

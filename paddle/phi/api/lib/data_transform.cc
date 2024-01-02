@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -45,7 +44,8 @@ inline bool NeedTransformDataType(const DataType& input,
   return input != target &&
          (transform_flag.need_trans_data_type() ||
           ((target == DataType::COMPLEX64 || target == DataType::COMPLEX128) &&
-           (input != DataType::INT32 && input != DataType::INT64)));
+           (input != DataType::INT32 && input != DataType::INT64 &&
+            input != DataType::BOOL)));
 }
 
 inline bool NeedTransformLayout(const DataLayout& input,
@@ -239,7 +239,7 @@ phi::DenseTensor TensorContiguous(const Context& dev_ctx,
 }
 
 phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
 
   VLOG(3) << "Trans2Contiguous...";
 

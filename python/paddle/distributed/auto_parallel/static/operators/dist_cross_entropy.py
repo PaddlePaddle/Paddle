@@ -13,9 +13,7 @@
 # limitations under the License
 
 import copy
-import logging
 
-from paddle.base.log_helper import get_logger
 from paddle.common_ops_import import check_variable_and_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
@@ -27,22 +25,16 @@ from ..utils import (
     _get_corresponding_rank,
     get_dist_tensor_spec,
     is_dim_shard,
-    set_dist_op_desc_original_id,
 )
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
     ParallelMode,
     copy_op_without_infer_shape,
-    infer_shape,
     naive_copy_op_dist_attr_for_program,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
     update_op_dims_mapping,
-)
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 
@@ -226,29 +218,7 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
             ['bfloat16', 'float16', 'float32', 'float64'],
             'cross_entropy_with_softmax',
         )
-
-        cross_entropy_op = copy_op_without_infer_shape(
-            src_op, main_block, ctx, kwargs
-        )
-
-        # set dist op's dist_attr with serial op's dist_attr
-        copied_op_dist_attr = OperatorDistAttr()
-        copied_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        copied_op_dist_attr.impl_type = op_dist_attr.impl_type
-        copied_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in cross_entropy_op.desc.input_arg_names():
-            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            copied_op_dist_attr.set_input_dist_attr(
-                input_varname, input_dist_attr
-            )
-        for output_varname in cross_entropy_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            copied_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(cross_entropy_op, copied_op_dist_attr)
+        copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -284,16 +254,8 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         ), "output [Logits@GRAD] take 1 variable but got {}".format(
             kwargs['Logits@GRAD']
         )
-
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
-        dist_op_desc.copy_from(backward_op.desc)
-        # Refer to the related dist op
-        set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
-        for input_name in backward_op.desc.input_names():
-            dist_op_desc.set_input(input_name, kwargs[input_name])
-        for output_name in backward_op.desc.output_names():
-            dist_op_desc.set_output(output_name, kwargs[output_name])
+        copy_op_without_infer_shape(backward_op, main_block, ctx, kwargs)
 
 
 class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
@@ -393,14 +355,6 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
             softmax_var.name
         )
         assert op_dist_attr_softmax is not None
-        loss_ref_shape = infer_shape(
-            main_block, loss_var, loss_dist_attr, op_dist_attr_loss
-        )
-        softmax_ref_shape = infer_shape(
-            main_block, softmax_var, softmax_dist_attr, op_dist_attr_softmax
-        )
-        loss_var.desc.set_shape(loss_ref_shape)
-        softmax_var.desc.set_shape(softmax_ref_shape)
 
         # TODO calculate ring id
         softmax_axis = src_op.desc.attr('axis')
@@ -431,27 +385,7 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
-
-        # set dist op's dist_attr with serial op's dist_attr
-        copied_op_dist_attr = OperatorDistAttr()
-        copied_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        copied_op_dist_attr.impl_type = op_dist_attr.impl_type
-        copied_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_cross_entropy_op.desc.input_arg_names():
-            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            copied_op_dist_attr.set_input_dist_attr(
-                input_varname, input_dist_attr
-            )
-        for output_varname in c_cross_entropy_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            copied_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(
-            c_cross_entropy_op, copied_op_dist_attr
-        )
+        naive_copy_op_dist_attr_for_program(c_cross_entropy_op, src_op, ctx)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -536,6 +470,7 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
                     )
                     scale_op_attr = OperatorDistAttr()
                     scale_op_attr.process_mesh = op_dist_attr.process_mesh
+                    scale_op_attr.chunk_id = op_dist_attr.chunk_id
                     scale_op_attr.set_output_dims_mapping(
                         loss_grad_var.name, dims_mapping
                     )

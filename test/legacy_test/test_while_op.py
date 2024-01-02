@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+import os
 import unittest
 
 import numpy
+from utils import compare_legacy_with_pt
 
 import paddle
-from paddle import base
+from paddle import base, set_flags
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
+from paddle.base.framework import in_pir_mode
 from paddle.incubate.layers.nn import shuffle_batch
-
-sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils import compare_legacy_with_pt
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -73,7 +73,7 @@ class TestWhileOp(unittest.TestCase):
                 prev2 = paddle.tensor.array_read(array=mem_array, i=j)
                 result2 = paddle.add_n([d2, prev2])
 
-                j = paddle.increment(x=j)
+                paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
 
@@ -82,7 +82,8 @@ class TestWhileOp(unittest.TestCase):
         loss = paddle.mean(sum_result)
         return loss, sum_result
 
-    # TODO(zhangbo): Support pir test(support write_to_array and read_from_array, support while_grad).
+    # TODO(winter-wang): Support pir test in (FLAGS_enable_pir_in_executor_trace_run = False && FLAGS_new_executor_serial_run == False).
+    @test_with_pir_api
     def test_simple_net(self):
         main_program = base.Program()
         startup_program = base.Program()
@@ -90,6 +91,14 @@ class TestWhileOp(unittest.TestCase):
             loss, sum_result = self.simple_net()
 
             append_backward(loss)
+
+            if in_pir_mode():
+                flag_1 = "FLAGS_enable_pir_in_executor_trace_run"
+                flag_2 = "FLAGS_new_executor_serial_run"
+                os.environ[flag_1] = 'True'
+                os.environ[flag_2] = 'True'
+                set_flags({flag_1: True})
+                set_flags({flag_2: True})
 
             cpu = core.CPUPlace()
             exe = Executor(cpu)
@@ -102,15 +111,24 @@ class TestWhileOp(unittest.TestCase):
                 feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
                 fetch_list=[sum_result],
             )
+            if in_pir_mode():
+                del os.environ[flag_1]
+                del os.environ[flag_2]
+                set_flags({flag_1: False})
+                set_flags({flag_2: False})
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
-    # TODO(zhangbo): Support pir test(support write_to_array and read_from_array)
+    # TODO(winter-wang): Support pir test in (FLAGS_enable_pir_in_executor_trace_run = False && FLAGS_new_executor_serial_run == False).
+    @test_with_pir_api
     def test_simple_net_forward(self):
         main_program = base.Program()
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             self.simple_net()
-            binary = base.compiler.CompiledProgram(main_program)
+            if in_pir_mode():
+                binary = main_program
+            else:
+                binary = base.compiler.CompiledProgram(main_program)
             cpu = core.CPUPlace()
             exe = Executor(cpu)
             d = []
@@ -118,10 +136,23 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
+            if in_pir_mode():
+                flag_1 = "FLAGS_enable_pir_in_executor_trace_run"
+                flag_2 = "FLAGS_new_executor_serial_run"
+                os.environ[flag_1] = 'True'
+                os.environ[flag_2] = 'True'
+                set_flags({flag_1: True})
+                set_flags({flag_2: True})
             for _ in range(2):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
+            if in_pir_mode():
+                del os.environ[flag_1]
+                del os.environ[flag_2]
+                set_flags({flag_1: False})
+                set_flags({flag_2: False})
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(
@@ -137,6 +168,7 @@ class TestWhileOp(unittest.TestCase):
 
 class BadInputTest(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_error(self):
         with base.program_guard(base.Program()):
 
@@ -161,8 +193,9 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         x = paddle.static.data(name='x', shape=[-1, 1, 4], dtype='float32')
         y = paddle.static.data(name='y', shape=[-1, 1, 1], dtype='float32')
-        x.desc.set_need_check_feed(False)
-        y.desc.set_need_check_feed(False)
+        if not in_pir_mode():
+            x.desc.set_need_check_feed(False)
+            y.desc.set_need_check_feed(False)
         temp = paddle.concat([x, y], axis=-1)
 
         i = paddle.tensor.fill_constant(shape=[1], value=0, dtype='int32')
@@ -193,6 +226,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
 class TestOutputsMustExistsInputs(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_outputs_exists_inputs(self):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
@@ -221,17 +255,20 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
             paddle.enable_static()
             x = paddle.static.data(shape=[-1], name='x', dtype='float32')
             func(x)
-        for op in main_program.block(0).ops:
-            if op.type == "while":
-                for out_name in op.output("Out"):
-                    if out_name in op.input("Condition"):
-                        continue
-                    self.assertTrue(
-                        out_name in op.input("X"),
-                        "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition.".format(
-                            out_name
-                        ),
-                    )
+
+        # NOTE(winter-wang): The while_op in pir mode  doesn't need following constrait, so hre only check when in non-pir mode.
+        if not in_pir_mode():
+            for op in main_program.block(0).ops:
+                if op.type == "while":
+                    for out_name in op.output("Out"):
+                        if out_name in op.input("Condition"):
+                            continue
+                        self.assertTrue(
+                            out_name in op.input("X"),
+                            "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition.".format(
+                                out_name
+                            ),
+                        )
 
 
 if __name__ == '__main__':

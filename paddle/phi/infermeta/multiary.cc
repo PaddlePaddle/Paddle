@@ -2982,89 +2982,6 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
   seed_and_offset->set_dtype(phi::DataType::INT64);
 }
 
-void VariableLengthMemoryEfficientAttentionInferMeta(
-    const MetaTensor& query,
-    const MetaTensor& key,
-    const MetaTensor& value,
-    const MetaTensor& seq_lens,
-    const MetaTensor& kv_seq_lens,
-    const MetaTensor& mask,
-    float scale,
-    bool causal,
-    MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      query.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Query should be a 4-D tensor"
-                                   "But received Query dimension(%s)",
-                                   query.dims().size()));
-  PADDLE_ENFORCE_EQ(
-      key.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
-                                   "But received Key dimension(%s)",
-                                   key.dims().size()));
-  PADDLE_ENFORCE_EQ(
-      value.dims().size(),
-      4,
-      phi::errors::InvalidArgument("Value should be a 4-D tensor"
-                                   "But received Value dimension(%s)",
-                                   value.dims().size()));
-
-  const int64_t query_batch_size = query.dims()[0];
-  const int64_t query_num_head = query.dims()[1];
-  const int64_t query_seq_length = query.dims()[2];
-  const int64_t query_head_size = query.dims()[3];
-
-  const int64_t key_batch_size = key.dims()[0];
-  const int64_t key_num_head = key.dims()[1];
-  const int64_t key_seq_length = key.dims()[2];
-  const int64_t key_head_size = key.dims()[3];
-
-  const int64_t value_batch_size = value.dims()[0];
-  const int64_t value_num_head = value.dims()[1];
-  const int64_t value_seq_length = value.dims()[2];
-  const int64_t value_head_size = value.dims()[3];
-
-  PADDLE_ENFORCE_EQ(
-      ((query_batch_size == key_batch_size) &&
-       (key_batch_size == value_batch_size)),
-      true,
-      phi::errors::InvalidArgument(
-          "The batch size of Query, Key, Value should be equal."));
-
-  PADDLE_ENFORCE_EQ((key_num_head == value_num_head),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The head number of Key, Value should be equal."));
-
-  PADDLE_ENFORCE_EQ(
-      query_num_head % key_num_head,
-      0,
-      errors::InvalidArgument(
-          "The num_head of query must be divisible by the num_head of key, but "
-          "recived num_head of query is %d, and the num_head of key is %d",
-          query_num_head,
-          key_num_head));
-
-  PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The head size of Query, Key should be equal."));
-
-  PADDLE_ENFORCE_EQ(key_seq_length == value_seq_length,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The seq length of Key, Value should be equal."));
-
-  std::vector<int64_t> out_dims(
-      {query_batch_size, query_num_head, query_seq_length, value_head_size});
-
-  out->set_dims(common::make_ddim(out_dims));
-  out->set_dtype(query.dtype());
-  out->set_layout(query.layout());
-}
-
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
@@ -3553,6 +3470,50 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
+void RpropInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& prev,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& master_param,
+                    const MetaTensor& learning_rate_range,
+                    const MetaTensor& etas,
+                    bool multi_precision,
+                    MetaTensor* param_out,
+                    MetaTensor* prev_out,
+                    MetaTensor* learning_rate_out,
+                    MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      param_out,
+      phi::errors::InvalidArgument(
+          "Output(ParamOut) of RpropOp should not be null."));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      prev_out,
+      phi::errors::InvalidArgument(
+          "Output(PrevOut) of RpropOp should not be null."));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      learning_rate_out,
+      phi::errors::InvalidArgument(
+          "Output(LearningRateOut) of RpropOp should not be null."));
+
+  param_out->set_dims(param.dims());
+  param_out->set_dtype(param.dtype());
+  prev_out->set_dims(prev.dims());
+  prev_out->set_dtype(prev.dtype());
+  learning_rate_out->set_dims(learning_rate.dims());
+  learning_rate_out->set_dtype(learning_rate.dtype());
+  if (multi_precision) {
+    master_param_out->set_dims(master_param.dims());
+    if (DataType::FLOAT16 == master_param.dtype() ||
+        DataType::BFLOAT16 == master_param.dtype()) {
+      master_param_out->set_dtype(DataType::FLOAT32);
+    } else {
+      master_param_out->set_dtype(master_param.dtype());
+    }
+  }
+}
+
 void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
@@ -3982,10 +3943,16 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
                                const int32_t arch,
+                               const int32_t group_size,
                                MetaTensor* out) {
+  PADDLE_ENFORCE((group_size == -1 || group_size == 64 || group_size == 128),
+                 errors::InvalidArgument("group_size must be -1, 64 or 128."));
+
+  auto weight_scale_dims = weight_scale.dims();
+
   auto x_dims = x.dims();
   auto w_dims = weight.dims();
-  auto n = weight_scale.dims()[0];
+  auto n = group_size == -1 ? weight_scale_dims[0] : weight_scale_dims[1];
   PADDLE_ENFORCE(
       weight_dtype == "int8" || weight_dtype == "int4",
       errors::InvalidArgument("quant_method must be 'int8' or 'int4'."));
@@ -3993,10 +3960,6 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
       w_dims.size(),
       2UL,
       errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      weight_scale.dims().size(),
-      1UL,
-      errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
   PADDLE_ENFORCE_EQ(
       w_dims[0] % 16,
       0,
@@ -4017,6 +3980,30 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
+
+  // per-channel dequantization
+  if (group_size == -1) {
+    PADDLE_ENFORCE_EQ(
+        weight_scale_dims.size(),
+        1UL,
+        errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."
+                                "in per-channel mode."));
+  } else /* groupwise dequantization */ {
+    PADDLE_ENFORCE_EQ(
+        weight_scale_dims.size(),
+        2UL,
+        errors::InvalidArgument("The input(weight_scale) must be a 2D Tensor"
+                                " in groupwise mode."));
+    PADDLE_ENFORCE_EQ(
+        weight_scale_dims[0],
+        (w_dims[1] + (group_size - 1)) / group_size,
+        errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
+                                "to Input(weight) dim[1] / group_size"
+                                "But receive %d and %d",
+                                weight_scale_dims[0],
+                                (w_dims[1] + (group_size - 1)) / group_size));
+  }
+
   auto out_dims = x_dims;
   out_dims[out_dims.size() - 1] = n;
   out->set_dims(out_dims);

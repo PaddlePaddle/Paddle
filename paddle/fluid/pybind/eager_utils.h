@@ -72,7 +72,9 @@ bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIROpResult(PyObject* obj);
+bool PyObject_CheckIRValue(PyObject* obj);
 bool PyObject_CheckIRVectorOfOpResult(PyObject* obj);
+bool PyObject_CheckIRVectorOfValue(PyObject* obj);
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos);
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
@@ -417,6 +419,19 @@ class eager_gil_scoped_release {
  private:
   PyThreadState* tstate{nullptr};
 };
+
+/* ------------------ for SetStaticOpArgPreCastHook ----------------------- */
+
+inline static PyObject* static_op_arg_pre_cast_hook_get();
+
+inline static void static_op_arg_pre_cast_hook_set(PyObject* obj);
+
+static PyObject* set_static_op_arg_pre_cast_hook(PyObject* new_callback,
+                                                 PyThreadState* tstate);
+
+PyObject* SetStaticOpArgPreCastHook(PyObject* callback);
+
+PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook();
 
 /* ------------------ for auto parallel ----------------------- */
 using paddle::experimental::detail::ArgsIterator;

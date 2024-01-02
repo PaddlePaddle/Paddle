@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 from paddle import nn
@@ -43,6 +45,33 @@ class MyLayer(nn.Layer):
         return self.seq(x)
 
 
+def shard_fn(layer_name, layer, process_mesh):
+    if isinstance(layer, nn.Linear):
+        for name, param in layer.named_parameters():
+            if 'weight' in name:
+                dist_param = dist.shard_tensor(
+                    param, process_mesh, [dist.Replicate()]
+                )
+            else:
+                dist_param = dist.shard_tensor(
+                    param, process_mesh, [dist.Replicate()]
+                )
+            layer.add_parameter(name, dist_param)
+
+
+class RandomDataset(paddle.io.Dataset):
+    def __init__(self, images, labels, num_samples):
+        self.images = images
+        self.labels = labels
+        self.num_samples = num_samples
+
+    def __getitem__(self, idx):
+        return self.images[idx], self.labels[idx]
+
+    def __len__(self):
+        return self.num_samples
+
+
 class TestShardLayer(unittest.TestCase):
     def setUp(self):
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
@@ -52,26 +81,13 @@ class TestShardLayer(unittest.TestCase):
     def test_shard_layer_base(self):
         layer = MyLayer(self.num_features, self.num_layers)
 
-        def shard_fn(layer_name, layer, process_mesh):
-            if isinstance(layer, nn.Linear):
-                for name, param in layer.named_parameters():
-                    if 'weight' in name:
-                        dist_param = dist.shard_tensor(
-                            param, process_mesh, [dist.Replicate()]
-                        )
-                    else:
-                        dist_param = dist.shard_tensor(
-                            param, process_mesh, [dist.Replicate()]
-                        )
-                    layer.add_parameter(name, dist_param)
-
         # test shard parameters
         sharded_params_layer = dist.shard_layer(layer, self.mesh, shard_fn)
 
         for param in sharded_params_layer.parameters():
             self.assertTrue(param.is_dist())
-            for x in param.dist_attr.dims_mapping:
-                self.assertEqual(x, -1)
+            for x in param.placements:
+                self.assertEqual(x, dist.Replicate())
 
         # test shard buffers
         test_buffer = paddle.randn([10])
@@ -79,7 +95,7 @@ class TestShardLayer(unittest.TestCase):
         sharded_buffers_layer = dist.shard_layer(layer, self.mesh, shard_fn)
         self.assertTrue(sharded_buffers_layer.test_buffer.is_dist())
         self.assertEqual(
-            sharded_buffers_layer.test_buffer.dist_attr.dims_mapping, [-1]
+            sharded_buffers_layer.test_buffer.placements, [dist.Replicate()]
         )
 
     def test_shard_layer_input_fn_and_output_fn(self):
@@ -106,8 +122,8 @@ class TestShardLayer(unittest.TestCase):
 
         for param in replicate_params_layer.parameters():
             self.assertTrue(param.is_dist())
-            for x in param.dist_attr.dims_mapping:
-                self.assertEqual(x, -1)
+            for x in param.placements:
+                self.assertEqual(x, dist.Replicate())
 
         # test shard buffers
         test_buffer = paddle.randn([10])
@@ -117,7 +133,7 @@ class TestShardLayer(unittest.TestCase):
         )
         self.assertTrue(sharded_buffers_layer.test_buffer.is_dist())
         self.assertEqual(
-            sharded_buffers_layer.test_buffer.dist_attr.dims_mapping, [-1]
+            sharded_buffers_layer.test_buffer.placements, [dist.Replicate()]
         )
 
     def test_process_mesh_argument_error(self):
@@ -136,10 +152,8 @@ class TestShardLayer(unittest.TestCase):
 
         exception = None
         try:
-            dist_attr = dist.DistAttr(
-                mesh=self.mesh, sharding_specs=[None, None]
-            )
-            dist.shard_layer(layer, dist_attr)
+            placements = [dist.Replicate()]
+            dist.shard_layer(layer, placements)
         except ValueError as ex:
             self.assertIn(
                 "The argument `process_mesh` is not `dist.ProcessMesh` type",
@@ -157,11 +171,85 @@ class TestShardLayer(unittest.TestCase):
             dist.shard_layer(layer, self.mesh)
         except NotImplementedError as ex:
             self.assertIn(
-                "`paddle.distributed.shard_layer` only supports dynamic graph mode now",
+                "`paddle.distributed.shard_layer` only supports dynamic graph mode.",
                 str(ex),
             )
             exception = ex
         self.assertIsNotNone(exception)
+        paddle.disable_static()
+
+    def create_data_loader(self):
+        batch_size = 4
+        hidden_size = self.num_features
+        images = np.random.rand(batch_size, hidden_size).astype('float32')
+        labels = np.random.rand(batch_size, hidden_size).astype('float32')
+        dataset = RandomDataset(images, labels, batch_size)
+        loader = paddle.io.DataLoader(dataset, batch_size=batch_size)
+        return loader
+
+    def test_shard_layer_to_static(self):
+        def input_fn(inputs, process_mesh):
+            return dist.shard_tensor(
+                inputs[0], process_mesh, [dist.Replicate()]
+            )
+
+        def output_fn(outputs, process_mesh):
+            return dist.shard_tensor(outputs, process_mesh, [dist.Shard(0)])
+
+        layer = MyLayer(self.num_features, self.num_layers)
+
+        sharded_layer = dist.shard_layer(
+            layer, self.mesh, shard_fn, input_fn=input_fn, output_fn=output_fn
+        )
+
+        loader = self.create_data_loader()
+
+        dist_model, dist_loader = dist.to_static(sharded_layer, loader)
+
+        serial_main_program = dist_model.serial_main_program()
+        for param in serial_main_program.all_parameters():
+            self.assertTrue(param.dist_attr.is_annotated("dims_mapping"))
+            self.assertEqual(param.dist_attr.dims_mapping, [-1, -1])
+
+        input_var = serial_main_program.global_block().var("input0")
+        output_var = serial_main_program.global_block().var(
+            "matmul_v2_19.tmp_0"
+        )
+        self.assertListEqual(input_var.dist_attr.dims_mapping, [-1, -1])
+        self.assertListEqual(output_var.dist_attr.dims_mapping, [0, -1])
+
+        paddle.disable_static()
+
+    def test_shard_layer_to_static_with_buffer(self):
+        layer = MyLayer(self.num_features, self.num_layers)
+        test_buffer0 = paddle.randn([3])
+        layer.register_buffer("test_buffer0", test_buffer0, persistable=True)
+        test_buffer1 = paddle.randn([10])
+        layer.register_buffer("test_buffer1", test_buffer1, persistable=True)
+        layer.test_buffer1 = dist.shard_tensor(
+            layer.test_buffer1, self.mesh, [dist.Shard(0)]
+        )
+        sharded_buffers_layer = dist.shard_layer(layer, self.mesh, shard_fn)
+
+        loader = self.create_data_loader()
+        dist_model, dist_loader = dist.to_static(sharded_buffers_layer, loader)
+
+        serial_main_program = dist_model.serial_main_program()
+        for param in serial_main_program.all_parameters():
+            self.assertTrue(param.dist_attr.is_annotated("dims_mapping"))
+            self.assertEqual(param.dist_attr.dims_mapping, [-1, -1])
+
+        buffer_vars = [
+            var
+            for var in serial_main_program.list_vars()
+            if var.name.startswith("generated")
+        ]
+        buffer0_var = buffer_vars[1]
+        buffer1_var = buffer_vars[0]
+        self.assertTrue(buffer0_var.dist_attr.is_annotated("dims_mapping"))
+        self.assertEqual(buffer0_var.dist_attr.dims_mapping, [-1])
+        self.assertTrue(buffer1_var.dist_attr.is_annotated("dims_mapping"))
+        self.assertEqual(buffer1_var.dist_attr.dims_mapping, [0])
 
 
 if __name__ == '__main__':

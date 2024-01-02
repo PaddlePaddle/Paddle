@@ -26,7 +26,12 @@ from paddle.base.framework import (
     in_pir_mode,
     static_only,
 )
-from paddle.base.libpaddle.pir import build_if_op, build_while_op, cf_yield
+from paddle.base.libpaddle.pir import (
+    build_assert_op,
+    build_if_op,
+    build_while_op,
+    cf_yield,
+)
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -104,6 +109,11 @@ def Assert(cond, data=None, summarize=20, name=None):
     check_type(summarize, "summarize", int, "static.nn.control_flow.Assert")
     check_type(name, "name", (str, type(None)), "static.nn.control_flow.Assert")
 
+    if in_pir_mode():
+        input_data = [] if data is None else list(data)
+        assert_op = build_assert_op(cond, input_data, summarize)
+        return
+
     layer_name = name if name else ('assert_' + cond.name)
     helper = LayerHelper(layer_name, **locals())
 
@@ -143,14 +153,21 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super().__init__(while_op.helper.main_program)
+        if not in_pir_mode():
+            super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
+        if in_pir_mode():
+            self.block = build_while_op(self.while_op.cond_var, []).body()
+            return self.block.__enter__()
         self.while_op.status = While.IN_WHILE_BLOCK
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if in_pir_mode():
+            cf_yield([self.while_op.cond_var])
+            return self.block.__exit__(exc_type, exc_val, exc_tb)
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
@@ -499,8 +516,7 @@ class While:
     AFTER_WHILE_BLOCK = 2
 
     def __init__(self, cond, is_test=False, name=None):
-        self.helper = LayerHelper("while", name=name)
-        self.status = While.BEFORE_WHILE_BLOCK
+        self.cond_var = cond
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
@@ -508,7 +524,10 @@ class While:
                     list(cond.shape)
                 )
             )
-        self.cond_var = cond
+        if in_pir_mode():
+            return
+        self.status = While.BEFORE_WHILE_BLOCK
+        self.helper = LayerHelper("while", name=name)
         self.is_test = is_test
 
     def block(self):
@@ -665,15 +684,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     pre_cond = cond(*loop_vars)
 
-    if in_pir_mode():
-        while_op = build_while_op(pre_cond, flatten(loop_vars))
-        with while_op.body() as cur_block:
-            args = cur_block.args()
-            next_var = body(*args)
-            next_cond = cond(*next_var)
-            cf_yield([next_cond, *next_var])
-        return while_op.as_operation().results()
-
     check_variable_and_dtype(
         pre_cond, 'var of cond returned', ['bool'], 'static.nn.while_loop'
     )
@@ -682,6 +692,27 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [1],"
             f"but given shape as {list(pre_cond.shape)}."
         )
+
+    if in_pir_mode():
+        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        with while_op.body() as cur_block:
+            args = pack_sequence_as(loop_vars, cur_block.args())
+            next_vars = body(*args)
+            try:
+                assert_same_structure(
+                    flatten(next_vars), flatten(loop_vars), check_types=False
+                )
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    f"(length and structure) as loop_vars: {e}"
+                )
+            if not isinstance(next_vars, (list, tuple)):
+                next_vars = [next_vars]
+            next_cond = cond(*next_vars)
+            next_cond.stop_gradient = True
+            cf_yield([next_cond, *flatten(next_vars)])
+        return pack_sequence_as(loop_vars, while_op.optimize_update())
 
     if in_dygraph_mode():
         now_cond = pre_cond.item()
@@ -1220,11 +1251,12 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     )
                 return false_fn()
         return None
-
+    true_output = None
+    false_output = None
     if in_pir_mode():
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
         if_op = build_if_op(pred)
-        true_output = None
-        false_output = None
         if true_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
@@ -1232,10 +1264,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         type(true_fn).__name__
                     )
                 )
-        with if_op.true_block():
-            true_output = true_fn()
-            if true_output is not None:
-                cf_yield(flatten(true_output))
+            with if_op.true_block():
+                true_output = true_fn()
         if false_fn is not None:
             if not callable(false_fn):
                 raise TypeError(
@@ -1243,53 +1273,43 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         type(false_fn).__name__
                     )
                 )
-        with if_op.false_block():
-            false_output = false_fn()
-            if false_output is not None:
-                cf_yield(flatten(false_output))
-
-        if true_output is None and false_output is None:
-            return None
-
-        if_op.update_output()
-        return if_op.results()
-
-    check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-    check_type(name, "name", (str, type(None)), "base.layers.cond")
-    helper = LayerHelper('cond', **locals())
-    true_output = None
-    false_output = None
-    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
-    if true_fn is not None:
-        if not callable(true_fn):
-            raise TypeError(
-                "The true_fn in cond must be callable, but received {}".format(
-                    type(true_fn).__name__
+            with if_op.false_block():
+                false_output = false_fn()
+    else:
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
+        helper = LayerHelper('cond', **locals())
+        copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
+        if true_fn is not None:
+            if not callable(true_fn):
+                raise TypeError(
+                    "The true_fn in cond must be callable, but received {}".format(
+                        type(true_fn).__name__
+                    )
                 )
+            true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
+            with true_cond_block.block():
+                origin_true_output = true_fn()
+                if origin_true_output is not None:
+                    true_output = map_structure(
+                        copy_to_parent_func, origin_true_output
+                    )
+        if false_fn is not None:
+            if not callable(false_fn):
+                raise TypeError(
+                    "The false_fn in cond must be callable, but received {}".format(
+                        type(false_fn).__name__
+                    )
+                )
+            false_cond_block = ConditionalBlock(
+                [paddle.logical_not(pred)], is_scalar_condition=True
             )
-        true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
-        with true_cond_block.block():
-            origin_true_output = true_fn()
-            if origin_true_output is not None:
-                true_output = map_structure(
-                    copy_to_parent_func, origin_true_output
-                )
-    if false_fn is not None:
-        if not callable(false_fn):
-            raise TypeError(
-                "The false_fn in cond must be callable, but received {}".format(
-                    type(false_fn).__name__
-                )
-            )
-        false_cond_block = ConditionalBlock(
-            [paddle.logical_not(pred)], is_scalar_condition=True
-        )
-        with false_cond_block.block():
-            origin_false_output = false_fn()
-            if origin_false_output is not None:
-                false_output = map_structure(
-                    copy_to_parent_func, origin_false_output
-                )
+            with false_cond_block.block():
+                origin_false_output = false_fn()
+                if origin_false_output is not None:
+                    false_output = map_structure(
+                        copy_to_parent_func, origin_false_output
+                    )
 
     if true_output is None and false_output is None:
         return None
@@ -1380,6 +1400,14 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output
         )
+
+    if in_pir_mode():
+        with if_op.true_block():
+            cf_yield(flatten(true_output))
+        with if_op.false_block():
+            cf_yield(flatten(false_output))
+        if_op.update_output()
+        return pack_sequence_as(true_output, flatten(if_op.results()))
 
     mask = paddle.cast(pred, dtype='int32')
     merge_func = (
@@ -1603,7 +1631,9 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.jit.dy2static.return_transformer import RETURN_VALUE_PREFIX
+    from paddle.jit.dy2static.transformers.return_transformer import (
+        RETURN_VALUE_PREFIX,
+    )
     from paddle.jit.dy2static.utils import UndefinedVar
 
     def pack_undefined_var_as(seq):
@@ -1849,5 +1879,4 @@ class Switch:
         self.inside_scope = False
         if exc_type is not None:
             return False  # re-raise exception
-
         return True

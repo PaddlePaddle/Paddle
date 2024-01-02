@@ -30,16 +30,17 @@ from ..utils import (
     compute_compatible_dim_mapping,
     get_dist_tensor_spec,
     is_prim_op,
-    set_dist_op_desc_original_id,
 )
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    copy_op_without_infer_shape,
     get_default_distributed_operator_impl,
     gradient_synchronization,
     is_parameter_related,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
     update_op_dims_mapping,
 )
 
@@ -113,12 +114,13 @@ class DistributedDefault(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
         input_arg_names = op_desc.input_arg_names()
         output_arg_names = op_desc.output_arg_names()
+        main_block = dist_op.serial_op.block
 
         num_inputs = len(input_arg_names)
         input_specs = []
         for i in range(num_inputs):
             assert not is_parameter_related(
-                input_arg_names[i]
+                input_arg_names[i], main_block
             ), "input {} of op {} is parameter, op should not use default rule.".format(
                 input_arg_names[i], str(dist_op.serial_op)
             )
@@ -129,7 +131,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         output_specs = []
         for i in range(num_outputs):
             assert not is_parameter_related(
-                output_arg_names[i]
+                output_arg_names[i], main_block
             ), "output {} of op {} is parameter, op should not use default rule.".format(
                 output_arg_names[i], str(dist_op.serial_op)
             )
@@ -530,15 +532,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             ), f"number of tensor for input [{output_name}] is not match"
 
         # replicate op in dist program
-        dist_op = main_block.append_op(type='nop')
-        dist_op_desc = dist_op.desc
-        dist_op_desc.copy_from(src_op.desc)
-        set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
-        for input_name in src_op.desc.input_names():
-            dist_op_desc.set_input(input_name, kwargs[input_name])
-        for output_name in src_op.desc.output_names():
-            dist_op_desc.set_output(output_name, kwargs[output_name])
-        # TODO: should we add a new dist attr for the new op here?
+        dst_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
         if (
             src_op.has_attr('shape')
@@ -558,7 +552,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         shape_list[idx] = (
                             shape_list[idx] // process_mesh_shape[axis]
                         )
-            dist_op_desc._set_attr('shape', shape_list)
+            dst_op.desc._set_attr('shape', shape_list)
 
         # data parallel synchronization for primtive operators
         from paddle.incubate.autograd import prim_enabled
@@ -572,7 +566,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         if src_op.type in __op_not_need_param_init__:
             return
 
-        for varname in dist_op_desc.input_arg_names():
+        for varname in dst_op.desc.input_arg_names():
             if (
                 startup_block.has_var(varname)
                 and startup_block.var(varname).is_parameter
@@ -614,15 +608,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
                         )
-
-                        # set distributed attribute
-                        op_attr = OperatorDistAttr()
-                        op_attr.process_mesh = process_mesh
-                        op_attr.set_output_dims_mapping(
-                            param.name, dims_mapping
+                        set_comm_op_dist_attr_for_program(
+                            new_op,
+                            process_mesh,
+                            param_dist_attr,
+                            ctx,
                         )
-                        op_attr.set_input_dims_mapping(param.name, dims_mapping)
-                        ctx.set_op_dist_attr_for_program(new_op, op_attr)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -649,14 +640,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             ), f"number of tensor for input [{output_name}] is not match"
 
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
-        dist_op_desc.copy_from(backward_op.desc)
-        # Refer to the related dist op
-        set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
-        for input_name in backward_op.desc.input_names():
-            dist_op_desc.set_input(input_name, kwargs[input_name])
-        for output_name in backward_op.desc.output_names():
-            dist_op_desc.set_output(output_name, kwargs[output_name])
+        copy_op_without_infer_shape(backward_op, main_block, ctx, kwargs)
 
         # data parallel gradient synchronization
         act_grad_names = []

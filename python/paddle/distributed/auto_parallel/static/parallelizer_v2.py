@@ -20,14 +20,17 @@ import time
 from paddle.distributed.passes import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
-from paddle.utils import unique_name
 
 from ...utils.log_utils import get_logger
 from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import get_pp_stage, is_sequential_run, use_new_executor
+from .utils import (
+    get_pp_stage,
+    is_sequential_run,
+    use_new_executor,
+)
 
 NEW_IR_PASS = [
     'fused_gemm_epilogue_pass',
@@ -239,8 +242,6 @@ class Parallelizer:
             )
         self._completer.complete_backward_annotation(main_program)
         self._dist_context.block_state.parse_backward_blocks(main_program)
-        # NOTE(zhaoyingli): temporary method: complete all vars' chunk_id attr of main_program
-        self._completer._complete_var_chunk_id(main_program)
         return params_grads
 
     def _generate_optimizer(
@@ -257,7 +258,7 @@ class Parallelizer:
         optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
-            with unique_name.guard("opt_"):
+            with main_program.switch_name_generator_guard("opt_"):
                 optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
@@ -411,8 +412,11 @@ class Parallelizer:
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
                 )
 
+            config = {
+                "dist_context": self._dist_context,
+            }
             allreduce_matmul_grad_overlapping_pass = new_pass(
-                "allreduce_matmul_grad_overlapping", {}
+                "allreduce_matmul_grad_overlapping", config
             )
             allreduce_matmul_grad_overlapping_pass.apply(
                 [main_program], [startup_program], self._pass_context
@@ -513,6 +517,6 @@ class Parallelizer:
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),
                 "pp_stage": get_pp_stage(self._dist_context, rank),
-                "vpp_degree": self._dist_context._num_model_chunks,
+                "vpp_degree": self._strategy.pipeline.vpp_degree,
                 "dist_context": self._dist_context,
             }

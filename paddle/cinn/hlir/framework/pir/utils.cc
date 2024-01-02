@@ -38,12 +38,9 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.full", "fill_constant"},
     {"pd_op.sum", "reduce_sum"},
     {"pd_op.max", "reduce_max"},
-    {"pd_op.mean", "reduce_mean"},
     {"pd_op.add", "elementwise_add"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
-    {"pd_op.remainder", "remainder"},
-    {"pd_op.floor_divide", "floor_divide"},
     {"pd_op.maximum", "max"},
     {"pd_op.minimum", "min"},
     {"pd_op.split_with_num", "split"},
@@ -167,11 +164,18 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
           vec_int64.push_back(
               vec_element.dyn_cast<::pir::Int64Attribute>().data());
         }
-
         dst_attr = vec_int64;
+      } else if (attr_vec[0].isa<::pir::BoolAttribute>()) {
+        std::vector<bool> vec_bool;
+        int index = 0;
+        for (auto vec_element : attr_vec) {
+          vec_bool.push_back(
+              vec_element.dyn_cast<::pir::BoolAttribute>().data());
+        }
+        dst_attr = vec_bool;
       } else {
         LOG(FATAL)
-            << "only suuport int32 and int64 attribute in ArrayAttribute";
+            << "only support bool/int32/int64 attribute in ArrayAttribute";
       }
     }
   } else {

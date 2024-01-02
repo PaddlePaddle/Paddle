@@ -12,26 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.base.framework import Program, program_guard
-
-sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils import compare_legacy_with_pt
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestApiWhileLoop(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_tuple(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -39,9 +37,9 @@ class TestApiWhileLoop(unittest.TestCase):
         def body(i):
             return paddle.add(x=i, y=one)
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             ten = paddle.tensor.fill_constant(
@@ -61,6 +59,7 @@ class TestApiWhileLoop(unittest.TestCase):
         )
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_list(self):
         def cond(i, mem):
             return paddle.less_than(i, ten)
@@ -70,9 +69,9 @@ class TestApiWhileLoop(unittest.TestCase):
             i = paddle.increment(i)
             return [i, mem]
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -98,6 +97,7 @@ class TestApiWhileLoop(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[1]), data, rtol=1e-05)
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
             return paddle.less_than(i, ten)
@@ -116,9 +116,9 @@ class TestApiWhileLoop(unittest.TestCase):
             i = paddle.increment(i)
             return [i, ten, test_dict, test_list, test_list_dict]
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -130,7 +130,7 @@ class TestApiWhileLoop(unittest.TestCase):
             test_dict = {"test_key": test_data}
             test_list = [
                 paddle.tensor.fill_constant(
-                    shape=[1, 2], dtype='int64', value=0
+                    shape=[2, 1], dtype='int64', value=0
                 )
             ]
             test_list_dict = [
@@ -182,6 +182,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
+    @test_with_pir_api
     @compare_legacy_with_pt
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
@@ -207,9 +208,9 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             i = paddle.increment(i)
             return [i, j, init, sums]
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             j = paddle.zeros(shape=[1], dtype='int64')
             init = paddle.static.data(
@@ -253,55 +254,65 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
-    # TODO(zhangbo): Support while grad exe for pir
     def test_while_loop_backward(self):
-        def cond(i, x):
-            return paddle.less_than(i, eleven)
+        with paddle.pir_utils.IrGuard():
 
-        def body(i, x):
-            x = paddle.multiply(x=i, y=i)
-            i = paddle.increment(i)
-            return [i, x]
+            def cond(i, x):
+                return paddle.less_than(i, eleven)
 
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
-            i = paddle.static.data(name='i', shape=[1], dtype='float32')
-            i.stop_gradient = False
-            eleven = paddle.tensor.fill_constant(
-                shape=[1], dtype='float32', value=11
+            def body(i, x):
+                x = paddle.multiply(x=i, y=i)
+                i = paddle.increment(i)
+                return [i, x]
+
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                i = paddle.static.data(name='i', shape=[1], dtype='float32')
+                i.stop_gradient = False
+                i.persistable = True
+                eleven = paddle.tensor.fill_constant(
+                    shape=[1], dtype='float32', value=11
+                )
+                one = paddle.tensor.fill_constant(
+                    shape=[1], dtype='float32', value=1
+                )
+                x = paddle.static.data(name='x', shape=[1], dtype='float32')
+                x.stop_gradient = False
+                x.persistable = True
+
+                out = paddle.static.nn.while_loop(cond, body, [i, x])
+                mean = paddle.mean(out[1])
+                grad_list = append_backward(mean)
+
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
             )
-            one = paddle.tensor.fill_constant(
-                shape=[1], dtype='float32', value=1
+            exe = base.Executor(place)
+
+            feed_i = np.ones(1).astype('float32')
+            feed_x = np.ones(1).astype('float32')
+            data = np.asarray([100]).astype('float32')
+            i_grad = np.asarray([0]).astype('float32')
+            x_grad = np.asarray([0]).astype('float32')
+
+            for p, g in grad_list:
+                if p.is_same(i):
+                    di = g
+                elif p.is_same(x):
+                    dx = g
+            res = exe.run(
+                main_program,
+                feed={'i': feed_i, 'x': feed_x},
+                fetch_list=[mean, di, dx],
             )
-            x = paddle.static.data(name='x', shape=[1], dtype='float32')
-            x.stop_gradient = False
+            np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
+            np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
+            np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
 
-            out = paddle.static.nn.while_loop(cond, body, [i, x])
-            mean = paddle.mean(out[1])
-            append_backward(mean)
-
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-        exe = base.Executor(place)
-
-        feed_i = np.ones(1).astype('float32')
-        feed_x = np.ones(1).astype('float32')
-        data = np.asarray([100]).astype('float32')
-        i_grad = np.asarray([110]).astype('float32')
-
-        res = exe.run(
-            main_program,
-            feed={'i': feed_i, 'x': feed_x},
-            fetch_list=[mean.name, i.grad_name],
-        )
-        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
-        np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
-
-    # TODO(zhangbo): Support while grad exe for pir
+    @test_with_pir_api
     def test_while_loop_backward2(self):
         def cond(i, x):
             return i < 3
@@ -311,17 +322,19 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             i = i + 1
             return [i, x]
 
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
+            i.persistable = True
             x = paddle.static.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
+            x.persistable = True
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
             mean = paddle.mean(out[1])
-            append_backward(mean)
+            grad_list = append_backward(mean)
 
         place = (
             base.CUDAPlace(0)
@@ -336,11 +349,23 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         i_grad = np.asarray([3]).astype('float32')
         x_grad = np.asarray([2]).astype('float32')
 
-        res = exe.run(
-            main_program,
-            feed={'i': feed_i, 'x': feed_x},
-            fetch_list=[mean.name, i.grad_name, x.grad_name],
-        )
+        if paddle.framework.in_pir_mode():
+            fetch_list = [out[1]]
+            for p, g in grad_list:
+                fetch_list.append(g)
+
+            res = exe.run(
+                main_program,
+                feed={'i': feed_i, 'x': feed_x},
+                fetch_list=fetch_list,
+            )
+        else:
+            res = exe.run(
+                main_program,
+                feed={'i': feed_i, 'x': feed_x},
+                fetch_list=[out[1].name, i.grad_name, x.grad_name],
+            )
+
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
@@ -348,6 +373,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
     # TODO(zhangbo): Support while grad exe for pir
+    # @test_with_pir_api
     def test_nested_net_with_backward_and_lodtensor(self):
         def external_cond(i, j, x, mem_array):
             return paddle.less_than(i, array_len)
@@ -376,20 +402,22 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             )
             return [i, j, x, mem_array]
 
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             d0 = paddle.static.data(name='d0', shape=[10], dtype='float32')
             d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
             d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
             x = paddle.static.data(name='x', shape=[10], dtype='float32')
             x.stop_gradient = False
+            x.persistable = True
             i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
             init = paddle.zeros(shape=[10], dtype='float32')
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
             mem_array.stop_gradient = False
+            mem_array.persistable = True
             i = paddle.increment(i)
             paddle.tensor.array_write(d1, i, array=data_array)
             i = paddle.increment(i)
@@ -409,10 +437,9 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 external_cond, external_body, [i, j, x, mem_array]
             )
 
-            sum_result = paddle.tensor.array_read(array=mem_array, i=j)
+            sum_result = paddle.tensor.array_read(array=out[3], i=j)
             mean = paddle.mean(sum_result)
-            append_backward(mean)
-
+            grad_list = append_backward(mean)
             place = (
                 base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -426,11 +453,21 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             feed_x = np.ones(10).astype('float32')
             data_sum = d[0] + d[1] + d[2] + 3 * feed_x
             x_grad = [0.3] * 10
-            res = exe.run(
-                main_program,
-                feed={'d0': d[0], 'd1': d[1], 'd2': d[2], 'x': feed_x},
-                fetch_list=[sum_result.name, x.grad_name],
-            )
+            if paddle.framework.in_pir_mode():
+                for p, g in grad_list:
+                    if p.is_same(x):
+                        dx = g
+                res = exe.run(
+                    main_program,
+                    feed={'d0': d[0], 'd1': d[1], 'd2': d[2], 'x': feed_x},
+                    fetch_list=[sum_result, dx],
+                )
+            else:
+                res = exe.run(
+                    main_program,
+                    feed={'d0': d[0], 'd1': d[1], 'd2': d[2], 'x': feed_x},
+                    fetch_list=[sum_result.name, x.grad_name],
+                )
             np.testing.assert_allclose(res[0], data_sum, rtol=1e-05)
             np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
 
@@ -460,9 +497,9 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
                 default=fn_add_one,
             )
 
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -487,7 +524,8 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
 
 class TestApiWhileLoop_Error(unittest.TestCase):
     @compare_legacy_with_pt
-    def test_error(self):
+    @test_with_pir_api
+    def test_error1(self):
         def cond_returns_constant(i):
             return 1
 
@@ -513,27 +551,9 @@ class TestApiWhileLoop_Error(unittest.TestCase):
         def body_returns_error_type(i, ten):
             return paddle.increment(i)
 
-        def cond_returns_with_mutable_dict(i, test_dict):
-            return i > 0
-
-        def body_returns_with_mutable_dict(i, test_dict):
-            test_dict['new_key'] = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=1
-            )
-            return paddle.increment(i), test_dict
-
-        def cond_returns_with_mutable_list(i, test_list):
-            return i > 0
-
-        def body_returns_with_mutable_list(i, test_list):
-            test_list.append(
-                paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
-            )
-            return paddle.increment(i), test_list
-
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             data = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=1
             )
@@ -620,7 +640,35 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
             self.assertRaises(ValueError, value_error_body_returns_error_type)
 
+    @compare_legacy_with_pt
+    def test_error2(self):
+        def cond_returns_with_mutable_dict(i, test_dict):
+            return i > 0
+
+        def body_returns_with_mutable_dict(i, test_dict):
+            test_dict['new_key'] = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+            return paddle.increment(i), test_dict
+
+        def cond_returns_with_mutable_list(i, test_list):
+            return i > 0
+
+        def body_returns_with_mutable_list(i, test_list):
+            test_list.append(
+                paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+            )
+            return paddle.increment(i), test_list
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            data = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+
             # The length of `output_vars` with mutable value should keep same with `loop_vars`
+            # TODO(zhangbo): slice error need to fix, loop_vars support list/dict
             def value_error_body_returns_with_mutable_dict():
                 test_dict = {
                     "int_constant": paddle.tensor.fill_constant(
@@ -637,6 +685,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
                 ValueError, value_error_body_returns_with_mutable_dict
             )
 
+            # TODO(zhangbo): loop_vars support list/dict
             def value_error_body_returns_with_mutable_list():
                 test_list = [
                     paddle.tensor.fill_constant(
@@ -655,7 +704,8 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
-    # @compare_legacy_with_pt
+    @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
@@ -665,9 +715,10 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
             i += 1
             return z, i
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = paddle.tensor.fill_constant([], 'int32', 0)
             x_shape = paddle.shape(x)

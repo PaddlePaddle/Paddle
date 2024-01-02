@@ -20,9 +20,10 @@ gather_srcs(
   cas.cc
   union_find.cc
   python_interpreter_guard.cc
-  nvgpu_dev_info.cc)
-
-message(STATUS "srcs: ${cinnapi_src}")
+  nvgpu_dev_info.cc
+  integer_set.cc
+  dim_expr_simplify.cc
+  dim_expr_converter.cc)
 
 cinn_cc_test(test_equation_graph_topo_walker SRCS
              equation_graph_topo_walker_test.cc DEPS gtest glog)
@@ -38,10 +39,17 @@ cinn_cc_test(test_arithmatic SRCS arithmatic_test.cc DEPS cinncore)
 cinn_cc_test(test_cas SRCS cas_test.cc DEPS cinncore)
 cinn_cc_test(test_type SRCS type_test.cc DEPS cinncore)
 cinn_cc_test(test_axis SRCS axis_test.cc DEPS cinncore)
+cinn_cc_test(test_integer_set SRCS integer_set_test.cc DEPS cinncore)
 
 cinn_cc_test(test_fp16_bf16_host SRCS float16_bfloat16_host_test.cc DEPS gtest
              glog)
 if(WITH_CUDA)
   cinn_nv_test(test_fp16_bf16_cuda SRCS float16_bfloat16_cuda_test.cu DEPS
                gtest glog)
+endif()
+if(NOT CINN_ONLY)
+  cinn_cc_test(dim_expr_simplify_test SRCS dim_expr_simplify_test.cc DEPS
+               cinncore)
+  cinn_cc_test(dim_expr_converter_test SRCS dim_expr_converter_test.cc DEPS
+               cinncore)
 endif()

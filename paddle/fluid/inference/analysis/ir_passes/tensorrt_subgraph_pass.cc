@@ -129,6 +129,15 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
+  VLOG(3) << "Running tensorrt_subgraph_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running tensorrt_subgraph_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running tensorrt_subgraph_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {
@@ -184,6 +193,12 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
   std::vector<std::string> engine_names;
   for (auto *node : graph->Nodes()) {
+    // load optimized model may update shape_range_info_path
+    auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
+    if (node->IsOp() && node->Op()->Type() == "tensorrt_engine" &&
+        !shape_range_info_path.empty()) {
+      node->Op()->SetAttr("shape_range_info_path", shape_range_info_path);
+    }
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       engine_names.push_back(CreateTensorRTOp(
           node, graph, graph_param_names, &repetitive_params, use_cuda_graph));

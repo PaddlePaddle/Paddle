@@ -19,8 +19,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph program_utils scale_loss_grad_op_handle
-       grad_merge_all_reduce_op_handle collective_helper)
+  DEPS graph program_utils collective_helper) #
 cc_library(
   pass
   SRCS pass.cc
@@ -167,6 +166,7 @@ if(WITH_TENSORRT)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(split_layernorm_to_math_ops_pass inference)
   pass_library(trt_remove_amp_strategy_op_pass inference)
+  pass_library(set_subgraph_edge_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -270,6 +270,8 @@ if(WITH_XPU)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape_unstack_concat_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(qk_qkv_attention_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_adaptive_seqlen_fuse_pass inference DIR xpu
@@ -350,6 +352,17 @@ cc_library(
   fused_feedforward_pass
   SRCS fused_feedforward_pass.cc
   DEPS pass graph_pattern_detector)
+
+if(WITH_CUDNN_FRONTEND)
+  cc_library(
+    fuse_dot_product_attention_pass
+    SRCS fuse_dot_product_attention_pass.cc
+    DEPS pass graph_pattern_detector)
+  cc_library(
+    fuse_resunit_pass
+    SRCS fuse_resunit_pass.cc
+    DEPS pass graph_pattern_detector)
+endif()
 
 set(GLOB_PASS_LIB
     ${INFER_IR_PASSES}

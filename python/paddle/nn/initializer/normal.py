@@ -56,6 +56,9 @@ class NormalInitializer(Initializer):
         Returns:
             The initialization op.
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, normal initializer not support lazy init for dist param."
         block = self._check_block(block)
 
         assert isinstance(block, (framework.Block, pir.Block))
@@ -103,7 +106,6 @@ class NormalInitializer(Initializer):
                     "mean": self._mean,
                     "std": self._std_dev,
                     "seed": self._seed,
-                    "use_mkldnn": False,
                 },
                 stop_gradient=True,
             )

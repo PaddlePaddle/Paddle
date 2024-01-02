@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -173,10 +173,17 @@ class WhileOp : public framework::OperatorBase {
       framework::Scope placeholder;  // Don't care if it's valid, just for
                                      // initialize InterpreterCore
       framework::interpreter::ExecutionConfig execution_config;
+      if (HasAttr("used_for_inference") && Attr<bool>("used_for_inference")) {
+        execution_config.used_for_inference = true;
+      }
       execution_config.create_local_scope = false;
       execution_config.used_for_control_flow_op = true;
       execution_config.skip_gc_vars =
           std::set<std::string>(skip_vars.begin(), skip_vars.end());
+// add for performance in gpugraph transformer mode
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+      execution_config.used_for_inference = true;
+#endif
 
       core_.reset(new framework::InterpreterCore(
           dev_place, *block, &placeholder, execution_config));

@@ -26,7 +26,7 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/infer_symbolic_shape_pass.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
@@ -73,8 +73,7 @@ TEST(MapExpr, ElementWise_Fusion_0) {
       value1, builder.Build<paddle::dialect::ExpOp>(value2).result(0));
 
   ::pir::PassManager pass_manager(ctx);
-  auto shape_analysis =
-      std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx);
+  auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx);
   pass_manager.AddPass(::pir::CreateInferSymbolicShapePass(shape_analysis));
   pass_manager.Run(&program);
 

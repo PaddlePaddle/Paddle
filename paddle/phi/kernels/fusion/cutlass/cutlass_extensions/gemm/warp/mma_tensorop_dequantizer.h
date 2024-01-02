@@ -173,13 +173,23 @@ class MmaTensorOpDequantizer<
     for (int mma_n_iter = 0; mma_n_iter < MmaOperator::MmaIterations::kColumn;
          ++mma_n_iter) {
       static_assert(ExpandedMmaOperandB::kElements % 2 == 0, "");
-
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
+      __nv_bfloat162 scalex2;
+      scalex2.x = scale_ptr[mma_n_iter];
+      scalex2.y = scale_ptr[mma_n_iter];
+#else
       __nv_bfloat162 scalex2 = __bfloat162bfloat162(scale_ptr[mma_n_iter]);
+#endif
       __nv_bfloat162* operand_bf16x2_ptr =
           reinterpret_cast<__nv_bfloat162*>(&operand_frag_ptr[mma_n_iter]);
       CUTLASS_PRAGMA_UNROLL
       for (int ii = 0; ii < ExpandedMmaOperandB::kElements / 2; ++ii) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
+        operand_bf16x2_ptr[ii].x = operand_bf16x2_ptr[ii].x * scalex2.x;
+        operand_bf16x2_ptr[ii].y = operand_bf16x2_ptr[ii].y * scalex2.y;
+#else
         operand_bf16x2_ptr[ii] = __hmul2(operand_bf16x2_ptr[ii], scalex2);
+#endif
       }
     }
   }
