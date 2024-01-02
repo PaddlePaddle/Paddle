@@ -80,7 +80,7 @@ class MLPLayer(paddle.nn.Layer):
 
 
 def loss_func(pred, label):
-    error_cost = paddle.paddle.nn.functional.square_error_cost(pred, label)
+    error_cost = paddle.nn.functional.square_error_cost(pred, label)
     error_cost = error_cost[error_cost > 0].astype("float32")
     loss = paddle.mean(error_cost)
     return loss

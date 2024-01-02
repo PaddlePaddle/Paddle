@@ -329,10 +329,15 @@ class SliceArrayDenseOp
  public:
   using Op::Op;
   static const char *name() { return "pd_op.slice_array_dense"; }
-  static const char *attributes_name[1];
-  static constexpr uint32_t attributes_num = 1;
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
   void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    pir::Value starts);
 
   static phi::DataType GetKernelTypeForVar(
       const std::string &var_name,
