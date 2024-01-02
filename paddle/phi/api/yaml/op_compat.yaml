@@ -2441,6 +2441,15 @@
   outputs :
     out : Out
 
+- op : pull_sparse_v2
+  backward : pull_sparse_v2_grad
+  inputs :
+    { x : Ids, W : w}
+  outputs :
+    out : Out
+  extra :
+    attrs : [int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true]
+
 - op : put_along_axis
   backward : put_along_axis_grad
   inputs :
