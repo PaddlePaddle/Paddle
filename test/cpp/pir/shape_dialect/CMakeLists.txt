@@ -12,7 +12,6 @@ if(WITH_CINN)
     DEPS
     gtest
     op_dialect_vjp
-    pir
     pir_transforms)
   set_tests_properties(
     shape_optimization_test PROPERTIES ENVIRONMENT
