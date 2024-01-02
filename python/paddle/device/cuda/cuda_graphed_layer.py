@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import deque
 from enum import Enum
 
@@ -116,7 +117,7 @@ class CUDAGraphWithStaticInputOutput:
         return self.output_static
 
     def save(self, name):
-        print(f"save graph to {name}")
+        logging.info(f"save graph to {name}")
         self.graph.print_to_dot_files(name)
 
 
@@ -211,8 +212,8 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
     A custom layer that integrates CUDA Graph recording and execution into PaddlePaddle's autograd system.
     It handles forward and backward operations differently based on the CUDA graph layer status.
 
-    Input of the Layer: paddle.Tensor or List/Tuple of paddle.Tensor 
-    Output of the Layer: paddle.Tensor or List/Tuple of paddle.Tensor 
+    Input of the Layer: paddle.Tensor or List/Tuple of paddle.Tensor
+    Output of the Layer: paddle.Tensor or List/Tuple of paddle.Tensor
 
     """
 
@@ -233,7 +234,9 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
 
         elif context.is_record_step():
             # In record step, record the forward pass in CUDA graph
-            print(f"{id(context)} FW (cudagraph-record)".center(100, "-"))
+            logging.info(
+                f"{id(context)} FW (cudagraph-record)".center(100, "-")
+            )
             context.append_graph()
             g = context.current_forward_graph()
 
@@ -246,7 +249,6 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
 
         else:
             # In CUDA graph step, replay the recorded graph
-            # print(f"{id(context)} FW (cudagraph)".center(100, "-"))
             g = context.current_forward_graph()
             y = g.replay(*args, **kwargs)
             context.queue_push(
@@ -286,7 +288,9 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             y.backward(dy)
         elif context.is_record_step():
             # In record step, record the backward pass in CUDA graph
-            print(f"{id(context)} BW (cudagraph-record)".center(100, "-"))
+            logging.info(
+                f"{id(context)} BW (cudagraph-record)".center(100, "-")
+            )
 
             def backward(y, dy):
                 y.backward(dy)
@@ -294,7 +298,6 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             g.record(backward, y, dy)
         else:
             # In CUDA graph step, replay the recorded graph for backward pass
-            # print(f"{id(context)} BW (cudagraph)".center(100, "-"))
             g.replay(y, dy)
 
         args_grad = tuple(get_grad(x) for x in args)
@@ -350,16 +353,6 @@ class CUDAGraphedLayer(paddle.nn.Layer):
         self.context = CUDAGraphContext(layer, num_warmup_steps)
         self.add_sublayer(f"Graphed {type(layer).__name__}", layer)
 
-        # self.layers = layer.layers
-
-        # Delegator: bind special methods of `layer` to `CUDAGraphedLayer`
-        # The special method should be binded to Type instead of self
-        # my_methods = dir(self)
-        # is_special = lambda name: name.startswith("__") and name.endswith("__")
-        # for name in dir(layer):
-        #     if is_special(name) and (name not in my_methods):
-        #         setattr(CUDAGraphedLayer, name, getattr(layer, name))
-
     def forward(self, *args, **kwargs):
         return _CUDAGraphedLayer.apply(self.context, *args, **kwargs)
 
@@ -371,7 +364,3 @@ class CUDAGraphedLayer(paddle.nn.Layer):
 
     def is_cuda_graph_step(self):
         return self.context.is_cuda_graph_step()
-
-    # def __getattr__(self, attr):
-    # """Delegate attribute access to the inner object."""
-    # return getattr(self.context.layer, attr)

@@ -51,7 +51,6 @@ PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PHI_DECLARE_bool(enable_cublas_tensor_op_math);
 PHI_DECLARE_uint64(gpu_memory_limit_mb);
-PHI_DECLARE_uint64(cuda_memory_async_pool_realease_threshold);
 
 PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
                          false,
@@ -61,6 +60,10 @@ PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
                             true,
                             "Whether to print the message of gpu memory usage "
                             "MB as a unit of measurement.");
+PADDLE_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
+                              ULLONG_MAX,
+                              "Amount of reserved memory in bytes to hold onto "
+                              "before trying to release memory back to the OS");
 
 namespace paddle {
 namespace platform {
@@ -262,7 +265,7 @@ class RecordedGpuMallocHelper {
     std::call_once(set_cudamempoolattr_once_flag_, [&]() {
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaDeviceGetDefaultMemPool(&memPool_, dev_id_));
-      uint64_t thresholdVal = ULLONG_MAX;
+      uint64_t thresholdVal = FLAGS_cuda_memory_async_pool_realease_threshold;
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemPoolSetAttribute(memPool_,
                                   cudaMemPoolAttrReleaseThreshold,

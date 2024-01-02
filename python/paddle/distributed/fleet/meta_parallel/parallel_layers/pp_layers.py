@@ -238,13 +238,9 @@ class PipelineSublayers(nn.Layer):
     def __init__(self, run_function):
         super().__init__()
         self.run_function = run_function
-        print("PipelineSublayers".center(50, "-"))
         for sublayer in self.run_function:
-            print("PipelineSublayers Layer", sublayer)
             if isinstance(sublayer, nn.Layer):
                 self.add_sublayer(str(len(self.run_function)), sublayer)
-
-        print("".center(50, "-"))
 
     def forward(self, x):
         for layer in self.run_function:
@@ -263,6 +259,7 @@ class PipelineLayer(nn.Layer):
         recompute_interval(int, optional): the number of layers to be used recompute, the value of 0 represents no recompute. default 0.
         recompute_ctx(dict,optional): the context of recompute, when 'recompute_interval' > 0, the context must be given.
         num_virtual_pipeline_stages(int, optional): the num of virtual pipeline stages for interleave pp.
+        use_cudagraph(bool, optional): enable CUDAGraphedLayer in pp layers.
     Examples:
         .. code-block:: python
 
@@ -701,7 +698,7 @@ class PipelineLayer(nn.Layer):
 
         def flush_into_run_function():
             if len(self.groupable_layers) > 0:
-                print(
+                logger.info(
                     f"flush {len(self.groupable_layers)} of layers into run_function"
                 )
                 pipeline_sublayer = PipelineSublayers(

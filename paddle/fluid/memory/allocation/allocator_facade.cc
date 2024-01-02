@@ -1761,8 +1761,6 @@ phi::stream::stream_t AllocatorFacade::GetStream(
 
 void AllocatorFacade::SetDefaultStream(const platform::CustomPlace& place,
                                        phi::stream::stream_t stream) {
-  VLOG(8) << "Set default stream to " << stream << " for AllocatorFacade in "
-          << place;
   if (m_->IsStreamSafeCUDAAllocatorUsed()) {
     m_->SetDefaultStream(place, stream);
   }
