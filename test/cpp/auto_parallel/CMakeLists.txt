@@ -58,6 +58,16 @@ if(WITH_DISTRIBUTE)
     spmd_rule_test_util
     spmd_rules
     phi)
+
+  paddle_test(
+    cutom_op_spmd_rule_test
+    SRCS
+    cutom_op_spmd_rule_test.cc
+    DEPS
+    spmd_rule_test_util
+    spmd_rules
+    phi)
+
 endif()
 
 cc_test(
