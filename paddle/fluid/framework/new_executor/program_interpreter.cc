@@ -169,7 +169,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (FLAGS_inference_switch_stream) {
       BuildOpFuncNode(&op_func_nodes);
-      FLAGS_inference_switch_stream = false;
     }
 #endif
     RunImpl();

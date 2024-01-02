@@ -1311,7 +1311,6 @@ paddle::framework::FetchList PirInterpreter::Run(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (FLAGS_inference_switch_stream) {
         BuildInstruction();
-        FLAGS_inference_switch_stream = false;
       }
 #endif
       LOG_FIRST_N(INFO, 1)

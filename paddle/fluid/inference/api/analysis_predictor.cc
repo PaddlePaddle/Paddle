@@ -2390,8 +2390,9 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
     pool.SyncDeviceContext(place_);
     FLAGS_inference_switch_stream = true;
   }
-
-  return ZeroCopyRun();
+  auto run_ret = ZeroCopyRun();
+  FLAGS_inference_switch_stream = false;
+  return run_ret;
 }
 #endif
 
