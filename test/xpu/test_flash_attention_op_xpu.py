@@ -77,11 +77,11 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.return_softmax = False
 
     def test_all(self):
-        self.run_case(dtype="float32", rtol=5e-4, atol=5e-4)
-        self.run_case(dtype="float16", rtol=1e-3, atol=1e-3)
-        self.run_case(dtype="bfloat16", rtol=1e-2, atol=1e-2)
+        self.run_case(dtype="float32", tolerance=5e-4, tolerance_dv=5e-4)
+        self.run_case(dtype="float16", tolerance=5e-4, tolerance_dv=1e-3)
+        self.run_case(dtype="bfloat16", tolerance=5e-3, tolerance_dv=1e-2)
 
-    def run_case(self, dtype, rtol, atol):
+    def run_case(self, dtype, tolerance, tolerance_dv):
         # TODO(houj04) remove debug codes after correctness check
         print(f"Test case shape {self.shape} dtype {dtype}")
 
@@ -126,7 +126,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
         float_out = paddle.cast(out, "float32")
         float_out_ = paddle.cast(out_, "float32")
 
-        np.testing.assert_allclose(float_out, float_out_, rtol=rtol, atol=atol)
+        np.testing.assert_allclose(
+            float_out, float_out_, rtol=tolerance, atol=tolerance
+        )
         # TODO(houj04) remove debug codes after correctness check
         max_diff_forward = np.max(
             np.abs(float_out.numpy() - float_out_.numpy())
@@ -182,14 +184,24 @@ class TestFlashAttentionAPI(unittest.TestCase):
         print("mean_diff_v_grad:", mean_diff_v_grad)
 
         np.testing.assert_allclose(
-            float_q_grad, float_q_grad_, rtol=rtol, atol=atol
+            float_q_grad, float_q_grad_, rtol=tolerance, atol=tolerance
         )
         np.testing.assert_allclose(
-            float_k_grad, float_k_grad_, rtol=rtol, atol=atol
+            float_k_grad, float_k_grad_, rtol=tolerance, atol=tolerance
         )
         np.testing.assert_allclose(
-            float_v_grad, float_v_grad_, rtol=rtol, atol=atol
+            float_v_grad, float_v_grad_, rtol=tolerance_dv, atol=tolerance_dv
         )
+
+
+# TODO(houj04) un-comment following DEBUG cases after correctness check
+# class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
+#    def setUp(self):
+#        self.place = paddle.XPUPlace(0)
+#        self.shape = (2, 128, 1, 32)
+#        self.dropout = 0.0
+#        self.causal = True
+#        self.return_softmax = False
 
 
 # TODO(houj04) un-comment following REAL cases after correctness check
