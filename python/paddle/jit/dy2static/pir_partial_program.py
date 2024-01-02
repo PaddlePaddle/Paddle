@@ -280,11 +280,12 @@ class RunableProgram:
         def pass_fn(forward_program, backward_program):
             return forward_program, backward_program
         """
-        program_name_attr = self.program_name_attr
         origin_fwd = self.forward_program
         origin_bwd = self.backward_program
+        # NOTE(dev): Add this line to trigger program_name_attr logic
+        program_name_attr = self.program_name_attr
         self.forward_program, self.backward_program = pass_fn(
-            self.forward_program, self.backward_program, program_name_attr
+            origin_fwd, origin_bwd
         )
 
     # cached property can ensure program is splited only once.
@@ -380,55 +381,6 @@ class RunableProgram:
     @cached_property
     def backward_program(self):
         return self._forward_backward_program[0][1]
-
-
-class PirPassContext:
-    """
-    PirPassContext is a class that only has staticmethod currently.
-    It will create a new RunableProgram after calling apply method.
-    """
-
-    INPUT_OP_NAME = "pd_op.data"
-    PARAM_OP_NAME = "builtin.parameter"
-    OUTPUT_OP_NAME = "builtin.shadow_output"
-
-    @classmethod
-    def apply(cls, runable_program, build_strategy):
-        # TODO(Aurelius84): Currently only support infer mode,
-        # and we just use forward_program because backward_program
-        # is empty.
-        if not build_strategy.build_cinn_pass:
-            return runable_program
-        elif not paddle.is_compiled_with_cinn():
-            raise RuntimeError(
-                "Please install PaddlePaddle compiled with CINN while setting build_strategy.build_cinn_pass = True."
-            )
-        fwd_program, _ = paddle.base.libpaddle.pir.clone_program(
-            runable_program.forward_program
-        )
-        paddle.base.libpaddle.pir.apply_pir_pass(fwd_program)
-        in_out_values = cls._prepare_attr(fwd_program)
-        return RunableProgram(fwd_program, in_out_values)
-
-    @classmethod
-    def _prepare_attr(cls, program):
-        """
-        After applying Pass, we need to update the Input/Parameter/Output Value
-        that refer to the new program.
-
-        NOTE: We assume that Inputs come from INPUT_OP, Params come from
-              PARM_OP and Output come from OUTPUT_OP.
-        """
-        inputs, params, outputs = [], [], []
-        for op in program.global_block().ops:
-            op_name = op.name()
-            if op_name == cls.INPUT_OP_NAME:
-                inputs.append(op.result(0))
-            elif op_name == cls.PARAM_OP_NAME:
-                params.append(op.result(0))
-            elif op_name == cls.OUTPUT_OP_NAME:
-                outputs.append(op.operand(0).source())
-        return inputs, params, outputs
 
 
 class PartialProgramLayerHook:
@@ -596,13 +548,19 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
+
+            def pass_fn(forward_program, backward_program):
+                pm = paddle.base.libpaddle.pir.PassManager()
+                if self._build_strategy.build_cinn_pass:
+                    paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
+                    pm.run(forward_program)
+                return forward_program, backward_program
+
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
             if self._hooker:
                 self._hooker.after_infer(infer_program)
-            infer_program = PirPassContext.apply(
-                infer_program, self._build_strategy
-            )
+            infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:
             train_program: RunableProgram = self.origin_runable_program.clone()
@@ -610,23 +568,20 @@ class PartialProgramLayer:
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
 
-            # (NOTE:@xiongkun) HOW TO APPLY PASS: this is a example for forward/backward clone pass, just replace with your cases.
-            def pass_fn(forward_program, backward_program, name_attr):
-                fwd, _ = paddle.base.libpaddle.pir.clone_program(
-                    forward_program
-                )
+            def pass_fn(forward_program, backward_program):
+                fwd_pm = paddle.base.libpaddle.pir.PassManager()
+                bwd_pm = paddle.base.libpaddle.pir.PassManager()
 
                 if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.apply_pir_pass(fwd)
-
-                bwd, _ = paddle.base.libpaddle.pir.clone_program(
-                    backward_program
-                )
-
-                if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.apply_pir_pass(bwd)
-
-                return fwd, bwd
+                    paddle.base.libpaddle.pir.add_cinn_pass(
+                        fwd_pm, forward_program
+                    )
+                    paddle.base.libpaddle.pir.add_cinn_pass(
+                        bwd_pm, backward_program
+                    )
+                    fwd_pm.run(forward_program)
+                    bwd_pm.run(backward_program)
+                return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
             return train_program
@@ -748,7 +703,7 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for idx, op in finded_ops:
+            for _, op in finded_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
