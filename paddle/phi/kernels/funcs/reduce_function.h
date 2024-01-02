@@ -711,6 +711,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
   auto block = ReduceIndexMapping<false>(dim);
+  
   int idy = block.BlockIdY() * blocking_size;
   int idx = block.BlockIdX() * block.BlockDimX();
   int idz = BLOCK_ID_Z * left_num;
