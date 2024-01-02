@@ -569,6 +569,11 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   return *this;
 }
 
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
+  info_ptr_->SetInferSpmdFn(std::forward<InferSpmdFunc>(func));
+  return *this;
+}
+
 #ifdef PADDLE_WITH_TENSORRT
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtInferShapeFn(
     TrtGetOutputDimsFunc func) {

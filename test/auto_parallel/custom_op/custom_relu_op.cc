@@ -96,6 +96,13 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
   }
 }
 
+phi::distributed::SpmdInfo ReluGradInferSpmd(
+    const phi::distributed::DistMetaTensor& x,
+    const phi::distributed::DistMetaTensor& out,
+    const phi::distributed::DistMetaTensor& out_grad) {
+  return phi::distributed::ElementwiseUnaryGradInferSpmd(x, out, out_grad);
+}
+
 PD_BUILD_OP(custom_relu)
     .Inputs({"X"})
     .Outputs({"Out"})
@@ -107,8 +114,7 @@ PD_BUILD_GRAD_OP(custom_relu)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ReluBackward))
-    .SetInferSpmdFn(
-        PD_INFER_SPMD_RULE(phi::distributed::ElementwiseUnaryGradInferSpmd));
+    .SetInferSpmdFn(PD_INFER_SPMD_RULE(ReluGradInferSpmd));
 
 PD_REGISTER_SPMD_RULE(
     custom_relu,

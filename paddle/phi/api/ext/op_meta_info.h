@@ -1118,6 +1118,7 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
   OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);
   OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
+  OpMetaInfoBuilder& SetInferSpmdFn(InferSpmdFunc func);
 
 #ifdef PADDLE_WITH_TENSORRT
   OpMetaInfoBuilder& SetTrtInferShapeFn(TrtGetOutputDimsFunc func);
