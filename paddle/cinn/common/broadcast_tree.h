@@ -20,20 +20,10 @@
 namespace cinn::common {
 
 template <typename T>
-struct BroadcastBranchNode {
-  symbol::Broadcastable<symbol::DimExpr> broadcastable_condition;
-  T cstr_lhs_eq_rhs_branch;
-  T cstr_lhs_eq_one_branch;
-  T cstr_rhs_eq_one_branch;
-};
-
-template <typename T>
-struct BroadcastBranch {
-  explicit BroadcastBranch(const BroadcastBranchNode<T>& node)
-      : data(std::make_unique<BroadcastBranchNode<T>>(node)) {}
-
-  std::shared_ptr<BroadcastBranchNode<T>> data;
-};
+using BroadcastBranch = adt::Tuple<symbol::Broadcastable<symbol::DimExpr>,
+                                   /*cstr_lhs_eq_rhs_branch*/ T,
+                                   /*cstr_lhs_eq_one_branch*/ T,
+                                   /*cstr_rhs_eq_one_branch*/ T>;
 
 using BroadcastLeaf = adt::List<std::vector<symbol::DimExpr>>;
 
