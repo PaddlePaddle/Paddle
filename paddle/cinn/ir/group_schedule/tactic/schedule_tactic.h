@@ -57,6 +57,8 @@ class ScheduleTactic {
   virtual void Init(ScheduleContext* context) = 0;
 
   virtual void Apply(ir::IRSchedule* sch, const std::string& block_id) = 0;
+
+  virtual std::string TacticName() const = 0;
 };
 
 }  // namespace ir

@@ -49,12 +49,22 @@ void DynamicShapeGroupScheduler::Schedule() {
 void DynamicShapeGroupScheduler::ApplyTactics() {
   schedule_block_graph_->Update(*ir_sch_);
   for (const auto& tactic : tactics_) {
+    VLOG(5) << "[Start " << tactic->TacticName() << "] func body:\n"
+            << ir_sch_->GetModule().GetExprs().front();
     auto ApplyTacticFunc = [&](ir::ScheduleBlockNode* node) {
+      VLOG(6) << "before applying [" << tactic->TacticName()
+              << "] on ScheduleBlockNode [" << node->id() << "] func body:\n"
+              << ir_sch_->GetModule().GetExprs().front();
       tactic->Init(&schedule_context_);
       tactic->Apply(ir_sch_, node->id());
+      VLOG(6) << "after applying [" << tactic->TacticName()
+              << "] on ScheduleBlockNode [" << node->id() << "] func body:\n"
+              << ir_sch_->GetModule().GetExprs().front();
     };
     schedule_block_graph_->DFSTopoWalk(ApplyTacticFunc);
     schedule_block_graph_->Update(*ir_sch_);
+    VLOG(5) << "[End " << tactic->TacticName()
+            << "] func body: " << ir_sch_->GetModule().GetExprs().front();
   }
 }
 

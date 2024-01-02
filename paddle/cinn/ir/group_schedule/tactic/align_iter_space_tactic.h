@@ -27,6 +27,8 @@ class AlignIterSpaceTactic final : public ScheduleTactic {
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
 
+  std::string TacticName() const override { return "AlignIterSpaceTactic"; }
+
  private:
   ScheduleContext* context_;
 };
