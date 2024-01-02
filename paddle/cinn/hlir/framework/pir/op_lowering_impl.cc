@@ -477,22 +477,22 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
     ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int32_t**>());
 
-    if (group_func_args[tensor_arg_idx].is_output()) {
-      for (int i = 0; i < tensor_shape.size(); i++) {
-        ir::Expr call_set_infer_shape_value =
-            ir::Call::Make(type_of<void>(),
-                           runtime::intrinsic::set_value,
-                           {tensor_shape_args,
-                            ir::Expr(tensor_arg_idx),
-                            ir::Expr(i),
-                            tensor_shape[i]},
-                           {},
-                           ir::CallType::Extern,
-                           ir::FunctionRef(),
-                           0);
-        ir_bodys.push_back(call_set_infer_shape_value);
-      }
+    // if (group_func_args[tensor_arg_idx].is_output()) {
+    for (int i = 0; i < tensor_shape.size(); i++) {
+      ir::Expr call_set_infer_shape_value =
+          ir::Call::Make(type_of<void>(),
+                         runtime::intrinsic::set_value,
+                         {tensor_shape_args,
+                          ir::Expr(tensor_arg_idx),
+                          ir::Expr(i),
+                          tensor_shape[i]},
+                         {},
+                         ir::CallType::Extern,
+                         ir::FunctionRef(),
+                         0);
+      ir_bodys.push_back(call_set_infer_shape_value);
     }
+    // }
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
       if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
