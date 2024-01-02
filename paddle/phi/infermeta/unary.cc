@@ -3687,7 +3687,8 @@ void SliceArrayDenseInferMeta(const MetaTensor& input,
   if (config.is_runtime) {
     return;
   }
-  out->set_dims(input.dims());
+  // out->set_dims(input.dims());
+  out->set_dtype(input.dtype());
 }
 
 void SliceRawInferMeta(const MetaTensor& input,
