@@ -1407,7 +1407,6 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (FLAGS_inference_switch_stream) {
       BuildInstruction();
-      FLAGS_inference_switch_stream = false;
     }
 #endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
