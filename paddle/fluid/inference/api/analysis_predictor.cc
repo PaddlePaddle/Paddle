@@ -682,18 +682,14 @@ bool AnalysisPredictor::PrepareProgram(
     const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
     if (!LoadProgramDesc()) return false;
-      // If not cloned, the parameters should be loaded.
-      // If config_.ir_optim() is True, parameters is loaded in
-      // OptimizeInferenceProgram(), but other persistable variables
-      // (like RAW type var) are not created in scope.
-      // If config_.ir_optim() is False, parameters is loaded in
-      // LoadParameters(), still need to create other persistable variables. So
-      // in both case, create persistable variables at first.
-#ifdef PADDLE_WITH_DNNL
-    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_, true);
-#else
+    // If not cloned, the parameters should be loaded.
+    // If config_.ir_optim() is True, parameters is loaded in
+    // OptimizeInferenceProgram(), but other persistable variables
+    // (like RAW type var) are not created in scope.
+    // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
+    // still need to create other persistable variables.
+    // So in both case, create persistable variables at first.
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
-#endif
 
     // if enable_ir_optim_ is false,
     // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
@@ -956,11 +952,7 @@ bool AnalysisPredictor::CommInit() {
     order += 1;
   }
   framework::NaiveExecutor e(place_);
-#ifdef PADDLE_WITH_DNNL
-  e.CreateVariables(*comm_init_program, 0, true, scope_.get(), true);
-#else
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
-#endif
   e.Prepare(scope_.get(), *comm_init_program, 0);
   e.Run();
   VLOG(3) << "Comm init successful.";
