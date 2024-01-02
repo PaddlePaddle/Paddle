@@ -152,8 +152,7 @@ void NaiveExecutor::Run() {
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
                                     int block_id,
                                     bool persistable,
-                                    Scope *scope,
-                                    bool init_mkldnn_memdesc) {
+                                    Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(scope,
                           platform::errors::InvalidArgument(
                               "The Scope to hold variables is nullptr."));
@@ -175,16 +174,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
       continue;
     }
     num_vars++;
-#ifdef PADDLE_WITH_DNNL
-    auto init_mkldnn_memdesc_func = [&](Variable *var,
-                                        proto::VarType::Type var_type) {
-      if (var_type == proto::VarType::LOD_TENSOR) {
-        var->GetMutable<phi::DenseTensor>()->mem_desc();
-      } else if (var_type == proto::VarType::SELECTED_ROWS) {
-        var->GetMutable<phi::SelectedRows>()->mutable_value()->mem_desc();
-      }
-    };
-#endif
+
     if (persistable == var->Persistable()) {
       if (persistable) {
         if (!anc->FindVar(var->Name())) {
@@ -192,22 +182,12 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
           VLOG(3) << scope << " Create persistable variable " << var->Name()
                   << ", which pointer is " << ptr;
           InitializeVariable(ptr, var->GetType());
-#ifdef PADDLE_WITH_DNNL
-          if (init_mkldnn_memdesc) {
-            init_mkldnn_memdesc_func(ptr, var->GetType());
-          }
-#endif
         }
       } else {
         auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
         VLOG(3) << scope << " Create variable " << var->Name()
                 << ", which pointer is " << ptr;
         InitializeVariable(ptr, var->GetType());
-#ifdef PADDLE_WITH_DNNL
-        if (init_mkldnn_memdesc) {
-          init_mkldnn_memdesc_func(ptr, var->GetType());
-        }
-#endif
       }
     }
   }
