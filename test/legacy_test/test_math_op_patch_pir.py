@@ -450,6 +450,16 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 self.assertEqual(output_x, 24)
 
+    def test_T(self):
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+                x_T = x.T
+                self.assertEqual(x_T.shape, [4, 3, 2])
+                (output_x,) = exe.run(main_program, fetch_list=[x_T])
+                self.assertEqual(output_x.shape, (4, 3, 2))
+
     def test_hash_error(self):
         with paddle.pir_utils.IrGuard():
             _, _, program_guard = new_program()
