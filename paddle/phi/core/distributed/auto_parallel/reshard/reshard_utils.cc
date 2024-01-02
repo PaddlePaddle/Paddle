@@ -180,5 +180,28 @@ phi::DeviceContext* GetDistTensorDeviceContext(
   return phi::DeviceContextPool::Instance().Get(place);
 }
 
+phi::DDim ReshardInferShape(
+    const std::shared_ptr<phi::DenseTensor>& global_value,
+    const TensorDistAttr& dist_attr) {
+  phi::DDim out_dim = global_value->dims();
+  auto coord_id = GetCurRankCoordInMesh(dist_attr.process_mesh());
+  for (int tensor_axis = 0; tensor_axis < global_value->dims().size();
+       ++tensor_axis) {
+    if (dist_attr.is_shard(-1, tensor_axis)) {
+      for (int mesh_axis = 0; mesh_axis < dist_attr.process_mesh().ndim();
+           ++mesh_axis) {
+        if (dist_attr.is_shard(mesh_axis, tensor_axis)) {
+          // handle the shard axis
+          int64_t global_shape = out_dim[tensor_axis];
+          int64_t mesh_size = dist_attr.process_mesh().dim_size(mesh_axis);
+          auto balance_shard = BalancedSplit(global_shape, mesh_size);
+          out_dim[tensor_axis] = balance_shard[coord_id[mesh_axis]];
+        }
+      }
+    }
+  }
+  return out_dim;
+}
+
 }  // namespace distributed
 }  // namespace phi
