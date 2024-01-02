@@ -48,7 +48,8 @@ TEST(CustomOp, Ctor) {
   // test 1, inputs are aligned according to cost, and partial status is cleared
   auto inputs = build_inputs();
 
-  auto forward_spmd_func = PD_INFER_SPMD_RULE(phi::distributed::ConcatInferSpmd);
+  auto forward_spmd_func =
+      PD_INFER_SPMD_RULE(phi::distributed::ConcatInferSpmd);
   int axis = 0;
   std::vector<CustomSpmdInferTensorArgs> infer_inputs = {inputs};
   std::vector<CustomSpmdInferAttr> attrs = {axis};

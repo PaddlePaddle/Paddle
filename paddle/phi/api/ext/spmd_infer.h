@@ -63,7 +63,7 @@ struct SpmdInferImpl<phi::distributed::SpmdInfo (*)(Args...), impl_fn> {
       const std::vector<CustomSpmdInferTensorArgs>& inputs,
       const std::vector<CustomSpmdInferAttr>& attrs) {
     return SpmdInferHelper<Args..., SpmdInferHelperTypeEnd<int>>::
-    template InferSpmd<0, 0>(inputs, attrs);
+        template InferSpmd<0, 0>(inputs, attrs);
   }
 
  private:
