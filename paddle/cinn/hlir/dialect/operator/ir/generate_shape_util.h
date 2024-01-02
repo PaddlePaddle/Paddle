@@ -15,28 +15,35 @@
 #pragma once
 
 #include <optional>
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-namespace symbol {
+namespace cinn::dialect {
 
-IR_API ::pir::Attribute ConvertDimExprToAttribute(::pir::Builder* builder,
-                                                  const DimExpr& dim_expr);
-IR_API std::optional<DimExpr> ConvertAttributeToDimExpr(
+::pir::Attribute ConvertDimExprToAttribute(pir::IrContext* ctx,
+                                           const symbol::DimExpr& dim_expr);
+
+std::optional<symbol::DimExpr> ConvertAttributeToDimExpr(
     ::pir::Attribute attribute);
 
-IR_API std::optional<DimExpr> SubstituteDimExpr(
-    const DimExpr& dim_expr,
-    const std::function<std::optional<DimExpr>(const std::string& symbol_name)>&
-        DimExpr4SymbolName);
+std::optional<symbol::DimExpr> SubstituteDimExpr(
+    const symbol::DimExpr& dim_expr,
+    const std::function<std::optional<symbol::DimExpr>(
+        const std::string& symbol_name)>& DimExpr4SymbolName);
 
-IR_API std::function<std::optional<DimExpr>(const std::string& symbol_name)>
+std::function<std::optional<symbol::DimExpr>(const std::string& symbol_name)>
 MakeGetterDimExpr4SymbolName(
     const std::vector<std::tuple<std::string /*symbol_name*/,
                                  int /*in_tensor_idx*/,
                                  int /*in_tensor_dim_idx*/>>& symbol_bindings,
-    const std::function<std::optional<DimExpr>(
+    const std::function<std::optional<symbol::DimExpr>(
         int in_tensor_idx, int in_tensor_dim_idx)>& DimExpr4InputDim);
 
-}  // namespace symbol
+std::function<std::optional<symbol::DimExpr>(const std::string& symbol_name)>
+MakeGetterDimExpr4SymbolName(
+    const GenerateShapeOp::SymbolBindings& symbol_bindings,
+    const std::function<const symbol::ShapeOrDataDimExprs&(int in_tensor_idx)>&
+        DimExpr4InputDim);
+
+}  // namespace cinn::dialect
