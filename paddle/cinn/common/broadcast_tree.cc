@@ -275,12 +275,13 @@ BroadcastBranch<BroadcastTree> ConstructBroadcastBranch(
       GetCstrLhsEqOneLeaves(broadcastable_condition, leaves);
   BroadcastLeaf cstr_rhs_eq_one_leaves =
       GetCstrRhsEqOneLeaves(broadcastable_condition, leaves);
+  // clang-format off
   return BroadcastBranch<BroadcastTree>{
-      /*broadcastable_condition*/ broadcastable_condition,
-      /*cstr_lhs_eq_rhs_branch*/ ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves),
-      /*cstr_lhs_eq_one_branch*/ ConstructBroadcastTree(cstr_lhs_eq_one_leaves),
-      /*cstr_rhs_eq_one_branch*/
-      ConstructBroadcastTree(cstr_rhs_eq_one_leaves)};
+    /*broadcastable_condition*/ broadcastable_condition,
+    /*cstr_lhs_eq_rhs_branch*/ ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves),
+    /*cstr_lhs_eq_one_branch*/ ConstructBroadcastTree(cstr_lhs_eq_one_leaves),
+    /*cstr_rhs_eq_one_branch*/ ConstructBroadcastTree(cstr_rhs_eq_one_leaves)};
+  // clang-format on
 }
 
 }  // namespace
