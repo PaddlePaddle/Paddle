@@ -23,7 +23,7 @@ using CustomSpmdInferTensorArgs =
                     std::vector<phi::distributed::TensorDistAttr>>;
 
 using CustomSpmdInferAttr = paddle::any;
-
+template <typename T>
 struct SpmdInferHelperTypeEnd {};
 
 #define PD_SPECIALIZE_SpmdInferHelper_FOR_AttrType(attr_type)              \
@@ -62,7 +62,7 @@ struct SpmdInferImpl<phi::distributed::SpmdInfo (*)(Args...), impl_fn> {
   static phi::distributed::SpmdInfo InferSpmd(
       const std::vector<CustomSpmdInferTensorArgs>& inputs,
       const std::vector<CustomSpmdInferAttr>& attrs) {
-    return SpmdInferHelper<Args..., SpmdInferHelperTypeEnd>::
+    return SpmdInferHelper<Args..., SpmdInferHelperTypeEnd<int>>::
         template InferSpmd<0, 0, 0>(inputs, attrs);
   }
 
@@ -122,8 +122,8 @@ struct SpmdInferImpl<phi::distributed::SpmdInfo (*)(Args...), impl_fn> {
   PD_SPECIALIZE_SpmdInferHelper_FOR_AttrType(const std::vector<int64_t>);
 
   // end: base template
-  template <>
-  struct SpmdInferHelper<SpmdInferHelperTypeEnd> {
+  template <typename T>
+  struct SpmdInferHelper<SpmdInferHelperTypeEnd<T>> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
     static phi::distributed::SpmdInfo InferSpmd(
         const std::vector<CustomSpmdInferTensorArgs>& inputs,
