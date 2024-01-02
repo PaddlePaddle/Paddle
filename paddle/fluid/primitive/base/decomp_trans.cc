@@ -26,8 +26,6 @@ PHI_DECLARE_bool(prim_skip_dynamic);
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
 
-constexpr char kPrimBelongTo[] = "prim_belong_to";
-
 namespace paddle {
 
 using Program = pir::Program;
@@ -294,8 +292,6 @@ void DecompProgram::decomp_program() {
   for (auto& op : *block) {
     ops_list.push_back(&op);
   }
-  size_t decomp_end_index = 0;
-  size_t sub_op_start_index = 0;
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
     bool enable_prim =
@@ -318,33 +314,6 @@ void DecompProgram::decomp_program() {
           op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
 
       op->ReplaceAllUsesWith(standard_decomp_res);
-
-      std::vector<pir::Operation*> tmp_ops_list;
-      for (auto& tmp_op : *block) {
-        tmp_ops_list.push_back(&tmp_op);
-      }
-      bool attach_belong_op_info = false;
-
-      for (size_t j = sub_op_start_index; j < tmp_ops_list.size(); j++) {
-        auto sub_op = tmp_ops_list[j];
-        auto it = std::find(ops_list.begin(), ops_list.end(), sub_op);
-        if (((it != ops_list.end()) && sub_op == ops_list[i - 1]) ||
-            ((it == ops_list.end()) && j == decomp_end_index)) {
-          attach_belong_op_info = true;
-          continue;
-        }
-
-        if (sub_op == ops_list[i]) {
-          decomp_end_index = j - 1;
-          attach_belong_op_info = false;
-          sub_op_start_index = decomp_end_index;
-        }
-        if (attach_belong_op_info) {
-          pir::Attribute attribute(builder.str_attr(op->name()));
-          sub_op->set_attribute(kPrimBelongTo, attribute);
-        }
-      }
-
       bool remove_op = true;
       for (auto& item : op->results()) {
         if (item.HasOneUse()) {
