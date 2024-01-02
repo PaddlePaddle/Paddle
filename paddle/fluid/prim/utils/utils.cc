@@ -17,8 +17,11 @@
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 
 PADDLE_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
+PADDLE_DEFINE_EXPORTED_string(prim_blacklist, "", "prim ops blacklist");
+
 namespace paddle {
 namespace prim {
+
 bool PrimCommonUtils::IsBwdPrimEnabled() {
   return StaticCompositeContext::Instance().IsBwdPrimEnabled();
 }
@@ -40,10 +43,12 @@ bool PrimCommonUtils::IsFwdPrimEnabled() {
 }
 
 void PrimCommonUtils::SetFwdPrimEnabled(bool enable_prim) {
+  VLOG(0) << "FLAGS_prim_enabled ====================== " << FLAGS_prim_enabled;
   StaticCompositeContext::Instance().SetFwdPrimEnabled(enable_prim);
 }
 
 void PrimCommonUtils::SetAllPrimEnabled(bool enable_prim) {
+  VLOG(0) << "FLAGS_prim_enabled ====================== " << FLAGS_prim_enabled;
   StaticCompositeContext::Instance().SetAllPrimEnabled(enable_prim);
 }
 
