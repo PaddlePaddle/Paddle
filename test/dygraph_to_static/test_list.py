@@ -18,13 +18,11 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
 )
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 SEED = 2020
 np.random.seed(SEED)
@@ -292,6 +290,7 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
             test_list_pop_in_while_loop,
         ]
 
+    @test_with_pir_api
     def train(self, to_static=False):
         with base.dygraph.guard():
             if to_static:
@@ -303,7 +302,6 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
                 res = self.dygraph_func(self.input, self.iter_num)
             return self.result_to_numpy(res)
 
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 

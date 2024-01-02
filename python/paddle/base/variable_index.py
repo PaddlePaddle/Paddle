@@ -250,7 +250,19 @@ def slice_is_same_to_original(start, end, step):
 
 
 def parse_index(x, indices):
-    advanced_index = [None] * 2 * len(x.shape)  # content is (dim, index)
+    from .framework import in_pir_mode
+
+    if in_pir_mode():
+        is_tensor_array = x.is_dense_tensor_array_type()
+    else:
+        is_tensor_array = (
+            hasattr(x, "desc")
+            and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        )
+
+    advanced_index = (
+        [] if is_tensor_array else [None] * 2 * len(x.shape)
+    )  # content is (dim, index)
     # for set_value / slice / strided_slice OP
     decrease_axes = []
     axes = []
@@ -266,11 +278,6 @@ def parse_index(x, indices):
     indices = replace_ndarray_and_range(indices)
     indices = replace_ellipsis(x, indices)
     indices, none_axes = replace_none(indices)
-
-    is_tensor_array = (
-        hasattr(x, "desc")
-        and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    )
 
     estimated_dim = 0
     dim = 0
@@ -740,6 +747,8 @@ def get_tensor_with_basic_indexing(
                     if isinstance(end, (list, tuple)):
                         if paddle.utils._contain_var(end):
                             end = paddle.utils.get_int_tensor_list(end)
+                    if x.is_dense_tensor_array_type():
+                        return paddle._pir_ops.slice_array_dense(x, st)
                 out = paddle._C_ops.slice(
                     x,
                     axes,
