@@ -16,7 +16,7 @@
 
 #include "gtest/gtest.h"
 
-namespace cinn::dialect {
+namespace cinn::common {
 using namespace symbol;  // NOLINT
 
 namespace {
@@ -55,4 +55,4 @@ TEST(DimExprUtil, Substitute) {
   ASSERT_EQ(ret_expr.value(), dim_expr);
 }
 
-}  // namespace cinn::dialect
+}  // namespace cinn::common
