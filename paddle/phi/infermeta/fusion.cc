@@ -3425,14 +3425,7 @@ void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& bias,
                  const int in_num_col_dims,
                  const std::string& activation_type,
-                 const bool use_mkldnn,
                  const bool padding_weights,
-                 const bool use_quantizer,
-                 const std::string& mkldnn_data_type,
-                 const float scale_in,
-                 const std::vector<float>& sclae_weights,
-                 const float scale_out,
-                 const bool force_fp32_output,
                  MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       in_num_col_dims,
@@ -3441,15 +3434,7 @@ void FCInferMeta(const MetaTensor& input,
           "The in_num_col_dims is expected to equal or greater than 1. "
           "But received the in_num_col_dims is %d. ",
           in_num_col_dims));
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
+
   auto w_dims = w.dims();
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
@@ -3520,18 +3505,6 @@ void FCInferMeta(const MetaTensor& input,
                           "The attribute activation_type of fc is expected "
                           "to be \"relu\", but received %s.",
                           activation_type.c_str()));
-  }
-
-  if (use_mkldnn) {
-    PADDLE_ENFORCE_EQ(
-        in_dims.size() >= 2 && in_dims.size() <= 4,
-        true,
-        phi::errors::Unimplemented(
-            "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
-            "use_mkldnn is set. But received the number of Input's "
-            "dimensions is %d, Input's shape is %s.",
-            in_dims.size(),
-            in_dims));
   }
 
   std::vector<int64_t> output_dims;
@@ -3714,4 +3687,35 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
   qkv_max->set_dtype(out_dtype);
   qkv_max->set_layout(q.layout());
 }
+void SinePosXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_dims_size,
+      3,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 3, but received x_dims_size is %d",
+          x_dims_size));
+  PADDLE_ENFORCE_EQ(x_dims[x_dims_size - 1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "x last dim size should be 1, but received is %d",
+                        x_dims[x_dims_size - 1]));
+  auto y_dims = y.dims();
+  auto y_dims_size = y_dims.size();
+  PADDLE_ENFORCE_EQ(
+      y_dims_size,
+      1,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 3, but received x_dims_size is %d",
+          y_dims_size));
+
+  phi::DDim out_dim = phi::make_ddim({x_dims[0], x_dims[1], y_dims[0]});
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi

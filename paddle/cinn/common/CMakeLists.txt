@@ -22,7 +22,9 @@ gather_srcs(
   python_interpreter_guard.cc
   nvgpu_dev_info.cc
   integer_set.cc
-  dim_expr_simplify.cc)
+  dim_expr_simplify.cc
+  dim_expr_converter.cc
+  dim_expr_util.cc)
 
 cinn_cc_test(test_equation_graph_topo_walker SRCS
              equation_graph_topo_walker_test.cc DEPS gtest glog)
@@ -47,6 +49,9 @@ if(WITH_CUDA)
                gtest glog)
 endif()
 if(NOT CINN_ONLY)
+  cinn_cc_test(dim_expr_util_test SRCS dim_expr_util_test.cc DEPS cinncore)
   cinn_cc_test(dim_expr_simplify_test SRCS dim_expr_simplify_test.cc DEPS
+               cinncore)
+  cinn_cc_test(dim_expr_converter_test SRCS dim_expr_converter_test.cc DEPS
                cinncore)
 endif()
