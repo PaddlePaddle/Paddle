@@ -1610,7 +1610,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
     }
     return op_output_types;
   } else {
-    output_types = InferMetaByValue(op_item, input_values);
+    output_types = InferMetaByValue(op_item, new_vec_inputs);
     return output_types;
   }
 }
