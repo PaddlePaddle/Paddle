@@ -76,5 +76,7 @@ std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
 
 pir::OpResult add_n_array(const std::vector<pir::Value>& inputs);
 
+pir::OpResult slice_array_dense(pir::Value input, pir::Value starts);
+
 }  // namespace dialect
 }  // namespace paddle

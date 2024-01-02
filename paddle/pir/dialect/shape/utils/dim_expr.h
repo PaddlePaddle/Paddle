@@ -253,4 +253,17 @@ IR_API std::string ToString(const DimExpr& dim_expr);
 
 IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 
+IR_API std::size_t GetHashValue(const DimExpr& dim_expr);
+
 }  // namespace symbol
+
+namespace std {
+
+template <>
+struct hash<symbol::DimExpr> {
+  std::size_t operator()(const symbol::DimExpr& dim_expr) const {
+    return symbol::GetHashValue(dim_expr);
+  }
+};
+
+}  // namespace std
