@@ -397,9 +397,8 @@ static paddle::Tensor dealWithAdvancedIndex(
     std::vector<paddle::Tensor>* transed_index,
     std::vector<int>* trans_back_dim,
     int* pos_of_new_dim,
-    int* rank_of_new_dim) {
-  std::vector<int> trans_dim;
-
+    int* rank_of_new_dim,
+    std::vector<int>* trans_dim) {
   int p = 0;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
     auto index_dim = (*advanced_index_dim)[i];
@@ -408,30 +407,28 @@ static paddle::Tensor dealWithAdvancedIndex(
       // advanced_index_dim
       auto index = (*advanced_index)[p++];
 
-      if (!is_for_setitem) {
-        if (index_dim == 0) {
-          // case 1: advanced indices at axis 0, the new dim will be at first.
-          *pos_of_new_dim = 0;
-        } else if (index_dim > 0 && trans_dim.size() > 0 &&
-                   trans_dim[trans_dim.size() - 1] != index_dim - 1) {
-          // case 2: there are not adjacent advanced indices, the new dim will
-          // be at first.
-          *pos_of_new_dim = 0;
-        } else {
-          *pos_of_new_dim = std::min(index_dim, *pos_of_new_dim);
-        }
-        *rank_of_new_dim =
-            std::max(*rank_of_new_dim, static_cast<int>(index.shape().size()));
+      if (index_dim == 0) {
+        // case 1: advanced indices at axis 0, the new dim will be at first.
+        *pos_of_new_dim = 0;
+      } else if (index_dim > 0 && trans_dim->size() > 0 &&
+                 (*trans_dim)[trans_dim->size() - 1] != index_dim - 1) {
+        // case 2: there are not adjacent advanced indices, the new dim will
+        // be at first.
+        *pos_of_new_dim = 0;
+      } else {
+        *pos_of_new_dim = std::min(index_dim, *pos_of_new_dim);
       }
+      *rank_of_new_dim =
+          std::max(*rank_of_new_dim, static_cast<int>(index.shape().size()));
 
-      trans_dim.push_back(index_dim);
+      trans_dim->push_back(index_dim);
       transed_index->push_back(std::move(index));
     }
   }
 
   for (size_t i = 0; i < tensor.shape().size(); ++i) {
     if ((*advanced_index_dim)[i] == -1) {
-      trans_dim.push_back(i);
+      trans_dim->push_back(i);
     }
   }
 
@@ -441,19 +438,19 @@ static paddle::Tensor dealWithAdvancedIndex(
   std::vector<int> original_dim_order(tensor.shape().size());
   std::iota(original_dim_order.begin(), original_dim_order.end(), 0);
 
-  if (original_dim_order == trans_dim) {
+  if (original_dim_order == *trans_dim) {
     transed_tensor = tensor;
   } else {
-    transed_tensor = transpose_ad_func(tensor, trans_dim);
+    transed_tensor = transpose_ad_func(tensor, *trans_dim);
   }
 
   if (is_for_setitem) {
-    trans_back_dim->resize(trans_dim.size());
+    trans_back_dim->resize(trans_dim->size());
     std::iota(trans_back_dim->begin(), trans_back_dim->end(), 0);
     std::sort(trans_back_dim->begin(),
               trans_back_dim->end(),
               [&trans_dim](int left, int right) {
-                return trans_dim[left] < trans_dim[right];
+                return (*trans_dim)[left] < (*trans_dim)[right];
               });
   }
   return transed_tensor;
