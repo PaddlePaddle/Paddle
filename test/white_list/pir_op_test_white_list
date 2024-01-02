@@ -180,6 +180,7 @@ test_logcumsumexp_op
 test_logit_op
 test_logspace
 test_logsumexp
+test_lookup_table_v2_bf16_op
 test_lookup_table_v2_op
 test_lookup_table_v2_op_static_build
 test_lrn_mkldnn_op
