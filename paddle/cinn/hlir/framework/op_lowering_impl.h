@@ -60,12 +60,11 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
                                      bool apply_group_schedule = true,
                                      bool apply_pass = true);
 
-  std::vector<std::pair<ir::SymbolicPredicate,
-                        std::pair<ir::LoweredFunc, ir::LoweredFunc>>>
-  BucketLower(const GroupPtr& group,
-              bool apply_op_schedule = false,
-              bool apply_group_schedule = true,
-              bool apply_pass = true) {
+  std::vector<std::pair<ir::SymbolicPredicate, WrapLoweredFunc>> BucketLower(
+      const GroupPtr& group,
+      bool apply_op_schedule = false,
+      bool apply_group_schedule = true,
+      bool apply_pass = true) {
     CINN_NOT_IMPLEMENTED;
   }
 

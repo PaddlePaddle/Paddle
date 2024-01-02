@@ -25,14 +25,13 @@ namespace framework {
 
 void GroupCompilationContext::SetLoweredFuncs(
     std::vector<std::pair<ir::SymbolicPredicate,
-                          std::pair<ir::LoweredFunc, ir::LoweredFunc>>>&&
-        funcs) {
-  for (std::pair<ir::SymbolicPredicate,
-                 std::pair<ir::LoweredFunc, ir::LoweredFunc>>& predicate2func :
-       funcs) {
+                          pir::OpLowererImpl::WrapLoweredFunc>>&& funcs) {
+  for (std::pair<ir::SymbolicPredicate, pir::OpLowererImpl::WrapLoweredFunc>&
+           predicate2func : funcs) {
     predicates_.push_back(predicate2func.first);
-    lowered_funcs_.push_back(predicate2func.second.second);
-    infer_shape_lowered_funcs_.push_back(predicate2func.second.first);
+    lowered_funcs_.push_back(predicate2func.second.kernel_func);
+    infer_shape_lowered_funcs_.push_back(
+        predicate2func.second.infer_shape_func);
     ++func_size_;
   }
 }

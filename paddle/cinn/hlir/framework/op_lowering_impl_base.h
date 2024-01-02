@@ -30,6 +30,10 @@ namespace framework {
 template <typename T>
 class OpLowererImplBase {
  public:
+  struct WrapLoweredFunc {
+    ir::LoweredFunc infer_shape_func;
+    ir::LoweredFunc kernel_func;
+  };
   OpLowererImplBase() = default;
   ~OpLowererImplBase() = default;
 
@@ -38,8 +42,7 @@ class OpLowererImplBase {
                                              bool apply_group_schedule = true,
                                              bool apply_pass = true) = 0;
 
-  virtual std::vector<std::pair<ir::SymbolicPredicate,
-                                std::pair<ir::LoweredFunc, ir::LoweredFunc>>>
+  virtual std::vector<std::pair<ir::SymbolicPredicate, WrapLoweredFunc>>
   BucketLower(const T& group,
               bool apply_op_schedule = false,
               bool apply_group_schedule = true,

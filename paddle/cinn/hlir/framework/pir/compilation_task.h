@@ -33,8 +33,7 @@ class GroupCompilationContext {
 
   void SetLoweredFuncs(
       std::vector<std::pair<ir::SymbolicPredicate,
-                            std::pair<ir::LoweredFunc, ir::LoweredFunc>>>&&
-          funcs);
+                            pir::OpLowererImpl::WrapLoweredFunc>>&& funcs);
   std::string PrintPredicate2Funcs() const;
   void* FuncPtr();
   std::shared_ptr<backends::Compiler> BackendCompiler();
