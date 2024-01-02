@@ -21,14 +21,10 @@ using namespace symbol;  // NOLINT
 
 namespace {
 DimExpr CreateExampleDimExpr() {
-  DimExprBuilder dim_expr_builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant = DimExpr(2);
-  DimExpr expr1 = (sym0 - sym1) * constant / sym0;
-  DimExpr expr2 = dim_expr_builder.Max(expr1, sym0);
-  DimExpr output = dim_expr_builder.Min(expr2, sym1);
-  return output;
+  return (sym0 - sym1) * constant / sym0;
 }
 }  // namespace
 
