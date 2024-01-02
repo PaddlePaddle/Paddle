@@ -129,7 +129,7 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
         break;
       }
     }
-    for (; i < operands->size(); ++i) {
+    for (i++; i < operands->size(); ++i) {
       if (operands->at(i).template isa<std::string>()) {
         rhs_symbol = operands->at(i);
         break;
