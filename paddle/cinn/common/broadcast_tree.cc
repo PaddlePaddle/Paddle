@@ -266,7 +266,7 @@ BroadcastLeaf GetCstrRhsEqOneLeaves(
                                                        leaves);
 }
 
-std::shared_ptr<BroadcastBranch<BroadcastTree>> ConstructBroadcastBranch(
+BroadcastBranch<BroadcastTree> ConstructBroadcastBranch(
     const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
     const BroadcastLeaf& leaves) {
   BroadcastLeaf cstr_lhs_eq_rhs_leaves =
@@ -275,18 +275,17 @@ std::shared_ptr<BroadcastBranch<BroadcastTree>> ConstructBroadcastBranch(
       GetCstrLhsEqOneLeaves(broadcastable_condition, leaves);
   BroadcastLeaf cstr_rhs_eq_one_leaves =
       GetCstrRhsEqOneLeaves(broadcastable_condition, leaves);
-  return std::make_shared<BroadcastBranch<BroadcastTree>>(
-      /*broadcastable_condition*/ broadcastable_condition,
-      /*cstr_lhs_eq_rhs_branch*/ ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves),
-      /*cstr_lhs_eq_one_branch*/ ConstructBroadcastTree(cstr_lhs_eq_one_leaves),
-      /*cstr_rhs_eq_one_branch*/
-      ConstructBroadcastTree(cstr_rhs_eq_one_leaves), );
+  return BroadcastBranch<BroadcastTree>(BroadcastBranchNode<BroadcastTree>{
+      .broadcastable_condition = broadcastable_condition,
+      .cstr_lhs_eq_rhs_branch = ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves),
+      .cstr_lhs_eq_one_branch = ConstructBroadcastTree(cstr_lhs_eq_one_leaves),
+      .cstr_rhs_eq_one_branch =
+          ConstructBroadcastTree(cstr_rhs_eq_one_leaves)});
 }
 
 }  // namespace
 
-std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
-    const BroadcastLeaf& leaves) {
+BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves) {
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = GetFirstCstrBroadcastable(leaves);
   if (!broadcastable_condition.has_value()) return leaves;
