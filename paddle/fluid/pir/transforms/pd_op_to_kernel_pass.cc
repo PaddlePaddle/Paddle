@@ -292,6 +292,9 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
       } else if (inner_types[i].isa<AllocatedSelectedRowsType>()) {
         res.push_back(
             fake_sr(inner_types[i].dyn_cast<AllocatedSelectedRowsType>()));
+      } else if (inner_types[i].isa<AllocatedDenseTensorArrayType>()) {
+        res.push_back(fake_tensor_array(
+            inner_types[i].dyn_cast<AllocatedDenseTensorArrayType>()));
       }
     }
   } else if (in_type.isa<AllocatedDenseTensorArrayType>()) {
@@ -941,18 +944,6 @@ phi::KernelKey GetKernelKey(
               combine_op->operand_source(j).dyn_cast<pir::OpResult>();
           if (!combine_op_res) {
             continue;
-          }
-
-          if (kernel_dtype == phi::DataType::UNDEFINED) {
-            if (combine_op_res.type().isa<DenseTensorType>()) {
-              kernel_dtype = TransToPhiDataType(
-                  combine_op_res.type().dyn_cast<DenseTensorType>().dtype());
-            } else if (combine_op_res.type().isa<DenseTensorArrayType>()) {
-              kernel_dtype =
-                  TransToPhiDataType(combine_op_res.type()
-                                         .dyn_cast<DenseTensorArrayType>()
-                                         .dtype());
-            }
           }
 
           if (combine_op_res.owner()->isa<DataOp>()) {
