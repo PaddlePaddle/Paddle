@@ -30,27 +30,15 @@ DimExpr CreateExampleDimExpr() {
 
 TEST(DimExprUtil, Substitute) {
   DimExpr dim_expr = CreateExampleDimExpr();
-  const auto& opt_expr = SubstituteDimExpr(
-      dim_expr, [](const DimExpr& expr) -> std::optional<DimExpr> {
-        if (expr == DimExpr("S0")) {
-          return DimExpr("symbol0");
-        } else if (expr == DimExpr("S1")) {
-          return DimExpr("symbol1");
-        } else {
-          return std::nullopt;
-        }
-      });
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> naive_to_full_name{
+      {DimExpr("S0"), DimExpr("symbol0")}, {DimExpr("S1"), DimExpr("symbol1")}};
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> full_name_to_naive{
+      {DimExpr("symbol0"), DimExpr("S0")}, {DimExpr("symbol1"), DimExpr("S1")}};
+
+  const auto& opt_expr = SubstituteDimExpr(dim_expr, naive_to_full_name);
   ASSERT_TRUE(opt_expr.has_value());
-  const auto& ret_expr = SubstituteDimExpr(
-      opt_expr.value(), [](const DimExpr& expr) -> std::optional<DimExpr> {
-        if (expr == DimExpr("symbol0")) {
-          return DimExpr("S0");
-        } else if (expr == DimExpr("symbol1")) {
-          return DimExpr("S1");
-        } else {
-          return std::nullopt;
-        }
-      });
+  const auto& ret_expr =
+      SubstituteDimExpr(opt_expr.value(), full_name_to_naive);
   ASSERT_TRUE(ret_expr.has_value());
   ASSERT_EQ(ret_expr.value(), dim_expr);
 }
