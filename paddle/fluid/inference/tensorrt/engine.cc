@@ -25,6 +25,12 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/flags.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    run_trt_bf16,
+    true,
+    "Whether to make the result of computation deterministic in CPU side.");
 
 namespace paddle {
 namespace inference {
@@ -207,7 +213,12 @@ void TensorRTEngine::FreezeNetwork() {
   bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+      if (FLAGS_run_trt_bf16) {
+        infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kBF16);
+      } else {
+        infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+      }
+    
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
                    "FP16 speed up, use FP32 instead.";
@@ -219,7 +230,11 @@ void TensorRTEngine::FreezeNetwork() {
   bool enable_int8 = (precision() == phi::DataType::INT8);
   if (enable_int8) {
     if (!use_dla()) {
-      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+      if (FLAGS_run_trt_bf16) {
+        infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kBF16);
+      } else {
+        infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+      }
     }
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
 
