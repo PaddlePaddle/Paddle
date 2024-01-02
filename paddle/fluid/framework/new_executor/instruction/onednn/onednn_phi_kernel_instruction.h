@@ -15,6 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 
 namespace pir {
 class Operation;
@@ -78,5 +80,17 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
   std::map<std::string, std::vector<std::string>> outputs_{};
 };
 
+RuntimeAttribute ConvertPirAttribute2RuntimeAttribute(
+    PIRAttribute attr,
+    const std::string& attr_name,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
+
+void TensorNameMap(pir::Operation* op,
+                   const ValueExecutionInfo& value_exec_info,
+                   const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                   std::map<std::string, std::vector<std::string>>&
+                       inputs_tensor_name_map,  // NOLINT
+                   std::map<std::string, std::vector<std::string>>&
+                       outputs_tensor_name_map);  // NOLINT
 }  // namespace framework
 }  // namespace paddle

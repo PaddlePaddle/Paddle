@@ -21,6 +21,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -59,9 +60,13 @@ const std::unordered_set<std::string> LegacyOpList = {
     RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    CReduceMinOp::name()};
+    CReduceMinOp::name(),
+    LrnOp::name(),
+    LrnGradOp::name()};
 
-const std::unordered_set<std::string> OneDNNLegacyOpList = {};
+const std::unordered_set<std::string> OneDNNLegacyOpList = {
+    paddle::onednn::dialect::LrnOp::name(),
+    paddle::onednn::dialect::LrnGradOp::name()};
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
