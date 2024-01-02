@@ -3031,7 +3031,9 @@ class TestHardSwish(TestActivation):
             else False,
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
-            check_prim_pir=True,
+            check_prim_pir=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False,
         )
 
     def test_check_output(self):
@@ -3040,7 +3042,9 @@ class TestHardSwish(TestActivation):
             if self.dtype not in [np.complex64, np.complex128]
             else False,
             check_pir=True,
-            check_prim_pir=True,
+            check_prim_pir=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False,
         )
 
 

@@ -540,7 +540,7 @@ Tensor hardswish_decomp(const Tensor& x) {
       minimum<T>(maximum<T>(x + full<T>(org_dim, OFFSET, x.dtype()),
                             full<T>(org_dim, 0.0, x.dtype())),
                  full<T>(org_dim, THRESHOLD, x.dtype()));
-  return minimun_out * x / full<T>(org_dim, SCALE, x.dtype());
+  return (minimun_out * x) / full<T>(org_dim, SCALE, x.dtype());
 }
 
 }  // namespace details
