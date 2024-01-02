@@ -57,7 +57,7 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
         out = last_op.results()
         self.assertEqual(out[0].stop_gradient, False)
         self.assertEqual(last_op.name(), "pd_op.while")
-        self.assertEqual(len(out), 2)
+        self.assertEqual(len(out), 1)
 
     def test_get_used_external_value(self):
         main_program = paddle.static.Program()
@@ -177,20 +177,20 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
             )
             self.assertEqual(
                 main_program.global_block()
-                .ops[-1]
+                .ops[-3]
                 .as_while_op()
                 .body()
-                .ops[-2]
+                .ops[-4]
                 .name(),
                 "cf.has_elements",
             )
 
             self.assertEqual(
                 main_program.global_block()
-                .ops[-1]
+                .ops[-3]
                 .as_while_op()
                 .body()
-                .ops[-3]
+                .ops[-5]
                 .name(),
                 "pd_op.add_grad",
             )

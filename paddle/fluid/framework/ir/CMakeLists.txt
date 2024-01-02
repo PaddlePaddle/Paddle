@@ -19,8 +19,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph program_utils scale_loss_grad_op_handle
-       grad_merge_all_reduce_op_handle collective_helper)
+  DEPS graph program_utils collective_helper) #
 cc_library(
   pass
   SRCS pass.cc
@@ -319,6 +318,7 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(elementwise_mul_add_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(sine_pos_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

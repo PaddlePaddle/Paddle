@@ -28,10 +28,10 @@
 namespace {
 
 class MatmulScaleFusePattern
-    : public pir::drr::DrrPatternBase<MatmulScaleFusePattern> {
+    : public paddle::drr::DrrPatternBase<MatmulScaleFusePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("transpose_x")},
                                     {"transpose_y", pat.Attr("transpose_y")}});
@@ -50,23 +50,23 @@ class MatmulScaleFusePattern
     scale_op({&pat.Tensor("matmul_out"), &full_op()},
              {&pat.Tensor("scale_out")});
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return std::abs(match_ctx.Attr<float>("bias")) <= 1e-6;
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &full_op_res = res.Op(paddle::dialect::FullOp::name(),
                                      {{"shape", pat.Attr("shape")},
                                       {"value", pat.Attr("value")},
                                       {"dtype", pat.Attr("dtype")},
                                       {"place", pat.Attr("place")}});
-    const auto &scale_op_res =
-        res.Op(paddle::dialect::ScaleOp::name(),
-               {{"bias",
-                 res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-                   return 0.0;
-                 })},
-                {"bias_after_scale", pat.Attr("bias_after_scale")}});
+    const auto &scale_op_res = res.Op(
+        paddle::dialect::ScaleOp::name(),
+        {{"bias",
+          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+            return 0.0;
+          })},
+         {"bias_after_scale", pat.Attr("bias_after_scale")}});
     const auto &matmul_op_res =
         res.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", pat.Attr("transpose_x")},
