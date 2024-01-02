@@ -20,7 +20,7 @@ namespace paddle {
 
 using CustomSpmdInferTensorArgs =
     paddle::variant<phi::distributed::DistMetaTensor,
-                    std::vector<phi::distributed::TensorDistAttr>>;
+                    std::vector<phi::distributed::DistMetaTensor>>;
 
 using CustomSpmdInferAttr = paddle::any;
 template <typename T>

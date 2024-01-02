@@ -60,9 +60,9 @@ if(WITH_DISTRIBUTE)
     phi)
 
   paddle_test(
-    cutom_op_spmd_rule_test
+    custom_op_spmd_rule_test
     SRCS
-    cutom_op_spmd_rule_test.cc
+    custom_op_spmd_rule_test.cc
     DEPS
     spmd_rule_test_util
     spmd_rules
