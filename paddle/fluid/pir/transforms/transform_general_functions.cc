@@ -14,12 +14,47 @@
 
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
+#include <unordered_set>
+
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
+
+namespace {
+
+void GetUsedExternalValueImpl(
+    std::unordered_set<pir::Value>& defined_values,  // NOLINT
+    std::vector<pir::Value>& used_values,            // NOLINT
+    const pir::Operation& op) {
+  for (size_t index = 0; index < op.num_operands(); ++index) {
+    pir::Value value = op.operand_source(index);
+    if (defined_values.find(value) == defined_values.end()) {
+      used_values.push_back(value);
+      defined_values.insert(value);
+    }
+  }
+  for (auto& region : op) {
+    for (auto& block : region) {
+      for (auto value : block.args()) {
+        defined_values.insert(value);
+      }
+    }
+    for (auto& block : region) {
+      for (auto& inner_op : block) {
+        GetUsedExternalValueImpl(defined_values, used_values, inner_op);
+      }
+    }
+  }
+  for (size_t index = 0; index < op.num_results(); ++index) {
+    defined_values.insert(op.result(index));
+  }
+}
+
+}  // namespace
 
 namespace pir {
 
@@ -58,7 +93,7 @@ pir::Type GetDataTypeFromValue(pir::Value value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
 }
 
-Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
+Operation* GetDefiningOpForInput(const Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_operands() && op->operand_source(index),
       true,
@@ -66,8 +101,8 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
   return op->operand_source(index).dyn_cast<OpResult>().owner();
 }
 
-std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
-                                                               uint32_t index) {
+std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
+    const Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_results(),
       true,
@@ -78,6 +113,23 @@ std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
     use_ops.push_back(std::make_pair(it->owner(), it->index()));
   }
   return use_ops;
+}
+
+std::vector<pir::Value> GetUsedExternalValue(const pir::Operation& op) {
+  std::unordered_set<pir::Value> defined_values{nullptr};
+  std::vector<pir::Value> used_values;
+  GetUsedExternalValueImpl(defined_values, used_values, op);
+  return used_values;
+}
+
+std::vector<pir::Value> GetUsedExternalValue(const pir::Block& block) {
+  auto& args = block.args();
+  std::unordered_set<pir::Value> defined_values(args.begin(), args.end());
+  std::vector<pir::Value> used_values;
+  for (auto& op : block) {
+    GetUsedExternalValueImpl(defined_values, used_values, op);
+  }
+  return used_values;
 }
 
 }  // namespace pir

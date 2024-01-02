@@ -37,8 +37,8 @@ PP_MESH_1 = auto.ProcessMesh([1])
 class MyLinear(nn.Layer):
     def __init__(
         self,
-        hidden_size=1024,
-        intermediate_size=4 * 1024,
+        hidden_size=784,
+        intermediate_size=4 * 784,
         dropout_ratio=0.1,
         weight_attr=None,
     ):
@@ -64,10 +64,11 @@ class MyLinear(nn.Layer):
 class MLPLayer(nn.Layer):
     def __init__(
         self,
-        hidden_size=1024,
-        intermediate_size=4 * 1024,
+        hidden_size=784,
+        intermediate_size=4 * 784,
         dropout_ratio=0.1,
         initializer_range=0.02,
+        manual=True,
     ):
         super().__init__()
 
@@ -86,7 +87,10 @@ class MLPLayer(nn.Layer):
 
         self.linear = nn.Linear(hidden_size, 1, weight_attr, bias_attr=None)
         self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
-        self.layer_to_mesh = [PP_MESH_0, PP_MESH_1, PP_MESH_0, PP_MESH_1]
+        if manual:
+            self.layer_to_mesh = [PP_MESH_0, PP_MESH_1, PP_MESH_0, PP_MESH_1]
+        else:
+            self.layer_to_mesh = [PP_MESH_0, PP_MESH_0, PP_MESH_1, PP_MESH_1]
 
     def forward(self, input):
         out = self.norm(input)
@@ -97,6 +101,11 @@ class MLPLayer(nn.Layer):
 
         out = self.linear(out)
         return out
+
+
+def loss_fn(pred, label):
+    loss = F.l1_loss(pred, label)
+    return loss
 
 
 def apply_pass(schedule_mode, acc_step):
@@ -126,8 +135,8 @@ class MyDataset(paddle.io.Dataset):
         self.num_samples = num_samples
 
     def __getitem__(self, index):
-        input = np.random.uniform(size=1024).astype("float32")
-        label = np.random.randint(0, 9, dtype="int64")
+        input = np.random.uniform(size=784).astype("float32")
+        label = np.random.uniform(size=1).astype("float32")
         return input, label
 
     def __len__(self):
@@ -136,8 +145,6 @@ class MyDataset(paddle.io.Dataset):
 
 class TestVPPPass(unittest.TestCase):
     def setUp(self):
-        self.rtol = 1e-5
-        self.atol = 1e-8
         self.batch_size = 4
         self.batch_num = 10
         self.clip_norm = 0.2
@@ -151,23 +158,24 @@ class TestVPPPass(unittest.TestCase):
         place = paddle.base.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, schedule_mode, acc_step):
+    def get_engine(self, schedule_mode, acc_step, manual=True):
         reset_prog()
 
         strategy = apply_pass(schedule_mode, acc_step)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model = MLPLayer()
-        loss = paddle.nn.CrossEntropyLoss()
+        model = MLPLayer(manual=manual)
 
-        engine = auto.Engine(model, loss, opt, strategy=strategy)
+        engine = auto.Engine(model, loss_fn, opt, strategy=strategy)
         self.init(engine)
         return engine
 
     def test_pp_pass(self):
-        # pp2-vpp
-        engine = self.get_engine(schedule_mode="VPP", acc_step=4)
-        engine.fit(self.dataset, batch_size=self.batch_size, log_freq=1)
+        # pp2-vpp-manual
+        engine = self.get_engine(schedule_mode="VPP", acc_step=4, manual=True)
+        out_manual = engine.fit(
+            self.dataset, batch_size=self.batch_size, log_freq=1
+        )
         assert engine._strategy.pipeline.schedule_mode == "VPP"
 
         fw_chunk_ids = []
@@ -183,11 +191,43 @@ class TestVPPPass(unittest.TestCase):
                 bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
 
         if paddle.distributed.get_rank() == 0:
-            assert sum(fw_chunk_ids) == 8
-            assert sum(bw_chunk_ids) == 13
+            self.assertEqual(sum(fw_chunk_ids), 8)
+            self.assertEqual(sum(bw_chunk_ids), 13)
         else:
-            assert sum(fw_chunk_ids) == 12
-            assert sum(bw_chunk_ids) == 18
+            self.assertEqual(sum(fw_chunk_ids), 12)
+            self.assertEqual(sum(bw_chunk_ids), 19)
+
+        # pp2-vpp-auto
+        engine = self.get_engine(schedule_mode="VPP", acc_step=4, manual=False)
+        out_auto = engine.fit(
+            self.dataset, batch_size=self.batch_size, log_freq=1
+        )
+        assert engine._strategy.pipeline.schedule_mode == "VPP"
+
+        fw_chunk_ids = []
+        bw_chunk_ids = []
+        for op in engine.main_program.global_block().ops:
+            if is_optimize_op(op):
+                break
+
+            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            if is_forward_op(op):
+                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+            if is_backward_op(op):
+                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+
+        if paddle.distributed.get_rank() == 0:
+            self.assertEqual(sum(fw_chunk_ids), 9)
+            self.assertEqual(sum(bw_chunk_ids), 13)
+        else:
+            self.assertEqual(sum(fw_chunk_ids), 13)
+            self.assertEqual(sum(bw_chunk_ids), 19)
+
+        if paddle.distributed.get_rank() == 1:
+            self.assertEqual(
+                np.mean(out_manual.history["loss"][0]),
+                np.mean(out_auto.history["loss"][0]),
+            )
 
 
 if __name__ == "__main__":
