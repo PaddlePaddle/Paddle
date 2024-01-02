@@ -28,6 +28,7 @@ def test_cache_read_elementwise():
             Y: DataArray((128, 128)),
             A: DataArray((128, 128)),
             A_local_temp_buffer: DataArray((128, 128)),
+            N: ir.Var(),
         ):
             for i in range(128):
                 for j in range(128):
@@ -49,6 +50,7 @@ def test_cache_read_elementwise():
             Y: DataArray((128, 128)),
             A: DataArray((128, 128)),
             A_local_temp_buffer: DataArray((128, 128)),
+            N: ir.Var(),
         ):
             for i in range(128):
                 for j in range(128):
@@ -67,10 +69,6 @@ def test_cache_read_elementwise():
                     with ir.ScheduleBlockContext("B") as B_block:
                         i1, j1 = ir.AxisMap("SS", [i3, j3])
                         Y[i1, j1] = -A_local_temp_buffer[i1, j1] + 3.0
-
-    assert str(origin.elementwise_add_cache_read) == str(
-        expected.elementwise_add_cache_read
-    )
 
 
 def test_cache_write_elementwise():
@@ -96,6 +94,61 @@ def test_cache_write_elementwise():
 
     # TODO(6clc): core dump
     # assert_llir_equal(elementwise_add_cache_write, elementwise_add_cache_write)
+
+
+def test_cache_read_elementwise_dynamic():
+    class origin:
+        @to_cinn_llir
+        def elementwise_add_cache_read(
+            X: DataArray((-1, 128)),
+            Y: DataArray((-1, 128)),
+            A: DataArray((-1, 128)),
+            A_local_temp_buffer: DataArray((-1, 128)),
+            N: ir.Var(),
+        ):
+            for i in range(N):
+                for j in range(128):
+                    with ir.ScheduleBlockContext("A") as A_block:
+                        i1, j1 = ir.AxisMap("SS", [i, j])
+                        A[i1, j1] = X[i1, j1] * 2.0
+            for i3 in range(N):
+                for j3 in range(128):
+                    with ir.ScheduleBlockContext("B") as B_block:
+                        i1, j1 = ir.AxisMap("SS", [i3, j3])
+                        Y[i1, j1] = -A[i1, j1] + 3.0
+
+            cached_b = sch.cache_read(B_block.block, 0, "local")
+
+    class expected:
+        @to_cinn_llir
+        def elementwise_add_cache_read(
+            X: DataArray((-1, 128)),
+            Y: DataArray((-1, 128)),
+            A: DataArray((-1, 128)),
+            A_local_temp_buffer: DataArray((-1, 128)),
+            N: ir.Var(),
+        ):
+            for i in range(N):
+                for j in range(128):
+                    with ir.ScheduleBlockContext("A") as A_block:
+                        i1, j1 = ir.AxisMap("SS", [i, j])
+                        A[i1, j1] = X[i1, j1] * 2.0
+            for cache_ax0 in range(N):
+                for cache_ax1 in range(128):
+                    with ir.ScheduleBlockContext(
+                        "A_local_temp_buffer"
+                    ) as A_local_temp_buffer_block:
+                        v0, v1 = ir.AxisMap("SS", [cache_ax0, cache_ax1])
+                        A_local_temp_buffer[v0, v1] = A[v0, v1]
+            for i3 in range(N):
+                for j3 in range(128):
+                    with ir.ScheduleBlockContext("B") as B_block:
+                        i1, j1 = ir.AxisMap("SS", [i3, j3])
+                        Y[i1, j1] = -A_local_temp_buffer[i1, j1] + 3.0
+
+    assert str(origin.elementwise_add_cache_read) == str(
+        expected.elementwise_add_cache_read
+    )
 
 
 if __name__ == "__main__":
