@@ -14,7 +14,7 @@
 
 #include <stack>
 
-#include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
@@ -73,6 +73,45 @@ static std::stack<const Variable*> PopElements(VariableRefArray* var_array,
   }
   return rtn;
 }
+void ShareVarData(const Variable* src_var, Variable* dst_var) {
+  if (src_var->IsType<phi::DenseTensor>()) {
+    auto& src_tensor = src_var->Get<phi::DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    if (src_tensor.numel() == 0) {
+      tmp_dst_tensor->set_meta(src_tensor.meta());
+      return;
+    }
+    tmp_dst_tensor->ShareDataWith(src_tensor);
+  } else if (src_var->IsType<phi::SelectedRows>()) {
+    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
+    auto* dst_t = tmp_dst_slr->mutable_value();
+    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    auto& src_t = src_slr.value();
+    if (src_t.numel() == 0) {
+      dst_t->set_meta(src_t.meta());
+      return;
+    }
+    dst_t->ShareDataWith(src_t);
+  } else if (src_var->IsType<phi::TensorArray>()) {
+    auto src_tensor_array = src_var->Get<phi::TensorArray>();
+    auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
+    if (src_tensor_array.numel() == 0) return;
+    dst_tensor_array->clear();
+    for (auto src_tensor : src_tensor_array) {
+      phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
+      if (src_tensor.numel() == 0) {
+        tmp_dst_tensor->set_meta(src_tensor.meta());
+      } else {
+        tmp_dst_tensor->ShareDataWith(src_tensor);
+      }
+      dst_tensor_array->push_back(*tmp_dst_tensor);
+    }
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType "
+        "or SelectedRowsType or TensorArrayType"));
+  }
+}
 
 void TuplePopInstruction::Run() {
   VLOG(6) << "run tuple_pop instruction";
@@ -89,9 +128,7 @@ void TuplePopInstruction::Run() {
       VLOG(6) << "pop back var: " << front_var;
       auto outlet_element_value = tuple_pop_op_.outlet_element(i);
       auto grad_var = value_exe_info_->GetVarByValue(outlet_element_value);
-      grad_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          front_var->Get<phi::DenseTensor>());
-
+      ShareVarData(front_var, grad_var);
       Variable* gc_front_var = const_cast<Variable*>(front_var);
       AddEagerGCVar(gc_front_var);
     }

@@ -841,6 +841,7 @@
     func : exp
   inplace : (x -> out)
   backward : exp_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expand
   args : (Tensor x, IntArray shape = {})
@@ -2355,6 +2356,7 @@
            shape_sr {selected_rows -> dense}
   data_transform:
     skip_transform : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shard_index
   args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
@@ -2538,6 +2540,7 @@
   kernel :
     func : stack
   backward : stack_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stanh
   args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)
@@ -2833,7 +2836,7 @@
   backward : warprnnt_grad
 
 - op : weight_dequantize
-  args : (Tensor x, Tensor scale, str algo="weight_only_int8", DataType out_dtype=DataType::FLOAT16)
+  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", DataType out_dtype = DataType::FLOAT16, int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightDequantizeInferMeta
@@ -2842,7 +2845,7 @@
     data_type : out_dtype
 
 - op : weight_only_linear
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80, int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightOnlyLinearInferMeta
@@ -2853,7 +2856,7 @@
   backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo = "weight_only_int8", int arch = 80)
+  args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta

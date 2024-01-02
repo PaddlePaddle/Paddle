@@ -574,7 +574,6 @@ def append_backward_ops(
         return inputs, input_grad_stopgradients
 
     def update_input_grad_map(op, input_grads, all_inputs):
-        _, fwd_value_to_block_argument_map = argument_to_value(op)
         i = 0
         for input, grad_semantic in zip(all_inputs, get_grad_semantic_info(op)):
             if not grad_semantic:
@@ -631,8 +630,11 @@ def append_backward_ops(
                     if len(state.value_to_valuegrad[value]) > 1:
                         append_add_n(value)
                 else:
+                    new_value = return_map_value(
+                        value, control_flow_value_to_copyvalue_map
+                    )
                     value_grad = append_full_like(
-                        0.0, value, value, state, backward_ops
+                        0.0, new_value, value, state, backward_ops
                     )
                 input_grad = state.value_to_valuegrad[value][0][0]
 
@@ -762,16 +764,6 @@ def append_backward_ops(
                         for sub_fwd_block, sub_bwd_block in zip(
                             op.blocks(), grad_op.blocks()
                         ):
-                            # update grad_op structure
-                            if grad_op.name() == "pd_op.while":
-                                (
-                                    _,
-                                    sub_bwd_block_argument_to_value_map,
-                                ) = argument_to_value(grad_op)
-                            else:
-                                sub_bwd_block_argument_to_value_map = (
-                                    ValueDict()
-                                )
                             sub_state = state.copy(sub_fwd_block)
                             sub_backward_ops = []
                             append_backward_ops(
@@ -784,7 +776,6 @@ def append_backward_ops(
                                 no_grad_set,
                                 sub_backward_ops,
                                 sub_state,
-                                sub_bwd_block_argument_to_value_map,
                             )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)

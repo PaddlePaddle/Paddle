@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -68,6 +68,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
 }
 
 void TuplePushInstruction::Run() {
+  VLOG(4) << "run tuple_push instruction";
   if (tuple_push_op_.tuple_size() == 0) {
     stack_element_var_array_->emplace_back(nullptr);
   } else {
@@ -80,10 +81,12 @@ void TuplePushInstruction::Run() {
       int stack_size = tuple_push_op_.tuple_size();
 
       auto var_name = value_2_var_name.at(inlet_element_value);
-      std::string new_name = var_name + "copied_" +
-                             std::to_string(stack_element_var_array_->size());
+      auto num_str = std::to_string(stack_element_var_array_->size());
+      std::string new_name = var_name + "_copied_" + num_str;
       auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
-      DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
+      bool is_optional = (inlet_element_value.impl() == nullptr ||
+                          !inlet_element_value.type());
+      DeepCopyVariable(var, copy_var, value_exe_info_, stack_size, is_optional);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
       VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]"

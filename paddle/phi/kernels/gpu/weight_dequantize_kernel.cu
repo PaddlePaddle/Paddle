@@ -29,11 +29,12 @@ void WeightDequantizeKernel(const Context& dev_ctx,
                             const DenseTensor& scale,
                             const std::string& algo,
                             DataType out_dtype,
+                            int32_t group_size,
                             DenseTensor* out) {
 #if defined(PADDLE_WITH_CUTLASS)
   auto out_dims = out->dims();
   dev_ctx.template Alloc<T>(out);
-  WeightDequantize<T, Context>(dev_ctx, x, scale, algo, true, out);
+  WeightDequantize<T, Context>(dev_ctx, x, scale, algo, true, group_size, out);
   out->Resize({{out_dims[1], out_dims[0]}});
   auto out_tmp = Transpose<T, Context>(dev_ctx, *out, {1, 0});
   out->ShareDataWith(out_tmp);

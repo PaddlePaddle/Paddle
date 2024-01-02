@@ -89,7 +89,7 @@ def get_xpu_xccl_version():
         return 'False'
 
 def get_xpu_xhpc_version():
-    if '@WITH_XPU_XHPC@' == 'ON':
+    if '@WITH_XPU@' == 'ON':
         return '@XPU_XHPC_BASE_DATE@'
     else:
         return 'False'
