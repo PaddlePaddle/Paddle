@@ -102,19 +102,20 @@ class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
 
   using SymbolBindings = std::vector<SymbolBinding>;
 
-  static void Build(pir::Builder &builder,
-                    pir::OperationArgument& argument,
-                    const std::vector<pir::Value>& inputs,
-                    const std::vector<pir::Attribute>& output_dim_exprs,
-                    const SymbolBindings& symbol_bindings);
-  
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Value> &inputs,
+                    const std::vector<pir::Attribute> &output_dim_exprs,
+                    const SymbolBindings &symbol_bindings);
+
   void VerifySig() {}
 
   pir::OpResult out() { return result(0); }
 
-  static pir::Attribute ConvertSymbolBindingsToAttribute(pir::Builder &builder, const SymbolBindings& symbol_bindings);
-  static std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(const pir::Attribute& symbol_bindings);
-
+  static pir::Attribute ConvertSymbolBindingsToAttribute(
+      pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT
+  static std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(
+      const pir::Attribute &symbol_bindings);
 };
 
 }  // namespace dialect
