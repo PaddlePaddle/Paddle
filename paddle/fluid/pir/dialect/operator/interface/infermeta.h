@@ -39,7 +39,7 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
     static inline void InferMeta(phi::InferMetaContext *infer_meta) {
       return ConcreteOp::InferMeta(infer_meta);
     }
-    static inline void std::vector<pir::Type> InferMeta(
+    static inline std::vector<pir::Type> InferMeta(
         const std::vector<pir::Value> &input_values) {
       return ConcreteOp::InferMeta(input_values);
     }
