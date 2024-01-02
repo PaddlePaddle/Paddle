@@ -131,7 +131,7 @@ struct BitwiseRightShiftLogicFunctor {
 template <typename T>
 struct InverseBitwiseRightShiftLogicFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    if (a >= static_cast<T>(sizeof(T) * 8), a < static_cast<T>(0))
+    if (a >= static_cast<T>(sizeof(T) * 8) || a < static_cast<T>(0))
       return static_cast<T>(0);
     return b >> a;
   }
