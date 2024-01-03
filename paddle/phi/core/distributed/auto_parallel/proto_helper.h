@@ -19,9 +19,9 @@ namespace distributed {
 class TensorDistAttr;
 class ProcessMesh;
 namespace auto_parallel {
-class DeviceCapability;
+struct DeviceCapability;
 class Device;
-class LinkCapability;
+struct LinkCapability;
 class Link;
 class DeviceMesh;
 class DistributedMapper;
