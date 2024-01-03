@@ -59,13 +59,15 @@ class PreQuantScaleTest(unittest.TestCase):
 
     def setUp(self):
         self.config()
-        self.x = np.random.random(size=(self.rows, self.cols)).astype(
-            self.dtype
+        paddle.set_default_dtype(self.dtype)
+        self.x = paddle.to_tensor(
+            np.random.random(size=(self.rows, self.cols)), self.dtype
         )
-        self.scales = np.random.uniform(0, 1, size=(self.cols)).astype(
-            self.dtype
+
+        self.scales = paddle.to_tensor(
+            np.random.uniform(0, 1, size=(self.cols)), self.dtype
         )
-        self.out_expected = np.multiply(self.x, self.scales)
+        self.out_expected = paddle.multiply(self.x, self.scales)
 
     def get_out_static(self):
         paddle.enable_static()
@@ -78,8 +80,8 @@ class PreQuantScaleTest(unittest.TestCase):
             )
             out = Q.apply_per_channel_scale(x, scales)
             feed_dict = {
-                'x': self.x,
-                'scales': self.scales,
+                'x': self.x.numpy(),
+                'scales': self.scales.numpy(),
             }
 
             exe = base.Executor(paddle.CUDAPlace(0))
@@ -93,8 +95,8 @@ class PreQuantScaleTest(unittest.TestCase):
             self.out_real = self.get_out_static()
         else:
             self.out_real = Q.apply_per_channel_scale(
-                x=paddle.to_tensor(self.x, self.dtype),
-                scales=paddle.to_tensor(self.scales, self.dtype),
+                x=self.x,
+                scales=self.scales,
             )
 
         if self.dtype == 'bfloat16':
