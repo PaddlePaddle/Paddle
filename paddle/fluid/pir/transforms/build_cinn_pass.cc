@@ -111,10 +111,12 @@ class OpTransInfo {
                                                     "fetch",
                                                     "conv2d",
                                                     "conv2d_grad",
-                                                    "tranpose",
+                                                    "transpose",
                                                     "slice",
                                                     "concat",
-                                                    "embedding"};
+                                                    "embedding",
+                                                    "gather_nd",
+                                                    "split"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -272,6 +274,9 @@ class BuildCinnPass : public pir::Pass {
         ::pir::SubgraphDetector(&block, IsSupportCinn)();
     PrintStatistics(groups.size());
     for (auto& group_ops : groups) {
+      if (group_ops.size() == 1 && group_ops[0]->name() == "pd_op.full") {
+        continue;
+      }
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
       ::pir::ReplaceWithGroupOp(&block, group_ops);
     }

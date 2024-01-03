@@ -1567,7 +1567,7 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
   bool has_dynamic_shape = false;
-  HasDynamicShape(forward_program);
+  // HasDynamicShape(forward_program);
 
   auto shape_analysis =
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)

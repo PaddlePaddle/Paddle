@@ -89,9 +89,7 @@ class CINNLayerNormSubGraphNet(paddle.nn.Layer):
         self.bias = self.create_parameter(shape=[hidden_size], dtype="float64")
 
     def forward(self, x, weight, bias):
-        out = paddle.nn.functional.layer_norm(
-            x, x.shape[-1], self.weight, self.bias
-        )
+        out = paddle.nn.functional.layer_norm(x, x.shape[-1], weight, bias)
         return out
 
 
@@ -142,7 +140,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
     def prepare_data(self):
         self.shape = [2048, 256]
         self.axis = -1
-        self.x = paddle.randn(self.shape, dtype="float64")
+        self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
         self.x.stop_gradient = False
 
     def eval(self, use_cinn):
@@ -181,6 +179,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
 class TestCinnLayerNorm(TestCinnSubGraphBase):
     def train(self, use_cinn):
         paddle.seed(2022)
+        self.prepare_data()
         net = CINNLayerNormSubGraphNet(self.shape[-1])
         net = apply_to_static(net, use_cinn)
         # net.eval()
@@ -188,16 +187,23 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
         weight.stop_gradient = False
         bias = paddle.ones(shape=[self.shape[-1]], dtype="float64")
         bias.stop_gradient = False
+        self.x.stop_gradient = False
         out = net(self.x, weight, bias)
         loss = out.sum()
         loss.backward()
-        print(bias.gradient())
-        return out, bias.gradient()
+
+        return out, self.x.gradient(), weight.gradient(), bias.gradient()
 
     def test_forward(self):
-        cinn_out, cinn_grad = self.train(use_cinn=True)
-        dy_out, dy_grad = self.train(use_cinn=False)
+        cinn_out, cinn_x_grad, cinn_w_grad, cinn_b_grad = self.train(
+            use_cinn=True
+        )
+        dy_out, dy_x_grad, dy_w_grad, dy_b_grad = self.train(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-8)
+        np.testing.assert_allclose(cinn_w_grad, dy_w_grad, atol=1e-8)
+        np.testing.assert_allclose(cinn_b_grad, dy_b_grad, atol=1e-8)
+
         # np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
 
 

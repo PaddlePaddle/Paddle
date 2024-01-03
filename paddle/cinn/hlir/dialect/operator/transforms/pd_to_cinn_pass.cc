@@ -630,7 +630,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   // ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
   // ps.Add<SplitOpPattern>(context);
-  // ps.Add<ExpandOpPattern>(context);
+  ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 

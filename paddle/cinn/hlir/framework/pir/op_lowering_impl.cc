@@ -622,9 +622,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   // 2.Do group schedule.
   std::vector<Expr> added_expr;
   for (size_t i = 0; i < func_bodies.size(); ++i) {
-    // std::cerr << ops[i]->name() << std::endl;
-    // std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
-    // std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
+    std::cerr << ops[i]->name() << std::endl;
+    std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
+    std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
 
     if (copyed_var_names.count(ValueName(ops[i]->result(0)))) {
       auto copy_expr = ir::ir_utils::IRCopy(func_bodies[i]);
@@ -788,6 +788,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         group_func_args.emplace_back(new_tensor->buffer,
                                      ir::Argument::IO::kOutput);
         std::cerr << "new tensor " << new_tensor->buffer.defined() << std::endl;
+      }
+      if (erase_reshape.count(op)) {
+        tensor = tensor_map.at(op->operand_source(0));
+        group_func_arg_tensors->push_back(tensor);
+        group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       } else {
         group_func_arg_tensors->push_back(tensor);
         group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
@@ -946,7 +951,17 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     //   funcs));
     // } else
     {
-      if (not_used_op.count(op) && (op->name() == "cinn_op.reshape")) {
+      if (ops.size() > 1 && not_used_op.count(op) &&
+          (op->name() == "cinn_op.reshape")) {
+        erase_reshape.insert(op);
+        // auto it = group->output_ops.find( op );
+        // if(it != group->output_ops.end() )
+        // {
+        //   group->output_ops.erase( it );
+        // }
+
+        // group->output_ops.insert(
+        // op->operand_source(0).dyn_cast<::pir::OpResult>().owner() );
         continue;
       }
 
@@ -1085,7 +1100,12 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
         group->output_ops.begin(),
         group->output_ops.end(),
         std::inserter(output_tensor_names, output_tensor_names.begin()),
-        [&](::pir::Operation* op) { return ValueName(op->result(0)); });
+        [&](::pir::Operation* op) {
+          if (erase_reshape.count(op)) {
+            return ValueName(op->operand_source(0));
+          }
+          return ValueName(op->result(0));
+        });
 
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(&ir_sch,
