@@ -1416,7 +1416,6 @@
   output: Tensor(param_out), Tensor(squared_accum_out), Tensor(linear_accum_out)
   infer_meta:
     func: FtrlInferMeta
-    param: [param, grad, learning_rate]
   kernel:
     func: ftrl
     data_type: param

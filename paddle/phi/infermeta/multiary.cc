@@ -1529,8 +1529,13 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
 }
 
 void FtrlInferMeta(const MetaTensor& param,
+                   const MetaTensor& squared_accumulator,
+                   const MetaTensor& linear_accumulator,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
+                   float l1,
+                   float l2,
+                   float lr_power,
                    MetaTensor* param_out,
                    MetaTensor* squared_accum_out,
                    MetaTensor* linear_accum_out) {
@@ -1558,8 +1563,11 @@ void FtrlInferMeta(const MetaTensor& param,
                         common::product(lr_dim)));
 
   param_out->set_dims(param_dim);
+  param_out->set_dtype(param.dtype());
   squared_accum_out->set_dims(param_dim);
+  squared_accum_out->set_dtype(param.dtype());
   linear_accum_out->set_dims(param_dim);
+  linear_accum_out->set_dtype(param.dtype());
 }
 
 void FusedBatchNormActInferMeta(const MetaTensor& x,
