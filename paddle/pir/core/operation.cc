@@ -137,6 +137,36 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   return op;
 }
 
+Operation *Operation::Clone(Block *target_block,
+                            IRMapping &ir_mapping,
+                            CloneOptions options) {
+  IR_ENFORCE(options.IsCloneRegions() || num_regions_ > 0,
+             "Operation CloneOperands is unimplemented currently.");
+  IR_ENFORCE(num_successors_ == 0,
+             "Operation::Clone is not unimplemented for multiple successors.");
+
+  auto inputs = operands_source();
+  if (options.IsCloneOperands()) {
+    // replace value by IRMapping inplacely.
+    for (auto &value : inputs) {
+      value = ir_mapping.lookup(value);
+    }
+  }
+
+  std::vector<Type> output_types;
+  for (auto &result : results()) {
+    output_types.push_back(result.type());
+  }
+  auto *new_op = Create(inputs, attributes_, output_types, info_, num_regions_);
+  // record outputs mapping info
+  for (int i = 0; i < num_results_; ++i) {
+    ir_mapping.map(result(i), new_op->result(i));
+  }
+  // transfer ownership into target block
+  new_op->MoveTo(target_block, target_block->end());
+  return new_op;
+}
+
 // Call destructors for Region , OpResults, Operation, and OpOperands in
 // sequence, and finally free memory.
 void Operation::Destroy() {

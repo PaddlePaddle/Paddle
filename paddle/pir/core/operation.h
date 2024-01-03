@@ -20,12 +20,12 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/pir/core/block.h"
+#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/visitors.h"
-
 namespace pir {
 class OpBase;
 class Program;
@@ -36,6 +36,20 @@ namespace detail {
 class OpResultImpl;
 class OpOperendImpl;
 }  // namespace detail
+
+class CloneOptions {
+ public:
+  CloneOptions() : clone_regions_{false}, clone_operands_{false} {}
+  CloneOptions(bool clone_regions, bool clone_operands)
+      : clone_regions_(clone_regions), clone_operands_(clone_operands) {}
+
+  bool IsCloneRegions() const { return clone_regions_; }
+  bool IsCloneOperands() const { return clone_operands_; }
+
+ private:
+  bool clone_regions_{true};
+  bool clone_operands_{true};
+};
 
 class IR_API alignas(8) Operation final
     : public DoubleLevelContainer<Operation> {
@@ -53,6 +67,14 @@ class IR_API alignas(8) Operation final
                            size_t num_regions = 0,
                            const std::vector<Block *> &successors = {});
   static Operation *Create(OperationArgument &&op_argument);
+
+  ///
+  /// \brief Deep copy all information and create a new operation.
+  /// TODO(dev): Need hidden target_block argument in the future.
+  ///
+  Operation *Clone(Block *target_block,
+                   IRMapping &ir_mapping,
+                   CloneOptions options = CloneOptions());
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
