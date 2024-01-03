@@ -64,6 +64,9 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#endif
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -122,6 +125,50 @@ phi::DenseTensor ReshardXToReplicated(
   } else {
     return dist_tensor->value();
   }
+}
+
+void set_from_placement(phi::distributed::TensorDistAttr& dist_attr,  // NOLINT
+                        const phi::distributed::Placements& placements) {
+  PADDLE_ENFORCE_NE(
+      dist_attr.process_mesh().empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "process_mesh can not be empty when call set_from_placement"));
+
+  PADDLE_ENFORCE_EQ(
+      placements.size(),
+      dist_attr.process_mesh().ndim(),
+      phi::errors::InvalidArgument(
+          "Input placements size %ld should be equal to process_mesh size %ld",
+          placements.size(),
+          dist_attr.process_mesh().ndim()));
+  int64_t ndim = dist_attr.dims_mapping().size();
+  std::vector<int64_t> dim_map(ndim, -1);
+  std::vector<int64_t> partial_dims;
+  for (size_t i = 0; i < placements.size(); i++) {
+    auto& placement = placements[i];
+    if (placement->is_shard()) {
+      auto shard_dim =
+          dynamic_cast<const phi::distributed::Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
+          dim_map[shard_dim],
+          -1,
+          phi::errors::InvalidArgument(
+              "Tensor dim %lld is already sharded on mesh dim %lld,"
+              " DistTensor operator implementation does not support things "
+              "like hybrid"
+              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+              shard_dim,
+              dim_map[shard_dim]));
+      dim_map[shard_dim] = i;
+    } else if (placement->is_partial()) {
+      partial_dims.push_back(i);
+    }
+  }
+  dist_attr.set_dims_mapping(dim_map);
+  dist_attr.set_partial_status(partial_dims);
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
 }
 #endif
 }  // namespace
@@ -3120,6 +3167,43 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+static PyObject* tensor_method_reshard_(TensorObject* self,
+                                        PyObject* args,
+                                        PyObject* kwargs) {
+  EAGER_TRY
+  paddle::Tensor& src_tensor = self->tensor;
+  PADDLE_ENFORCE_EQ(
+      phi::distributed::DistTensor::classof(src_tensor.impl().get()),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "We can only support reshard with DistTensor, and Tensor %s is not "
+          "DistTensor.",
+          src_tensor.name()));
+  const phi::distributed::ProcessMesh& mesh =
+      CastPyArg2ProcessMesh(PyTuple_GET_ITEM(args, 0), 0);
+  const phi::distributed::Placements& placements =
+      CastPyArg2VectorOfPlacement(PyTuple_GET_ITEM(args, 1), 1);
+
+  phi::distributed::TensorDistAttr dist_attr(
+      phi::vectorize<int64_t>(src_tensor.dims()));
+  dist_attr.set_process_mesh(mesh);
+  set_from_placement(dist_attr, placements);
+
+  VLOG(6) << "Start reshard DistTensor " << src_tensor.name()
+          << " inplace, from src dist_attr"
+          << static_cast<phi::distributed::DistTensor*>(src_tensor.impl().get())
+                 ->dist_attr()
+          << "to dst dist_attr: " << dist_attr;
+  reshard_ad_function(src_tensor, dist_attr, true);
+  VLOG(6) << "Finished reshard DistTensor " << src_tensor.name() << " inplace.";
+
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
+
 PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
@@ -3392,6 +3476,12 @@ PyMethodDef variable_methods[] = {  // NOLINT
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+#endif
+#if defined(PADDLE_WITH_DISTRIBUTE)
+    {"reshard_",
+     (PyCFunction)(void (*)(void))tensor_method_reshard_,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif

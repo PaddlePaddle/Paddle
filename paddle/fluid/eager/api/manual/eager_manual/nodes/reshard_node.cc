@@ -71,6 +71,9 @@ ReshardGradNode::operator()(
   // Backward call reshard_func function
   auto dist_out_ptr = paddle::reshard(grad_out, dist_attr);
   grad_input.set_impl(dist_out_ptr);
+  if (is_inplace_) {
+    grad_out.set_impl(dist_out_ptr);
+  }
 
   VLOG(5) << "Finish C++ API: reshard_func";
   VLOG(6) << "gradnode_ptr = " << this;

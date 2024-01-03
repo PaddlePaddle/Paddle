@@ -29,6 +29,7 @@ class TestReshardAPI:
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._shard = eval(os.getenv("shard"))
+        self._inplace = eval(os.getenv("inplace"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
     def run_test_cases(self):
@@ -40,8 +41,6 @@ class TestReshardAPI:
 
     def test_case_p_to_r(self):
         a = paddle.ones(self._shape)
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
 
         input_tensor = dist.shard_tensor(a, self._mesh, [Partial()])
         output_tensor = dist.reshard(input_tensor, self._mesh, [Replicate()])
@@ -95,10 +94,16 @@ class TestReshardAPI:
             [Replicate()],
         )
         dist_output.stop_gradient = False
-
-        dist_output = dist.reshard(
-            dist_output, dist.ProcessMesh([0, 1], dim_names=["x"]), [Shard(0)]
-        )
+        if self._inplace:
+            dist_output.reshard_(
+                dist.ProcessMesh([0, 1], dim_names=["x"]), [Shard(0)]
+            )
+        else:
+            dist_output = dist.reshard(
+                dist_output,
+                dist.ProcessMesh([0, 1], dim_names=["x"]),
+                [Shard(0)],
+            )
 
         local_label = paddle.to_tensor(label_numpy)
         dist_label = dist.shard_tensor(
