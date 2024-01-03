@@ -204,6 +204,10 @@ class ReshapeOpPattern
     auto scale_factor_gen_op =
         op->operand_source(1).dyn_cast<pir::OpResult>().owner();
 
+    if (op->result(0).use_count() == 1 &&
+        op->result(0).first_use().owner()->name() == "builtin.combine") {
+      return false;
+    }
     if (auto full_op =
             scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>()) {
       // sacle is generator by full op
@@ -228,7 +232,7 @@ class ReshapeOpPattern
       auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
           op->operand_source(0).dyn_cast<pir::OpResult>(), vec_out_shape);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
-      rewriter.EraseOp(op);
+      // rewriter.EraseOp(op);
 
       return true;
     }

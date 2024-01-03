@@ -132,7 +132,7 @@ std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
 }
 
 void StaticShapeGroupScheduler::Schedule() {
-  std::cerr << "begin to update\n";
+  // std::cerr << "begin to update\n";
   feasible_conditions_.emplace_back(
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   LoopReorderAligment();
@@ -212,8 +212,8 @@ ir::ScheduleBlockNode* StaticShapeGroupScheduler::FindGlobalMasterNode() const {
 }
 
 void StaticShapeGroupScheduler::LoopReorderAligment() {
-  std::cerr << "loop reorder func body: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  // std::cerr << "loop reorder func body: "
+  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
   std::vector<std::string> node_list;
 
   auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
@@ -227,14 +227,15 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
     // skip reduce init block
     if (group_tile_info_->broadcast_info.count(name)) {
       // broadcast loops
-      std::cerr << "broadcast axes \n";
-      for (auto& axis : group_tile_info_->broadcast_info[name].broadcast_axes) {
-        std::cerr << "axis" << axis << std::endl;
-      }
-      std::cerr << "out shape \n";
-      for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
-        std::cerr << "dim " << s << std::endl;
-      }
+      // std::cerr << "broadcast axes \n";
+      // for (auto& axis :
+      // group_tile_info_->broadcast_info[name].broadcast_axes) {
+      //   std::cerr << "axis" << axis << std::endl;
+      // }
+      // std::cerr << "out shape \n";
+      // for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
+      //   std::cerr << "dim " << s << std::endl;
+      // }
 
       ir_sch_->Broadcast(name,
                          group_tile_info_->broadcast_info[name].broadcast_axes,
@@ -249,13 +250,13 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
   }
 
   if (!NeedOrderLoops()) {
-    std::cerr << "no need reorder \n";
+    // std::cerr << "no need reorder \n";
     return;
   }
 
-  std::cerr << "need re-order here !!!!!!\n";
+  // std::cerr << "need re-order here !!!!!!\n";
 
-  std::cerr << "node size " << node_list.size() << std::endl;
+  // std::cerr << "node size " << node_list.size() << std::endl;
 
   // Get re-order loops
   std::set<int64_t> reduce_set(group_tile_info_->reduce_axis_.begin(),
@@ -285,8 +286,8 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
     ir_sch_->Reorder(name, new_order);
   }
 
-  std::cerr << "after loop reorder func body: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  // std::cerr << "after loop reorder func body: "
+  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
 }
 
 bool StaticShapeGroupScheduler::NeedOrderLoops() {
@@ -294,7 +295,7 @@ bool StaticShapeGroupScheduler::NeedOrderLoops() {
     if (group_tile_info_->reduce_axis_.size() == 0) {
       return false;
     }
-    std::cerr << "reduce rank " << group_tile_info_->data_rank << std::endl;
+    // std::cerr << "reduce rank " << group_tile_info_->data_rank << std::endl;
 
     std::vector<int64_t> vec_axis = group_tile_info_->reduce_axis_;
 
@@ -325,7 +326,7 @@ void StaticShapeGroupScheduler::Tiling() {
 
   schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
 
-  std::cerr << "node size " << node_list.size() << std::endl;
+  // std::cerr << "node size " << node_list.size() << std::endl;
 
   auto vec_axis = group_tile_info_->reduce_axis_;
 
@@ -362,11 +363,11 @@ void StaticShapeGroupScheduler::Tiling() {
       if (ir::IsReduceInitTensorName(name)) {
         continue;
       }
-      std::cerr << "reduce axis\n";
+      // std::cerr << "reduce axis\n";
 
-      for (auto axis : vec_reduce_axis) {
-        std::cerr << axis << std::endl;
-      }
+      // for (auto axis : vec_reduce_axis) {
+      //   //std::cerr << axis << std::endl;
+      // }
       ir_sch_->Fuse(name, vec_reduce_axis);
     }
   }
@@ -393,7 +394,7 @@ void StaticShapeGroupScheduler::Tiling() {
   std::cerr << "split flatten inner: "
             << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
-  std::cerr << "current reduce " << reduce_current_axis << std::endl;
+  // std::cerr << "current reduce " << reduce_current_axis << std::endl;
   // split reduce inner here
 
   if (group_tile_info_->reduce_inner_num > 1) {
@@ -442,15 +443,15 @@ void StaticShapeGroupScheduler::Tiling() {
       }
     }
 
-    std::cerr << "after reorder flatten inner num: "
-              << ir_sch_->GetModule().GetExprs().front() << std::endl;
+    // std::cerr << "after reorder flatten inner num: "
+    //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
   }
 
-  std::cerr << "split warp \n";
+  // std::cerr << "split warp \n";
   // get warp num
   if (group_tile_info_->warp_num > 1) {
     if (group_tile_info_->reduce_axis_.size() == 0) {
-      std::cerr << "split loop 0\n";
+      // std::cerr << "split loop 0\n";
       // only elementwise and broadcast
       // get num warp from flatten num
       for (auto& name : node_list) {
@@ -531,7 +532,7 @@ void StaticShapeGroupScheduler::Tiling() {
       continue;
     }
     if (!output_tensor_names_.count(name)) {
-      std::cerr << "temp name " << name << std::endl;
+      // std::cerr << "temp name " << name << std::endl;
       auto block = ir_sch_->GetBlock(name);
       if (group_tile_info_->shared_var_names.count(name)) {
         ir_sch_->SetBuffer(block, "shared", false);
@@ -594,7 +595,7 @@ void StaticShapeGroupScheduler::Tiling() {
       if (group_tile_info_->reduce_type == 0) {
         block->reduce_type = 0;
       }
-      std::cerr << "block type " << block->reduce_type << std::endl;
+      // std::cerr << "block type " << block->reduce_type << std::endl;
     }
   }
   schedule_block_graph_->Update(*ir_sch_);

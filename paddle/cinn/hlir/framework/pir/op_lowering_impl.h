@@ -271,6 +271,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   std::set<std::string> copyed_var_names;
 
   std::unordered_set<::pir::Operation*> erase_reshape;
+
+  std::vector<::pir::Operation*> remain_ops;
 };
 
 }  // namespace pir

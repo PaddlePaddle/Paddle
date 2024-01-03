@@ -459,17 +459,17 @@ void StScheduleImpl::BroadcastToElementwise(const std::string& block_name,
 
   auto iter_vars = schedule_block->iter_vars;
 
-  std::cerr << "iter vars " << std::endl;
-  for (auto& expr : iter_vars) {
-    std::cerr << "11 " << expr << std::endl;
-  }
+  // std::cerr << "iter vars " << std::endl;
+  // for (auto& expr : iter_vars) {
+  //   std::cerr << "11 " << expr << std::endl;
+  // }
   auto iter_values = schedule_realize->iter_values;
 
-  std::cerr << "iter value \n";
+  // std::cerr << "iter value \n";
 
-  for (auto& expr : iter_values) {
-    std::cerr << "22 " << expr << std::endl;
-  }
+  // for (auto& expr : iter_values) {
+  //   std::cerr << "22 " << expr << std::endl;
+  // }
 
   auto exprs = ir::ir_utils::CollectIRNodesInOrder(
       schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
@@ -499,7 +499,7 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
 
   Expr broadcast_body = ir::ir_utils::IRCopy(broadcast_loop->body);
 
-  std::cerr << "broadcast body  " << broadcast_body << std::endl;
+  // std::cerr << "broadcast body  " << broadcast_body << std::endl;
 
   auto schedule_realize = broadcast_body.As<ir::Block>()
                               ->expr_fields()[0]
@@ -510,17 +510,17 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
 
   auto iter_vars = schedule_block->iter_vars;
 
-  std::cerr << "iter vars " << std::endl;
-  for (auto& expr : iter_vars) {
-    std::cerr << "11 " << expr << std::endl;
-  }
+  // std::cerr << "iter vars " << std::endl;
+  // for (auto& expr : iter_vars) {
+  //   std::cerr << "11 " << expr << std::endl;
+  // }
   auto iter_values = schedule_realize->iter_values;
 
-  std::cerr << "iter value \n";
+  // std::cerr << "iter value \n";
 
-  for (auto& expr : iter_values) {
-    std::cerr << "22 " << expr << std::endl;
-  }
+  // for (auto& expr : iter_values) {
+  //   std::cerr << "22 " << expr << std::endl;
+  // }
 
   schedule_realize->iter_values[axes[0]] = broadcast_loop->loop_var;
 

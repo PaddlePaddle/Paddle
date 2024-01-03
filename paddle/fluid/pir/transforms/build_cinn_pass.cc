@@ -164,6 +164,9 @@ bool UnimplementOps(pir::Operation* op) {
       bool unimplement = false;
       for (auto it = out.use_begin(); it != out.use_end(); ++it) {
         auto owner_name = it->owner()->name();
+        if (owner_name == "builtin.combine") {
+          return true;
+        }
         if (owner_name == "pd_op.fetch" ||
             owner_name == "builtin.set_parameter") {
           continue;
@@ -216,6 +219,10 @@ bool AllInputDenseTensor(pir::Operation* op) {
 }
 
 bool IsSupportCinn(pir::Operation* op) {
+  if (op->name() == "pd_op.reshape") {
+    return false;
+  }
+
   if (!AllInputDenseTensor(op)) {
     return false;
   }

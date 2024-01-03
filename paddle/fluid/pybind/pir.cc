@@ -1631,16 +1631,15 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  pir::PassManager pass_manager(ctx);
   VLOG(0) << "========= AddPass ===========";
   // pass_manager.AddPass(pir::CreateShapeOptimizationPass());
-  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-  pass_manager.AddPass(
+  pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
-  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
-  pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   // if (has_dynamic_shape) {
   //   pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
@@ -1649,9 +1648,9 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
 
-  pass_manager.EnableIRPrinting();
-  pass_manager.Run(&forward_program);
-  VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
+  // pass_manager->EnableIRPrinting();
+  pass_manager->Run(&program);
+  VLOG(3) << "after BuildCinnPass, forward_program:\n" << program;
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "

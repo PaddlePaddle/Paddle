@@ -72,17 +72,17 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   group_tile_info = std::make_shared<cinn::ir::GroupTileInfo>();
 
-  std::cerr << "op name " << (*master_ops.begin())->name() << std::endl;
-  std::cerr << group->kind() << std::endl;
+  // std::cerr << "op name " << (*master_ops.begin())->name() << std::endl;
+  // std::cerr << group->kind() << std::endl;
   ::pir::Operation* first_master_op = nullptr;
   for (auto op : master_ops) {
     if (CompatibleInfo::OpKind(*op) == group->kind()) {
       first_master_op = op;
 
-      std::cerr << "choose " << op->name() << std::endl;
+      // std::cerr << "choose " << op->name() << std::endl;
       break;
     }
-    std::cerr << "master op " << op->name() << std::endl;
+    // std::cerr << "master op " << op->name() << std::endl;
   }
 
   if (first_master_op == nullptr) {
@@ -119,7 +119,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
                    .type()
                    .dyn_cast<paddle::dialect::DenseTensorType>()
                    .dims();
-    std::cerr << "data dim " << data_dim << std::endl;
+    // std::cerr << "data dim " << data_dim << std::endl;
     group_tile_info->data_rank = data_dim.size();
   } else if (group->kind() == OpPatternKind::kBroadcast) {
     data_dim = first_master_op->result(0)
@@ -132,8 +132,8 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
         phi::errors::Unimplemented("only support group kind with reduce, "
                                    "elementwise and broadcast for now"));
   }
-  std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
-  std::cerr << "data dim " << data_dim << std::endl;
+  // std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
+  // std::cerr << "data dim " << data_dim << std::endl;
 
   std::set<int64_t> reduce_set;
   for (auto dim : reduce_axis) {
@@ -164,8 +164,8 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   int64_t flatten_block = 1;
 
-  std::cerr << "reduce numel " << reduce_numel << "\t" << flatten_numel
-            << std::endl;
+  // std::cerr << "reduce numel " << reduce_numel << "\t" << flatten_numel
+  //           << std::endl;
   if (reduce_numel == 1) {
     flatten_block = 1024;
   } else if (reduce_numel <= 256) {
@@ -198,11 +198,11 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     flatten_inner_num = flatten_block;
   }
 
-  std::cerr << "num warp " << warp_num << std::endl;
-  std::cerr << "flatten block " << flatten_block << std::endl;
-  std::cerr << "reduce block  " << reduce_block << std::endl;
-  std::cerr << "flatten inner num " << flatten_inner_num << std::endl;
-  std::cerr << "reduce inner num " << reduce_inner_num << std::endl;
+  // std::cerr << "num warp " << warp_num << std::endl;
+  // std::cerr << "flatten block " << flatten_block << std::endl;
+  // std::cerr << "reduce block  " << reduce_block << std::endl;
+  // std::cerr << "flatten inner num " << flatten_inner_num << std::endl;
+  // std::cerr << "reduce inner num " << reduce_inner_num << std::endl;
 
   group_tile_info->warp_num = warp_num;
   group_tile_info->flatten_inner_num = flatten_inner_num;
@@ -601,6 +601,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   }
 
   for (auto& op : group->output_ops) {
+    if (erase_reshape.count(op)) {
+      copyed_var_names.insert(ValueName(op->operand_source(0)));
+      continue;
+    }
     // collect all output tensor.
     for (auto opresult : op->results()) {
       if (tensor_map.count(opresult) == 0) {
@@ -622,11 +626,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   // 2.Do group schedule.
   std::vector<Expr> added_expr;
   for (size_t i = 0; i < func_bodies.size(); ++i) {
-    std::cerr << ops[i]->name() << std::endl;
-    std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
-    std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
+    // std::cerr << ops[i]->name() << std::endl;
+    // std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
+    // std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
 
-    if (copyed_var_names.count(ValueName(ops[i]->result(0)))) {
+    if (copyed_var_names.count(ValueName(remain_ops[i]->result(0)))) {
       auto copy_expr = ir::ir_utils::IRCopy(func_bodies[i]);
       auto copy_body = copy_expr.As<ir::Block>()
                            ->stmts[0]
@@ -634,9 +638,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                            ->schedule_block.As<ir::ScheduleBlock>()
                            ->body;
 
-      // std::cerr << copy_body << std::endl;
-      cinn::ir::FindBlocksVisitor visitor1(ValueName(ops[i]->result(0)));
+      std::cerr << "copy\n " << ValueName(remain_ops[i]->result(0))
+                << std::endl;
+      std::cerr << copy_body << std::endl;
+      cinn::ir::FindBlocksVisitor visitor1(ValueName(remain_ops[i]->result(0)));
       auto find_blocks = visitor1(&copy_expr);
+
       // std::cerr << find_blocks[0] << std::endl;
 
       auto inner_body = find_blocks[0]
@@ -667,7 +674,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
         t1->name = t1->name + "_out";
       }
 
-      // std::cerr << copy_expr << std::endl;
+      std::cerr << copy_expr << std::endl;
       added_expr.push_back(copy_expr);
     }
   }
@@ -780,19 +787,30 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       // output args
       // group->output_names.push_back(tensor->name);
       std::cerr << "tensor name   " << tensor->name << std::endl;
-      std::cerr << "base tensor " << tensor->buffer.defined() << std::endl;
+      // std::cerr << "base tensor " << tensor->buffer.defined() << std::endl;
       if (copyed_var_names.count(tensor->name)) {
+        std::cerr << "copyed var name \n";
         auto new_tensor = lang::CreatePlaceHolder(
             tensor->shape, tensor->type(), tensor->name + "_out");
         group_func_arg_tensors->push_back(new_tensor);
         group_func_args.emplace_back(new_tensor->buffer,
                                      ir::Argument::IO::kOutput);
-        std::cerr << "new tensor " << new_tensor->buffer.defined() << std::endl;
-      }
-      if (erase_reshape.count(op)) {
-        tensor = tensor_map.at(op->operand_source(0));
-        group_func_arg_tensors->push_back(tensor);
-        group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
+        // std::cerr << "new tensor " << new_tensor->buffer.defined() <<
+        // std::endl;
+      } else if (erase_reshape.count(op)) {
+        if (copyed_var_names.count(ValueName(op->operand_source(0)))) {
+          tensor = tensor_map.at(op->operand_source(0));
+          auto new_tensor = lang::CreatePlaceHolder(
+              tensor->shape, tensor->type(), tensor->name + "_out");
+          group_func_arg_tensors->push_back(new_tensor);
+          group_func_args.emplace_back(new_tensor->buffer,
+                                       ir::Argument::IO::kOutput);
+        } else {
+          tensor = tensor_map.at(op->operand_source(0));
+          group_func_arg_tensors->push_back(tensor);
+          group_func_args.emplace_back(tensor->buffer,
+                                       ir::Argument::IO::kOutput);
+        }
       } else {
         group_func_arg_tensors->push_back(tensor);
         group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
@@ -843,8 +861,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
           continue;
         }
         int_args_set.insert(symbol_name);
-        std::cerr << "symbol name " << tensor_arg_idx << "\t" << symbol_name
-                  << std::endl;
+        // std::cerr << "symbol name " << tensor_arg_idx << "\t" << symbol_name
+        //           << std::endl;
         group_func_args.emplace_back(
             ir::_Var_::Make(symbol_name, cinn::common::Int(32)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
@@ -858,7 +876,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 #ifdef CINN_WITH_CUDA
   optim::OptimizeExprGPU(&(func_body));
 #endif
-  std::cerr << "fun body " << func_body << std::endl;
+  // std::cerr << "fun body " << func_body << std::endl;
 
   // 2.Prepare temp buffers
   poly::StageMap stages;
@@ -954,6 +972,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     {
       if (ops.size() > 1 && not_used_op.count(op) &&
           (op->name() == "cinn_op.reshape")) {
+        // copyed_var_names.insert( ValueName( op->operand_source(0)));
         erase_reshape.insert(op);
         // auto it = group->output_ops.find( op );
         // if(it != group->output_ops.end() )
@@ -969,6 +988,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       for (const ir::LoweredFunc& func : funcs) {
         func_bodies.push_back(func->body);
       }
+
+      remain_ops.push_back(op);
     }
   }
 
