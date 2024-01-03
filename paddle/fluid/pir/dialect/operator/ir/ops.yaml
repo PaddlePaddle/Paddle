@@ -1459,17 +1459,6 @@
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
 
-- op: nce
-  args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
-  output: Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
-  infer_meta:
-    func: NceInferMeta
-  kernel:
-    func: nce
-    data_type: input
-  optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
-  backward: nce_grad
-
 - op: lars_momentum
   args: (Tensor param,  Tensor velocity, Tensor grad, Tensor learning_rate, Tensor master_param, float mu, float lars_coeff=0.001f, float[] lars_weight_decay={0.0005}, float epsilon=0, bool multi_precision=false, float rescale_grad=1.0f)
   output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
@@ -1481,6 +1470,17 @@
     param: [param, velocity, learning_rate, grad, master_param, lars_weight_decay, mu, lars_coeff, epsilon, multi_precision, rescale_grad]
     data_type: param
   optional: master_param, master_param_out
+
+- op: nce
+  args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
+  output: Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
+  infer_meta:
+    func: NceInferMeta
+  kernel:
+    func: nce
+    data_type: input
+  optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
+  backward: nce_grad
 
 - op: number_count
   args: (Tensor numbers, int upper_range)
