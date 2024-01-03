@@ -101,8 +101,9 @@ void NaiveExecutor::Run() {
       func(op.get(), scope_);
     }
 
-    if (op->Type() == "while") {
+    if (op->Type() == "while" || op->Type() == "conditional_block") {
       op->SetOutputHooks(output_hookfuncs_);
+      op->SetInputHooks(input_hookfuncs_);
     }
 
 #ifdef PADDLE_WITH_NVTX

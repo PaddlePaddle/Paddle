@@ -42,10 +42,15 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
 
   void ApplyTactics();
 
+  ir::ScheduleBlockNode* FindGlobalMasterNode();
+
+  IterativeSpaceInfo ConstructIterSpaceInfo(ScheduleBlockNode* node);
+
  private:
   std::vector<std::pair<SymbolicPredicate, std::unique_ptr<ir::IRSchedule>>>
       ir_schs_;
   std::vector<std::unique_ptr<ScheduleTactic>> tactics_;
+  ScheduleContext schedule_context_;
 };
 
 }  // namespace ir

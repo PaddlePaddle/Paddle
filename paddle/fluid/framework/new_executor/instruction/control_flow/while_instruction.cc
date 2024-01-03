@@ -47,32 +47,24 @@ WhileInstruction::WhileInstruction(
     ValueExecutionInfo* parent_exe_info,
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place) {
+  PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
+                 phi::errors::PreconditionNotMet(
+                     "While instruction only support While op"));
   op_ = op;
-  VLOG(6) << "finish process dist attributes";
+  auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
+  body_block_ = &while_op.body();
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  VLOG(6) << "finish process inputs outputs index";
-
-  PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
-                 phi::errors::PreconditionNotMet(
-                     "While instruction only support While op"));
-
-  auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
-
   cond_var_ = parent_exe_info->GetVarByValue(while_op.operand_source(0));
-
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
     inputs_.push_back(
         parent_exe_info->GetVarByValue(while_op.operand_source(i)));
   }
-
   for (size_t i = 0; i < while_op.num_results(); ++i) {
     outputs_.push_back(parent_exe_info->GetVarByValue(while_op.result(i)));
   }
-
-  body_block_ = &while_op.body();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
@@ -94,8 +86,10 @@ WhileInstruction::WhileInstruction(
       std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
-    InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
   }
+  InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
+  InsertInplacedExternalInputsToOuts(
+      body_block_, body_outside_inputs, *parent_exe_info, &outputs);
   SetOutputs(outputs);
 
   Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());

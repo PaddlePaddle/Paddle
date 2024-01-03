@@ -1,22 +1,11 @@
-paddle_test(shape_op_test SRCS shape_op_test.cc DEPS gtest)
+paddle_test(shape_op_test SRCS shape_op_test.cc)
 
-paddle_test(shape_struct_test SRCS shape_struct_test.cc DEPS gtest)
+paddle_test(shape_struct_test SRCS shape_struct_test.cc)
 
-paddle_test(symbol_dim_expr_test SRCS symbol_dim_expr_test.cc DEPS gtest)
-
-paddle_test(symbol_dim_expr_util_test SRCS symbol_dim_expr_util_test.cc DEPS
-            gtest)
+paddle_test(symbol_dim_expr_test SRCS symbol_dim_expr_test.cc)
 
 if(WITH_CINN)
-  paddle_test(
-    shape_optimization_test
-    SRCS
-    shape_optimization_test.cc
-    DEPS
-    gtest
-    op_dialect_vjp
-    pir
-    pir_transforms)
+  paddle_test(shape_optimization_test SRCS shape_optimization_test.cc)
   set_tests_properties(
     shape_optimization_test PROPERTIES ENVIRONMENT
                                        "FLAGS_enable_pir_in_executor=true")
