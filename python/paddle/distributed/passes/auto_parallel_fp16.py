@@ -834,6 +834,7 @@ class FP16Pass(AMPPass):
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")),
             None,
+            dtype=self.target_dtype,
         )
 
         # NOTE don't not change input data dtype, since it is controled by dataloader

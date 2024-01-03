@@ -85,7 +85,7 @@ class AMPLists:
         dtype="float16",
     ):
         self._amp_list = AutoMixedPrecisionLists(
-            set(white_list), set(black_list), set(black_varnames)
+            set(white_list), set(black_list), set(black_varnames), dtype=dtype
         )
         self._dtype = dtype
 
