@@ -27,6 +27,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/random.cuh"
 
@@ -2594,6 +2596,8 @@ __global__ void FractionalKernelMaxPool2dWithIdx(const int ncd,
                                                  const int input_width,
                                                  const int output_height,
                                                  const int output_width,
+                                                 const int pool_height,
+                                                 const int pool_width,
                                                  float random_u,
                                                  uint64_t seed,
                                                  uint64_t offset,
@@ -2620,11 +2624,15 @@ __global__ void FractionalKernelMaxPool2dWithIdx(const int ncd,
     u = random_u;
   }
 
-  alpha_height = static_cast<float>(input_height) / output_height;
-  alpha_width = static_cast<float>(input_width) / output_width;
+  alpha_height = static_cast<float>(input_height - pool_height) /
+                 (output_height - (pool_height > 0 ? 1 : 0));
+  alpha_width = static_cast<float>(input_width - pool_width) /
+                (output_width - (pool_width > 0 ? 1 : 0));
 
-  u_height = FractionalRationalU(u, alpha_height, input_height, output_height);
-  u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  u_height = FractionalRationalU(
+      u, alpha_height, input_height, output_height, pool_height);
+  u_width = FractionalRationalU(
+      u, alpha_width, input_width, output_width, pool_width);
 
   int w_offset, h_offset, nc_offset;
   int hstart, hend, wstart, wend;
@@ -2645,13 +2653,14 @@ __global__ void FractionalKernelMaxPool2dWithIdx(const int ncd,
       int input_offset = nc_offset * input_height * input_width;
       input_data_cur = input_data + input_offset;
 
-      hstart = FractionalStartIndex(h_offset, alpha_height, u_height);
-      hend = FractionalEndIndex(h_offset, alpha_height, u_height);
+      hstart =
+          FractionalStartIndex(h_offset, alpha_height, u_height, pool_height);
+      hend = FractionalEndIndex(h_offset, alpha_height, u_height, pool_height);
       hstart = std::max(hstart, 0);
       hend = std::min(hend, input_height);
 
-      wstart = FractionalStartIndex(w_offset, alpha_width, u_width);
-      wend = FractionalEndIndex(w_offset, alpha_width, u_width);
+      wstart = FractionalStartIndex(w_offset, alpha_width, u_width, pool_width);
+      wend = FractionalEndIndex(w_offset, alpha_width, u_width, pool_width);
       wstart = std::max(wstart, 0);
       wend = std::min(wend, input_width);
 
@@ -2682,6 +2691,8 @@ __global__ void FractionalKernelMaxPool2DWithIdxGrad(
     const int input_width,
     const int output_height,
     const int output_width,
+    const int pool_height,
+    const int pool_width,
     float random_u,
     uint64_t seed,
     uint64_t offset,
@@ -2720,7 +2731,9 @@ class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& input,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = input.dims()[0];
@@ -2730,6 +2743,23 @@ class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int output_channels = output->dims()[1];
     const int output_height = output->dims()[2];
     const int output_width = output->dims()[3];
+    const int pool_height = kernel_size[0];
+    const int pool_width = kernel_size[1];
+
+    PADDLE_ENFORCE_GE(
+        input_height,
+        output_height - 1 + pool_height,
+        phi::errors::InvalidArgument(
+            "input_height [%d] is less than valid output_height [%d]",
+            input_height,
+            output_height - 1 + pool_height));
+    PADDLE_ENFORCE_GE(
+        input_width,
+        output_width - 1 + pool_width,
+        phi::errors::InvalidArgument(
+            "input_width [%d] is less than valid output_width [%d]",
+            input_width,
+            output_width - 1 + pool_width));
 
     const T1* input_data = input.data<T1>();
     T1* output_data = context.template Alloc<T1>(output);
@@ -2769,6 +2799,8 @@ class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                  input_width,
                                                  output_height,
                                                  output_width,
+                                                 pool_height,
+                                                 pool_width,
                                                  random_u,
                                                  seed,
                                                  offset,
@@ -2788,7 +2820,9 @@ class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_channels = input_grad->dims()[1];
@@ -2796,6 +2830,8 @@ class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     const int input_width = input_grad->dims()[3];
     const int output_height = output_grad.dims()[2];
     const int output_width = output_grad.dims()[3];
+    const int pool_height = kernel_size[0];
+    const int pool_width = kernel_size[1];
 
     const T2* mask_data = mask.data<T2>();
     const T1* output_grad_data = output_grad.data<T1>();
@@ -2836,6 +2872,8 @@ class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                  input_width,
                                                  output_height,
                                                  output_width,
+                                                 pool_height,
+                                                 pool_width,
                                                  random_u,
                                                  seed,
                                                  offset,
@@ -2878,6 +2916,9 @@ __global__ void FractionalKernelMaxPool3DWithIdx(
     const int output_depth,
     const int output_height,
     const int output_width,
+    const int pool_depth,
+    const int pool_height,
+    const int pool_width,
     float random_u,
     uint64_t seed,
     uint64_t offset,
@@ -2904,13 +2945,19 @@ __global__ void FractionalKernelMaxPool3DWithIdx(
     u = random_u;
   }
 
-  alpha_depth = static_cast<float>(input_depth) / output_depth;
-  alpha_height = static_cast<float>(input_height) / output_height;
-  alpha_width = static_cast<float>(input_width) / output_width;
+  alpha_depth = static_cast<float>(input_depth - pool_depth) /
+                (output_depth - (pool_depth > 0 ? 1 : 0));
+  alpha_height = static_cast<float>(input_height - pool_height) /
+                 (output_height - (pool_height > 0 ? 1 : 0));
+  alpha_width = static_cast<float>(input_width - pool_width) /
+                (output_width - (pool_width > 0 ? 1 : 0));
 
-  u_depth = FractionalRationalU(u, alpha_depth, input_depth, output_depth);
-  u_height = FractionalRationalU(u, alpha_height, input_height, output_height);
-  u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  u_depth = FractionalRationalU(
+      u, alpha_depth, input_depth, output_depth, pool_depth);
+  u_height = FractionalRationalU(
+      u, alpha_height, input_height, output_height, pool_height);
+  u_width = FractionalRationalU(
+      u, alpha_width, input_width, output_width, pool_width);
 
   int w_offset, h_offset, d_offset, nc_offset;
   int dstart, dend, hstart, hend, wstart, wend;
@@ -2932,18 +2979,19 @@ __global__ void FractionalKernelMaxPool3DWithIdx(
       int input_offset = nc_offset * input_depth * input_height * input_width;
       input_data_cur = input_data + input_offset;
 
-      dstart = FractionalStartIndex(d_offset, alpha_depth, u_depth);
-      dend = FractionalEndIndex(d_offset, alpha_depth, u_depth);
+      dstart = FractionalStartIndex(d_offset, alpha_depth, u_depth, pool_depth);
+      dend = FractionalEndIndex(d_offset, alpha_depth, u_depth, pool_depth);
       dstart = std::max(dstart, 0);
       dend = std::min(dend, input_depth);
 
-      hstart = FractionalStartIndex(h_offset, alpha_height, u_height);
-      hend = FractionalEndIndex(h_offset, alpha_height, u_height);
+      hstart =
+          FractionalStartIndex(h_offset, alpha_height, u_height, pool_height);
+      hend = FractionalEndIndex(h_offset, alpha_height, u_height, pool_height);
       hstart = std::max(hstart, 0);
       hend = std::min(hend, input_height);
 
-      wstart = FractionalStartIndex(w_offset, alpha_width, u_width);
-      wend = FractionalEndIndex(w_offset, alpha_width, u_width);
+      wstart = FractionalStartIndex(w_offset, alpha_width, u_width, pool_width);
+      wend = FractionalEndIndex(w_offset, alpha_width, u_width, pool_width);
       wstart = std::max(wstart, 0);
       wend = std::min(wend, input_width);
 
@@ -2978,6 +3026,9 @@ __global__ void FractionalKernelMaxPool3DWithIdxGrad(
     const int output_depth,
     const int output_height,
     const int output_width,
+    const int pool_depth,
+    const int pool_height,
+    const int pool_width,
     float random_u,
     T1* input_grad,
     FastDivModForPooling3D divmods_output) {
@@ -3016,7 +3067,9 @@ class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& input,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = input.dims()[0];
@@ -3028,6 +3081,31 @@ class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int output_depth = output->dims()[2];
     const int output_height = output->dims()[3];
     const int output_width = output->dims()[4];
+    const int pool_depth = kernel_size[0];
+    const int pool_height = kernel_size[1];
+    const int pool_width = kernel_size[2];
+
+    PADDLE_ENFORCE_GE(
+        input_depth,
+        output_depth - 1 + pool_depth,
+        phi::errors::InvalidArgument(
+            "input_depth [%d] is less than valid output_depth [%d]",
+            input_depth,
+            output_depth - 1 + pool_depth));
+    PADDLE_ENFORCE_GE(
+        input_height,
+        output_height - 1 + pool_height,
+        phi::errors::InvalidArgument(
+            "input_height [%d] is less than valid output_height [%d]",
+            input_height,
+            output_height - 1 + pool_height));
+    PADDLE_ENFORCE_GE(
+        input_width,
+        output_width - 1 + pool_width,
+        phi::errors::InvalidArgument(
+            "input_width [%d] is less than valid output_width [%d]",
+            input_width,
+            output_width - 1 + pool_width));
 
     const T1* input_data = input.data<T1>();
     T1* output_data = context.template Alloc<T1>(output);
@@ -3069,6 +3147,9 @@ class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                  output_depth,
                                                  output_height,
                                                  output_width,
+                                                 pool_depth,
+                                                 pool_height,
+                                                 pool_width,
                                                  random_u,
                                                  seed,
                                                  offset,
@@ -3088,7 +3169,9 @@ class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_channels = input_grad->dims()[1];
@@ -3098,6 +3181,9 @@ class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     const int output_depth = output_grad.dims()[2];
     const int output_height = output_grad.dims()[3];
     const int output_width = output_grad.dims()[4];
+    const int pool_depth = kernel_size[0];
+    const int pool_height = kernel_size[1];
+    const int pool_width = kernel_size[2];
 
     const T1* output_grad_data = output_grad.data<T1>();
     const T2* mask_data = mask.data<T2>();
@@ -3131,6 +3217,9 @@ class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                  output_depth,
                                                  output_height,
                                                  output_width,
+                                                 pool_depth,
+                                                 pool_height,
+                                                 pool_width,
                                                  random_u,
                                                  input_grad_data,
                                                  pool_divmods_output);

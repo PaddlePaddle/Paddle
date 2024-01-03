@@ -27,7 +27,10 @@ import paddle
 from paddle.base import core
 
 
-def fractional_rational_u(u, alpha, input, output):
+def fractional_rational_u(u, alpha, input, output, pool_size=0):
+    if pool_size > 0:
+        return u
+
     base = input // output
 
     u_max1 = (base + 2) / alpha - 1
@@ -37,49 +40,60 @@ def fractional_rational_u(u, alpha, input, output):
     return u * max_u
 
 
-def fractional_start_index(idx, alpha, u):
-    return int(np.ceil(alpha * (idx + u) - 1))
+def fractional_start_index(idx, alpha, u, pool_size=0):
+    return int((idx + u) * alpha) - int(u * alpha)
 
 
-def fractional_end_index(idx, alpha, u):
-    return int(np.ceil(alpha * (idx + 1 + u) - 1))
+def fractional_end_index(idx, alpha, u, pool_size=0):
+    if pool_size > 0:
+        return int((idx + u) * alpha) - int(u * alpha) + pool_size
+    return int((idx + 1 + u) * alpha) - int(u * alpha)
 
 
 def fractional_max_pool3D_forward_naive(
     x,
     output_size,
+    kernel_size=[0, 0, 0],
     random_u=None,
+    return_mask=True,
 ):
     N, C, D, H, W = x.shape
     D_out, H_out, W_out = output_size
+    pool_depth, pool_height, pool_width = kernel_size
 
     u = random_u
 
-    alpha_depth = D / D_out
-    alpha_height = H / H_out
-    alpha_width = W / W_out
+    alpha_depth = (D - pool_depth) / (D_out - (1 if pool_depth > 0 else 0))
+    alpha_height = (H - pool_height) / (H_out - (1 if pool_height > 0 else 0))
+    alpha_width = (W - pool_width) / (W_out - (1 if pool_width > 0 else 0))
 
-    u_depth = fractional_rational_u(u, alpha_depth, D, D_out)
-    u_height = fractional_rational_u(u, alpha_height, H, H_out)
-    u_width = fractional_rational_u(u, alpha_width, W, W_out)
+    u_depth = fractional_rational_u(u, alpha_depth, D, D_out, pool_depth)
+    u_height = fractional_rational_u(u, alpha_height, H, H_out, pool_height)
+    u_width = fractional_rational_u(u, alpha_width, W, W_out, pool_width)
 
     out = np.zeros((N, C, D_out, H_out, W_out))
     mask = np.zeros((N, C, D_out, H_out, W_out))
     for k in range(D_out):
-        d_start = fractional_start_index(k, alpha_depth, u_depth)
-        d_end = fractional_end_index(k, alpha_depth, u_depth)
+        d_start = fractional_start_index(k, alpha_depth, u_depth, pool_depth)
+        d_end = fractional_end_index(k, alpha_depth, u_depth, pool_depth)
         d_start = max(d_start, 0)
         d_end = min(d_end, D)
 
         for i in range(H_out):
-            h_start = fractional_start_index(i, alpha_height, u_height)
-            h_end = fractional_end_index(i, alpha_height, u_height)
+            h_start = fractional_start_index(
+                i, alpha_height, u_height, pool_height
+            )
+            h_end = fractional_end_index(i, alpha_height, u_height, pool_height)
             h_start = max(h_start, 0)
             h_end = min(h_end, H)
 
             for j in range(W_out):
-                w_start = fractional_start_index(j, alpha_width, u_width)
-                w_end = fractional_end_index(j, alpha_width, u_width)
+                w_start = fractional_start_index(
+                    j, alpha_width, u_width, pool_width
+                )
+                w_end = fractional_end_index(
+                    j, alpha_width, u_width, pool_width
+                )
                 w_start = max(w_start, 0)
                 w_end = min(w_end, W)
 
@@ -108,12 +122,16 @@ def fractional_max_pool3D_forward_naive(
 def fractional_max_pool3d_with_index_wapper(
     x,
     output_size=None,
+    kernel_size=[0, 0, 0],
     random_u=None,
+    return_mask=True,
 ):
     return paddle._C_ops.fractional_max_pool3d_with_index(
         x,
         output_size,
+        kernel_size,
         random_u,
+        return_mask,
     )
 
 
@@ -128,19 +146,23 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.init_dtype()
 
         if self.is_bfloat16_op():
+            np.random.seed(2023)
             input = np.random.random(self.shape).astype(np.float32)
             input = convert_uint16_to_float(
                 convert_float_to_uint16(np.round(input * 100.0, 2))
             )
 
         else:
+            np.random.seed(2023)
             input = np.random.random(self.shape).astype(self.dtype)
             input = np.round(input * 100.0, 2)
 
         output, mask = self.pool_forward_naive(
             input,
             self.output_size,
+            self.kernel_size,
             self.random_u,
+            self.return_mask,
         )
         mask = mask.astype("int32")
         if self.is_bfloat16_op():
@@ -150,7 +172,9 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
         self.attrs = {
             'output_size': self.output_size,
+            'kernel_size': self.kernel_size,
             'random_u': self.random_u,
+            'return_mask': self.return_mask,
         }
 
         if self.is_bfloat16_op():
@@ -177,6 +201,8 @@ class TestMaxPoolWithIndex_Op(OpTest):
     def init_test_case(self):
         self.shape = [2, 3, 7, 7, 7]
         self.output_size = [3, 3, 3]
+        self.kernel_size = [0, 0, 0]
+        self.return_mask = True
 
     def init_fractional(self):
         self.random_u = 0.3
@@ -186,11 +212,21 @@ class TestCase1(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.shape = [2, 5, 9, 9, 9]
         self.output_size = [5, 5, 5]
+        self.kernel_size = [0, 0, 0]
+        self.return_mask = False
 
 
 class TestCase2(TestCase1):
     def init_fractional(self):
         self.random_u = 0.5
+
+
+class TestCase3(TestMaxPoolWithIndex_Op):
+    def init_test_case(self):
+        self.shape = [2, 5, 7, 7, 7]
+        self.output_size = [5, 5, 5]
+        self.kernel_size = [2, 2, 2]
+        self.return_mask = True
 
 
 # ----------------fractional_max_pool3d_with_index_fp16----------------
@@ -221,6 +257,7 @@ def create_test_fp16_class(parent):
 create_test_fp16_class(TestMaxPoolWithIndex_Op)
 create_test_fp16_class(TestCase1)
 create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
 
 
 # ----------------fractional_max_pool3d_with_index_bf16----------------
@@ -265,6 +302,7 @@ def create_test_bf16_class(parent):
 create_test_bf16_class(TestMaxPoolWithIndex_Op)
 create_test_bf16_class(TestCase1)
 create_test_bf16_class(TestCase2)
+create_test_bf16_class(TestCase3)
 
 
 if __name__ == '__main__':

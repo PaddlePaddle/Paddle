@@ -1020,7 +1020,7 @@
   backward: fold_grad
 
 - op : fractional_max_pool2d_with_index
-  args : (Tensor x, int[] output_size, float random_u = 0.0)
+  args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0}, float random_u = 0.0, bool return_mask = true)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : FractionalMaxPoolWithIndexInferMeta
@@ -1029,7 +1029,7 @@
   backward : fractional_max_pool2d_with_index_grad
 
 - op : fractional_max_pool3d_with_index
-  args : (Tensor x, int[] output_size, float random_u = 0.0)
+  args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0, 0}, float random_u = 0.0, bool return_mask = true)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : FractionalMaxPoolWithIndexInferMeta

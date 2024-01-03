@@ -350,7 +350,9 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 
 void FractionalMaxPoolWithIndexInferMeta(const MetaTensor& x,
                                          const std::vector<int>& output_size,
+                                         const std::vector<int>& kernel_size,
                                          float random_u,
+                                         bool return_mask,
                                          MetaTensor* out,
                                          MetaTensor* mask,
                                          MetaConfig config = MetaConfig());

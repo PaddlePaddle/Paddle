@@ -912,8 +912,8 @@
   no_need_buffer : x
 
 - backward_op : fractional_max_pool2d_with_index_grad
-  forward : fractional_max_pool2d_with_index(Tensor x, int[] output_size, float random_u = 0.0) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, float random_u)
+  forward : fractional_max_pool2d_with_index(Tensor x, int[] output_size, int[] kernel_size = {0, 0}, float random_u = 0.0, bool return_mask = true) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, int[] kernel_size, float random_u, bool return_mask)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -922,8 +922,8 @@
     func : fractional_max_pool2d_with_index_grad
 
 - backward_op : fractional_max_pool3d_with_index_grad
-  forward : fractional_max_pool3d_with_index(Tensor x, int[] output_size, float random_u = 0.0) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, float random_u)
+  forward : fractional_max_pool3d_with_index(Tensor x, int[] output_size, int[] kernel_size = {0, 0, 0}, float random_u = 0.0, bool return_mask = true) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, int[] kernel_size, float random_u, bool return_mask)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

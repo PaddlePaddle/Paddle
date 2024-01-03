@@ -103,10 +103,12 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
 /* used for fractional pool to calculate start and end index of each divided
  * grid
  */
-HOSTDEVICE inline float FractionalRationalU(float u,
-                                            float alpha,
-                                            int input,
-                                            int output) {
+HOSTDEVICE inline float FractionalRationalU(
+    float u, float alpha, int input, int output, int pool_size = 0) {
+  if (pool_size > 0) {
+    return u;
+  }
+
   int base = input / output;
 
   float u_max1 = static_cast<float>(base + 2) / alpha - 1;
@@ -117,12 +119,24 @@ HOSTDEVICE inline float FractionalRationalU(float u,
   return u * max_u;
 }
 
-HOSTDEVICE inline int FractionalStartIndex(int idx, float alpha, float u) {
-  return static_cast<int>(ceil(alpha * (idx + u) - 1));
+HOSTDEVICE inline int FractionalStartIndex(int idx,
+                                           float alpha,
+                                           float u,
+                                           int pool_size = 0) {
+  // paper use ceil instead: static_cast<int>(ceil(alpha * (idx + u) - 1));
+  return static_cast<int>((idx + u) * alpha) - static_cast<int>(u * alpha);
 }
 
-HOSTDEVICE inline int FractionalEndIndex(int idx, float alpha, float u) {
-  return static_cast<int>(ceil(alpha * (idx + 1 + u) - 1));
+HOSTDEVICE inline int FractionalEndIndex(int idx,
+                                         float alpha,
+                                         float u,
+                                         int pool_size = 0) {
+  if (pool_size > 0) {
+    return static_cast<int>((idx + u) * alpha) - static_cast<int>(u * alpha) +
+           pool_size;
+  }
+  // paper use ceil instead: static_cast<int>(ceil(alpha * (idx + 1 + u) - 1));
+  return static_cast<int>((idx + 1 + u) * alpha) - static_cast<int>(u * alpha);
 }
 
 /*
@@ -402,7 +416,9 @@ class FractionalMaxPool2dWithIndexFunctor {
   void operator()(const Context& context,
                   const DenseTensor& input,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* output,
                   DenseTensor* mask);
 };
@@ -414,7 +430,9 @@ class FractionalMaxPool2dWithIndexGradFunctor {
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* input_grad);
 };
 
@@ -424,7 +442,9 @@ class FractionalMaxPool3dWithIndexFunctor {
   void operator()(const Context& context,
                   const DenseTensor& input,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* output,
                   DenseTensor* mask);
 };
@@ -436,7 +456,9 @@ class FractionalMaxPool3dWithIndexGradFunctor {
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
                   float random_u,
+                  bool return_mask,
                   DenseTensor* input_grad);
 };
 
