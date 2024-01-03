@@ -21,7 +21,7 @@
 #include <iostream>
 #include <limits>
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/hostdevice.h"
+#include "paddle/common/hostdevice.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
