@@ -2750,14 +2750,6 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
   shuffle_idx->set_dims(phi::make_ddim({-1}));
 }
 
-void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
-                               const MetaTensor& out_grad,
-                               int startup_seed,
-                               MetaTensor* x_grad) {
-  x_grad->share_dims(out_grad);
-  x_grad->share_lod(out_grad);
-}
-
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,

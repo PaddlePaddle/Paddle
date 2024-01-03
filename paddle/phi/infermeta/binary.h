@@ -439,11 +439,6 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
 
 );
 
-void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
-                               const MetaTensor& out_grad,
-                               int startup_seed,
-                               MetaTensor* x_grad);
-
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);

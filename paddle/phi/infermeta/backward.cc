@@ -1014,6 +1014,15 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
+                               const MetaTensor& out_grad,
+                               int startup_seed,
+                               MetaTensor* x_grad) {
+  x_grad->share_dims(out_grad);
+  x_grad->share_lod(out_grad);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void SpectralNormGradInferMeta(const MetaTensor& weight,
                                const MetaTensor& u,
                                const MetaTensor& v,
