@@ -1054,11 +1054,11 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
     for (int i = 0; i < tensor_shape.size(); i++) {
       ir::Expr call_set_infer_shape_value =
           ir::Call::Make(type_of<void>(),
-                         runtime::intrinsic::set_value,
-                         {tensor_shape_args,
-                          ir::Expr(output_tensor_idx),
+                         runtime::intrinsic::infer_shape_set_value,
+                         {ir::Expr(output_tensor_idx),
                           ir::Expr(i),
-                          tensor_shape[i]},
+                          tensor_shape[i],
+                          tensor_shape_args},
                          {},
                          ir::CallType::Extern,
                          ir::FunctionRef(),
