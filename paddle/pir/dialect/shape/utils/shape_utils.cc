@@ -47,7 +47,6 @@ bool ShapeAnalysis::IsProductEqual(
 
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
     : m_(m), mgr_(m) {
-  mgr_.Load();
   for (auto& op : m.block()) {
     auto tie_shape_op = op.dyn_cast<shape::TieShapeOp>();
     if (!tie_shape_op) continue;
@@ -66,9 +65,7 @@ ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
   }
 }
 
-ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {
-  // mgr_.Save();
-}
+ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {}
 
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;

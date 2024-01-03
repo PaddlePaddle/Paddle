@@ -446,14 +446,12 @@ bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
 bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
   // TODO(zhangbopd): Do some Canonicalizer.
   pir::SymbolicDimMgr mgr(m);
-  IR_ENFORCE(mgr.Load(),
-             "SymbolicDimMgr Load failed in OptimizeShapeComputation.");
+
   ShapeComputationIRAnalysis analysis(m, mgr);
   if (!analysis.Run()) {
     return false;
   }
-  IR_ENFORCE(mgr.Save(),
-             "SymbolicDimMgr save failed in OptimizeShapeComputation.");
+
   return true;
 }
 
@@ -469,7 +467,7 @@ void PrintProgram(pir::ModuleOp m, std::string mgs) {
 void DebugPrintOpInfo(
     pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
-  VLOG(0) << op->name() << ", num_operands: " << op->num_operands();
+  VLOG(3) << op->name() << ", num_operands: " << op->num_operands();
   for (auto& res : op->results()) {
     auto value_id = pir::GetValueId(&res);
     std::ostringstream print_stream;
@@ -503,7 +501,7 @@ void DebugPrintOpInfo(
       }
       print_stream << "]\n";
     }
-    VLOG(0) << print_stream.str();
+    VLOG(3) << print_stream.str();
   }
 }
 
@@ -534,18 +532,21 @@ void InferSymExprForAllValues(ModuleOp module_op) {
               shapes.push_back(dim_expr);
             }
 
+            symbol::ShapeOrDataDimExprs shape_data{shapes};
+            shape_analysis.value_id_to_shapeordata_[value_id] = shape_data;
+
             if (op.name() == "pd_op.full_int_array") {
+              std::vector<symbol::DimExpr> data;
               auto attributes = op.attributes();
               auto attr = attributes["value"];
               auto arr = attr.dyn_cast<ArrayAttribute>();
               const auto& vec = arr.AsVector();
               for (auto item : vec) {
                 int64_t i = item.dyn_cast<Int64Attribute>().data();
-                shapes.push_back(symbol::DimExpr(i));
+                data.push_back(symbol::DimExpr(i));
               }
+              shape_analysis.value_id_to_shapeordata_[value_id].SetData(data);
             }
-            symbol::ShapeOrDataDimExprs shape_data{shapes};
-            shape_analysis.value_id_to_shapeordata_[value_id] = shape_data;
           }
         } else {
           auto infer_symbolic_shape_interface =
@@ -574,14 +575,11 @@ class ShapeOptimizationPass : public pir::Pass {
     PrintProgram(module_op, "Origin Program");
 
     InferSymExprForAllValues(module_op);
-    MaterializeShapeComputation(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
       return pm.Run(m.program());
     };
-    // if (!OptimizeShapeComputation(module_op, runner)) {
-    //   return;
-    // }
+
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
                "=============================";
   }

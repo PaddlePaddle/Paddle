@@ -220,8 +220,6 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
   tie_shape_op2->set_attribute(
       pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), array_attr2);
 
-  EXPECT_TRUE(sym_dim_mgr.Load());
-
   // For check indirect equality: S1 * S4 == S2 * S5
   pir::SymbolicDimProduct sym_dim_product_lhs1;
   pir::SymbolicDimProduct sym_dim_product_rhs1;
@@ -298,10 +296,8 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
                                                     sym_dim_product_rhs1));
   EXPECT_TRUE(sym_dim_mgr.IsSymbolicDimProductEqual(sym_dim_product_lhs2,
                                                     sym_dim_product_rhs2));
-  EXPECT_TRUE(sym_dim_mgr.Save());
 
   pir::SymbolicDimMgr sym_dim_mgr_new(program.module_op());
-  EXPECT_TRUE(sym_dim_mgr_new.Load());
 
   auto attrs = tie_shape_op1.attribute<pir::ArrayAttribute>(
       pir::shape::SymbolicDimOp::GetSymbolicDimAttrName());
