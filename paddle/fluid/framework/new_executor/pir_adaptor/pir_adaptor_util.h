@@ -213,9 +213,13 @@ void BuildPhiContext(pir::Operation* op,
         } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
           inputs.emplace_back(InType(const_cast<phi::SelectedRows*>(
               &(variable_array[i]->Get<phi::SelectedRows>()))));
+        } else if (variable_array[i]->IsType<phi::TensorArray>()) {
+          inputs.emplace_back(InType(const_cast<phi::TensorArray*>(
+              &(variable_array[i]->Get<phi::TensorArray>()))));
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
-              "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
+              "Only support Vector<DenseTensor> and vector<SelectedRows> "
+              "and vector<TensorArray> now "
               "not support vector<%d>.",
               variable_array[i]->Type()));
         }
