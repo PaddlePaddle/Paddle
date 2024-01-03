@@ -49,12 +49,14 @@ class ProgramInterpreter : public InterpreterBaseImpl {
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true,
-      bool enable_job_schedule_profiler = false) override;
+      bool enable_job_schedule_profiler = false,
+      bool switch_stream = false) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
                                    bool enable_job_schedule_profiler = false,
-                                   bool enable_op_profiling = false) override;
+                                   bool enable_op_profiling = false,
+                                   bool switch_stream = false) override;
 
   std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
@@ -152,7 +154,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
                const std::vector<phi::DenseTensor>& feed_tensors,
-               bool prepare_feed);
+               bool prepare_feed,
+               bool switch_stream = false);
 
   void RecordMemcpyD2H(const Instruction& instr_node);
 

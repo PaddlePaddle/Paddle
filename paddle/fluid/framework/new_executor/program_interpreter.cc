@@ -41,9 +41,6 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(inference_switch_stream);
-#endif
 PD_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
 PHI_DECLARE_string(static_runtime_data_save_path);
@@ -147,7 +144,8 @@ void ProgramInterpreter::RunImpl() {
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
                                   bool enable_job_schedule_profiler,
-                                  bool enable_op_profiling) {
+                                  bool enable_op_profiling,
+                                  bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
   is_in_op_profiling_mode_ = enable_op_profiling;
 
@@ -167,7 +165,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     is_shared_results_build_ = true;
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (FLAGS_inference_switch_stream) {
+    if (switch_stream) {
       BuildOpFuncNode(&op_func_nodes);
     }
 #endif
@@ -241,7 +239,8 @@ FetchList ProgramInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
     bool need_fetch,
-    bool enable_job_schedule_profiler) {
+    bool enable_job_schedule_profiler,
+    bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   SetDeviceId(place_);
@@ -252,7 +251,7 @@ FetchList ProgramInterpreter::Run(
 #endif
 
   bool is_build = is_build_;
-  Prepare(feed_names, feed_tensors, is_build);
+  Prepare(feed_names, feed_tensors, is_build, switch_stream);
 
   if (is_build) {
     RunImpl();
@@ -1512,7 +1511,8 @@ void ProgramInterpreter::CheckGC(const Instruction& instr) {
 void ProgramInterpreter::Prepare(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
-    bool prepare_feed) {
+    bool prepare_feed,
+    bool switch_stream) {
   PADDLE_ENFORCE_EQ(feed_names.size(),
                     feed_tensors.size(),
                     platform::errors::PreconditionNotMet(
@@ -1535,7 +1535,7 @@ void ProgramInterpreter::Prepare(
     }
   };
 
-  if (!is_build_) {
+  if (!is_build_ || switch_stream) {
     paddle::framework::interpreter::BuildVariableScope(
         block_, execution_config_, &var_scope_);
     FeedInput();
