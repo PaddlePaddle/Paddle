@@ -70,10 +70,8 @@ class IR_API alignas(8) Operation final
 
   ///
   /// \brief Deep copy all information and create a new operation.
-  /// TODO(dev): Need hidden target_block argument in the future.
   ///
-  Operation *Clone(Block *target_block,
-                   IRMapping &ir_mapping,
+  Operation *Clone(IrMapping &ir_mapping,
                    CloneOptions options = CloneOptions());
   ///
   /// \brief Destroy the operation objects and free memory by create().

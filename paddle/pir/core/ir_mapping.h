@@ -18,17 +18,17 @@
 
 namespace pir {
 
-class IRMapping {
+class IrMapping {
  public:
-  void map(Value from, Value to) { value_map_[from] = to; }
+  void Add(Value from, Value to) { value_map_[from] = to; }
 
-  Value lookup(Value from) const {
+  Value Lookup(Value from) const {
     IR_ENFORCE(value_map_.count(from) > 0, "Not Found Value in IRMapping.");
     return value_map_.at(from);
   }
-  void earse(Value from) { value_map_.erase(from); }
+  void Earse(Value from) { value_map_.erase(from); }
 
-  void clear() { value_map_.clear(); }
+  void Clear() { value_map_.clear(); }
 
  private:
   std::unordered_map<Value, Value> value_map_;

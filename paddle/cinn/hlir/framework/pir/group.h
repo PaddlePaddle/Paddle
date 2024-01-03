@@ -59,7 +59,7 @@ struct Group {
       : ops(group_ops) {}
 
   Group& Clone(::pir::Block* target_block,
-               ::pir::IRMapping& ir_mapping,
+               ::pir::IrMapping& ir_mapping,
                const Options& option = Options()) const {
     CHECK_EQ(option.OnlyCloneOps(), true)
         << "Only Support Clone Group ops information.";
@@ -68,7 +68,10 @@ struct Group {
     std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
     ::pir::CloneOptions clone_options(false, true);
     for (auto* op : this->ops_set) {
-      auto* new_op = op->Clone(target_block, ir_mapping, clone_options);
+      auto* new_op = op->Clone(ir_mapping, clone_options);
+      // NOTE(dev): Must call MoveTo to deal with ownership, otherwise it
+      // will lead memory-leak.
+      new_op->MoveTo(target_block);
       new_ops.push_back(new_op);
       ops_mapper[op] = new_op;
     }

@@ -137,9 +137,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   return op;
 }
 
-Operation *Operation::Clone(Block *target_block,
-                            IRMapping &ir_mapping,
-                            CloneOptions options) {
+Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
   IR_ENFORCE(options.IsCloneRegions() || num_regions_ > 0,
              "Operation CloneOperands is unimplemented currently.");
   IR_ENFORCE(num_successors_ == 0,
@@ -162,8 +160,6 @@ Operation *Operation::Clone(Block *target_block,
   for (int i = 0; i < num_results_; ++i) {
     ir_mapping.map(result(i), new_op->result(i));
   }
-  // transfer ownership into target block
-  new_op->MoveTo(target_block, target_block->end());
   return new_op;
 }
 
