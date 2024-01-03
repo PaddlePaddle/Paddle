@@ -2442,7 +2442,6 @@
     out : Out
 
 - op : pull_sparse_v2
-  backward : pull_sparse_v2_grad
   inputs :
     { x : Ids, W : w}
   outputs :
