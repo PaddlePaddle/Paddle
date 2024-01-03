@@ -2746,8 +2746,16 @@ namespace {
 void ShapeBroadcastOpInferMeta(const phi::MetaTensor &x,
                                const phi::MetaTensor &y,
                                phi::MetaTensor *out) {
-  PADDLE_ENFORCE_EQ(x.dims().size(), 1);
-  PADDLE_ENFORCE_EQ(y.dims().size(), 1);
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(),
+      1,
+      phi::errors::PreconditionNotMet(
+          "The size %d of x.dims() must be equal to 1.", x.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      y.dims().size(),
+      1,
+      phi::errors::PreconditionNotMet(
+          "The size %d of y.dims() must be equal to 1.", y.dims().size()));
   out->set_dims({std::max<int64_t>(x.dims().at(0), y.dims().at(0))});
   // dtype need promote when meet input dtype with more precision
   paddle::experimental::DataTypeSet dtype_set{x.dtype()};
