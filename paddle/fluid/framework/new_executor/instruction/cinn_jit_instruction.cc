@@ -84,7 +84,7 @@ class CinnJitInstruction::FnPtrImpl {
 
     // 3. Define an array of Pointers to hold the output tensor shape
     int32_t* output_tensor_shapes[output_tensor_size];
-    for (int i = 0; i < output_tensor_size; i++) {
+    for (int i = 0; i < output_tensor_size; ++i) {
       output_tensor_shapes[i] = reinterpret_cast<int32_t*>(
           malloc(kernel_args[input_tensor_size + i]->dims().size() *
                  sizeof(int32_t*)));
@@ -97,7 +97,7 @@ class CinnJitInstruction::FnPtrImpl {
         output_tensor_shapes);
 
     // 5. Resize shape of output tensor
-    for (int i = 0; i < output_tensor_size; i++) {
+    for (int i = 0; i < output_tensor_size; ++i) {
       DDim dim(output_tensor_shapes[i],
                kernel_args[input_tensor_size + i]->dims().size());
       kernel_args[input_tensor_size + i]->Resize(dim);

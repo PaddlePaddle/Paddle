@@ -1042,7 +1042,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
   std::vector<ir::Expr> ir_bodys;
   int output_tensor_idx = 0;
   for (int tensor_arg_idx = 0; tensor_arg_idx < group_func_arg_tensors.size();
-       tensor_arg_idx++) {
+       ++tensor_arg_idx) {
     if (group_func_args[tensor_arg_idx].is_input()) {
       continue;
     }

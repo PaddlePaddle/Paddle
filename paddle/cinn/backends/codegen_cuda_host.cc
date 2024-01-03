@@ -200,7 +200,7 @@ llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
 
   // Set local scope table
   CHECK_EQ(ll_function_args.size(), func->args.size());
-  for (int i = 0; i < ll_function_args.size(); i++) {
+  for (int i = 0; i < ll_function_args.size(); ++i) {
     SetVar(func->args[i].name(), ll_function_args[i]);
   }
   llvm::BasicBlock* entry = llvm::BasicBlock::Create(
