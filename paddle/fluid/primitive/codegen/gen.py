@@ -83,6 +83,7 @@ OTHER_PRIM_VJP_OPS = [
     'reshape_grad',
     'roll_grad',
     'split_grad',
+    'instance_norm_grad',
     'transpose_grad',
     'concat_grad',
     'expand_grad',
