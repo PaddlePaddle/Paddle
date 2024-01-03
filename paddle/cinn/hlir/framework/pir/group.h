@@ -71,7 +71,7 @@ struct Group {
       auto* new_op = op->Clone(ir_mapping, clone_options);
       // NOTE(dev): Must call MoveTo to deal with ownership, otherwise it
       // will lead memory-leak.
-      new_op->MoveTo(target_block);
+      new_op->MoveTo(target_block, target_block->end());
       new_ops.push_back(new_op);
       ops_mapper[op] = new_op;
     }
