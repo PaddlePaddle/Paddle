@@ -409,7 +409,7 @@ def monkey_patch_value():
     def _T_(self):
         """
 
-        Permute current Variable with its dimensions reversed.
+        Permute current Value with its dimensions reversed.
 
         If `n` is the dimensions of `x` , `x.T` is equivalent to `x.transpose([n-1, n-2, ..., 0])`.
 
