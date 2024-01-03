@@ -124,6 +124,8 @@ void CIdentityInferMeta(const MetaTensor& x,
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CreateArrayLikeInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void CropInferMeta(const MetaTensor& x,
                    const IntArray& shape,
                    const IntArray& offsets,
