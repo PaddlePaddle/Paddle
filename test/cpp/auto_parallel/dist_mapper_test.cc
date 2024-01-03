@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
-#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include <map>
 #include <sstream>
 #include "gtest/gtest.h"
+#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
 namespace phi {
 namespace distributed {

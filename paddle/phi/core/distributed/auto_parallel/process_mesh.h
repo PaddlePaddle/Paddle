@@ -28,8 +28,8 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-namespace auto_parallel{
-  class ProcessMeshProto;
+namespace auto_parallel {
+class ProcessMeshProto;
 }
 
 class ProcessMesh {

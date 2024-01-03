@@ -22,7 +22,7 @@ namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
-class DistributedMapperProto;  
+class DistributedMapperProto;
 
 class DistributedMapper {
  public:

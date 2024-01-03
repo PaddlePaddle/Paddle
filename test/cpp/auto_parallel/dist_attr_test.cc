@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
-
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
@@ -101,7 +100,7 @@ TEST(DistAttr, ctor) {
   std::stringstream x_sstream;
   x_sstream << x_dist_attr;
   EXPECT_EQ(x_sstream.str(), x_dist_attr.to_string());
-  auto x_proto = phi::distributed::to_proto(x_dist_attr); //.to_proto();
+  auto x_proto = phi::distributed::to_proto(x_dist_attr);
   TensorDistAttr new_x_dist_attr = get_dist_attr(x);
   new_x_dist_attr.from_proto(x_proto);
   EXPECT_EQ(x_dist_attr, new_x_dist_attr);

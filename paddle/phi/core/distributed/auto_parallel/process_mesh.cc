@@ -104,7 +104,7 @@ ProcessMesh ProcessMesh::from_proto(const ProcessMeshProto &proto) {
   return mesh;
 }
 
-void ProcessMesh::to_proto(ProcessMeshProto* proto) const {
+void ProcessMesh::to_proto(ProcessMeshProto *proto) const {
   for (const auto &i : shape_) {
     proto->add_shape(i);
   }

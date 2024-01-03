@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
 #include <algorithm>
 #include <iostream>
 #include <iterator>
 
 #include "glog/logging.h"
+#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
 namespace phi {
 namespace distributed {
@@ -310,7 +310,8 @@ void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
 }
 
 void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
-  proto->mutable_process_mesh()->CopyFrom(phi::distributed::to_proto(process_mesh_));
+  proto->mutable_process_mesh()->CopyFrom(
+      phi::distributed::to_proto(process_mesh_));
   for (const auto& i : dims_mapping_) {
     proto->add_dims_mapping(i);
   }

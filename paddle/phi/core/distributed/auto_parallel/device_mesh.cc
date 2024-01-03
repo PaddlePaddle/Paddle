@@ -16,8 +16,8 @@ limitations under the License. */
 #include <iterator>
 
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
-#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
@@ -41,7 +41,7 @@ DeviceCapability DeviceCapability::from_proto(
   return capability;
 }
 
-void DeviceCapability::to_proto(DeviceCapabilityProto* proto) const {
+void DeviceCapability::to_proto(DeviceCapabilityProto *proto) const {
   proto->set_single_precision_flops(single_precision_flops);
   proto->set_double_precision_flops(double_precision_flops);
   proto->set_memory_size_in_bytes(memory_size_in_bytes);
@@ -67,12 +67,13 @@ Device Device::from_proto(const DeviceProto &proto) {
   return device;
 }
 
-void Device::to_proto(DeviceProto* proto) const {
+void Device::to_proto(DeviceProto *proto) const {
   proto->set_global_id(global_id_);
   proto->set_local_id(local_id_);
   proto->set_machine_id(machine_id_);
   proto->set_type(type_);
-  proto->mutable_capability()->CopyFrom(phi::distributed::to_proto(capability_));
+  proto->mutable_capability()->CopyFrom(
+      phi::distributed::to_proto(capability_));
 }
 
 bool operator==(const Device &lhs, const Device &rhs) {
@@ -105,7 +106,7 @@ LinkCapability LinkCapability::from_proto(const LinkCapabilityProto &proto) {
   return capability;
 }
 
-void LinkCapability::to_proto(LinkCapabilityProto* proto) const {
+void LinkCapability::to_proto(LinkCapabilityProto *proto) const {
   proto->set_bandwidth(bandwidth);
   proto->set_latency(latency);
 }
@@ -127,11 +128,12 @@ Link Link::from_proto(const LinkProto &proto) {
   return link;
 }
 
-void Link::to_proto(LinkProto* proto) const {
+void Link::to_proto(LinkProto *proto) const {
   proto->set_source_id(source_id_);
   proto->set_target_id(target_id_);
   proto->set_type(type_);
-  proto->mutable_capability()->CopyFrom(phi::distributed::to_proto(capability_));
+  proto->mutable_capability()->CopyFrom(
+      phi::distributed::to_proto(capability_));
 }
 
 bool operator==(const Link &lhs, const Link &rhs) {
@@ -347,7 +349,7 @@ DeviceMesh DeviceMesh::from_proto(const DeviceMeshProto &proto) {
   return mesh;
 }
 
-void DeviceMesh::to_proto(DeviceMeshProto* proto) const {
+void DeviceMesh::to_proto(DeviceMeshProto *proto) const {
   proto->set_name(name_);
 
   for (const auto &i : shape_) {
@@ -363,12 +365,14 @@ void DeviceMesh::to_proto(DeviceMeshProto* proto) const {
   }
 
   for (const auto &device : devices_) {
-    proto->mutable_devices()->Add()->CopyFrom(phi::distributed::to_proto(device.second));
+    proto->mutable_devices()->Add()->CopyFrom(
+        phi::distributed::to_proto(device.second));
   }
 
   for (const auto &neighbors : links_) {
     for (const auto &link : neighbors.second) {
-      proto->mutable_links()->Add()->CopyFrom(phi::distributed::to_proto(link.second));
+      proto->mutable_links()->Add()->CopyFrom(
+          phi::distributed::to_proto(link.second));
     }
   }
 }

@@ -15,9 +15,8 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
-#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
-
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace phi {
 namespace distributed {
@@ -95,7 +94,8 @@ DistributedMapper DistributedMapper::from_proto(
 
 void DistributedMapper::to_proto(DistributedMapperProto* proto) const {
   for (const auto& item : device_meshes_) {
-    proto->mutable_device_meshes()->Add()->CopyFrom(phi::distributed::to_proto(item.second));
+    proto->mutable_device_meshes()->Add()->CopyFrom(
+        phi::distributed::to_proto(item.second));
   }
   for (const auto& outer : process_id_to_device_ids_) {
     auto proto_item = proto->mutable_process_id_to_device_ids()->Add();

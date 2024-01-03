@@ -31,9 +31,9 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-namespace auto_parallel{
-  class TensorDistAttrProto;
-}  
+namespace auto_parallel {
+class TensorDistAttrProto;
+}
 
 constexpr int kReplicateDim = -1;
 
