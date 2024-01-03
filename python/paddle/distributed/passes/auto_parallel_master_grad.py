@@ -50,7 +50,7 @@ def get_output_in_varlist(op, var_names) -> List[str]:
 class MasterGradPass(PassBase):
     """
     Use the high precision gradient to replace the low precision gradient in optimizer to avoid inf/nan values of low precision.
-    The high precision gradient 'master grad' is used by `update_loss_scaling`, `GradClip` and `optimizer`.
+    The high precision gradient 'master grad' will be used by communication operator, `update_loss_scaling`, `GradClip` and `optimizer`.
     """
 
     def __init__(self):
@@ -83,6 +83,9 @@ class MasterGradPass(PassBase):
                 for var_name in var_names:
                     if var_name not in grad_first_ids:
                         grad_first_ids[var_name] = idx
+                    # Communication operators such as 'allreduce_sum' use input var as output.
+                    else:
+                        pass
 
         # insert cast op
         for grad_name, idx in reversed(grad_first_ids.items()):
@@ -92,29 +95,29 @@ class MasterGradPass(PassBase):
                 or grad_var.dtype == core.VarDesc.VarType.BF16
             ):
                 is_fp16 = grad_var.dtype == core.VarDesc.VarType.FP16
-                product_op = cur_block.ops[idx]
-                product_op_dist_attr = (
-                    dist_context.get_op_dist_attr_for_program(product_op)
+                producer_op = cur_block.ops[idx]
+                producer_op_dist_attr = (
+                    dist_context.get_op_dist_attr_for_program(producer_op)
                 )
                 assert (
-                    product_op_dist_attr is not None
-                ), "The op should be distributed"
+                    producer_op_dist_attr is not None
+                ), f"The op: '{producer_op}' should be distributed"
                 ref_output_dist_attr = (
-                    product_op_dist_attr.get_output_dist_attr(grad_name)
+                    producer_op_dist_attr.get_output_dist_attr(grad_name)
                 )
                 assert (
                     ref_output_dist_attr is not None
-                ), "The output should be distributed"
+                ), f"The output: '{grad_name}' should be distributed"
                 ref_mesh = ref_output_dist_attr.process_mesh
                 ref_dims_mapping = ref_output_dist_attr.dims_mapping
-                ref_chunk_id = product_op_dist_attr.chunk_id
-                grad_low_precision_name = (
-                    grad_name + '@tmp_f16'
+                ref_chunk_id = producer_op_dist_attr.chunk_id
+                grad_half_precision_name = (
+                    grad_name + '@tmp_fp16'
                     if is_fp16
                     else grad_name + '@tmp_bf16'
                 )
-                grad_low_precision = cur_block.create_var(
-                    name=grad_low_precision_name,
+                grad_half_precision = cur_block.create_var(
+                    name=grad_half_precision_name,
                     dtype=grad_var.dtype,
                     shape=grad_var.shape,
                     persistable=False,
@@ -122,20 +125,20 @@ class MasterGradPass(PassBase):
                 )
                 set_var_dist_attr(
                     dist_context,
-                    grad_low_precision,
+                    grad_half_precision,
                     ref_dims_mapping,
                     ref_mesh,
                     chunk_id=ref_chunk_id,
                 )
-                product_op._rename_output(grad_name, grad_low_precision.name)
+                producer_op._rename_output(grad_name, grad_half_precision.name)
                 grad_var.desc.set_dtype(core.VarDesc.VarType.FP32)
                 cast_op = cur_block._insert_op_without_sync(
                     idx + 1,
                     type="cast",
-                    inputs={"X": grad_low_precision},
+                    inputs={"X": grad_half_precision},
                     outputs={"Out": grad_var},
                     attrs={
-                        "in_dtype": grad_low_precision.dtype,
+                        "in_dtype": grad_half_precision.dtype,
                         "out_dtype": grad_var.dtype,
                     },
                 )
@@ -163,22 +166,19 @@ class MasterGradPass(PassBase):
         main_ops_len = len(main_ops)
         first_optimize_idx = main_ops_len - 1
         for idx, op in enumerate(main_ops):
-            if is_optimize_op(op) and main_ops[idx].type == "squared_l2_norm":
+            if is_optimize_op(op) and op.type == "squared_l2_norm":
                 first_optimize_idx = idx
                 break
         deleted_temp_var_names = []
-        deleted_persis_var_names = []
+        deleted_persist_var_names = []
         reserved_var_names = []
         for idx in range(main_ops_len - 1, first_optimize_idx - 1, -1):
             op = main_ops[idx]
             inout_arg_names = op.input_arg_names + op.output_arg_names
             if op.type in _supported_optimizer_type:
                 param_names = op.input("Param")
-                learn_rate_names = op.input("LearningRate")
                 skip_update_names = op.input("SkipUpdate")
-                for reserved_name in (
-                    param_names + learn_rate_names + skip_update_names
-                ):
+                for reserved_name in param_names + skip_update_names:
                     if reserved_name not in reserved_var_names:
                         reserved_var_names.append(reserved_name)
             for input_name in inout_arg_names:
@@ -187,9 +187,9 @@ class MasterGradPass(PassBase):
                 var = main_program.global_block().var(input_name)
                 if (
                     var.persistable
-                    and input_name not in deleted_persis_var_names
+                    and input_name not in deleted_persist_var_names
                 ):
-                    deleted_persis_var_names.append(input_name)
+                    deleted_persist_var_names.append(input_name)
                 elif (
                     not var.persistable
                     and input_name not in deleted_temp_var_names
@@ -197,23 +197,23 @@ class MasterGradPass(PassBase):
                     deleted_temp_var_names.append(input_name)
             main_program.global_block()._remove_op(idx)
 
-        for var_name in deleted_temp_var_names + deleted_persis_var_names:
+        for var_name in deleted_temp_var_names + deleted_persist_var_names:
             if var_name not in reserved_var_names:
                 main_program.global_block()._remove_var(var_name)
         main_program.global_block()._sync_with_cpp()
 
         # 1.2 delete the var and op in startup_program
         for reserved_name in reserved_var_names:
-            if reserved_name in deleted_persis_var_names:
-                deleted_persis_var_names.remove(reserved_name)
+            if reserved_name in deleted_persist_var_names:
+                deleted_persist_var_names.remove(reserved_name)
         startup_global_block = startup_program.global_block()
-        for var_name in deleted_persis_var_names:
+        for var_name in deleted_persist_var_names:
             if startup_global_block.has_var(var_name):
                 startup_global_block._remove_var(var_name)
         for idx, op in reversed(list(enumerate(startup_global_block.ops))):
             inout_arg_names = op.input_arg_names + op.output_arg_names
             for var_name in inout_arg_names:
-                if var_name in deleted_persis_var_names:
+                if var_name in deleted_persist_var_names:
                     startup_program.global_block()._remove_op(idx)
                     break
 
