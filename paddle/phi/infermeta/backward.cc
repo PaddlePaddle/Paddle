@@ -1206,15 +1206,15 @@ void FusedRopeGradInferMeta(const MetaTensor& dout_q,
                                    "[batch_size, seq_len, num_heads, head_dim],"
                                    "but got %u.",
                                    input_dims.size()));
-  if (dout_q) {
+  if (dout_q && dq) {
     dq->set_dims(dout_q.dims());
     dq->set_dtype(dout_q.dtype());
   }
-  if (dout_k) {
+  if (dout_k && dk) {
     dk->set_dims(dout_k.dims());
     dk->set_dtype(dout_k.dtype());
   }
-  if (dout_v) {
+  if (dout_v && dv) {
     dv->set_dims(dout_v.dims());
     dv->set_dtype(dout_v.dtype());
   }
