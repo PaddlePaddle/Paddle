@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -58,9 +59,9 @@ struct Group {
   explicit Group(std::initializer_list<::pir::Operation*> group_ops)
       : ops(group_ops) {}
 
-  Group& Clone(::pir::Block* target_block,
-               ::pir::IrMapping& ir_mapping,
-               const Options& option = Options()) const {
+  std::shared_ptr<Group> Clone(::pir::Block* target_block,
+                               ::pir::IrMapping& ir_mapping,
+                               const Options& option = Options()) const {
     CHECK_EQ(option.OnlyCloneOps(), true)
         << "Only Support Clone Group ops information.";
     std::vector<::pir::Operation*> new_ops;
@@ -76,13 +77,13 @@ struct Group {
       ops_mapper[op] = new_op;
     }
     // Construct Base information for new Group
-    Group new_group(new_ops);
+    auto new_group = std::make_shared<Group>(new_ops);
     this->CollectOps();
     for (auto& iter : this->input_ops) {
-      new_group.input_ops[ops_mapper[iter.first]] = iter.second;
+      new_group->input_ops[ops_mapper[iter.first]] = iter.second;
     }
     for (auto* op : this->output_ops) {
-      new_group.output_ops.insert(ops_mapper[op]);
+      new_group->output_ops.insert(ops_mapper[op]);
     }
 
     return new_group;
