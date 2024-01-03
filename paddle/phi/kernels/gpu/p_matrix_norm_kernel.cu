@@ -19,18 +19,11 @@
 
 #include "paddle/phi/kernels/impl/p_matrix_norm_kernel_impl.h"
 
-// namespace phi {
-
-// template <typename T, typename Context>
-// void PMatrixNormKernel(const Context& dev_ctx,
-//                  const DenseTensor& x,
-//                  float porder,
-//                  const std::vector<int>& axis,
-//                  float epsilon UNUSED,
-//                  bool keepdim UNUSED,
-//                  bool asvector,
-//                  DenseTensor* out);
-// } // namespace phi
-
-PD_REGISTER_KERNEL(
-    p_matrix_norm, GPU, ALL_LAYOUT, phi::PMatrixNormKernel, float, double) {}
+PD_REGISTER_KERNEL(p_matrix_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PMatrixNormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

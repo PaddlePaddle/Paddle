@@ -19,21 +19,11 @@
 
 #include "paddle/phi/kernels/impl/nuclear_norm_grad_kernel_impl.h"
 
-// namespace phi {
-
-// template <typename T, typename Context>
-// void NuclearNormGradKernel(const Context& dev_ctx,
-//                  const DenseTensor& x,
-//                  const DenseTensor& out,
-//                  const DenseTensor& out_grad,
-//                  const std::vector<int>& axis,
-//                  bool keepdim UNUSED,
-//                  bool reduce_all UNUSED,
-//                  DenseTensor* x_grad);
-// }  // namespace phi
 PD_REGISTER_KERNEL(nuclear_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::NuclearNormGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

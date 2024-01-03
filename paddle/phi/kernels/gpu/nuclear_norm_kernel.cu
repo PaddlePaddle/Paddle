@@ -19,15 +19,11 @@
 
 #include "paddle/phi/kernels/impl/nuclear_norm_kernel_impl.h"
 
-// namespace phi {
-
-// template <typename T, typename Context>
-// void NuclearNormKernel(const Context& dev_ctx,
-//                  const DenseTensor& x,
-//                  const std::vector<int>& axis,
-//                  bool keepdim ,
-//                  bool reduce_all UNUSED,
-//                  DenseTensor* out);
-// }  // namespace phi
-PD_REGISTER_KERNEL(
-    nuclear_norm, GPU, ALL_LAYOUT, phi::NuclearNormKernel, float, double) {}
+PD_REGISTER_KERNEL(nuclear_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::NuclearNormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

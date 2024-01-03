@@ -3013,7 +3013,6 @@ void PMatrixNormInferMeta(const MetaTensor& x,
                           bool keepdim,
                           bool asvector,
                           MetaTensor* out) {
-  // std::cout << "infermate axis:" << axis[0] << " " << axis[1] << std::endl;
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
 
