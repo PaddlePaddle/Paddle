@@ -17,6 +17,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -26,16 +27,18 @@
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter, pir::Value x, pir::Value y) {
+pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
+                              pir::Value x,
+                              pir::Value y) {
   pir::Value x_shape = rewriter->Build<paddle::dialect::ShapeOp>(x).out();
   pir::Value y_shape = rewriter->Build<paddle::dialect::ShapeOp>(y).out();
-  return rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape, y_shape).out();
+  return rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape, y_shape)
+      .out();
 }
 
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
@@ -44,12 +47,12 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
   {
     pir::Value broadcasted_x =
-      rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
+        rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
     op->operand(0).set_source(broadcasted_x);
   }
   {
     pir::Value broadcasted_y =
-      rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
+        rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
     op->operand(1).set_source(broadcasted_y);
   }
   return true;
@@ -79,31 +82,23 @@ pir::RewritePatternSet FullyInsertBroadcastPass::InitializePatterns(
   ps.Add<FullyInsertBroadcastPattern<paddle::dialect::DivideOp>>(context);
   ps.Add<FullyInsertBroadcastPattern<paddle::dialect::ElementwisePowOp>>(
       context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::RemainderOp>>(
-      context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::FloorDivideOp>>(
-      context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::RemainderOp>>(context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::FloorDivideOp>>(context);
   ps.Add<FullyInsertBroadcastPattern<paddle::dialect::MaximumOp>>(context);
   ps.Add<FullyInsertBroadcastPattern<paddle::dialect::MinimumOp>>(context);
 
   // compare ops
   ps.Add<FullyInsertBroadcastPattern<paddle::dialect::LessThanOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::LessEqualOp>>(
-      context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::LessEqualOp>>(context);
   ps.Add<FullyInsertBroadcastPattern<paddle::dialect::EqualOp>>(context);
   ps.Add<FullyInsertBroadcastPattern<paddle::dialect::NotEqualOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::GreaterThanOp>>(
-      context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::GreaterEqualOp>>(
-      context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::GreaterThanOp>>(context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::GreaterEqualOp>>(context);
 
   // bitwise ops
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseOrOp>>(
-      context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseXorOp>>(
-      context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseNotOp>>(
-      context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseOrOp>>(context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseXorOp>>(context);
+  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseNotOp>>(context);
 
   return ps;
 }
