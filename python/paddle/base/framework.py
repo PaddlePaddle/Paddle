@@ -1361,6 +1361,8 @@ def wrap_as_scalar(number):
     if isinstance(number, np.number):
         # it is a numpy scalar
         return core.Scalar(number.item())
+    if isinstance(number, str):
+        return core.Scalar(int(number))
     else:
         raise TypeError(f"Cannot wrap {number} as core.Scalar")
 

@@ -327,15 +327,16 @@ void ConvertProgram(ProgramDesc* program) {
         VLOG(3) << "Converting program from old to new, op_type=" << op_type;
         ConvertAssignValueOp(op);
       }
+      if (op_type == "fill_constant") {
+        VLOG(3) << "Converting program from old to new, op_type=" << op_type;
+        ConvertFillConstantOp(op);
+      }
       if (!legacy_op_versions.count(op_type)) {
         continue;
       }
       VLOG(3) << "Converting program from old to new, op_type=" << op_type;
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
-      }
-      if (op_type == "fill_constant") {
-        ConvertFillConstantOp(op);
       }
     }
   }
