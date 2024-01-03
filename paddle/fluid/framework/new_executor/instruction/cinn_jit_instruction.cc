@@ -63,13 +63,14 @@ class CinnJitInstruction::FnPtrImpl {
         static_cast<void*>(func_args_.data()), func_args_.size(), stream);
   }
 
-  void InferShape(const std::vector<phi::DenseTensor*>& kernel_args) {
+  void InferShape(const std::vector<phi::DenseTensor*>& kernel_args,
+                  int32_t input_tensor_size,
+                  int32_t output_tensor_size) {
     func_args_.clear();
 
     // 1. Convert the phi::DenseTensor type to cinn_pod_value_t
     for (size_t i = 0; i < kernel_args.size(); ++i) {
       auto* buffer = new cinn_buffer_t();
-      // buffer->memory = reinterpret_cast<uint8_t*>(kernel_args[i]->data());
       func_args_.emplace_back(buffer);
     }
     // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
@@ -81,23 +82,28 @@ class CinnJitInstruction::FnPtrImpl {
               int_arg_mp.second.dim_idx)));
     }
 
-    int32_t** output_tensor_shape;
-    output_tensor_shape = reinterpret_cast<int32_t**>(
-        malloc(kernel_args.size() * sizeof(int32_t**)));
-    for (int i = 0; i < kernel_args.size(); i++) {
+    int32_t* output_tensor_shapes[output_tensor_size];
+    for (int i = 0; i < output_tensor_size; i++) {
       // '4' is output tensor shape dim
-      output_tensor_shape[i] = reinterpret_cast<int32_t*>(
-          malloc(kernel_args[i]->dims().size() * sizeof(int32_t**)));
+      output_tensor_shapes[i] = reinterpret_cast<int32_t*>(
+          malloc(kernel_args[input_tensor_size + i]->dims().size() *
+                 sizeof(int32_t*)));
+      VLOG(-1) << "dddd " << kernel_args[input_tensor_size + i]->dims();
     }
+
     ((infer_shape_func_ptr_g)cinn_kernel_info_.infer_shape_fn_ptr)(
         static_cast<void*>(func_args_.data()),
         func_args_.size(),
-        output_tensor_shape);
+        output_tensor_shapes);
 
-    for (int i = 0; i < kernel_args.size(); i++) {
-      DDim dim(output_tensor_shape[i], kernel_args[i]->dims().size());
-      kernel_args[i]->Resize(dim);
+    for (int i = 0; i < output_tensor_size; i++) {
+      DDim dim(output_tensor_shapes[i],
+               kernel_args[input_tensor_size + i]->dims().size());
+      kernel_args[input_tensor_size + i]->Resize(dim);
+      VLOG(-1) << "dddd " << kernel_args[input_tensor_size + i]->dims();
+      free(output_tensor_shapes[i]);
     }
+    VLOG(-1) << "ddd ";
   }
 
  private:
@@ -115,6 +121,8 @@ CinnJitInstruction::CinnJitInstruction(
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
+  input_tensor_size = op->num_operands();
+  output_tensor_size = op->num_results();
 
   place_ = place;
 
@@ -175,12 +183,13 @@ void CinnJitInstruction::Run() {
   // }
   // 1. infer shape
 
-  fn_ptr_impl_->InferShape(tensor_args_);
+  fn_ptr_impl_->InferShape(tensor_args_, input_tensor_size, output_tensor_size);
+  VLOG(-1) << "yyyy ";
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
     // TODO(6clc): template infer shape from tensor_args_[0].
     // After supporting symbolic calculation, perfect the code to query shape
     // of output tensor
-    // VLOG(-1) << "xxx " << tensor_args_[i]->dims();
+    VLOG(-1) << "xxx " << tensor_args_[i]->dims();
     // if (FLAGS_cinn_bucket_compile) {
     //   tensor_args_[i]->Resize(tensor_args_[0]->dims());
     // }

@@ -1064,8 +1064,12 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
     const std::vector<ir::Argument> group_func_args) {
   // CHECK_EQ(group_func_arg_tensors.size(), group_func_args.size());
   std::vector<ir::Expr> ir_bodys;
+  int output_tensor_idx = 0;
   for (int tensor_arg_idx = 0; tensor_arg_idx < group_func_arg_tensors.size();
        tensor_arg_idx++) {
+    if (group_func_args[tensor_arg_idx].is_input()) {
+      continue;
+    }
     auto tensor_dim = group_func_arg_tensors[tensor_arg_idx]->sym_shape;
     int tensor_dim_size = tensor_dim.size();
     auto tensor_shape = group_func_arg_tensors[tensor_arg_idx]->shape;
@@ -1076,7 +1080,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
           ir::Call::Make(type_of<void>(),
                          runtime::intrinsic::set_value,
                          {tensor_shape_args,
-                          ir::Expr(tensor_arg_idx),
+                          ir::Expr(output_tensor_idx),
                           ir::Expr(i),
                           tensor_shape[i]},
                          {},
@@ -1085,6 +1089,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
                          0);
       ir_bodys.push_back(call_set_infer_shape_value);
     }
+    ++output_tensor_idx;
   }
   ir::LoweredFunc infer_shape_func =
       ir::_LoweredFunc_::Make(group->FuncName() + "_infer_shape",
