@@ -21,12 +21,15 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/utils/string/string_helper.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -64,9 +67,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     LrnOp::name(),
     LrnGradOp::name()};
 
+#ifdef PADDLE_WITH_DNNL
 const std::unordered_set<std::string> OneDNNLegacyOpList = {
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name()};
+#endif
+
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -225,13 +231,13 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
   return kAttrCastMap[attr_type](attr);
 }
 
-bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
-
+bool IsLegacyOp(const std::string& name) {
 #ifdef PADDLE_WITH_DNNL
-bool IsOneDNNLegacyOp(const std::string& name) {
-  return OneDNNLegacyOpList.count(name);
-}
+  return OneDNNLegacyOpList.count(name) || LegacyOpList.count(name);
+#else
+  return LegacyOpList.count(name);
 #endif
+}
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();

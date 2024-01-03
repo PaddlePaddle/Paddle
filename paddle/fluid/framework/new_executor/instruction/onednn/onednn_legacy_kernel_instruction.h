@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/type_defs.h"
 
 namespace pir {
 class Operation;
@@ -25,7 +26,7 @@ namespace framework {
 class Scope;
 class ValueExecutionInfo;
 
-using RuntimeAttribute = phi::Attribute;
+using FluidAttribute = paddle::framework::Attribute;
 using PIRAttribute = pir::Attribute;
 
 class OneDNNLegacyKernelInstruction : public InstructionBase {
@@ -72,9 +73,6 @@ class OneDNNLegacyKernelInstruction : public InstructionBase {
 
   std::set<int> layout_transform_inputs_{};
   phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
-  std::map<std::string, RuntimeAttribute> extra_attr_{};
-  std::map<std::string, std::vector<std::string>> inputs_{};
-  std::map<std::string, std::vector<std::string>> outputs_{};
 };
 
 }  // namespace framework

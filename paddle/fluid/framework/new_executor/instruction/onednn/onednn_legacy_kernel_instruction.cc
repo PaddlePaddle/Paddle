@@ -39,6 +39,56 @@
 namespace paddle {
 namespace framework {
 
+FluidAttribute ConvertPirAttribute2FluidAttribute(
+    PIRAttribute attr,
+    const std::string& attr_name,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
+  auto& attr_type_name = op_yaml_info.AttrTypeName(attr_name);
+  if (attr_type_name == "pir::Int32Attribute") {
+    return attr.dyn_cast<pir::Int32Attribute>().data();
+  } else if (attr_type_name == "pir::FloatAttribute") {
+    return attr.dyn_cast<pir::FloatAttribute>().data();
+  } else if (attr_type_name == "pir::BoolAttribute") {
+    return attr.dyn_cast<pir::BoolAttribute>().data();
+  } else if (attr_type_name == "pir::StrAttribute") {
+    return attr.dyn_cast<pir::StrAttribute>().AsString();
+  } else if (attr_type_name == "pir::ArrayAttribute<pir::Int32Attribute>") {
+    auto array_list = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+    std::vector<int32_t> vec_res;
+    if (array_list.size() > 0) {
+      PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int32Attribute>(),
+                        true,
+                        phi::errors::Unimplemented(
+                            "the 0th elementwise MUST be pir::Int32Attribute"));
+      for (size_t i = 0; i < array_list.size(); ++i) {
+        vec_res.push_back(array_list[i].dyn_cast<pir::Int32Attribute>().data());
+      }
+    }
+    return vec_res;
+  } else if (attr_type_name == "pir::ArrayAttribute<pir::FloatAttribute>") {
+    auto array_list = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+    std::vector<float> vec_res;
+    if (array_list.size() > 0) {
+      if (array_list[0].isa<pir::FloatAttribute>()) {
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[i].dyn_cast<pir::FloatAttribute>().data());
+        }
+
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
+            attr_type_name));
+      }
+    }
+    return vec_res;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
+        attr_type_name));
+  }
+}
+
 OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
     size_t id,
     const platform::Place& place,
@@ -69,8 +119,7 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
       phi::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", legacy_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
-      yaml_interface->get_op_info_(),
-      paddle::dialect::IsOneDNNLegacyOp(op_name));
+      yaml_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
@@ -99,6 +148,22 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
   const Scope* inner_scope = value_exec_info_->GetScope();
 
   operator_base_ = BuildOperatorBase(op, *value_exec_info_, yaml_info_parser);
+
+  // build extra attr information
+  if (op_attributes.count("extra_args")) {
+    std::vector<pir::Attribute> extra_args_attr =
+        op->attributes()
+            .at("extra_args")
+            .dyn_cast<pir::ArrayAttribute>()
+            .AsVector();
+    AttributeMap attr_map = operator_base_->RuntimeAttrs();
+    for (auto& attr : extra_args_attr) {
+      auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
+      attr_map[attr_name] = ConvertPirAttribute2FluidAttribute(
+          op_attributes.at(attr_name), attr_name, yaml_info_parser);
+    }
+    operator_base_->SetRuntimeAttributeMap(attr_map);
+  }
 
   paddle::framework::VariableValueMap in_map;
   paddle::framework::VariableValueMap out_map;
@@ -157,22 +222,6 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
       }
     }
   }
-
-  // Step3: build extra attr information
-  if (op_attributes.count("extra_args")) {
-    std::vector<pir::Attribute> extra_args_attr =
-        op->attributes()
-            .at("extra_args")
-            .dyn_cast<pir::ArrayAttribute>()
-            .AsVector();
-    std::vector<std::string> extra_args;
-    for (auto& attr : extra_args_attr) {
-      auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
-      extra_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
-          op_attributes.at(attr_name), attr_name, yaml_info_parser);
-    }
-  }
-  TensorNameMap(op, *value_exec_info_, yaml_info_parser, inputs_, outputs_);
 }
 
 OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
@@ -222,29 +271,15 @@ void OneDNNLegacyKernelInstruction::Run() {
     }
   }
 
-  // Step2. Append extra information into ctx
-  // SetDnnAttrIntoDeviceContext
-  // SetInputsName SetOutputsName
-  auto one_dnn_ctx = const_cast<phi::OneDNNContext*>(
-      &kernel_context_->GetDeviceContext<phi::OneDNNContext>());
-  for (auto& attr : extra_attr_) {
-    one_dnn_ctx->SetDnnAttr(attr.first, attr.second);
-  }
-  one_dnn_ctx->SetInputsName(inputs_);
-  one_dnn_ctx->SetOutputsName(outputs_);
-
-  // Step3. InferMeta
+  // Step2. InferMeta
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
 
-  // Step4. Run kernel
+  // Step3. Run kernel
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
-
-  // Step5. ClearDnnAttr
-  one_dnn_ctx->ClearDnnAttr();
 }
 }  // namespace framework
 }  // namespace paddle
