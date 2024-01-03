@@ -10,7 +10,6 @@ if(WITH_CINN)
     SRCS
     shape_optimization_test.cc
     DEPS
-    op_dialect_vjp
     pir_transforms)
   set_tests_properties(
     shape_optimization_test PROPERTIES ENVIRONMENT
