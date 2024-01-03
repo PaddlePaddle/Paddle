@@ -22,5 +22,4 @@ limitations under the License. */
 #endif
 // For initialization of DeviceContextPool and MemoryMethod
 #include "paddle/fluid/platform/init_phi.h"
-
 static paddle::InitPhi g_init_phi;
