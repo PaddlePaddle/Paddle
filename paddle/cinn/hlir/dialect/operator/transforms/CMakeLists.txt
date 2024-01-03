@@ -21,6 +21,15 @@ if(NOT CINN_ONLY)
     op_dialect_vjp)
 
   cinn_cc_library(
+    fuse_shape_ops_into_generate_shape_op_pass
+    SRCS
+    fuse_shape_ops_into_generate_shape_op_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
+  cinn_cc_library(
     merge_reshape_with_broadcast_pass
     SRCS
     merge_reshape_with_broadcast_pass.cc

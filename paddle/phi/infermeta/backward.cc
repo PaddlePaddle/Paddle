@@ -201,7 +201,17 @@ void CropGradInferMeta(const MetaTensor& out_grad,
     x_grad->set_dtype(x.dtype());
   }
 }
-
+void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
+                                           const MetaTensor& label,
+                                           const MetaTensor& loss_grad,
+                                           int64_t ignore_index,
+                                           int ring_id,
+                                           int rank,
+                                           int nranks,
+                                           MetaTensor* logits_grad,
+                                           MetaConfig config) {
+  logits_grad->set_dims(softmax.dims());
+}
 void FlashAttnGradInferMeta(const MetaTensor& q,
                             const MetaTensor& k,
                             const MetaTensor& v,
@@ -1181,12 +1191,19 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
                                    const int32_t arch,
+                                   const int32_t group_size,
                                    MetaTensor* x_grad) {
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86)),
       true,
       phi::errors::InvalidArgument(
           "Currently weightonly linear grad only support arch = 80 or 86. "));
+  PADDLE_ENFORCE_EQ(
+      group_size,
+      -1,
+      phi::errors::InvalidArgument(
+          "Currently weightonly linear grad only support per-channel mode. "));
+
   x_grad->set_dims(x.dims());
   x_grad->set_dtype(x.dtype());
 }

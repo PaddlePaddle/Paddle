@@ -32,4 +32,14 @@ void SetValueGradKernel(const Context& dev_ctx,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad);
 
+template <typename T, typename Context>
+void SetValueWithScalarGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& out_grad,
+                                  const IntArray& starts,
+                                  const IntArray& ends,
+                                  const IntArray& steps,
+                                  const std::vector<int64_t>& axes,
+                                  const std::vector<int64_t>& decrease_axes,
+                                  const std::vector<int64_t>& none_axes,
+                                  DenseTensor* x_grad);
 }  // namespace phi

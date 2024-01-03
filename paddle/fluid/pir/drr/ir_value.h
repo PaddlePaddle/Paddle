@@ -21,7 +21,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class IrShape {
@@ -101,10 +101,10 @@ class IrValue : public TensorInterface {
   }
 
   // Don't use it in drr pass!
-  const Value& get() const { return value_; }
+  const pir::Value& get() const { return value_; }
 
  private:
-  const Value value_;
+  const pir::Value value_;
   const IrShape shape_;
   const IrDtype dtype_;
 };
@@ -112,4 +112,4 @@ class IrValue : public TensorInterface {
 class IrAttr;
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

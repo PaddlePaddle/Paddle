@@ -162,11 +162,18 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
           vec_int64.push_back(
               vec_element.dyn_cast<::pir::Int64Attribute>().data());
         }
-
         dst_attr = vec_int64;
+      } else if (attr_vec[0].isa<::pir::BoolAttribute>()) {
+        std::vector<bool> vec_bool;
+        int index = 0;
+        for (auto vec_element : attr_vec) {
+          vec_bool.push_back(
+              vec_element.dyn_cast<::pir::BoolAttribute>().data());
+        }
+        dst_attr = vec_bool;
       } else {
         LOG(FATAL)
-            << "only suuport int32 and int64 attribute in ArrayAttribute";
+            << "only support bool/int32/int64 attribute in ArrayAttribute";
       }
     }
   } else {

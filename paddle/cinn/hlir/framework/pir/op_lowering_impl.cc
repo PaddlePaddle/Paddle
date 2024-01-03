@@ -908,6 +908,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   for (auto* op : ops) {
+    VLOG(4) << "start lowering op:" << op->name();
     // 1.Select Op impl
     std::vector<ir::Tensor> op_func_arg_tensors =
         CollectInputTensor(group, op, group_func_arg_tensors, tensor_map);
@@ -1306,6 +1307,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
+  VLOG(3) << "group->shape_analysis:" << group->shape_analysis;
   if (group->shape_analysis != nullptr) {
     auto sym_vec =
         group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);

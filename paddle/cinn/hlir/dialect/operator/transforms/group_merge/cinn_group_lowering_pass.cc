@@ -224,7 +224,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
   }
 
  private:
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_{nullptr};
 };
 
 class CinnGroupLoweringPass : public pir::PatternRewritePass {
@@ -250,7 +250,7 @@ class CinnGroupLoweringPass : public pir::PatternRewritePass {
   }
 
  private:
-  const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis_;
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_{nullptr};
 };
 
 }  // namespace
