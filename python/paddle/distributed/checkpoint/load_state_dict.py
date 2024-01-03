@@ -15,7 +15,7 @@
 import copy
 import os
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Dict, Tuple
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -37,15 +37,13 @@ class ReadItem:
     lengths: Tuple[int]
 
 
-METADATA_FILES = None
-LOCAL_DATA_FILES = None
+PATH_TO_CHECKPOINT_FILES: Dict[str, Tuple[list, list]] = {}
 
 
-def get_checkpoint_files(path):
-    global METADATA_FILES
-    global LOCAL_DATA_FILES
-    if METADATA_FILES is not None and LOCAL_DATA_FILES is not None:
-        return METADATA_FILES, LOCAL_DATA_FILES
+def get_checkpoint_files(path, use_cache=True):
+    global PATH_TO_CHECKPOINT_FILES
+    if use_cache and path in PATH_TO_CHECKPOINT_FILES:
+        return PATH_TO_CHECKPOINT_FILES[path]
     accessible_files = os.listdir(path)
     metadata_files = [
         file for file in accessible_files if file.endswith(".metadata")
@@ -59,9 +57,9 @@ def get_checkpoint_files(path):
     assert (
         len(local_data_files) > 0
     ), f"No data file found in the checkpoint directory:{path}."
-    METADATA_FILES = metadata_files
-    LOCAL_DATA_FILES = local_data_files
-    return metadata_files, local_data_files
+    if use_cache:
+        PATH_TO_CHECKPOINT_FILES[path] = (metadata_files, local_data_files)
+    return (metadata_files, local_data_files)
 
 
 def get_rank_to_files(path, state_dict, process_group, use_dist):
@@ -83,10 +81,10 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
                 necessary_files.append(file_name)
     necessary_data_files_set = set(necessary_files)
     if len(necessary_data_files_set) <= 0:
-        missing_keys = set(state_dict.keys())
         logger.warning(
             f"No necessary data files found in the checkpoint directory:{path}. Please check the metadata_files:{metadata_files}"
         )
+        missing_keys = set(state_dict.keys())
         return {}, missing_keys
 
     # allgather all accessible files
