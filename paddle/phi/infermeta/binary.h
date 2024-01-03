@@ -428,6 +428,10 @@ void RowConvInferMeta(const MetaTensor& x,
                       const MetaTensor& filter,
                       MetaTensor* out);
 
+void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scales,
+                                   MetaTensor* out);
+
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,

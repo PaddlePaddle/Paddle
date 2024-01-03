@@ -27,6 +27,7 @@ from .functional_layers import (  # noqa: F401
 )
 from .quant_layers import QuantStub  # noqa: F401
 from .quantized_linear import (
+    apply_per_channel_scale,
     llm_int8_linear,
     weight_dequantize,
     weight_only_linear,
@@ -40,4 +41,5 @@ __all__ = [
     "llm_int8_linear",
     "weight_quantize",
     "weight_dequantize",
+    "apply_per_channel_scale",
 ]
