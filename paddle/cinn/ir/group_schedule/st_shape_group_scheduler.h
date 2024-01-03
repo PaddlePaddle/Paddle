@@ -87,6 +87,8 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   // Automatically optimize the reductive calculation
   void OptimizeReduction();
 
+  void Broadcast();
+
   // Evaluate the priority of ScheduleBlockNode.
   // The node where the performance bottleneck is located
   // has a higher priority, while the node with a lower priority

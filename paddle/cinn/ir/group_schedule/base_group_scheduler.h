@@ -22,6 +22,12 @@ namespace ir {
 
 using SymbolicPredicate = Expr;
 
+struct BroadcastInfo {
+  // BroadcastInfo( coststd::vector<int64_t> broadcast_axes,
+  // std::vector<int64_t> output_shape )
+  std::vector<int64_t> broadcast_axes;
+  std::vector<int64_t> output_shape;
+};
 struct GroupTileInfo {
   GroupTileInfo() {}
 
@@ -40,6 +46,11 @@ struct GroupTileInfo {
   std::vector<std::string> thread_sync_before_names;
 
   int reduce_type{-1};
+
+  std::unordered_map<std::string, BroadcastInfo> broadcast_info;
+  std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
+
+  std::set<std::string> copyed_var_names;
 };
 
 /**

@@ -97,6 +97,14 @@ class ScheduleBase {
   virtual Expr GetBlock(const std::string& block_name) const = 0;
   virtual std::vector<Expr> Split(const Expr& loop,
                                   const std::vector<int>& factors) = 0;
+
+  virtual void Broadcast(const std::string& block_name,
+                         const std::vector<int64_t>& axes,
+                         const std::vector<int64_t>& factors) = 0;
+
+  virtual void BroadcastToElementwise(const std::string& block_name,
+                                      const std::vector<int64_t>& axes) = 0;
+
   virtual std::vector<Expr> SamplePerfectTile(
       utils::LinearRandomEngine::StateType* rand_seed,
       const Expr& loop,

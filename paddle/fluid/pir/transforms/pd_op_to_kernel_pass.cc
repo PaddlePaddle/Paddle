@@ -1461,6 +1461,7 @@ std::vector<pir::Value> BuildInputs(
     // 1.backend transfer
     bool check_place_transfer =
         (op_item->isa<::pir::SetParameterOp>()) ||
+        (op_item->name() == "cinn_runtime.jit_kernel") ||
         (kernel.IsValid() && (!UnchangeOutputOps.count(op_item->name())));
 
     if (check_place_transfer) {
@@ -1477,6 +1478,9 @@ std::vector<pir::Value> BuildInputs(
             kernel, tensor_param_index, kernel_key.backend());
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
+        if (op_item->name() == "cinn_runtime.jit_kernel") {
+          dst_backend = phi::Backend::GPU;
+        }
         VLOG(6) << "Infer kernel backend from input " << i << " of op "
                 << op_item->name();
 

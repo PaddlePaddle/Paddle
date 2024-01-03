@@ -147,8 +147,32 @@ bool UnimplementOps(pir::Operation* op) {
   // CINN
   if (op->isa<paddle::dialect::FullOp>()) {
     auto out = op->result(0);
+    if (out.use_count() == 1 &&
+        out.first_use().owner()->name() == "builtin.set_parameter") {
+      auto dim = out.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      if (dim.size() == 1 && dim[0] == 1) {
+        return true;
+      }
+    }
+
     if (out.use_count() > 0) {
-      return !IsSupportCinn(out.first_use().owner());
+      std::cerr << "out.first_use().owner() " << out.first_use().owner()->name()
+                << std::endl;
+
+      bool unimplement = false;
+      for (auto it = out.use_begin(); it != out.use_end(); ++it) {
+        auto owner_name = it->owner()->name();
+        if (owner_name == "pd_op.fetch" ||
+            owner_name == "builtin.set_parameter") {
+          continue;
+        }
+
+        if (!IsSupportCinn(it->owner())) {
+          unimplement = true;
+          break;
+        }
+      }
+      return unimplement;
     }
 
     return false;

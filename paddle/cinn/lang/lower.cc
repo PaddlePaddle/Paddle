@@ -155,6 +155,9 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
+    if (buffer_name.find("_out") != std::string::npos) {
+      continue;
+    }
     if (!name_to_buffer.count(buffer_name)) {
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {

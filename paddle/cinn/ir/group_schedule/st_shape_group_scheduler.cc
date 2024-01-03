@@ -220,13 +220,6 @@ std::unordered_set<std::string> StaticShapeGroupScheduler::OutputTensorNames()
 void StaticShapeGroupScheduler::LoopReorderAligment() {
   std::cerr << "loop reorder func body: "
             << ir_sch_->GetModule().GetExprs().front() << std::endl;
-
-  if (!NeedOrderLoops()) {
-    std::cerr << "no need reorder \n";
-    return;
-  }
-
-  std::cerr << "need re-order here !!!!!!\n";
   std::vector<std::string> node_list;
 
   auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
@@ -234,6 +227,39 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
   };
 
   schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
+
+  // broadcast
+  for (auto& name : node_list) {
+    // skip reduce init block
+    if (group_tile_info_->broadcast_info.count(name)) {
+      // broadcast loops
+      std::cerr << "broadcast axes \n";
+      for (auto& axis : group_tile_info_->broadcast_info[name].broadcast_axes) {
+        std::cerr << "axis" << axis << std::endl;
+      }
+      std::cerr << "out shape \n";
+      for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
+        std::cerr << "dim " << s << std::endl;
+      }
+
+      ir_sch_->Broadcast(name,
+                         group_tile_info_->broadcast_info[name].broadcast_axes,
+                         group_tile_info_->broadcast_info[name].output_shape);
+    }
+
+    if (group_tile_info_->broadcast_to_elementwise.count(name)) {
+      ir_sch_->BroadcastToElementwise(
+          name,
+          group_tile_info_->broadcast_to_elementwise[name].broadcast_axes);
+    }
+  }
+
+  if (!NeedOrderLoops()) {
+    std::cerr << "no need reorder \n";
+    return;
+  }
+
+  std::cerr << "need re-order here !!!!!!\n";
 
   std::cerr << "node size " << node_list.size() << std::endl;
 
@@ -507,6 +533,9 @@ void StaticShapeGroupScheduler::Tiling() {
     if (ir::IsReduceInitTensorName(name)) {
       continue;
     }
+    if (name.find("_out") != std::string::npos) {
+      continue;
+    }
     if (!output_tensor_names_.count(name)) {
       std::cerr << "temp name " << name << std::endl;
       auto block = ir_sch_->GetBlock(name);
@@ -521,6 +550,11 @@ void StaticShapeGroupScheduler::Tiling() {
       auto block = ir_sch_->GetBlock(name + "_rf");
       ir_sch_->SetBuffer(block, "local", false);
     }
+  }
+
+  for (auto& name : group_tile_info_->copyed_var_names) {
+    auto block = ir_sch_->GetBlock(name);
+    ir_sch_->SetBuffer(block, "local", false);
   }
 
   for (auto& name : group_tile_info_->thread_sync_before_names) {
