@@ -292,6 +292,9 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
       } else if (inner_types[i].isa<AllocatedSelectedRowsType>()) {
         res.push_back(
             fake_sr(inner_types[i].dyn_cast<AllocatedSelectedRowsType>()));
+      } else if (inner_types[i].isa<AllocatedDenseTensorArrayType>()) {
+        res.push_back(fake_tensor_array(
+            inner_types[i].dyn_cast<AllocatedDenseTensorArrayType>()));
       }
     }
   } else if (in_type.isa<AllocatedDenseTensorArrayType>()) {
@@ -942,6 +945,7 @@ phi::KernelKey GetKernelKey(
           if (!combine_op_res) {
             continue;
           }
+
           if (combine_op_res.owner()->isa<DataOp>()) {
             auto data_op = combine_op_res.owner();
             auto data_place =
@@ -1807,11 +1811,15 @@ std::vector<pir::Value> BuildInputs(
               place = in_i_type.dyn_cast<AllocatedDenseTensorType>().place();
             } else if (in_i_type.isa<AllocatedSelectedRowsType>()) {
               place = in_i_type.dyn_cast<AllocatedSelectedRowsType>().place();
+            } else if (in_i_type.isa<AllocatedDenseTensorArrayType>()) {
+              place =
+                  in_i_type.dyn_cast<AllocatedDenseTensorArrayType>().place();
             } else {
               PADDLE_THROW(phi::errors::Unimplemented(
                   "builtin.combine Input type only support "
                   "VectorType<DenseTensorType> and "
-                  "VectorType<SelectedRowsType>"));
+                  "VectorType<SelectedRowsType> and"
+                  "VectorType<DenseTensorArrayType>"));
             }
 
             // get input args def type
@@ -1844,11 +1852,19 @@ std::vector<pir::Value> BuildInputs(
                     pre_define_op->operand_source(j)
                         .type()
                         .dyn_cast<SelectedRowsType>());
+              } else if (in_i_type.isa<AllocatedDenseTensorArrayType>()) {
+                out_type = AllocatedDenseTensorArrayType::get(
+                    ctx,
+                    out_place,
+                    pre_define_op->operand_source(j)
+                        .type()
+                        .dyn_cast<DenseTensorArrayType>());
               } else {
                 PADDLE_THROW(phi::errors::Unimplemented(
                     "builtin.combine Input type only support "
                     "VectorType<DenseTensorType> and "
-                    "VectorType<SelectedRowsType>"));
+                    "VectorType<SelectedRowsType> and"
+                    "VectorType<DenseTensorArrayType>"));
               }
               in_i = AddPlaceTransferOp(
                   in_i, out_type, place, out_place, kernel_key, block);

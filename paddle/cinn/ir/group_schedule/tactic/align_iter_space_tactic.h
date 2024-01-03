@@ -21,16 +21,16 @@
 namespace cinn {
 namespace ir {
 
-class ArrangeStorageTactic final : public ScheduleTactic {
+class AlignIterSpaceTactic final : public ScheduleTactic {
  public:
   void Init(ScheduleContext* context) override;
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
 
-  std::string TacticName() const override { return "ArrangeStorageTactic"; }
+  std::string TacticName() const override { return "AlignIterSpaceTactic"; }
 
  private:
-  std::unordered_set<std::string> output_names_;
+  ScheduleContext* context_;
 };
 
 }  // namespace ir

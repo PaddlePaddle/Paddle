@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,16 @@
 
 #pragma once
 
-#include <string>
-#include <unordered_set>
-#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
+#include <optional>
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/pir/core/builder.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-namespace cinn {
-namespace ir {
+namespace cinn::common {
 
-class ArrangeStorageTactic final : public ScheduleTactic {
- public:
-  void Init(ScheduleContext* context) override;
+symbol::DimExpr SubstituteDimExpr(
+    const symbol::DimExpr& dim_expr,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+        pattern_to_replacement);
 
-  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
-
-  std::string TacticName() const override { return "ArrangeStorageTactic"; }
-
- private:
-  std::unordered_set<std::string> output_names_;
-};
-
-}  // namespace ir
-}  // namespace cinn
+}

@@ -353,7 +353,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             fetch_list = [out[1]]
             for p, g in grad_list:
                 fetch_list.append(g)
-
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
@@ -409,10 +408,14 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
             d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
             x = paddle.static.data(name='x', shape=[10], dtype='float32')
+            d0.persistable = True
+            d1.persistable = True
+            d2.persistable = True
             x.stop_gradient = False
             x.persistable = True
             i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
+            i.persistable = True
             init = paddle.zeros(shape=[10], dtype='float32')
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
@@ -440,6 +443,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             sum_result = paddle.tensor.array_read(array=out[3], i=j)
             mean = paddle.mean(sum_result)
             grad_list = append_backward(mean)
+
             place = (
                 base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
