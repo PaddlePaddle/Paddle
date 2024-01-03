@@ -20,7 +20,7 @@ import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestCReduceMinOpTranslator(test_op_translator.TestOpTranslato):
+class TestCReduceMinOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "c_reduce_min"
         x = paddle.ones(shape=(100, 2, 3), dtype='float32')
