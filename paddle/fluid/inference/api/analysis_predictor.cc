@@ -2391,9 +2391,15 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 #endif
 
 void AnalysisPredictor::HookCollectShapeRangeInfo() {
+  if (config_.new_executor_enabled()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "When collecting shapes, it is recommended to run multiple loops to "
+           "obtain more accurate shape information.";
+  }
+
   auto hook = [&](const std::string &op_type,
                   const std::string &input_name,
-                  const paddle::Tensor &var) -> void {
+                  const paddle::Tensor &input_tensor) -> void {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     if (config_.use_gpu()) {
@@ -2408,26 +2414,22 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 #endif
     }
 
-    auto *new_var = sub_scope_->GetVar(input_name);
-    if (!new_var) return;
-    if (!new_var->IsType<phi::DenseTensor>()) {
-      return;
-    }
-    auto tensor = new_var->Get<phi::DenseTensor>();
-    if (!tensor.initialized()) return;
-    framework::DDim dim = tensor.dims();
+    if (!input_tensor.is_dense_tensor()) return;
+    auto tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_tensor.impl()).get();
+    framework::DDim dim = tensor->dims();
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
     if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
-    } else if (tensor.numel() > 0) {
+    } else if (tensor->numel() > 0) {
       // This must be a zero dimension tensor.
-      PADDLE_ENFORCE_EQ(tensor.numel(),
+      PADDLE_ENFORCE_EQ(tensor->numel(),
                         1UL,
                         platform::errors::PreconditionNotMet(
                             "This tensor must have one element, but got %ld.",
-                            tensor.numel()));
+                            tensor->numel()));
       std::vector<int32_t> zero_shape(1, 1);
       shape_info_[input_name].emplace_back(zero_shape);
     }
@@ -2437,19 +2439,19 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     // assumption that all shape tensors in the model have numbers <= 8.
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
-    auto is_shape_tensor = tensor.numel() <= 8 && tensor.numel() >= 1;
-    if ((tensor.dtype() == phi::DataType::INT32 ||
-         tensor.dtype() == phi::DataType::INT64) &&
+    auto is_shape_tensor = tensor->numel() <= 8 && tensor->numel() >= 1;
+    if ((tensor->dtype() == phi::DataType::INT32 ||
+         tensor->dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
-      std::vector<int> int32_host(tensor.numel());
+      std::vector<int> int32_host(tensor->numel());
 
-      if (platform::is_cpu_place(tensor.place())) {
-        auto &int32_tensor = tensor;
-        if (tensor.dtype() == phi::DataType::INT64) {
+      if (platform::is_cpu_place(tensor->place())) {
+        auto &int32_tensor = *tensor;
+        if (tensor->dtype() == phi::DataType::INT64) {
           auto *cpu_ctx = pool.Get(platform::CPUPlace());
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
-              tensor,
+              *tensor,
               DataType::INT32);
         }
         paddle::memory::Copy(platform::CPUPlace(),
@@ -2457,14 +2459,14 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
                              platform::CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
-      } else if (platform::is_gpu_place(tensor.place())) {
+      } else if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA)
-        auto *dev_ctx = pool.Get(tensor.place());
-        auto &int32_tensor = tensor;
-        if (tensor.dtype() == phi::DataType::INT64) {
+        auto *dev_ctx = pool.Get(tensor->place());
+        auto &int32_tensor = *tensor;
+        if (tensor->dtype() == phi::DataType::INT64) {
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
-              tensor,
+              *tensor,
               DataType::INT32);
         }
         paddle::memory::Copy(platform::CPUPlace(),
