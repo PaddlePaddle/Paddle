@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
