@@ -95,6 +95,7 @@ bool EraseOneExpand(pir::Block* block, const ShapeOrDataDimExprs4ValueT& ShapeOr
     auto expand = expand_it->dyn_cast<paddle::dialect::ExpandOp>();
     if (!SameInputOutputShape(expand, ShapeOrDataDimExprs4Value)) continue;
     auto generate_shape_op = expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
+    CHECK_NOTNULL(generate_shape_op);
     ReplaceAllUsesWithInput(expand);
     EraseExpandOp(block, expand_it);
     EraseUpstreamGenerateOp(block, generate_shape_op);
