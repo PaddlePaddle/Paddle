@@ -13,11 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
-#include "paddle/cinn/common/cas.h"
-#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
-#include "paddle/cinn/ir/op/ir_operators.h"
 
 namespace cinn {
 namespace ir {

@@ -15,6 +15,7 @@
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
 #include "paddle/cinn/ir/group_schedule/tactic/align_iter_space_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
@@ -37,18 +38,13 @@ void DynamicShapeGroupScheduler::Init() {
   tactics_.emplace_back(new AlignIterSpaceTactic());
   tactics_.emplace_back(new TileTactic());
   tactics_.emplace_back(new ComputeInlineTactic());
+  tactics_.emplace_back(new BindCudaTactic());
   tactics_.emplace_back(new ArrangeStorageTactic());
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
-  // Fake schedule for test
   ApplyTactics();
-  std::vector<Expr> all_blocks = ir_sch_->GetAllBlocks();
-  auto block0_loops = ir_sch_->GetLoops(all_blocks[0]);
-  ir_sch_->Bind(block0_loops[0], "blockIdx.x");
-  ir_sch_->Bind(block0_loops[1], "threadIdx.x");
-  LOG(INFO) << "After schedule: " << ir_sch_->GetModule().GetExprs()[0];
-
+  // Fake bucket for test
   ir::Expr predicate1 = ir::LE::Make(Expr(1023), Expr(1024));
   std::unique_ptr<ir::IRSchedule> new_ir_sch1 =
       std::make_unique<ir::IRSchedule>(*ir_sch_);
