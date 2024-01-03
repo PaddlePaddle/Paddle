@@ -2782,7 +2782,7 @@ namespace {
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
   if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
-    CHECK_EQ(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
+    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
   } else if (lhs.isa<std::int64_t>()) {
     return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
   } else if (rhs.isa<std::int64_t>()) {
@@ -2791,6 +2791,7 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
     return symbol::Broadcast<symbol::DimExpr>{
         symbol::List<symbol::DimExpr>{lhs, rhs}};
   }
+  LOG(FATAL) << "Dead code";
 }
 
 }  // namespace
