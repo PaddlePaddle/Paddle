@@ -109,10 +109,12 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
   auto uid = [](std::string name) {
     const std::map<std::string, int64_t> _uid = {
         {"saved_idx", 0}, {"dout", 1}, {"dx", 2}};
-    PADDLE_ENFORCE_GT(
-        _uid.count(name),
-        0,
-        phi::errors::InvalidArgument("Name %s is unknown.", name));
+    PADDLE_ENFORCE_GT(_uid.count(name),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The tensor name %s is unknown. "
+                          "Should be in one of [saved_idx, dout, dx].",
+                          name));
     return _uid.at(name);
   };
 
