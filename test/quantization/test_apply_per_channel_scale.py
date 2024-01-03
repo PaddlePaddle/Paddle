@@ -21,6 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.quant as Q
+from paddle import base
+from paddle.base import core
 
 
 def get_cuda_version():
@@ -51,29 +53,82 @@ class PreQuantScaleTest(unittest.TestCase):
         self.rows = 32
         self.cols = 128
         self.rtol = 1e-5
-        self.atol = 1e-2
+        self.atol = 1e-8
         self.dtype = 'float16'
+        self.static = False
 
-    def setUp(self) -> None:
+    def setUp(self):
         self.config()
-
         self.x = np.random.random(size=(self.rows, self.cols)).astype(
             self.dtype
         )
-
-        self.scales = np.random.uniform(0, 1, size=(self.cols))
-
+        self.scales = np.random.uniform(0, 1, size=(self.cols)).astype(
+            self.dtype
+        )
         self.out_expected = np.multiply(self.x, self.scales)
 
+    def get_out_static(self):
+        paddle.enable_static()
+        main = base.Program()
+        start = base.Program()
+        with base.program_guard(main, start):
+            x = paddle.static.data("x", self.x.shape, dtype=self.dtype)
+            scales = paddle.static.data(
+                "scales", self.scales.shape, dtype=self.dtype
+            )
+            out = Q.apply_per_channel_scale(x, scales)
+            feed_dict = {
+                'x': self.x,
+                'scales': self.scales,
+            }
+
+            exe = base.Executor(paddle.CUDAPlace(0))
+            exe.run(start)
+            (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
+        paddle.disable_static()
+        return out
+
     def test_pre_quant_scale(self):
-        self.out_real = Q.apply_per_channel_scale(
-            x=paddle.to_tensor(self.x, self.dtype),
-            scales=paddle.to_tensor(self.scales, self.dtype),
-        )
-        print(f"out_real: {self.out_real}, out_expected: {self.out_expected}")
+        if self.static:
+            self.out_real = self.get_out_static()
+        else:
+            self.out_real = Q.apply_per_channel_scale(
+                x=paddle.to_tensor(self.x, self.dtype),
+                scales=paddle.to_tensor(self.scales, self.dtype),
+            )
+
+        if self.dtype == 'bfloat16':
+            self.out_real = convert_uint16_to_float(self.out_real)
+            self.out_expected = convert_uint16_to_float(self.out_expected)
         np.testing.assert_allclose(
             self.out_expected, self.out_real, rtol=self.rtol, atol=self.atol
         )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class PreQuantScaleTestCase1(PreQuantScaleTest):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+
+
+class PreQuantScaleTestCase2(PreQuantScaleTest):
+    def config(self):
+        super().config()
+        self.rows = 1024
+        self.cols = 128
+
+
+class PreQuantScaleStaticTest(PreQuantScaleTest):
+    def config(self):
+        super().config()
+        self.static = True
 
 
 if __name__ == '__main__':

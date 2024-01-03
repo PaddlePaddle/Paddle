@@ -2632,6 +2632,10 @@ void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
           "but received %d and %d.",
           x_dim[2],
           scales_dim[1]));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(x_dim);
+  out->set_layout(x.layout());
 }
 
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
