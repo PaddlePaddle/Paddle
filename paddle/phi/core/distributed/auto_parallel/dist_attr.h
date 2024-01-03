@@ -22,7 +22,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/common/reduce_type.h"
-#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -31,6 +30,10 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+
+namespace auto_parallel{
+  class TensorDistAttrProto;
+}  
 
 constexpr int kReplicateDim = -1;
 
@@ -169,7 +172,7 @@ class TEST_API TensorDistAttr {
   // future partial-support-stage-II.
   void from_proto(const auto_parallel::TensorDistAttrProto& proto);
 
-  auto_parallel::TensorDistAttrProto to_proto() const;
+  void to_proto(auto_parallel::TensorDistAttrProto* proto) const;
 
   std::string serialize_to_string();
 

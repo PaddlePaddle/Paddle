@@ -28,6 +28,10 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
+namespace auto_parallel{
+  class ProcessMeshProto;
+}
+
 class ProcessMesh {
  public:
   ProcessMesh() = default;
@@ -68,7 +72,7 @@ class ProcessMesh {
   std::string to_string() const;
 
   static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
-  auto_parallel::ProcessMeshProto to_proto() const;
+  void to_proto(auto_parallel::ProcessMeshProto* proto) const;
 
  private:
   std::vector<int64_t> shape_;
