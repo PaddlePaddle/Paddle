@@ -34,15 +34,15 @@
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
-
 namespace {
 
-using ShapeOrDataDimExprs4ValueT = std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
+using ShapeOrDataDimExprs4ValueT =
+    std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
 
 pir::Block::ConstIterator FindFirstExpandOp(pir::Block* block) {
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
@@ -52,7 +52,9 @@ pir::Block::ConstIterator FindFirstExpandOp(pir::Block* block) {
   }
 }
 
-bool SameInputOutputShape(paddle::dialect::ExpandOp expand_op, const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
+bool SameInputOutputShape(
+    paddle::dialect::ExpandOp expand_op,
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
   const auto& x = ShapeOrDataDimExprs4Value(expand_op.x());
   const auto& shape = ShapeOrDataDimExprs4Value(expand_op.shape());
   const auto& out = ShapeOrDataDimExprs4Value(expand_op.out());
@@ -68,20 +70,16 @@ void ReplaceAllUsesWithInput(paddle::dialect::ExpandOp expand) {
   expand.out().ReplaceAllUsesWith(x);
 }
 
-void EraseExpandOp(
-  pir::Block* block,
-  pir::Block::ConstIterator expand_it
-) {
+void EraseExpandOp(pir::Block* block, pir::Block::ConstIterator expand_it) {
   block->erase(expand_it);
 }
 
 void EraseUpstreamGenerateShapeOp(
-  pir::Block* block,
-  cinn::dialect::GenerateShapeOp generate_shape_op
-) {
+    pir::Block* block, cinn::dialect::GenerateShapeOp generate_shape_op) {
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     if (iter->isa<cinn::dialect::GenerateShapeOp>()) {
-      if (iter->dyn_cast<cinn::dialect::GenerateShapeOp>() == generate_shape_op) {
+      if (iter->dyn_cast<cinn::dialect::GenerateShapeOp>() ==
+          generate_shape_op) {
         block->erase(iter);
       }
     }
@@ -89,12 +87,16 @@ void EraseUpstreamGenerateShapeOp(
 }
 
 // Returns true if success
-bool EraseOneExpand(pir::Block* block, const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
-  for (auto expand_it = block->begin(); expand_it != block->end(); ++expand_it) {
+bool EraseOneExpand(
+    pir::Block* block,
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
+  for (auto expand_it = block->begin(); expand_it != block->end();
+       ++expand_it) {
     if (!expand_it->isa<paddle::dialect::ExpandOp>()) continue;
     auto expand = expand_it->dyn_cast<paddle::dialect::ExpandOp>();
     if (!SameInputOutputShape(expand, ShapeOrDataDimExprs4Value)) continue;
-    auto generate_shape_op = expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
+    auto generate_shape_op =
+        expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
     CHECK_NOTNULL(generate_shape_op);
     ReplaceAllUsesWithInput(expand);
     EraseExpandOp(block, expand_it);
@@ -104,7 +106,8 @@ bool EraseOneExpand(pir::Block* block, const ShapeOrDataDimExprs4ValueT& ShapeOr
   return false;
 }
 
-void EraseExpands(pir::Block* block, const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
+void EraseExpands(pir::Block* block,
+                  const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
   while (EraseOneExpand(block, ShapeOrDataDimExprs4Value)) {
     // Do nothing.
   }
