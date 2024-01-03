@@ -28,6 +28,20 @@ void CreateArrayKernel(const Context& dev_ctx,
                        TensorArray* out) {}
 
 template <typename T, typename Context>
+void CreateArrayLikeKernel(const Context& dev_ctx,
+                           const TensorArray& input,
+                           float val,
+                           TensorArray* out) {
+  out->resize(input.size());
+  for (size_t i = 0; i < input.size(); i++) {
+    DenseTensor input_i = input[i];
+    out->at(i).Resize(input_i.dims());
+    FullLikeKernel<T, Context>(
+        dev_ctx, input_i, val, input_i.dtype(), &out->at(i));
+  }
+}
+
+template <typename T, typename Context>
 void ArrayLengthKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        DenseTensor* out) {
@@ -139,6 +153,36 @@ PD_REGISTER_KERNEL(create_array,
                    GPU,
                    ALL_LAYOUT,
                    phi::CreateArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
+
+PD_REGISTER_KERNEL(create_array_like,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayLikeKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(create_array_like,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayLikeKernel,
                    bool,
                    int,
                    int64_t,

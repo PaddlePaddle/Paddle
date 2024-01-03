@@ -133,6 +133,14 @@ pir::OpResult create_array(phi::DataType dtype) {
   return create_array_op.out();
 }
 
+pir::OpResult create_array_like(pir::Value input, float value) {
+  auto create_array_like_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::CreateArrayLikeOp>(input, value);
+  return create_array_like_op.out();
+}
+
 pir::OpResult array_length(pir::Value x) {
   auto array_length_op = ApiBuilder::Instance()
                              .GetBuilder()
@@ -163,6 +171,15 @@ std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
           .GetBuilder()
           ->Build<paddle::dialect::ArrayToTensorOp>(x, axis, use_stack);
   return std::make_tuple(array_to_tensor.result(0), array_to_tensor.result(1));
+}
+
+pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
+  auto inputs_combine_op =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs);
+  paddle::dialect::AddNArrayOp add_n_array_op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::AddNArrayOp>(
+          inputs_combine_op.out());
+  return add_n_array_op.result(0);
 }
 
 pir::OpResult slice_array_dense(pir::Value input, pir::Value starts) {
