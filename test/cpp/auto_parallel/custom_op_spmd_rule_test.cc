@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/ext/spmd_infer.h"
 #include "test/cpp/auto_parallel/spmd_rule_test_util.h"
 
@@ -73,6 +74,15 @@ TEST(CustomOp, Ctor) {
   }
   check_dim_mapping(infered_dist_attrs.second[0], {-1, 1, 0});
   check_partial_dims(infered_dist_attrs.second[0], {});
+}
+
+TEST(CustomOp, Register) {
+  OpMetaInfoBuilder builder("test_custom_op_smpd", 0);
+  auto iter = OpMetaInfoMap::Instance().GetMap().find("test_custom_op_smpd");
+  EXPECT_TRUE(iter != OpMetaInfoMap::Instance().GetMap().end());
+  EXPECT_TRUE(OpMetaInfoHelper::GetInferSpmdFn(iter->second[0]) == nullptr);
+  builder.SetInferSpmdFn(PD_INFER_SPMD_RULE(phi::distributed::ConcatInferSpmd));
+  EXPECT_TRUE(OpMetaInfoHelper::GetInferSpmdFn(iter->second[0]) != nullptr);
 }
 }  // namespace auto_parallel
 }  // namespace distributed

@@ -996,8 +996,11 @@ struct TrtGetOutputDimsFuncImpl<Return (*)(Args...), impl_fn> {
 #endif
 
 ////////////////////// Op Meta Info //////////////////////
-class CustomSpmdInferTensorArg;
-class CustomSpmdInferAttrArg;
+
+using CustomSpmdInferTensorArg =
+    paddle::variant<phi::distributed::DistMetaTensor,
+                    std::vector<phi::distributed::DistMetaTensor>>;
+using CustomSpmdInferAttrArg = paddle::any;
 
 using InferSpmdFunc = phi::distributed::SpmdInfo (*)(
     const std::vector<CustomSpmdInferTensorArg>& inputs,
