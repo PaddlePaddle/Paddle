@@ -19,6 +19,7 @@ from collections import OrderedDict
 from functools import reduce
 from typing import TYPE_CHECKING, Any
 
+from ....utils import ConstTypes
 from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import StringifyExpression, check_guard
@@ -32,7 +33,7 @@ from ..tracker import (
     GetIterTracker,
     Tracker,
 )
-from .base import ConstTypes, VariableBase, VariableFactory
+from .base import VariableBase, VariableFactory
 from .basic import ConstantVariable
 from .callable import BuiltinVariable, UserDefinedFunctionVariable
 

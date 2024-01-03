@@ -32,6 +32,7 @@ ENV_CLEAN_CODE = BooleanEnvironmentVariable("CLEAN_CODE", False)
 ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
     "SOT_WITH_CONTROL_FLOW", True
 )
+ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 
 
 @contextmanager

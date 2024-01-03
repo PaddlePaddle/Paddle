@@ -27,6 +27,7 @@ from ....infer_meta import MetaInfo
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     BreakGraphError,
+    ConstTypes,
     FallbackError,
     NameGenerator,
     paddle_tensor_methods,
@@ -50,7 +51,7 @@ from ..tracker import (
     GlobalTracker,
     Tracker,
 )
-from .base import ConstTypes, VariableBase, VariableFactory
+from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
@@ -558,7 +559,7 @@ class ParameterVariable(TensorVariable):
     ):
         super().__init__(param, graph, tracker)
 
-    @VariableFactory.register_from_value()
+    @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.base.framework.EagerParamBase)):
             return ParameterVariable(value, graph, tracker)
