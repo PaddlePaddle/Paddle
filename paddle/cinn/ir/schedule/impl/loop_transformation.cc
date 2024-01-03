@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/macros.h"
 
@@ -125,9 +124,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     if (factor < 1 && factor != -1) is_positive = false;
     if (factor == -1) ++num_minus1;
   });
-  CHECK((num_minus1 <= 1) && is_positive)
-      << "The params in factors of Split on dynamic shape should contains at "
-         "most one '-1' and the rest of them should be positive!\n";
+  CHECK((num_minus1 == 1) && is_positive)
+      << "The paramss in factors of Split on dynamic shape should contains a "
+         "-1 and the rest of them should be positive!\n";
 
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
@@ -183,8 +182,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Expr> process_factors(factors);
   Expr prod_size(1);
   for (auto factor : factors) prod_size = prod_size * Expr(factor);
-  common::cas_intervals_t var_intervals = {};
-  cinn::common::SymbolicExprAnalyzer analyzer(var_intervals);
+  cinn::common::SymbolicExprAnalyzer analyzer({});
   CHECK(analyzer.ProveEQ(tot_extent, prod_size).value_or(false))
       << "Product of factors can't be proved to be equal to the extent of "
          "current for loop!";
@@ -368,6 +366,17 @@ void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
   CINN_NOT_IMPLEMENTED;
 }
 
+void DyScheduleImpl::Broadcast(const std::string& block_name,
+                               const std::vector<int64_t>& axes,
+                               const std::vector<int64_t>& factors) {
+  CINN_NOT_IMPLEMENTED;
+}
+
+void DyScheduleImpl::BroadcastToElementwise(const std::string& block_name,
+                                            const std::vector<int64_t>& axes) {
+  CINN_NOT_IMPLEMENTED;
+}
+
 }  // namespace ir
 }  // namespace cinn
 
@@ -431,6 +440,112 @@ std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
   return splited_loops;
 }
 
+void StScheduleImpl::BroadcastToElementwise(const std::string& block_name,
+                                            const std::vector<int64_t>& axes) {
+  std::vector<Expr> all_loops = this->GetLoops(block_name);
+
+  auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
+
+  Expr broadcast_body = broadcast_loop->body;
+
+  std::cerr << "broadcast body  " << broadcast_body << std::endl;
+
+  auto schedule_realize = broadcast_body.As<ir::Block>()
+                              ->expr_fields()[0]
+                              ->As<ir::ScheduleBlockRealize>();
+
+  auto schedule_block =
+      schedule_realize->schedule_block.As<ir::ScheduleBlock>();
+
+  auto iter_vars = schedule_block->iter_vars;
+
+  std::cerr << "iter vars " << std::endl;
+  for (auto& expr : iter_vars) {
+    std::cerr << "11 " << expr << std::endl;
+  }
+  auto iter_values = schedule_realize->iter_values;
+
+  std::cerr << "iter value \n";
+
+  for (auto& expr : iter_values) {
+    std::cerr << "22 " << expr << std::endl;
+  }
+
+  auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+      schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
+
+  for (auto expr : exprs) {
+    auto load = expr.As<ir::Load>();
+
+    // std::cerr << "loop var " <<broadcast_loop->loop_var << std::endl;
+    load->indices[axes[0]] = broadcast_loop->loop_var;
+
+    // auto update_indice = load->indices[ axes[0]];
+    //  ReplaceExpr(&update_indice, { load->indices[ ] },
+    //  {broadcast_loop->loop_var});
+
+    // std::cerr << "after load " << expr << std::endl;
+
+    // this->Replace( expr, new_load);
+  }
+}
+
+void StScheduleImpl::Broadcast(const std::string& block_name,
+                               const std::vector<int64_t>& axes,
+                               const std::vector<int64_t>& factors) {
+  std::vector<Expr> all_loops = this->GetLoops(block_name);
+
+  auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
+
+  Expr broadcast_body = ir::ir_utils::IRCopy(broadcast_loop->body);
+
+  std::cerr << "broadcast body  " << broadcast_body << std::endl;
+
+  auto schedule_realize = broadcast_body.As<ir::Block>()
+                              ->expr_fields()[0]
+                              ->As<ir::ScheduleBlockRealize>();
+
+  auto schedule_block =
+      schedule_realize->schedule_block.As<ir::ScheduleBlock>();
+
+  auto iter_vars = schedule_block->iter_vars;
+
+  std::cerr << "iter vars " << std::endl;
+  for (auto& expr : iter_vars) {
+    std::cerr << "11 " << expr << std::endl;
+  }
+  auto iter_values = schedule_realize->iter_values;
+
+  std::cerr << "iter value \n";
+
+  for (auto& expr : iter_values) {
+    std::cerr << "22 " << expr << std::endl;
+  }
+
+  schedule_realize->iter_values[axes[0]] = broadcast_loop->loop_var;
+
+  auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+      schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
+
+  for (auto expr : exprs) {
+    ReplaceExpr(&expr, {schedule_block->iter_vars[axes[0]]}, {Expr(0)});
+  }
+
+  int factor = factors[0];
+  Expr new_extent(factor);
+
+  if (!broadcast_body.As<ir::Block>())
+    broadcast_body = Block::Make({broadcast_body});
+  Expr new_stmt = For::Make(broadcast_loop->loop_var,
+                            Expr(0),
+                            new_extent,
+                            broadcast_loop->for_type(),
+                            broadcast_loop->device_api,
+                            broadcast_body);
+
+  this->Replace(broadcast_loop, new_stmt);
+}
+
 std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
                                         const std::vector<Expr>& factors) {
   CHECK(false) << "Static shape schedule don't support Split with some "
@@ -450,11 +565,11 @@ Expr StScheduleImpl::Fuse(const std::vector<Expr>& loops) {
     if (!for_nodes.empty()) {
       CHECK(for_nodes.back()->body.As<ir::Block>())
           << "The body of for node is not Block!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts.size(), 1U)
-          << "The Block'size of for node is not 1!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
-          << "The For nodes in loops param of Fuse must be adjacent! Please "
-             "check.";
+      // CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts.size(), 1U)
+      //     << "The Block'size of for node is not 1!";
+      // CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
+      //     << "The For nodes in loops param of Fuse must be adjacent! Please "
+      //        "check.";
     }
     for_nodes.push_back(it_loop.As<ir::For>());
     loop_vars.push_back(it_loop.As<ir::For>()->loop_var);

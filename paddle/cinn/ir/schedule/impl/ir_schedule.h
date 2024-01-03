@@ -58,6 +58,13 @@ class DyScheduleImpl : public ScheduleBase {
   Expr Fuse(const std::vector<Expr>& loops);
   Expr Fuse(const std::string& block_name, const std::vector<int>& loops_index);
   Expr Fuse(const Expr& block, const std::vector<int>& loops_index);
+  void Broadcast(const std::string& block_name,
+                 const std::vector<int64_t>& axes,
+                 const std::vector<int64_t>& factors);
+
+  void BroadcastToElementwise(const std::string& block_name,
+                              const std::vector<int64_t>& axes);
+
   void ComputeAt(const Expr& block, const Expr& loop, bool keep_unit_loops);
   void SimpleComputeAt(const Expr& block, const Expr& loop);
   void ReverseComputeAt(const Expr& block,
@@ -132,6 +139,12 @@ class StScheduleImpl : public ScheduleBase {
   Expr Fuse(const std::vector<Expr>& loops);
   Expr Fuse(const std::string& block_name, const std::vector<int>& loops_index);
   Expr Fuse(const Expr& block, const std::vector<int>& loops_index);
+  void Broadcast(const std::string& block_name,
+                 const std::vector<int64_t>& axes,
+                 const std::vector<int64_t>& factors);
+  void BroadcastToElementwise(const std::string& block_name,
+                              const std::vector<int64_t>& axes);
+
   void ComputeAt(const Expr& block, const Expr& loop, bool keep_unit_loops);
   void SimpleComputeAt(const Expr& block, const Expr& loop);
   void ReverseComputeAt(const Expr& block,
