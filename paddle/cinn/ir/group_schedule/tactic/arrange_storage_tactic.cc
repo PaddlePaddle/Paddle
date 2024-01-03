@@ -24,7 +24,7 @@
 namespace cinn {
 namespace ir {
 
-// [block_name, [var_name, for_node]]
+// [block_name, [var, for_node]]
 using VarToForMap =
     std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>;
 using IntSet = common::SingleIntervalIntSet;
@@ -337,9 +337,9 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
   return std::nullopt;
 }
 
-ArrangeStorageTactic::ArrangeStorageTactic(
-    const std::unordered_set<std::string>& output_names)
-    : output_names_(output_names) {}
+void ArrangeStorageTactic::Init(ScheduleContext* context) {
+  output_names_ = context->output_names;
+}
 
 void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
                                  const std::string& block_id) {
