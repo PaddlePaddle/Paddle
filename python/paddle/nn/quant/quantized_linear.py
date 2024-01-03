@@ -326,11 +326,6 @@ def apply_per_channel_scale(x, scales):
             >>> scales = paddle.rand(shape=[32], dtype=paddle.float16)
             >>> out = apply_per_channel_scale(x, scales)
     """
-    arch = _get_arch_info()
-
-    assert (
-        arch >= 80
-    ), f"Currently pre_quant_scale only support SM >= 80 but got {arch} "
 
     if in_dynamic_mode:
         return _C_ops.apply_per_channel_scale(x, scales)
