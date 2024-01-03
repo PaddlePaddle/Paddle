@@ -405,11 +405,16 @@ std::vector<Expr> IRSchedule::Split(const std::string& block_name,
 std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<Expr>& factors) {
   std::vector<int> int_factors;
-  std::transform(factors.begin(),
-                 factors.end(),
-                 std::back_inserter(int_factors),
-                 [](Expr x) { return x.as_int32(); });
-  auto results = impl_->Split(loop, int_factors);
+  std::vector<Expr> results;
+  std::for_each(factors.begin(), factors.end(), [&int_factors](const Expr& e) {
+    if (e.is_constant()) int_factors.push_back(e.as_int32());
+  });
+  if (int_factors.size() == factors.size()) {
+    results = impl_->Split(loop, int_factors);
+  } else {
+    results = impl_->Split(loop, factors);
+  }
+
   trace_.Append(ScheduleDesc::Step(
       "Split",
       {{"loop", std::vector<Expr>({loop})}, {"factors", factors}},

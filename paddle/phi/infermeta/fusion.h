@@ -834,4 +834,8 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               DataType out_dtype,
                               MetaTensor* qkv,
                               MetaTensor* qkv_max);
+void SinePosXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out);
+
 }  // namespace phi

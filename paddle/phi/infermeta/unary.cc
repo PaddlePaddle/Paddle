@@ -524,6 +524,11 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CreateArrayLikeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void CumInferMeta(const MetaTensor& x,
                   int axis,
                   bool flatten,
@@ -3687,7 +3692,8 @@ void SliceArrayDenseInferMeta(const MetaTensor& input,
   if (config.is_runtime) {
     return;
   }
-  out->set_dims(input.dims());
+  // out->set_dims(input.dims());
+  out->set_dtype(input.dtype());
 }
 
 void SliceRawInferMeta(const MetaTensor& input,

@@ -431,6 +431,15 @@
     func : self_dp_attention
     data_type : x
 
+- op : sine_pos_xpu
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : SinePosXPUInferMeta
+  kernel :
+    func : sine_pos_xpu
+    data_type : x
+
 - op : skip_layernorm
   args : (Tensor x, Tensor y, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
   output : Tensor(out)

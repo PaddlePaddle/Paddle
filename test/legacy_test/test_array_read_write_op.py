@@ -242,6 +242,49 @@ class TestPirArrayOp(unittest.TestCase):
             np.testing.assert_allclose(res[0], mean, rtol=1e-05)
             np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
 
+    def test_create_array_like_add_n(self):
+        paddle.enable_static()
+        np.random.seed(2013)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                d0 = paddle.static.data(name='d0', shape=[10], dtype='float32')
+                d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
+                i = paddle.zeros(shape=[1], dtype='int64')
+                mem_array = paddle.tensor.array_write(x=d0, i=i)
+                i = paddle.increment(i)
+                paddle.tensor.array_write(x=d1, i=i, array=mem_array)
+                copy_array = paddle._pir_ops.create_array_like(mem_array, 0.0)
+                out = paddle.tensor.array_read(array=copy_array, i=i)
+
+                paddle.tensor.array_write(x=d0, i=i, array=copy_array)
+                i = paddle.increment(i, -1)
+                paddle.tensor.array_write(x=d1, i=i, array=copy_array)
+
+                add_array = paddle._pir_ops.add_n_array([mem_array, copy_array])
+                out_1 = paddle.tensor.array_read(array=add_array, i=i)
+                i = paddle.increment(i, 1)
+                out_2 = paddle.tensor.array_read(array=add_array, i=i)
+
+                place = (
+                    base.CUDAPlace(0)
+                    if core.is_compiled_with_cuda()
+                    else base.CPUPlace()
+                )
+                d0 = np.random.random(size=[10]).astype('float32')
+                d1 = np.random.random(size=[10]).astype('float32')
+                exe = base.Executor(place)
+                res = exe.run(
+                    main_program,
+                    feed={'d0': d0, 'd1': d1},
+                    fetch_list=[out, out_1, out_2],
+                )
+                out = [0.0] * 10
+                np.testing.assert_allclose(res[0], out, rtol=1e-05)
+                np.testing.assert_allclose(res[1], d0 + d1, rtol=1e-05)
+                np.testing.assert_allclose(res[2], d0 + d1, rtol=1e-05)
+
 
 if __name__ == '__main__':
     unittest.main()
