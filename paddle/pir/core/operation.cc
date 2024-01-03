@@ -157,7 +157,7 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
   }
   auto *new_op = Create(inputs, attributes_, output_types, info_, num_regions_);
   // record outputs mapping info
-  for (int i = 0; i < num_results_; ++i) {
+  for (uint32_t i = 0; i < num_results_; ++i) {
     ir_mapping.Add(result(i), new_op->result(i));
   }
   return new_op;
