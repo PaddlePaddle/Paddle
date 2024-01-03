@@ -31,8 +31,11 @@ template <typename T>
 class OpLowererImplBase {
  public:
   struct WrapLoweredFunc {
-    ir::LoweredFunc infer_shape_func;
     ir::LoweredFunc kernel_func;
+    ir::LoweredFunc infer_shape_func;
+    WrapLoweredFunc(ir::LoweredFunc kernel_func,
+                    ir::LoweredFunc infer_shape_func = ir::LoweredFunc())
+        : infer_shape_func(infer_shape_func), kernel_func(kernel_func) {}
   };
   OpLowererImplBase() = default;
   ~OpLowererImplBase() = default;

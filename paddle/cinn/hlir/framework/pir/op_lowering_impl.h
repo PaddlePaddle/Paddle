@@ -216,6 +216,13 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
       const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
 
+  /**
+   * @brief  Generates the output tensor infer shape function.
+   * @param group The group to be lowered.
+   * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @param group_func_args Arguments used as the group function arguments.
+   * @return The lowered func to infer output tensor's shape.
+   */
   ir::LoweredFunc GenerateInferShapeFunc(
       const GroupPtr& group,
       const std::vector<ir::Tensor> group_func_arg_tensors,
