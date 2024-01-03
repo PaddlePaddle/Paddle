@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/vis_decoder_attention_xpu_fuse_pass.h"
+#include "paddle/fluid/framework/ir/xpu/decoder_attention_xpu_fuse_pass.h"
 
 #include "glog/logging.h"
 
@@ -27,9 +27,9 @@ namespace ir {
 
 namespace patterns {
 
-struct VisDecoderAttentionFusePattern : public PatternBase {
-  VisDecoderAttentionFusePattern(PDPattern* pattern,
-                                 const std::string& name_scope);
+struct DecoderAttentionFusePattern : public PatternBase {
+  DecoderAttentionFusePattern(PDPattern* pattern,
+                              const std::string& name_scope);
 
   // declare operator node's name
   PATTERN_DECL_NODE(reshape2_1);
@@ -63,7 +63,7 @@ struct VisDecoderAttentionFusePattern : public PatternBase {
   PATTERN_DECL_NODE(output);
 };
 
-VisDecoderAttentionFusePattern::VisDecoderAttentionFusePattern(
+DecoderAttentionFusePattern::DecoderAttentionFusePattern(
     PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* input_q = pattern->NewNode(input_q_repr())
@@ -179,16 +179,16 @@ VisDecoderAttentionFusePattern::VisDecoderAttentionFusePattern(
 
 }  // namespace patterns
 
-void VisDecoderAttentionXPUFusePass::ApplyVisDecoderAttentionXPUFuse(
+void DecoderAttentionXPUFusePass::ApplyDecoderAttentionXPUFuse(
     ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::VisDecoderAttentionFusePattern pattern(gpd.mutable_pattern(),
-                                                   name_scope_);
+  patterns::DecoderAttentionFusePattern pattern(gpd.mutable_pattern(),
+                                                name_scope_);
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle VisDecoderAttentionXPUFusePass";
+    VLOG(4) << "handle DecoderAttentionXPUFusePass";
 
     // declare operator node's name
     GET_IR_NODE(reshape2_1);
@@ -292,22 +292,22 @@ void VisDecoderAttentionXPUFusePass::ApplyVisDecoderAttentionXPUFuse(
   AddStatis(found_subgraph_count);
 }
 
-void VisDecoderAttentionXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void DecoderAttentionXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
-  ApplyVisDecoderAttentionXPUFuse(graph);
+  ApplyDecoderAttentionXPUFuse(graph);
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(vis_decoder_attention_xpu_fuse_pass,
-              paddle::framework::ir::VisDecoderAttentionXPUFusePass);
+REGISTER_PASS(decoder_attention_xpu_fuse_pass,
+              paddle::framework::ir::DecoderAttentionXPUFusePass);
 
-REGISTER_PASS_CAPABILITY(vis_decoder_attention_xpu_fuse_pass)
+REGISTER_PASS_CAPABILITY(decoder_attention_xpu_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "qkv_attention_xpu", 0));

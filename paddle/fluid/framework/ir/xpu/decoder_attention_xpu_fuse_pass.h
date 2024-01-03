@@ -89,12 +89,12 @@ Fused subgraph:
 
 */
 
-class VisDecoderAttentionXPUFusePass : public FusePassBase {
+class DecoderAttentionXPUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void ApplyVisDecoderAttentionXPUFuse(ir::Graph* graph) const;
+  void ApplyDecoderAttentionXPUFuse(ir::Graph* graph) const;
 
   const std::string name_scope_{"vis_decoder_attention_xpu_fuse_pass"};
 };

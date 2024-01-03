@@ -20,7 +20,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestVisDecoderAttentionXPUFusePass(PassAutoScanTest):
+class TestDecoderAttentionXPUFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
         yield config, ["qkv_attention_xpu"], (1e-1, 1e-1)
@@ -164,7 +164,7 @@ class TestVisDecoderAttentionXPUFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=25,
-            passes=["vis_decoder_attention_xpu_fuse_pass"],
+            passes=["decoder_attention_xpu_fuse_pass"],
         )
 
 
