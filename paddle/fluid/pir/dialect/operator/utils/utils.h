@@ -120,6 +120,12 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
       return pir::Int64Attribute::get(ctx, scalar.to<int64_t>());
     case phi::DataType::BOOL:
       return pir::BoolAttribute::get(ctx, scalar.to<bool>());
+    case phi::DataType::COMPLEX64:
+      return pir::Complex64Attribute::get(
+          ctx, scalar.to<phi::dtype::complex<float>>());
+    case phi::DataType::COMPLEX128:
+      return pir::Complex128Attribute::get(
+          ctx, scalar.to<phi::dtype::complex<double>>());
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "

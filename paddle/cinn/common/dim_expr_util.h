@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gammaln_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include <optional>
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/pir/core/builder.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-#include "paddle/phi/kernels/impl/gammaln_kernel_impl.h"
+namespace cinn::common {
 
-PD_REGISTER_KERNEL(gammaln,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::GammalnKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+symbol::DimExpr SubstituteDimExpr(
+    const symbol::DimExpr& dim_expr,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+        pattern_to_replacement);
+
+}
