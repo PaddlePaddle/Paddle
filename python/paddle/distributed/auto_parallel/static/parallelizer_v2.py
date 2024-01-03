@@ -428,8 +428,11 @@ class Parallelizer:
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
                 )
 
+            config = {
+                "dist_context": self._dist_context,
+            }
             allreduce_matmul_grad_overlapping_pass = new_pass(
-                "allreduce_matmul_grad_overlapping", {}
+                "allreduce_matmul_grad_overlapping", config
             )
             allreduce_matmul_grad_overlapping_pass.apply(
                 [main_program], [startup_program], self._pass_context

@@ -373,6 +373,73 @@ std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
   return iter_values;
 }
 
+std::unordered_set<ir::Var> GetReduceIterVars(ir::Expr block) {
+  ir::ScheduleBlockRealize* schedule_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(schedule_block_realize);
+  ir::ScheduleBlock* schedule_block =
+      schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(schedule_block);
+  std::vector<ir::Var>& iter_vars = schedule_block->iter_vars;
+  std::unordered_set<ir::Var> reduce_vars;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      reduce_vars.insert(iter_vars[i]);
+    }
+  }
+  return reduce_vars;
+}
+
+bool IsReductionSBlock(ir::Expr block) {
+  ir::ScheduleBlockRealize* s_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(s_block_realize);
+  ir::ScheduleBlock* s_block =
+      s_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(s_block);
+  for (const ir::Var& var : s_block->iter_vars) {
+    if (var->is_reduce_axis) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsBroadcastSBlock(ir::Expr block) {
+  ir::ScheduleBlockRealize* s_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(s_block_realize);
+  ir::ScheduleBlock* s_block =
+      s_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(s_block);
+  ir::Expr e_store = GetStoreOfSBlock(block);
+  ir::Store* store = e_store.As<ir::Store>();
+  CHECK_NOTNULL(store);
+  ir::Load* load = store->value.As<ir::Load>();
+  if (load == nullptr) {
+    return false;
+  }
+  // each load index can be found in store index and maintain relative order
+  for (size_t i = 0; i < load->indices.size(); ++i) {
+    bool found = false;
+    for (size_t j = i; j < store->indices.size(); ++j) {
+      ir::_Var_* load_var = load->indices[i].as_var();
+      ir::_Var_* store_var = store->indices[j].as_var();
+      if (load_var == nullptr || store_var == nullptr) {
+        return false;
+      }
+      if (load_var->name == store_var->name) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return load->indices.size() < store->indices.size();
+}
+
 }  // namespace analyzer
 }  // namespace ir
 }  // namespace cinn

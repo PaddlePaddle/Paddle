@@ -175,4 +175,16 @@ std::string GetValueId(Value* val) {
   return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
 }
 
+const symbol::ShapeOrDataDimExprs&
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value* val) {
+  auto val_id = GetValueId(val);
+  return value_id_to_shapeordata[val_id];
+}
+
+void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
+    Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  auto val_id = GetValueId(val);
+  value_id_to_shapeordata[val_id] = shape_or_data;
+}
+
 }  // namespace pir

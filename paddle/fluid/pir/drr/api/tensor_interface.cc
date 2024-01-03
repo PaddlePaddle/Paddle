@@ -15,7 +15,7 @@
 #include "paddle/fluid/pir/drr/api/tensor_interface.h"
 #include "paddle/fluid/pir/drr/ir_value.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 bool ShapeInterface::operator==(const ShapeInterface& other) const {
@@ -33,4 +33,4 @@ bool DtypeInterface::operator==(const DtypeInterface& other) const {
 IrDtype DtypeInterface::get() const { return *(this->dtype_); }
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle
