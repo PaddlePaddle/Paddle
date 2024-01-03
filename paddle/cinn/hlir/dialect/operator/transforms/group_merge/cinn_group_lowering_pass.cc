@@ -75,7 +75,7 @@ void EraseExpandOp(
   block->erase(expand_it);
 }
 
-void EraseUpstreamGenerateOp(
+void EraseUpstreamGenerateShapeOp(
   pir::Block* block,
   cinn::dialect::GenerateShapeOp generate_shape_op
 ) {
@@ -98,7 +98,7 @@ bool EraseOneExpand(pir::Block* block, const ShapeOrDataDimExprs4ValueT& ShapeOr
     CHECK_NOTNULL(generate_shape_op);
     ReplaceAllUsesWithInput(expand);
     EraseExpandOp(block, expand_it);
-    EraseUpstreamGenerateOp(block, generate_shape_op);
+    EraseUpstreamGenerateShapeOp(block, generate_shape_op);
     return true;
   }
   return false;
