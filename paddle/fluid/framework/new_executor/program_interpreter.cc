@@ -915,7 +915,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       hook(op, local_scope);
     }
 
-    if (op->Type() == "while") {
+    if (op->Type() == "while" || op->Type() == "conditional_block") {
       op->SetInputHooks(input_hookfuncs_);
       op->SetOutputHooks(output_hookfuncs_);
       auto runtime_attrs = op->RuntimeAttrs();

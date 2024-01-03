@@ -22,7 +22,6 @@ import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.base.framework import program_guard
 from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
@@ -98,6 +97,7 @@ class TestApiWhileLoop(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[1]), data, rtol=1e-05)
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
             return paddle.less_than(i, ten)
@@ -118,7 +118,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.zeros(shape=[1], dtype='int64')
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -130,7 +130,7 @@ class TestApiWhileLoop(unittest.TestCase):
             test_dict = {"test_key": test_data}
             test_list = [
                 paddle.tensor.fill_constant(
-                    shape=[1, 2], dtype='int64', value=0
+                    shape=[2, 1], dtype='int64', value=0
                 )
             ]
             test_list_dict = [
@@ -353,7 +353,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             fetch_list = [out[1]]
             for p, g in grad_list:
                 fetch_list.append(g)
-
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
@@ -409,10 +408,14 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
             d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
             x = paddle.static.data(name='x', shape=[10], dtype='float32')
+            d0.persistable = True
+            d1.persistable = True
+            d2.persistable = True
             x.stop_gradient = False
             x.persistable = True
             i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
+            i.persistable = True
             init = paddle.zeros(shape=[10], dtype='float32')
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
@@ -440,6 +443,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             sum_result = paddle.tensor.array_read(array=out[3], i=j)
             mean = paddle.mean(sum_result)
             grad_list = append_backward(mean)
+
             place = (
                 base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()

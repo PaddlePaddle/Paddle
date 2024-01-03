@@ -102,6 +102,26 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class AddNArrayOp : public pir::Op<AddNArrayOp,
+                                   paddle::dialect::OpYamlInfoInterface,
+                                   paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.add_n_array"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value inputs_);
+
+  void VerifySig();
+  pir::Value inputs() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class FusedGemmEpilogueOp
     : public pir::Op<FusedGemmEpilogueOp,
                      paddle::dialect::OpYamlInfoInterface,
@@ -194,6 +214,25 @@ class CreateArrayOp
                     pir::OperationArgument &argument,  // NOLINT
                     phi::DataType dtype = phi::DataType::FLOAT32);
   void VerifySig();
+  pir::OpResult out() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
+class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
+                                         OpYamlInfoInterface,
+                                         InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.create_array_like"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value &input_,                // NOLINT
+                    float &val);                       // NOLINT
+  void VerifySig();
+  pir::Value input() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
@@ -333,6 +372,11 @@ class SliceArrayDenseOp
   static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
   void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    pir::Value starts);
 
   static phi::DataType GetKernelTypeForVar(
       const std::string &var_name,
@@ -517,9 +561,11 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayLikeOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)

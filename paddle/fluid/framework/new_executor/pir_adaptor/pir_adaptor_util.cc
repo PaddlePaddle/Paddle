@@ -542,6 +542,10 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
+    if (var_name == orig_name) {
+      return;
+    }
+
     if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
       const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
       VLOG(1) << "var " << var_name << " has been removed from scope";
@@ -654,7 +658,7 @@ void HandleForInplaceOp(pir::Operation* op,
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_(),
+          ->get_op_info_(op_name),
       paddle::dialect::IsLegacyOp(op_name));
 
   for (size_t i = 0; i < op->num_results(); ++i) {

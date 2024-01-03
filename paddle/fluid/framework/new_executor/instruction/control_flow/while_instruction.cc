@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
@@ -40,38 +40,31 @@
 namespace paddle {
 namespace framework {
 
-WhileInstruction::WhileInstruction(size_t id,
-                                   const platform::Place& place,
-                                   pir::Operation* op,
-                                   ValueExecutionInfo* parent_exe_info,
-                                   const std::set<std::string>& skip_gc_vars)
+WhileInstruction::WhileInstruction(
+    size_t id,
+    const platform::Place& place,
+    pir::Operation* op,
+    ValueExecutionInfo* parent_exe_info,
+    interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place) {
+  PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
+                 phi::errors::PreconditionNotMet(
+                     "While instruction only support While op"));
   op_ = op;
-  VLOG(6) << "finish process dist attributes";
+  auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
+  body_block_ = &while_op.body();
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  VLOG(6) << "finish process inputs outputs index";
-
-  PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
-                 phi::errors::PreconditionNotMet(
-                     "While instruction only support While op"));
-
-  auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
-
   cond_var_ = parent_exe_info->GetVarByValue(while_op.operand_source(0));
-
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
     inputs_.push_back(
         parent_exe_info->GetVarByValue(while_op.operand_source(i)));
   }
-
   for (size_t i = 0; i < while_op.num_results(); ++i) {
     outputs_.push_back(parent_exe_info->GetVarByValue(while_op.result(i)));
   }
-
-  body_block_ = &while_op.body();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
@@ -93,8 +86,10 @@ WhileInstruction::WhileInstruction(size_t id,
       std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
-    InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
   }
+  InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
+  InsertInplacedExternalInputsToOuts(
+      body_block_, body_outside_inputs, *parent_exe_info, &outputs);
   SetOutputs(outputs);
 
   Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());
@@ -108,8 +103,11 @@ WhileInstruction::WhileInstruction(size_t id,
     body_scope->Var(var_name);
     body_exe_info->Add(body_block_->arg(i), var_name);
   }
+  auto skip_gc_vars = execution_config.skip_gc_vars;
+  execution_config.skip_gc_vars.clear();
+  execution_config.create_local_scope = true;
   body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
-      place, {}, body_block_, body_scope, body_exe_info, {}));
+      place, {}, body_block_, body_scope, body_exe_info, execution_config));
 
   std::set<std::string> body_skip_gc_names_set;
   auto body_block_outputs = GetYiedOpInputs(body_block_);
@@ -122,7 +120,7 @@ WhileInstruction::WhileInstruction(size_t id,
     body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
   }
-  for (auto var_name : skip_gc_vars) {
+  for (const auto& var_name : skip_gc_vars) {
     body_skip_gc_names_.push_back(var_name);
     body_skip_gc_names_set.insert(var_name);
   }
