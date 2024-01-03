@@ -614,6 +614,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
 
   cusparseSpGEMMDescr_t spgemmDesc;
   phi::dynload::cusparseSpGEMM_createDescr(&spgemmDesc);
+
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpGEMM_workEstimation(handle,
                                                 GetTransposeOperation(transa),
