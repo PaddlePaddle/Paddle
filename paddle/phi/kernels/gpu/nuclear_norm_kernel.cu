@@ -19,11 +19,5 @@
 
 #include "paddle/phi/kernels/impl/nuclear_norm_kernel_impl.h"
 
-PD_REGISTER_KERNEL(nuclear_norm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::NuclearNormKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    nuclear_norm, GPU, ALL_LAYOUT, phi::NuclearNormKernel, float, double) {}

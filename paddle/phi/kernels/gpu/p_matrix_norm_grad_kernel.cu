@@ -24,6 +24,4 @@ PD_REGISTER_KERNEL(p_matrix_norm_grad,
                    ALL_LAYOUT,
                    phi::PMatrixNormGradKernel,
                    float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   double) {}

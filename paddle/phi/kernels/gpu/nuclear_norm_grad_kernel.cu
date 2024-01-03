@@ -24,6 +24,4 @@ PD_REGISTER_KERNEL(nuclear_norm_grad,
                    ALL_LAYOUT,
                    phi::NuclearNormGradKernel,
                    float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   double) {}

@@ -19,11 +19,5 @@
 
 #include "paddle/phi/kernels/impl/p_matrix_norm_kernel_impl.h"
 
-PD_REGISTER_KERNEL(p_matrix_norm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::PMatrixNormKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    p_matrix_norm, GPU, ALL_LAYOUT, phi::PMatrixNormKernel, float, double) {}
