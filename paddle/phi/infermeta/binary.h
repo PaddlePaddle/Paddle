@@ -452,7 +452,8 @@ void PullSparseV2InferMeta(const MetaTensor& ids,
                            int paddingid,
                            bool scalesparsegrad,
                            const std::vector<std::string>& inputnames,
-                           bool is_distributed);
+                           bool is_distributed,
+                           MetaTensor* out);
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,

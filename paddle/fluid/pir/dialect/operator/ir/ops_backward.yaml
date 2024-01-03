@@ -583,7 +583,7 @@
   composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
 
 - backward_op : pull_sparse_v2_grad
-  forward : (Tensor[] ids, Tensor[] w, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true) -> Tensor[](out)
+  forward : pull_sparse_v2 (Tensor[] ids, Tensor[] w, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true) -> Tensor[](out)
   args : (Tensor[] ids, Tensor out, Tensor out_grad, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid =0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
   output : Tensor[](ids_grad)
   infer_meta :
