@@ -368,7 +368,7 @@ void InsertInplacedExternalInputsToOuts(
           pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-              ->get_op_info_(),
+              ->get_op_info_(op_name),
           paddle::dialect::IsLegacyOp(op_name));
 
       for (size_t i = 0; i < op.num_results(); ++i) {
