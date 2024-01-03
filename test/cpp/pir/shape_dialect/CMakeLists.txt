@@ -8,9 +8,7 @@ if(WITH_CINN)
   paddle_test(
     shape_optimization_test
     SRCS
-    shape_optimization_test.cc
-    DEPS
-    pir_transforms)
+    shape_optimization_test.cc)
   set_tests_properties(
     shape_optimization_test PROPERTIES ENVIRONMENT
                                        "FLAGS_enable_pir_in_executor=true")
