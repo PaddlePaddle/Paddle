@@ -214,12 +214,12 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
     std::vector<std::string> layout_transform_inputs;
+    auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
     for (auto& attr : layout_transform_inputs_attr) {
-      auto pair = kernel_context_->InputRangeAt(value_exec_info_->GetIdByName(
-          attr.dyn_cast<pir::StrAttribute>().AsString()));
-      for (int i = pair.first; i < pair.second; ++i) {
-        layout_transform_inputs_.insert(i);
-      }
+      auto input_name = attr.dyn_cast<pir::StrAttribute>().AsString();
+      layout_transform_inputs_.insert(
+          op_normalizer.GetLegacyArgName(fluid_op_name, input_name));
     }
   }
 }
@@ -236,38 +236,43 @@ OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
 
 void OneDNNLegacyKernelInstruction::Run() {
   // Step1. TransLayout
-  auto inputs = kernel_context_->InputsBetween<phi::DenseTensor>(
-      size_t(0), kernel_context_->InputsSize());
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    auto input = inputs[i];
-    if (input->layout() != phi::DataLayout::ONEDNN) {
-      phi::DataLayout from_layout = input->layout();
+  auto inputs = kernel_context_->InNameList();
+  for (auto& input_name : inputs) {
+    auto input_vars = kernel_context_->MultiInputVar(*input_name);
+    for (auto& var : input_vars) {
+      if (var->IsType<phi::DenseTensor>()) {
+        auto input = var->GetMutable<phi::DenseTensor>();
+        if (input->layout() != phi::DataLayout::ONEDNN) {
+          phi::DataLayout from_layout = input->layout();
 
-      //  Handle 'layout_transform' in
-      //  ops_onednn_extra.yaml(GetKernelTypeForVar)
-      if (layout_transform_inputs_.count(i) &&
-          input_layout_ != phi::DataLayout::kAnyLayout) {
-        from_layout = input_layout_;
+          //  Handle 'layout_transform' in
+          //  ops_onednn_extra.yaml(GetKernelTypeForVar)
+          if (layout_transform_inputs_.count(*input_name) &&
+              input_layout_ != phi::DataLayout::kAnyLayout) {
+            from_layout = input_layout_;
+          }
+
+          auto transed_tensor = const_cast<phi::DenseTensor*>(input);
+
+          if (from_layout == DataLayout::kNHWC ||
+              from_layout == DataLayout::kNDHWC) {
+            phi::funcs::MatchShapeToLayout(
+                transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+            // We register only NHWC assuming that model is consistent e.g.
+            // either NHWC or NCHW
+            phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
+          }
+
+          if (from_layout == DataLayout::kAnyLayout) {
+            from_layout =
+                phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+          }
+
+          dnnl::memory::desc out_mem_desc =
+              phi::funcs::make_memory_desc(*input, from_layout);
+          transed_tensor->set_mem_desc(out_mem_desc);
+        }
       }
-
-      auto transed_tensor = const_cast<phi::DenseTensor*>(input);
-
-      if (from_layout == DataLayout::kNHWC ||
-          from_layout == DataLayout::kNDHWC) {
-        phi::funcs::MatchShapeToLayout(
-            transed_tensor, from_layout, phi::DataLayout::ONEDNN);
-        // We register only NHWC assuming that model is consistent e.g. either
-        // NHWC or NCHW
-        phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
-      }
-
-      if (from_layout == DataLayout::kAnyLayout) {
-        from_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
-      }
-
-      dnnl::memory::desc out_mem_desc =
-          phi::funcs::make_memory_desc(*input, from_layout);
-      transed_tensor->set_mem_desc(out_mem_desc);
     }
   }
 

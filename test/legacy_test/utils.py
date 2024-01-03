@@ -154,7 +154,9 @@ def static_guard():
 @signature_safe_contextmanager
 def pir_executor_guard():
     tmp_env = os.environ.get("FLAGS_enable_pir_in_executor")
-    tmp_cpp = get_flags("FLAGS_enable_pir_in_executor")
+    tmp_cpp = get_flags("FLAGS_enable_pir_in_executor")[
+        "FLAGS_enable_pir_in_executor"
+    ]
     try:
         os.environ["FLAGS_enable_pir_in_executor"] = 'True'
         set_flags({"FLAGS_enable_pir_in_executor": True})
