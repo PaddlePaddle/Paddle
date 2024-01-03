@@ -80,6 +80,7 @@ test_diagonal_op
 test_digamma_op
 test_dirichlet_op
 test_dist_op
+test_distribute_fpn_proposals_op
 test_dot_op
 test_dpsgd_op
 test_edit_distance_op
@@ -179,6 +180,7 @@ test_logcumsumexp_op
 test_logit_op
 test_logspace
 test_logsumexp
+test_lookup_table_v2_bf16_op
 test_lookup_table_v2_op
 test_lookup_table_v2_op_static_build
 test_lrn_mkldnn_op
