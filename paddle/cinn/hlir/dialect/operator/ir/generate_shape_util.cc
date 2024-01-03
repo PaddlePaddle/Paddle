@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include <unordered_set>
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
-#include <unordered_set>
 
 namespace cinn::dialect {
 using namespace symbol;  // NOLINT
@@ -598,22 +598,25 @@ std::vector<pir::Value> GetMinimalInputs(
     const std::vector<pir::Value>& input_tensors) {
   std::unordered_set<symbol::DimExpr> handdled_dim_exprs;
   std::unordered_set<pir::Value> first_occurred_input_tensors;
-  auto TryCollectFirstOcurredInput_tensor = [&](pir::Value input_tensor, const std::vector<symbol::DimExpr>& dim_exprs) {
-    for (const auto& dim_expr : dim_exprs) {
-      if (dim_expr.isa<int64_t>()) continue;
-      if (!handdled_dim_exprs.insert(dim_expr).second) {
-        first_occurred_input_tensors.insert(input_tensor);
-      }
-    }
-  };
+  auto TryCollectFirstOcurredInput_tensor =
+      [&](pir::Value input_tensor,
+          const std::vector<symbol::DimExpr>& dim_exprs) {
+        for (const auto& dim_expr : dim_exprs) {
+          if (dim_expr.isa<int64_t>()) continue;
+          if (!handdled_dim_exprs.insert(dim_expr).second) {
+            first_occurred_input_tensors.insert(input_tensor);
+          }
+        }
+      };
   for (pir::Value input_tensor : input_tensors) {
-    const auto& shape_or_data_dim_exprs = ShapeOrDataDimExprs4Value(input_tensor);
+    const auto& shape_or_data_dim_exprs =
+        ShapeOrDataDimExprs4Value(input_tensor);
     if (shape_or_data_dim_exprs.data().has_value()) {
       TryCollectFirstOcurredInput_tensor(
-        input_tensor, shape_or_data_dim_exprs.data().value());
+          input_tensor, shape_or_data_dim_exprs.data().value());
     }
-    TryCollectFirstOcurredInput_tensor(
-        input_tensor, shape_or_data_dim_exprs.shape());
+    TryCollectFirstOcurredInput_tensor(input_tensor,
+                                       shape_or_data_dim_exprs.shape());
   }
   std::vector<pir::Value> ret{};
   ret.reserve(input_tensors.size());
@@ -625,7 +628,7 @@ std::vector<pir::Value> GetMinimalInputs(
   return ret;
 }
 
-}
+}  // namespace
 
 bool MakeGenerateShapeOpAttribute(
     pir::IrContext* ir_context,
@@ -635,8 +638,8 @@ bool MakeGenerateShapeOpAttribute(
     std::vector<pir::Value>* minial_inputs,
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     GenerateShapeOp::SymbolBindings* symbol_bindings) {
-    *minial_inputs = GetMinimalInputs(ShapeOrDataDimExprs4Value, origin_inputs);
-    if (!InputDimExprsAllSupported(ShapeOrDataDimExprs4Value, *minial_inputs)) {
+  *minial_inputs = GetMinimalInputs(ShapeOrDataDimExprs4Value, origin_inputs);
+  if (!InputDimExprsAllSupported(ShapeOrDataDimExprs4Value, *minial_inputs)) {
     VLOG(4) << "input dim_exprs are not as simple as symbols, please make sure "
                "they are handled by other passes";
     return false;

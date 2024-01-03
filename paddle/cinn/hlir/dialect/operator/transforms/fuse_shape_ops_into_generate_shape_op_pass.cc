@@ -94,15 +94,13 @@ bool MakeGenerateShapeOpAttribute(
   const auto& shape_or_data_dim_exprs = ShapeOrDataDimExprs4Value(output_shape);
   CHECK(shape_or_data_dim_exprs.data().has_value());
   const auto& out_dim_exprs = shape_or_data_dim_exprs.data().value();
-  return MakeGenerateShapeOpAttribute(
-    ir_context,
-    ShapeOrDataDimExprs4Value,
-    out_dim_exprs,
-    origin_inputs,
-    minimal_inputs,
-    output_dim_expr_attrs,
-    symbol_bindings
-  );
+  return MakeGenerateShapeOpAttribute(ir_context,
+                                      ShapeOrDataDimExprs4Value,
+                                      out_dim_exprs,
+                                      origin_inputs,
+                                      minimal_inputs,
+                                      output_dim_expr_attrs,
+                                      symbol_bindings);
 }
 
 std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
@@ -117,8 +115,8 @@ std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
   bool success = MakeGenerateShapeOpAttribute(rewriter->ir_context(),
                                               ShapeOrDataDimExprs4Value,
                                               shape,
-                                              /*origin inputs*/input_tensors,
-                                              /*minimal inputs*/&input_tensors,
+                                              /*origin inputs*/ input_tensors,
+                                              /*minimal inputs*/ &input_tensors,
                                               &output_dim_expr_attrs,
                                               &symbol_bindings);
   if (!success) return std::nullopt;

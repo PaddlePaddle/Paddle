@@ -14,12 +14,12 @@
 
 #pragma once
 
+#include <functional>
 #include <optional>
+#include <vector>
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include <vector>
-#include <functional>
 
 namespace cinn::dialect {
 
