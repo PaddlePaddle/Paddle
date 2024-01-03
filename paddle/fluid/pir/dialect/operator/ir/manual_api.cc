@@ -165,5 +165,12 @@ std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
   return std::make_tuple(array_to_tensor.result(0), array_to_tensor.result(1));
 }
 
+pir::OpResult slice_array_dense(pir::Value input, pir::Value starts) {
+  auto op = ApiBuilder::Instance()
+                .GetBuilder()
+                ->Build<paddle::dialect::SliceArrayDenseOp>(input, starts);
+  return op.result(0);
+}
+
 }  // namespace dialect
 }  // namespace paddle

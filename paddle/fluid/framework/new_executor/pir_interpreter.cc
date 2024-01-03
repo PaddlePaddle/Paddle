@@ -48,16 +48,17 @@
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
 
-#include "paddle/fluid/framework/new_executor/instruction/assert_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/assert_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/has_elements_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/if_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/select_input_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/select_input_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
@@ -749,6 +750,10 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "cinn_runtime") {
       CREATE_INSTR(CinnJitInstruction);
 #endif
+    } else if (op.dialect()->name() == "custom_kernel") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CustomKernelInstruction>(
+              op_idx++, place_, &op, *(value_exe_info_.get())));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel and cinn dialect."));
