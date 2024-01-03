@@ -701,12 +701,14 @@ class PipelineLayer(nn.Layer):
                 logger.info(
                     f"flush {len(self.groupable_layers)} of layers into run_function"
                 )
-                pipeline_sublayer = PipelineSublayers(
-                    self.groupable_layers.copy()
-                )
                 if self.use_cudagraph:
+                    pipeline_sublayer = PipelineSublayers(
+                        self.groupable_layers.copy()
+                    )
                     pipeline_sublayer = CUDAGraphedLayer(pipeline_sublayer)
-                run_function.append(pipeline_sublayer)
+                    run_function.append(pipeline_sublayer)
+                else:
+                    run_function.extend(self.groupable_layers)
                 self.groupable_layers = []
 
         for index, layer in enumerate(self._layers_desc[start:end]):
@@ -762,6 +764,7 @@ class PipelineLayer(nn.Layer):
                     # for interleave, PipelineLayerChunk will do this
                     self.add_sublayer(str(layer_index), model)
             else:
+                flush_into_run_function()
                 run_function.append(layer)
 
         flush_into_run_function()

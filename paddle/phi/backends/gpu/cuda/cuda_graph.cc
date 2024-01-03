@@ -226,9 +226,15 @@ void CUDAGraph::EndSegmentCapture() {
   cudaGraphExec_t exec_graph;
   if (FLAGS_use_cuda_malloc_async_allocator &&
       FLAGS_auto_free_cudagraph_allocations_on_launch) {
+#if CUDA_VERSION >= 11040
     VLOG(1) << "cudaGraphInstantiateFlagAutoFreeOnLaunch is enabled!";
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiateWithFlags(
         &exec_graph, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The cudaGraphInstantiateFlagAutoFreeOnLaunch is only supported when "
+        "CUDA version >= 11.4.0"));
+#endif
   } else {
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
