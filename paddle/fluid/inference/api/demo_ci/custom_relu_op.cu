@@ -44,7 +44,7 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cuda_forward_kernel", ([&] {
         relu_cuda_forward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
-            x.data<data_t>(), out.data<data_t>(x.place()), numel);
+            x.data<data_t>(), out.data<data_t>(), numel);
       }));
 
   return {out};
@@ -63,7 +63,7 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
                                    <<<grid, block, 0, x.stream()>>>(
                                        grad_out.data<data_t>(),
                                        out.data<data_t>(),
-                                       grad_x.data<data_t>(x.place()),
+                                       grad_x.data<data_t>(),
                                        numel);
                              }));
 
