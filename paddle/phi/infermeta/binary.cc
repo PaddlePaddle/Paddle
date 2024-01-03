@@ -2835,7 +2835,7 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y) {
   auto dim = common::vectorize<int>(x.dims());
 
@@ -2846,8 +2846,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
   }
 
   y->set_dims(common::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
