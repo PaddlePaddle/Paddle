@@ -527,8 +527,6 @@ std::vector<std::vector<int64_t>>
 CustomKernelInstruction::RunDefaultInferShape() {
   std::vector<std::vector<int64_t>> output_shapes;
   auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
-  auto& inplace_reverse_map =
-      OpMetaInfoHelper::GetInplaceReverseMap(*custom_op_meta_);
   if (inplace_map.empty()) {  // general case, assure single input and output
     VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
     if (input_shapes_.size() == 1) {
@@ -541,14 +539,14 @@ CustomKernelInstruction::RunDefaultInferShape() {
           "and only one output without setting the InferShapeFn. "));
     }
   } else {  // inplace case
-    for (auto const& pair : inplace_reverse_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.first)) {
-        int input_index = vec_input_name2id_map_[pair.second];
+    for (auto const& pair : inplace_map) {
+      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
+        int input_index = vec_input_name2id_map_[pair.first];
         auto input_shape = vec_input_shapes_[input_index];
         output_shapes.insert(
             output_shapes.end(), input_shape.begin(), input_shape.end());
       } else {
-        int input_index = input_name2id_map_[pair.second];
+        int input_index = input_name2id_map_[pair.first];
         auto input_shape = input_shapes_[input_index];
         output_shapes.push_back(input_shape);
       }
@@ -560,8 +558,6 @@ CustomKernelInstruction::RunDefaultInferShape() {
 std::vector<DataType> CustomKernelInstruction::RunDefaultInferDtype() {
   std::vector<DataType> output_dtypes;
   auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
-  auto& inplace_reverse_map =
-      OpMetaInfoHelper::GetInplaceReverseMap(*custom_op_meta_);
   if (inplace_map.empty()) {  // general case, assure single input and output
     VLOG(3) << "Custom Operator: Default InferDtype - share ddim.";
     if (input_dtypes_.size() == 1) {
@@ -574,14 +570,14 @@ std::vector<DataType> CustomKernelInstruction::RunDefaultInferDtype() {
           "and only one output without setting the InferDtypeFn. "));
     }
   } else {  // inplace case
-    for (auto const& pair : inplace_reverse_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.first)) {
-        int input_index = vec_input_name2id_map_[pair.second];
+    for (auto const& pair : inplace_map) {
+      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
+        int input_index = vec_input_name2id_map_[pair.first];
         auto input_dtype = vec_input_dtypes_[input_index];
         output_dtypes.insert(
             output_dtypes.end(), input_dtype.begin(), input_dtype.end());
       } else {
-        int input_index = input_name2id_map_[pair.second];
+        int input_index = input_name2id_map_[pair.first];
         auto input_dtype = input_dtypes_[input_index];
         output_dtypes.push_back(input_dtype);
       }
