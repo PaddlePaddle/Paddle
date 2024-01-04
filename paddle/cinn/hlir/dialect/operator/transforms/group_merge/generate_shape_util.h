@@ -15,14 +15,15 @@ class IrContext;
 
 namespace cinn::dialect {
 
-struct ShapeOrDataDimExprsCtx {
+struct ShapeOrDataDimExprsAccessor {
   std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)> GetShapeOrDataDimExprs;
   std::function<void(pir::Value, const symbol::ShapeOrDataDimExprs&)> SetShapeOrDataDimExprs;
 };
 
-void RewriteGenerateShapeOpToRunFirst(
+// Returns true if at least one GenerateShapeOp rewrited.
+bool RewriteGenerateShapeOpToRunFirst(
     pir::IrContext* ir_context,
     pir::Block* block,
-    const ShapeOrDataDimExprsCtx& shape_or_data_dim_expr_ctx);
+    const ShapeOrDataDimExprsAccessor& shape_or_data_dim_expr_accessor);
 
 }

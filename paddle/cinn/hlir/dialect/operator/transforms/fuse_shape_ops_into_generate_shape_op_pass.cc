@@ -128,11 +128,13 @@ std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
 
 bool ProcessOp(paddle::dialect::ExpandOp op,
                pir::PatternRewriter* rewriter,
-               const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
+               const ShapeOrDataDimExprsAccessor& dim_expr_accessor) {
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewritedGenerateShapeOp(
-          op.shape(), rewriter, ShapeOrDataDimExprs4Value);
+          op.shape(), rewriter, dim_expr_accessor.GetShapeOrDataDimExprs);
   if (!opt_generated_shape.has_value()) return false;
+  dim_expr_accessor.SetShapeOrDataDimExprs(opt_generated_shape.value(),
+      dim_expr_accessor.GetShapeOrDataDimExprs(op.shape()));
   op->operand(1).set_source(opt_generated_shape.value());
   return true;
 }
@@ -145,30 +147,41 @@ class FuseShapeOpsIntoGenerateShapeOpPattern
  public:
   FuseShapeOpsIntoGenerateShapeOpPattern(
       pir::IrContext* context,
-      const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value)
+      const ShapeOrDataDimExprsAccessor& dim_expr_accessor)
       : pir::OpRewritePattern<OPTYPE>(context),
-        ShapeOrDataDimExprs4Value_(ShapeOrDataDimExprs4Value) {}
+        dim_expr_accessor_(dim_expr_accessor) {}
 
   bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
-    return ProcessOp(op, &rewriter, ShapeOrDataDimExprs4Value_);
+    return ProcessOp(op, &rewriter, dim_expr_accessor_);
   }
 
  private:
-  ShapeOrDataDimExprs4ValueT ShapeOrDataDimExprs4Value_;
+  ShapeOrDataDimExprsAccessor dim_expr_accessor_;
 };
 
+ShapeOrDataDimExprsAccessor CreateShapeOrDataDimExprsAccessor(const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  return ShapeOrDataDimExprsAccessor{
+    .GetShapeOrDataDimExprs=[=](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+      return shape_analysis->GetShapeOrDataForValue(&value);
+    },
+    .SetShapeOrDataDimExprs=[=](pir::Value value, const symbol::ShapeOrDataDimExprs& dim_exprs) {
+      return shape_analysis->SetShapeOrDataForValue(&value, dim_exprs);
+    }
+  };
+}
+
 FuseShapeOpsIntoGenerateShapeOpPass::FuseShapeOpsIntoGenerateShapeOpPass(
-    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value)
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
     : pir::PatternRewritePass("fuse_shape_ops_into_generate_shape_op_pass", 1),
-      ShapeOrDataDimExprs4Value_(ShapeOrDataDimExprs4Value) {}
+      dim_exprs_accessor_(CreateShapeOrDataDimExprsAccessor(shape_analysis)) {}
 
 pir::RewritePatternSet FuseShapeOpsIntoGenerateShapeOpPass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
   // elementwise ops
   ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ExpandOp>>(
-      context, ShapeOrDataDimExprs4Value_);
+      context, dim_exprs_accessor_);
 
   return ps;
 }

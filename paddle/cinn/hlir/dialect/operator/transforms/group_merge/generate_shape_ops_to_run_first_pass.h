@@ -14,28 +14,16 @@
 
 #pragma once
 
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include <memory>
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/generate_shape_util.h"
+#include "paddle/pir/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
- public:
-  explicit FuseShapeOpsIntoGenerateShapeOpPass(
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis);
-
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
-
-  bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  ShapeOrDataDimExprsAccessor dim_exprs_accessor_;
-};
+std::unique_ptr<::pir::Pass> CreateGenerateShapeOpsToRunFirstPass(
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis);
 
 }  // namespace ir
 }  // namespace dialect
