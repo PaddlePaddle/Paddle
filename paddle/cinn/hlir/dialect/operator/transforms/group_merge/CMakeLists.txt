@@ -5,6 +5,7 @@ if(NOT CINN_ONLY)
     group_with_group_merge_pass.cc
     op_with_group_merge_pass.cc
     cinn_group_lowering_pass.cc
+    generate_shape_util.cc
     tensor_node.cc
     DEPS
     op_dialect_vjp
