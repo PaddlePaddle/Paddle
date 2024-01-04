@@ -49,10 +49,12 @@ struct CombineOpInferSymbolicShapeInterfaceModel
 
     for (auto operand_source : op->operands_source()) {
       std::string operand_source_id = pir::GetValueId(&operand_source);
-      auto source_shape_vec =
+      auto source_data_p =
           shape_analysis->value_id_to_shapeordata_[operand_source_id].data();
-      for (int i = 0; i < source_shape_vec->size(); i++) {
-        data.emplace_back(source_shape_vec->at(i));
+      auto source_shape_vec =
+          source_data_p.value_or(std::vector<symbol::DimExpr>{});
+      for (int i = 0; i < source_shape_vec.size(); i++) {
+        data.emplace_back(source_shape_vec.at(i));
       }
     }
 
