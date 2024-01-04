@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
+#include "paddle/phi/kernels/impl/standard_gamma_kernel_impl.h"
 
-PD_REGISTER_KERNEL(dirichlet,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::Dirichletkernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    standard_gamma, CPU, ALL_LAYOUT, phi::StandardGammaKernel, float, double) {}
