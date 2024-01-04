@@ -15,8 +15,8 @@
 #pragma once
 
 #include <vector>
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "thrust/device_vector.h"
