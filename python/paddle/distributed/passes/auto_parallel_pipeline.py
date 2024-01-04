@@ -76,7 +76,7 @@ class PipelinePass(PassBase):
         self._cur_pp_stage = self._get_pp_stage(self._cur_rank)
 
         if self._mode == "1F1B":
-            _insert_sync_for_fthenb_1f1b(self._program)
+            _insert_sync_for_fthenb_1f1b(self._program, self._dist_context)
             self._task_1f1b()
         elif self._mode == "F-Then-B":
             raise NotImplementedError("F-Then-B has not been implemented")

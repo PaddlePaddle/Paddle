@@ -26,6 +26,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     use_new_executor,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -445,6 +446,19 @@ def _insert_sync_for_fthenb_1f1b(program, dist_context=None):
                     outputs={'Out': [var]},
                     attrs={'op_role': op_role},
                 )
+
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                calc_stream_op = block.ops[index + offset]
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    calc_stream_op,
+                    process_mesh=var_dist_attr.process_mesh,
+                    ref_mapping=var_dist_attr.dims_mapping,
+                    ctx=dist_context,
+                    chunk_id=var_dist_attr.chunk_id,
+                )
+
                 offset += 1
                 # step3: insert 'c_sync_comm_stream' op after 'send_v2' op or
                 # before the first optimize op
@@ -525,6 +539,19 @@ def _insert_sync_for_fthenb_1f1b(program, dist_context=None):
                         inputs={'X': [var]},
                         outputs={'Out': [var]},
                         attrs={'op_role': OpRole.Backward},
+                    )
+                    var_dist_attr = (
+                        dist_context.get_tensor_dist_attr_for_program(
+                            block.var(var_name)
+                        )
+                    )
+                    nop_op = block.ops[backward_recv_index]
+                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                        nop_op,
+                        process_mesh=var_dist_attr.process_mesh,
+                        ref_mapping=var_dist_attr.dims_mapping,
+                        ctx=dist_context,
+                        chunk_id=var_dist_attr.chunk_id,
                     )
         block._sync_with_cpp()
 
