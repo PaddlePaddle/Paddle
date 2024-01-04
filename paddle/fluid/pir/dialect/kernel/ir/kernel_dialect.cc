@@ -26,20 +26,7 @@ REGISTER_FILE_SYMBOLS(kernel_dialect);
 namespace paddle {
 namespace dialect {
 
-KernelDialect::KernelDialect(pir::IrContext *context)
-    : pir::Dialect(name(), context, pir::TypeId::get<KernelDialect>()) {
-  initialize();
-}
-
-void KernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
-                paddle::dialect::AllocatedSelectedRowsType,
-                paddle::dialect::AllocatedDenseTensorArrayType>();
-  RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
-  RegisterAttributes<paddle::dialect::KernelAttribute>();
-}
-
-void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
+void PrintKernelType(pir::Type type, std::ostream &os) {
   if (type.isa<AllocatedDenseTensorType>()) {
     AllocatedDenseTensorType tensor_type =
         type.dyn_cast<AllocatedDenseTensorType>();
@@ -75,12 +62,33 @@ void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
   }
 }
 
-void KernelDialect::PrintAttribute(pir::Attribute attr,
-                                   std::ostream &os) const {
+void PrintKernelAttribute(pir::Attribute attr, std::ostream &os) {
   phi::KernelKey kernel = attr.dyn_cast<KernelAttribute>().data();
 
   os << "<backend:" << kernel.backend() << "|layout:" << kernel.layout()
      << "|dtype:" << kernel.dtype() << ">";
+}
+
+KernelDialect::KernelDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<KernelDialect>()) {
+  initialize();
+}
+
+void KernelDialect::initialize() {
+  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
+                paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedDenseTensorArrayType>();
+  RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
+  RegisterAttributes<paddle::dialect::KernelAttribute>();
+}
+
+void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
+  PrintKernelType(type, os);
+}
+
+void KernelDialect::PrintAttribute(pir::Attribute attr,
+                                   std::ostream &os) const {
+  PrintKernelAttribute(attr, os);
 }
 
 void KernelDialect::PrintOperation(pir::Operation *op,
@@ -122,6 +130,45 @@ void KernelDialect::PrintOperation(pir::Operation *op,
   }
 }
 
+CustomKernelDialect::CustomKernelDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<CustomKernelDialect>()) {
+  initialize();
+}
+
+void CustomKernelDialect::initialize() {
+  RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
+  RegisterOps<dialect::CustomKernelOp>();
+  RegisterAttributes<paddle::dialect::KernelAttribute>();
+}
+
+void CustomKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
+  PrintKernelType(type, os);
+}
+
+void CustomKernelDialect::PrintAttribute(pir::Attribute attr,
+                                         std::ostream &os) const {
+  PrintKernelAttribute(attr, os);
+}
+
+void CustomKernelDialect::PrintOperation(pir::Operation *op,
+                                         pir::IrPrinter &printer) const {
+  auto &os = printer.os;
+  printer.PrintOpResult(op);
+  os << " =";
+  auto custom_kernel_op = op->dyn_cast<CustomKernelOp>();
+  std::string kernel_name = custom_kernel_op.kernel_name();
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    kernel_name = kernel_name + "_";
+  }
+  os << " \"" << kernel_name << "(custom_kernel)\"";
+  printer.PrintOpOperands(op);
+  printer.PrintAttributeMap(op);
+  os << " :";
+  printer.PrintOperandsType(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+}
 #ifdef PADDLE_WITH_DNNL
 OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
     : pir::Dialect(name(), context, pir::TypeId::get<OneDNNKernelDialect>()) {
@@ -139,47 +186,12 @@ void OneDNNKernelDialect::initialize() {
 }
 
 void OneDNNKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
-  if (type.isa<AllocatedDenseTensorType>()) {
-    AllocatedDenseTensorType tensor_type =
-        type.dyn_cast<AllocatedDenseTensorType>();
-
-    os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
-    os << "tensor<";
-    for (auto d : common::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
-  } else if (type.isa<AllocatedSelectedRowsType>()) {
-    AllocatedSelectedRowsType tensor_type =
-        type.dyn_cast<AllocatedSelectedRowsType>();
-
-    os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
-    os << "tensor<";
-    for (auto d : common::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
-  } else if (type.isa<AllocatedDenseTensorArrayType>()) {
-    AllocatedDenseTensorArrayType tensor_array_type =
-        type.dyn_cast<AllocatedDenseTensorArrayType>();
-
-    os << phi::AllocationTypeStr(tensor_array_type.place().GetType()) << "_";
-    os << "tensor_array<";
-    tensor_array_type.dtype().Print(os);
-    os << ">";
-  }
+  PrintKernelType(type, os);
 }
 
 void OneDNNKernelDialect::PrintAttribute(pir::Attribute attr,
                                          std::ostream &os) const {
-  phi::KernelKey kernel = attr.dyn_cast<KernelAttribute>().data();
-
-  os << "<backend:" << kernel.backend() << "|layout:" << kernel.layout()
-     << "|dtype:" << kernel.dtype() << ">";
+  PrintKernelAttribute(attr, os);
 }
 
 void OneDNNKernelDialect::PrintOperation(pir::Operation *op,
@@ -226,6 +238,7 @@ void OneDNNKernelDialect::PrintOperation(pir::Operation *op,
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)
 #ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
 #endif
