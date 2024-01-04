@@ -443,8 +443,8 @@ void PriorBoxInferMeta(const MetaTensor& input,
                        MetaTensor* out,
                        MetaTensor* var);
 
-void PullSparseV2InferMeta(const const std::vector<const MetaTensor*>& ids,
-                           const const std::vector<const MetaTensor*>& w,
+void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
+                           const std::vector<const MetaTensor*>& w,
                            int embeddingdim,
                            int tableid,
                            const std::string accessorclass,
