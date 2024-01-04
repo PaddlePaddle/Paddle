@@ -635,13 +635,9 @@ void BuildOpFuncList(const platform::Place& place,
         hook(op, local_scope);
       }
 
-      if (op->Type() == "while") {
+      if (op->Type() == "while" || op->Type() == "conditional_block") {
         op->SetInputHooks(input_hookfuncs);
         op->SetOutputHooks(output_hookfuncs);
-        auto runtime_attrs = op->RuntimeAttrs();
-        runtime_attrs.insert(std::make_pair("used_for_inference", true));
-        op->SetRuntimeAttributeMap(runtime_attrs);
-      } else if (op->Type() == "conditional_block") {
         auto runtime_attrs = op->RuntimeAttrs();
         runtime_attrs.insert(std::make_pair("used_for_inference", true));
         op->SetRuntimeAttributeMap(runtime_attrs);
