@@ -1814,8 +1814,6 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "This model run in Custom Device mixed precision mode.";
   }
 
-  std::cout << "go here !";
-  std::cout << "pass_builder:" << &pass_builder;
   argument_->SetDisableLogs(config_.glog_info_disabled());
   argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());

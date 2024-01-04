@@ -23,7 +23,7 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
-
+#include <glog/logging.h>
 #include <algorithm>
 #include <sstream>
 #include "paddle/fluid/platform/flags.h"
@@ -104,15 +104,15 @@ std::string GetCtrlRuntimeStatus(int64_t mixed_precision_mode,
       pass_runtime_status = "trt";
     } else if (tensorrt_precision_mode == 2) {
       // fp16
-      pass_runtime_status = "trt_low";
+      pass_runtime_status = "trtlow";
     } else if (tensorrt_precision_mode == 1) {
-      pass_runtime_status = "int8";
+      pass_runtime_status = "trtint8";
     }
   } else if (use_gpu) {
     if (mixed_precision_mode == 0) {
       pass_runtime_status = "gpu";
     } else if (mixed_precision_mode == 2) {
-      pass_runtime_status = "gpu_low";
+      pass_runtime_status = "gpulow";
     }
   }
   return pass_runtime_status;
