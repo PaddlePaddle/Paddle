@@ -129,6 +129,7 @@ std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
 bool ProcessOp(paddle::dialect::ExpandOp op,
                pir::PatternRewriter* rewriter,
                const ShapeOrDataDimExprsAccessor& dim_expr_accessor) {
+  if (op.shape().defining_op().isa<cinn::dialect::GenerateShapeOp>()) return false;
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewritedGenerateShapeOp(
           op.shape(), rewriter, dim_expr_accessor.GetShapeOrDataDimExprs);
