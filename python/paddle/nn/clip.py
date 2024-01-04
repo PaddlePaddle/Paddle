@@ -528,8 +528,7 @@ class ClipGradByNorm(ClipGradBase):
     def __str__(self):
         return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
-    @imperative_base.no_grad()
-    def _dygraph_clip(self, params_grads):
+    def _clip_gradients(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
             if g is None:
@@ -541,17 +540,12 @@ class ClipGradByNorm(ClipGradBase):
             params_and_grads.append((p, new_grad))
         return params_and_grads
 
+    @imperative_base.no_grad()
+    def _dygraph_clip(self, params_grads):
+        return self._clip_gradients(params_grads)
+
     def _pir_clip(self, params_grads):
-        params_and_grads = []
-        for p, g in params_grads:
-            if g is None:
-                continue
-            if getattr(p, 'need_clip', True) is False:
-                params_and_grads.append((p, g))
-                continue
-            new_grad = clip_by_norm(x=g, max_norm=self.clip_norm)
-            params_and_grads.append((p, new_grad))
-        return params_and_grads
+        return self._clip_gradients(params_grads)
 
     def _static_clip(self, params_grads):
         params_and_grads = []
