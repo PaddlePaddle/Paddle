@@ -25,7 +25,6 @@
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-#include "paddle/phi/kernels/trunc_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -202,6 +201,8 @@ void CastCsrKernel(const Context& dev_ctx,
     meta.set_dims(x_values.dims());
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
+
+  out->set_dims(x.dims());
 }
 
 template <typename T, typename Context>
