@@ -67,6 +67,12 @@ ir::Expr ReplaceVarWithExpr(const ir::Expr& source,
 std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
                                             ir::Expr block);
 
+std::unordered_set<ir::Var> GetReduceIterVars(ir::Expr block);
+
+bool IsReductionSBlock(ir::Expr block);
+
+bool IsBroadcastSBlock(ir::Expr block);
+
 }  // namespace analyzer
 }  // namespace ir
 }  // namespace cinn

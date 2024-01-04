@@ -680,7 +680,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"pool3d",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
-      {"pow", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"pow", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"pow_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"pow2_decay_with_linear_warmup", XPUKernelSet({phi::DataType::FLOAT32})},
       {"prior_box", XPUKernelSet({phi::DataType::FLOAT32})},
@@ -707,7 +707,8 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_max",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT32,
-                     phi::DataType::INT64})},
+                     phi::DataType::INT64,
+                     phi::DataType::FLOAT16})},
       {"reduce_mean_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reduce_mean",
        XPUKernelSet({phi::DataType::FLOAT32,
@@ -1171,6 +1172,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::INT32})},
+      {"sine_pos_xpu",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
   };
 
   return s_xpu2_kernels;

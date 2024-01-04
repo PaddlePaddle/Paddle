@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,16 @@
 
 #pragma once
 
-#ifdef __HIPCC__
-#include <hip/hip_runtime.h>
-#endif
+#include <optional>
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/pir/core/builder.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-#if defined(__xpu__)
-#include <xpu/runtime.h>
+namespace cinn::common {
 
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
-#endif
+symbol::DimExpr SubstituteDimExpr(
+    const symbol::DimExpr& dim_expr,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+        pattern_to_replacement);
 
-#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
-#define HOSTDEVICE __host__ __device__
-#define DEVICE __device__
-#define HOST __host__
-#else
-#define HOSTDEVICE
-#define DEVICE
-#define HOST
-#endif
+}

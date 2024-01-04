@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include "glog/logging.h"
 
 #include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/hlir/framework/op.h"
@@ -34,8 +37,17 @@ namespace framework {
 namespace pir {
 using framework::OpPatternKind;
 
-// TODO(Aurelius84): Need to be replaced with CinnGroupOp
 struct Group {
+  // Control the clone strategy for Group.
+  class Options {
+   public:
+    Options() : only_clone_ops(true) {}
+    bool OnlyCloneOps() const { return only_clone_ops; }
+
+   private:
+    bool only_clone_ops = false;
+  };
+
  public:
   Group() = default;
   Group(const Group&) = delete;
@@ -46,6 +58,36 @@ struct Group {
 
   explicit Group(std::initializer_list<::pir::Operation*> group_ops)
       : ops(group_ops) {}
+
+  std::shared_ptr<Group> Clone(::pir::Block* target_block,
+                               ::pir::IrMapping& ir_mapping,
+                               const Options& option = Options()) const {
+    CHECK_EQ(option.OnlyCloneOps(), true)
+        << "Only Support Clone Group ops information.";
+    std::vector<::pir::Operation*> new_ops;
+    // Mapper from original to new ops.
+    std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
+    ::pir::CloneOptions clone_options(false, true);
+    for (auto* op : this->ops_set) {
+      auto* new_op = op->Clone(ir_mapping, clone_options);
+      // NOTE(dev): Must call MoveTo to deal with ownership, otherwise it
+      // will lead memory-leak.
+      new_op->MoveTo(target_block, target_block->end());
+      new_ops.push_back(new_op);
+      ops_mapper[op] = new_op;
+    }
+    // Construct Base information for new Group
+    auto new_group = std::make_shared<Group>(new_ops);
+    this->CollectOps();
+    for (auto& iter : this->input_ops) {
+      new_group->input_ops[ops_mapper[iter.first]] = iter.second;
+    }
+    for (auto* op : this->output_ops) {
+      new_group->output_ops.insert(ops_mapper[op]);
+    }
+
+    return new_group;
+  }
 
   // distance to last group.
   int depth{0};

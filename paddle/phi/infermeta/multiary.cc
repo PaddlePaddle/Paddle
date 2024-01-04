@@ -464,22 +464,19 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config) {
-  int64_t max_length = 0;
   bool has_tensor_array = false;
   for (auto input : x) {
     if (input->is_tensor_array()) {
+      if (out->is_tensor_array()) {
+        out->set_dtype(input->dtype());
+        out->set_layout(input->layout());
+      }
       has_tensor_array = true;
-      // if input is lod_tensor_array, dims() will return its size (one element)
-      max_length =
-          input->dims()[0] > max_length ? input->dims()[0] : max_length;
+      break;
     }
   }
 
-  if (has_tensor_array) {
-    if (out->is_tensor_array()) {
-      out->set_dims(common::make_ddim({max_length}));
-    }
-  } else {
+  if (!has_tensor_array) {
     AddNInferMeta(x, out, config);
   }
 }
