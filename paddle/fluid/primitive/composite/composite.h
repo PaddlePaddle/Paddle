@@ -528,6 +528,21 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
   }
 }
 
+template <typename T>
+Tensor hardswish_decomp(const Tensor& x) {
+  const double OFFSET = 3.0;
+  const double THRESHOLD = 6.0;
+  const double SCALE = 6.0;
+
+  // out = minimum(maxmum(x + offset, 0), threshold) * x / scale
+  auto org_dim = common::vectorize(x.dims());
+  auto minimun_out =
+      minimum<T>(maximum<T>(x + full<T>(org_dim, OFFSET, x.dtype()),
+                            full<T>(org_dim, 0.0, x.dtype())),
+                 full<T>(org_dim, THRESHOLD, x.dtype()));
+  return (minimun_out * x) / full<T>(org_dim, SCALE, x.dtype());
+}
+
 }  // namespace details
 
 }  // namespace primitive
