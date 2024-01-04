@@ -553,6 +553,7 @@ create_test_bf16(TestConcatOp4)
 
 
 class TestConcatOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -692,6 +693,7 @@ class TestConcatAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The item in input must be Variable.

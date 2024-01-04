@@ -419,6 +419,7 @@ class TestFillConstantImperative(unittest.TestCase):
 
 
 class TestFillConstantOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle_static_guard(), program_guard(Program(), Program()):
             # for ci coverage

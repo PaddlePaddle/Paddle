@@ -84,6 +84,7 @@ class TestMeanOpError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -530,6 +531,7 @@ class TestMeanAPI(unittest.TestCase):
             out.numpy(), np.mean(x_np, axis=1), rtol=1e-05
         )
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.disable_static()
         x = np.random.uniform(-1, 1, [10, 12]).astype('float32')

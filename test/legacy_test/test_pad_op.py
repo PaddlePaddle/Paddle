@@ -128,6 +128,7 @@ create_test_fp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(

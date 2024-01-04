@@ -221,6 +221,7 @@ class Test_API_Matmul(unittest.TestCase):
 
 
 class API_TestMmError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle_static_guard():
 
