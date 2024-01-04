@@ -57,7 +57,8 @@ void BilateralSliceInferMeta(const MetaTensor& x,
                              const MetaTensor& grid,
                              const MetaTensor& guide,
                              bool has_offset,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,

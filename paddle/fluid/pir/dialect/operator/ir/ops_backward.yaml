@@ -110,14 +110,14 @@
 
 - backward_op : bilateral_slice_grad
   forward : bilateral_slice(Tensor x, Tensor grid, Tensor guide, bool has_offset=false) -> Tensor(out)
-  args : (Tensor x, Tensor grid, Tensor guide, Tensor out_grad, bool has_offset=false)
+  args : (Tensor x, Tensor grid, Tensor guide, Tensor out, Tensor out_grad, bool has_offset=false)
   output : Tensor(x_grad), Tensor(grid_grad), Tensor(guide_grad)
   infer_meta :
     func : BilateralSliceGradInferMeta
     param : [x, grid, guide]
   kernel :
     func : bilateral_slice_grad
-    
+
 - backward_op : c_embedding_grad
   forward : c_embedding (Tensor weight, Tensor x, int64_t start_index=0) -> Tensor(out)
   args : (Tensor weight, Tensor x, Tensor out_grad, int64_t start_index=0)
