@@ -443,8 +443,8 @@ void PriorBoxInferMeta(const MetaTensor& input,
                        MetaTensor* out,
                        MetaTensor* var);
 
-void PullSparseV2InferMeta(const MetaTensor& ids,
-                           const MetaTensor& w,
+void PullSparseV2InferMeta(const const std::vector<const MetaTensor*>& ids,
+                           const const std::vector<const MetaTensor*>& w,
                            int embeddingdim,
                            int tableid,
                            const std::string accessorclass,
@@ -453,7 +453,7 @@ void PullSparseV2InferMeta(const MetaTensor& ids,
                            bool scalesparsegrad,
                            const std::vector<std::string>& inputnames,
                            bool is_distributed,
-                           MetaTensor* out);
+                           std::vector<MetaTensor*> out);
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,

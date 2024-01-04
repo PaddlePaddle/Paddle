@@ -2521,11 +2521,14 @@ void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
                            const std::vector<std::string>& inputnames,
                            bool is_distributed,
                            std::vector<MetaTensor*> out) {
-  const auto& ids_dims = ids.dims();
-  auto output_dims = common::vectorize(ids_dims);
+  auto ids_dims = ids[0]->dims();
+  auto output_dims = common::vectorize<int>(ids_dims);
   output_dims.push_back(ids_dims[1]);
-  out->set_dims(common::make_ddim(output_dims));
-  out->share_lod(ids);
+  for (size_t i = 0; i < out.size(); i++) {
+    out[i]->set_dims(common::make_ddim(output_dims));
+    out[i]->share_lod(*(ids[i]));
+    out[i]->set_dtype(ids[i]->dtype());
+  }
 }
 
 void PReluInferMeta(const MetaTensor& x,
