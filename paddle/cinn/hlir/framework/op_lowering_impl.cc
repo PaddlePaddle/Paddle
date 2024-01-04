@@ -45,8 +45,8 @@ using cinn::common::Type;
 using cinn::hlir::op::ExternalApiRegistry;
 
 // Collect the temporary tensors from a computational graph.
-std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
-                                       Expr body) {
+std::vector<ir::Buffer> GetTempBuffers(
+    const std::vector<cin::ir::Tensor>& tensor_args, Expr body) {
   std::unordered_set<std::string> tensor_arg_names;
   std::unordered_set<std::string> buffer_arg_names;
   for (auto& tensor : tensor_args) {
