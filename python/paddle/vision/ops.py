@@ -26,6 +26,7 @@ from ..base.framework import (
     convert_np_dtype_to_dtype_,
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
@@ -2144,6 +2145,27 @@ def generate_proposals(
             scores, bbox_deltas, img_size, anchors, variances, *attrs
         )
 
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif in_pir_mode():
+        assert (
+            return_rois_num
+        ), "return_rois_num should be True in PaddlePaddle inner op mode."
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
+            scores,
+            bbox_deltas,
+            img_size,
+            anchors,
+            variances,
+            pre_nms_top_n,
+            post_nms_top_n,
+            nms_thresh,
+            min_size,
+            eta,
+            pixel_offset,
+        )
+        rpn_rois.stop_gradient = True
+        rpn_roi_probs.stop_gradient = True
+        rpn_rois_num.stop_gradient = True
         return rpn_rois, rpn_roi_probs, rpn_rois_num
     else:
         helper = LayerHelper('generate_proposals_v2', **locals())

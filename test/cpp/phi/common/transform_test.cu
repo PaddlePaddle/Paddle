@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "paddle/phi/common/transform.h"
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/hostdevice.h"
 
 template <typename T>
 class Scale {

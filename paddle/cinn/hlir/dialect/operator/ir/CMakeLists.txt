@@ -67,10 +67,12 @@ if(NOT CINN_ONLY)
     op_dialect.cc
     ${cinn_op_source_file}
     ${cinn_op_info_file}
+    generate_shape_util.cc
     manual_op.cc
     op_attribute.cc
     DEPS
-    op_dialect_vjp)
+    op_dialect_vjp
+    pir)
 
   target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_SOURCE_DIR})
 endif()

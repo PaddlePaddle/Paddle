@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/transform.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 

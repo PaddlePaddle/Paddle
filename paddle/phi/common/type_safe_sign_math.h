@@ -17,9 +17,9 @@
 #include <cmath>
 #include <type_traits>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/hostdevice.h"
 
 namespace phi {
 

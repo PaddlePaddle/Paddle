@@ -181,5 +181,13 @@ pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
           inputs_combine_op.out());
   return add_n_array_op.result(0);
 }
+
+pir::OpResult slice_array_dense(pir::Value input, pir::Value starts) {
+  auto op = ApiBuilder::Instance()
+                .GetBuilder()
+                ->Build<paddle::dialect::SliceArrayDenseOp>(input, starts);
+  return op.result(0);
+}
+
 }  // namespace dialect
 }  // namespace paddle
