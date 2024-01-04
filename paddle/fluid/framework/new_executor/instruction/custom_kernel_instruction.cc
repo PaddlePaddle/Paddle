@@ -61,7 +61,7 @@ void CustomKernelInstruction::BuildCustomContext(
         custom_vec_in.emplace_back(paddle::Tensor());
         custom_kernel_ctx_.EmplaceBackInputs(std::move(custom_vec_in));
       } else {
-        input_name2id_map_[t] = vec_input_index;
+        input_name2id_map_[t] = input_index;
         input_index++;
         input_ptrs_.emplace_back(nullptr);
         custom_kernel_ctx_.EmplaceBackInput(std::move(paddle::Tensor()));
@@ -84,7 +84,7 @@ void CustomKernelInstruction::BuildCustomContext(
           dense_tensor_in, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
-      input_name2id_map_[t] = vec_input_index;
+      input_name2id_map_[t] = input_index;
       input_index++;
       input_ptrs_.push_back(dense_tensor_in);
       paddle::Tensor custom_in;
