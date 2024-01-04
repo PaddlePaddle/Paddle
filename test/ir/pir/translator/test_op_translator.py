@@ -21,7 +21,7 @@ from paddle.base import core
 paddle.enable_static()
 
 
-class TestOpTranscriber(unittest.TestCase):
+class TestOpTranslator(unittest.TestCase):
     def setUp(self):
         self.place = core.Place()
         self.place.set_place(paddle.CPUPlace())

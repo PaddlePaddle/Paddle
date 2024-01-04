@@ -105,9 +105,6 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   int64_t next_sym_idx_ = 0;
   std::vector<symbol::DimExprConstraint> constraints_;
 
-  std::unordered_map<std::string, symbol::ShapeOrDataDimExprs>
-      value_id_to_shapeordata;
-
  public:
   explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
       : ShapeConstraintIRAnalysis(program->module_op()) {

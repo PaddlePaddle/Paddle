@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -107,6 +108,26 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<pir::Type> InferMeta(std::vector<pir::Value> &input_values,
                                           pir::AttributeMap attributes);
+};
+
+class AddNArrayOp : public pir::Op<AddNArrayOp,
+                                   paddle::dialect::OpYamlInfoInterface,
+                                   paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.add_n_array"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value inputs_);
+
+  void VerifySig();
+  pir::Value inputs() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
 class FusedGemmEpilogueOp
@@ -211,6 +232,25 @@ class CreateArrayOp
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<pir::Type> InferMeta(std::vector<pir::Value> &input_values,
                                           pir::AttributeMap attributes);
+};
+
+class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
+                                         OpYamlInfoInterface,
+                                         InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.create_array_like"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value &input_,                // NOLINT
+                    float &val);                       // NOLINT
+  void VerifySig();
+  pir::Value input() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
 class ArrayLengthOp
@@ -358,6 +398,11 @@ class SliceArrayDenseOp
   static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
   void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    pir::Value starts);
 
   static phi::DataType GetKernelTypeForVar(
       const std::string &var_name,
@@ -545,6 +590,37 @@ class Increment_Op
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
+class IR_API ShapeBroadcastOp
+    : public pir::Op<ShapeBroadcastOp,
+                     paddle::dialect::InferSymbolicShapeInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.shape_broadcast"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::Value y_);
+
+  void VerifySig() {}
+
+  pir::Value x() { return operand_source(0); }
+  pir::Value y() { return operand_source(1); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -552,9 +628,11 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayLikeOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
@@ -566,3 +644,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)

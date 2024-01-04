@@ -506,6 +506,7 @@ from .tensor.random import (
     randint_like,
     randn,
     randperm,
+    standard_gamma,
     standard_normal,
     uniform,
 )
@@ -753,6 +754,7 @@ __all__ = [
     'bernoulli',
     'binomial',
     'poisson',
+    'standard_gamma',
     'sinh',
     'sinh_',
     'round',

@@ -187,6 +187,12 @@ def shard_tensor(
         if isinstance(data, EagerParamBase):
 
             def lazy_init_hook(param, origin_hook):
+                for placement in param.placements:
+                    assert not placement.is_partial(), (
+                        "Lazy init not support partial reshard. Notice that: shard a param to partial "
+                        "won't save any memory, but will increase the communication cost!"
+                    )
+
                 # lazy init hook with randomness controlling
                 def _init_func(var, block):
                     # get the unique rng name

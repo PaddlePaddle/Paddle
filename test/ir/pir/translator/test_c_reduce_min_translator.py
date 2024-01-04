@@ -14,13 +14,13 @@
 
 import unittest
 
-import test_op_transcriber
+import test_op_translator
 
 import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestCReduceMinOpTranscriber(test_op_transcriber.TestOpTranscriber):
+class TestCReduceMinOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "c_reduce_min"
         x = paddle.ones(shape=(100, 2, 3), dtype='float32')
