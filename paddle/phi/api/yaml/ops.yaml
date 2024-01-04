@@ -2542,6 +2542,14 @@
   backward : stack_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : standard_gamma
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : standard_gamma
+
 - op : stanh
   args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)
   output : Tensor(out)

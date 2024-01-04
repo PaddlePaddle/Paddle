@@ -79,17 +79,6 @@ limitations under the License. */
 namespace phi {
 namespace enforce {
 
-#ifdef __GNUC__
-inline std::string demangle(std::string name) {
-  int status = -4;  // some arbitrary value to eliminate the compiler warning
-  std::unique_ptr<char, void (*)(void*)> res{
-      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
-  return (status == 0) ? res.get() : name;
-}
-#else
-inline std::string demangle(std::string name) { return name; }
-#endif
-
 namespace details {
 template <typename T>
 inline constexpr bool IsArithmetic() {
@@ -164,7 +153,6 @@ struct BinaryCompareMessageConverter<false> {
 }  // namespace details
 
 TEST_API int GetCallStackLevel();
-TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
 TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 
 template <typename StrType>
@@ -192,7 +180,7 @@ std::string GetCompleteTraceBackString(StrType&& what,
   sout << paddle::string::Sprintf(
               "%s (at %s:%d)", std::forward<StrType>(what), file, line)
        << std::endl;
-  return GetCurrentTraceBackString() + sout.str();
+  return ::common::enforce::GetCurrentTraceBackString() + sout.str();
 }
 
 template <typename StrType>
@@ -201,7 +189,8 @@ static std::string GetTraceBackString(StrType&& what,
                                       int line) {
   if (GetCallStackLevel() > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
-    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+    return ::common::enforce::GetCurrentTraceBackString() +
+           GetErrorSumaryString(what, file, line);
   } else {
     return GetErrorSumaryString(what, file, line);
   }
@@ -453,7 +442,7 @@ struct EnforceNotMet : public std::exception {
           "  1. The %s is not the %s of operator %s;\n"                 \
           "  2. The %s has no corresponding variable passed in;\n"      \
           "  3. The %s corresponding variable is not initialized.",     \
-          phi::demangle(                                                \
+          common::demangle(                                             \
               typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
                   .name()),                                             \
           __ROLE,                                                       \
@@ -514,8 +503,8 @@ namespace details {
               "paddle::get failed, cannot get value "                        \
               "(%s) by type %s, its type is %s.",                            \
               expression,                                                    \
-              phi::enforce::demangle(typeid(OutputType).name()),             \
-              phi::enforce::demangle(input.type().name())),                  \
+              common::demangle(typeid(OutputType).name()),                   \
+              common::demangle(input.type().name())),                        \
           file,                                                              \
           line);                                                             \
       END_HANDLE_THE_ERROR                                                   \
