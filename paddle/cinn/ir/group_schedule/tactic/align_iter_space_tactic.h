@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,24 @@
 
 #pragma once
 
-#ifdef __HIPCC__
-#include <hip/hip_runtime.h>
-#endif
+#include <string>
+#include <unordered_set>
+#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 
-#if defined(__xpu__)
-#include <xpu/runtime.h>
+namespace cinn {
+namespace ir {
 
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
-#endif
+class AlignIterSpaceTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
 
-#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
-#define HOSTDEVICE __host__ __device__
-#define DEVICE __device__
-#define HOST __host__
-#else
-#define HOSTDEVICE
-#define DEVICE
-#define HOST
-#endif
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "AlignIterSpaceTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
+
+}  // namespace ir
+}  // namespace cinn

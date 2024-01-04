@@ -187,6 +187,11 @@ class AMPState:
         return is_train
 
     def _mark_black_white_ops(self, op, ops, block):
+        # deal auto_cast info
+        if not op.amp_options.enable:
+            self._op_fp16_dict[op.desc.original_id()] = False
+            return
+
         # ernie inference trick
         if op.type == "assign" and "array_" in op.input_arg_names[0]:
             self._op_fp16_dict[op.desc.original_id()] = False

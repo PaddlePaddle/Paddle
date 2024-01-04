@@ -210,6 +210,9 @@ class FP16State:
         for block in self.program.blocks:
             self.resolute_tensor_dtype(block)
 
+        for block in self.program.blocks:
+            self.resolute_cast_op(block)
+
         # insert cast ops
         for block in self.program.blocks:
             self.cast_block(block)
@@ -296,6 +299,19 @@ class FP16State:
 
         if var.dtype == core.VarDesc.VarType.FP32:
             var.desc.set_dtype(__target_dtype__)
+
+    def resolute_cast_op(self, block):
+        """
+        Deal the "cast_op" from "FP32" to "FP16" or "BF16" in the model.
+        """
+        for op in block.ops:
+            if op.type == "cast":
+                in_name = op.input('X')[0]
+                out_name = op.output('Out')[0]
+                in_var = block._find_var_recursive(in_name)
+                out_var = block._find_var_recursive(out_name)
+                op._set_attr("in_dtype", in_var.dtype)
+                op._set_attr("out_dtype", out_var.dtype)
 
     def resolute_tensor_dtype(self, block):
         for op in block.ops:
