@@ -20,7 +20,7 @@ set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn)
 set(FLASHATTN_SOURCE_SUBDIR csrc)
 set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
 set(FLASHATTN_REPOSITORY ${GIT_URL}/PaddlePaddle/flash-attention.git)
-set(FLASHATTN_TAG 0598fa245bbfb8c4462002600864518c0e37e714)
+set(FLASHATTN_TAG fd6890c7ef6e53380b9eddc0a12b5acc641eb57d)
 
 set(FLASHATTN_INCLUDE_DIR
     "${FLASHATTN_INSTALL_DIR}/include"
@@ -67,6 +67,20 @@ else()
   set(FLASHATTN_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
+set(FA_NVCC_ARCH_BIN "")
+foreach(arch ${NVCC_ARCH_BIN})
+  string(STRIP ${arch} arch)
+  if(arch STREQUAL "")
+    continue()
+  endif()
+
+  if(FA_NVCC_ARCH_BIN STREQUAL "")
+    set(FA_NVCC_ARCH_BIN "${arch}")
+  else()
+    set(FA_NVCC_ARCH_BIN "${FA_NVCC_ARCH_BIN}-${arch}")
+  endif()
+endforeach()
+
 ExternalProject_Add(
   extern_flashattn
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
@@ -94,6 +108,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              -DCMAKE_JOB_POOL_COMPILE:STRING=compile
+             -DNVCC_ARCH_BIN=${FA_NVCC_ARCH_BIN}
              -DCMAKE_JOB_POOLS:STRING=compile=4
              ${EXTERNAL_OPTIONAL_ARGS}
   CMAKE_CACHE_ARGS
