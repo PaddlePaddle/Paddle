@@ -543,6 +543,39 @@ Tensor hardswish_decomp(const Tensor& x) {
   return (minimun_out * x) / full<T>(org_dim, SCALE, x.dtype());
 }
 
+template <typename T>
+Tensor sigmoid_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  // res = 1 / (1 + exp(-x))
+  auto one = full<T>(common::vectorize(x_cast.dims()), 1, x_cast.dtype());
+  auto exp_tmp = exp<T>(
+      full<T>(common::vectorize(x_cast.dims()), -1, x_cast.dtype()) * x_cast);
+  auto res = one / (one + exp_tmp);
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
+Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
+  auto multiply_tmp =
+      full<T>(phi::vectorize(x.dims()), negative_slope, x.dtype()) * x;
+  if (negative_slope < 1.0) {
+    return maximum<T>(x, multiply_tmp);
+  } else {
+    return minimum<T>(x, multiply_tmp);
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive

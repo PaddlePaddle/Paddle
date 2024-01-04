@@ -390,7 +390,7 @@ class TestSigmoid(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -411,7 +411,7 @@ class TestSigmoid_Complex64(TestSigmoid):
 
     def test_check_output(self):
         with paddle.static.scope_guard(paddle.static.Scope()):
-            self.check_output(check_prim=False)
+            self.check_output(check_prim=False, check_prim_pir=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -420,6 +420,7 @@ class TestSigmoid_Complex64(TestSigmoid):
             max_relative_error=0.006,
             check_prim=False,
             check_pir=True,
+            check_prim_pir=False,
         )
 
 
@@ -428,7 +429,9 @@ class TestSigmoid_Complex128(TestSigmoid_Complex64):
         self.dtype = np.complex128
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=False, check_pir=True, check_prim_pir=False
+        )
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -469,12 +472,19 @@ class TestSigmoidBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=True, check_pir=True)
+        self.check_output_with_place(
+            place, check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -2548,7 +2558,7 @@ class TestLeakyRelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -4830,7 +4840,11 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(
-    TestSigmoid, check_prim=True, enable_cinn=True, check_pir=True
+    TestSigmoid,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
     TestSilu, check_prim=True, enable_cinn=True, check_prim_pir=True
@@ -4925,18 +4939,24 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestMish, check_pir=True)
 create_test_act_fp16_class(
-    TestLeakyRelu, check_prim=True, enable_cinn=True, check_pir=True
+    TestLeakyRelu,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
-    TestLeakyReluAlpha1, check_prim=True, enable_cinn=True
+    TestLeakyReluAlpha1, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
 create_test_act_fp16_class(
-    TestLeakyReluAlpha2, check_prim=True, enable_cinn=True
+    TestLeakyReluAlpha2, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
 create_test_act_fp16_class(
-    TestLeakyReluAlpha3, check_prim=True, enable_cinn=True
+    TestLeakyReluAlpha3, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
-create_test_act_fp16_class(TestLeakyRelu_ZeroDim, check_prim=True)
+create_test_act_fp16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, check_prim_pir=True
+)
 create_test_act_fp16_class(
     TestRsqrt,
     check_prim=True,
@@ -5013,7 +5033,9 @@ create_test_act_bf16_class(
     TestExpFp32_Prim, check_prim=True, check_prim_pir=True
 )
 create_test_act_bf16_class(TestExpm1)
-create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestSigmoid, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
@@ -5085,11 +5107,21 @@ create_test_act_bf16_class(
     TestHardSwish, check_prim=True, check_pir=True, check_prim_pir=True
 )
 create_test_act_bf16_class(TestMish, check_pir=True)
-create_test_act_bf16_class(TestLeakyRelu, check_prim=True, check_pir=True)
-create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
-create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
-create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)
-create_test_act_bf16_class(TestLeakyRelu_ZeroDim, check_prim=True)
+create_test_act_bf16_class(
+    TestLeakyRelu, check_prim=True, check_pir=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha1, check_prim=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha2, check_prim=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha3, check_prim=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, check_prim_pir=True
+)
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
