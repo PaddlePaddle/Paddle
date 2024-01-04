@@ -1781,7 +1781,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableCustomDeviceMixed(config_.enable_custom_device_mixed());
   if (config_.enable_custom_device_mixed_) {
     argument_->SetEnableIrOptim(true);
-    pass_builder->ClearPasses();
     pass_builder->AppendPass("auto_mixed_precision_pass");
     LOG(INFO) << "This model run in Custom Device mixed precision mode.";
   }
