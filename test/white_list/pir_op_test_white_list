@@ -23,6 +23,7 @@ test_auc_single_pred_op
 test_bce_loss
 test_bernoulli_op               
 test_bicubic_interp_v2_op
+test_bilateral_slice_op
 test_bilinear_interp_v2_mkldnn_op
 test_bilinear_interp_v2_op
 test_bilinear_tensor_product_op
