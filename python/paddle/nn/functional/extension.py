@@ -26,6 +26,7 @@ from ...framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 
 __all__ = []
@@ -105,7 +106,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if maxlen is not None:
-            if isinstance(dtype, core.VarDesc.VarType):
+            if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
                 dtype = vartype_to_datatype[dtype]
             out = _C_ops.sequence_mask(x, maxlen, dtype)
             out.stop_gradient = True
