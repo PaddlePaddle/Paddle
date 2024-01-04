@@ -119,6 +119,11 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64,
   };
+  // sm86 have smaller smem than sm80
+  std::vector<CutlassTileConfig> quant_B_configs_sm86{
+      CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64,
+      CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
+      CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64};
   std::vector<CutlassTileConfig> quant_B_configs_sm80{
       CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64,
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
@@ -127,7 +132,13 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64};
   std::vector<CutlassTileConfig> quant_B_configs;
   switch (sm) {
+    case 89:
+      // sm89 have same smem as sm86
+      quant_B_configs = quant_B_configs_sm86;
+      break;
     case 86:
+      quant_B_configs = quant_B_configs_sm86;
+      break;
     case 80:
       quant_B_configs = quant_B_configs_sm80;
       break;
