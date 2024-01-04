@@ -445,9 +445,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
             sum_result = paddle.tensor.array_read(array=out[3], i=j)
             mean = paddle.mean(sum_result)
-            print(main_program)
             grad_list = append_backward(mean)
-            print(main_program)
             place = (
                 base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
