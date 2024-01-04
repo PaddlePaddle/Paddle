@@ -978,7 +978,6 @@
     func : pull_sparse_v2
     param : [ids, w, embeddingdim, tableid, accessorclass, ctrlabelname, paddingid, scalesparsegrad, inputnames, is_distributed]
     data_type : ids
-  backward : pull_sparse_v2_grad
 
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
