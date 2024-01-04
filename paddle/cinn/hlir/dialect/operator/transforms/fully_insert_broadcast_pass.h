@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,22 @@
 
 #pragma once
 
-#ifdef __HIPCC__
-#include <hip/hip_runtime.h>
-#endif
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
-#if defined(__xpu__)
-#include <xpu/runtime.h>
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
-#endif
+class FullyInsertBroadcastPass : public pir::PatternRewritePass {
+ public:
+  FullyInsertBroadcastPass();
 
-#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
-#define HOSTDEVICE __host__ __device__
-#define DEVICE __device__
-#define HOST __host__
-#else
-#define HOSTDEVICE
-#define DEVICE
-#define HOST
-#endif
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
+
+  bool CanApplyOn(pir::Operation *op) const override;
+};
+
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
