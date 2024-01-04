@@ -321,7 +321,6 @@ PyObject *static_api_add_n_array(PyObject *self,
     return nullptr;
   }
 }
-
 static PyObject *static_api_slice_array_dense(PyObject *self,
                                               PyObject *args,
                                               PyObject *kwargs) {
