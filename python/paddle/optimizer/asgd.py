@@ -46,7 +46,12 @@ class ASGD(Optimizer):
     Parameters:
         learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
-        batch_num (int, optional): The number of batches needed to complete one epoch. The default value is 1.
+        batch_num (int, optional): The number of batches needed to complete one epoch.
+            Assuming the total number of samples is ``all``,
+            it is recommended to set ``batch_num`` to ``all`` / ``batch_size``.
+            In situations where the graphics memory is tight,
+            it is possible to reduce the batch_num appropriately.
+            The default value is 1.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode.
             The default value is None in static graph mode, at this time all parameters will be updated.
