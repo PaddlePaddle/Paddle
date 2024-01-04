@@ -82,29 +82,26 @@ class TestIgammaOpApi(unittest.TestCase):
         np.testing.assert_allclose(out_ref, res, rtol=1e-6, atol=1e-6)
 
     def test_dygraph_api(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         a = paddle.to_tensor(self.a_np)
         out = paddle.igamma(x, a)
         out_ref = ref_igamma(self.x_np, self.a_np)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-6, atol=1e-6)
-        paddle.enable_static()
 
     def test_x_le_zero_error(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         a = paddle.to_tensor(self.a_np)
         x[0] = -1
         self.assertRaises(ValueError, paddle.igamma, x, a)
-        paddle.enable_static()
 
     def test_a_le_zero_error(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         a = paddle.to_tensor(self.a_np)
         a[0] = -1
         self.assertRaises(ValueError, paddle.igamma, x, a)
-        paddle.enable_static()
 
     def test_dtype_error(self):
         paddle.enable_static()
@@ -126,8 +123,6 @@ class TestIgammaOpApi(unittest.TestCase):
                 x = paddle.to_tensor(self.x_np, dtype="int32")
                 a = paddle.to_tensor(self.a_np, dtype="int32")
                 res = paddle.igamma(x, a)
-
-        paddle.enable_static()
 
 
 class TestIgammaOpFp32Api(TestIgammaOpApi):
