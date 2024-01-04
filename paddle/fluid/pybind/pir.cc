@@ -668,6 +668,14 @@ void BindValue(py::module *m) {
                   "is persistable"));
             }
           })
+      .def("is_tensorarray",
+           [](Value self) {
+             if (self.type().isa<DenseTensorArrayType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },

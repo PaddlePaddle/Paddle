@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/macros.h"
 
@@ -124,9 +125,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     if (factor < 1 && factor != -1) is_positive = false;
     if (factor == -1) ++num_minus1;
   });
-  CHECK((num_minus1 == 1) && is_positive)
-      << "The paramss in factors of Split on dynamic shape should contains a "
-         "-1 and the rest of them should be positive!\n";
+  CHECK((num_minus1 <= 1) && is_positive)
+      << "The params in factors of Split on dynamic shape should contains at "
+         "most one '-1' and the rest of them should be positive!\n";
 
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
@@ -182,7 +183,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Expr> process_factors(factors);
   Expr prod_size(1);
   for (auto factor : factors) prod_size = prod_size * Expr(factor);
-  cinn::common::SymbolicExprAnalyzer analyzer({});
+  common::cas_intervals_t var_intervals = {};
+  cinn::common::SymbolicExprAnalyzer analyzer(var_intervals);
   CHECK(analyzer.ProveEQ(tot_extent, prod_size).value_or(false))
       << "Product of factors can't be proved to be equal to the extent of "
          "current for loop!";
