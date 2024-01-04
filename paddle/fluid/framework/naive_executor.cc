@@ -79,7 +79,7 @@ void NaiveExecutor::RunInterpreterCore(
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
-  interpreter_core_->Run(feed_names, need_fetch, true, false, switch_stream);
+  interpreter_core_->Run(feed_names, need_fetch, false, false, switch_stream);
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
 #endif
