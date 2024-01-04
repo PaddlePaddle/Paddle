@@ -37,7 +37,7 @@ void assign_data_pointer(const data_t* x_data,
 }
 
 template <typename data_t>
-void relu_cpu_forward_kernel(data_t* x_data, int64_t numel) {
+void relu_forward_kernel(data_t* x_data, int64_t numel) {
   for (size_t i = 0; i < numel; ++i) {
     x_data[i] = x_data[i] > 0 ? x_data[i] : 0;
   }
@@ -200,22 +200,13 @@ PD_BUILD_GRAD_OP(custom_multi_inplace)
                     {paddle::Grad("OutAB"), paddle::Grad("A")}})
     .SetKernelFn(PD_KERNEL(MultiInplaceBackward));
 
-void relu_cpu_forward(paddle::Tensor& x) {  // NOLINT
-  CHECK_INPUT(x);
-  PD_DISPATCH_FLOATING_TYPES(x.type(), "relu_cpu_forward", ([&] {
-                               relu_cpu_forward_kernel<data_t>(x.data<data_t>(),
-                                                               x.size());
-                             }));
-}
-
-void relu_cuda_forward(paddle::Tensor& x);  // NOLINT
-
 void ReluForwardInplace(paddle::Tensor& x) {  // NOLINT
-  if (x.is_cpu()) {
-    relu_cpu_forward(x);
-  } else {
-    relu_cuda_forward(x);
-  }
+  CHECK_INPUT(x);
+
+  PD_DISPATCH_FLOATING_TYPES(x.type(), "ReluForward", ([&] {
+                               relu_forward_kernel<data_t>(x.data<data_t>(),
+                                                           x.size());
+                             }));
 }
 
 void ReluBackwardInplace(const paddle::Tensor& x,

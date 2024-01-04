@@ -28,7 +28,7 @@ __global__ void relu_cuda_forward_kernel(data_t* x, int64_t num) {
   }
 }
 
-void relu_cuda_forward(paddle::Tensor& x) {  // NOLINT
+void ReluForwardInplace(paddle::Tensor& x) {  // NOLINT
   CHECK_GPU_INPUT(x);
 
   PD_CHECK(x.place() == paddle::DefaultGPUPlace());
@@ -42,3 +42,9 @@ void relu_cuda_forward(paddle::Tensor& x) {  // NOLINT
             <<<grid, block, 0, x.stream()>>>(x.data<data_t>(), numel);
       }));
 }
+
+PD_BUILD_OP(custom_relu_inplace)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetInplaceMap({{"X", "Out"}})
+    .SetKernelFn(PD_KERNEL(ReluForwardInplace));
