@@ -2,6 +2,8 @@
 
 #include "paddle/pir/core/block.h"
 
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+
 #include <functional>
 
 namespace pir {
@@ -10,13 +12,6 @@ class Block;
 class IrContext;
 
 }
-
-namespace symbol {
-
-class ShapeOrDataDimExprs;
-
-}
-
 
 namespace cinn::dialect {
 
