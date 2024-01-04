@@ -1612,6 +1612,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
       dense_out.lod());
   argument_outputs.push_back(out_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayReadOp::VerifySig() {
