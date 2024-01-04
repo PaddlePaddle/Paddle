@@ -30,14 +30,14 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = f'{get_build_directory()}\\custom_inplace\\custom_inplace.pyd'
+file = f'{get_build_directory()}\\infer_custom\\infer_custom.pyd'
 if os.name == 'nt' and os.path.isfile(file):
     cmd = f'del {file}'
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
 custom_inplace = load(
-    name='custom_inplace',
+    name='infer_custom',
     sources=['custom_inplace.cc', 'custom_inplace.cu'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cflags
