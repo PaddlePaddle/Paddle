@@ -554,6 +554,9 @@ py::str Value2String(Value self) {
 }
 
 phi::DataType GetValueDtype(Value value) {
+  if (!value.type()) {
+    VLOG(0) << "type is NULL";
+  }
   if (value.type().isa<DenseTensorType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorType>().dtype());

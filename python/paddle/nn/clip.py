@@ -672,7 +672,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
-        src_mesh = params_grads[0][0].process_mesh
+        if len(params_grads) > 0 and len(params_grads[0]) > 0:
+            src_mesh = params_grads[0][0].process_mesh
+        else:
+            src_mesh = None
 
         for p, g in params_grads:
             if g is None:
