@@ -45,17 +45,13 @@ void NuclearNormGradKernel(const Context& dev_ctx,
                            bool keepdim UNUSED,
                            bool reduce_all UNUSED,
                            DenseTensor* x_grad) {
-  std::cout << "nuclear_norm_grad c++\n";
-
   // forward
   auto in_dims = x.dims();
   int x_rank = x.dims().size();
 
   int m = axis[0] >= 0 ? axis[0] : static_cast<int>(axis[0] + x_rank);
   int n = axis[1] >= 0 ? axis[1] : static_cast<int>(axis[1] + x_rank);
-  // if (m > n) {
-  //   std::swap(m, n);
-  // }
+
   // axis put back
   std::vector<int> formated_axis(x_rank);
   int cur = 0;
@@ -108,9 +104,6 @@ void NuclearNormGradKernel(const Context& dev_ctx,
 
   ReduceSumGradKernel<T, Context>(
       dev_ctx, singular_tensor, out_grad, {-1}, false, false, &sum_grad);
-  std::cout << "sum grad over\n";
-
-  std::cout << "sum_grad.dims():" << sum_grad.dims() << std::endl;
 
   // singular grad
   DenseTensor singular_grad;
@@ -128,8 +121,6 @@ void NuclearNormGradKernel(const Context& dev_ctx,
   phi::funcs::set_constant(dev_ctx, &u_grad, 0);
   phi::funcs::set_constant(dev_ctx, &vh_grad, 0);
 
-  std::cout << "singular_grad.dims():" << singular_grad.dims() << std::endl;
-
   SvdGradKernel<T, Context>(dev_ctx,
                             x_input,
                             u_tensor,
@@ -141,10 +132,7 @@ void NuclearNormGradKernel(const Context& dev_ctx,
                             false,
                             &singular_grad);
 
-  std::cout << "svd grad over\n";
-
   TransposeGradKernel<T, Context>(
       dev_ctx, singular_grad, formated_axis, x_grad);
-  std::cout << "transpose grad over\n";
 }
 }  // namespace phi

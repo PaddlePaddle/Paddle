@@ -536,6 +536,8 @@ def run_graph(self, p, axis, shape_x, dtype):
     out_fro = paddle.norm(x, p='fro')
     out_fro = paddle.norm(x, p='fro', axis=0)
     out_fro = paddle.norm(x, p='fro', axis=[0, 1])
+    # compute nuclear norm.
+    out_fro = paddle.norm(x, p='nuc', axis=[0, 1])
     # compute 2-order  norm along [0,1] dimension.
     out_pnorm = paddle.norm(x, p=2, axis=[0, 1])
     out_pnorm = paddle.norm(x, p=2)
@@ -703,6 +705,15 @@ class API_NormTest(unittest.TestCase):
             run_pnorm(
                 self,
                 p=-np.inf,
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            run_pnorm(
+                self,
+                p=3,
                 axis=[0, 1],
                 shape_x=[2, 3, 4],
                 dtype="float64",

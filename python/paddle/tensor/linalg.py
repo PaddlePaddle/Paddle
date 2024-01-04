@@ -415,6 +415,15 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return out
 
     def nuclear_norm(input, axis=axis, keepdim=False, name=None):
+        """
+        The nuclear norm OP is to calculate the nuclear norm of certain two dimensions of Tensor `input`.
+        Args:
+          input (Variable): Tensor, data type float32, float64.
+          dim (list): Two dimensions.
+          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+          name (str, optional): The default value is None. Normally there is no need for
+              user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        """
         if in_dynamic_mode():
             return _C_ops.nuclear_norm(input, axis, keepdim, False)
 
@@ -526,8 +535,14 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
     def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
         """
-        NOTE:
-            This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
+        Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
+        Args:
+          input (Variable): Tensor, data type float32, float64.
+          porder (float,str): p in ['fuc','nuc',1,-1,2,-2,np.inf,-np.inf]. Default 1.
+          axis (list): Two dimensions.
+          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+          name (str, optional): The default value is None. Normally there is no need for
+              user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
         if in_dynamic_mode():
             out = _C_ops.p_matrix_norm(
