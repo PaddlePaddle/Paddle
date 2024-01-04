@@ -9,9 +9,11 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
   foreach(TEST_OP ${TEST_OPS})
-    py_test(${TEST_OP}
-            SRCS ${TEST_OP}.py ENVS FLAGS_allocator_strategy=naive_best_fit
-                 PLUGIN_URL=${PLUGIN_URL} PLUGIN_TAG=${PLUGIN_TAG})
+    py_test(
+      ${TEST_OP}
+      SRCS ${TEST_OP}.py ENVS FLAGS_allocator_strategy=naive_best_fit
+           PLUGIN_URL=${PLUGIN_URL} PLUGIN_TAG=${PLUGIN_TAG}
+           FLAGS_enable_pir_with_pt_in_dy2st=False)
   endforeach()
 
   bash_test_modules(

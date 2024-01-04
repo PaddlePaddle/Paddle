@@ -22,6 +22,7 @@ from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.base.framework import default_main_program
+from paddle.pir_utils import test_with_pir_api
 
 
 def _test_read_write(x):
@@ -190,6 +191,56 @@ class TestPirArrayOp(unittest.TestCase):
         np.testing.assert_array_equal(
             fetched_out1, np.ones([1, 3], dtype="float32") * 6
         )
+
+    @test_with_pir_api
+    def test_array_backward(self):
+        np.random.seed(2013)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            d0 = paddle.static.data(name='d0', shape=[10], dtype='float32')
+            d0.stop_gradient = False
+            d0.persistable = True
+            i = paddle.zeros(shape=[1], dtype='int64')
+            mem_array = paddle.tensor.array_write(x=d0, i=i)
+            mem_array.stop_gradient = False
+            mem_array.persistable = True
+            out = paddle.tensor.array_read(array=mem_array, i=i)
+            mean = paddle.mean(out)
+            grad_list = append_backward(mean)
+
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+            d = np.random.random(size=[10]).astype('float32')
+            exe = base.Executor(place)
+
+            if paddle.framework.in_pir_mode():
+                for p, g in grad_list:
+                    if p.is_same(d0):
+                        dd0 = g
+                    if p.is_same(mem_array):
+                        dmem_array = g
+                res = exe.run(
+                    main_program,
+                    feed={'d0': d},
+                    fetch_list=[mean, dd0],  # dmem_array
+                )
+                # pir not support fetch tensorarray
+            else:
+                res = exe.run(
+                    main_program,
+                    feed={'d0': d},
+                    fetch_list=[mean.name, d0.grad_name, mem_array.grad_name],
+                )
+                np.testing.assert_allclose(res[2], [[0.1] * 10], rtol=1e-05)
+
+            mean = 0.6097253
+            x_grad = [0.1] * 10
+            np.testing.assert_allclose(res[0], mean, rtol=1e-05)
+            np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
 
 
 if __name__ == '__main__':

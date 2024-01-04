@@ -60,7 +60,7 @@
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -318,10 +318,14 @@ void BindBlock(py::module *m) {
         The constructor of Block should not be invoked directly. You can
         use `Program.block()` to get a block.
   )DOC");
-  block
+  block.def("empty", &Block::empty)
       .def(
           "front",
           [](Block &self) { return &self.front(); },
+          return_value_policy::reference)
+      .def(
+          "back",
+          [](Block &self) { return &self.back(); },
           return_value_policy::reference)
       .def_property_readonly(
           "parent_op",
@@ -537,14 +541,8 @@ void BindOperation(py::module *m) {
              }
              return pylayer_op;
            })
-      .def("as_while_op", [](Operation &self) -> WhileOp {
-        auto while_op = self.dyn_cast<WhileOp>();
-        if (!while_op) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Can't cast non-while type Operation to WhileOp."));
-        }
-        return while_op;
-      });
+      .def("as_while_op",
+           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -572,6 +570,9 @@ phi::DataType GetValueDtype(Value value) {
   } else if (value.type().isa<SelectedRowsType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else if (value.type().isa<DenseTensorArrayType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
@@ -591,8 +592,42 @@ const phi::DDim &GetValueDims(Value value) {
   }
 }
 
+pir::OpResult apply(Value self, py::object func) {
+  py::gil_scoped_acquire gil;
+  auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Cannot apply function on a tensor that required gradient."));
+  }
+  PyObject *py_func = func.release().ptr();
+  Py_INCREF(py_func);
+  PyObject *res = nullptr;
+  try {
+    py::object obj = py::cast(self);
+    PyObject *tmp_self = obj.release().ptr();
+    Py_INCREF(tmp_self);
+    res = PyObject_CallFunctionObjArgs(py_func, tmp_self, nullptr);
+    Py_DECREF(tmp_self);
+  } catch (std::exception &e) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Apply function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "Apply function of Tensor raises an unknown exception."));
+  }
+  if (res == Py_None) {
+    return self.dyn_cast<OpResult>();
+  }
+  auto out = CastPyArg2Value(res, "", 0);
+  Py_DECREF(py_func);
+  Py_DECREF(res);
+  return out.dyn_cast<OpResult>();
+}
+
 void BindValue(py::module *m) {
-  py::class_<Value> value(*m, "Value", R"DOC(
+  py::class_<Value> value(*m,
+                          "Value",
+                          R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
     and a base class.
 
@@ -600,7 +635,8 @@ void BindValue(py::module *m) {
         The constructor of Value should not be invoked directly. Value can be automatically constructed
         when build network.
 
-  )DOC");
+  )DOC",
+                          pybind11::dynamic_attr());
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value.def(py::init<>())
       .def_property_readonly(
@@ -748,8 +784,21 @@ void BindValue(py::module *m) {
              print_stream << ")";
              return print_stream.str();
            })
+      .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("detach",
+           [](Value self) {
+             auto share_data_op =
+                 ApiBuilder::Instance()
+                     .GetBuilder()
+                     ->Build<paddle::dialect::ShareDataOp>(self);
+             auto out = share_data_op.out();
+             out.set_attribute(
+                 kAttrStopGradients,
+                 BoolAttribute::get(pir::IrContext::Instance(), false));
+             return out;
+           })
       .def("__repr__", &Value2String);
 }
 
@@ -1030,14 +1079,14 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
       std::make_pair(associated_array_key, associated_array_value));
 }
 
-void AppendSetParameter(Program *forward_program,
+void AppendShadowOutput(Program *forward_program,
                         const pir::OpResult &result,
                         const std::string &name,
                         size_t start_point) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
   pir::AttributeMap attribute_map = {
-      {"parameter_name", pir::StrAttribute::get(ctx, name)},
+      {"output_name", pir::StrAttribute::get(ctx, name)},
   };
   pir::Operation *operation =
       pir::Operation::Create({result}, attribute_map, {}, op_info);
@@ -1050,7 +1099,7 @@ void AppendSetParameter(Program *forward_program,
   }
 }
 
-int AppendSetParameters(Program *forward_program,
+int AppendShadowOutputs(Program *forward_program,
                         const std::vector<pir::OpResult> &outputs_op_result,
                         int start_point,
                         std::string name_prefix) {
@@ -1059,9 +1108,9 @@ int AppendSetParameters(Program *forward_program,
 
   for (const auto &result : outputs_op_result) {
     if (!added_op_result.count(result) || IsFakeOpResult(result)) {
-      std::string parameter_name = name_prefix + std::to_string(counter);
-      AppendSetParameter(
-          forward_program, result, parameter_name, start_point + counter);
+      std::string shadow_output_name = name_prefix + std::to_string(counter);
+      AppendShadowOutput(
+          forward_program, result, shadow_output_name, start_point + counter);
       counter += 1;
       added_op_result.insert(result);
     }
@@ -1177,20 +1226,20 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
-    // NOTE(Aurelius84): we should skip insert SetParameterOp repeatly by
+    // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatly by
     // calling SplitForwardBackward multi-times.
-    std::string parameter_name =
+    std::string shadow_output_name =
         std::string("output_") + std::to_string(counter);
     std::unordered_set<pir::Value> inserted_value;
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
-      if (it->isa<pir::SetParameterOp>()) {
+      if (it->isa<pir::ShadowOutputOp>()) {
         auto out_name =
-            it->attribute<pir::StrAttribute>("parameter_name").AsString();
-        if (out_name == parameter_name) {
+            it->attribute<pir::StrAttribute>("output_name").AsString();
+        if (out_name == shadow_output_name) {
           VLOG(4) << out_name
-                  << " has been inserted SetParameterOp, skip it now.";
+                  << " has been inserted ShadowOutputOp, skip it now.";
           return;
         }
 
@@ -1201,9 +1250,9 @@ SplitedResult SplitForwardBackward(
     if (inserted_value.count(forward_value_map[v])) {
       return;
     }
-    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
-        {"parameter_name", pir::StrAttribute::get(ctx, parameter_name)},
+        {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
     };
     pir::Operation *operation = pir::Operation::Create(
         {forward_value_map[v]}, attribute_map, {}, op_info);
@@ -1218,9 +1267,9 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
-    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
-        {"parameter_name",
+        {"output_name",
          pir::StrAttribute::get(
              ctx, std::string("output_") + std::to_string(counter))},
     };
@@ -1345,10 +1394,10 @@ pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
   }
 }
 
-void ResetParameterName(pir::Operation *op, const std::string &name) {
+void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  if (op->isa<pir::SetParameterOp>()) {
-    op->set_attribute("parameter_name", pir::StrAttribute::get(ctx, name));
+  if (op->isa<pir::ShadowOutputOp>()) {
+    op->set_attribute("output_name", pir::StrAttribute::get(ctx, name));
   }
 }
 
@@ -1383,9 +1432,9 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
 void BindUtils(pybind11::module *m) {
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
-  m->def("reset_parameter_name", ResetParameterName);
+  m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
-  m->def("append_set_parameters", AppendSetParameters);
+  m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
@@ -1568,37 +1617,36 @@ static bool HasDynamicShape(const Program &program) {
   return false;
 }
 
-void ApplyPirPass(Program &forward_program) {  // NOLINT
+void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
+                 Program &program) {                          // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
-  bool has_dynamic_shape = HasDynamicShape(forward_program);
+  bool has_dynamic_shape = HasDynamicShape(program);
 
   auto shape_analysis =
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  pir::PassManager pass_manager(ctx);
-  pass_manager.AddPass(pir::CreateShapeOptimizationPass());
-  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
-  pass_manager.AddPass(
+  pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
-  pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   if (has_dynamic_shape) {
-    pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
+    pass_manager->AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
   }
 
-  pass_manager.AddPass(
+  pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
-
-  pass_manager.Run(&forward_program);
-  VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
+  VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
+          << ", shape_analysis: " << shape_analysis;
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -1606,7 +1654,7 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
 #endif
 }
 void BindIrPass(pybind11::module *m) {
-  m->def("apply_pir_pass", ApplyPirPass);
+  m->def("add_cinn_pass", AddCinnPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",

@@ -221,9 +221,9 @@ void DropoutNdInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* mask);
 
-void ElementwiseInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          MetaTensor* out);
+TEST_API void ElementwiseInferMeta(const MetaTensor& x,
+                                   const MetaTensor& y,
+                                   MetaTensor* out);
 
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
@@ -539,6 +539,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
                                DataType out_dtype,
+                               const int32_t group_size,
                                MetaTensor* out);
 
 }  // namespace phi

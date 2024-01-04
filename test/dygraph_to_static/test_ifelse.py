@@ -22,6 +22,7 @@ from dygraph_to_static_utils import (
     disable_test_case,
     enable_to_static_guard,
     test_ast_only,
+    test_legacy_and_pt_and_pir,
     test_legacy_only,
 )
 from ifelse_simple_func import (
@@ -69,11 +70,19 @@ class TestDy2staticException(Dy2StTestBase):
         self.error = "Your if/else have different number of return value."
 
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 with enable_to_static_guard(True):
                     self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+
+
+class TestDy2StIfElseRetInt2(TestDy2staticException):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.error = "Your if/else have different number of return value."
+        self.dyfunc = dyfunc_ifelse_ret_int2
 
 
 class TestDygraphIfElse(Dy2StTestBase):
@@ -104,7 +113,6 @@ class TestDygraphIfElse2(TestDygraphIfElse):
 
     # TODO(dev): fix AST mode
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
-    @disable_test_case((ToStaticMode.AST, IrMode.LEGACY_IR))
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -143,6 +151,10 @@ class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else_with_list_generator
 
+    @test_legacy_and_pt_and_pir
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
 
 class TestDygraphNestedIfElse(Dy2StTestBase):
     def setUp(self):
@@ -171,6 +183,10 @@ class TestDygraphNestedIfElse2(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else_2
+
+    @test_legacy_and_pt_and_pir
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class TestDygraphNestedIfElse3(Dy2StTestBase):
@@ -269,11 +285,19 @@ class TestDygraphIfElseWithAndOr2(TestDygraphIfElse):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_2
 
+    @test_legacy_and_pt_and_pir
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
 
 class TestDygraphIfElseWithAndOr3(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_3
+
+    @test_legacy_and_pt_and_pir
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class TestDygraphIfElseWithAndOr4(TestDygraphIfElse):
@@ -439,11 +463,14 @@ class TestDiffModeNet(Dy2StTestBase):
 
     def _run(self, mode, to_static):
         with enable_to_static_guard(to_static):
-            net = paddle.jit.to_static(self.Net(mode))
+            if to_static:
+                net = paddle.jit.to_static(self.Net(mode))
+            else:
+                net = self.Net(mode)
             ret = net(self.x, self.y)
-
             return ret.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_train_mode(self):
         self.assertTrue(
             (
@@ -452,6 +479,7 @@ class TestDiffModeNet(Dy2StTestBase):
             ).all()
         )
 
+    @test_legacy_and_pt_and_pir
     def test_infer_mode(self):
         self.assertTrue(
             (
@@ -467,6 +495,7 @@ class TestDiffModeNet2(TestDiffModeNet):
 
 
 class TestNewVarCreateInOneBranch(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_var_used_in_another_for(self):
         def case_func(training):
             # targets and targets_list is dynamically defined by training
@@ -508,13 +537,6 @@ class TestDy2StIfElseRetInt1(Dy2StTestBase):
         self.setUp()
         self.assertIsInstance(self.out[0], paddle.Tensor)
         self.assertIsInstance(self.out[1], int)
-
-
-class TestDy2StIfElseRetInt2(TestDy2staticException):
-    def setUp(self):
-        self.x = np.random.random([5]).astype('float32')
-        self.error = "Your if/else have different number of return value."
-        self.dyfunc = dyfunc_ifelse_ret_int2
 
 
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
