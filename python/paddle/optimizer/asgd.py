@@ -121,7 +121,6 @@ class ASGD(Optimizer):
         self._master_weights = {}
         self._n = [batch_num]
         self._n_tensor = None
-        self._already_create_d_y_m_accumulater = set()
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -135,7 +134,6 @@ class ASGD(Optimizer):
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 p_new = master_p
-                self._already_create_accumulater.add(p.name)
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
@@ -145,8 +143,6 @@ class ASGD(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
 
-            if p.name in self._already_create_d_y_m_accumulater:
-                continue
             self._add_accumulator(
                 self._d_acc_str,
                 p_new,
@@ -168,7 +164,7 @@ class ASGD(Optimizer):
                 0,
                 [1],
             )
-            self._already_create_d_y_m_accumulater.add(p.name)
+            self._already_create_accumulater.add(p.name)
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
