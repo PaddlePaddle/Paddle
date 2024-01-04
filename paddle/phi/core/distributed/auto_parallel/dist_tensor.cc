@@ -191,7 +191,8 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
         // For lazy init, the global value is an uninitialized tensor.
         // Just infer the local shape of the dist tensor.
         value_ = global_value;
-        value_->Resize(ReshardInferShape(global_value, dist_attr_));
+        value_->Resize(
+            InferShapeForReshardFromReplicate(global_value, dist_attr_));
       }
     } else {
       value_ = global_value;

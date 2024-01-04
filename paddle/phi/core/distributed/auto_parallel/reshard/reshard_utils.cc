@@ -180,7 +180,7 @@ phi::DeviceContext* GetDistTensorDeviceContext(
   return phi::DeviceContextPool::Instance().Get(place);
 }
 
-phi::DDim ReshardInferShape(
+phi::DDim InferShapeForReshardFromReplicate(
     const std::shared_ptr<phi::DenseTensor>& global_value,
     const TensorDistAttr& dist_attr) {
   phi::DDim out_dim = global_value->dims();
