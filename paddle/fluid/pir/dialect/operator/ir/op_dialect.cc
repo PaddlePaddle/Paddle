@@ -53,7 +53,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
           shape_analysis->value_id_to_shapeordata_[operand_source_id].data();
       auto source_shape_vec =
           source_data_p.value_or(std::vector<symbol::DimExpr>{});
-      for (int i = 0; i < source_shape_vec.size(); i++) {
+      for (size_t i = 0; i < source_shape_vec.size(); i++) {
         data.emplace_back(source_shape_vec.at(i));
       }
     }
