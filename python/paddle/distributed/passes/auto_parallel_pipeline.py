@@ -24,6 +24,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_forward_op,
     is_lr_sched_op,
     is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
 )
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
 
@@ -112,6 +113,18 @@ class PipelinePass(PassBase):
                         outputs={'Out': [var]},
                         attrs={'op_role': op_role},
                     )
+                    var_dist_attr = (
+                        self._dist_context.get_tensor_dist_attr_for_program(var)
+                    )
+                    calc_stream_op = block.ops[index + offset]
+                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                        calc_stream_op,
+                        process_mesh=var_dist_attr.process_mesh,
+                        ref_mapping=var_dist_attr.dims_mapping,
+                        ctx=self._dist_context,
+                        chunk_id=var_dist_attr.chunk_id,
+                    )
+
                     offset += 1
                     send_vars.append(var_name)
 
@@ -119,6 +132,19 @@ class PipelinePass(PassBase):
                 nop_op = block.append_op(type='nop')
                 nop_op.desc.set_input('X', [var_name])
                 nop_op.desc.set_output('Out', [var_name])
+
+                var_dist_attr = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        block.var(var_name)
+                    )
+                )
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    nop_op,
+                    process_mesh=var_dist_attr.process_mesh,
+                    ref_mapping=var_dist_attr.dims_mapping,
+                    ctx=self._dist_context,
+                    chunk_id=var_dist_attr.chunk_id,
+                )
 
             block._sync_with_cpp()
 
