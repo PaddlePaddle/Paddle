@@ -148,11 +148,10 @@ void PaddlePassContorller::LoadDefaultConfig() {
     if (ctrl_pass_name == "preln_residual_bias_fuse_pass" ||
         ctrl_pass_name == "reverse_roll_fuse_pass" ||
         ctrl_pass_name == "preln_layernorm_x_fuse_pass" ||
-        ctrl_pass_name == "trt_skip_layernorm_fuse_pass" ||
         ctrl_pass_name == "layernorm_shift_partition_fuse_pass" ||
         ctrl_pass_name == "split_layernorm_to_math_ops_pass" ||
-        ctrl_pass_name == "reverse_roll_fuse_pass" ||
-        ctrl_pass_name == "reverse_roll_fuse_pass") {
+        ctrl_pass_name == "merge_layernorm_fuse_pass" ||
+        ctrl_pass_name == "elementwiseadd_transpose_pass") {
       pass_ctrl_map_[ctrl_pass_name]->support_categories_ =
           std::vector<std::string>{"trt"};
       pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"] =
@@ -203,6 +202,41 @@ void PaddlePassContorller::LoadDefaultConfig() {
       pass_ctrl_map_[ctrl_pass_name]
           ->pass_state_map_["trtint8"]
           ->SetPassDefaultState(static_cast<PassType>(1));
+    }
+
+    if (ctrl_pass_name == "trt_map_ops_to_matrix_multiply_pass" ||
+        ctrl_pass_name == "trt_skip_layernorm_fuse_pass") {
+      pass_ctrl_map_[ctrl_pass_name]->support_categories_ =
+          std::vector<std::string>{"trt", "trtlow"};
+      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"] =
+          std::make_unique<PassState>("trt");
+      pass_ctrl_map_[ctrl_pass_name]
+          ->pass_state_map_["trt"]
+          ->SetPassDefaultState(static_cast<PassType>(1));
+
+      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trtlow"] =
+          std::make_unique<PassState>("trt");
+      pass_ctrl_map_[ctrl_pass_name]
+          ->pass_state_map_["trtlow"]
+          ->SetPassDefaultState(static_cast<PassType>(1));
+
+      VersionCtrlState trtversion = VersionCtrlState("trt");
+      trtversion.SetGtTrtVersion(8600);
+      pass_ctrl_map_[ctrl_pass_name]
+          ->pass_state_map_["trt"]
+          ->version_ctrl_state_["trt"]
+          .push_back(trtversion);
+
+      pass_ctrl_map_[ctrl_pass_name]
+          ->pass_state_map_["trtlow"]
+          ->version_ctrl_state_["trt"]
+          .push_back(trtversion);
+
+      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"]->SetTrtCtrlState(
+          static_cast<PassType>(0));
+      pass_ctrl_map_[ctrl_pass_name]
+          ->pass_state_map_["trtlow"]
+          ->SetTrtCtrlState(static_cast<PassType>(0));
     }
   }
 }
@@ -387,9 +421,7 @@ std::vector<std::string> PaddlePassContorller::GetCtrlPassList(
               pass_runtime_status_, pass_ctrl_mode_) == PassType::Open) {
         new_passes.push_back(pass);
         continue;
-      } else if (pass_ctrl_map_[pass]->GetPassStatus(pass_runtime_status_,
-                                                     pass_ctrl_mode_) ==
-                 PassType::Close) {
+      } else {
         LOG(INFO) << "[pass controller] pass[" << pass << "] is Closed!";
         continue;
       }

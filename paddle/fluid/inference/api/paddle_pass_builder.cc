@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/api/paddle_pass_controller.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
