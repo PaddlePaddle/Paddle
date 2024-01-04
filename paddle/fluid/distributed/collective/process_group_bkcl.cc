@@ -14,16 +14,18 @@
 
 #include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -83,12 +85,10 @@ ProcessGroupBKCL::ProcessGroupBKCL(
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
-  VLOG(3) << "bkcl_group_start";
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
 }
 
 void ProcessGroupBKCL::GroupEnd() {
-  VLOG(3) << "bkcl_group_end";
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
 }
 
@@ -106,31 +106,24 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(
     tensor = &partial_tensor;
   }
 
-  return Collective(
-      tensor,
-      // have to pass a tensor here
-      // TODO(zhangxiaoci) catch up with nccl's api
-      *tensor,
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_recv"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", src_rank: " << src_rank << ", numel: " << output->numel()
-                << ", dtype: " << output->type() << ", sync_op: " << sync_op
+  return Point2Point(
+      [&](phi::distributed::BKCLCommContext* comm_context,
+          XPUStream stream,
+          int rank_in_group) {
+        VLOG(3) << "bkcl_recv "
+                << "recvbuff: " << tensor->data()
+                << ", count: " << tensor->numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(tensor->dtype()))
+                << ", src_in_group: " << src_rank
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream
+                << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
+                << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        int r = bkcl_recv(comm,
-                          output->data(),
-                          output->numel(),
-                          src_rank,
-                          platform::ToBKCLDataType(
-                              framework::TransToProtoVarType(output->type())),
-                          stream);
-        return r;
+        comm_context->Recv(tensor, tensor->numel(), rank_in_group, stream);
       },
+      src_rank,
+      *tensor,
       CommType::RECV,
       sync_op,
       use_calc_stream);
@@ -143,34 +136,34 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Send(
     int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
+  auto tensor_tmp =
+      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& tensor_maybe_partial =
-      numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
+      numel > 0 ? GetPartialTensor(tensor_tmp, offset, numel) : tensor_tmp;
 
-  return Collective(
-      nullptr,
-      tensor_maybe_partial,
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_send"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", dst_rank: " << dst_rank
-                << ", input numel: " << input.numel()
-                << ", dtype: " << input.type() << ", sync_op: " << sync_op
+  return Point2Point(
+      [&](phi::distributed::BKCLCommContext* comm_context,
+          XPUStream stream,
+          int rank_in_group) {
+        VLOG(3) << "bkcl_send "
+                << "sendbuff: " << tensor_maybe_partial.data()
+                << ", count: " << tensor_maybe_partial.numel() << ", datatype: "
+                << BKCLDTypeToString(
+                       phi::ToBKCLDataType(tensor_maybe_partial.dtype()))
+                << ", dst_in_group: " << dst_rank
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream
+                << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
+                << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        int r = bkcl_send(comm,
-                          input.data(),
-                          input.numel(),
-                          dst_rank,
-                          platform::ToBKCLDataType(
-                              framework::TransToProtoVarType(input.type())),
-                          stream);
-        return r;
+        comm_context->Send(tensor_maybe_partial,
+                           tensor_maybe_partial.numel(),
+                           rank_in_group,
+                           stream);
       },
+      dst_rank,
+      tensor_maybe_partial,
       CommType::SEND,
       sync_op,
       use_calc_stream);
@@ -202,29 +195,27 @@ void ProcessGroupBKCL::BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id) {
 void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
                                           const std::string& place_key) {
   platform::XPUDeviceGuard guard(place.GetDeviceId());
-  BKCLUniqueId bkcl_id;
-  if (rank_ == 0) {
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_get_unique_id(&bkcl_id));
-  }
-  BroadcastUniqueBKCLID(&bkcl_id);
 
   VLOG(3) << "init bkcl rank: " << rank_ << ", nranks: " << size_
-          << ", place: " << place_key
-          << ", bkcl uniqueid: " << SerializeBKCLUniqueId(bkcl_id);
+          << ", place: " << place_key;
+
+  phi::distributed::CommContextManager::CreateBKCLCommContext(
+      store_, std::to_string(gid_), rank_, size_);
 
   calc_event_ = std::make_shared<XPUEventManager>();
   auto* calc_ctx = static_cast<phi::XPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   // must use XPUDeviceContext here to make sure XPUContext::Init() is called
   auto comm_ctx = std::make_unique<XPUDeviceContext>(place);
+  // comm_ctx does not require a pre-allocated GM buffer
+  comm_ctx->x_context()->set_option("XPUAPI_DEFAULT_SIZE", "1");
+  auto bkcl_comm_ctx = this->GetCommContext();
+  comm_ctx->SetBkclContext(bkcl_comm_ctx->GetBKCLComm());
+
   // set allocator
   comm_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                              .GetAllocator(place)
                              .get());
-
-  BKCLContext_t bkcl_comm;
-  BKCLCHECK(bkcl_init_rank(&bkcl_comm, GetRank(), GetSize(), &bkcl_id));
-  comm_ctx->SetBkclContext(bkcl_comm);
   // comm context creates a separate XPU stream for communication
   comm_ctx->CreateStream();
 
@@ -240,16 +231,16 @@ void ProcessGroupBKCL::SyncCalcStream(const Place& place) {
   calc_event_->Block(*comm_ctx);
 }
 
-template <typename Fn>
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
-    Fn fn,
+    std::function<void(phi::distributed::BKCLCommContext*, XPUStream)> fn,
+    const phi::DenseTensor& tensor,
     CommType op_type,
     bool sync_op,
     bool use_calc_stream) {
-  const auto& place = in_tensor.place();
+  const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
+
+  platform::XPUDeviceGuard xpu_guard(place);
 
   if (!calc_event_ ||
       (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end())) {
@@ -262,16 +253,68 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
 
   auto task = CreateTask(place, rank_, op_type, sync_op, use_calc_stream);
 
-  const auto* calc_ctx = place_to_calc_ctx_[key];
-  const auto& comm_ctx = place_to_comm_ctx_[key];
+  const auto* calc_ctx = place_to_calc_ctx_.at(key);
+  const auto& comm_ctx = place_to_comm_ctx_.at(key);
   auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
-  PADDLE_ENFORCE_XPU_SUCCESS(
-      fn(out_tensor, in_tensor, comm_ctx->bkcl_context(), bkcl_stream));
+
+  auto bkcl_comm_ctx = this->GetCommContext();
+
+  fn(bkcl_comm_ctx, bkcl_stream);
 
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
     task->comm_event_->Record(*comm_ctx.get());
+  }
+
+  if (sync_op) {
+    task->Wait();
+  }
+
+  return task;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
+    std::function<void(phi::distributed::BKCLCommContext*, XPUStream, int)> fn,
+    int peer,
+    const phi::DenseTensor& tensor,
+    CommType comm_type,
+    bool sync_op,
+    bool use_calc_stream) {
+  auto tensor_tmp =
+      paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
+  const auto& place = tensor_tmp.place();
+
+  int p2p_target_rank = peer;
+  std::string key = GetKeyFromPlace(place);
+
+  platform::XPUDeviceGuard xpu_guard(place);
+
+  if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+    CreateBKCLEnvCache(place, key);
+  }
+
+  if (!use_calc_stream) {
+    SyncCalcStream(place);
+  }
+
+  auto task = CreateTask(place, rank_, comm_type, sync_op, use_calc_stream);
+  const auto* calc_ctx = place_to_calc_ctx_.at(key);
+  const auto& comm_ctx = place_to_comm_ctx_.at(key);
+  auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
+
+  auto bkcl_comm_ctx = this->GetCommContext();
+
+  fn(bkcl_comm_ctx, bkcl_stream, p2p_target_rank);
+
+  if (!use_calc_stream) {
+    PADDLE_ENFORCE_NOT_NULL(
+        comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
+    task->comm_event_->Record(*comm_ctx.get());
+  }
+
+  if (sync_op) {
+    task->Wait();
   }
 
   return task;
@@ -283,32 +326,25 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  auto tensor_tmp =
+      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
-      out_tensor,
-      in_tensor,
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_all_reduce"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", numel: " << input.numel() << ", dtype: " << input.type()
-                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
-                << ", sync_op: " << sync_op
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        VLOG(3) << "bkcl_all_reduce"
+                << "sendbuff: " << tensor_tmp.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << tensor_tmp.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", redop: " << ToBKCLRedType(opts.reduce_op)
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        int r =
-            bkcl_all_reduce(comm,
-                            input.data(),
-                            output->data(),
-                            input.numel(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            ToBKCLRedType(opts.reduce_op),
-                            stream);
-        return r;
+
+        comm_context->AllReduce(
+            out_tensor, tensor_tmp, ToBKCLRedType(opts.reduce_op), stream);
       },
+      tensor_tmp,
       CommType::ALLREDUCE,
       sync_op,
       use_calc_stream);
@@ -320,46 +356,25 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  auto tensor_tmp =
+      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
-      out_tensor,
-      in_tensor,
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
         int root = opts.source_rank + opts.source_root;
-        VLOG(3) << "calling bkcl_broadcast"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", root: " << root << ", numel: " << input.numel()
-                << ", dtype: " << input.type() << ", sync_op: " << sync_op
+
+        VLOG(3) << "bkcl_broadcast "
+                << "sendbuff: " << tensor_tmp.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << tensor_tmp.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", root: " << root
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        if (framework::TransToProtoVarType(input.dtype()) ==
-            framework::proto::VarType::INT64) {
-          // special for int64_t, send as int32_t with DOUBLE NUMEL
-          int r = bkcl_broadcast(
-              comm,
-              input.data(),
-              output->data(),
-              input.numel() * 2,
-              platform::ToBKCLDataType(framework::proto::VarType::INT32),
-              root,
-              stream);
-          return r;
-        } else {
-          int r =
-              bkcl_broadcast(comm,
-                             input.data(),
-                             output->data(),
-                             input.numel(),
-                             platform::ToBKCLDataType(
-                                 framework::TransToProtoVarType(input.type())),
-                             root,
-                             stream);
-          return r;
-        }
+        comm_context->Broadcast(out_tensor, tensor_tmp, root, stream);
       },
+      tensor_tmp,
       CommType::BROADCAST,
       sync_op,
       use_calc_stream);
@@ -372,8 +387,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
     int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
+  auto tensor_tmp =
+      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   const phi::DenseTensor& in_tensor_maybe_partial =
-      numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
+      numel > 0 ? GetPartialTensor(tensor_tmp, offset, numel) : tensor_tmp;
   phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
                                                      in_tensor_maybe_partial,
                                                      /*dst_rank*/ rank_,
@@ -381,29 +398,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
                                                      size_,
                                                      phi::AllocationType::XPU);
   return Collective(
-      out_tensor,
-      in_tensor_maybe_partial,
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_all_gather"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", numel: " << in_tensor_maybe_partial.numel()
-                << ", dtype: " << input.type() << ", sync_op: " << sync_op
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        VLOG(3) << "bkcl_all_gather "
+                << "sendbuff: " << in_tensor_maybe_partial.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << in_tensor_maybe_partial.numel()
+                << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", offset: " << offset
+                << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        int r =
-            bkcl_all_gather(comm,
-                            in_tensor_maybe_partial.data(),
-                            in_tensor_maybe_partial.numel(),
-                            output->data(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            stream);
-        return r;
+
+        comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
+      in_tensor_maybe_partial,
       CommType::ALLGATHER,
       sync_op,
       use_calc_stream);
@@ -415,33 +425,29 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  auto tensor_tmp =
+      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
-      out_tensor,
-      in_tensor,
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_reduce"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", root: " << opts.root_rank << ", numel: " << input.numel()
-                << ", dtype: " << input.type()
-                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
-                << ", sync_op: " << sync_op
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        VLOG(3) << "bkcl_reduce "
+                << "sendbuff: " << tensor_tmp.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << tensor_tmp.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", redop: "
+                << BKCLRedTypeToString(ToBKCLRedType(opts.reduce_op))
+                << ", root: " << opts.root_rank
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        int r = bkcl_reduce(comm,
-                            input.data(),
-                            output->data(),
-                            input.numel(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            ToBKCLRedType(opts.reduce_op),
-                            opts.root_rank,
-                            stream);
-        return r;
+        comm_context->Reduce(out_tensor,
+                             tensor_tmp,
+                             ToBKCLRedType(opts.reduce_op),
+                             opts.root_rank,
+                             stream);
       },
+      tensor_tmp,
       CommType::REDUCE,
       sync_op,
       use_calc_stream);
@@ -453,32 +459,25 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  auto tensor_tmp =
+      paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
-      out_tensor,
-      in_tensor,
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_reduce_scatter"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", numel: " << output->numel() << ", dtype: " << input.type()
-                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
-                << ", sync_op: " << sync_op
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        VLOG(3) << "bkcl_reduce_scatter "
+                << "sendbuff: " << tensor_tmp.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << tensor_tmp.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(tensor_tmp.dtype()))
+                << ", redop: "
+                << BKCLRedTypeToString(ToBKCLRedType(opts.reduce_op))
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
-        int r = bkcl_reduce_scatter(
-            comm,
-            input.data(),
-            output->data(),
-            output->numel(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            ToBKCLRedType(opts.reduce_op),
-            stream);
-        return r;
+        comm_context->ReduceScatter(
+            out_tensor, tensor_tmp, ToBKCLRedType(opts.reduce_op), stream);
       },
+      tensor_tmp,
       CommType::REDUCE_SCATTER,
       sync_op,
       use_calc_stream);
@@ -527,302 +526,6 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
   }
 }
 
-// below are old apis
-std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const AllreduceOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      in_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      out_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInXPUPlace(in_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
-  return Collective(
-      &out_tensors[0],
-      in_tensors[0],
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_all_reduce"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", numel: " << input.numel() << ", dtype: " << input.type()
-                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
-                << ", sync_op: " << true << ", use_calc_stream: " << false;
-        int r =
-            bkcl_all_reduce(comm,
-                            input.data(),
-                            output->data(),
-                            input.numel(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            ToBKCLRedType(opts.reduce_op),
-                            stream);
-        return r;
-      },
-      CommType::ALLREDUCE,
-      /*sync_op*/ true,
-      /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const AllreduceOptions& opts,
-    bool sync_op) {
-  PADDLE_ENFORCE_EQ(
-      in_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      out_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInXPUPlace(in_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
-  return Collective(
-      &out_tensors[0],
-      in_tensors[0],
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_all_reduce"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", numel: " << input.numel() << ", dtype: " << input.type()
-                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
-                << ", sync_op: " << sync_op << ", use_calc_stream: " << false;
-        int r =
-            bkcl_all_reduce(comm,
-                            input.data(),
-                            output->data(),
-                            input.numel(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            ToBKCLRedType(opts.reduce_op),
-                            stream);
-        return r;
-      },
-      CommType::ALLREDUCE,
-      sync_op,
-      /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const BroadcastOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      in_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      out_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInXPUPlace(in_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
-
-  return Collective(
-      &out_tensors[0],
-      in_tensors[0],
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        const auto root =
-            opts.source_rank * in_tensors.size() + opts.source_root;
-        VLOG(3) << "calling bkcl_broadcast"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", root: " << root << ", numel: " << input.numel()
-                << ", dtype: " << input.type() << ", sync_op: " << true
-                << ", use_calc_stream: " << false;
-        int r =
-            bkcl_broadcast(comm,
-                           input.data(),
-                           output->data(),
-                           input.numel(),
-                           platform::ToBKCLDataType(
-                               framework::TransToProtoVarType(input.type())),
-                           root,
-                           stream);
-        return r;
-      },
-      CommType::BROADCAST,
-      /*sync_op*/ true,
-      /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const BroadcastOptions& opts,
-    bool sync_op) {
-  PADDLE_ENFORCE_EQ(
-      in_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      out_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInXPUPlace(in_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
-
-  return Collective(
-      &out_tensors[0],
-      in_tensors[0],
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        const auto root =
-            opts.source_rank * in_tensors.size() + opts.source_root;
-        VLOG(3) << "calling bkcl_broadcast"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", root: " << root << ", numel: " << input.numel()
-                << ", dtype: " << input.type() << ", sync_op: " << sync_op
-                << ", use_calc_stream: " << false;
-        int r =
-            bkcl_broadcast(comm,
-                           input.data(),
-                           output->data(),
-                           input.numel(),
-                           platform::ToBKCLDataType(
-                               framework::TransToProtoVarType(input.type())),
-                           root,
-                           stream);
-        return r;
-      },
-      CommType::BROADCAST,
-      sync_op,
-      /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors) {
-  PADDLE_ENFORCE_EQ(
-      in_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      out_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInXPUPlace(in_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInXPUPlace(out_tensors),
-      true,
-      platform::errors::InvalidArgument("All outputs should be in XPUPlace."));
-  return Collective(
-      &out_tensors[0],
-      in_tensors[0],
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_all_gather"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", numel: " << input.numel() << ", dtype: " << input.type()
-                << ", sync_op: " << true << ", use_calc_stream: " << false;
-        int r =
-            bkcl_all_gather(comm,
-                            input.data(),
-                            input.numel(),
-                            output->data(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            stream);
-        return r;
-      },
-      CommType::ALLGATHER,
-      /*sync_op*/ true,
-      /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    bool sync_op) {
-  PADDLE_ENFORCE_EQ(
-      in_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      out_tensors.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "BKCL only support single tensor collective communication."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInXPUPlace(out_tensors),
-      true,
-      platform::errors::InvalidArgument("All outputs should be in XPUPlace."));
-  return Collective(
-      &out_tensors[0],
-      in_tensors[0],
-      [&](phi::DenseTensor* output,
-          const phi::DenseTensor& input,
-          BKCLContext_t comm,
-          const XPUStream& stream) {
-        VLOG(3) << "calling bkcl_all_gather"
-                << ", rank_id: " << platform::GetBKCLRankID(comm)
-                << ", dev_id: " << platform::GetBKCLDevID(comm)
-                << ", nranks: " << platform::GetBKCLNRanks(comm)
-                << ", numel: " << input.numel() << ", dtype: " << input.type()
-                << ", sync_op: " << sync_op << ", use_calc_stream: " << false;
-        int r =
-            bkcl_all_gather(comm,
-                            input.data(),
-                            input.numel(),
-                            output->data(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            stream);
-        return r;
-      },
-      CommType::ALLGATHER,
-      sync_op,
-      /*use_calc_stream*/ false);
-}
-
 std::shared_ptr<ProcessGroupBKCL> ProcessGroupBKCL::CreateProcessGroupBKCL(
     const std::shared_ptr<phi::distributed::Store>& store,
     int rank,
@@ -832,6 +535,17 @@ std::shared_ptr<ProcessGroupBKCL> ProcessGroupBKCL::CreateProcessGroupBKCL(
       std::make_shared<ProcessGroupBKCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
+}
+
+phi::distributed::BKCLCommContext* ProcessGroupBKCL::GetCommContext() {
+  const auto& comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
+  auto comm_context = static_cast<phi::distributed::BKCLCommContext*>(
+      comm_context_manager.Get(std::to_string(this->gid_)));
+  PADDLE_ENFORCE_NE(comm_context,
+                    nullptr,
+                    phi::errors::Unavailable("BKCLCommContext is nullptr"));
+  return comm_context;
 }
 
 }  //  namespace distributed

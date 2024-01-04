@@ -19,6 +19,7 @@ limitations under the License. */
 #include <iterator>
 
 #include "glog/logging.h"
+#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
 namespace phi {
 namespace distributed {
@@ -27,7 +28,7 @@ using phi::distributed::auto_parallel::TensorDistAttrProto;
 
 // partial is not allow annotated by user by now.
 std::vector<std::string> TensorDistAttr::fields_{
-    "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
+    "process_mesh", "dims_mapping", "batch_dim", "chunk_id", "dynamic_dims"};
 
 TensorDistAttr::TensorDistAttr(const std::vector<int64_t>& tensor_shape) {
   set_default_dims_mapping(tensor_shape);
@@ -44,6 +45,7 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
   std::swap(this->process_mesh_, tmp.process_mesh_);
   std::swap(this->dims_mapping_, tmp.dims_mapping_);
   std::swap(this->batch_dim_, tmp.batch_dim_);
+  std::swap(this->chunk_id_, tmp.chunk_id_);
   std::swap(this->dynamic_dims_, tmp.dynamic_dims_);
   std::swap(this->annotated_, tmp.annotated_);
   std::swap(this->partial_status_, tmp.partial_status_);
@@ -54,6 +56,7 @@ void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_process_mesh(dist_attr.process_mesh());
   set_dims_mapping(dist_attr.dims_mapping());
   set_batch_dim(dist_attr.batch_dim());
+  set_chunk_id(dist_attr.chunk_id());
   set_dynamic_dims(dist_attr.dynamic_dims());
   set_annotated(dist_attr.annotated());
   set_partial_status(dist_attr.partial_status());
@@ -66,10 +69,18 @@ void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
 void TensorDistAttr::set_dims_mapping(
     const std::vector<int64_t>& dims_mapping) {
   dims_mapping_ = dims_mapping;
+  // dynamic_dims_ and dims_mapping may be not consistent
+  if (dynamic_dims_.empty() || dims_mapping.empty()) {
+    set_default_dynamic_dims(dims_mapping);
+  }
 }
 
 void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
   batch_dim_ = batch_dim;
+}
+
+void TensorDistAttr::set_chunk_id(const int64_t& chunk_id) {
+  chunk_id_ = chunk_id;
 }
 
 void TensorDistAttr::set_dynamic_dims(const std::vector<bool>& dynamic_dims) {
@@ -132,9 +143,7 @@ void TensorDistAttr::set_default_dims_mapping(
 
 void TensorDistAttr::set_default_dynamic_dims(
     const std::vector<int64_t>& tensor_shape) {
-  if (!tensor_shape.empty()) {
-    dynamic_dims_ = std::vector<bool>(tensor_shape.size(), false);
-  }
+  dynamic_dims_ = std::vector<bool>(tensor_shape.size(), false);
 }
 
 void TensorDistAttr::mark_annotated(const std::string& name) {
@@ -260,11 +269,26 @@ bool TensorDistAttr::verify(const std::vector<int64_t>& tensor_shape) const {
   return true;
 }
 
+bool TensorDistAttr::verify_dynamic(
+    const std::vector<int64_t>& tensor_shape) const {
+  if (!verify_process_mesh(process_mesh_)) {
+    return false;
+  }
+  if (!verify_dims_mapping(dims_mapping_, tensor_shape)) {
+    return false;
+  }
+  if (!verify_partial_status()) {
+    return false;
+  }
+  return true;
+}
+
 std::string TensorDistAttr::to_string() const {
   std::string dist_str;
   dist_str += "{process_mesh: " + process_mesh_.to_string() + ", ";
   dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
+  dist_str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
   dist_str += "annotated: [" + str_join(annotated_) + "], ";
   dist_str += "partial: " + partial_status_string() + ".}";
@@ -278,30 +302,31 @@ void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
     dims_mapping_[i] = proto.dims_mapping(i);
   }
   batch_dim_ = proto.batch_dim();
+  chunk_id_ = proto.chunk_id();
   dynamic_dims_.resize(proto.dynamic_dims_size());
   for (int i = 0; i < proto.dynamic_dims_size(); ++i) {
     dynamic_dims_[i] = proto.dynamic_dims(i);
   }
 }
 
-TensorDistAttrProto TensorDistAttr::to_proto() const {
-  TensorDistAttrProto proto;
-  proto.mutable_process_mesh()->CopyFrom(process_mesh_.to_proto());
+void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
+  proto->mutable_process_mesh()->CopyFrom(
+      phi::distributed::to_proto(process_mesh_));
   for (const auto& i : dims_mapping_) {
-    proto.add_dims_mapping(i);
+    proto->add_dims_mapping(i);
   }
-  proto.set_batch_dim(batch_dim_);
+  proto->set_batch_dim(batch_dim_);
+  proto->set_chunk_id(chunk_id_);
   for (const auto& i : dynamic_dims_) {
-    proto.add_dynamic_dims(i);
+    proto->add_dynamic_dims(i);
   }
-  return proto;
 }
 
 std::string TensorDistAttr::serialize_to_string() {
   std::string data;
-  auto proto = to_proto();
+  auto proto = phi::distributed::to_proto(*this);
   proto.SerializeToString(&data);
-  PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
+  PADDLE_ENFORCE_EQ(phi::distributed::to_proto(*this).SerializeToString(&data),
                     true,
                     errors::InvalidArgument(
                         "Failed to serialize tensor dist attr to string."));
@@ -328,6 +353,9 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   if (lhs.batch_dim() != rhs.batch_dim()) {
     return false;
   }
+  if (lhs.chunk_id() != rhs.chunk_id()) {
+    return false;
+  }
   if (lhs.dynamic_dims() != rhs.dynamic_dims()) {
     return false;
   }
@@ -349,7 +377,8 @@ std::string TensorDistAttr::partial_status_string() const {
 }
 
 bool TensorDistAttr::empty() const {
-  return process_mesh_.empty() || dims_mapping_.empty();
+  // dims_mapping is empty when the tensor is 0-dim, but it is also be valid.
+  return process_mesh_.empty();
 }
 
 std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
@@ -398,7 +427,7 @@ bool TensorDistAttr::is_replicated(int64_t mesh_axis) const {
 bool TensorDistAttr::is_shard(int64_t mesh_axis, int64_t tensor_axis) const {
   auto placement = to_placement();
   if (mesh_axis == -1) {
-    return std::all_of(placement.begin(),
+    return std::any_of(placement.begin(),
                        placement.end(),
                        [tensor_axis](std::shared_ptr<PlacementStatus> status) {
                          return status->is_shard(tensor_axis);

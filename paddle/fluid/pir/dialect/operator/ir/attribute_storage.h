@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"

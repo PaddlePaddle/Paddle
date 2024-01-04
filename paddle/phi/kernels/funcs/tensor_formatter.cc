@@ -66,7 +66,7 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
   if (print_tensor_lod_) {
     log_stream << "  - lod: {";
     const phi::LoD& lod = print_tensor.lod();
-    for (auto level : lod) {
+    for (auto const& level : lod) {
       log_stream << "{";
       bool is_first = true;
       for (auto i : level) {
@@ -107,6 +107,10 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
     FormatData<int64_t>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::BOOL) {
     FormatData<bool>(print_tensor, log_stream);
+  } else if (dtype == phi::DataType::FLOAT16) {
+    FormatData<phi::dtype::float16>(print_tensor, log_stream);
+  } else if (dtype == phi::DataType::BFLOAT16) {
+    FormatData<phi::dtype::bfloat16>(print_tensor, log_stream);
   } else {
     log_stream << "  - data: unprintable type: " << dtype << std::endl;
   }
@@ -152,6 +156,10 @@ template void TensorFormatter::FormatData<double>(
 template void TensorFormatter::FormatData<int>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 template void TensorFormatter::FormatData<int64_t>(
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
+template void TensorFormatter::FormatData<phi::dtype::float16>(
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
+template void TensorFormatter::FormatData<phi::dtype::bfloat16>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 
 }  // namespace funcs

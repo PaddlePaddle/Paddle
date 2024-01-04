@@ -42,7 +42,7 @@ def get_cur_scope():
     """
     cur_scope_stack = getattr(__tl_scope__, 'cur_scope', None)
     if cur_scope_stack is None:
-        __tl_scope__.cur_scope = list()
+        __tl_scope__.cur_scope = []
     if len(__tl_scope__.cur_scope) == 0:
         __tl_scope__.cur_scope.append(paddle.base.core.Scope())
     return __tl_scope__.cur_scope[-1]

@@ -35,7 +35,18 @@ const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
 TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
 
-void OpInfo::Verify(Operation *operation) const { impl_->verify()(operation); }
+void OpInfo::Verify(Operation *operation) const {
+  VerifySig(operation);
+  VerifyRegion(operation);
+}
+
+void OpInfo::VerifySig(Operation *operation) const {
+  impl_->VerifySig()(operation);
+}
+
+void OpInfo::VerifyRegion(Operation *operation) const {
+  impl_->VerifyRegion()(operation);
+}
 
 void *OpInfo::GetInterfaceImpl(TypeId interface_id) const {
   return impl_ ? impl_->GetInterfaceImpl(interface_id) : nullptr;

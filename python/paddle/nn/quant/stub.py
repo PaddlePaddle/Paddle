@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """ Define stub used in quantization."""
 
-from paddle.nn import Layer
+from ..layer.layers import Layer
 
 
 class Stub(Layer):

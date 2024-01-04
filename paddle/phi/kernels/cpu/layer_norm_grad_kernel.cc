@@ -48,12 +48,19 @@ void LayerNormGradKernel(const Context& dev_ctx,
   auto* d_bias = bias_grad;
 
   const auto& x_dims = x.dims();
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
   DDim matrix_shape({left, right});
+  DDim var_shape({left});
 
   d_y.Resize(matrix_shape);
+  // resize mean and var to match the shape of resized d_y for broadcast (Resize
+  // will not modify the underline data)
+  auto mean_tmp = mean;
+  mean_tmp.Resize(var_shape);
+  auto variance_tmp = variance;
+  variance_tmp.Resize(var_shape);
 
   funcs::ColwiseSum2D<phi::CPUContext, T> colwise_sum(left, right, dev_ctx);
   DenseTensor x_tmp = x;
@@ -69,11 +76,11 @@ void LayerNormGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(&temp_norm);
     // get x_norm
     phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-        dev_ctx, x_tmp, mean, funcs::SubtractFunctor<T>(), &temp_norm, 0);
+        dev_ctx, x_tmp, mean_tmp, funcs::SubtractFunctor<T>(), &temp_norm, 0);
     phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T>(
         dev_ctx,
         temp_norm,
-        variance,
+        variance_tmp,
         funcs::DivAndSqrtFunctor<T>(static_cast<T>(epsilon)),
         &temp_norm,
         0);
@@ -137,7 +144,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
     phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T>(
         dev_ctx,
         *d_x,
-        variance,
+        variance_tmp,
         funcs::DivAndSqrtFunctor<T>(static_cast<T>(epsilon)),
         d_x,
         0);

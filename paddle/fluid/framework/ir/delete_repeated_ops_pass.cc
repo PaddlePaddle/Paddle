@@ -36,7 +36,7 @@ namespace ir {
 bool HasOutVarName(Node* op_node, std::string name) {
   auto* op_desc = op_node->Op();
   auto outputs = op_desc->Outputs();
-  for (auto iter : outputs) {
+  for (auto const& iter : outputs) {
     auto out_names = iter.second;
     if (std::count(out_names.begin(), out_names.end(), name) > 0) {
       return true;
@@ -155,7 +155,7 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
       }
     }
 
-    for (auto iter : ops_map) {
+    for (auto const& iter : ops_map) {
       auto ops = iter.second;
       auto* first_op_out = ops[0]->outputs[0];
       auto first_op_out_name = first_op_out->Name();

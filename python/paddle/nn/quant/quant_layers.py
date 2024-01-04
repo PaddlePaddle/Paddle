@@ -20,11 +20,12 @@ from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import _create_tensor
 from paddle.base.log_helper import get_logger
 from paddle.framework import ParamAttr, core
-from paddle.nn import Layer
 from paddle.nn import functional as F
 from paddle.nn.initializer import Constant
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
 from paddle.utils import unique_name
+
+from ..layer.layers import Layer
 
 __all__ = [
     'FakeQuantAbsMax',

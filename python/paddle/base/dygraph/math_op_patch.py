@@ -150,7 +150,7 @@ def monkey_patch_math_tensor():
         return int(np.array(var))
 
     @property
-    def _ndim_(var):
+    def _ndim(var):
         return len(var.shape)
 
     def ndimension(var):
@@ -183,7 +183,7 @@ def monkey_patch_math_tensor():
         ('astype', astype),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         ('size', _size_),
         ('T', _T_),
         # for logical compare

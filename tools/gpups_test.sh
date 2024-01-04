@@ -27,8 +27,16 @@ function collect_failed_tests() {
     done
 }
 
+# disable test: 
+
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
+^test_dist_fuse_resunit_pass$|\
+^test_dygraph_dataparallel_bf16$|\
+^test_dygraph_sharding_stage1_fp16$|\
+^test_dygraph_sharding_stage1_bf16$|\
+^test_dygraph_sharding_stage2_bf16$|\
+^test_dygraph_sharding_stage3_bf16$|\
 ^test_conv3d_op$"
 
 parallel_list="^init_phi_test$|\
@@ -37,7 +45,6 @@ parallel_list="^init_phi_test$|\
 ^test_conv1d_layer$|\
 ^test_conv1d_transpose_layer$|\
 ^test_conv2d_api$|\
-^test_conv2d_fusion_op$|\
 ^test_conv2d_layer$|\
 ^test_conv2d_op_depthwise_conv$|\
 ^test_conv2d_transpose_layer$|\
@@ -47,7 +54,6 @@ parallel_list="^init_phi_test$|\
 ^test_conv3d_transpose_op$|\
 ^test_conv_bn_fuse_pass_cc$|\
 ^test_conv_nn_grad$|\
-^test_conv_shift_op$|\
 ^test_conv_transpose_nn_grad$|\
 ^test_convert_call$|\
 ^test_convert_call_generator$|\
@@ -59,15 +65,16 @@ parallel_list="^init_phi_test$|\
 ^test_custom_kernel$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
-^test_dygraph_sharding_stage2_bf16$|\
 ^test_executor_feed_non_tensor$|\
 ^test_flash_attention$|\
+^test_fuse_resunit_pass$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
 ^test_fused_attention_op$|\
 ^test_fused_attention_op_api$|\
 ^test_fused_attention_op_api_static_build$|\
 ^test_fused_attention_op_static_build$|\
+^test_fused_dconv_drelu_dbn_op$|\
 ^test_fused_bias_dropout_residual_layer_norm_op$|\
 ^test_fused_bias_dropout_residual_layer_norm_op_api$|\
 ^test_fused_comm_buffer$|\
@@ -92,10 +99,14 @@ parallel_list="^init_phi_test$|\
 ^test_fused_multi_transformer_int8_op$|\
 ^test_fused_residual_dropout_bias$|\
 ^test_fused_rotary_position_embedding$|\
-^test_fused_scale_bias_relu_conv_bnstats_op$|\
+^test_fused_scale_bias_add_relu_op$|\
+^test_fused_scale_bias_relu_conv_bn_op$|\
 ^test_fused_token_prune_op$|\
 ^test_fused_transformer_encoder_layer$|\
 ^test_fused_transformer_with_amp_decorator$|\
+^test_fused_dot_product_attention_op$|\
+^test_fuse_dot_product_attention_pass$|\
+^test_fused_dot_product_attention_pass$|\
 ^test_gather_nd_op$|\
 ^test_index_select_op$|\
 ^test_pass_base_list$|\

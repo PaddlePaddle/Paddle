@@ -36,7 +36,7 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     std::vector<VariableInfo> var_infos,
     std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
-    : strategy_(std::move(strategy)),
+    : strategy_(strategy),
       underlying_executor_(std::move(underlying_executor)),
       local_scopes_(std::move(local_scopes)),
       local_exec_scopes_(std::move(local_exec_scopes)),

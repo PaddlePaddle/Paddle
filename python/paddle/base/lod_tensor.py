@@ -128,7 +128,7 @@ def create_random_int_lodtensor(
        :code:`base_shape` .
 
     2. Create a numpy array of random integers, and parse the created numpy
-       array as parameter :code:`data` of :ref:`api_base_create_lod_tensor` to
+       array as parameter :code:`data` of :ref:`api_paddle_base_create_lod_tensor` to
        create the output LoDTensor.
 
     Suppose we want to create a LoDTensor to hold data for 2 sequences, where

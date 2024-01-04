@@ -13,19 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Temporary disable isort to avoid circular import
-# This can be removed after the circular import is resolved
-# isort: skip_file
 from __future__ import annotations
 
+import inspect
 import os
 import pickle
+import sys
+import threading
+import types
 import warnings
 from collections import OrderedDict
-import inspect
-import threading
+from contextlib import contextmanager
 from typing import Any
-import types
 
 import paddle
 from paddle.base import core, dygraph
@@ -39,43 +38,51 @@ from paddle.base.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
-from .dy2static import logging_utils
-from .dy2static.convert_call_func import (
-    ConversionOptions,
-    add_ignore_module,
-)
-from .dy2static.program_translator import (
-    ProgramTranslator,
-    StaticFunction,
-    ASTStaticFunction,
-    SymbolicStaticFunction,
-    unwrap_decorators,
-)
-from paddle.jit.translated_layer import (
-    TranslatedLayer,
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    INFER_PARAMS_INFO_SUFFIX,
-    INFER_PROPERTY_SUFFIX,
-)
-from paddle.nn import Layer
 from paddle.base.executor import Executor, scope_guard
 from paddle.base.framework import (
     Block,
+    EagerParamBase,
+    Parameter,
     Program,
     Variable,
-    Parameter,
-    EagerParamBase,
-)
-from paddle.base.framework import (
     _current_expected_place,
     _dygraph_guard,
     _dygraph_tracer,
+    dygraph_only,
 )
-from paddle.base.framework import dygraph_only
 from paddle.base.wrapped_decorator import wrap_decorator
-from paddle.static.io import save_inference_model
 from paddle.framework import in_dynamic_mode
+from paddle.nn import Layer
+from paddle.static.io import save_inference_model
+from paddle.utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
+
+from .dy2static import logging_utils
+from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
+from .dy2static.program_translator import (
+    ASTStaticFunction,
+    ProgramTranslator,
+    StaticFunction,
+    SymbolicStaticFunction,
+    unwrap_decorators,
+)
+from .translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_INFO_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    INFER_PROPERTY_SUFFIX,
+    TranslatedLayer,
+)
+
+ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
+
+@contextmanager
+def sot_mode_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_ENABLE_SOT, value):
+        yield
 
 
 def create_program_from_desc(program_desc):
@@ -104,74 +111,6 @@ def extract_vars(inputs, err_tag='inputs'):
     result_list = []
     _extract_vars(inputs, result_list, err_tag)
     return result_list
-
-
-def _dygraph_to_static_func_(dygraph_func):
-    """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @dygraph_to_static_func only converts imperative dygraph APIs into
-    declarative net-building APIs, which means it doesn't return immediate
-    digital result as imperative mode. Users should handle Program and Executor
-    by themselves.
-
-    Note:
-    This decorator is NOT our recommended way to transform imperative function
-    to declarative function. We will remove this decorator after we finalize
-    cleaning up code.
-
-    Args:
-        dygraph_func (callable): callable imperative function.
-
-    Returns:
-        Callable: converting imperative dygraph APIs into declarative
-        net-building APIs.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP('`paddle.jit.dygraph_to_static_func` can not run in xdoctest')
-            >>> import paddle
-            >>> from paddle.jit.api import dygraph_to_static_func
-
-            >>> @dygraph_to_static_func
-            ... def func(x):
-            ...     if paddle.mean(x) < 0:
-            ...         x_v = x - 1
-            ...     else:
-            ...         x_v = x + 1
-            ...
-            ...     return x_v
-            ...
-            >>> paddle.enable_static()
-            >>> x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
-
-            >>> x_v = func(x)
-            >>> exe = paddle.static.Executor(paddle.CPUPlace())
-            >>> out = exe.run(fetch_list=[x_v])
-            >>> print(out[0])
-            [[1. 1. 1.]
-             [1. 1. 1.]
-             [1. 1. 1.]]
-
-    """
-
-    # TODO: remove this decorator after we finalize training API
-    def __impl__(*args, **kwargs):
-        program_translator = ProgramTranslator()
-        if in_dynamic_mode() or not program_translator.enable_to_static:
-            logging_utils.warn(
-                "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
-                "We will just return dygraph output."
-            )
-            return dygraph_func(*args, **kwargs)
-        static_func = program_translator.get_func(dygraph_func)
-        return static_func(*args, **kwargs)
-
-    return __impl__
-
-
-dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def copy_decorator_attrs(original_func, decorated_obj):
@@ -223,9 +162,7 @@ def ignore_module(modules: list[Any]):
 def _check_and_set_backend(backend, build_strategy):
     if backend not in ['CINN', None]:
         raise ValueError(
-            "The backend of to_static should be 'CINN' or None, but received {}.".format(
-                backend
-            )
+            f"The backend of to_static should be 'CINN' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
@@ -236,28 +173,31 @@ def to_static(
     input_spec=None,
     build_strategy=None,
     backend=None,
-    enable_fallback=None,
     **kwargs,
 ):
     """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    Converts dynamic graph APIs into static graph function APIs. Decorator
     @to_static handles the Program and Executor of static graph mode and returns
-    the result as dygraph Tensor(s). Users could use the returned dygraph
-    Tensor(s) to do imperative training, inference, or other operations. If the
-    decorated function calls other imperative function, the called one will be
-    converted into declarative function as well.
+    the result as dynamic graph Tensor(s). Users could use the returned dynamic
+    graph Tensor(s) to do dynamic graph training, inference, or other operations.
+    If the decorated function calls other dynamic graph function, the called one
+    will be converted into static graph function as well.
+
     Args:
-        function (callable): callable imperative function.
-        input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
-            information of each input Tensor.
-        build_strategy(BuildStrategy|None): This argument is used to compile the
+        function (callable): Callable dynamic graph function. If it used as a
+            decorator, the decorated function will be parsed as this parameter.
+        input_spec (list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to
+            specific the shape/dtype/name information of each input Tensor.
+        build_strategy (BuildStrategy|None): This argument is used to compile the
             converted program with the specified options, such as operators' fusion
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
-        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
-
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
+            None. When backend is `CINN`, CINN compiler will be used to speed up
+            training and inference.
+        kwargs: Support keys including `property`, set `property` to True if the function
+            is python property.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -285,24 +225,28 @@ def to_static(
 
     """
     property = kwargs.get("property", False)
+    full_graph = kwargs.get("full_graph", None)
 
     def decorated(python_func):
         """
         Decorates a python function into a ASTStaticFunction object.
         """
 
-        nonlocal enable_fallback
-        if enable_fallback is None:
-            flag = os.environ.get("ENABLE_FALL_BACK", None)
-            if flag == "True":
-                enable_fallback = True
-            else:  # None or True
-                enable_fallback = False
+        nonlocal full_graph
+        if full_graph is None:
+            flag = ENV_ENABLE_SOT.get()
+            full_graph = not flag
 
-        StaticClass = StaticFunctionClass = {
-            True: SymbolicStaticFunction,
-            False: ASTStaticFunction,
-        }[enable_fallback]
+        if sys.version_info >= (3, 12) and not full_graph:
+            warnings.warn(
+                "full_graph=False is not supported in Python 3.12+. Set full_graph=True automatically"
+            )
+            full_graph = True
+
+        StaticClass = {
+            False: SymbolicStaticFunction,
+            True: ASTStaticFunction,
+        }[full_graph]
 
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -1057,7 +1001,8 @@ def save(layer, path, input_spec=None, **configs):
     scope = core.Scope()
     extra_var_info = {}
     if isinstance(layer, Layer):
-        functions = dir(inner_layer)
+        functions = list(set(dir(inner_layer)))
+        functions = sorted(functions)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
             with_hook = True
     else:
@@ -1108,7 +1053,7 @@ def save(layer, path, input_spec=None, **configs):
                 static_forward = to_static(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
-                    enable_fallback=False,
+                    full_graph=True,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
@@ -1146,15 +1091,13 @@ def save(layer, path, input_spec=None, **configs):
                 static_function = to_static(
                     static_func,
                     input_spec=inner_input_spec,
-                    enable_fallback=False,
+                    full_graph=True,
                 )
                 concrete_program = static_function.concrete_program
 
                 if static_function._class_instance is None:
                     warnings.warn(
-                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'.format(
-                            layer
-                        )
+                        f'`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {layer} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                     )
 
         # when save multi `StaticFunction`, all `StaticFunction` share params.

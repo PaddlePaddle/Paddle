@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -25,7 +26,7 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              const DenseTensor& x,
                              const DenseTensor& out,
                              const DenseTensor& dout,
-                             const std::vector<int64_t>& axis,
+                             const IntArray& axis,
                              bool keep_dim,
                              bool reduce_all,
                              DenseTensor* dx);

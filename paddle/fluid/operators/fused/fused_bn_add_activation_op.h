@@ -89,17 +89,5 @@ class FusedBatchNormAddActOpInferVarType
   }
 };
 
-template <typename T, typename DeviceContext>
-class FusedBatchNormAddActKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename T, typename DeviceContext>
-class FusedBatchNormAddActGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
 }  // namespace operators
 }  // namespace paddle

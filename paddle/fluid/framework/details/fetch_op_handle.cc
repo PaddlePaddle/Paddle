@@ -113,7 +113,7 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
     }
   } else {
     auto &val = PADDLE_GET(FetchUnmergedList, *data_);
-    val.at(offset_) = std::move(tensors_);
+    val.at(offset_) = tensors_;
   }
 }
 

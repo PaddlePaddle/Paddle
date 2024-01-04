@@ -432,7 +432,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
 
     // Reserve a big enough memory.
     auto selected_dims =
-        phi::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
+        common::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
     int64_t* selected_ids_data =
         selected_ids->mutable_data<int64_t>(selected_dims, context.GetPlace());
     float* selected_scores_data =
@@ -521,7 +521,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     selected_scores->set_lod(selected_lod);
     if (selected_lod[1].back() < num_seqs * beam_size) {
       auto final_selected_dims =
-          phi::make_ddim({static_cast<int64_t>(selected_lod[1].back()), 1});
+          common::make_ddim({static_cast<int64_t>(selected_lod[1].back()), 1});
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
       if (parent_idx) {

@@ -20,12 +20,13 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from utils import static_guard
 
 import paddle
-from paddle import _C_ops, base, static
+from paddle import base, static
 from paddle.autograd.ir_backward import grad
 from paddle.base import Program, Scope, core, program_guard
 from paddle.base.executor import scope_guard
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
+from paddle.pir_utils import test_with_pir_api
 
 
 def dropout_wapper(
@@ -78,19 +79,20 @@ class TestDropoutOp(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64)).astype('uint8'),
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
         # Because prim op compare res with dygraph
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 class TestDropoutOp_ZeroDim(TestDropoutOp):
@@ -109,6 +111,9 @@ class TestDropoutOp_ZeroDim(TestDropoutOp):
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
         self.enable_check_static_comp = False
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 class TestDropoutOpInput1d(OpTest):
@@ -123,19 +128,20 @@ class TestDropoutOpInput1d(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones(2000).astype('uint8'),
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
         # Because prim op compare res with dygraph
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
-        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 class TestDropoutOp2(TestDropoutOp):
@@ -150,6 +156,9 @@ class TestDropoutOp2(TestDropoutOp):
             'Out': np.zeros((32, 64)).astype('float32'),
             'Mask': np.zeros((32, 64)).astype('uint8'),
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 class TestDropoutOp2_ZeroDim(TestDropoutOp2):
@@ -164,6 +173,9 @@ class TestDropoutOp2_ZeroDim(TestDropoutOp2):
             'Out': np.zeros(()).astype('float32'),
             'Mask': np.zeros(()).astype('uint8'),
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 class TestDropoutOp3(TestDropoutOp):
@@ -182,6 +194,9 @@ class TestDropoutOp3(TestDropoutOp):
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
         self.enable_check_static_comp = False
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -196,11 +211,12 @@ class TestDropoutOp4(OpTest):
         self.outputs = {
             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -215,11 +231,12 @@ class TestDropoutOp5(OpTest):
         self.outputs = {
             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 class TestDropoutOp6(TestDropoutOp):
@@ -239,6 +256,9 @@ class TestDropoutOp6(TestDropoutOp):
             'Out': np.zeros((32, 64)).astype('float32'),
             'Mask': np.zeros((32, 64)).astype('uint8'),
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 class TestDropoutOp7(TestDropoutOp):
@@ -262,6 +282,9 @@ class TestDropoutOp7(TestDropoutOp):
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
         self.enable_check_static_comp = False
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -279,11 +302,12 @@ class TestDropoutOp8(OpTest):
             'dropout_implementation': 'upscale_in_train',
         }
         self.outputs = {'Out': self.inputs['X']}
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -300,11 +324,12 @@ class TestDropoutOp9(OpTest):
             'dropout_implementation': 'upscale_in_train',
         }
         self.outputs = {'Out': self.inputs['X']}
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
 
 class TestDropoutOpWithSeed(OpTest):
@@ -324,6 +349,9 @@ class TestDropoutOpWithSeed(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64)).astype('uint8'),
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
         # Because prim op compare res with dygraph
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
@@ -331,9 +359,7 @@ class TestDropoutOpWithSeed(OpTest):
 
     def test_check_output(self):
         # ir backward don't support of variable derivation of itself
-        self.check_output(
-            check_prim=True, check_prim_pir=False, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=False, check_pir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
@@ -342,7 +368,7 @@ class TestDropoutOpWithSeed(OpTest):
             'Out',
             max_relative_error=0.05,
             check_prim=False,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -368,6 +394,9 @@ class TestFP16DropoutOp(OpTest):
             'is_test': True,
         }
         self.outputs = {'Out': out}
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
     def init_test_case(self):
         self.input_size = [32, 64]
@@ -380,11 +409,11 @@ class TestFP16DropoutOp(OpTest):
             atol=1e-3,
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 @unittest.skipIf(
@@ -417,11 +446,12 @@ class TestBF16DropoutOp(OpTest):
             ),
             'Mask': np.zeros((32, 64)).astype('uint8'),
         }
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(
-            check_prim=True, check_prim_pir=True, check_new_ir=True
-        )
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -429,7 +459,7 @@ class TestBF16DropoutOp(OpTest):
             'Out',
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -539,9 +569,11 @@ class TestDropoutFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog):
             input = paddle.static.data(
                 name="input", shape=[-1, -1], dtype="float32"
             )
@@ -590,7 +622,6 @@ class TestDropoutFAPI(unittest.TestCase):
                 training=False,
                 mode='downscale_in_infer',
             )
-            res10 = paddle.nn.functional.dropout(x=input, p=1.0, training=True)
             res11 = paddle.nn.functional.dropout(x=input, p=0.0)
             res12 = paddle.nn.functional.dropout(
                 x=input,
@@ -600,13 +631,8 @@ class TestDropoutFAPI(unittest.TestCase):
                 mode='upscale_in_train',
             )
 
-            res13 = paddle.nn.functional.dropout(
-                x=input, p=0.7, axis=1, training=True, mode='upscale_in_train'
-            )
-
             in_np = np.ones([40, 40]).astype("float32")
             res_np = in_np
-            res_np2 = np.zeros_like(in_np)
 
             exe = base.Executor(place)
             res_list = [
@@ -624,26 +650,39 @@ class TestDropoutFAPI(unittest.TestCase):
             ]
             for res in res_list:
                 fetches = exe.run(
-                    base.default_main_program(),
+                    main_prog,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
                 np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
+
+    @test_with_pir_api
+    def check_static_result2(self, place):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog):
+            input = paddle.static.data(
+                name="input", shape=[-1, -1], dtype="float32"
+            )
+            res10 = paddle.nn.functional.dropout(x=input, p=1.0, training=True)
+            res13 = paddle.nn.functional.dropout(
+                x=input, p=0.7, axis=1, training=True, mode='upscale_in_train'
+            )
+            in_np = np.ones([40, 40]).astype("float32")
+            res_np2 = np.zeros_like(in_np)
+
+            exe = base.Executor(place)
             fetches2 = exe.run(
-                base.default_main_program(),
+                main_prog,
                 feed={"input": in_np},
-                fetch_list=[res10],
+                fetch_list=[res10, res13],
             )
             np.testing.assert_allclose(fetches2[0], res_np2, rtol=1e-05)
-            fetches3 = exe.run(
-                base.default_main_program(),
-                feed={"input": in_np},
-                fetch_list=[res13],
-            )
 
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
+            self.check_static_result2(place=place)
 
     def test_dygraph(self):
         for place in self.places:
@@ -785,6 +824,13 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
+    @test_with_pir_api
+    def test_errors2(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+
             def test_pdtype():
                 # p should be int or float
                 x2 = paddle.static.data(
@@ -877,9 +923,12 @@ class TestDropout2DFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
@@ -897,7 +946,7 @@ class TestDropout2DFAPI(unittest.TestCase):
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    base.default_main_program(),
+                    main_prog,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -927,9 +976,12 @@ class TestDropout2DFAPI(unittest.TestCase):
 
 
 class TestDropout2DFAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
                 # dimentions of x should be 4
@@ -970,6 +1022,7 @@ class TestDropout2DCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
+    @test_with_pir_api
     def test_static_fp16_with_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -1002,9 +1055,12 @@ class TestDropout3DFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5, 6], dtype="float32"
             )
@@ -1022,7 +1078,7 @@ class TestDropout3DFAPI(unittest.TestCase):
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    base.default_main_program(),
+                    main_prog,
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -1052,9 +1108,12 @@ class TestDropout3DFAPI(unittest.TestCase):
 
 
 class TestDropout3DFAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
                 # dimentions of x should be 5
@@ -1103,8 +1162,12 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             input = paddle.static.data(
                 name="input", shape=[40, 40], dtype="float32"
             )
@@ -1119,20 +1182,15 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
             res_np3 = np.zeros_like(in_np)
 
             exe = base.Executor(place)
-            res_list = [res1, res2]
-            for res in res_list:
-                fetches = exe.run(
-                    base.default_main_program(),
-                    feed={"input": in_np},
-                    fetch_list=[res],
-                )
-                np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
+
             fetches = exe.run(
-                base.default_main_program(),
+                main_prog,
                 feed={"input": in_np},
-                fetch_list=[res3],
+                fetch_list=[res1, res2, res3],
             )
-            np.testing.assert_allclose(fetches[0], res_np3, rtol=1e-05)
+            np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], res_np, rtol=1e-05)
+            np.testing.assert_allclose(fetches[2], res_np3, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -1170,6 +1228,13 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
                 paddle.nn.functional.alpha_dropout(x1, p=0.5)
 
             self.assertRaises(TypeError, test_Variable)
+
+    @test_with_pir_api
+    def test_errors2(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_dtype():
                 # the input dtype of dropout must be float32 or float64
@@ -1219,6 +1284,7 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
+    @test_with_pir_api
     def test_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -1307,55 +1373,6 @@ class TestDropoutBackward(unittest.TestCase):
     def cal_grad_downscale_in_infer(self, mask):
         return mask.astype("float32")
 
-    def test_backward_downscale_in_infer(self):
-        for place in self.places:
-            with base.dygraph.guard(place):
-                input = paddle.uniform([40, 40], dtype="float32")
-                input.stop_gradient = False
-                out, mask = _C_ops.dropout(
-                    input, None, 0.5, False, "downgrade_in_infer", 0, False
-                )
-                out.backward()
-
-                np.testing.assert_array_equal(
-                    input.gradient(),
-                    self.cal_grad_downscale_in_infer(mask.numpy()),
-                )
-
-    def test_backward_upscale_train(self):
-        for place in self.places:
-            with base.dygraph.guard(place):
-                prob = 0.5
-                input = paddle.uniform([40, 40], dtype="float32")
-                input.stop_gradient = False
-                out, mask = _C_ops.dropout(
-                    input, None, 0.5, False, "upscale_in_train", 0, False
-                )
-                out.backward()
-
-                np.testing.assert_allclose(
-                    input.gradient(),
-                    self.cal_grad_upscale_train(mask.numpy(), prob),
-                    rtol=1e-05,
-                )
-
-    def test_backward_upscale_train_2(self):
-        for place in self.places:
-            with base.dygraph.guard(place):
-                prob = 0.3
-                input = paddle.uniform([40, 40], dtype="float32")
-                input.stop_gradient = False
-                out, mask = _C_ops.dropout(
-                    input, None, 0.3, False, "upscale_in_train", 0, False
-                )
-                out.backward()
-
-                np.testing.assert_allclose(
-                    input.gradient(),
-                    self.cal_grad_upscale_train(mask.numpy(), prob),
-                    rtol=1e-05,
-                )
-
 
 class TestDropOutWithProbTensor(unittest.TestCase):
     def setUp(self):
@@ -1378,9 +1395,9 @@ class TestDropOutWithProbTensor(unittest.TestCase):
 
     def run_static(self, x):
         paddle.seed(2022)
-        main_program = Program()
         paddle.enable_static()
-        with program_guard(main_program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             input = paddle.static.data(shape=x.shape, name='x', dtype='float32')
             out = self.api_case(input)
             sgd = paddle.optimizer.SGD(learning_rate=0.1)
@@ -2098,7 +2115,9 @@ class TestPirCompositeDropout(unittest.TestCase):
                     )
 
                     core._set_prim_forward_enabled(True)
-                    [output] = decompose(mp, [output])  # decompose forward
+                    [output] = decompose(
+                        mp, [output], whitelist={"pd_op.dropout"}
+                    )  # decompose forward
                     self.assertTrue(
                         'pd_op.dropout'
                         not in [op.name() for op in mp.global_block().ops]

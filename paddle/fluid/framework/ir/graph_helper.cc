@@ -34,6 +34,7 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/platform/flags.h"
 PD_DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(all_blocks_convert_trt);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "",
                               "FLAGS_print_sub_graph_dir is used "
@@ -164,7 +165,7 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
-  for (auto adj : adj_list) {
+  for (auto const &adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
       SortHelper<ir::NodeComp>(adj_list, adj.first, &visited, &ret);
     }
@@ -449,7 +450,7 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
-  for (auto adj : adj_list) {
+  for (auto const &adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
       SortHelper<DescOrderComparator>(adj_list, adj.first, &visited, &ret);
     }
@@ -502,6 +503,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   // TODO(Ruibiao) : Set OpDeviceAttrName when needed
 
   std::vector<std::string> output_names;
+  output_names.reserve(node.outputs.size());
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());
   }
@@ -741,7 +743,7 @@ template <class T = Node *>
 static void GetGraphVarDesc(const Graph &graph,
                             const std::unordered_set<T> &nodes,
                             std::vector<proto::VarDesc> *vars) {
-  for (T node : nodes) {
+  for (T const &node : nodes) {
     if (node->IsVar() && node->Var() &&
         node->GetVarNodeBlockId() == graph.GetBlockId()) {
       vars->emplace_back(*node->Var()->Proto());

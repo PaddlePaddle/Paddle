@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(all_blocks_convert_trt);
 
 namespace paddle {
 namespace framework {
@@ -383,6 +384,8 @@ class Graph {
 
   bool IsMainGraph() const { return main_graph_ == nullptr; }
 
+  const Graph *GetMainGraph() const { return main_graph_; }
+
   Graph *GetSubGraph(const size_t idx) const {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(),
@@ -410,6 +413,20 @@ class Graph {
         true,
         platform::errors::InvalidArgument("This graph is not main_graph"));
     return sub_graphs_.size();
+  }
+
+  std::vector<std::string> AttrNames() const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->AttrNames();
+      }
+    }
+    std::vector<std::string> res;
+    res.reserve(attrs_.size());
+    for (auto &attr : attrs_) {
+      res.push_back(attr.first);
+    }
+    return res;
   }
 
  private:

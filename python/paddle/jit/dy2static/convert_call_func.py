@@ -18,7 +18,7 @@ import functools
 import inspect
 import logging
 import os
-import pdb
+import pdb  # noqa: T100
 import re
 from typing import Any, List
 
@@ -40,7 +40,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func, unwrap
+from .utils import is_builtin, is_paddle_func
 
 __all__ = []
 
@@ -124,9 +124,7 @@ def is_unsupported(func):
             if func is v:
                 translator_logger.log(
                     2,
-                    "Whitelist: {} is part of built-in module and does not have to be transformed.".format(
-                        func
-                    ),
+                    f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
                 )
                 return True
 
@@ -142,9 +140,7 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
-            "Whitelist: {} is part of Paddle module and does not have to be transformed.".format(
-                func
-            ),
+            f"Whitelist: {func} is part of Paddle module and does not have to be transformed.",
         )
         return True
 
@@ -198,9 +194,7 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
-            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".format(
-                func
-            ),
+            f"{func} is not converted when it is decorated by 'paddle.jit.not_to_static'.",
         )
         return func
 
@@ -256,7 +250,7 @@ def convert_call(func):
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
             # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
-            _origfunc = unwrap(func)
+            _origfunc = inspect.unwrap(func)
             global_functions = set()
             for fn in _origfunc.__globals__.values():
                 if inspect.isfunction(fn):
@@ -280,9 +274,7 @@ def convert_call(func):
                 # If func is not in __globals__, it does not need to be transformed
                 # because it has been transformed before.
                 translator_logger.warn(
-                    "{} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is.".format(
-                        func
-                    )
+                    f"{func} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is."
                 )
                 converted_call = func
         except AttributeError:
@@ -334,9 +326,7 @@ def convert_call(func):
 
     if converted_call is None:
         translator_logger.warn(
-            "{} doesn't have to be transformed to static function, and it will be run as-is.".format(
-                func
-            )
+            f"{func} doesn't have to be transformed to static function, and it will be run as-is."
         )
         return func
 

@@ -31,12 +31,8 @@ void PrintIR(Operation *op, bool print_module, std::ostream &os) {
     return;
   }
 
-  // Find the top-level operation.
-  auto *top_op = op;
-  while (auto *parent_op = top_op->GetParentOp()) {
-    top_op = parent_op;
-  }
-  top_op->Print(os);
+  auto *program = op->GetParentProgram();
+  program->Print(os);
 }
 }  // namespace
 

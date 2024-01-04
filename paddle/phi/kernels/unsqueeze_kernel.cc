@@ -27,7 +27,7 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
                           DenseTensor* out) {
   auto x_dims = x.dims();
   auto out_dims = out->dims();
-  if (axes.FromTensor()) {
+  if (axes.FromTensor() && out->dims()[0] == -1) {
     out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);
   }
   out->Resize(out_dims);
@@ -102,16 +102,16 @@ PD_REGISTER_KERNEL(unsqueeze,
                    GPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeKernel,
+                   bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   bool,
                    int,
-                   int16_t,
-                   uint8_t,
                    int8_t,
                    int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif
@@ -124,6 +124,7 @@ PD_REGISTER_KERNEL(unsqueeze_infer,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    bool,
                    int,
                    uint8_t,
@@ -137,6 +138,7 @@ PD_REGISTER_KERNEL(unsqueeze,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    bool,
                    int,
                    uint8_t,

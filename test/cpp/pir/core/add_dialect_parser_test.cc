@@ -26,6 +26,7 @@
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/utils.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using AttributeStorage = pir::AttributeStorage;
@@ -44,7 +45,7 @@ class TestParserDialect : public pir::Dialect {
   void initialize();
 };
 
-IR_DECLARE_EXPLICIT_TYPE_ID(TestParserDialect);
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestParserDialect);
 IR_DEFINE_EXPLICIT_TYPE_ID(TestParserDialect);
 
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(CharAttributeStorage, char);
@@ -63,7 +64,7 @@ class CharAttribute : public pir::Attribute {
   }
 };
 
-IR_DECLARE_EXPLICIT_TYPE_ID(CharAttribute);
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(CharAttribute);
 
 IR_DEFINE_EXPLICIT_TYPE_ID(CharAttribute);
 
@@ -99,7 +100,7 @@ TEST(IrParserTest, AddAttribute) {
   ctx->GetOrRegisterDialect<TestParserDialect>();
 
   std::string op_str =
-      " (%0) = \"builtin.get_parameter\" () "
+      " (%0) = \"builtin.parameter\" () "
       "{parameter_name:\"conv2d_0.w_0\",test:(tp.char)a} : () -> "
       "pd_op.tensor<64x3x7x7xf32>";
   std::stringstream ss;

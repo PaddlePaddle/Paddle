@@ -21,7 +21,7 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-OperationMap* OperationMap::map = nullptr;
+OperationMap *OperationMap::map = nullptr;
 
 OperationMap::OperationMap() {
   InsertUnaryElementwiseOperations();
@@ -31,7 +31,7 @@ OperationMap::OperationMap() {
 
 std::unordered_set<std::string> OperationMap::Find(int type) {
   std::unordered_set<std::string> res;
-  for (auto& t : operations_) {
+  for (auto &t : operations_) {
     if (t.second.type == type) {
       res.insert(t.first);
     }
@@ -60,15 +60,15 @@ void OperationMap::Insert(int type,
     // grad_inputs = inputs + outputs + grad of outputs
     std::vector<std::string> grad_input_names = input_names;
 
-    for (auto name : output_names) {
+    for (auto const &name : output_names) {
       grad_input_names.push_back(name);
     }
-    for (auto name : output_names) {
+    for (auto const &name : output_names) {
       grad_input_names.push_back(GradVarName(name));
     }
     // grad_output = grad of inputs
     std::vector<std::string> grad_output_names;
-    for (auto name : input_names) {
+    for (auto const &name : input_names) {
       grad_output_names.push_back(GradVarName(name));
     }
     Operation grad_op(type,

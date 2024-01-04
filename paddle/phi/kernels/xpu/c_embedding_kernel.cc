@@ -24,9 +24,11 @@ void CEmbeddingKernel(const Context& dev_ctx,
                       const DenseTensor& w,
                       const DenseTensor& ids,
                       int64_t start_index,
+                      int64_t vocab_size,
                       DenseTensor* out) {
   const T* table_data = w.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   const int64_t height = w.dims()[0];
   const int64_t width = w.dims()[1];
@@ -41,9 +43,9 @@ void CEmbeddingKernel(const Context& dev_ctx,
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32) {
     int r = xpu::embedding(dev_ctx.x_context(),
-                           table_data,
+                           reinterpret_cast<const XPUType*>(table_data),
                            ids.data<int32_t>(),
-                           output_data,
+                           reinterpret_cast<XPUType*>(output_data),
                            height,
                            width,
                            ids.numel(),
@@ -52,9 +54,9 @@ void CEmbeddingKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
   } else if (index_type == phi::DataType::INT64) {
     int r = xpu::embedding(dev_ctx.x_context(),
-                           table_data,
+                           reinterpret_cast<const XPUType*>(table_data),
                            ids.data<int64_t>(),
-                           output_data,
+                           reinterpret_cast<XPUType*>(output_data),
                            height,
                            width,
                            ids.numel(),
@@ -68,5 +70,10 @@ void CEmbeddingKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(c_embedding, XPU, ALL_LAYOUT, phi::CEmbeddingKernel, float) {
-}
+PD_REGISTER_KERNEL(c_embedding,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CEmbeddingKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

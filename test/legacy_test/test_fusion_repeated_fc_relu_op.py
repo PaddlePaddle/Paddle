@@ -78,7 +78,7 @@ class TestFusionRepeatedFCReluOp(OpTest):
         self.outputs = {'Out': outs[-1], 'ReluOut': relu_outs}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def set_conf(self):
         pass

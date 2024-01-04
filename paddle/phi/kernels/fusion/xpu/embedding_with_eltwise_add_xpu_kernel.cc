@@ -21,7 +21,10 @@ namespace fusion {
 
 namespace {
 template <typename T>
-void FillSeqLod(int batch_size, int max_seq_len, const T* mask, int* seq_lod) {
+void FillSeqLod(int batch_size,
+                int max_seq_len,
+                const T* mask,
+                std::vector<int>* cpu_seq_lod) {
   for (int batch_idx = 0; batch_idx < batch_size; batch_idx++) {
     int cur_batch_seq_len = 0;
     for (int seq_idx = 0; seq_idx < max_seq_len; seq_idx++) {
@@ -32,13 +35,7 @@ void FillSeqLod(int batch_size, int max_seq_len, const T* mask, int* seq_lod) {
         break;
       }
     }
-    PADDLE_ENFORCE_GT(
-        cur_batch_seq_len,
-        0,
-        errors::PreconditionNotMet(
-            "cur_batch_seq_len should be greater than 0, but got %d.",
-            cur_batch_seq_len));
-    seq_lod[batch_idx + 1] = seq_lod[batch_idx] + cur_batch_seq_len;
+    cpu_seq_lod->push_back(cpu_seq_lod->back() + cur_batch_seq_len);
   }
 }
 
@@ -46,24 +43,18 @@ template <>
 void FillSeqLod<float>(int batch_size,
                        int max_seq_len,
                        const float* mask,
-                       int* seq_lod) {
+                       std::vector<int>* cpu_seq_lod) {
   for (int batch_idx = 0; batch_idx < batch_size; batch_idx++) {
     int cur_batch_seq_len = 0;
     for (int seq_idx = 0; seq_idx < max_seq_len; seq_idx++) {
       int mask_idx = batch_idx * max_seq_len + seq_idx;
-      if (fabs(mask[mask_idx]) > 1e-5) {
+      if (mask[mask_idx] > 1e-7) {
         cur_batch_seq_len++;
       } else {
         break;
       }
     }
-    PADDLE_ENFORCE_GT(
-        cur_batch_seq_len,
-        0,
-        errors::PreconditionNotMet(
-            "cur_batch_seq_len should be greater than 0, but got %d.",
-            cur_batch_seq_len));
-    seq_lod[batch_idx + 1] = seq_lod[batch_idx] + cur_batch_seq_len;
+    cpu_seq_lod->push_back(cpu_seq_lod->back() + cur_batch_seq_len);
   }
 }
 
@@ -110,28 +101,30 @@ void MultiEmbeddingKernel(const Context& ctx,
   }
 
   auto& id_dims = ids[0]->dims();
-  int batch_size = id_dims[0];
-  int max_seq_len_value = id_dims[1];
+  int idx_len = id_dims[0] * id_dims[1];
+  std::vector<std::vector<TID>> int_idx(emb_layer_num,
+                                        std::vector<TID>(idx_len, 0));
+  std::vector<xpu::VectorParam<TID>> arg_ids;
   auto* mask_tensor = mask.get_ptr();
   if (mask_tensor != nullptr) {
+    int batch_size = mask_tensor->dims()[0];
+    auto pad_seq_len = mask_tensor->dims()[1];
     max_seq_len->Resize({1});
-    ctx.template HostAlloc<int>(max_seq_len)[0] = max_seq_len_value;
-
+    ctx.template HostAlloc<int>(max_seq_len)[0] = pad_seq_len;
     seq_lod->Resize({batch_size + 1});
     int* seq_lod_data = ctx.template HostAlloc<int>(seq_lod);
-    seq_lod_data[0] = 0;
+
+    std::vector<int> cpu_seq_lod{0};
     switch (mask_tensor->dtype()) {
       case DataType::FLOAT32:
-        FillSeqLod(batch_size,
-                   max_seq_len_value,
-                   mask_tensor->data<float>(),
-                   seq_lod_data);
+        FillSeqLod(
+            batch_size, pad_seq_len, mask_tensor->data<float>(), &cpu_seq_lod);
         break;
       case DataType::INT64:
         FillSeqLod(batch_size,
-                   max_seq_len_value,
+                   pad_seq_len,
                    mask_tensor->data<int64_t>(),
-                   seq_lod_data);
+                   &cpu_seq_lod);
         break;
       default:
         PADDLE_THROW(
@@ -140,14 +133,30 @@ void MultiEmbeddingKernel(const Context& ctx,
                                        DataTypeToString(mask_tensor->dtype())));
         break;
     }
-    out->Resize({batch_size, seq_lod_data[batch_size], emb_dim});
-  }
-
-  int ids_len = id_dims[0] * id_dims[1];
-  std::vector<xpu::VectorParam<TID>> arg_ids;
-  for (int i = 0; i < emb_layer_num; i++) {
-    arg_ids.push_back(
-        xpu::VectorParam<TID>{ids[i]->data<TID>(), ids_len, nullptr});
+    memcpy(seq_lod_data, cpu_seq_lod.data(), cpu_seq_lod.size() * sizeof(int));
+    idx_len = cpu_seq_lod.back();
+    for (int i = 0; i < emb_layer_num; ++i) {
+      auto* idx_pad_ptr = ids[i]->data<TID>();
+      for (auto batch_idx = 0; batch_idx < batch_size; batch_idx++) {
+        for (auto j = 0;
+             j < cpu_seq_lod[batch_idx + 1] - cpu_seq_lod[batch_idx];
+             j++) {
+          int_idx[i][cpu_seq_lod[batch_idx] + j] =
+              static_cast<TID>(idx_pad_ptr[batch_idx * pad_seq_len + j]);
+        }
+      }
+      arg_ids.push_back(
+          xpu::VectorParam<TID>{int_idx[i].data(), idx_len, nullptr});
+    }
+    out->Resize({1, idx_len, emb_dim});
+  } else {
+    for (int i = 0; i < emb_layer_num; i++) {
+      for (int j = 0; j < idx_len; j++) {
+        int_idx[i][j] = static_cast<TID>(ids[i]->data<TID>()[j]);
+      }
+      arg_ids.push_back(
+          xpu::VectorParam<TID>{int_idx[i].data(), idx_len, nullptr});
+    }
   }
 
   int r = xpu::multi_embedding_fusion<XPUType, XPUType, TID>(

@@ -119,7 +119,7 @@ class TestGroupNormOp(OpTest):
         inplace_atol = 0
         place = core.CPUPlace()
 
-        self.check_output_with_place(place, atol=atol)
+        self.check_output_with_place(place, atol=atol, check_pir=True)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -132,7 +132,7 @@ class TestGroupNormOp(OpTest):
             # relative error is 1e-05 in numpy.allclose by default.
             # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
             self.check_output_with_place(
-                place, atol=atol, inplace_atol=inplace_atol
+                place, atol=atol, inplace_atol=inplace_atol, check_pir=True
             )
 
     def do_compare_between_place(self):
@@ -169,13 +169,13 @@ class TestGroupNormOp(OpTest):
             return
 
         place = core.CPUPlace()
-        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
+        self.check_grad_with_place(
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+        )
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place,
-                {'X', 'Scale', 'Bias'},
-                'Y',
+                place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
             )
 
     def init_test_case(self):
@@ -201,14 +201,16 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
 
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
+        self.check_grad_with_place(
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+        )
 
     def init_test_case(self):
         self.dtype = np.float16
@@ -266,14 +268,16 @@ class TestGroupNormBF16Op(OpTest):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
 
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
+        self.check_grad_with_place(
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+        )
 
     def init_test_case(self):
         pass
@@ -366,7 +370,11 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         inplace_atol = 2e-3
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, rtol=rtol, atol=atol, inplace_atol=inplace_atol
+            place,
+            rtol=rtol,
+            atol=atol,
+            inplace_atol=inplace_atol,
+            check_pir=True,
         )
 
 
@@ -418,7 +426,7 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def test_check_output(self):
         rtol = 2e-2
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, rtol=rtol)
+        self.check_output_with_place(place, rtol=rtol, check_pir=True)
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):

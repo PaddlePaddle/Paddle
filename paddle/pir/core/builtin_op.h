@@ -16,6 +16,7 @@
 
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 
 namespace pir {
 
@@ -31,9 +32,9 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
   static const char *name() { return "builtin.module"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
-  void Verify() const;
+  void VerifySig() const;
   Program *program();
-  Block *block();
+  Block &block();
 
   //
   // As the top operation, ModuleOp only support create&destroye through
@@ -43,20 +44,21 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
 };
 
 ///
-/// \brief GetParameterOp: OpResult = GetParameterOp({StrAttribute,
+/// \brief ParameterOp: OpResult = ParameterOp({StrAttribute,
 /// StrAttribute})
 ///
-class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
+class IR_API ParameterOp : public pir::Op<ParameterOp> {
  public:
   using Op::Op;
-  static const char *name() { return "builtin.get_parameter"; }
+  static const char *name() { return "builtin.parameter"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     const std::string &name,
                     Type type);
-  void Verify() const;
+  void VerifySig() const;
+  std::string param_name() const;
 
  private:
   static void PassStopGradients(OperationArgument &argument);  // NOLINT
@@ -66,7 +68,7 @@ class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
 /// \brief SetParameterOp: SetParameterOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
-class IR_API SetParameterOp : public pir::Op<SetParameterOp> {
+class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.set_parameter"; }
@@ -76,7 +78,24 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp> {
                     OperationArgument &argument,  // NOLINT
                     Value parameter,
                     const std::string &name);
-  void Verify() const;
+  void VerifySig() const;
+};
+
+///
+/// \brief ShdowOutputOp: ShdowOutputOp(OpOperand, {StrAttribute,
+/// StrAttribute})
+///
+class IR_API ShadowOutputOp : public pir::Op<ShadowOutputOp, SideEffectTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "builtin.shadow_output"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value parameter,
+                    const std::string &name);
+  void VerifySig() const;
 };
 
 ///
@@ -96,7 +115,7 @@ class IR_API CombineOp : public pir::Op<CombineOp> {
                     OperationArgument &argument,  // NOLINT
                     const std::vector<Value> &inputs);
 
-  void Verify() const;
+  void VerifySig() const;
   std::vector<pir::Value> inputs() {
     std::vector<pir::Value> inputs;
     for (uint32_t idx = 0; idx < num_operands(); idx++) {
@@ -125,8 +144,9 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
                     Value input,
                     int index);
 
-  void Verify() const;
+  void VerifySig() const;
   pir::Value input() { return operand_source(0); }
+  void RefreshStopGradients();
 
  private:
   static void PassStopGradients(OperationArgument &argument,  // NOLINT
@@ -150,7 +170,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
                     OperationArgument &argument,  // NOLINT
                     Value input);
 
-  void Verify() const;
+  void VerifySig() const;
   pir::Value input() { return operand_source(0); }
   std::vector<OpResult> outputs() {
     std::vector<OpResult> res;
@@ -159,6 +179,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
     }
     return res;
   }
+  void RefreshStopGradients();
 
  private:
   static void PassStopGradients(OperationArgument &argument);  // NOLINT
@@ -186,20 +207,38 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
                     Attribute value,
                     Type output_type);
 
-  void Verify() const;
-
+  void VerifySig() const;
+  OpResult out() { return result(0); }
   Attribute value() const;
 };
 
-void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
+///
+/// \brief ConstantTensorOp: OpResult = ConstantTensorOp({StrAttribute,
+/// StrAttribute})
+///
+class IR_API ConstantTensorOp : public ConstantOp {
+ public:
+  using ConstantOp::ConstantOp;
 
+  static ConstantTensorOp dyn_cast(Operation *op);
+  static bool classof(const Operation *op);
+
+  void VerifySig() const;
+
+  std::string tensor_name();
+};
+
+void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
+void RefreshStopGradientsDefaultly(Operation *Op);
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ModuleOp)
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::CombineOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

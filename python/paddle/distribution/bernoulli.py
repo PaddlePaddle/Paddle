@@ -212,6 +212,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.seed(1)
                 >>> from paddle.distribution import Bernoulli
 
                 >>> rv = Bernoulli(paddle.full((1), 0.3))
@@ -231,28 +232,26 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 [100, 2, 2]
 
                 >>> # `rsample` has to be followed by a `sigmoid`
-                >>> # doctest: +SKIP
                 >>> rv = Bernoulli(0.3)
                 >>> rsample = rv.rsample([3, ])
                 >>> rsample_sigmoid = paddle.nn.functional.sigmoid(rsample)
-                >>> print(rsample, rsample_sigmoid)
-                Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[-0.88315082],
-                [-0.62347704],
-                [-0.31513220]])
-                Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0.29252526],
-                [0.34899110],
-                [0.42186251]])
+                >>> print(rsample)
+                Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-1.46112013, -0.01239836, -1.32765460])
+                >>> print(rsample_sigmoid)
+                Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.18829606, 0.49690047, 0.20954758])
 
                 >>> # The smaller the `temperature`, the distribution of `rsample` closer to `sample`, with `probs` of 0.3.
                 >>> print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=1.0)).sum())
+                >>> # doctest: +SKIP('output will be different')
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                361.06829834)
+                365.63122559)
+                >>> # doctest: -SKIP
 
                 >>> print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=0.1)).sum())
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                288.66418457)
+                320.15057373)
         """
         name = self.name + '_rsample'
         if not in_dynamic_mode():

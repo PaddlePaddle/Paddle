@@ -97,6 +97,7 @@ using paddle::PaddlePredictor;
 using paddle::PaddleTensor;
 using paddle::PassStrategy;
 using paddle::ZeroCopyTensor;
+using paddle_infer::experimental::InternalUtils;
 
 namespace {
 void BindPaddleDType(py::module *m);
@@ -116,6 +117,7 @@ void BindPaddlePassBuilder(py::module *m);
 void BindPaddleInferPredictor(py::module *m);
 void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
+void BindInternalUtils(py::module *m);
 
 #ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m);
@@ -204,7 +206,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
 
 py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
   py::dtype dt = PaddleDTypeToNumpyDType(tensor.dtype);
-  return py::array(std::move(dt), {tensor.shape}, tensor.data.data());
+  return py::array(dt, {tensor.shape}, tensor.data.data());
 }
 
 template <typename T>
@@ -212,7 +214,7 @@ void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
                           py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
-  tensor.Reshape(std::move(shape));
+  tensor.Reshape(shape);
   tensor.copy_from_cpu(static_cast<const T *>(data.data()));
 }
 
@@ -233,7 +235,7 @@ void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
                              py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
-  tensor.Reshape(std::move(shape));
+  tensor.Reshape(shape);
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
 
@@ -300,8 +302,8 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   }
 }
 
-void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
-                                   paddle::Tensor &&paddle_tensor) {
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
+                                   paddle::Tensor &paddle_tensor) {  // NOLINT
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
     shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
@@ -343,10 +345,15 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<int64_t *>(paddle_tensor.data<int64_t>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::UINT8) {
+    tensor.ShareExternalData(
+        static_cast<uint8_t *>(paddle_tensor.data()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
+        "INT64, UINT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -509,6 +516,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddleInferTensor(m);
   BindPaddlePassBuilder(m);
   BindPredictorPool(m);
+  BindInternalUtils(m);
 #ifdef PADDLE_WITH_DNNL
   BindMkldnnQuantizerConfig(m);
 #endif
@@ -852,6 +860,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
+      .def("enable_new_executor",
+           &AnalysisConfig::EnableNewExecutor,
+           py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
@@ -957,6 +968,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
+      .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)
@@ -1238,8 +1250,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("_share_external_data_paddle_tensor_bind",
            [](paddle_infer::Tensor &self, const py::handle &input) {
              PyObject *obj = input.ptr();
-             PaddleTensorShareExternalData(self,
-                                           std::move(CastPyArg2Tensor(obj, 0)));
+             PaddleTensorShareExternalData(self, CastPyArg2Tensor(obj, 0));
            })
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
@@ -1262,8 +1273,8 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("set_passes",
            [](PaddlePassBuilder &self, const std::vector<std::string> &passes) {
              self.ClearPasses();
-             for (auto pass : passes) {
-               self.AppendPass(std::move(pass));
+             for (auto const &pass : passes) {
+               self.AppendPass(pass);
              }
            })
       .def("append_pass", &PaddlePassBuilder::AppendPass)
@@ -1303,6 +1314,24 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
       .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &GpuPassStrategy::EnableMkldnnBfloat16);
+}
+
+void BindInternalUtils(py::module *m) {
+  py::class_<InternalUtils> internal_utils(*m, "InternalUtils");
+  internal_utils
+      .def_static("set_transformer_posid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerPosid(&config, tensor_name);
+                  })
+      .def_static("set_transformer_maskid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerMaskid(&config, tensor_name);
+                  })
+      .def_static("disable_tensorrt_half_ops",
+                  [](paddle_infer::Config &config,
+                     const std::unordered_set<std::string> &ops) {
+                    InternalUtils::DisableTensorRtHalfOps(&config, ops);
+                  });
 }
 }  // namespace
 }  // namespace pybind

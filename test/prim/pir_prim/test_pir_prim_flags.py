@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.decomposition import decompose
+from paddle.decomposition import decomp
 
 
 class TestPrimBlacklistFlags(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             # Ensure that tanh in original block
             self.assertTrue('pd_op.gelu' in fwd_ops)
 
-            [y] = decompose(main_program, [y])
+            [y] = decomp.decompose(main_program, [y])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops
@@ -67,7 +67,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             # Ensure that tanh in original block
             self.assertTrue('pd_op.gelu' in fwd_ops)
 
-            _ = decompose(main_program, [y])
+            _ = decomp.decompose(main_program, [y])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops
@@ -102,16 +102,19 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
         x = paddle.randn([2, 4])
         x.stop_gradient = False
         net = PrimeNet()
-        net = paddle.jit.to_static(net)
+        net.forward = paddle.jit.to_static(full_graph=True)(net.forward)
         out = net(x)
         loss = paddle.mean(out)
         loss.backward()
         self.check_prim(net)
 
     def check_prim(self, net):
-        block = net.forward.program_cache.last()[-1][
-            -1
-        ].train_program.global_block()
+        program = net.forward.program_cache.last()[-1][-1].train_program
+        if isinstance(
+            program, paddle.jit.dy2static.pir_partial_program.RunableProgram
+        ):
+            program = program.program
+        block = program.global_block()
         ops = [op.name() for op in block.ops]
         self.assertTrue('pd_op.tanh_grad' in ops)
         self.assertTrue('pd_op.exp_grad' in ops)

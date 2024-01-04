@@ -13,18 +13,4 @@ cc_library(
 cc_library(
   lite_tensor_utils
   SRCS tensor_utils.cc
-  DEPS memcpy ${LITE_DEPS} framework_proto device_context ${XPU_DEPS})
-# TODO(shentanyue): fix ut later
-# cc_test_old(
-#   test_lite_engine
-#   SRCS
-#   test_engine_lite.cc
-#   DEPS
-#   lite_engine
-#   protobuf
-#   framework_proto
-#   glog
-#   gtest
-#   analysis)
-# cc_test_old(test_lite_tensor_utils SRCS test_tensor_utils.cc DEPS lite_engine
-#             lite_tensor_utils)
+  DEPS ${LITE_DEPS} framework_proto device_context ${XPU_DEPS})

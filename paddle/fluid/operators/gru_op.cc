@@ -333,7 +333,8 @@ class GRUCPUKernel : public framework::OpKernel<T> {
     auto input_dims = input->dims();
     auto hidden_dims = hidden->dims();
 
-    LodTensorPtr batch_gate, batch_reset_hidden_prev, batch_hidden;
+    LodTensorPtr batch_gate = nullptr, batch_reset_hidden_prev = nullptr,
+                 batch_hidden = nullptr;
     phi::DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp,
         batch_hidden_tmp;
     if (is_test) {

@@ -176,8 +176,10 @@ struct DeviceContext::Impl {
       allocator = cuda_graph_allocator_;
     }
 #endif
-    return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
+    return tensor->AllocateFrom(const_cast<Allocator*>(allocator),
+                                dtype,
+                                requested_size,
+                                fake_alloc);  // NOLINT
   }
 
   template <typename T>
@@ -218,8 +220,10 @@ struct DeviceContext::Impl {
         (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? host_zero_allocator_
             : host_allocator_;
-    return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
+    return tensor->AllocateFrom(const_cast<Allocator*>(allocator),
+                                dtype,
+                                requested_size,
+                                fake_alloc);  // NOLINT
   }
 
   template <typename T>

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <set>
 #include "paddle/pir/core/interface_support.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/type.h"
@@ -31,11 +32,13 @@ namespace storage_helper_base_impl {
 /// \brief Returns true if this given trait id matches the ids of any of the
 /// provided trait.
 ///
-template <template <typename T> class... Traits>
+template <class... Traits>
 bool hasTrait(TypeId traitID) {
-  TypeId traitIDs[] = {TypeId::get<Traits>()...};
-  for (unsigned i = 0, e = sizeof...(Traits); i != e; ++i)
-    if (traitIDs[i] == traitID) return true;
+  if constexpr (sizeof...(Traits) != 0) {
+    TypeId traitIDs[] = {TypeId::get<Traits>()...};
+    for (unsigned i = 0, e = sizeof...(Traits); i != e; ++i)
+      if (traitIDs[i] == traitID) return true;
+  }
   return false;
 }
 
@@ -95,8 +98,8 @@ class StorageHelperBase : public BaseT {
   /// \brief Returns an interface map for the interfaces registered to this
   /// storage user.
   ///
-  static std::vector<InterfaceValue> interface_map() {
-    return pir::detail::GetInterfaceMap<ConcreteT, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteT, InterfaceList>();
   }
 
   ///

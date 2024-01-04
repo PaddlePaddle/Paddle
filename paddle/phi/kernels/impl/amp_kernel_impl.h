@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/amp_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
@@ -128,7 +128,8 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   if (is_found_inf_on_cpu) {
     if (*found_inf_data) {
       for (auto* out : outs) {
-        Full<T>(dev_ctx, vectorize(out->dims()), static_cast<T>(0), out);
+        Full<T>(
+            dev_ctx, common::vectorize(out->dims()), static_cast<T>(0), out);
       }
     }
   } else {

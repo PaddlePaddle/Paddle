@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute_storage.h"
 #include "paddle/pir/core/utils.h"
@@ -26,6 +27,26 @@ class IR_API BoolAttribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(BoolAttribute, BoolAttributeStorage);
 
   bool data() const;
+};
+
+class IR_API Complex64Attribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Complex64Attribute,
+                                    Complex64AttributeStorage);
+
+  phi::dtype::complex<float> data() const;
+};
+
+class IR_API Complex128Attribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Complex128Attribute,
+                                    Complex128AttributeStorage);
+
+  phi::dtype::complex<double> data() const;
 };
 
 class IR_API FloatAttribute : public Attribute {
@@ -53,6 +74,15 @@ class IR_API Int32Attribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int32Attribute, Int32AttributeStorage);
 
   int32_t data() const;
+};
+
+class IR_API IndexAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(IndexAttribute, IndexAttributeStorage);
+
+  int64_t data() const;
 };
 
 class IR_API Int64Attribute : public Attribute {
@@ -109,10 +139,30 @@ class IR_API ArrayAttribute : public Attribute {
 
   bool empty() const;
 
+  // Returns element at specified location pos, with bounds checking.
   Attribute at(size_t index) const;
+
+  // Returns element at specified location pos. No bounds checking is performed.
+  Attribute operator[](size_t index) const;
 
   static ArrayAttribute get(IrContext* ctx,
                             const std::vector<Attribute>& value);
+};
+
+class IR_API TensorNameAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(TensorNameAttribute, StrAttributeStorage);
+
+  bool operator<(const TensorNameAttribute& right) const;
+
+  std::string data() const;
+
+  size_t size() const;
+
+  static TensorNameAttribute get(IrContext* ctx,
+                                 const std::string& tensor_name);
 };
 
 }  // namespace pir
@@ -123,6 +173,10 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::FloatAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::DoubleAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Int32Attribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Int64Attribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::IndexAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ArrayAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::PointerAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TypeAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::TensorNameAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex64Attribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex128Attribute)

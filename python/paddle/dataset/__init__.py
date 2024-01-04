@@ -15,18 +15,20 @@
 Dataset package.
 """
 
-import paddle.dataset.mnist  # noqa: F401
-import paddle.dataset.imikolov  # noqa: F401
-import paddle.dataset.imdb  # noqa: F401
-import paddle.dataset.cifar  # noqa: F401
-import paddle.dataset.movielens  # noqa: F401
-import paddle.dataset.conll05  # noqa: F401
-import paddle.dataset.uci_housing  # noqa: F401
-import paddle.dataset.wmt14  # noqa: F401
-import paddle.dataset.wmt16  # noqa: F401
-import paddle.dataset.flowers  # noqa: F401
-import paddle.dataset.voc2012  # noqa: F401
-import paddle.dataset.image  # noqa: F401
+from . import (  # noqa: F401
+    cifar,
+    conll05,
+    flowers,
+    image,
+    imdb,
+    imikolov,
+    mnist,
+    movielens,
+    uci_housing,
+    voc2012,
+    wmt14,
+    wmt16,
+)
 
 # set __all__ as empty for not showing APIs under paddle.dataset
 __all__ = []

@@ -25,6 +25,7 @@ using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
 XPUOpMap& get_kl1_ops();
 XPUOpMap& get_kl2_ops();
+XPUOpMap& get_kl3_ops();
 
 #ifdef PADDLE_WITH_XPU_KP
 bool is_xpu_kp_support_op(const std::string& fluid_op_name,

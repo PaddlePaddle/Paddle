@@ -18,9 +18,9 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 
+#include "paddle/common/hostdevice.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
 namespace phi {
 namespace funcs {
 namespace detail {

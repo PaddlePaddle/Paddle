@@ -88,8 +88,6 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   std::string model_dir = FLAGS_infer_model;
   SetConfig(&config, model_dir, true);
 
-  config.SwitchUseFeedFetchOps(false);
-
   int batch = 32;
   int min_seq_len = 1;
   int max_seq_len = 128;

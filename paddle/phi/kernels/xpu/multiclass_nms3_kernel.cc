@@ -46,7 +46,7 @@ void MultiClassNMSKernel(const Context& ctx,
   bool return_index = index != nullptr;
   bool has_rois_num = rois_num.get_ptr() != nullptr;
   bool return_rois_num = nms_rois_num != nullptr;
-  auto score_dims = phi::vectorize<int>(scores.dims());
+  auto score_dims = common::vectorize<int>(scores.dims());
   auto score_size = score_dims.size();
   bool is_lod = score_size == 2 ? true : false;
 
