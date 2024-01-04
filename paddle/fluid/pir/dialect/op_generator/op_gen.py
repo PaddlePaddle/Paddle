@@ -22,7 +22,10 @@ import yaml
 from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
 from infer_symbolic_shape_gen import gen_infer_symbolic_shape_str
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
-from op_infermeta_gen import gen_infermeta_func_str
+from op_infermeta_gen import (
+    gen_infermeta_by_invoke_func_str,
+    gen_infermeta_func_str,
+)
 from op_interface_gen import (
     gen_exclusive_interface_str,
     gen_op_infer_meta_str,
@@ -1727,6 +1730,18 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         op_non_mutable_attribute_build_arg_type_list,
                         muta_attr_is_input,
                         attr_args_is_map=True,
+                    )
+
+                if (op_invoke_map is not None) and (
+                    op_invoke_map['func'] in op_info_items
+                ):
+                    op_invoke_class_name = (
+                        to_pascal_case(op_invoke_map['func']) + "Op"
+                    )
+                    op_infer_meta_from_type_str = (
+                        gen_infermeta_by_invoke_func_str(
+                            op_class_name, op_invoke_class_name
+                        )
                     )
 
                 # =================================== #

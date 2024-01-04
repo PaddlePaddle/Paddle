@@ -412,14 +412,16 @@ static const phi::DataType GetKernelTypeforVar(
 }
 
 static const std::vector<pir::Type> InferMetaByValue(
-    pir::Operation* op, const std::vector<pir::Value>& input_values) {
+    pir::Operation* op,
+    std::vector<pir::Value>& input_values,
+    pir::AttributeMap& attribute_map) {
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto infer_meta_interface =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
   if (infer_meta_interface) {
     std::vector<pir::Type> output_types =
-        infer_meta_interface->infer_meta_by_value_(input_values);
+        infer_meta_interface->infer_meta_by_value_(input_values, attribute_map);
     return output_types;
   }
 }
@@ -1520,7 +1522,9 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
   for (size_t i = 0; i < op_item->num_operands(); ++i) {
     input_values.emplace_back(op_item->operand(i).source());
   }
-  std::vector<pir::Type> output_types = InferMetaByValue(op_item, input_values);
+  pir::AttributeMap attribute_map = op_item->attributes();
+  std::vector<pir::Type> output_types =
+      InferMetaByValue(op_item, input_values, attribute_map);
 
   bool is_ouput_changed = false;
   for (size_t i = 0; i < op_item->num_results(); ++i) {
@@ -1529,7 +1533,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
       break;
     }
   }
-  std::vector<pir::Type> op_output_types;
+
   if (is_ouput_changed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
@@ -1610,7 +1614,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
     }
     return op_output_types;
   } else {
-    output_types = InferMetaByValue(op_item, new_vec_inputs);
+    output_types = InferMetaByValue(op_item, new_vec_inputs, attribute_map);
     return output_types;
   }
 }

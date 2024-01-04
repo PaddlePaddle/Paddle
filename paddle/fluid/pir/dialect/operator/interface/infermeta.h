@@ -23,15 +23,14 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
  public:
   /// Defined these methods with the interface.
   struct Concept {
-    explicit Concept(void (*infer_meta)(phi::InferMetaContext *))
-        : infer_meta_(infer_meta) {}
-    explicit Concept(
-        std::vector<pir::Type> (*infer_meta)(const std::vector<pir::Value> &))
-        : infer_meta_by_value_(infer_meta) {}
+    explicit Concept(void (*infer_meta)(phi::InferMetaContext *),
+                     std::vector<pir::Type> (*infer_meta_by_value)(
+                         std::vector<pir::Value> &, pir::AttributeMap &))
+        : infer_meta_(infer_meta), infer_meta_by_value_(infer_meta_by_value) {}
 
     void (*infer_meta_)(phi::InferMetaContext *);
-    std::vector<pir::Type> (*infer_meta_by_value_)(
-        const std::vector<pir::Value> &);
+    std::vector<pir::Type> (*infer_meta_by_value_)(std::vector<pir::Value> &,
+                                                   pir::AttributeMap &);
   };
 
   template <class ConcreteOp>
@@ -39,11 +38,11 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
     static inline void InferMeta(phi::InferMetaContext *infer_meta) {
       return ConcreteOp::InferMeta(infer_meta);
     }
-    static inline std::vector<pir::Type> InferMeta(
-        const std::vector<pir::Value> &input_values) {
-      return ConcreteOp::InferMeta(input_values);
+    static inline std::vector<pir::Type> InferMetaByValue(
+        std::vector<pir::Value> &input_values, pir::AttributeMap &attributes) {
+      return ConcreteOp::InferMeta(input_values, attributes);
     }
-    Model() : Concept(InferMeta) {}
+    Model() : Concept(InferMeta, InferMetaByValue) {}
   };
 
   /// Constructor
@@ -54,9 +53,9 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
     impl_->infer_meta_(infer_meta);
   }
 
-  std::vector<pir::Type> InferMeta(
-      const std::vector<pir::Value> &input_values) {
-    impl_->infer_meta_by_value_(input_values);
+  std::vector<pir::Type> InferMeta(std::vector<pir::Value> &input_values,
+                                   pir::AttributeMap &attributes) {
+    impl_->infer_meta_by_value_(input_values, attributes);
   }
 
  private:

@@ -31,6 +31,12 @@ GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
       "Num of inputs is expected to be {op_input_name_list_size} but got %d.", input_values.size());
 """
 
+OP_INFERMETA_BY_INVOKE_TEMPLATE = """
+std::vector<pir::Type> {op_name}::InferMeta(std::vector<pir::Value>& input_values, pir::AttributeMap attributes) {{
+  return {invoke_class}::InferMeta(input_values, attributes);
+}}
+"""
+
 
 def get_infermeta_inputs_str(
     op_input_name_list,
@@ -147,3 +153,9 @@ def gen_infermeta_func_str(
     )
 
     return infermeta_func
+
+
+def gen_infermeta_by_invoke_func_str(op_class_name, invoke_class_name):
+    return OP_INFERMETA_BY_INVOKE_TEMPLATE.format(
+        op_name=op_class_name, invoke_class=invoke_class_name
+    )
