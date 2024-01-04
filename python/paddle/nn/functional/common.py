@@ -1137,7 +1137,7 @@ def dropout(
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
-            out, mask = _C_ops.dropout(
+            out = _C_ops.dropout(
                 x,
                 None,
                 p,
@@ -2401,7 +2401,7 @@ def fold(
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fold(
             x, output_sizes, kernel_sizes, strides, paddings, dilations
         )

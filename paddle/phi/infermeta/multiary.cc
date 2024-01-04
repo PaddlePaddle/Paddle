@@ -464,22 +464,19 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config) {
-  int64_t max_length = 0;
   bool has_tensor_array = false;
   for (auto input : x) {
     if (input->is_tensor_array()) {
+      if (out->is_tensor_array()) {
+        out->set_dtype(input->dtype());
+        out->set_layout(input->layout());
+      }
       has_tensor_array = true;
-      // if input is lod_tensor_array, dims() will return its size (one element)
-      max_length =
-          input->dims()[0] > max_length ? input->dims()[0] : max_length;
+      break;
     }
   }
 
-  if (has_tensor_array) {
-    if (out->is_tensor_array()) {
-      out->set_dims(common::make_ddim({max_length}));
-    }
-  } else {
+  if (!has_tensor_array) {
     AddNInferMeta(x, out, config);
   }
 }
@@ -3943,10 +3940,16 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
                                const int32_t arch,
+                               const int32_t group_size,
                                MetaTensor* out) {
+  PADDLE_ENFORCE((group_size == -1 || group_size == 64 || group_size == 128),
+                 errors::InvalidArgument("group_size must be -1, 64 or 128."));
+
+  auto weight_scale_dims = weight_scale.dims();
+
   auto x_dims = x.dims();
   auto w_dims = weight.dims();
-  auto n = weight_scale.dims()[0];
+  auto n = group_size == -1 ? weight_scale_dims[0] : weight_scale_dims[1];
   PADDLE_ENFORCE(
       weight_dtype == "int8" || weight_dtype == "int4",
       errors::InvalidArgument("quant_method must be 'int8' or 'int4'."));
@@ -3954,10 +3957,6 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
       w_dims.size(),
       2UL,
       errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      weight_scale.dims().size(),
-      1UL,
-      errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
   PADDLE_ENFORCE_EQ(
       w_dims[0] % 16,
       0,
@@ -3978,6 +3977,30 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
+
+  // per-channel dequantization
+  if (group_size == -1) {
+    PADDLE_ENFORCE_EQ(
+        weight_scale_dims.size(),
+        1UL,
+        errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."
+                                "in per-channel mode."));
+  } else /* groupwise dequantization */ {
+    PADDLE_ENFORCE_EQ(
+        weight_scale_dims.size(),
+        2UL,
+        errors::InvalidArgument("The input(weight_scale) must be a 2D Tensor"
+                                " in groupwise mode."));
+    PADDLE_ENFORCE_EQ(
+        weight_scale_dims[0],
+        (w_dims[1] + (group_size - 1)) / group_size,
+        errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
+                                "to Input(weight) dim[1] / group_size"
+                                "But receive %d and %d",
+                                weight_scale_dims[0],
+                                (w_dims[1] + (group_size - 1)) / group_size));
+  }
+
   auto out_dims = x_dims;
   out_dims[out_dims.size() - 1] = n;
   out->set_dims(out_dims);

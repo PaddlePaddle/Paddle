@@ -15,7 +15,7 @@
 # TODO: define the extention functions
 
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode, tensor
+from paddle import _C_ops, tensor
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
@@ -100,16 +100,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     """
 
-    if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
+    if in_dynamic_or_pir_mode():
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if maxlen is not None:
-            if isinstance(maxlen, core.eager.Tensor):
-                attrs = ('out_dtype', dtype)
-                out = _legacy_C_ops.sequence_mask(x, maxlen, *attrs)
-            else:
-                attrs = ('out_dtype', dtype, 'maxlen', maxlen)
-                out = _legacy_C_ops.sequence_mask(x, None, *attrs)
+            out = _C_ops.sequence_mask(x, maxlen, dtype)
             out.stop_gradient = True
             return out
 

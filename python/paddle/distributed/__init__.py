@@ -87,6 +87,7 @@ from .auto_parallel.api import (
     to_static,
     Strategy,
     DistModel,
+    unshard_dtensor,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -169,4 +170,5 @@ __all__ = [
     "to_static",
     "Strategy",
     "DistModel",
+    "unshard_dtensor",
 ]

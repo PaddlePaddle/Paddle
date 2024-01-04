@@ -174,6 +174,8 @@ static double GetDenseTensorEleSum(const Scope& scope,
         const phi::dtype::float16* data =
             cpu_tensor.data<phi::dtype::float16>();
         sum += static_cast<double>(data[0]);
+      } else if (cpu_tensor.dtype() == phi::DataType::BOOL) {
+        sum += static_cast<double>(cpu_tensor.data<bool>()[i]);
       } else {
         return std::numeric_limits<double>::quiet_NaN();
       }
