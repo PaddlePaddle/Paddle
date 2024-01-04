@@ -150,7 +150,8 @@ void BilateralSliceInferMeta(const MetaTensor& x,
                              const MetaTensor& grid,
                              const MetaTensor& guide,
                              bool has_offset,
-                             MetaTensor* out) {
+                             MetaTensor* out,
+                             MetaConfig config) {
   auto input_dims = x.dims();
   auto grid_dims = grid.dims();
   auto guide_dims = guide.dims();
@@ -161,7 +162,7 @@ void BilateralSliceInferMeta(const MetaTensor& x,
   int64_t input_chans = input_dims[1];
 
   int64_t output_chans = 0;
-  if (((coeffs_chans < 0) || (input_chans < 0))) {
+  if ((!config.is_runtime) && ((coeffs_chans < 0) || (input_chans < 0))) {
     output_chans = -1;
   } else {
     if (has_offset) {
