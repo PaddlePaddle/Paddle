@@ -136,6 +136,45 @@ TEST_F(TestSymbolicExprAnalyzer, compare) {
                analyzer.Prove(e3 < e4).value());
 }
 
+TEST_F(TestSymbolicExprAnalyzer, Divisible) {
+  auto x = ir::Var(ir::Expr(1), ir::Expr(7), "x");
+  auto y = ir::Var(ir::Expr(1), ir::Expr(15), "y");
+  auto S = ir::Var(ir::Expr(16), ir::Expr(256), "S");
+
+  cas_intervals_t divisible_var_intervals = {
+      {"x", CasInterval(x->lower_bound, x->upper_bound)},
+      {"y", CasInterval(y->lower_bound, y->upper_bound)},
+      {"S", CasInterval(S->lower_bound, S->upper_bound)},
+  };
+  SymbolicExprAnalyzer divisible_analyzer{divisible_var_intervals};
+
+  // case 1
+  ir::Expr e1 = 4 * x + 2 * y * x;
+  ir::Expr e2 = x;
+  ir::Expr e3 = y;
+
+  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e1, e2).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e1, e3).value_or(false));
+
+  // case 2
+  ir::Expr e4 = y + y * x + 4 * y - x * y;
+
+  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e4, e3).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e4, e2).value_or(false));
+
+  // case 3
+  ir::Expr e5 = x / y + x + y;
+
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e5, e3).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e5, e2).value_or(false));
+
+  // case 4
+  ir::Expr e6 = S * x / 4 + x * y;
+
+  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e6, e2).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e6, e3).value_or(false));
+}
+
 TEST(SingleIntervalIntSet, constant) {
   SingleIntervalIntSet empty_set(ir::Expr(0), ir::Expr(-1));
   SingleIntervalIntSet all_set(SymbolicExprLimit::negative_inf,
