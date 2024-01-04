@@ -20,6 +20,7 @@ from typing import List, Tuple
 from paddle.base import Variable
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
+    is_gradient_clip_op,
     is_optimize_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
@@ -164,11 +165,15 @@ class MasterGradPass(PassBase):
         # 1.1 delete the var and op associated with the optimizer op in main_program
         main_ops = main_program.global_block().ops
         main_ops_len = len(main_ops)
-        first_optimize_idx = main_ops_len - 1
+        first_optimize_idx = main_ops_len
         for idx, op in enumerate(main_ops):
-            if is_optimize_op(op) and op.type == "squared_l2_norm":
+            # We don't delete the operators for check_nan_inf
+            if is_optimize_op(op) and is_gradient_clip_op(op):
                 first_optimize_idx = idx
                 break
+        assert (
+            first_optimize_idx < main_ops_len
+        ), "The first optimizer op is not found!"
         deleted_temp_var_names = []
         deleted_persist_var_names = []
         reserved_var_names = []
