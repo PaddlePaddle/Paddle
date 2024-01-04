@@ -548,7 +548,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
-
+            # TODO(lanxianghit) mv this into pass_fn
             def shape_pass_fn(forward_program, backward_program):
                 pm = paddle.base.libpaddle.pir.PassManager()
                 paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
