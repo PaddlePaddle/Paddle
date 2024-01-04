@@ -248,6 +248,8 @@ class BuildCinnPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    auto* program = op->GetParentProgram();
+    VLOG(4) << "Before BuildCinnPass: " << *program;
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };

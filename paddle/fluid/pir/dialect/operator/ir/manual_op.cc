@@ -2449,6 +2449,27 @@ void ExpandOp::Build(pir::Builder &builder,
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
+bool ExpandOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value shape = operand_source(1);
+  std::string shape_id = pir::GetValueId(&shape);
+
+  IR_ENFORCE(shape_analysis->value_id_to_shapeordata_.count(shape_id) > 0,
+             "shape_id does not exist.");
+  const auto &data_shape =
+      shape_analysis->value_id_to_shapeordata_.at(shape_id);
+  IR_ENFORCE(data_shape.data().has_value(),
+             "Value shape comes from ShapeOp, it must have data");
+  const auto &data = data_shape.data().value();
+
+  pir::OpResult res = result(0);
+  std::string res_id = pir::GetValueId(&res);
+  symbol::ShapeOrDataDimExprs output_data_shape =
+      symbol::ShapeOrDataDimExprs(data);
+  shape_analysis->value_id_to_shapeordata_[res_id] = output_data_shape;
+  return true;
+}
+
 void ExpandOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: ExpandOp.";
   VLOG(4) << "Verifying inputs:";

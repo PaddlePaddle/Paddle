@@ -308,6 +308,8 @@ class CinnGroupLoweringPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    auto* program = op->GetParentProgram();
+    VLOG(4) << "Before CinnGroupLoweringPass: " << *program;
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 

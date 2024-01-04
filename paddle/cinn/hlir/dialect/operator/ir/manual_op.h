@@ -82,7 +82,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
   void VerifySig() const {}
 };
 
-class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
+class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.generate_shape"; }

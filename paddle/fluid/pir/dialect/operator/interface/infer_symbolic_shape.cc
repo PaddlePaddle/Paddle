@@ -100,23 +100,16 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
   pir::OpResult res = op->result(0);
   std::string res_id = pir::GetValueId(&res);
 
-  std::vector<int64_t> dims =
-      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+  IR_ENFORCE(
+      shape_analysis->value_id_to_shapeordata_.count(operand_source_id) > 0,
+      "operand_source_id does not exist.");
+  const auto &data_shape =
+      shape_analysis->value_id_to_shapeordata_.at(operand_source_id);
+  IR_ENFORCE(!data_shape.data().has_value(), "Input value must not have data");
+  const auto &shape = data_shape.shape();
 
-  std::vector<symbol::DimExpr> shapes;
-  for (int64_t dim : dims) {
-    symbol::DimExpr dim_expr;
-    if (dim == -1) {
-      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
-      dim_expr = res_dim_expr;
-    } else {
-      symbol::DimExpr res_dim_expr(dim);
-      dim_expr = res_dim_expr;
-    }
-    shapes.push_back(dim_expr);
-  }
-
-  symbol::ShapeOrDataDimExprs shape_data{shapes};
+  symbol::ShapeOrDataDimExprs shape_data =
+      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape);
   shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
   return true;
 }

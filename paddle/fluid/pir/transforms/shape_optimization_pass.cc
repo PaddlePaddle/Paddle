@@ -480,25 +480,13 @@ void DebugPrintOpInfo(
       print_stream << ", ShapeOrData.shape: [";
 
       for (auto str : shape_data.shape()) {
-        int64_t* i = std::get_if<int64_t>(&str);
-        std::string* s = std::get_if<std::string>(&str);
-        if (i) {
-          print_stream << *i << ", ";
-        } else if (s) {
-          print_stream << *s << ", ";
-        }
+        print_stream << str << ", ";
       }
 
       print_stream << "], ShapeOrData.data: [";
       if (shape_data.data().has_value()) {
         for (auto str : shape_data.data().value()) {
-          int64_t* i = std::get_if<int64_t>(&str);
-          std::string* s = std::get_if<std::string>(&str);
-          if (i) {
-            print_stream << *i << ", ";
-          } else if (s) {
-            print_stream << *s << ", ";
-          }
+          print_stream << str << ", ";
         }
       }
       print_stream << "]\n";
@@ -508,9 +496,8 @@ void DebugPrintOpInfo(
 }
 
 void InferSymExprForAllValues(ModuleOp module_op) {
-  auto shape_analysis_mgr = ShapeAnalysisManager::Instance();
   ShapeConstraintIRAnalysis& shape_analysis =
-      shape_analysis_mgr.Get(module_op.program());
+      ShapeAnalysisManager::Instance().Get(module_op.program());
   for (int i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
@@ -553,6 +540,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
           if (infer_symbolic_shape_interface) {
             PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
                 &shape_analysis));
+            VLOG(1) << "Infer Success = " << op.name();
+          } else {
+            VLOG(1) << "Infer Failed = " << op.name();
           }
         }
 
@@ -587,6 +577,8 @@ class ShapeOptimizationPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    auto* program = op->GetParentProgram();
+    VLOG(4) << "Before ShapeOptimizationPass: " << *program;
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };

@@ -49,7 +49,7 @@ MakeGetterDimExpr4SymbolName(
         DimExpr4InputDim);
 
 using ShapeOrDataDimExprs4ValueT =
-    std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
+    std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
 
 // Returns true if success.
 bool MakeGenerateShapeOpAttribute(

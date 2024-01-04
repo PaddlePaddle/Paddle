@@ -156,16 +156,11 @@ ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
 }
 
 ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
-  auto it = tables_.find(program->module_op().operation()->id());
-
-  if (it == tables_.end()) {
-    it = tables_
-             .emplace(program->module_op().operation()->id(),
-                      ShapeConstraintIRAnalysis(program->module_op()))
-             .first;
+  if (tables_.empty()) {
+    tables_.emplace(program->module_op().operation()->id(),
+                    ShapeConstraintIRAnalysis(program->module_op()));
   }
-
-  return it->second;
+  return tables_.begin()->second;
 }
 
 std::string GetValueId(Value* val) {

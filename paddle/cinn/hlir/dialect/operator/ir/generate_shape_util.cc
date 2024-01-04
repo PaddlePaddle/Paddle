@@ -596,14 +596,14 @@ void GenerateSymbolBindings(
 std::vector<pir::Value> GetMinimalInputs(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<pir::Value>& input_tensors) {
-  std::unordered_set<symbol::DimExpr> handdled_dim_exprs;
+  std::unordered_set<symbol::DimExpr> handled_dim_exprs;
   std::unordered_set<pir::Value> first_occurred_input_tensors;
   auto TryCollectFirstOcurredInput_tensor =
       [&](pir::Value input_tensor,
           const std::vector<symbol::DimExpr>& dim_exprs) {
         for (const auto& dim_expr : dim_exprs) {
           if (dim_expr.isa<int64_t>()) continue;
-          if (!handdled_dim_exprs.insert(dim_expr).second) {
+          if (handled_dim_exprs.insert(dim_expr).second) {
             first_occurred_input_tensors.insert(input_tensor);
           }
         }

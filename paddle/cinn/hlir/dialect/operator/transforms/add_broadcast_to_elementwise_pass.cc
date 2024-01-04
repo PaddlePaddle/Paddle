@@ -207,6 +207,8 @@ pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
 }
 
 bool AddBroadcastToElementwisePass::CanApplyOn(pir::Operation* op) const {
+  auto* program = op->GetParentProgram();
+  VLOG(4) << "Before AddBroadcastToElementwisePass: " << *program;
   return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
 }
 
