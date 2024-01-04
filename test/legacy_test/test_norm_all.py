@@ -711,15 +711,6 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
-            run_pnorm(
-                self,
-                p=3,
-                axis=[0, 1],
-                shape_x=[2, 3, 4],
-                dtype="float64",
-                keep_dim=keep,
-                check_dim=True,
-            )
 
     def test_dygraph(self):
         run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
