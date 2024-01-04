@@ -110,16 +110,23 @@ class Dim;
   macro__(Product)                          \
   macro__(Sum)                              \
   macro__(PrimitiveNode)                    \
-  macro__(IntrinsicOp)                      \
   macro__(_BufferRange_)                    \
   macro__(ScheduleBlock)                    \
   macro__(ScheduleBlockRealize)             \
   macro__(_Dim_)                            \
 
+#define NODETY_CONTROL_OP_FOR_INTRINSIC(macro__) \
+  macro__(IntrinsicOp)                      \
 
 #define NODETY_FORALL(__m)              \
   NODETY_PRIMITIVE_TYPE_FOR_EACH(__m)   \
   NODETY_OP_FOR_EACH(__m)               \
+  NODETY_CONTROL_OP_FOR_INTRINSIC(__m)  \
+  NODETY_CONTROL_OP_FOR_EACH(__m)
+
+#define NODETY_FORALL_EXCEPT_INTRINSIC(__m)              \
+  NODETY_PRIMITIVE_TYPE_FOR_EACH(__m)                    \
+  NODETY_OP_FOR_EACH(__m)                                \
   NODETY_CONTROL_OP_FOR_EACH(__m)
 // clang-format on
 
