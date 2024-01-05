@@ -24,6 +24,10 @@ __all__ = []
 
 
 def dot(x, y):
+    r"""
+    NOTE: This is a temporary workaround for unstable result computed by `paddle.dot`,
+    which will be reverted when the problem is fixed."
+    """
     return (x * y).sum(axis=-1)
 
 
