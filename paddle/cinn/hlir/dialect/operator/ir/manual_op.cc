@@ -16,8 +16,12 @@
 
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
@@ -25,25 +29,25 @@
 namespace cinn {
 namespace dialect {
 
-const char *GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
-const char *ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
-const char *SplitOp::attributes_name[SplitOp::attributes_num] = {
+const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
+const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
 
-void GroupOp::Build(pir::Builder &builder,
-                    pir::OperationArgument &argument,
-                    const std::vector<pir::Type> &output_types) {
+void GroupOp::Build(pir::Builder& builder,
+                    pir::OperationArgument& argument,
+                    const std::vector<pir::Type>& output_types) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
 }
 
-void GroupOp::Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    std::unique_ptr<pir::Block> &&block) {
+void GroupOp::Build(pir::Builder& builder,             // NOLINT
+                    pir::OperationArgument& argument,  // NOLINT
+                    std::unique_ptr<pir::Block>&& block) {
   VLOG(4) << "Start build GroupOp";
   if (block && !block->empty()) {
     IR_ENFORCE(block->back().isa<pir::YieldOp>());
-    auto &op = block->back();
+    auto& op = block->back();
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
     }
@@ -51,15 +55,15 @@ void GroupOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddRegion().push_back(block.release());
 }
 
-pir::Block *GroupOp::block() {
-  pir::Region &region = (*this)->region(0);
+pir::Block* GroupOp::block() {
+  pir::Region& region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
   return &region.front();
 }
 
-std::vector<pir::Operation *> GroupOp::ops() {
-  std::vector<pir::Operation *> rt_ops;
-  for (auto &op : *block()) {
+std::vector<pir::Operation*> GroupOp::ops() {
+  std::vector<pir::Operation*> rt_ops;
+  for (auto& op : *block()) {
     rt_ops.push_back(&op);
   }
   return rt_ops;
@@ -67,8 +71,8 @@ std::vector<pir::Operation *> GroupOp::ops() {
 
 void GroupOp::VerifySig() {}
 
-void GroupOp::Print(pir::IrPrinter &printer) {
-  auto &os = printer.os;
+void GroupOp::Print(pir::IrPrinter& printer) {
+  auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
   os << " = " << name();
@@ -76,16 +80,16 @@ void GroupOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto &sub_op : ops()) {
+  for (auto& sub_op : ops()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
 }
 
-void ConcatOp::Build(pir::Builder &builder,             // NOLINT
-                     pir::OperationArgument &argument,  // NOLINT
-                     const std::vector<pir::Value> &inputs,
+void ConcatOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Value>& inputs,
                      int axis) {
   VLOG(4) << "Start build ConcatOp";
 
@@ -131,10 +135,10 @@ void ConcatOp::Build(pir::Builder &builder,             // NOLINT
       "axis", pir::Int32Attribute::get(pir::IrContext::Instance(), axis));
 }
 
-void SplitOp::Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
+void SplitOp::Build(pir::Builder& builder,             // NOLINT
+                    pir::OperationArgument& argument,  // NOLINT
                     pir::Value input,
-                    const std::vector<int> &sections,
+                    const std::vector<int>& sections,
                     int axis) {
   VLOG(4) << "Start build ConcatOp";
 
@@ -177,9 +181,174 @@ void SplitOp::Build(pir::Builder &builder,             // NOLINT
       "axis", pir::Int32Attribute::get(pir::IrContext::Instance(), axis));
 }
 
+const char* GenerateShapeOp::attributes_name[attributes_num] = {
+    "output_dim_exprs", "symbol_bindings"};
+
+void GenerateShapeOp::Build(
+    pir::Builder& builder,
+    pir::OperationArgument& argument,
+    const std::vector<pir::Value>& inputs,
+    const std::vector<pir::Attribute>& output_dim_exprs,
+    const GenerateShapeOp::SymbolBindings& symbol_bindings) {
+  CHECK(!inputs.empty());
+  argument.AddInputs(inputs);
+  argument.AddAttribute("output_dim_exprs",
+                        builder.array_attr(output_dim_exprs));
+  argument.AddAttribute(
+      "symbol_bindings",
+      ConvertSymbolBindingsToAttribute(builder, symbol_bindings));
+  argument.AddOutputs({[&]() {
+    auto* ctx = pir::IrContext::Instance();
+    auto type = pir::Int64Type::get(ctx);
+    auto dim =
+        ::common::make_ddim({static_cast<int64_t>(output_dim_exprs.size())});
+    return paddle::dialect::DenseTensorType::get(ctx, type, dim);
+  }()});
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+namespace {
+
+const char* GetSymbolBindingTypeImpl(
+    const GenerateShapeOp::DataSymbolBinding& binding) {
+  return "DataSymbolBinding";
+}
+
+const char* GetSymbolBindingTypeImpl(
+    const GenerateShapeOp::ShapeSymbolBinding& binding) {
+  return "ShapeSymbolBinding";
+}
+
+const char* GetSymbolBindingType(
+    const GenerateShapeOp::SymbolBinding& binding) {
+  return std::visit(
+      [](const auto& impl) { return GetSymbolBindingTypeImpl(impl); }, binding);
+}
+
+const GenerateShapeOp::SymbolBindingBase* GetSymbolBindingBaseImpl(
+    const GenerateShapeOp::DataSymbolBinding& binding) {
+  return &binding;
+}
+
+const GenerateShapeOp::SymbolBindingBase* GetSymbolBindingBaseImpl(
+    const GenerateShapeOp::ShapeSymbolBinding& binding) {
+  return &binding;
+}
+
+const GenerateShapeOp::SymbolBindingBase* GetSymbolBindingBase(
+    const GenerateShapeOp::SymbolBinding& binding) {
+  return std::visit(
+      [](const auto& impl) { return GetSymbolBindingBaseImpl(impl); }, binding);
+}
+
+typedef GenerateShapeOp::SymbolBinding (*SymbolBindingConstructorT)(
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx);
+
+GenerateShapeOp::SymbolBinding MakeDataSymbolBinding(
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx) {
+  return GenerateShapeOp::DataSymbolBinding{
+      symbol_name, input_tensor_idx, input_tensor_dim_idx};
+}
+
+GenerateShapeOp::SymbolBinding MakeShapeSymbolBinding(
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx) {
+  return GenerateShapeOp::ShapeSymbolBinding{
+      symbol_name, input_tensor_idx, input_tensor_dim_idx};
+}
+
+std::optional<SymbolBindingConstructorT> GetMakerSymbolBinding(
+    const std::string& type) {
+  static std::map<std::string, SymbolBindingConstructorT> map{
+      {GetSymbolBindingTypeImpl(GenerateShapeOp::DataSymbolBinding{}),
+       &MakeDataSymbolBinding},
+      {GetSymbolBindingTypeImpl(GenerateShapeOp::ShapeSymbolBinding{}),
+       &MakeShapeSymbolBinding},
+  };
+  const auto& iter = map.find(type);
+  if (iter == map.end()) return std::nullopt;
+  return iter->second;
+}
+
+std::optional<GenerateShapeOp::SymbolBinding> MakeSymbolBinding(
+    const std::string& type,
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx) {
+  auto opt_creator = GetMakerSymbolBinding(type);
+  if (!opt_creator.has_value()) return std::nullopt;
+  return opt_creator.value()(
+      symbol_name, input_tensor_idx, input_tensor_dim_idx);
+}
+
+}  // namespace
+
+pir::Attribute GenerateShapeOp::ConvertSymbolBindingsToAttribute(
+    pir::Builder& builder,
+    const GenerateShapeOp::SymbolBindings& symbol_bindings) {
+  const auto& ConvertSymbolBindingToAttr = [&](const SymbolBinding& binding) {
+    const auto* type = GetSymbolBindingType(binding);
+    const auto& [symbol_name, input_tensor_idx, input_tensor_dim_idx] =
+        *GetSymbolBindingBase(binding);
+    return builder.array_attr({
+        builder.str_attr(type),
+        builder.str_attr(symbol_name),
+        builder.int64_attr(input_tensor_idx),
+        builder.int64_attr(input_tensor_dim_idx),
+    });
+  };
+  std::vector<pir::Attribute> bindings_attr{};
+  for (const auto& symbol_binding : symbol_bindings) {
+    bindings_attr.push_back(ConvertSymbolBindingToAttr(symbol_binding));
+  }
+  return builder.array_attr(bindings_attr);
+}
+
+std::optional<GenerateShapeOp::SymbolBindings>
+GenerateShapeOp::ConvertAttributeToSymbolBindings(
+    const pir::Attribute& symbol_bindings) {
+  if (!symbol_bindings.isa<pir::ArrayAttribute>()) return std::nullopt;
+  const auto& symbol_bindings_array_attr =
+      symbol_bindings.dyn_cast<pir::ArrayAttribute>();
+  GenerateShapeOp::SymbolBindings ret{GenerateShapeOp::SymbolBindings{}};
+  for (int i = 0; i < symbol_bindings_array_attr.size(); ++i) {
+    const auto& symbol_binding = symbol_bindings_array_attr.at(i);
+    if (!symbol_binding.isa<pir::ArrayAttribute>()) return std::nullopt;
+    const auto& symbol_binding_array_attr =
+        symbol_binding.dyn_cast<pir::ArrayAttribute>();
+    if (symbol_binding_array_attr.size() != 4) return std::nullopt;
+    if (!symbol_binding_array_attr.at(0).isa<pir::StrAttribute>())
+      return std::nullopt;
+    if (!symbol_binding_array_attr.at(1).isa<pir::StrAttribute>())
+      return std::nullopt;
+    if (!symbol_binding_array_attr.at(2).isa<pir::Int64Attribute>())
+      return std::nullopt;
+    if (!symbol_binding_array_attr.at(3).isa<pir::Int64Attribute>())
+      return std::nullopt;
+    const auto& opt_symbol_binding = MakeSymbolBinding(
+        symbol_binding_array_attr.at(0)
+            .dyn_cast<pir::StrAttribute>()
+            .AsString(),
+        symbol_binding_array_attr.at(1)
+            .dyn_cast<pir::StrAttribute>()
+            .AsString(),
+        symbol_binding_array_attr.at(2).dyn_cast<pir::Int64Attribute>().data(),
+        symbol_binding_array_attr.at(3).dyn_cast<pir::Int64Attribute>().data());
+    if (!opt_symbol_binding.has_value()) return std::nullopt;
+    ret.emplace_back(opt_symbol_binding.value());
+  }
+  return std::move(ret);
+}
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

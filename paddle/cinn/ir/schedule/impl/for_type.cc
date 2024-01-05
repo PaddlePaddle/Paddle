@@ -63,20 +63,37 @@ void DyScheduleImpl::Parallel(const Expr& loop) {
 }
 
 void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Vectorize";
+  std::ostringstream os;
   CHECK_GT(factor, 0) << "vectorize factor should be more than 0";
-  CHECK(loop.As<For>()->extent.is_constant())
-      << "The loop to be vectorized should be constant!\n";
+  if (factor <= 0) {
+    os << "vectorize factor should be more than 0\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+  if (!loop.As<For>()->extent.is_constant()) {
+    os << "The loop to be vectorized should be constant!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
   MutateForType(loop, ForType::Vectorized, factor);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::Unroll(const Expr& loop) {
-  CHECK(loop.As<For>()->extent.is_constant())
-      << "The loop to be unrolled should be constant!\n";
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Unroll";
+  std::ostringstream os;
+  if (!loop.As<For>()->extent.is_constant()) {
+    os << "The loop to be unrolled should be constant!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
   MutateForType(loop, ForType::Unrolled);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
 #ifdef CINN_WITH_CUDA
+  CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "Bind";
   std::ostringstream os;
 
@@ -117,6 +134,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
     }
     MutateForType(loop, ForType::GPUThread, offset);
   }
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 #endif
 }
 }  // namespace ir

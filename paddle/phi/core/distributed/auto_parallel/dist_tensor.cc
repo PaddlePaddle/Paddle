@@ -117,6 +117,9 @@ DistTensor::DistTensor() : value_(std::make_shared<DenseTensor>()) {}
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const TensorDistAttr& dist_attr)
     : global_dims_(global_value->dims()), dist_attr_(dist_attr) {
+  process_mesh_ = dist_attr_.process_mesh();
+  placements_ = ToPlacements(dist_attr);
+
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with tensor_meta.
   if (IsCurRankInMesh(dist_attr.process_mesh())) {

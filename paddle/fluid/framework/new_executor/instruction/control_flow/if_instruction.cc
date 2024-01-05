@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/if_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
@@ -71,9 +71,8 @@ IfInstruction::IfInstruction(size_t id,
   GetInputIds(op, *value_exec_info, &inputs);
   auto true_outside_inputs =
       GetExternalInputs(&true_branch_block, *value_exec_info, &inputs);
-  std::vector<pir::Value> false_outside_inputs;
   auto& false_branch_block = if_op.false_block();
-  false_outside_inputs =
+  auto false_outside_inputs =
       GetExternalInputs(&false_branch_block, *value_exec_info, &inputs);
   // NOTE(chenxi67): the variable corresponding to container value if a
   // <VariableRefArray> Type. It will recursively get the ID of internal
@@ -107,9 +106,14 @@ IfInstruction::IfInstruction(size_t id,
     }
   }
   InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
-
   InsertTuplePushContinerToOuts(
       &if_op.false_block(), *value_exec_info, &outputs);
+
+  InsertInplacedExternalInputsToOuts(
+      &true_branch_block, true_outside_inputs, *value_exec_info, &outputs);
+  InsertInplacedExternalInputsToOuts(
+      &false_branch_block, false_outside_inputs, *value_exec_info, &outputs);
+
   for (auto& item : outputs) {
     auto& var_vec = item.second;
     for (auto it = var_vec.begin(); it != var_vec.end();) {
