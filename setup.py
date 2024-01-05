@@ -1397,6 +1397,7 @@ def get_setup_parameters():
         'paddle.incubate.nn',
         'paddle.incubate.asp',
         'paddle.incubate.passes',
+        'paddle.incubate.framework',
         'paddle.distribution',
         'paddle.distributed.utils',
         'paddle.distributed.sharding',
