@@ -463,8 +463,10 @@ pir::Operation* ProcessGroup(
     pir::PatternRewriter& rewriter) {  // NOLINT
   std::vector<pir::Operation*> group_ops_view;
   std::unordered_set<pir::Value> value_view;
-  group->WalkOps([&group_ops_view, &value_view](pir::Operation* op) {
+  group->WalkOps([&group, &group_ops_view, &value_view](pir::Operation* op) {
     group_ops_view.push_back(op);
+    VLOG(1) << "####### group@" << group.get() << " : " << op->name() << " @"
+            << op;
     for (size_t i = 0; i < op->num_operands(); ++i) {
       value_view.insert(op->operand_source(i));
     }
@@ -591,18 +593,26 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+    shape_analysis.PrintAllShapeOrDataDimExprs();
     auto shape_analysis_ =
         std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
+    VLOG(1) << "shape_analysis: " << &shape_analysis
+            << " program:" << group_op->GetParentProgram();
+    VLOG(1) << "########### PrintAllShapeOrDataDimExprs ";
+    shape_analysis.PrintAllShapeOrDataDimExprs();
 
     // op fusion
     auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
         GetOpListNotIncludeYield(group_op.ops()),
         GetOutputOpList(group_op.ops()),
         shape_analysis_);
+    VLOG(1) << "###### OpFusionPass op_fusion size: " << op_fusion.size();
 
     // fusion merge
     auto group_list = cinn::dialect::ir::GeneralFusionMergePassInternal(
         op_fusion, shape_analysis_);
+    VLOG(1) << "###### GeneralFusionMergePass op_fusion size: "
+            << op_fusion.size();
 
     for (auto group : group_list) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(

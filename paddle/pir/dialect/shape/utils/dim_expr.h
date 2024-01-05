@@ -253,6 +253,9 @@ IR_API std::string ToString(const DimExpr& dim_expr);
 
 IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 
+IR_API std::ostream& operator<<(std::ostream&,
+                                const ShapeOrDataDimExprs& dim_expr);
+
 IR_API std::size_t GetHashValue(const DimExpr& dim_expr);
 
 }  // namespace symbol

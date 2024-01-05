@@ -387,7 +387,8 @@ class OpFusionPassHelper {
         // kNonFusible op can't fuse any other op.
         auto producer_kind =
             hlir::framework::pir::CompatibleInfo::OpKind(*producer);
-        if (producer_kind == OpPatternKind::kNonFusible) {
+        if (producer_kind == OpPatternKind::kNonFusible &&
+            producer->name() != "cinn_op.generate_shape") {
           continue;
         }
         // VLOG(3) << "Producer Op: " << producer->id()
@@ -429,7 +430,8 @@ class OpFusionPassHelper {
         consumer_fusion->input_ops.erase(producer);
         consumer_fusion->op_pattern_kind =
             static_cast<int>(consumer_fusion->op_pattern_kind) >
-                    static_cast<int>(producer_kind)
+                        static_cast<int>(producer_kind) ||
+                    producer->name() == "cinn_op.generate_shape"
                 ? consumer_fusion->op_pattern_kind
                 : producer_kind;
 
@@ -593,7 +595,7 @@ class OpFusionPassHelper {
   }
 
   bool CanFuse(::pir::Operation* producer, const ::pir::Operation* consumer) {
-    if (producer->name() == "generate_shape") return true;
+    if (producer->name() == "cinn_op.generate_shape") return true;
     auto& relation =
         fusion_relation_map_[hlir::framework::pir::CompatibleInfo::OpKind(
             *producer)];

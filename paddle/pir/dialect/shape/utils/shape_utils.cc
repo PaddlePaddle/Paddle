@@ -85,6 +85,9 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
 
   const auto& lhs_sym_shape = GetShapeOrDataForValue(&lhs);
   const auto& rhs_sym_shape = GetShapeOrDataForValue(&rhs);
+  VLOG(1) << "######## " << GetValueId(&lhs) << " : " << lhs_sym_shape;
+  VLOG(1) << "######## " << GetValueId(&rhs) << " : " << rhs_sym_shape;
+
   if (lhs_sym_shape.shape() == rhs_sym_shape.shape() &&
       lhs_sym_shape.data() == lhs_sym_shape.data()) {
     return true;
@@ -164,13 +167,21 @@ std::string GetValueId(const Value* val) {
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(const Value* val) {
   auto val_id = GetValueId(val);
-  return value_id_to_shapeordata[val_id];
+  CHECK(value_id_to_shapeordata_.count(val_id))
+      << "Cannot find shape or data for value: " << val_id;
+  return value_id_to_shapeordata_.at(val_id);
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     const Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   auto val_id = GetValueId(val);
-  value_id_to_shapeordata[val_id] = shape_or_data;
+  value_id_to_shapeordata_[val_id] = shape_or_data;
+}
+
+void ShapeConstraintIRAnalysis::PrintAllShapeOrDataDimExprs() const {
+  for (const auto& [id, shape_or_data] : value_id_to_shapeordata_) {
+    VLOG(0) << id << " : " << shape_or_data;
+  }
 }
 
 }  // namespace pir
