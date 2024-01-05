@@ -545,10 +545,10 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
                 # print("out = ", res[0], [3] * 10)
                 # print("dx = ", res[1], [0.3] * 10)
-                # print("dmem0 = ", res[2], 0.1)
-                # print("dmem1 = ", res[3], 0.1)
-                # print("dmem2 = ", res[4], 0.1)
-                # print("dmem3 = ", res[5], 0.1)
+                # print("dmem0 = ", res[2], [0.0] * 10)
+                # print("dmem1 = ", res[3], [0.0] * 10)
+                # print("dmem2 = ", res[4], [0.0] * 10)
+                # print("dmem3 = ", res[5], [0.0] * 10)
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
