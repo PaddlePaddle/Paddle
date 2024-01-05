@@ -39,7 +39,7 @@ void InferUnaryElementwiseSymbolicShape(
   const auto& out_sym_dims =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
   pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
-  for (auto i = 0; i < out_sym_dims.size(); ++i) {
+  for (size_t i = 0; i < out_sym_dims.size(); ++i) {
     if (in_sym_dims[i].IsDynamic() || out_sym_dims[i].IsDynamic()) {
       sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims[i], out_sym_dims[i]);
     } else {
@@ -62,7 +62,7 @@ void InferBinaryElementwiseSymbolicShape(
   const auto& out_sym_dims =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
   pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
-  for (auto i = 0; i < out_sym_dims.size(); ++i) {
+  for (size_t i = 0; i < out_sym_dims.size(); ++i) {
     if (in_sym_dims0[i].IsDynamic() || in_sym_dims1[i].IsDynamic() ||
         out_sym_dims[i].IsDynamic()) {
       sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims0[i], out_sym_dims[i]);
@@ -509,7 +509,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   auto shape_analysis_mgr = ShapeAnalysisManager::Instance();
   ShapeConstraintIRAnalysis& shape_analysis =
       shape_analysis_mgr.Get(module_op.program());
-  for (int i = 0; i < module_op->num_regions(); i++) {
+  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
         if (op.num_operands() == 0) {
