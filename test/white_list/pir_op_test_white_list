@@ -6,10 +6,7 @@ test_adadelta_op
 test_adagrad_op
 test_adagrad_op_static_build
 test_adamax_op
-test_adamw_op
-test_adamw_op_static_build
 test_addmm_op
-test_affine_grid_op
 test_allclose_op
 test_amp_check_finite_and_scale_op
 test_angle_op
@@ -60,14 +57,12 @@ test_conv2d_bf16_mkldnn_op
 test_conv2d_int8_mkldnn_op
 test_conv2d_mkldnn_op
 test_conv2d_op
-test_conv2d_op_depthwise_conv
 test_conv2d_transpose_bf16_mkldnn_op
 test_conv2d_transpose_mkldnn_op
 test_conv2d_transpose_op
 test_conv2d_transpose_op_depthwise_conv
 test_conv3d_mkldnn_op
 test_conv3d_op
-test_conv3d_transpose_op
 test_conv3d_transpose_part2_op
 test_crop_tensor_op
 test_cross_op
@@ -85,6 +80,7 @@ test_diagonal_op
 test_digamma_op
 test_dirichlet_op
 test_dist_op
+test_distribute_fpn_proposals_op
 test_dot_op
 test_dpsgd_op
 test_edit_distance_op
@@ -125,6 +121,7 @@ test_fmax_op
 test_fmin_op
 test_fold_op
 test_frame_op
+test_ftrl_op
 test_full_like_op
 test_fused_attention_op
 test_fused_attention_op_api
@@ -184,6 +181,7 @@ test_logcumsumexp_op
 test_logit_op
 test_logspace
 test_logsumexp
+test_lookup_table_v2_bf16_op
 test_lookup_table_v2_op
 test_lookup_table_v2_op_static_build
 test_lrn_mkldnn_op
@@ -197,11 +195,13 @@ test_matmul_v2_op
 test_matmul_v2_op_static_build
 test_matrix_nms_op
 test_matrix_power_op
+test_matrix_rank_op
 test_maxout_op
 test_mean_op
 test_memcpy_op
 test_meshgrid_op
 test_mode_op
+test_momentum_op
 test_mul_int8_mkldnn_op
 test_mul_op
 test_multi_dot_op
@@ -211,6 +211,7 @@ test_multinomial_op
 test_multiplex_op
 test_mv_op
 test_nanmedian
+test_nce
 test_nearest_interp_mkldnn_op
 test_nearest_interp_v2_op
 test_nextafter_op
@@ -232,7 +233,6 @@ test_polygamma_op
 test_pool2d_int8_mkldnn_op
 test_pool2d_mkldnn_op
 test_pool2d_op
-test_pool3d_op
 test_pool_max_op
 test_prelu_mkldnn_op
 test_prelu_op
@@ -271,6 +271,7 @@ test_sgd_op
 test_shape_mkldnn_op
 test_shape_op
 test_shard_index_op
+test_shuffle_batch_op
 test_sigmoid_cross_entropy_with_logits_op
 test_sign_op
 test_size_op
@@ -300,6 +301,7 @@ test_transpose_int8_mkldnn_op
 test_transpose_op
 test_triangular_solve_op
 test_tril_indices_op
+test_tril_triu_op
 test_trilinear_interp_v2_op
 test_triu_indices_op
 test_trunc_op

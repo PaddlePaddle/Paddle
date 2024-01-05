@@ -216,6 +216,7 @@ def decompose(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    # flag default status: True
     if core._enable_sink_decomp():
         blacklist = core.prim_config["forward_blacklist"] | blacklist
         return core.sinking_decomp(program, src_vars, blacklist, whitelist)

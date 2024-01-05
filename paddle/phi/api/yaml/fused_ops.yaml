@@ -122,7 +122,7 @@
     data_type : x
 
 - op : fc
-  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool use_mkldnn = false, bool padding_weights = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float scale_in = 1.0f, float[] scale_weights = {1.0f}, float scale_out = 1.0f, bool force_fp32_output = false)
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false)
   output : Tensor(out)
   infer_meta :
     func : FCInferMeta
@@ -404,7 +404,7 @@
   optional : bias_qk
 
 - op : qkv_attention_xpu
-  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, DataType out_dtype)
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
   output : Tensor(qkv), Tensor(qkv_max)
   infer_meta :
     func : QKVAttentionXPUInferMeta
@@ -429,6 +429,15 @@
     func : SelfDPAttenInferMeta
   kernel :
     func : self_dp_attention
+    data_type : x
+
+- op : sine_pos_xpu
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : SinePosXPUInferMeta
+  kernel :
+    func : sine_pos_xpu
     data_type : x
 
 - op : skip_layernorm

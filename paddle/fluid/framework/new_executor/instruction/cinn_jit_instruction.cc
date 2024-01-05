@@ -30,6 +30,7 @@ namespace paddle {
 namespace framework {
 
 typedef void (*lower_func_ptr_g)(void*, int32_t, void*);
+typedef void (*infer_shape_func_ptr_g)(void*, int32_t, int32_t**);
 
 class CinnJitInstruction::FnPtrImpl {
   using CINNKernelInfo = cinn::hlir::framework::pir::CINNKernelInfo;
@@ -61,6 +62,49 @@ class CinnJitInstruction::FnPtrImpl {
         static_cast<void*>(func_args_.data()), func_args_.size(), stream);
   }
 
+  void InferShape(const std::vector<phi::DenseTensor*>& kernel_args,
+                  int32_t input_tensor_size,
+                  int32_t output_tensor_size) {
+    func_args_.clear();
+
+    // 1. Convert the phi::DenseTensor type to cinn_pod_value_t
+    for (size_t i = 0; i < kernel_args.size(); ++i) {
+      auto* buffer = new cinn_buffer_t();
+      func_args_.emplace_back(buffer);
+    }
+
+    // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
+    for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
+      func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
+          int_arg_mp.second.dim_idx));
+      func_args_.emplace_back(static_cast<int64_t>(
+          kernel_args[int_arg_mp.second.arg_idx]->dims().at(
+              int_arg_mp.second.dim_idx)));
+    }
+
+    // 3. Define an array of Pointers to hold the output tensor shape
+    int32_t* output_tensor_shapes[output_tensor_size];
+    for (int i = 0; i < output_tensor_size; ++i) {
+      output_tensor_shapes[i] = reinterpret_cast<int32_t*>(
+          malloc(kernel_args[input_tensor_size + i]->dims().size() *
+                 sizeof(int32_t*)));
+    }
+
+    // 4. Launch infer_shape_fn_ptr to infer shape of output tensor
+    ((infer_shape_func_ptr_g)cinn_kernel_info_.infer_shape_fn_ptr)(
+        static_cast<void*>(func_args_.data()),
+        func_args_.size(),
+        output_tensor_shapes);
+
+    // 5. Resize shape of output tensor
+    for (int i = 0; i < output_tensor_size; ++i) {
+      DDim dim(output_tensor_shapes[i],
+               kernel_args[input_tensor_size + i]->dims().size());
+      kernel_args[input_tensor_size + i]->Resize(dim);
+      free(output_tensor_shapes[i]);
+    }
+  }
+
  private:
   CINNKernelInfo cinn_kernel_info_;
 
@@ -76,6 +120,8 @@ CinnJitInstruction::CinnJitInstruction(
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
+  input_tensor_size = op->num_operands();
+  output_tensor_size = op->num_results();
 
   place_ = place;
 
@@ -103,14 +149,11 @@ CinnJitInstruction::CinnJitInstruction(
                       ->GetMutable<phi::DenseTensor>();
 
     tensor_args_.push_back(tensor);
-
-    if (!FLAGS_cinn_bucket_compile) {
-      auto alloc_tensor_type =
-          result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      tensor->set_type(
-          paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
-      tensor->Resize(alloc_tensor_type.dims());
-    }
+    auto alloc_tensor_type =
+        result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    tensor->set_type(
+        paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+    tensor->Resize(alloc_tensor_type.dims());
   }
 }
 
@@ -120,16 +163,15 @@ void CinnJitInstruction::Run() {
 
   auto stream = gpu_ctx->stream();
 
+  if (FLAGS_cinn_bucket_compile) {
+    fn_ptr_impl_->InferShape(
+        tensor_args_, input_tensor_size, output_tensor_size);
+  }
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
-    // TODO(6clc): template infer shape from tensor_args_[0].
-    // After supporting symbolic calculation, perfect the code to query shape
-    // of output tensor
-    if (FLAGS_cinn_bucket_compile) {
-      tensor_args_[i]->Resize(tensor_args_[0]->dims());
-    }
     gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 
+  // 2. exexute kernel
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
 #else
   VLOG(phi::FATAL) << "Not Supported: cinn jit instruction currently does not "

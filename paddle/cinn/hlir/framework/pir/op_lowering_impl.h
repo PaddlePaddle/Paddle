@@ -70,11 +70,11 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @param apply_group_schedule Whether to schedule at group level.
    * @return The lowered funcs.
    */
-  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>> BucketLower(
-      const GroupPtr& group,
-      bool apply_op_schedule = false,
-      bool apply_group_schedule = true,
-      bool apply_pass = true);
+  std::vector<std::pair<ir::SymbolicPredicate, OpLowererImpl::WrapLoweredFunc>>
+  BucketLower(const GroupPtr& group,
+              bool apply_op_schedule = false,
+              bool apply_group_schedule = true,
+              bool apply_pass = true);
 
   void InsertNameGeneToScope(std::shared_ptr<Scope> scope);
 
@@ -110,6 +110,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * applied.
    * @param func_body The scheduled func body of group.
    * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @param group_func_args Arguments used as the group function arguments.
    * @return The lowered funcs after the post processing.
    */
   std::vector<ir::LoweredFunc> PostProcess(
@@ -117,7 +118,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
       bool done_op_schedule,
       ir::Expr func_body,
-      std::vector<ir::Tensor>* group_func_arg_tensors);
+      std::vector<ir::Tensor>* group_func_arg_tensors,
+      std::vector<ir::Argument>* group_func_args);
 
   /**
    * @brief Lower an Op set to CINN IR.
@@ -214,6 +216,18 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
       const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
 
+  /**
+   * @brief  Generates the output tensor infer shape function.
+   * @param group The group to be lowered.
+   * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @param group_func_args Arguments used as the group function arguments.
+   * @return The lowered func to infer output tensor's shape.
+   */
+  ir::LoweredFunc GenerateInferShapeFunc(
+      const GroupPtr& group,
+      const std::vector<ir::Tensor> group_func_arg_tensors,
+      const std::vector<ir::Argument> group_func_args);
+
   // Functions used to determine which Ops to schedule at op level, define a
   // policy for each type of group.
   inline bool ReduceScheduleDetermineFunction(::pir::Operation* op);
@@ -232,7 +246,13 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,
-                         std::vector<std::vector<int>>* out_shapes);
+                         std::vector<std::vector<int>>* out_shapes,
+                         const GroupPtr& group);
+
+  void CollectOutputInfo(::pir::Operation* op,
+                         std::vector<Type>* out_types,
+                         std::vector<std::vector<ir::Dim>>* out_shapes,
+                         const GroupPtr& group);
 
   std::string ValueName(::pir::Value value);
 

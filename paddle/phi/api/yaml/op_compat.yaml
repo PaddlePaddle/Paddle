@@ -452,6 +452,13 @@
   outputs :
     out : Out
 
+- op : c_softmax_with_cross_entropy
+  backward : c_softmax_with_cross_entropy_grad
+  inputs :
+    {logits : Logits, label : Label}
+  outputs :
+    {softmax : Softmax, loss : Loss}
+
 - op : cast
   inputs :
     x : X
@@ -1043,12 +1050,8 @@
     bias : Bias
   outputs :
     out : Out
-  attrs :
-    scale_in : Scale_in
-    scale_weights : Scale_weights
-    scale_out : Scale_out
   extra :
-    [bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
 
 - op : feed
   outputs: {out: Out}
@@ -2471,6 +2474,15 @@
   outputs :
     {q : Q, r : R}
 
+- op : quantize
+  backward : quantize_grad
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift, include_self: Include_self}
+
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
@@ -2798,6 +2810,13 @@
   outputs :
     out : Out
     xout : XOut
+
+- op : shuffle_batch
+  backward: shuffle_batch_grad
+  inputs:
+    {x : X, seed : Seed}
+  outputs:
+    {out : Out, shuffle_idx : ShuffleIdx, seed_out : SeedOut}
 
 - op : shuffle_channel
   backward : shuffle_channel_grad
@@ -3376,6 +3395,12 @@
   outputs :
     out: Out
 
+- op: c_reduce_min
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_reduce_sum
   inputs :
     x : X
@@ -3412,6 +3437,14 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: distribute_fpn_proposals
+  inputs :
+    {fpn_rois: FpnRois, rois_num: RoisNum}
+  outputs :
+    multi_fpn_rois : MultiFpnRois
+    multi_level_rois_num: MultiLevelRoIsNum
+    restore_index: RestoreIndex
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3421,6 +3454,12 @@
 - op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
+
+- op: ftrl
+  inputs:
+    {param: Param, squared_accumulator: SquaredAccumulator, linear_accumulator: LinearAccumulator, grad: Grad, learning_rate: LearningRate}
+  outputs:
+    {param_out: ParamOut, squared_accum_out: SquaredAccumOut, linear_accum_out: LinearAccumOut}
 
 - op: full_batch_size_like (fill_constant_batch_size_like)
   inputs:
@@ -3450,6 +3489,18 @@
     x : X
   outputs :
     out : Out
+
+- op: identity_loss
+  inputs :
+    x: X
+  outputs :
+    out : Out
+
+- op: lars_momentum
+  inputs:
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
 
 - op: lod_array_length
   inputs :
@@ -3483,6 +3534,13 @@
     x : X
   outputs :
     out : Out
+
+- op: nce
+  backward: nce_grad
+  inputs:
+    {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
+  outputs:
+    {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
 
 - op: number_count
   inputs :

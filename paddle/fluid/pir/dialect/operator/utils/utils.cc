@@ -36,6 +36,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
+    FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
     FusedGemmEpilogueOp::name(),
@@ -49,6 +50,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceSum_Op::name(),
     CAllreduceMax_Op::name(),
     CAllgatherOp::name(),
+    CSoftmaxWithCrossEntropyOp::name(),
+    CSoftmaxWithCrossEntropyGradOp::name(),
     SeedOp::name(),
     ShareDataOp::name(),
     SparseMomentumOp::name(),
@@ -56,8 +59,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
-    SoftReluGradOp::name()};
+    SoftReluGradOp::name(),
+    NceOp::name(),
+    NceGradOp::name(),
+    CReduceMinOp::name()};
 
+const std::unordered_set<std::string> OneDNNLegacyOpList = {};
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -218,6 +225,12 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
+#ifdef PADDLE_WITH_DNNL
+bool IsOneDNNLegacyOp(const std::string& name) {
+  return OneDNNLegacyOpList.count(name);
+}
+#endif
+
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
 }
@@ -271,6 +284,9 @@ std::string GetValueDataType(const pir::Value& value) {
   } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
+  } else if (value.type().isa<DenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype()));
   } else {
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "

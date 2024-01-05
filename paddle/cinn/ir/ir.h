@@ -1018,6 +1018,7 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
   std::vector<Expr> predicates;
+  Expr infer_shape_func;
 
   static ir::Module Make(const std::string& name, Target target);
 
@@ -1076,3 +1077,12 @@ using ir::Var;
 // @}
 
 }  // namespace cinn
+
+namespace std {
+template <>
+struct hash<cinn::ir::Var> {
+  std::size_t operator()(const cinn::ir::Var& var) const {
+    return std::hash<std::string>()(var->name);
+  }
+};
+}  // namespace std

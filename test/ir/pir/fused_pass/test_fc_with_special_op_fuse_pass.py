@@ -18,14 +18,11 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestSqueezeFcFusePattern(PassTest):
     r"""
     squeeze
@@ -44,10 +41,10 @@ class TestSqueezeFcFusePattern(PassTest):
     def sample_program(self):
         for y_shape in [[128], [1, 128]]:
             for w_shape in [[128, 128]]:
-                pir_program = None
                 with paddle.pir_utils.IrGuard():
-                    pir_program = paddle.static.Program()
-                    with paddle.pir.core.program_guard(pir_program):
+                    start_prog = paddle.static.Program()
+                    main_prog = paddle.static.Program()
+                    with paddle.pir.core.program_guard(main_prog, start_prog):
                         x = paddle.static.data(
                             name='x', shape=[3, 128, 1, 1], dtype='float32'
                         )
@@ -61,7 +58,7 @@ class TestSqueezeFcFusePattern(PassTest):
                         out = paddle.add(
                             paddle.matmul(paddle.squeeze(x, [2, 3]), w), y
                         )
-
+                        out = paddle.assign(out)
                         self.pass_list = ['fc_with_special_op_fuse_pass']
                         self.feeds = {
                             "x": np.random.random([3, 128, 1, 1]).astype(
@@ -78,19 +75,17 @@ class TestSqueezeFcFusePattern(PassTest):
                             "pd_op.fc": 1,
                         }
 
-                        yield pir_program, False
+                        yield [main_prog, start_prog], False
 
     def setUp(self):
-        self.place_runtime = "gpu"
+        self.places.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestReshapeFcFusePattern(PassTest):
     r"""
     reshape
@@ -108,10 +103,10 @@ class TestReshapeFcFusePattern(PassTest):
 
     def sample_program(self):
         for y_shape in [[192], [1, 192]]:
-            pir_program = None
             with paddle.pir_utils.IrGuard():
-                pir_program = paddle.static.Program()
-                with paddle.pir.core.program_guard(pir_program):
+                start_prog = paddle.static.Program()
+                main_prog = paddle.static.Program()
+                with paddle.pir.core.program_guard(main_prog, start_prog):
                     x = paddle.static.data(
                         name='x', shape=[3, 144, 6, 32], dtype='float32'
                     )
@@ -125,11 +120,13 @@ class TestReshapeFcFusePattern(PassTest):
                     out = paddle.add(
                         paddle.matmul(paddle.reshape(x, [3, 144, -1]), w), y
                     )
-
+                    out = paddle.assign(out)
                     self.pass_list = ['fc_with_special_op_fuse_pass']
                     self.feeds = {
-                        "x": np.random.random([3, 255, 1, 1]).astype("float32"),
-                        "w": np.random.random([255, 128]).astype("float32"),
+                        "x": np.random.random([3, 144, 6, 32]).astype(
+                            "float32"
+                        ),
+                        "w": np.random.random([192, 192]).astype("float32"),
                         "y": np.random.random(y_shape).astype("float32"),
                     }
                     self.fetch_list = [out]
@@ -140,19 +137,17 @@ class TestReshapeFcFusePattern(PassTest):
                         "pd_op.fc": 1,
                     }
 
-                    yield pir_program, False
+                    yield [main_prog, start_prog], False
 
     def setUp(self):
-        self.place_runtime = "gpu"
+        self.places.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestFlattenFcFusePattern(PassTest):
     r"""
     flatten
@@ -170,10 +165,10 @@ class TestFlattenFcFusePattern(PassTest):
 
     def sample_program(self):
         for y_shape in [[128], [1, 128]]:
-            pir_program = None
             with paddle.pir_utils.IrGuard():
-                pir_program = paddle.static.Program()
-                with paddle.pir.core.program_guard(pir_program):
+                start_prog = paddle.static.Program()
+                main_prog = paddle.static.Program()
+                with paddle.pir.core.program_guard(main_prog, start_prog):
                     x = paddle.static.data(
                         name='x', shape=[3, 255, 1, 1], dtype='float32'
                     )
@@ -187,7 +182,7 @@ class TestFlattenFcFusePattern(PassTest):
                     out = paddle.add(
                         paddle.matmul(paddle.flatten(x, start_axis=1), w), y
                     )
-
+                    out = paddle.assign(out)
                     self.pass_list = ['fc_with_special_op_fuse_pass']
                     self.feeds = {
                         "x": np.random.random([3, 255, 1, 1]).astype("float32"),
@@ -202,10 +197,12 @@ class TestFlattenFcFusePattern(PassTest):
                         "pd_op.fc": 1,
                     }
 
-                    yield pir_program, False
+                    yield [main_prog, start_prog], False
 
     def setUp(self):
-        self.place_runtime = "gpu"
+        self.places.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
         self.check_pass_correct()

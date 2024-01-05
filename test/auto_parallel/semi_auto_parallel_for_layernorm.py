@@ -34,10 +34,10 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-04, verbose=True)
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
+    def check_placements(self, output, expected_placements):
         assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
 
     def test_layernorm_forward(self):
         shapes = ([16, 4, 4], [16], [16])
@@ -49,7 +49,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             normalized_shape=[4, 4],
         )
-        self.check_dim_mapping(outputs, [0, -1, -1])
+        self.check_placements(outputs, [dist.Shard(0)])
 
     def test_layernorm_reshard(self):
         shapes = ([16, 4, 4], [16], [16])
@@ -61,7 +61,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             normalized_shape=[4, 4],
         )
-        self.check_dim_mapping(outputs, [-1, -1, -1])
+        self.check_placements(outputs, [dist.Replicate()])
 
     def run_test_case(self):
         if self._backend == "cpu":

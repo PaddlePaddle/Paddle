@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 
+#include <chrono>
 #include <unordered_map>
 
 #include "glog/logging.h"
@@ -59,6 +60,12 @@ const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
     "conditional_block_grad",
     "while_grad",
 };
+
+std::string nano_timestamp() {
+  auto ts =
+      std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  return std::to_string(ts);
+}
 
 const TCValue& TranslationContext::operator[](const TCKey& key) const {
   return at(key);
@@ -124,6 +131,8 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
 void ProgramTranslator::Translate() {
   GetParameterForSingleBlock(legacy_program_->Block(0));
 
+  InsertDataOpForSingleBlock(legacy_program_->Block(0));
+
   TranslateBlock(legacy_program_->Block(0),
                  0,
                  legacy_program_->Block(0).OpSize(),
@@ -148,7 +157,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t end_id,
                                        TranslationContext* translation_ctx,
                                        pir::Block* dst_block) {
-  VLOG(8) << "=============>start to translate a block";
+  VLOG(8) << "=============>start to translate a block: " << &src_block;
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
       platform::errors::NotFound(
@@ -178,19 +187,33 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
   }
 }
 
-pir::Operation* ProgramTranslator::InsertFullOrDataOpToBlock(
+pir::Operation* ProgramTranslator::InsertDataOpOrCreateArrayToBlock(
     pir::Block* insert_block, pir::Type type) {
   pir::Builder builder(ctx_, insert_block, insert_block->begin());
   if (type.isa<paddle::dialect::DenseTensorType>()) {
     auto tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
     std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
-    paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
+    VLOG(10) << "[translator][data insertion] before type: " << tensor_type;
+    std::transform(shape.cbegin(), shape.cend(), shape.begin(), [](int64_t s) {
+      return abs(s);
+    });
+    auto normalized_tensor_type =
+        dialect::DenseTensorType::get(ctx_,
+                                      tensor_type.dtype(),
+                                      common::make_ddim(shape),
+                                      tensor_type.data_layout(),
+                                      tensor_type.lod(),
+                                      tensor_type.offset());
+    VLOG(10) << "[translator][data insertion] after type: "
+             << normalized_tensor_type;
+
+    auto data_op = builder.Build<paddle::dialect::DataOp>(
+        "data_" + nano_timestamp(),
         shape,
-        0,
-        paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
+        paddle::dialect::TransToPhiDataType(normalized_tensor_type.dtype()),
         phi::CPUPlace());
-    full_op.out().set_type(type);
-    return full_op.operation();
+    data_op.out().set_type(normalized_tensor_type);
+    return data_op.operation();
   } else if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
     auto array_type = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
     paddle::dialect::CreateArrayOp array_op =
@@ -273,7 +296,7 @@ void ProgramTranslator::TranslateIfOperation(
       if (false_block_context->count(cond_op_outputs[id]) == 0) {
         auto true_type = true_yeild_inputs[id].type();
         pir::Operation* init_op =
-            InsertFullOrDataOpToBlock(&false_region.front(), true_type);
+            InsertDataOpOrCreateArrayToBlock(&false_region.front(), true_type);
         PADDLE_ENFORCE_NOT_NULL(
             init_op,
             phi::errors::PreconditionNotMet(
@@ -396,6 +419,34 @@ inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
   pir::Operation* operation = pir::Operation::Create(
       {defining_op_result}, op_attribute_map, {}, op_info);
   return operation;
+}
+
+void ProgramTranslator::InsertDataOpForSingleBlock(const BlockDesc& block) {
+  std::unordered_set<std::string> all_var_names;
+  for (auto& var : block.AllVars()) {
+    all_var_names.insert(var->Name());
+  }
+
+  std::unordered_set<std::string> inner_outputs;
+  for (auto op_desc : block.AllOps()) {
+    for (const auto& n : op_desc->Inputs()) {
+      const auto& input_var_names = n.second;
+      for (const auto& var_name : input_var_names) {
+        if (param_map_.count(var_name) != 0) continue;
+        if (no_cast_var_names.count(var_name) != 0) continue;
+        if (all_var_names.count(var_name) == 0) continue;
+        if (inner_outputs.count(var_name) == 0) {
+          CreateUndefinedVariable(var_name, block);
+        }
+      }
+    }
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_outputs.insert(var_name);
+      }
+    }
+  }
 }
 
 void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
