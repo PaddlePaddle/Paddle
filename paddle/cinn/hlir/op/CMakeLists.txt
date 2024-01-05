@@ -7,6 +7,7 @@ gather_srcs(
   SRCS
   nn.cc
   broadcast.cc
+  generate_shape.cc
   transform.cc
   elementwise.cc
   reduction.cc
