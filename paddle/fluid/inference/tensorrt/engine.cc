@@ -96,14 +96,6 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     } else {
       infer_context = infer_engine_->createExecutionContext();
     }
-    // #if IS_TRT_VERSION_GE(8500)
-    //     int32_t const endBindingIndex = infer_engine_->getNbIOTensors();
-    //     for (int i = 0; i < endBindingIndex; ++i) {
-    //       const auto tensorName = infer_engine_->getIOTensorName(i);
-    //       m_IOTensorNames.emplace_back(tensorName);
-    //       LOG(INFO)<<"IOTensorName: "<<m_IOTensorNames[i];
-    //     }
-    // #endif
     PADDLE_ENFORCE_NOT_NULL(
         infer_context,
         platform::errors::InvalidArgument(
@@ -170,7 +162,6 @@ void TensorRTEngine::Execute(int batch_size,
   }
 
   Enqueue(infer_context, buffers, batch_size, stream);
-  LOG(INFO) << "after Enqueue";
 }
 
 bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
@@ -185,11 +176,8 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 
 #if IS_TRT_VERSION_GE(8500)
   int num_bindings = context->getEngine().getNbBindings();
-  LOG(INFO) << "num_bindings: " << num_bindings;
-  LOG(INFO) << "buffers->size(): " << buffers->size();
   for (size_t j = 0; j < buffers->size(); ++j) {
     auto name = context->getEngine().getBindingName(j);
-    LOG(INFO) << "setTensorAddress的名字" << name;
     context->setTensorAddress(name, (*buffers)[j]);
   }
 #endif
@@ -199,9 +187,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
 #if IS_TRT_VERSION_GE(8500)
-    LOG(INFO) << "enqueueV3";
     ret = context->enqueueV3(stream);
-    LOG(INFO) << "enqueueV3 end";
 #else
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
 #endif
