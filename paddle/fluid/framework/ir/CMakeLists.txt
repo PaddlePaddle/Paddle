@@ -421,7 +421,7 @@ cc_test(
 cc_test(
   test_fc_gru_fuse_pass_cc
   SRCS fc_gru_fuse_pass_tester.cc
-  DEPS fc_gru_fuse_pass framework_proto)
+  DEPS fc_gru_fuse_pass framework_proto pir)
 cc_test(
   test_seqpool_concat_fuse_pass
   SRCS seqpool_concat_fuse_pass_tester.cc
