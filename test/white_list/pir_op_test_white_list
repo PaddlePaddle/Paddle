@@ -121,6 +121,7 @@ test_fmax_op
 test_fmin_op
 test_fold_op
 test_frame_op
+test_ftrl_op
 test_full_like_op
 test_fused_attention_op
 test_fused_attention_op_api

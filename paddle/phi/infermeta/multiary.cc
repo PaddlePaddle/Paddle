@@ -1525,6 +1525,48 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void FtrlInferMeta(const MetaTensor& param,
+                   const MetaTensor& squared_accumulator,
+                   const MetaTensor& linear_accumulator,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   float l1,
+                   float l2,
+                   float lr_power,
+                   MetaTensor* param_out,
+                   MetaTensor* squared_accum_out,
+                   MetaTensor* linear_accum_out) {
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(param_dim,
+                    grad.dims(),
+                    phi::errors::InvalidArgument(
+                        "Two input of FTRL Op's dimension must be same, but "
+                        "param_dim is %d, Grad is %d",
+                        param_dim,
+                        grad.dims()));
+
+  auto lr_dim = learning_rate.dims();
+  PADDLE_ENFORCE_NE(common::product(lr_dim),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Maybe the Input variable LearningRate has not "
+                        "been initialized. You may need to confirm "
+                        "if you put exe.run(startup_program) "
+                        "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(common::product(lr_dim),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning Rate should be a scalar, but got %d",
+                        common::product(lr_dim)));
+
+  param_out->set_dims(param_dim);
+  param_out->set_dtype(param.dtype());
+  squared_accum_out->set_dims(param_dim);
+  squared_accum_out->set_dtype(param.dtype());
+  linear_accum_out->set_dims(param_dim);
+  linear_accum_out->set_dtype(param.dtype());
+}
+
 void FusedBatchNormActInferMeta(const MetaTensor& x,
                                 const MetaTensor& scale,
                                 const MetaTensor& bias,
