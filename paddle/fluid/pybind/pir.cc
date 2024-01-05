@@ -1641,9 +1641,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
             cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateRewriteGenerateShapeOpsToRunFirstPass());
-    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
   cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
@@ -1653,6 +1650,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   if (has_dynamic_shape) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateRewriteGenerateShapeOpsToRunFirstPass());
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
   }
 

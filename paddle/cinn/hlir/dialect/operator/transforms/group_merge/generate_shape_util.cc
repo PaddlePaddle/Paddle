@@ -8,10 +8,10 @@ namespace cinn::dialect {
 
 namespace {
 
-bool RunningFirst(cinn::dialect::GenerateShapeOp op, pir::Block* block) {
+bool RunningFirst(cinn::dialect::GenerateShapeOp op, const std::vector<pir::Value>& block_args) {
   for (int i = 0; i < op->num_operands(); ++i) {
     pir::Value input = op->operand_source(i);
-    if (std::find(block->args_begin(), block->args_end(), input) == block->args_end()) return false;
+    if (std::find(block_args.begin(), block_args.end(), input) == block_args.end()) return false;
   }
   return true;
 }
@@ -22,10 +22,31 @@ const std::vector<symbol::DimExpr>& GetDimExprs(pir::Value value, const ShapeOrD
   return shape_or_data_dim_exprs.data().value();
 }
 
+std::vector<pir::Value> GetBlockArgs(pir::Block* block) {
+  std::unordered_set<pir::Value> values_produced_by_block_op;
+  for (auto op = block->begin(); op != block->end(); ++op) {
+    for (int i = 0; i < op->num_results(); ++i) {
+      values_produced_by_block_op.insert(op->result(i));
+    }
+  }
+  std::vector<pir::Value> ret{};
+  for (auto op = block->begin(); op != block->end(); ++op) {
+    for (int i = 0; i < op->num_operands(); ++i) {
+      pir::Value input = op->operand_source(i);
+      if (values_produced_by_block_op.count(input) == 0) {
+        if (std::find(ret.begin(), ret.end(), input) == ret.end()) {
+          ret.push_back(input);
+        }
+      }
+    }
+  }
+  return ret;
+}
+
 // Returns `out` of GenerateShapeOp
 pir::Value InsertGenerateShapeOpToRunFirst(
-    pir::IrContext* ir_context,
-    pir::Block* block,
+    pir::Builder* builder,
+    const std::vector<pir::Value>& block_args,
     pir::Value value,
     const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
   const auto& out_dim_exprs = GetDimExprs(value, dim_exprs_accessor);
@@ -33,15 +54,14 @@ pir::Value InsertGenerateShapeOpToRunFirst(
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings{};
   MakeGenerateShapeOpAttribute(
-    ir_context,
+    builder->ir_context(),
     dim_exprs_accessor.GetShapeOrDataDimExprs,
     out_dim_exprs,
-    block->args(),
+    block_args,
     &minial_inputs,
     &output_dim_expr_attrs,
     &symbol_bindings);
-  pir::Builder builder(ir_context, block);
-  return builder.Build<cinn::dialect::GenerateShapeOp>(minial_inputs, output_dim_expr_attrs, symbol_bindings).out();
+  return builder->Build<cinn::dialect::GenerateShapeOp>(minial_inputs, output_dim_expr_attrs, symbol_bindings).out();
 }
 
 void CloneDimExprInfo(pir::Value from, pir::Value to, const ShapeOrDataDimExprsAccessor& ctx) {
@@ -60,11 +80,14 @@ bool RewriteOneGenerateShapeOpToRunFirst(
     pir::IrContext* ir_context,
     pir::Block* block,
     const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
+  std::vector<pir::Value> block_args = GetBlockArgs(block);
   for (auto op_iter = block->begin(); op_iter != block->end(); ++op_iter) {
     if (!op_iter->isa<cinn::dialect::GenerateShapeOp>()) continue;
     auto op = op_iter->dyn_cast<cinn::dialect::GenerateShapeOp>();
-    if (RunningFirst(op, block)) continue;
-    pir::Value new_shape = InsertGenerateShapeOpToRunFirst(ir_context, block, op.out(), dim_exprs_accessor);
+    if (RunningFirst(op, block_args)) continue;
+    pir::Builder builder(ir_context, block);
+    builder.set_insertion_point(op);
+    pir::Value new_shape = InsertGenerateShapeOpToRunFirst(&builder, block_args, op.out(), dim_exprs_accessor);
     CloneDimExprInfo(op.out(), new_shape, dim_exprs_accessor);
     ReplaceAllUses(op.out(), new_shape);
     EraseGenerateShapeOp(op_iter, block);
