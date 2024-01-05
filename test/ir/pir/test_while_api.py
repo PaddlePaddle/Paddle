@@ -172,12 +172,13 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 out,
                 [i, j],
             )
+            print(main_program)
             self.assertEqual(
                 grad_outs[0].get_defining_op().name(), "pd_op.while"
             )
             self.assertEqual(
                 main_program.global_block()
-                .ops[-3]
+                .ops[-1]
                 .as_while_op()
                 .body()
                 .ops[-4]
@@ -187,7 +188,7 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
 
             self.assertEqual(
                 main_program.global_block()
-                .ops[-3]
+                .ops[-1]
                 .as_while_op()
                 .body()
                 .ops[-5]

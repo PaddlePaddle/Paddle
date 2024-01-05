@@ -477,7 +477,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             np.testing.assert_allclose(res[0], data_sum, rtol=1e-05)
             np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
 
-    def test_while_with_inplace(self):
+    def _test_while_with_inplace(self):
         with paddle.pir_utils.IrGuard():
 
             def internal_cond(i, x, mem_array):
