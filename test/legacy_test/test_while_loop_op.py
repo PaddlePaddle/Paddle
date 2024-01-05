@@ -423,6 +423,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
             mem_array.stop_gradient = False
+            data_array.stop_gradient = False
             mem_array.persistable = True
             i = paddle.increment(i)
             paddle.tensor.array_write(d1, i, array=data_array)
