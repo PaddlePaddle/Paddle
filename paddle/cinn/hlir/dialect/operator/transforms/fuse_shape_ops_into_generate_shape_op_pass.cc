@@ -140,16 +140,10 @@ bool ProcessOp(paddle::dialect::ExpandOp op, pir::PatternRewriter* rewriter) {
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(
             op.x().defining_op()->GetParentProgram());
-    if (shape_analysis.value_id_to_shapeordata_.find(GetValueId(&value)) ==
-        shape_analysis.value_id_to_shapeordata_.end()) {
-      return symbol::ShapeOrDataDimExprs();
-    } else {
-      return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
-    }
+    CHECK(shape_analysis.value_id_to_shapeordata_.find(GetValueId(&value)) !=
+          shape_analysis.value_id_to_shapeordata_.end());
+    return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
   };
-  if (ShapeOrDataDimExprs4Value(op.shape()).shape().empty()) {
-    return false;
-  }
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewritedGenerateShapeOp(
           op.shape(), rewriter, ShapeOrDataDimExprs4Value);
