@@ -3640,13 +3640,14 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               float alpha,
                               int head_num,
                               int head_dim,
+                              bool qkv_fc_fusion,
                               DataType out_dtype,
                               MetaTensor* qkv,
                               MetaTensor* qkv_max) {
   auto q_dims = q.dims();
   auto k_dims = k.dims();
   auto v_dims = v.dims();
-  // input shape : {B, L, 3*H*D}
+  // input shape : {B, L, 3*H*D} or  {B, L, H*D}
   PADDLE_ENFORCE_EQ(q_dims.size(),
                     3,
                     phi::errors::InvalidArgument("The dim of q should be 3! "
@@ -3671,13 +3672,16 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
         phi::errors::InvalidArgument("The shape of k , v should be the same! "
                                      "But received ."));
   }
+  int hidden_dim =
+      qkv_fc_fusion ? 3 * head_num * head_dim : head_num * head_dim;
   PADDLE_ENFORCE_EQ(
       q_dims[2],
-      3 * head_num * head_dim,
-      phi::errors::InvalidArgument("To support do_fc_qkv_fusion,"
-                                   "The shape of q should be [B, L, 3*H*D]! "
-                                   "But received q_dims[2]: [%d] != 3*H*D.",
-                                   q_dims[2]));
+      hidden_dim,
+      phi::errors::InvalidArgument(
+          "The shape of q should be [B, L, H*D] or [B, L, 3*H*D]! "
+          "But received q_dims[2]: [%d] != expected hidden_dim : [%d].",
+          q_dims[2],
+          hidden_dim));
 
   // output shape: {B, L, HD}
   qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
@@ -3687,4 +3691,35 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
   qkv_max->set_dtype(out_dtype);
   qkv_max->set_layout(q.layout());
 }
+void SinePosXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_dims_size,
+      3,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 3, but received x_dims_size is %d",
+          x_dims_size));
+  PADDLE_ENFORCE_EQ(x_dims[x_dims_size - 1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "x last dim size should be 1, but received is %d",
+                        x_dims[x_dims_size - 1]));
+  auto y_dims = y.dims();
+  auto y_dims_size = y_dims.size();
+  PADDLE_ENFORCE_EQ(
+      y_dims_size,
+      1,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 3, but received x_dims_size is %d",
+          y_dims_size));
+
+  phi::DDim out_dim = phi::make_ddim({x_dims[0], x_dims[1], y_dims[0]});
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi

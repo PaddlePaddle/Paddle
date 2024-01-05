@@ -156,11 +156,26 @@ void OperatorDialect::initialize() {
   // paddle/fluid/pir/dialect/CMakeLists.txt.
   // NOTE(Ruting)GET_MANUAL_OP_LIST is define in manual_op.h"
   // use RegisterOps when list has more than two ops.
+
+  // NOTE(cocoshe): VS2017 has a limit on the length of template
+  // parameters, which causes "fatal error C1202".
+  // Split GET_OP_LIST into two part on WIN32 here.
+#ifdef WIN32
+  RegisterOps<
+#define GET_OP_LIST1
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op_info.cc"  // NOLINT
+      >();
+
+  RegisterOps<
+#define GET_OP_LIST2
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op_info.cc"  // NOLINT
+      >();
+#else
   RegisterOps<
 #define GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op_info.cc"  // NOLINT
       >();
-
+#endif
   RegisterOps<
 #define GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.cc"  // NOLINT

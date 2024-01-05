@@ -234,6 +234,9 @@ class TestInstanceNormFP32OP(OpTest):
             'Y',
             check_prim=self.check_prim,
             check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
     def init_dtype(self):
@@ -295,6 +298,9 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
             max_relative_error=self.max_relative_error,
             check_prim=self.check_prim,
             check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
 
@@ -372,6 +378,9 @@ class TestInstanceNormBF16OP(OpTest):
             user_defined_grads=self.user_defined_grads,
             check_prim=self.check_prim,
             check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
 

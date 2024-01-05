@@ -14,13 +14,14 @@
 
 #include "gtest/gtest.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_util.h"
 
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
-namespace symbol {
+namespace cinn::dialect {
+using namespace symbol;  // NOLINT
 
 namespace {
 DimExpr CreateExampleDimExpr() {
@@ -37,11 +38,9 @@ DimExpr CreateExampleDimExpr() {
 
 TEST(DimExprUtil, Convert) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  pir::Program program(ctx);
-  pir::Builder builder = pir::Builder(ctx, program.block());
 
   DimExpr dim_expr = CreateExampleDimExpr();
-  ::pir::Attribute attr = ConvertDimExprToAttribute(&builder, dim_expr);
+  ::pir::Attribute attr = ConvertDimExprToAttribute(ctx, dim_expr);
   std::optional<DimExpr> opt_expr = ConvertAttributeToDimExpr(attr);
   ASSERT_TRUE(opt_expr.has_value());
   ASSERT_EQ(opt_expr.value(), dim_expr);
@@ -96,4 +95,4 @@ TEST(DimExprUtil, MakeGetterDimExpr4SymbolName) {
   ASSERT_EQ(opt_dim_expr.value(), dim_expr);
 }
 
-}  // namespace symbol
+}  // namespace cinn::dialect

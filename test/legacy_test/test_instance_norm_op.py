@@ -134,7 +134,11 @@ class TestInstanceNormOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'Scale', 'Bias'], 'Y', check_prim=True, check_pir=True
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_test_case(self):
