@@ -177,12 +177,14 @@ PhiKernelInstruction::~PhiKernelInstruction() {
 }
 
 void PhiKernelInstruction::Run() {
+  VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
-  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
+  VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
+  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   (*(phi_kernel_))(&(kernel_context_));
-  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
+  VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
 
 }  // namespace framework

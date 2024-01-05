@@ -152,6 +152,8 @@ class NameloadJstTransformer(BaseTransformer):
         Can't convert name of function call, bacause this will affect CallTransformer.
         """
         node.args = [self.visit(arg) for arg in node.args]
+        for keyword in node.keywords:
+            keyword.value = self.visit(keyword.value)
         node.func = self.visit(node.func)
         return node
 

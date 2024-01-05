@@ -121,6 +121,7 @@ test_fmax_op
 test_fmin_op
 test_fold_op
 test_frame_op
+test_ftrl_op
 test_full_like_op
 test_fused_attention_op
 test_fused_attention_op_api
@@ -210,6 +211,7 @@ test_multinomial_op
 test_multiplex_op
 test_mv_op
 test_nanmedian
+test_nce
 test_nearest_interp_mkldnn_op
 test_nearest_interp_v2_op
 test_nextafter_op
@@ -269,6 +271,7 @@ test_sgd_op
 test_shape_mkldnn_op
 test_shape_op
 test_shard_index_op
+test_shuffle_batch_op
 test_sigmoid_cross_entropy_with_logits_op
 test_sign_op
 test_size_op

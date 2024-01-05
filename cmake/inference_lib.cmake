@@ -328,6 +328,13 @@ copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/visit_type.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
+
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/distributed/type_defs.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/distributed/
+)
+
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/init_phi.h
