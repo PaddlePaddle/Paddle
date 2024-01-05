@@ -47,10 +47,12 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"},
+    {"pd_op.expand", "broadcast_to"},
     // The following should implement OpPattern in pd_to_cinn_pass,
     // otherwise, it will be block in BuildCinnPass.
     {"cinn_op.squeeze", ""},
-    {"cinn_op.unsqueeze", ""}};
+    {"cinn_op.unsqueeze", ""},
+    {"cinn_op.generate_shape", "generate_shape"}};
 
 // In following cases, the op is marked SupportCinn:
 // 1. its name is in OP_NAMES, like pd_op.sum;
@@ -236,6 +238,9 @@ int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
 OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
+  if (op_name == "generate_shape") {
+    return hlir::framework::kNonFusible;
+  }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
   CHECK(op_pattern_dict.Find(cinn_op));
   auto kind = op_pattern_dict[cinn_op];
