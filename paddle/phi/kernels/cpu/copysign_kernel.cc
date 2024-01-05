@@ -22,15 +22,14 @@ void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
-  dev_ctx.template Alloc<U>(out);
+  dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<phi::CopySignFunctor<T>, T, U>(
+    funcs::ElementwiseCompute<phi::CopySignFunctor<T>, T>(
         dev_ctx, x, y, phi::CopySignFunctor<T>(), out);
   } else {
-    funcs::ElementwiseCompute<phi::InverseCopySignFunctor<T>, T, U>(
+    funcs::ElementwiseCompute<phi::InverseCopySignFunctor<T>, T>(
         dev_ctx, x, y, phi::InverseCopySignFunctor<T>(), out);
   }
 }

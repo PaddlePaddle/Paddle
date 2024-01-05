@@ -22,11 +22,10 @@ void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
   std::vector<const DenseTensor*> inputs = {&x, &y};
   std::vector<DenseTensor*> outputs = {out};
-  dev_ctx.template Alloc<U>(out);
-  funcs::BroadcastKernel<U>(
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
       dev_ctx, inputs, &outputs, phi::CopySignFunctor<T>());
 }
 }  // namespace phi

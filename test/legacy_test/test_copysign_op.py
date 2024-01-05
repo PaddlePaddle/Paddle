@@ -23,15 +23,10 @@ from paddle.base import core
 np.random.seed(100)
 paddle.seed(100)
 
-out_dtype_need_convert = ['bool', 'uint8', 'int8', 'int32', 'int64']
-adjust_out_dtype = {
-    'float16': 'float32',
-    'float64': 'float32',
-}
-
 
 def ref_copysign(x, y):
-    return np.copysign(x, y)
+    out_dtype = x.dtype
+    return np.copysign(x, y).astype(out_dtype)
 
 
 def ref_grad_copysign(x, y, dout):
@@ -153,8 +148,6 @@ class TestCopySignAPI(unittest.TestCase):
             out_ref = ref_copysign(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
             out_ref_dtype = out_ref.dtype
-            if str(self.x.dtype) in out_dtype_need_convert:
-                out_ref_dtype = adjust_out_dtype[str(out_ref_dtype)]
             np.testing.assert_equal((out_ref_dtype == res[0].dtype), True)
         paddle.disable_static()
 
@@ -166,8 +159,6 @@ class TestCopySignAPI(unittest.TestCase):
         out_ref = ref_copysign(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
         out_ref_dtype = out_ref.dtype
-        if str(self.x.dtype) in out_dtype_need_convert:
-            out_ref_dtype = adjust_out_dtype[str(out_ref_dtype)]
         np.testing.assert_equal((out_ref_dtype == out.numpy().dtype), True)
         paddle.enable_static()
 
