@@ -1,4 +1,5 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +15,12 @@
 
 #pragma once
 
-#include <string>
-#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace cinn {
-namespace ir {
+namespace phi {
 
-class AlignIterSpaceTactic final : public ScheduleTactic {
- public:
-  void Init(ScheduleContext* context) override;
-
-  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
-
-  std::string TacticName() const override { return "AlignIterSpaceTactic"; }
-
- private:
-  ScheduleContext* context_;
-};
-
-}  // namespace ir
-}  // namespace cinn
+template <typename T, typename Context>
+void GammalnKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out);
+}  // namespace phi

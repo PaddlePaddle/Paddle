@@ -36,6 +36,10 @@ struct IterativeSpaceInfo {
   std::vector<std::tuple<ir::Expr, AxisType>> sp_space;
   // reduce or broadcast iterative space
   std::vector<std::tuple<ir::Expr, AxisType>> rb_space;
+  // total sp extent
+  ir::Expr total_sp_extent;
+  // total rb extent
+  ir::Expr total_rb_extent;
   // original loop order with same iteration order as the memory order
   std::vector<ir::Expr> memory_consistent_order_space;
   // index that transform from memory consistent order to rb last order
@@ -45,11 +49,19 @@ struct IterativeSpaceInfo {
   std::vector<int> rb_last_order;
 };
 
+struct BucketInfo {
+  int sp_lower_bound = 0;
+  int sp_upper_bound = UINT_MAX;
+  int rb_lower_bound = 0;
+  int rb_upper_bound = UINT_MAX;
+};
+
 struct ScheduleContext {
   std::unordered_set<std::string> output_names;
   ScheduleBlockNode* global_master;
   IterativeSpaceInfo iter_space_info;
   Target target;
+  BucketInfo bucket_info;
 };
 
 class ScheduleTactic {
