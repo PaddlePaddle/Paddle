@@ -111,6 +111,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_with_kernel',
     'c_allgather',
     'c_allreduce_max',
+    'c_allreduce_min',
     'c_allreduce_sum',
     'c_embedding',
     'c_identity',
