@@ -14,7 +14,7 @@
 #pragma once
 #include <unordered_map>
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 
 namespace pir {
 
