@@ -195,6 +195,8 @@ def shard_tensor(
 
                 # lazy init hook with randomness controlling
                 def _init_func(var, block):
+                    if dist.get_rank() not in param.process_mesh.process_ids:
+                        return
                     # get the unique rng name
                     rng_name = determinate_rng(
                         dist.get_rank(),
