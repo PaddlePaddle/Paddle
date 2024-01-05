@@ -613,13 +613,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
 #if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
-        // LOG(INFO)<<"输入的名字"<<x.c_str();
-        // nvinfer1::Dims trt_dims =
-        //     inference::tensorrt::Vec2TRT_Dims(t_shape, x, true);
-        // LOG(INFO) << "Number of dimensions " << trt_dims.nbDims;
-        // for (int i = 0; i < trt_dims.nbDims; ++i) {
-        //   LOG(INFO) << "Dimension " << i << ": " << trt_dims.d[i];
-        // }
         trt_context->setInputShape(
             x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #else
@@ -711,8 +704,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "The TRT Engine OP only support "
             "float/double/int32_t/int64_t/float16/bool input."));
       }
-      LOG(INFO) << "输入的名字 " << x.c_str();
-      // trt_context->setTensorAddress(x.c_str(), buffers[bind_index]);
     }
 
     // Bind output tensor to TRT.
@@ -778,8 +769,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
               << TRT2FluidDataType(trt_type);
       buffers[bind_index] = static_cast<void *>(
           fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
-      LOG(INFO) << "输出的名字 " << y.c_str();
-      // trt_context->setTensorAddress(y.c_str(), buffers[bind_index]);
       output_index += 1;
     }
 
