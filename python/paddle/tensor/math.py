@@ -7131,20 +7131,29 @@ def _bitwise_op(op_name, x, y, out=None, name=None):
 def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
     r"""
     Apply ``bitwise_left_shift`` on Tensor ``X`` and ``Y`` .
+
     .. math::
+
         Out = X \ll Y
+
     .. note::
+
         ``paddle.bitwise_left_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
+
     Args:
         x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor: Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> x=  paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
@@ -7199,20 +7208,29 @@ def bitwise_left_shift_(x, y, is_arithmetic=True, out=None, name=None):
 def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
     r"""
     Apply ``bitwise_right_shift`` on Tensor ``X`` and ``Y`` .
+
     .. math::
+
         Out = X \gg Y
+
     .. note::
+
         ``paddle.bitwise_right_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
+
     Args:
         x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor: Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> x=  paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
