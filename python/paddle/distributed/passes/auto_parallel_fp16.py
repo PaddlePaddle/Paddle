@@ -79,7 +79,7 @@ def set_auto_cast_attr(cast_op, block):
     ), f"in_var {in_name} or out_var {out_name} is None of cast op"
     if is_forward_op(cast_op):
         cast_op._set_attr('in_dtype', in_var.dtype)
-        cast_op._set_attr('out_dtype', out_var.dtype)
+        out_var.desc.set_dtype(paddle.dtype(cast_op.attr('out_dtype')))
     elif is_backward_op(cast_op):
         in_var_fw = block._find_var_recursive(in_name[: in_name.find("@")])
         out_var_fw = block._find_var_recursive(out_name[: out_name.find("@")])

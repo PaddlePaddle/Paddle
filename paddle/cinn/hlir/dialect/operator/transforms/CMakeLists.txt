@@ -30,6 +30,15 @@ if(NOT CINN_ONLY)
     op_dialect_vjp)
 
   cinn_cc_library(
+    fully_insert_broadcast_pass
+    SRCS
+    fully_insert_broadcast_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
+  cinn_cc_library(
     merge_reshape_with_broadcast_pass
     SRCS
     merge_reshape_with_broadcast_pass.cc
