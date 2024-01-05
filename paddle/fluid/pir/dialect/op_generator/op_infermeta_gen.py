@@ -15,7 +15,7 @@
 from op_build_gen import GenBuildOutputsPart2, GetAttributes
 
 OP_INFERMETA_TEMPLATE = """
-std::vector<pir::Type> {op_name}::InferMeta(std::vector<pir::Value>& input_values, pir::AttributeMap attributes) {{
+std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes) {{
 {infermeta_inputs}
 {get_attributes_str}
 {infermeta_outputs}
@@ -32,7 +32,7 @@ GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
 """
 
 OP_INFERMETA_BY_INVOKE_TEMPLATE = """
-std::vector<pir::Type> {op_name}::InferMeta(std::vector<pir::Value>& input_values, pir::AttributeMap attributes) {{
+std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes) {{
   return {invoke_class}::InferMeta(input_values, attributes);
 }}
 """

@@ -176,8 +176,9 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
-std::vector<pir::Type> AddNOp::InferMeta(std::vector<pir::Value> &input_values,
-                                         pir::AttributeMap attributes) {
+std::vector<pir::Type> AddNOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta AddNOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -347,8 +348,9 @@ void AddN_Op::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
-std::vector<pir::Type> AddN_Op::InferMeta(std::vector<pir::Value> &input_values,
-                                          pir::AttributeMap attributes) {
+std::vector<pir::Type> AddN_Op::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta AddN_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -519,6 +521,29 @@ void AddNWithKernelOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+std::vector<pir::Type> AddNWithKernelOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta AddNWithKernelOp";
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
+             input_values.size());
+  pir::Value inputs_ = input_values[0];
+
+  VLOG(4) << "Builder construction outputs";
+  pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
+  std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
+  for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
+    vec_dense_inputs.push_back(paddle::dialect::IrTensor(
+        paddle::dialect::TransToPhiDataType(
+            inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+        inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
+  }
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_inputs;
+  for (size_t i = 0; i < vec_dense_inputs.size(); i++) {
     vec_meta_inputs.push_back(
         paddle::dialect::IrMetaTensor(&vec_dense_inputs[i]));
   }
@@ -671,6 +696,57 @@ void AddNArrayOp::Build(pir::Builder &builder,             // NOLINT
 void AddNArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(phi::AddNTensorArrayInferMeta);
   fn(infer_meta);
+}
+
+std::vector<pir::Type> AddNArrayOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta AddNArrayOp";
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
+             input_values.size());
+  pir::Value inputs_ = input_values[0];
+  VLOG(4) << "Builder construction outputs";
+  pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
+
+  std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
+  for (size_t i = 0; i < inputs.size(); i++) {
+    vec_dense_inputs.push_back(paddle::dialect::IrTensor(
+        TransToPhiDataType(
+            inputs[i]
+                .dyn_cast<paddle::dialect::DenseTensorArrayType>()
+                .dtype()),
+        {},
+        inputs[i]
+            .dyn_cast<paddle::dialect::DenseTensorArrayType>()
+            .data_layout(),
+        {}));
+  }
+
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_inputs;
+  for (size_t i = 0; i < vec_dense_inputs.size(); i++) {
+    vec_meta_inputs.push_back(
+        paddle::dialect::IrMetaTensor(&vec_dense_inputs[i]));
+  }
+
+  std::vector<const phi::MetaTensor *> meta_inputs;
+  for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
+    meta_inputs.push_back(&vec_meta_inputs[i]);
+  }
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::AddNTensorArrayInferMeta(
+      meta_inputs, &meta_out, phi::MetaConfig(false, false));
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      TransToIrDataType(dense_out.dtype()),
+      dense_out.layout());
+
+  argument_outputs.push_back(out_dense_tensor_type);
+  return argument_outputs;
 }
 
 const char *FusedGemmEpilogueOp::attributes_name[3] = {
@@ -905,7 +981,8 @@ void FusedGemmEpilogueOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta FusedGemmEpilogueOp";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -1226,7 +1303,8 @@ void FusedGemmEpilogueGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   IR_ENFORCE(input_values.size() == 4,
              "Num of inputs is expected to be 4 but got %d.",
              input_values.size());
@@ -1565,7 +1643,8 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> SplitGradOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta SplitGradOp";
 
   IR_ENFORCE(input_values.size() == 2,
@@ -1710,7 +1789,8 @@ void CreateArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> CreateArrayOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta CreateArrayOp";
 
   PADDLE_ENFORCE(
@@ -1792,7 +1872,6 @@ void CreateArrayLikeOp::Build(pir::Builder &builder,             // NOLINT
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-
   phi::CreateArrayLikeInferMeta(meta_input, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
@@ -1842,6 +1921,41 @@ void CreateArrayLikeOp::VerifySig() {
 void CreateArrayLikeOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(phi::CreateArrayLikeInferMeta);
   fn(infer_meta);
+}
+
+std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta CreateArrayLikeOp";
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
+             input_values.size());
+  pir::Value input_ = input_values[0];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType input_type =
+      input_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(input_type.dtype()),
+      {},
+      input_type.data_layout(),
+      {});
+
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::CreateArrayLikeInferMeta(meta_input, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_type);
+
+  return argument_outputs;
 }
 
 OpInfoTuple ArrayLengthOp::GetOpInfo() {
@@ -1942,7 +2056,8 @@ void ArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> ArrayLengthOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -2144,7 +2259,8 @@ void ArrayReadOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> ArrayReadOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -2326,7 +2442,8 @@ void ArrayWrite_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> ArrayWrite_Op::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta ArrayWrite_Op";
   IR_ENFORCE(input_values.size() == 3,
              "Num of inputs is expected to be 3 but got %d.",
@@ -2518,7 +2635,8 @@ void ArrayToTensorOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> ArrayToTensorOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta ArrayToTensorOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -2659,9 +2777,100 @@ void SliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> SliceArrayOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta SliceArrayOp";
+  IR_ENFORCE(input_values.size() == 3,
+             "Num of inputs is expected to be 3 but got %d.",
+             input_values.size());
+  pir::Value input = input_values[0];
+  pir::Value starts = input_values[1];
+  pir::Value ends = input_values[2];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType input_type =
+      input.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(input_type.dtype()),
+      {},
+      input_type.data_layout(),
+      {});
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+
+  phi::IntArray starts_list;
+  if (starts.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    starts_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+        starts.dyn_cast<pir::OpResult>()
+            .owner()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"))));
+  } else if (starts.type().isa<pir::VectorType>()) {
+    size_t starts_size = starts.type().dyn_cast<pir::VectorType>().size();
+    starts_list =
+        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
+    starts_list.SetFromTensor(true);
+  } else if (starts.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim starts_dim =
+        starts.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t starts_size = common::product(starts_dim);
+    if (common::contain_unknown_dim(starts_dim)) {
+      starts_size = 1;
+    }
+    starts_list =
+        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
+    starts_list.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support VectorType or DenseTensorType"));
+  }
+
+  phi::IntArray ends_list;
+  if (ends.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    ends_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+        ends.dyn_cast<pir::OpResult>()
+            .owner()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"))));
+  } else if (ends.type().isa<pir::VectorType>()) {
+    size_t ends_size = ends.type().dyn_cast<pir::VectorType>().size();
+    ends_list = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
+    ends_list.SetFromTensor(true);
+  } else if (ends.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim starts_dim =
+        ends.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t ends_size = common::product(starts_dim);
+    if (common::contain_unknown_dim(starts_dim)) {
+      ends_size = 1;
+    }
+    ends_list = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
+    ends_list.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support VectorType or DenseTensorType"));
+  }
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::SliceArrayInferMeta(meta_input,
+                           starts_list,
+                           ends_list,
+                           &meta_out,
+                           phi::MetaConfig(false, false));
+
   std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
 }
 
@@ -2814,9 +3023,69 @@ void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
-  VLOG(4) << "Start infermeta AssignArray_Op";
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta SliceArrayDenseOp";
+  IR_ENFORCE(input_values.size() == 2,
+             "Num of inputs is expected to be 2 but got %d.",
+             input_values.size());
+  pir::Value input = input_values[0];
+  pir::Value starts = input_values[1];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType input_type =
+      input.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(input_type.dtype()),
+      {},
+      input_type.data_layout(),
+      {});
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+
+  phi::IntArray starts_list;
+  if (starts.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    starts_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+        starts.dyn_cast<pir::OpResult>()
+            .owner()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"))));
+  } else if (starts.type().isa<pir::VectorType>()) {
+    size_t starts_size = starts.type().dyn_cast<pir::VectorType>().size();
+    starts_list =
+        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
+    starts_list.SetFromTensor(true);
+  } else if (starts.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim starts_dim =
+        starts.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t starts_size = common::product(starts_dim);
+    if (common::contain_unknown_dim(starts_dim)) {
+      starts_size = 1;
+    }
+    starts_list =
+        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
+    starts_list.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support VectorType or DenseTensorType"));
+  }
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::SliceArrayDenseInferMeta(
+      meta_input, starts_list, &meta_out, phi::MetaConfig(false, false));
+
   std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
 }
 
@@ -2890,9 +3159,38 @@ void AssignArray_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> AssignArray_Op::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta AssignArray_Op";
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
+             input_values.size());
+  pir::Value x_ = input_values[0];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType x_type =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
+      {},
+      x_type.data_layout(),
+      {});
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::UnchangedArrayInferMeta(meta_input, &meta_out);
+
   std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
 }
 
@@ -3159,7 +3457,8 @@ void ExpandOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> ExpandOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta ExpandOp";
   IR_ENFORCE(input_values.size() == 2,
              "Num of inputs is expected to be 2 but got %d.",
@@ -3472,7 +3771,8 @@ void IncrementOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> IncrementOp::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta IncrementOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -3687,7 +3987,8 @@ void Increment_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 }
 
 std::vector<pir::Type> Increment_Op::InferMeta(
-    std::vector<pir::Value> &input_values, pir::AttributeMap attributes) {
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta Increment_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
@@ -3826,6 +4127,58 @@ void ShapeBroadcastOpInferMeta(const phi::MetaTensor &x,
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(ShapeBroadcastOpInferMeta);
   fn(infer_meta);
+}
+
+std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta ShapeBroadcastOp";
+  IR_ENFORCE(input_values.size() == 2,
+             "Num of inputs is expected to be 2 but got %d.",
+             input_values.size());
+  pir::Value x_ = input_values[0];
+  pir::Value y_ = input_values[1];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  paddle::dialect::DenseTensorType y =
+      y_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+
+  VLOG(4) << "Builder construction  dense_y";
+  paddle::dialect::IrTensor ir_tensor_y(
+      paddle::dialect::TransToPhiDataType(y.dtype()),
+      y.dims(),
+      y.data_layout(),
+      y.lod(),
+      y.offset());
+  VLOG(4) << "Builder construction  meta_y";
+  paddle::dialect::IrMetaTensor meta_y(&ir_tensor_y);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  return argument_outputs;
 }
 
 phi::DataType ShapeBroadcastOp::GetKernelTypeForVar(

@@ -295,13 +295,13 @@ def gen_exclusive_interface_str(op_info, op_info_items):
     if op_info.infer_meta_func:
         exclusive_interface_str += (
             "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
-            "  static std::vector<pir::Type> InferMeta( std::vector<pir::Value>& input_values, pir::AttributeMap attributes );"
+            "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
         )
     elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
         if op_info_items[op_info.invoke_map['func']].infer_meta_func:
             exclusive_interface_str += (
                 "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
-                "  static std::vector<pir::Type> InferMeta( std::vector<pir::Value>& input_values, pir::AttributeMap attributes );"
+                "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
             )
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"

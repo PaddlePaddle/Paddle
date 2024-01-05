@@ -416,8 +416,8 @@ static const phi::DataType GetKernelTypeforVar(
 
 static const std::vector<pir::Type> InferMetaByValue(
     pir::Operation* op,
-    std::vector<pir::Value>& input_values,
-    pir::AttributeMap& attribute_map) {
+    const std::vector<pir::Value>& input_values,
+    const pir::AttributeMap& attribute_map) {
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto infer_meta_interface =
@@ -1712,6 +1712,11 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
 
   if (is_ouput_changed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
+      phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
+      if ((!UnchangeOutputOps.count(op_item->name())) &&
+          (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
+        out_place = phi::TransToPhiPlace(output_defs[i].backend);
+      }
       PushBackOutputTypes(
           ctx, op_item, out_place, kernel_key, &op_output_types, i);
     }
