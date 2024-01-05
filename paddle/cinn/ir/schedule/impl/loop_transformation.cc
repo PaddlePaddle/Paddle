@@ -370,7 +370,8 @@ void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
 
 void DyScheduleImpl::Broadcast(const std::string& block_name,
                                const std::vector<int64_t>& axes,
-                               const std::vector<int64_t>& factors) {
+                               const std::vector<int64_t>& factors,
+                               bool add_check) {
   CINN_NOT_IMPLEMENTED;
 }
 
@@ -494,7 +495,8 @@ void StScheduleImpl::BroadcastToElementwise(const std::string& block_name,
 
 void StScheduleImpl::Broadcast(const std::string& block_name,
                                const std::vector<int64_t>& axes,
-                               const std::vector<int64_t>& factors) {
+                               const std::vector<int64_t>& factors,
+                               bool add_check) {
   std::vector<Expr> all_loops = this->GetLoops(block_name);
 
   auto broadcast_loop = all_loops[axes[0]].As<ir::For>();

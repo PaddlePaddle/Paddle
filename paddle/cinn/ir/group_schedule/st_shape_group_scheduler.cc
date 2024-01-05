@@ -137,6 +137,7 @@ void StaticShapeGroupScheduler::Schedule() {
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   LoopReorderAligment();
   Tiling();
+  std::cerr << "tiling schedule finished\n";
   // DoLoopAlignment();
   // DoComputeInline();
 // #ifdef CINN_WITH_CUDA
@@ -239,13 +240,33 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
 
       ir_sch_->Broadcast(name,
                          group_tile_info_->broadcast_info[name].broadcast_axes,
-                         group_tile_info_->broadcast_info[name].output_shape);
+                         group_tile_info_->broadcast_info[name].output_shape,
+                         group_tile_info_->broadcast_info[name].with_constrain);
     }
 
     if (group_tile_info_->broadcast_to_elementwise.count(name)) {
       ir_sch_->BroadcastToElementwise(
           name,
           group_tile_info_->broadcast_to_elementwise[name].broadcast_axes);
+    }
+  }
+
+  size_t base_rank = 0;
+  for (auto& name : node_list) {
+    if (ir::IsReduceInitTensorName(name)) {
+      continue;
+    }
+
+    auto loops = ir_sch_->GetLoops(name);
+
+    if (base_rank == 0) {
+      base_rank = loops.size();
+    } else {
+      if (base_rank != loops.size()) {
+        std::cerr << "name " << name << "\t" << base_rank << "\t"
+                  << loops.size() << std::endl;
+        throw std::runtime_error("loops  rank not same ");
+      }
     }
   }
 
@@ -372,8 +393,9 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  std::cerr << "after flatten fuse: " << ir_sch_->GetModule().GetExprs().front()
-            << std::endl;
+  // std::cerr << "after flatten fuse: " <<
+  // ir_sch_->GetModule().GetExprs().front()
+  //           << std::endl;
 
   if (group_tile_info_->flatten_inner_num > 1) {
     // split flatten inner here
@@ -391,8 +413,8 @@ void StaticShapeGroupScheduler::Tiling() {
 
     reduce_current_axis += 1;
   }
-  std::cerr << "split flatten inner: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  // std::cerr << "split flatten inner: "
+  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   // std::cerr << "current reduce " << reduce_current_axis << std::endl;
   // split reduce inner here
@@ -422,8 +444,9 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  std::cerr << "after split reduce: " << ir_sch_->GetModule().GetExprs().front()
-            << std::endl;
+  // std::cerr << "after split reduce: " <<
+  // ir_sch_->GetModule().GetExprs().front()
+  //           << std::endl;
 
   // re-order flatten inner num with last dim
   if (group_tile_info_->flatten_inner_num > 1 &&
@@ -497,8 +520,8 @@ void StaticShapeGroupScheduler::Tiling() {
     // do nothing for now
   }
 
-  std::cerr << "after merge warp num info: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  // std::cerr << "after merge warp num info: "
+  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   // bind cuda block and thread info
   for (auto& name : node_list) {
@@ -521,8 +544,8 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  std::cerr << "after bind block and thread info: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  // std::cerr << "after bind block and thread info: "
+  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   for (auto& name : node_list) {
     if (ir::IsReduceInitTensorName(name)) {
@@ -531,15 +554,15 @@ void StaticShapeGroupScheduler::Tiling() {
     if (name.find("_out") != std::string::npos) {
       continue;
     }
-    if (!output_tensor_names_.count(name)) {
-      // std::cerr << "temp name " << name << std::endl;
-      auto block = ir_sch_->GetBlock(name);
-      if (group_tile_info_->shared_var_names.count(name)) {
-        ir_sch_->SetBuffer(block, "shared", false);
-      } else {
-        ir_sch_->SetBuffer(block, "local", false);
-      }
+    // if (!output_tensor_names_.count(name)) {
+    //  std::cerr << "temp name " << name << std::endl;
+    auto block = ir_sch_->GetBlock(name);
+    if (group_tile_info_->shared_var_names.count(name)) {
+      ir_sch_->SetBuffer(block, "shared", false);
+    } else {
+      ir_sch_->SetBuffer(block, "local", false);
     }
+    //}
 
     if (group_tile_info_->reduce_var_names.count(name)) {
       auto block = ir_sch_->GetBlock(name + "_rf");

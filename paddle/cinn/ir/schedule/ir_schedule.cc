@@ -451,8 +451,9 @@ Expr IRSchedule::Fuse(const Expr& block, const std::vector<int>& loops_index) {
 
 void IRSchedule::Broadcast(const std::string& block_name,
                            const std::vector<int64_t>& axes,
-                           const std::vector<int64_t>& factors) {
-  impl_->Broadcast(block_name, axes, factors);
+                           const std::vector<int64_t>& factors,
+                           bool add_check) {
+  impl_->Broadcast(block_name, axes, factors, add_check);
 }
 
 void IRSchedule::BroadcastToElementwise(const std::string& block_name,

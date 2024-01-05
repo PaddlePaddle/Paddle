@@ -398,11 +398,11 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     }
     out = out + bias_cast;
   }
-  // mean_ = reshape<T>(mean_, slice_shape_l);
-  // variance = reshape<T>(variance, slice_shape_l);
+  mean_ = reshape<T>(mean_, slice_shape_l);
+  variance = reshape<T>(variance, slice_shape_l);
 
-  mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
-  variance = reshape<T>(variance, std::vector<int64_t>({-1}));
+  // mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
+  // variance = reshape<T>(variance, std::vector<int64_t>({-1}));
 
   // same as LayerNormInferMeta
   // x: float32 --> out: float32, mean: float32, variance: float32

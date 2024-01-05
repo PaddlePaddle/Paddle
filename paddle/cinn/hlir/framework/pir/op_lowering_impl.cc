@@ -64,6 +64,60 @@ NodeAttr CollectAttrs(const ::pir::Operation& op) {
 
 }  // namespace details
 
+Expr BuildOuputExpr(cinn::ir::Tensor tensor) {
+  auto axis = tensor->axis();
+  int rank = axis.size();
+  std::vector<cinn::ir::Expr> indices;
+  for (auto& d : axis) {
+    // std::cerr << "dd " << d << std::endl;
+    indices.push_back(Expr(d));
+  }
+
+  auto shape = tensor->shape;
+
+  auto body = ir::Load::Make(tensor, indices);
+
+  auto out_name = tensor->name + "_out";
+  auto out_tensor = ir::Tensor(out_name,
+                               tensor->type(),
+                               tensor->shape,
+                               tensor->domain,
+                               tensor->operation);
+  body = ir::Store::Make(out_tensor, body, indices);
+
+  std::vector<ir::Var> block_vars;
+  std::vector<ir::Expr> iter_values;
+  std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(rank);
+  for (int i = 0; i < shape.size(); ++i) {
+    block_vars.push_back(
+        Var(Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
+    optim::ReplaceVarWithExpr(&body, axis[i], block_vars[i]);
+    axis_vars[i]->is_reduce_axis = false;
+    if (shape[i] == Expr(1)) {
+      iter_values.push_back(Expr(0));
+    } else {
+      iter_values.push_back(axis_vars[i]);
+    }
+  }
+  body = ir::ScheduleBlockRealize::Make(
+      iter_values, ir::ScheduleBlock::Make(block_vars, {}, {}, out_name, body));
+  for (int i = rank - 1; i >= 0; --i) {
+    ir::Var loop_var = axis[i];
+    ir::Expr loop_extent = shape[i];
+    body = ir::For::Make(loop_var,
+                         Expr(0),
+                         loop_extent,
+                         ir::ForType::Serial,
+                         ir::DeviceAPI::CUDA,
+                         ir::Block::Make({body}));
+  }
+
+  body = ir::ScheduleBlockRealize::Make(
+      {}, ir::ScheduleBlock::Make({}, {}, {}, "root_", body));
+
+  return body;
+}
+
 std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     const GroupPtr& group) {
   auto master_ops = group->master_ops;
@@ -102,7 +156,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     ss << "\n";
   }
 
-  std::cerr << ss.str() << std::endl;
+  // std::cerr << ss.str() << std::endl;
 
   // pir:: first_master_op = *master_ops.begin();
   std::vector<int64_t> reduce_axis;
@@ -571,8 +625,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
         }
 
         if (CompatibleInfo::OpKind(*cur_op) == framework::kElementWise) {
-          std::cerr << "broadcast info " << ValueName(cur_op->result(0))
-                    << std::endl;
+          // std::cerr << "broadcast info " << ValueName(cur_op->result(0))
+          //           << std::endl;
           broadcast_info[ValueName(cur_op->result(0))] = info;
           broadcast_to_elementwise[ValueName(op->result(0))] = info;
 
@@ -614,12 +668,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 
       // std::cerr << "tensor name "  << tensor->name << std::endl;
 
-      if (broadcast_info.count(tensor->name)) {
-        // std::cerr << "broadcast is a output " << tensor->name << std::endl;
-        copyed_var_names.insert(tensor->name);
+      // if (broadcast_info.count(tensor->name)) {
+      // std::cerr << "broadcast is a output " << tensor->name << std::endl;
+      copyed_var_names.insert(tensor->name);
 
-        // shared_var_names.insert(  tensor->name );
-      }
+      // shared_var_names.insert(  tensor->name );
+      // }
     }
   }
 
@@ -631,52 +685,91 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     // std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
 
     if (copyed_var_names.count(ValueName(remain_ops[i]->result(0)))) {
-      auto copy_expr = ir::ir_utils::IRCopy(func_bodies[i]);
-      auto copy_body = copy_expr.As<ir::Block>()
-                           ->stmts[0]
-                           .As<ir::ScheduleBlockRealize>()
-                           ->schedule_block.As<ir::ScheduleBlock>()
-                           ->body;
+      auto tensor = tensor_map.at(remain_ops[i]->result(0));
 
-      std::cerr << "copy\n " << ValueName(remain_ops[i]->result(0))
-                << std::endl;
-      std::cerr << copy_body << std::endl;
-      cinn::ir::FindBlocksVisitor visitor1(ValueName(remain_ops[i]->result(0)));
-      auto find_blocks = visitor1(&copy_expr);
+      auto body = BuildOuputExpr(tensor);
 
-      // std::cerr << find_blocks[0] << std::endl;
+      // std::cerr << "final body  " << body << std::endl;
 
-      auto inner_body = find_blocks[0]
-                            .As<ir::ScheduleBlockRealize>()
-                            ->schedule_block.As<ir::ScheduleBlock>()
-                            ->body;
+      added_expr.push_back(body);
 
-      auto block1 = find_blocks[0]
-                        .As<ir::ScheduleBlockRealize>()
-                        ->schedule_block.As<ir::ScheduleBlock>();
+      // if( CompatibleInfo::OpKind(*remain_ops[i]) == framework::kReduction)
+      // {
+      //   auto reduce_axis = cinn::dialect::ir::GetVectorAttr(remain_ops[i],
+      //   "dim"); std::vector<int64_t> changed_axes; std::vector<int64_t>
+      //   changed_factor; auto reduce_in_dims =
+      //   remain_ops[i]->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      //   int rank = reduce_in_dims.size();
+      //   for (size_t i = 0; i < reduce_axis.size(); ++i) {
+      //     auto axis = reduce_axis[i];
+      //     if( axis < 0 )
+      //     {
+      //       axis += rank;
+      //     }
 
-      block1->name += "_out";
+      //       changed_axes.push_back(axis);
+      //       changed_factor.push_back(reduce_in_dims[axis]);
 
-      // cinn::ir::FindLoopsVisitor visitor( find_blocks[0]);
-      // auto find_loops = visitor( &(copy_expr.As<ir::Block>()
-      //                        ->stmts[0]) );
+      //   }
 
-      // std::cerr << "inner loop " << find_loops.size() << std::endl;
+      //   cinn::ir::BroadcastInfo info{changed_axes, changed_factor, true};
 
-      auto exprs = cinn::ir::ir_utils::CollectIRNodesInOrder(
-          inner_body, [&](const Expr* x) { return x->As<cinn::ir::Store>(); });
+      //   broadcast_info[ ValueName(remain_ops[i]->result(0)) + "_out"] = info;
+      // }
 
-      for (auto expr : exprs) {
-        auto store = expr.As<cinn::ir::Store>();
-
-        auto t1 = store->tensor.as_tensor_ref();
-
-        t1->name = t1->name + "_out";
-      }
-
-      std::cerr << copy_expr << std::endl;
-      added_expr.push_back(copy_expr);
+      // if( CompatibleInfo::OpKind(*remain_ops[i]) == framework::kBroadcast)
+      // {
+      //   throw std::runtime_error("not support broadcast type");
+      // }
     }
+    //   auto copy_expr = ir::ir_utils::IRCopy(func_bodies[i]);
+    //   auto copy_body = copy_expr.As<ir::Block>()
+    //                        ->stmts[0]
+    //                        .As<ir::ScheduleBlockRealize>()
+    //                        ->schedule_block.As<ir::ScheduleBlock>()
+    //                        ->body;
+
+    //   std::cerr << "copy\n " << ValueName(remain_ops[i]->result(0))
+    //             << std::endl;
+    //   std::cerr << copy_body << std::endl;
+    //   cinn::ir::FindBlocksVisitor
+    //   visitor1(ValueName(remain_ops[i]->result(0))); auto find_blocks =
+    //   visitor1(&copy_expr);
+
+    //   // std::cerr << find_blocks[0] << std::endl;
+
+    //   auto inner_body = find_blocks[0]
+    //                         .As<ir::ScheduleBlockRealize>()
+    //                         ->schedule_block.As<ir::ScheduleBlock>()
+    //                         ->body;
+
+    //   auto block1 = find_blocks[0]
+    //                     .As<ir::ScheduleBlockRealize>()
+    //                     ->schedule_block.As<ir::ScheduleBlock>();
+
+    //   block1->name += "_out";
+
+    //   // cinn::ir::FindLoopsVisitor visitor( find_blocks[0]);
+    //   // auto find_loops = visitor( &(copy_expr.As<ir::Block>()
+    //   //                        ->stmts[0]) );
+
+    //   // std::cerr << "inner loop " << find_loops.size() << std::endl;
+
+    //   auto exprs = cinn::ir::ir_utils::CollectIRNodesInOrder(
+    //       inner_body, [&](const Expr* x) { return x->As<cinn::ir::Store>();
+    //       });
+
+    //   for (auto expr : exprs) {
+    //     auto store = expr.As<cinn::ir::Store>();
+
+    //     auto t1 = store->tensor.as_tensor_ref();
+
+    //     t1->name = t1->name + "_out";
+    //   }
+
+    //   std::cerr << copy_expr << std::endl;
+    //   added_expr.push_back(copy_expr);
+    // }
   }
 
   for (auto expr : added_expr) {
@@ -786,10 +879,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
       // output args
       // group->output_names.push_back(tensor->name);
-      std::cerr << "tensor name   " << tensor->name << std::endl;
+      // std::cerr << "tensor name   " << tensor->name << std::endl;
       // std::cerr << "base tensor " << tensor->buffer.defined() << std::endl;
       if (copyed_var_names.count(tensor->name)) {
-        std::cerr << "copyed var name \n";
+        // std::cerr << "copyed var name \n";
         auto new_tensor = lang::CreatePlaceHolder(
             tensor->shape, tensor->type(), tensor->name + "_out");
         group_func_arg_tensors->push_back(new_tensor);
@@ -799,6 +892,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         // std::endl;
       } else if (erase_reshape.count(op)) {
         if (copyed_var_names.count(ValueName(op->operand_source(0)))) {
+          // std::cerr << "rease copyed tensor" << std::endl;
           tensor = tensor_map.at(op->operand_source(0));
           auto new_tensor = lang::CreatePlaceHolder(
               tensor->shape, tensor->type(), tensor->name + "_out");
@@ -1124,9 +1218,9 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
         std::inserter(output_tensor_names, output_tensor_names.begin()),
         [&](::pir::Operation* op) {
           if (erase_reshape.count(op)) {
-            return ValueName(op->operand_source(0));
+            return ValueName(op->operand_source(0)) + "_out";
           }
-          return ValueName(op->result(0));
+          return ValueName(op->result(0)) + "_out";
         });
 
     std::unique_ptr<ir::GroupScheduler> group_scheduler =

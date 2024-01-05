@@ -158,8 +158,9 @@ bool UnimplementOps(pir::Operation* op) {
     }
 
     if (out.use_count() > 0) {
-      std::cerr << "out.first_use().owner() " << out.first_use().owner()->name()
-                << std::endl;
+      // std::cerr << "out.first_use().owner() " <<
+      // out.first_use().owner()->name()
+      //           << std::endl;
 
       bool unimplement = false;
       for (auto it = out.use_begin(); it != out.use_end(); ++it) {

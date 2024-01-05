@@ -27,6 +27,8 @@ struct BroadcastInfo {
   // std::vector<int64_t> output_shape )
   std::vector<int64_t> broadcast_axes;
   std::vector<int64_t> output_shape;
+
+  bool with_constrain{false};
 };
 struct GroupTileInfo {
   GroupTileInfo() {}
