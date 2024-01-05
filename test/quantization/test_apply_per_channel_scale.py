@@ -48,7 +48,7 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
-class PreQuantScaleTest(unittest.TestCase):
+class ApplyPerChannelScaleTest(unittest.TestCase):
     def config(self):
         self.rows = 32
         self.cols = 128
@@ -114,20 +114,20 @@ class PreQuantScaleTest(unittest.TestCase):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
 )
-class PreQuantScaleTestCase1(PreQuantScaleTest):
+class ApplyPerChannelScaleTestCase1(ApplyPerChannelScaleTest):
     def config(self):
         super().config()
         self.dtype = 'bfloat16'
 
 
-class PreQuantScaleTestCase2(PreQuantScaleTest):
+class ApplyPerChannelScaleTestCase2(ApplyPerChannelScaleTest):
     def config(self):
         super().config()
         self.rows = 1024
         self.cols = 128
 
 
-class PreQuantScaleStaticTest(PreQuantScaleTest):
+class ApplyPerChannelScaleStaticTest(ApplyPerChannelScaleTest):
     def config(self):
         super().config()
         self.static = True
