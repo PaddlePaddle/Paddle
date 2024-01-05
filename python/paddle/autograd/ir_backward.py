@@ -643,8 +643,6 @@ def append_backward_ops(
         return inputs, input_grad_stopgradients
 
     def update_input_grad_map(op, input_grads, all_inputs):
-        if op.name() == "pd_op.array_read":
-            return
         i = 0
         for input, grad_semantic in zip(all_inputs, get_grad_semantic_info(op)):
             if not grad_semantic:

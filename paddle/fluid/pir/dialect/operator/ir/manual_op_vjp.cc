@@ -267,11 +267,7 @@ std::vector<std::vector<pir::OpResult>> ArrayReadOp::Vjp(
       paddle::dialect::add(array_grad_i_origin, out_grads[0][0]);
   paddle::dialect::array_write_(out_grads[1][0], array_grad_i, inputs_[1][0]);
 
-  std::vector<std::vector<pir::OpResult>> res(1);
-  res[0].resize(1);
-  if (!stop_gradients[0][0]) {
-    res[0][0] = out_grads[1][0].dyn_cast<pir::OpResult>();
-  }
+  std::vector<std::vector<pir::OpResult>> res;
   return res;
 }
 }  // namespace dialect
