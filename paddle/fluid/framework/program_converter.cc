@@ -247,7 +247,22 @@ void ConvertSetValueOp(OpDesc* op) {
 }
 
 void ConvertFillConstantOp(OpDesc* op) {
+  VLOG(3) << "convert old fillconstant op to new";
   paddle::experimental::Scalar value;
+  /**
+   * 1.当测试
+   *set_value的时候，fill_constant就默认是new_program，为什么是new_program?
+   *   因为测试test_convert_program的时候，使用了ones调用了fill_constant
+   *   因此传递过来的已经是 new_program
+   * 2.当推理的时候，传递过来的是 old_program,因此 需要old_program
+   *转换为new_program
+   **/
+  VLOG(3) << "op->Type = " << op->Type();
+  VLOG(3) << "op->getAttrType = " << op->GetAttrType("value", false);
+  if (op->GetAttrType("value", false) == proto::AttrType::SCALAR) {
+    // is already new_program
+    return;
+  }
   if (op->HasAttr("value")) {
     float fp32_values = PADDLE_GET_CONST(float, op->GetAttr("value", false));
     value = paddle::experimental::Scalar(fp32_values);

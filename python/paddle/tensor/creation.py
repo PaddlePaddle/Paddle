@@ -921,16 +921,16 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     else:
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
-        if not isinstance(value, Variable):
+        if not isinstance(value, (Variable, paddle.base.libpaddle.Scalar)):
             if dtype in ['int8', 'uint8', 'int16', 'int32', 'int64']:
                 attrs['str_value'] = str(value)
-                attrs['value'] = value
+                attrs['value'] = int(value)
             elif dtype in ['complex64', 'complex128']:
                 attrs['str_value'] = str(value)
                 attrs['value'] = value
             else:
                 attrs['str_value'] = str(value)
-                attrs['value'] = value
+                attrs['value'] = float(value)
 
         helper = LayerHelper("fill_constant", **locals())
         inputs = {}
