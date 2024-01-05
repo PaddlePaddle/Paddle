@@ -54,10 +54,10 @@ class GroupOpGenerateShapeOpsPattern : public pir::OpRewritePattern<cinn::dialec
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
     ShapeOrDataDimExprsAccessor dim_exprs_accessor{
-      .GetShapeOrDataDimExprs=[=](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+      .GetShapeOrDataDimExprs=[&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
         return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
       },
-      .SetShapeOrDataDimExprs=[=](pir::Value value, const symbol::ShapeOrDataDimExprs& dim_exprs) {
+      .SetShapeOrDataDimExprs=[&](pir::Value value, const symbol::ShapeOrDataDimExprs& dim_exprs) {
         shape_analysis.value_id_to_shapeordata_[GetValueId(&value)] = dim_exprs;
       }
     };
@@ -78,6 +78,8 @@ class RewriteGenerateShapeOpsToRunFirstPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    auto* program = op->GetParentProgram();
+    VLOG(4) << "Before RewriteGenerateShapeOpsToRunFirstPass: " << *program;
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 
