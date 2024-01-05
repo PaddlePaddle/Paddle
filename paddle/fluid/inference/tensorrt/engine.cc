@@ -214,8 +214,10 @@ void TensorRTEngine::FreezeNetwork() {
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
       if (FLAGS_run_trt_bf16) {
+        LOG(INFO) << "Attention You are running at BF16 mode";
         infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kBF16);
       } else {
+        LOG(INFO) << "Attention You are running at FP16 mode";
         infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
       }
     
