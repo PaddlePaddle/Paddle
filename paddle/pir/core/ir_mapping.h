@@ -30,6 +30,10 @@ class IrMapping {
 
   void Clear() { value_map_.clear(); }
 
+  const std::unordered_map<Value, Value>& value_map() const {
+    return value_map_;
+  }
+
  private:
   std::unordered_map<Value, Value> value_map_;
 };

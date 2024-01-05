@@ -83,23 +83,14 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
     return lhs_type.GetDyShape() == rhs_type.GetDyShape();
   }
 
-  auto lhs_it = value_to_sym_dims_.find(lhs);
-  auto rhs_it = value_to_sym_dims_.find(rhs);
-
-  if (lhs_it == value_to_sym_dims_.end() ||
-      rhs_it == value_to_sym_dims_.end() ||
-      lhs_it->second.size() != rhs_it->second.size())
-    return false;
-
-  std::vector<SymbolicDimOp> lhs_syms;
-  std::vector<SymbolicDimOp> rhs_syms;
-  for (auto sym : lhs_it->second) {
-    lhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
+  const auto& lhs_sym_shape = GetShapeOrDataForValue(&lhs);
+  const auto& rhs_sym_shape = GetShapeOrDataForValue(&rhs);
+  if (lhs_sym_shape.shape() == rhs_sym_shape.shape() &&
+      lhs_sym_shape.data() == lhs_sym_shape.data()) {
+    return true;
   }
-  for (auto sym : rhs_it->second) {
-    rhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
-  }
-  return lhs_syms == rhs_syms;
+
+  return false;
 }
 
 bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
@@ -163,7 +154,7 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   return tables_.begin()->second;
 }
 
-std::string GetValueId(Value* val) {
+std::string GetValueId(const Value* val) {
   auto op_id = val->defining_op()->id();
   auto val_idx = val->dyn_cast<OpResult>().index();
 
@@ -171,13 +162,13 @@ std::string GetValueId(Value* val) {
 }
 
 const symbol::ShapeOrDataDimExprs&
-ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value* val) {
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(const Value* val) {
   auto val_id = GetValueId(val);
   return value_id_to_shapeordata[val_id];
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
-    Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    const Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   auto val_id = GetValueId(val);
   value_id_to_shapeordata[val_id] = shape_or_data;
 }

@@ -27,6 +27,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
 namespace dialect {
@@ -91,6 +92,14 @@ inline bool is_same_shape(::pir::Operation* producer,
 inline bool is_same_size(::pir::Operation* producer,
                          const std::shared_ptr<Group>& consumer) {
   auto master_op = consumer->master_ops.begin();
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(producer->GetParentProgram());
+  if (shape_analysis.IsShapeEqual(producer->result(0),
+                                  (*master_op)->result(0))) {
+    return true;
+  }
+  // TODO(zyf): support check product equal.
+
   auto producer_shape = GetValueShape(producer->result(0));
   auto consumer_shape = GetValueShape((*master_op)->result(0));
 

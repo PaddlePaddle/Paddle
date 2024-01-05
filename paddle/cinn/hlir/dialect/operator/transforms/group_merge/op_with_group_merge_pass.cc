@@ -593,6 +593,7 @@ class OpFusionPassHelper {
   }
 
   bool CanFuse(::pir::Operation* producer, const ::pir::Operation* consumer) {
+    if (producer->name() == "generate_shape") return true;
     auto& relation =
         fusion_relation_map_[hlir::framework::pir::CompatibleInfo::OpKind(
             *producer)];
