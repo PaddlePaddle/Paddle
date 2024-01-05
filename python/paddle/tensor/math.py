@@ -7145,6 +7145,8 @@ def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        out (Tensor, optional): Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -7155,7 +7157,7 @@ def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> x=  paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
+            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
             >>> paddle.bitwise_left_shift(x, y)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -7222,6 +7224,8 @@ def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        out (Tensor, optional): Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
         name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -7232,7 +7236,7 @@ def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> x=  paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
+            >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
             >>> paddle.bitwise_right_shift(x, y)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
