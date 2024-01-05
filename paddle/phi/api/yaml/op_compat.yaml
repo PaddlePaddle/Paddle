@@ -371,10 +371,10 @@
   backward : bilateral_slice_grad
   inputs :
     {x : X, grid : Grid, guide : Guide}
+  attrs :
+    has_offset : has_offset
   outputs :
     out : Out
-  extra :
-    attrs : [bool has_offset = false]
 
 - op : bilinear (bilinear_tensor_product)
   backward: bilinear_grad (bilinear_tensor_product_grad)
