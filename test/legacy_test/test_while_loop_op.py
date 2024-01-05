@@ -477,7 +477,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             np.testing.assert_allclose(res[0], data_sum, rtol=1e-05)
             np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
 
-    def _test_while_with_inplace(self):
+    def test_while_with_inplace(self):
         with paddle.pir_utils.IrGuard():
 
             def internal_cond(i, x, mem_array):
@@ -512,7 +512,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 dx, dmem_array = paddle.static.gradients(
                     mean_out, [x, mem_array]
                 )
-                # print(main_program)
+
                 j = paddle.zeros(shape=[1], dtype='int64')
                 dmem0 = paddle.tensor.array_read(dmem_array, j)
                 j = paddle.increment(j)
@@ -543,12 +543,12 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                         fetch_list=[out, dx],  # dmem0, dmem1, dmem2, dmem3],
                     )
 
-                # print("out = ", res[0])
-                # print("dx = ", res[1])
-                # print("dmem0 = ", res[2])
-                # print("dmem1 = ", res[3])
-                # print("dmem2 = ", res[4])
-                # print("dmem3 = ", res[5])
+                # print("out = ", res[0], [3] * 10)
+                # print("dx = ", res[1], [0.3] * 10)
+                # print("dmem0 = ", res[2], 0.1)
+                # print("dmem1 = ", res[3], 0.1)
+                # print("dmem2 = ", res[4], 0.1)
+                # print("dmem3 = ", res[5], 0.1)
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):

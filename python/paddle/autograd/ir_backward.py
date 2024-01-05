@@ -376,6 +376,16 @@ def inverse_sort_op(ops):
     return sorted_list
 
 
+def inplace_net(op_list):
+    op_name_list = [op.name() for op in op_list]
+    if (
+        "pd_op.array_write_" in op_name_list
+        or "pd_op.array_read" in op_name_list
+    ):
+        return True
+    return False
+
+
 def append_backward_ops(
     base_op,
     base_inputs,
@@ -434,11 +444,14 @@ def append_backward_ops(
             output = map[output]
         return output
 
-    def return_map_value_list(value, map):
-        output = value
-        while output in map:
-            output = map[output]
-        return [output]
+    def return_map_value_list(grad_value, map):
+        output = []
+        for i in range(len(grad_value)):
+            if grad_value[i] in map:
+                output.append(map[grad_value[i]])
+            else:
+                output.append(grad_value[i])
+        return output
 
     def append_add_n(value):
         # value is input of more than one fwd_op,
@@ -523,7 +536,7 @@ def append_backward_ops(
             grad_value = state.value_to_valuegrad[value][0]
             output_grads.append(
                 return_map_value_list(
-                    grad_value[0], bwd_value_to_block_argument_map
+                    grad_value, bwd_value_to_block_argument_map
                 )
             )
 
@@ -553,7 +566,7 @@ def append_backward_ops(
             grad_value = state.value_to_valuegrad[value][0]
             output_grads.append(
                 return_map_value_list(
-                    grad_value[0], bwd_value_to_block_argument_map
+                    grad_value, bwd_value_to_block_argument_map
                 )
             )
 
@@ -688,8 +701,11 @@ def append_backward_ops(
                     if len(state.value_to_valuegrad[value]) > 1:
                         append_add_n(value)
                 else:
+                    new_value = return_map_value(
+                        value, control_flow_value_to_copyvalue_map
+                    )
                     value_grad = append_full_like(
-                        0.0, value, value, state, backward_ops
+                        0.0, new_value, value, state, backward_ops
                     )
                 input_grad = state.value_to_valuegrad[value][0][0]
 
@@ -747,7 +763,7 @@ def append_backward_ops(
     else:
         forward_ops = effective_forward_ops
 
-    if special_net(forward_ops):
+    if inplace_net(forward_ops):
         inverse_effective_forward_ops = reversed(forward_ops)
     else:
         inverse_effective_forward_ops = inverse_sort_op(forward_ops)
@@ -802,8 +818,10 @@ def append_backward_ops(
                 else:
                     # all(zero_flag) support this op has no contribution for grad
                     # should be delete (prune sub_graph)
-                    # if (len(output_grads) == 0 or all(zero_flag)) and op.name() != "pd_op.while":
-                    #     continue
+                    if (
+                        len(output_grads) == 0 or all(zero_flag)
+                    ) and op.name() != "pd_op.while":
+                        continue
 
                     if op.name() == "pd_op.if":
                         origin_inputs = get_real_op_inputs(op)
@@ -864,7 +882,7 @@ def append_backward_ops(
                             state.value_to_valuegrad[input] = []
                             output_grads.append(
                                 return_map_value_list(
-                                    grad_value[0],
+                                    grad_value,
                                     bwd_value_to_block_argument_map,
                                 )
                             )
@@ -1019,16 +1037,6 @@ def remove_op(block, op, state):
                 )
 
 
-def special_net(op_list):
-    op_name_list = [op.name() for op in op_list]
-    if (
-        "pd_op.array_write_" in op_name_list
-        or "pd_op.array_write_" in op_name_list
-    ) and "pd_op.while" in op_name_list:
-        return True
-    return False
-
-
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
@@ -1047,7 +1055,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     inputs_set = ValueSet(inputs)
     outputs_set = ValueSet(complete_outputs)
 
-    if special_net(total_ops):
+    if inplace_net(total_ops):
         effective_forward_ops = total_ops
     else:
         effective_forward_ops, _ = prune_ops(
@@ -1078,18 +1086,18 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
+    if not inplace_net(backward_ops):
+        _, remove_ops = prune_ops(
+            backward_ops, inputs_set, outputs_set, no_gradvar_set
+        )
 
-    _, remove_ops = prune_ops(
-        backward_ops, inputs_set, outputs_set, no_gradvar_set
-    )
-
-    state.turn_map()
-    for bwd_op in inverse_sort_op(remove_ops):
-        if bwd_op.result(0) in ValueSet(grad_outputs):
-            continue
-        if bwd_op.result(0).use_empty():
-            remove_op(block, bwd_op, state)
-    state.turn_map()
+        state.turn_map()
+        for bwd_op in inverse_sort_op(remove_ops):
+            if bwd_op.result(0) in ValueSet(grad_outputs):
+                continue
+            if bwd_op.result(0).use_empty():
+                remove_op(block, bwd_op, state)
+        state.turn_map()
 
     input_grad_map = state.value_to_valuegrad
 
