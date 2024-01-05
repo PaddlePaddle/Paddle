@@ -7069,7 +7069,7 @@ def copysign(x, y, name=None):
             \end{matrix}\right.
 
     Args:
-        x (Tensor): The input Tensor, magnitudes, the data type is bfloat16, float16, float32, float64.
+        x (Tensor): The input Tensor, magnitudes, the data type is bool, uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64.
         y (Tensor, number): contains value(s) whose signbit(s) are applied to the magnitudes in input.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -7091,6 +7091,7 @@ def copysign(x, y, name=None):
 
         .. code-block:: python
             :name: example2
+
             >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
             >>> y = paddle.to_tensor([-2], dtype='float64')
             >>> res = paddle.copysign(x, y)
