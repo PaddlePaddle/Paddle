@@ -340,7 +340,6 @@ ir::Expr SymbolicExprAnalyzer::LowerBound(const ir::Expr& expr) const {
   BoundReplacer bound_replacer(var_intervals_, true);
   ir::Expr bound = ir::ir_utils::IRCopy(expr);
   bound_replacer(&bound);
-  std::cout << "bound is " << bound << std::endl;
   return AutoSimplify(bound);
 }
 
