@@ -99,7 +99,5 @@ void NuclearNormKernel(const Context& dev_ctx,
     phi::SumKernel<T, Context>(
         dev_ctx, singular_tensor, {-1}, singular_tensor.dtype(), keepdim, out);
   }
-
-  std::cout << "sum_grad.dims():" << singular_tensor.dims() << std::endl;
 }
 }  // namespace phi

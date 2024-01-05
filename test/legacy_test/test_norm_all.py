@@ -488,8 +488,6 @@ def run_nuc(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         )
         (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
     self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
-    print(f'result:{result}')
-    print(f'expected_result:{expected_result}')
     if keep_dim and check_dim:
         self.assertEqual(
             (
@@ -537,7 +535,7 @@ def run_graph(self, p, axis, shape_x, dtype):
     out_fro = paddle.norm(x, p='fro', axis=0)
     out_fro = paddle.norm(x, p='fro', axis=[0, 1])
     # compute nuclear norm.
-    out_fro = paddle.norm(x, p='nuc', axis=[0, 1])
+    out_nuc = paddle.norm(x, p='nuc', axis=[0, 1])
     # compute 2-order  norm along [0,1] dimension.
     out_pnorm = paddle.norm(x, p=2, axis=[0, 1])
     out_pnorm = paddle.norm(x, p=2)
@@ -716,14 +714,21 @@ class API_NormTest(unittest.TestCase):
         run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
 
     def test_name(self):
+        paddle.enable_static()
         with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
             y_1 = paddle.norm(x, p='fro', name='frobenius_name')
             y_2 = paddle.norm(x, p=2, name='pnorm_name')
+            y_3 = paddle.norm(x, p='fro', axis=[0, 1], name='nuclear_name')
+            y_4 = paddle.norm(x, p=2, axis=[0, 1], name='p_matrix_norm_name')
             self.assertEqual(('frobenius_name' in y_1.name), True)
             self.assertEqual(('pnorm_name' in y_2.name), True)
+            self.assertEqual(('nuclear_name' in y_3.name), True)
+            self.assertEqual(('p_matrix_norm_name' in y_4.name), True)
 
     def test_errors(self):
+        paddle.enable_static()
+
         with base.program_guard(base.Program(), base.Program()):
 
             def err_dtype(p, shape_x, xdtype, out=None):
