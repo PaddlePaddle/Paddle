@@ -86,7 +86,6 @@ class TestWhileOp(unittest.TestCase):
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
-            print(main_program)
             # append_backward(loss)
 
             cpu = core.CPUPlace()
