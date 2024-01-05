@@ -178,12 +178,35 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
   ir::Expr lhs_copy = ir::ir_utils::IRCopy(lhs);
   if (cinn::common::is_zero(lhs_copy)) return true;
 
+  auto OptionalAnd = [](const std::optional<bool>& lhs,
+                        const std::optional<bool>& rhs) -> std::optional<bool> {
+    if (lhs.has_value() && rhs.has_value()) {
+      return lhs.value() && rhs.value();
+    } else {
+      return std::nullopt;
+    }
+  };
+  auto OptionalOr = [](const std::optional<bool>& lhs,
+                       const std::optional<bool>& rhs) -> std::optional<bool> {
+    if (lhs.has_value() && rhs.has_value()) {
+      return lhs.value() || rhs.value();
+    } else if ((!lhs.has_value()) && (!rhs.has_value())) {
+      return std::nullopt;
+    } else if (lhs.has_value() && (!rhs.has_value())) {
+      return lhs.value() ? std::optional<bool>(lhs.value())
+                         : std::optional<bool>(std::nullopt);
+    } else {
+      return rhs.value() ? std::optional<bool>(rhs.value())
+                         : std::optional<bool>(std::nullopt);
+    }
+  };
+
   std::vector<ir::Expr> ops{};
-  bool res = false;
+  std::optional<bool> res = std::nullopt;
   ir::Expr zero(0);
-  bool is_positive = ProveGT(lhs, zero).value_or(false);
-  lhs_copy = (is_positive ? 1 : -1) * lhs;
-  bool is_ge = ProveGE(lhs_copy, rhs).value_or(false);
+  ir::Expr tmp_expr;
+
+  auto is_ge = ProveGE(lhs, rhs);
 
   switch (lhs.node_type()) {
     case cinn::ir::IrNodeTy::_Var_:
@@ -195,43 +218,50 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
       ops = lhs.As<ir::Sum>()->operands();
       CHECK(!ops.empty());
       std::for_each(ops.begin(), ops.end(), [&](const ir::Expr& expr) {
-        res = res && this->ProveDivisible(expr, rhs).value_or(false);
+        res = OptionalAnd(res, this->ProveDivisible(expr, rhs));
       });
-      res = res && is_ge;
+      res = OptionalAnd(res, is_ge);
       return res;
     case cinn::ir::IrNodeTy::Product:
       res = false;
       ops = lhs.As<ir::Product>()->operands();
       CHECK(!ops.empty());
       std::for_each(ops.begin(), ops.end(), [&](const ir::Expr& expr) {
-        res = res || this->ProveDivisible(expr, rhs).value_or(false);
+        res = OptionalOr(res, this->ProveDivisible(expr, rhs));
+        if (res.has_value() && res.value()) return;
       });
-      res = res && is_ge;
+      res = OptionalAnd(res, is_ge);
       return res;
     case cinn::ir::IrNodeTy::FracOp:
-      return ProveDivisible(lhs.As<ir::FracOp>()->a(), rhs).value_or(false) &&
-             is_ge;
+      tmp_expr = cinn::common::AutoSimplify(lhs);
+      if (tmp_expr.node_type() == cinn::ir::IrNodeTy::FracOp)
+        return std::nullopt;
+      return OptionalAnd(ProveDivisible(tmp_expr, rhs), is_ge);
     case cinn::ir::IrNodeTy::FloatImm:
       return false;
     case cinn::ir::IrNodeTy::Add:
-      return ProveDivisible(lhs.As<ir::Add>()->a(), rhs).value_or(false) &&
-             ProveDivisible(lhs.As<ir::Add>()->b(), rhs).value_or(false) &&
-             is_ge;
+      return OptionalAnd(
+          OptionalAnd(ProveDivisible(lhs.As<ir::Add>()->a(), rhs),
+                      ProveDivisible(lhs.As<ir::Add>()->b(), rhs)),
+          is_ge);
     case cinn::ir::IrNodeTy::Sub:
-      return ProveDivisible(lhs.As<ir::Sub>()->a(), rhs).value_or(false) &&
-             ProveDivisible(lhs.As<ir::Sub>()->b(), rhs).value_or(false) &&
-             is_ge;
+      return OptionalAnd(
+          OptionalAnd(ProveDivisible(lhs.As<ir::Sub>()->a(), rhs),
+                      ProveDivisible(lhs.As<ir::Sub>()->b(), rhs)),
+          is_ge);
     case cinn::ir::IrNodeTy::Div:
-      return ProveDivisible(lhs.As<ir::Div>()->a(), rhs).value_or(false) &&
-             is_ge;
+      tmp_expr = cinn::common::AutoSimplify(lhs);
+      if (tmp_expr.node_type() == cinn::ir::IrNodeTy::Div) return std::nullopt;
+      return OptionalAnd(ProveDivisible(tmp_expr, rhs), is_ge);
     case cinn::ir::IrNodeTy::Mul:
-      return (ProveDivisible(lhs.As<ir::Mul>()->a(), rhs).value_or(false) ||
-              ProveDivisible(lhs.As<ir::Mul>()->b(), rhs).value_or(false)) &&
-             is_ge;
+      return OptionalAnd(
+          OptionalOr(ProveDivisible(lhs.As<ir::Mul>()->a(), rhs),
+                     ProveDivisible(lhs.As<ir::Mul>()->b(), rhs)),
+          is_ge);
     case cinn::ir::IrNodeTy::Mod:
       return false;
     case cinn::ir::IrNodeTy::Minus:
-      return ProveDivisible(lhs.As<ir::Minus>()->v(), rhs).value_or(false);
+      return ProveDivisible(lhs.As<ir::Minus>()->v(), rhs);
     default:
       LOG(FATAL) << "Not supported yet!";
       break;

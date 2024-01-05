@@ -171,8 +171,13 @@ TEST_F(TestSymbolicExprAnalyzer, Divisible) {
   // case 4
   ir::Expr e6 = S * x / 4 + x * y;
 
-  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e6, e2).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e6, e2).value_or(false));
   EXPECT_FALSE(divisible_analyzer.ProveDivisible(e6, e3).value_or(false));
+
+  ir::Expr e7 = 16 * x / 4 + x * y;
+
+  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e7, e2).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e7, e3).value_or(false));
 }
 
 TEST(SingleIntervalIntSet, constant) {
