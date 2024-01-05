@@ -172,8 +172,9 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
         }
         dst_attr = vec_bool;
       } else {
-        LOG(FATAL)
-            << "only support bool/int32/int64 attribute in ArrayAttribute";
+        LOG(FATAL) << "only support bool/int32/int64 attribute in "
+                      "ArrayAttribute, but received "
+                   << attr_vec[0];
       }
     }
   } else {

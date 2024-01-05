@@ -111,8 +111,8 @@ class InferSymbolicShapePass : public pir::Pass {
     if (it != infer_sym_shape_map.end()) {
       it->second(op, shape_analysis_);
     } else {
-      LOG(WARNING) << "[" << op.name()
-                   << "] is not supported for infer_symbolic_shape pass.";
+      VLOG(3) << "[" << op.name()
+              << "] is not supported for infer_symbolic_shape pass.";
     }
   }
 
