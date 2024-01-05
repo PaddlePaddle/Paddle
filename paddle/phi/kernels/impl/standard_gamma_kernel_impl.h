@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,16 @@
 
 #pragma once
 
-#ifdef __HIPCC__
-#include <hip/hip_runtime.h>
-#endif
+#include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
+#include "paddle/phi/kernels/standard_gamma_kernel.h"
 
-#if defined(__xpu__)
-#include <xpu/runtime.h>
-
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
-#endif
-
-#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
-#define HOSTDEVICE __host__ __device__
-#define DEVICE __device__
-#define HOST __host__
-#else
-#define HOSTDEVICE
-#define DEVICE
-#define HOST
-#endif
+namespace phi {
+template <typename T, typename Context>
+void StandardGammaKernel(const Context& dev_ctx,
+                         const DenseTensor& alpha,
+                         DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  GammaSampler<Context, T> sampler;
+  sampler(dev_ctx, alpha, out);
+}
+}  // namespace phi

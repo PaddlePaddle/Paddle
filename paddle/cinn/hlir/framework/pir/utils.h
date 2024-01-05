@@ -31,6 +31,7 @@ namespace pir {
 
 struct CINNKernelInfo {
   void* fn_ptr;
+  void* infer_shape_fn_ptr;
 
   struct ArgDimIdx {
     int arg_idx;
