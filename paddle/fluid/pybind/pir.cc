@@ -420,6 +420,7 @@ void BindBlock(py::module *m) {
       });
 }
 
+
 void BindOperation(py::module *m) {
   py::class_<Operation> op(*m, "Operation", R"DOC(
     In IR, all the operation are represented by Operation, and Operation
@@ -532,7 +533,15 @@ void BindOperation(py::module *m) {
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
       .def("as_while_op",
-           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); });
+           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def("__repr__",
+           [](Operation &self) {
+             std::ostringstream print_stream;
+             print_stream << "Operation(";
+             self.Print(print_stream);
+             print_stream << ")";
+             return print_stream.str();
+           });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -549,9 +558,18 @@ py::str Value2String(Value self) {
   std::ostringstream print_stream;
   print_stream << "Value(";
   print_stream << GetValueInfo(self);
+  auto stop_gradient =
+      self.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    print_stream << ", stop_gradient=False";
+  } else {
+    print_stream << ", stop_gradient=True";
+  }
   print_stream << ")";
   return print_stream.str();
 }
+
+
 
 phi::DataType GetValueDtype(Value value) {
   if (!value.type()) {
@@ -770,21 +788,6 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
-      .def("__str__",
-           [](Value self) -> py::str {
-             std::ostringstream print_stream;
-             print_stream << "Value(";
-             print_stream << GetValueInfo(self);
-             auto stop_gradient =
-                 self.attribute<BoolAttribute>(kAttrStopGradients);
-             if (stop_gradient && !stop_gradient.data()) {
-               print_stream << ", stop_gradient=False";
-             } else {
-               print_stream << ", stop_gradient=True";
-             }
-             print_stream << ")";
-             return print_stream.str();
-           })
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })

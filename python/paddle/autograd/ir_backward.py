@@ -269,6 +269,7 @@ def update_no_grad_set_after_prune(
     from inputs to outputs add value not in the path to no_grad_set,
     from outputs to inputs add value not in the path to no_grad_set,
     '''
+    breakpoint()
     inputs_set = ValueSet(inputs)
     for input in inputs:
         if not input.use_empty():
@@ -287,6 +288,8 @@ def update_no_grad_set_after_prune(
             for value in get_real_op_inputs(op):
                 if value not in inputs_set:
                     no_grad_set.add(value)
+
+    breakpoint()
 
     outputs_set = ValueSet(outputs)
     no_grad_set_tmp = ValueSet()
@@ -567,6 +570,7 @@ def append_backward_ops(
                 inputs.append(tmp_input)
 
                 if input in no_grad_set or input.stop_gradient is True:
+                    breakpoint()
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
