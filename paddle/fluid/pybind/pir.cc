@@ -1639,6 +1639,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
         std::make_unique<
             cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
   cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
