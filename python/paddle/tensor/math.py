@@ -7101,7 +7101,7 @@ def copysign(x, y, name=None):
     """
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.copysign(x, y)
     else:
         helper = LayerHelper("copysign", **locals())
@@ -7113,7 +7113,7 @@ def copysign(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def copysign_(x, y):
+def copysign_(x, y, name=None):
     r"""
     Inplace version of ``copysign`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_copysign`.
