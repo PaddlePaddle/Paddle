@@ -130,6 +130,7 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -1650,7 +1651,9 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 void InferSymbolicShapePass(
     std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     Program &program) {                          // NOLINT
-  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  if (FLAGS_pir_apply_shape_optimization_pass) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
 }
 
 void BindIrPass(pybind11::module *m) {
