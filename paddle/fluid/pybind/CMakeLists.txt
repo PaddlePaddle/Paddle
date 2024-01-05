@@ -41,8 +41,6 @@ set(PYBIND_DEPS
     op_dialect_vjp
     program_translator
     pir_transforms
-    shape_optimization_pass
-    pir
     new_profiler
     fluid_jit
     prim_utils
@@ -53,13 +51,8 @@ set(PYBIND_DEPS
 
 if(WITH_CINN)
   set(PYBIND_DEPS
-      ${PYBIND_DEPS}
-      pir_transforms
-      op_with_group_merge_pass
-      add_broadcast_to_elementwise_pass
-      pd_to_cinn_pass
-      sub_graph_checker
-      shape_optimization_pass)
+      ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+      add_broadcast_to_elementwise_pass pd_to_cinn_pass sub_graph_checker)
 endif()
 
 if(WITH_PSCORE)
