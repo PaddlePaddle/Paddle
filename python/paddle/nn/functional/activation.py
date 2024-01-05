@@ -1626,7 +1626,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         \end{aligned}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
         axis (int, optional): The axis along which to perform log_softmax
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
@@ -1634,8 +1634,9 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
             to ``dtype`` before the operation is performed. This is useful for
-            preventing data type overflows. Supported dtype: float32, float64.
-            If ``dtype`` is None, the output Tensor has the same dtype as x.
+            preventing data type overflows. Supported dtype: float32, float64,
+            complex64, complex128. If ``dtype`` is None, the output Tensor has
+            the same dtype as x.
             Default is None.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1689,14 +1690,21 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
             check_variable_and_dtype(
                 x,
                 'x',
-                ['float16', 'uint16', 'float32', 'float64'],
+                [
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                    'complex64',
+                    'complex128',
+                ],
                 'log_softmax',
             )
         else:
             check_dtype(
                 dtype,
                 'dtype',
-                ['float32', 'float64'],
+                ['float32', 'float64', 'complex64', 'complex128'],
                 'log_softmax',
                 'If dtype is not None, it only support float32 or float64.',
             )

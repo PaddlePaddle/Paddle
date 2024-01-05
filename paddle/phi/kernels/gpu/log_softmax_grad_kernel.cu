@@ -47,7 +47,9 @@ PD_REGISTER_KERNEL(log_softmax_grad,
                    phi::LogSoftmaxGradKernel,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #else
 PD_REGISTER_KERNEL(log_softmax_grad,
                    GPU,
@@ -56,5 +58,7 @@ PD_REGISTER_KERNEL(log_softmax_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif

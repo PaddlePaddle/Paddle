@@ -52,7 +52,14 @@ class TestLogSoftmaxOp(OpTest):
         self.axis = -1
         self.set_attrs()
 
-        x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            x = (
+                np.random.uniform(0.1, 1.0, self.shape)
+                + 1j * np.random.uniform(0.1, 1.0, self.shape)
+            ).astype(self.dtype)
+            print("fsc ", self.dtype)
+        else:
+            x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -102,6 +109,16 @@ class TestLogSoftmaxAxis(TestLogSoftmaxOp):
         self.axis = 1
 
 
+class TestLogSoftmaxComplex64(TestLogSoftmaxOp):
+    def set_attrs(self):
+        self.dtype = np.complex64
+
+
+class TestLogSoftmaxComplex128(TestLogSoftmaxOp):
+    def set_attrs(self):
+        self.dtype = np.complex128
+
+
 class TestLogSoftmaxFP16OP(TestLogSoftmaxOp):
     def set_attrs(self):
         self.dtype = np.float16
@@ -116,7 +133,6 @@ class TestLogSoftmaxFP16OP(TestLogSoftmaxOp):
 class TestLogSoftmaxShapeFP16OP(TestLogSoftmaxFP16OP):
     def set_attrs(self):
         self.dtype = np.float16
-        self.shape = [12, 10]
 
 
 class TestLogSoftmaxAxisFP16OP(TestLogSoftmaxFP16OP):
@@ -243,6 +259,78 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
 
             x = paddle.static.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, F.log_softmax, x, dtype='int32')
+
+
+class TestNNFunctionalLogSoftmaxAPICp64(unittest.TestCase):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = (
+            np.random.uniform(-1.0, 1.0, self.x_shape)
+            + 1j * np.random.uniform(-1.0, 1.0, self.x_shape)
+        ).astype(np.complex64)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def check_api(self, axis=-1, dtype=None):
+        x = self.x.copy()
+        ref_out = np.apply_along_axis(ref_log_softmax, axis, x)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(
+                name='x2', shape=self.x_shape, dtype=np.complex64
+            )
+            y = F.log_softmax(x, axis, dtype)
+            exe = paddle.static.Executor(self.place)
+            out = exe.run(feed={'x2': self.x}, fetch_list=[y])
+        np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
+
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = F.log_softmax(x, axis, dtype)
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_check_api(self):
+        for axis in [-1, 1]:
+            self.check_api(axis, 'complex64')
+
+
+class TestNNFunctionalLogSoftmaxAPICp128(unittest.TestCase):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = (
+            np.random.uniform(-1.0, 1.0, self.x_shape)
+            + 1j * np.random.uniform(-1.0, 1.0, self.x_shape)
+        ).astype(np.complex128)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def check_api(self, axis=-1, dtype=None):
+        x = self.x.copy()
+        ref_out = np.apply_along_axis(ref_log_softmax, axis, x)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(
+                name='x2', shape=self.x_shape, dtype=np.complex128
+            )
+            y = F.log_softmax(x, axis, dtype)
+            exe = paddle.static.Executor(self.place)
+            out = exe.run(feed={'x2': self.x}, fetch_list=[y])
+        np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
+
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = F.log_softmax(x, axis, dtype)
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_check_api(self):
+        for axis in [-1, 1]:
+            self.check_api(axis, 'complex128')
 
 
 if __name__ == "__main__":

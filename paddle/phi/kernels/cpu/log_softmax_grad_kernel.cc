@@ -82,7 +82,48 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
         dev_ctx, &out, &out_grad, x_grad, canonical_axis);
   }
 }
+template <>
+void LogSoftmaxGradKernel<phi::dtype::complex<double>, CPUContext>(
+    const CPUContext& dev_ctx,
+    const DenseTensor& out,
+    const DenseTensor& out_grad,
+    int axis,
+    DenseTensor* x_grad) {
+  const int rank = out.dims().size();
+  const int canonical_axis = funcs::CanonicalAxis(axis, rank);
 
+  dev_ctx.template Alloc<phi::dtype::complex<double>>(x_grad);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, x_grad, (0.0));
+    return;
+  }
+  if (out.numel() != 0) {
+    LogSoftmaxGradFunctor<CPUContext, phi::dtype::complex<double>>()(
+        dev_ctx, &out, &out_grad, x_grad, canonical_axis);
+  }
+}
+template <>
+void LogSoftmaxGradKernel<phi::dtype::complex<float>, CPUContext>(
+    const CPUContext& dev_ctx,
+    const DenseTensor& out,
+    const DenseTensor& out_grad,
+    int axis,
+    DenseTensor* x_grad) {
+  const int rank = out.dims().size();
+  const int canonical_axis = funcs::CanonicalAxis(axis, rank);
+
+  dev_ctx.template Alloc<phi::dtype::complex<float>>(x_grad);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, x_grad, (0.0));
+    return;
+  }
+  if (out.numel() != 0) {
+    LogSoftmaxGradFunctor<CPUContext, phi::dtype::complex<float>>()(
+        dev_ctx, &out, &out_grad, x_grad, canonical_axis);
+  }
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(log_softmax_grad,
@@ -90,4 +131,6 @@ PD_REGISTER_KERNEL(log_softmax_grad,
                    ALL_LAYOUT,
                    phi::LogSoftmaxGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

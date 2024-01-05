@@ -119,10 +119,55 @@ void LogSoftmaxKernel(const Context& dev_ctx,
     LogSoftmaxFunctor<Context, T>()(dev_ctx, &x, out, canonical_axis);
   }
 }
+template <>
+void LogSoftmaxKernel<phi::dtype::complex<float>, CPUContext>(
+    const CPUContext& dev_ctx,
+    const DenseTensor& x,
+    int axis,
+    DenseTensor* out) {
+  const int rank = x.dims().size();
+  const int canonical_axis = funcs::CanonicalAxis(axis, rank);
 
+  dev_ctx.template Alloc<phi::dtype::complex<float>>(out);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, (0.0));
+    return;
+  }
+  if (x.numel() != 0) {
+    LogSoftmaxFunctor<CPUContext, phi::dtype::complex<float>>()(
+        dev_ctx, &x, out, canonical_axis);
+  }
+}
+template <>
+void LogSoftmaxKernel<phi::dtype::complex<double>, CPUContext>(
+    const CPUContext& dev_ctx,
+    const DenseTensor& x,
+    int axis,
+    DenseTensor* out) {
+  const int rank = x.dims().size();
+  const int canonical_axis = funcs::CanonicalAxis(axis, rank);
+
+  dev_ctx.template Alloc<phi::dtype::complex<double>>(out);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, (0.0));
+    return;
+  }
+  if (x.numel() != 0) {
+    LogSoftmaxFunctor<CPUContext, phi::dtype::complex<double>>()(
+        dev_ctx, &x, out, canonical_axis);
+  }
+}
 }  // namespace phi
 
 // TODO(YuanRisheng): The layout of mkldnn kernel should be MKLDNN, we should
 // support specifying the exact layout when the kernel is registered
-PD_REGISTER_KERNEL(
-    log_softmax, CPU, ALL_LAYOUT, phi::LogSoftmaxKernel, float, double) {}
+PD_REGISTER_KERNEL(log_softmax,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LogSoftmaxKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

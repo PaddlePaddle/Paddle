@@ -37,6 +37,40 @@ void LogSoftmaxKernel(const Context &dev_ctx,
   phi::SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, x, axis, out);
 }
 
+template <>
+void LogSoftmaxKernel<phi::dtype::complex<float>, GPUContext>(
+    const GPUContext &dev_ctx,
+    const DenseTensor &x,
+    int axis,
+    DenseTensor *out) {
+  const int rank = x.dims().size();
+
+  dev_ctx.template Alloc<phi::dtype::complex<float>>(out);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, (0.0));
+    return;
+  }
+  phi::SoftmaxForwardCUDAKernelDriver<phi::dtype::complex<float>, true>(
+      dev_ctx, x, axis, out);
+}
+template <>
+void LogSoftmaxKernel<phi::dtype::complex<double>, GPUContext>(
+    const GPUContext &dev_ctx,
+    const DenseTensor &x,
+    int axis,
+    DenseTensor *out) {
+  const int rank = x.dims().size();
+
+  dev_ctx.template Alloc<phi::dtype::complex<double>>(out);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, (0.0));
+    return;
+  }
+  phi::SoftmaxForwardCUDAKernelDriver<phi::dtype::complex<double>, true>(
+      dev_ctx, x, axis, out);
+}
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -46,7 +80,9 @@ PD_REGISTER_KERNEL(log_softmax,
                    phi::LogSoftmaxKernel,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #else
 PD_REGISTER_KERNEL(log_softmax,
                    GPU,
@@ -55,5 +91,7 @@ PD_REGISTER_KERNEL(log_softmax,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif
