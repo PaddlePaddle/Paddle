@@ -174,7 +174,6 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   }
 
 #if IS_TRT_VERSION_GE(8500)
-  int num_bindings = context->getEngine().getNbBindings();
   for (size_t j = 0; j < buffers->size(); ++j) {
     auto name = context->getEngine().getBindingName(j);
     context->setTensorAddress(name, (*buffers)[j]);
