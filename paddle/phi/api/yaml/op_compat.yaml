@@ -3517,6 +3517,13 @@
   outputs :
     out : Out
 
+- op: nce
+  backward: nce_grad
+  inputs:
+    {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
+  outputs:
+    {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
+
 - op: number_count
   inputs :
     {numbers: numbers}

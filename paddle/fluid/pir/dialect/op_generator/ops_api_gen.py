@@ -127,6 +127,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
+    'nce',
     'lars_momentum',
     'recv_v2',
     'rnn_',

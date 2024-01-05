@@ -361,6 +361,13 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             bool keep_dim,
                             MetaTensor* x_grad);
 
+void NceGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& bias,
+                      const MetaTensor& weight,
+                      MetaTensor* input_grad,
+                      MetaTensor* bias_grad,
+                      MetaTensor* weight_grad);
+
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,
                           const MetaTensor& weight,
