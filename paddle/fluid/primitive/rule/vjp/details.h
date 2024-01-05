@@ -30,6 +30,14 @@ namespace primitive {
 namespace details {
 
 template <typename T>
+void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto sign_tmp = sign<T>(x);
+    set_output<T>(out_grad * sign_tmp, x_grad);
+  }
+}
+
+template <typename T>
 void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     by_pass<T>(out_grad, x_grad);
@@ -927,6 +935,98 @@ void gather_nd_grad(const Tensor& x,
     auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void instance_norm_grad(const Tensor& x,
+                        const paddle::optional<Tensor>& scale,
+                        const Tensor& saved_mean,
+                        const Tensor& saved_variance,
+                        const Tensor& y_grad,
+                        float epsilon,
+                        Tensor* x_grad,
+                        Tensor* scale_grad,
+                        Tensor* bias_grad) {
+  const int n = x.dims()[0];
+  const int c = x.dims()[1];
+  const int h = x.dims()[2];
+  const int w = x.dims()[3];
+
+  auto promoted_y_grad = y_grad;
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
+    promoted_y_grad = cast<T>(y_grad, phi::DataType::FLOAT32);
+  }
+
+  Tensor x_hat;
+  Tensor std_inv;
+  if (scale_grad || x_grad) {
+    auto promoted_x = x;
+    auto promoted_saved_mean = saved_mean;
+    auto promoted_saved_var = saved_variance;
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      promoted_x = cast<T>(x, phi::DataType::FLOAT32);
+      promoted_saved_mean = cast<T>(saved_mean, phi::DataType::FLOAT32);
+      promoted_saved_var = cast<T>(saved_variance, phi::DataType::FLOAT32);
+    }
+    auto mean = reshape<T>(promoted_saved_mean, IntArray({n, c, 1, 1}))
+                    .tile(IntArray({1, 1, h, w}));
+    std_inv = reshape<T>(promoted_saved_var, IntArray({n, c, 1, 1}))
+                  .tile(IntArray({1, 1, h, w}));
+    x_hat = (promoted_x - mean) * std_inv;
+  }
+
+  // x_grad = scale * inv_var * (y_grad - y_grad.mean(2,3) - x_hat * (y_grad *
+  // x_hat).mean((h,w)))
+  if (x_grad) {
+    auto scale_data =
+        reshape<T>(scale.get_ptr() ? scale.get()
+                                   : full<T>(IntArray({c}), 1., x.dtype()),
+                   IntArray({1, c, 1, 1}))
+            .tile(IntArray({n, 1, h, w}));
+    auto promoted_scale = scale_data;
+    if (scale_data.dtype() == phi::DataType::FLOAT16 ||
+        scale_data.dtype() == phi::DataType::BFLOAT16) {
+      promoted_scale = cast<T>(scale_data, phi::DataType::FLOAT32);
+    }
+    auto result =
+        (promoted_scale * std_inv) *
+        (promoted_y_grad -
+         promoted_y_grad.sum(IntArray({2, 3}), promoted_y_grad.dtype(), true) /
+             (h * w) -
+         (x_hat * ((promoted_y_grad * x_hat)
+                       .sum(IntArray({2, 3}), promoted_y_grad.dtype(), true) /
+                   (h * w))));
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      set_output<T>(cast<T>(result, x.dtype()), x_grad);
+    } else {
+      set_output<T>(result, x_grad);
+    }
+  }
+  // scale_grad = x_hat * y_grad.sum(n, h, w)
+  if (scale_grad) {
+    auto result = (promoted_y_grad * x_hat).sum(IntArray({0, 2, 3}));
+    auto scale_dtype = scale.get_ptr() ? scale.get().dtype() : x.dtype();
+    if (scale_dtype == phi::DataType::FLOAT16 ||
+        scale_dtype == phi::DataType::BFLOAT16) {
+      set_output<T>(cast<T>(result, scale_dtype), scale_grad);
+    } else {
+      set_output<T>(result, scale_grad);
+    }
+  }
+  // d_bias = y_grad.sum(n, h, w)
+  if (bias_grad) {
+    auto result = promoted_y_grad.sum(IntArray({0, 2, 3}));
+    auto scale_dtype = scale.get_ptr() ? scale.get().dtype() : x.dtype();
+    if (scale_dtype == phi::DataType::FLOAT16 ||
+        scale_dtype == phi::DataType::BFLOAT16) {
+      set_output<T>(cast<T>(result, scale_dtype), bias_grad);
+    } else {
+      set_output<T>(result, bias_grad);
+    }
   }
 }
 

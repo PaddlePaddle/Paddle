@@ -167,9 +167,7 @@ def monkey_patch_math_tensor():
     def _T_(var):
         if len(var.shape) == 1:
             return var
-        perm = []
-        for i in range(len(var.shape)):
-            perm.insert(0, i)
+        perm = list(reversed(range(len(var.shape))))
         out = _C_ops.transpose(var, perm)
         return out
 
