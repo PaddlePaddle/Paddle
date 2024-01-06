@@ -76,5 +76,6 @@ PD_REGISTER_KERNEL(strided_slice,
                    int,
                    int16_t,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

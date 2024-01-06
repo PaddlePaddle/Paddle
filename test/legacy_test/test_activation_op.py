@@ -474,7 +474,12 @@ class TestSigmoidBF16(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -1803,7 +1808,9 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestAbs_ZeroDim(TestAbs):
@@ -4853,7 +4860,11 @@ create_test_act_fp16_class(
     check_prim_pir=True,
 )
 create_test_act_fp16_class(
-    TestAbs, check_prim=True, enable_cinn=True, check_pir=True
+    TestAbs,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
@@ -5020,7 +5031,9 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestSqrtComp, check_prim=True, check_pir=True, check_prim_pir=True
 )
-create_test_act_bf16_class(TestAbs, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestAbs, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_bf16_class(
     TestFloor,

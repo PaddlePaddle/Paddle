@@ -53,7 +53,9 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     dir2=${arr_file_name[1]}
     dir3=${arr_file_name[2]}
     dir4=${arr_file_name[3]}
-    file_item=$dir1/$dir2/$dir3/$dir4
+    dir5=${arr_file_name[4]}
+    dir6=${arr_file_name[5]}
+    file_item=$dir1/$dir2/$dir3/$dir4/$dir5/$dir6
     echo "file_name:"${file_name}, "path:"${file_item}
     if [ ! -f ${file_name} ];then # deleting files for PR
         continue
@@ -158,8 +160,6 @@ if [[ ${#case_list[*]} -ne 0 ]];then
         elif [[ ${case} == "gpt-3_dygraph" ]];then
             bash /workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "llm_gpt" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_install_deps=1
-            export FLAGS_download_data="llm_gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "dygraph_unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
