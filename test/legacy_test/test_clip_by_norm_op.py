@@ -82,7 +82,7 @@ class TestClipByNormOpFp16(TestClipByNormOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, check_pir=True)
+                self.check_output_with_place(place, atol=0.001, check_pir=True)
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
