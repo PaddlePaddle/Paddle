@@ -1781,7 +1781,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableCustomDeviceMixed(config_.enable_custom_device_mixed());
   if (config_.enable_custom_device_mixed_) {
     argument_->SetEnableIrOptim(true);
-    pass_builder->ClearPasses();
     pass_builder->AppendPass("auto_mixed_precision_pass");
     LOG(INFO) << "This model run in Custom Device mixed precision mode.";
   }
@@ -2250,7 +2249,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   return res;
 }
 
-bool AnalysisPredictor::ZeroCopyRun() {
+bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   inference::DisplayMemoryInfo(place_, "before run");
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
@@ -2313,7 +2312,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
 
   if (config_.new_executor_enabled()) {
-    executor_->RunInterpreterCore();
+    executor_->RunInterpreterCore({}, false, switch_stream);
   } else {
     executor_->Run();
   }
@@ -2354,7 +2353,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
         "Please use config.SetExecStream to init gpu resources, and then we "
         "will bind gpu resources to execution stream."));
   }
-
+  bool switch_stream = false;
   if (stream != predictor_stream_) {
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
@@ -2384,9 +2383,9 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
         }));
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
+    switch_stream = true;
   }
-
-  return ZeroCopyRun();
+  return ZeroCopyRun(switch_stream);
 }
 #endif
 
