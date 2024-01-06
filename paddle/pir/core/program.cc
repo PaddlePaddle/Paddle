@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// #include <memory>
+
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/operation.h"
 
 namespace pir {
 
@@ -25,6 +28,17 @@ Program::~Program() {
   if (module_) {
     module_.Destroy();
   }
+}
+
+std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  auto new_program = std::make_shared<Program>(ctx);
+  auto clone_options = CloneOptions(true, true);
+  for (auto& op : *block()) {
+    auto* new_op = op.Clone(ir_mapping, clone_options);
+    new_program->block()->push_back(new_op);
+  }
+  return new_program;
 }
 
 Parameter* Program::GetParameter(const std::string& name) const {

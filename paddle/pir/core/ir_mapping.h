@@ -24,18 +24,18 @@ class IrMapping {
  public:
   template <typename T>
   void Add(T from, T to) {
-    mutable_map<T>()[from] = to;
+    MutableMap<T>()[from] = to;
   }
 
   template <typename T>
   T Lookup(T from) const {
-    IR_ENFORCE(map<T>().count(from) > 0, "Not Found Target in IRMapping.");
-    return map<T>().at(from);
+    IR_ENFORCE(Map<T>().count(from) > 0, "Not Found Target in IRMapping.");
+    return Map<T>().at(from);
   }
 
   template <typename T>
   void Earse(T from) {
-    mutable_map<T>().erase(from);
+    MutableMap<T>().erase(from);
   }
 
   void Clear() {
@@ -44,12 +44,11 @@ class IrMapping {
     operation_map_.clear();
   }
 
- private:
   template <typename T>
   using MapType = std::unordered_map<T, T>;
 
   template <typename T>
-  const MapType<T> &map() const {
+  const MapType<T> &Map() const {
     if constexpr (std::is_convertible_v<T, Value>)
       return value_map_;
     else if constexpr (std::is_convertible_v<T, Block *>)
@@ -61,10 +60,11 @@ class IrMapping {
   }
 
   template <typename T>
-  auto &mutable_map() {
-    return const_cast<MapType<T> &>(map<T>());
+  auto &MutableMap() {
+    return const_cast<MapType<T> &>(Map<T>());
   }
 
+ private:
   MapType<Value> value_map_;
   MapType<Block *> block_map_;
   MapType<Operation *> operation_map_;
