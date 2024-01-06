@@ -96,7 +96,6 @@ test_exponential_op
 test_eye_op
 test_fill_any_like_op
 test_fill_any_op
-test_fill_constant_batch_size_like
 test_fill_constant_op
 test_fill_diagonal_tensor_op
 test_flatten_contiguous_range_op
