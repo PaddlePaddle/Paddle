@@ -519,7 +519,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
             f"But recevie Attr(data_format): {data_format} "
         )
 
-    if in_dynamic_or_pir_mode():
+    if in_dygraph_mode():
         return _C_ops.channel_shuffle(x, groups, data_format)
 
     helper = LayerHelper("channel_shuffle", **locals())
