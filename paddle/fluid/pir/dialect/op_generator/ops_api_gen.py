@@ -102,6 +102,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'print',
     'number_count',
     'assign_value',
+    'share_data',
+    'onednn_to_paddle_layout',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -118,6 +120,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'decayed_adagrad',
     'dpsgd',
     'embedding_grad_sparse',
+    'ftrl',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
     'fused_elemwise_add_activation',
@@ -125,6 +128,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
+    'nce',
     'lars_momentum',
     'recv_v2',
     'rnn_',
@@ -132,9 +136,12 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'seed',
     'send_v2',
     'shadow_feed',
+    'shuffle_batch',
     'sparse_momentum',
     'soft_relu',
     'uniform_random_batch_size_like',
+    'c_reduce_min',
+    'c_reduce_min_',
 ]
 
 

@@ -2335,7 +2335,7 @@ def get_pp_degree(dist_context):
         for idx in reversed(global_pm_idx):
             process_meshes.pop(idx)
 
-    return len(process_meshes)
+    return len(process_meshes), process_meshes
 
 
 def get_pp_stage(dist_context, rank):

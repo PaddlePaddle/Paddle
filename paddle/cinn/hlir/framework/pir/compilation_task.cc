@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/module.h"
 
@@ -23,11 +24,14 @@ namespace hlir {
 namespace framework {
 
 void GroupCompilationContext::SetLoweredFuncs(
-    std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>&& funcs) {
-  for (std::pair<ir::SymbolicPredicate, ir::LoweredFunc>& predicate2func :
-       funcs) {
+    std::vector<std::pair<ir::SymbolicPredicate,
+                          pir::OpLowererImpl::WrapLoweredFunc>>&& funcs) {
+  for (std::pair<ir::SymbolicPredicate, pir::OpLowererImpl::WrapLoweredFunc>&
+           predicate2func : funcs) {
     predicates_.push_back(predicate2func.first);
-    lowered_funcs_.push_back(predicate2func.second);
+    lowered_funcs_.push_back(predicate2func.second.kernel_func);
+    infer_shape_lowered_funcs_.push_back(
+        predicate2func.second.infer_shape_func);
     ++func_size_;
   }
 }
@@ -67,12 +71,13 @@ void CompilationTask::CodegenAndJit() {
   ir::Module::Builder builder(cinn::common::UniqName("module"),
                               context_->target_);
   CHECK_EQ(context_->predicates_.size(), context_->lowered_funcs_.size());
-  for (const ir::Expr predicate : context_->predicates_) {
+  for (const ir::Expr& predicate : context_->predicates_) {
     builder.AddPredicate(predicate);
   }
   for (const ir::LoweredFunc& func : context_->lowered_funcs_) {
     builder.AddFunction(func);
   }
+  builder.AddInferShapeFunc(context_->infer_shape_lowered_funcs_[0]);
   ir::Module ir_module = builder.Build();
 
   context_->backend_compiler_ = backends::Compiler::Create(context_->target_);
@@ -90,6 +95,9 @@ std::unique_ptr<Instruction> CompilationTask::BuildInstruction() {
   VLOG(4) << "Lookup kernel name: " << fn_name;
   auto* fn_ptr = context_->backend_compiler_->Lookup(fn_name);
   CHECK(fn_ptr);
+  auto* infer_shape_fn_ptr =
+      context_->backend_compiler_->Lookup(fn_name + "_infer_shape" + fn_name);
+  CHECK(infer_shape_fn_ptr);
   instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
   instr->Finalize();
   return instr;
@@ -100,8 +108,12 @@ pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
   VLOG(4) << "Lookup kernel name: " << fn_name;
   auto* fn_ptr = context_->backend_compiler_->Lookup(fn_name);
   CHECK(fn_ptr);
+  auto* infer_shape_fn_ptr =
+      context_->backend_compiler_->Lookup(fn_name + "_infer_shape");
+  CHECK(infer_shape_fn_ptr);
   pir::CINNKernelInfo cinn_kernel_info;
   cinn_kernel_info.fn_ptr = fn_ptr;
+  cinn_kernel_info.infer_shape_fn_ptr = infer_shape_fn_ptr;
   cinn_kernel_info.int_args_map = context_->group_->int_args_map;
   return cinn_kernel_info;
 }

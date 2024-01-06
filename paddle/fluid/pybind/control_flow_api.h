@@ -25,6 +25,22 @@ class PyIfOp : public dialect::IfOp {
   void UpdateOutput();
 };
 
+class PyWhileOp : public dialect::WhileOp {
+ public:
+  explicit PyWhileOp(dialect::WhileOp while_op);
+
+  ///
+  /// \brief Construct a new while_op to replace the original while_op. The
+  /// input, output, and parameters of the new while_op no longer contain the
+  /// variables that have not been modified in the loop. The size of the return
+  /// value is equal to the output size of the original while_op, where the
+  /// value of the read-only loop variable is the corresponding operand of the
+  /// original while_op, and the value of the non-read-only loop variable is the
+  /// corresponding output of the new while_op,
+  ///
+  std::vector<pir::Value> OptimizeUpdate();
+};
+
 void BindControlFlowApi(pybind11::module *m);
 }  // namespace pybind
 }  // namespace paddle

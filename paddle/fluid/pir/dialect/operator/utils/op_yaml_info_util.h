@@ -93,6 +93,12 @@ struct OpRunTimeInfo {
   std::vector<std::string> kernel_key_backend;
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
+  std::vector<std::string> extra_args;
+  std::string layout_transform_arg;
+  std::vector<std::string> layout_transform_inputs;
+  bool is_onednn_only;
+  bool dynamic_fallback;
+
   OpRunTimeInfo(const std::string& infer_meta_func,
                 const std::vector<std::string>& infer_meta_param,
                 const std::string& kernel_func,
@@ -100,7 +106,12 @@ struct OpRunTimeInfo {
                 const std::vector<std::string>& dtype,
                 const std::vector<std::string>& backend,
                 const std::vector<std::pair<std::string, std::string>>& inplace,
-                const std::vector<std::pair<std::string, std::string>>& view)
+                const std::vector<std::pair<std::string, std::string>>& view,
+                const std::vector<std::string>& extra_args = {},
+                const std::string& layout_transform_arg = "",
+                const std::vector<std::string>& layout_transform_inputs = {},
+                bool is_onednn_only = false,
+                bool dynamic_fallback = false)
       : infer_meta_func(infer_meta_func),
         infer_meta_param(infer_meta_param),
         kernel_func(kernel_func),
@@ -108,7 +119,12 @@ struct OpRunTimeInfo {
         kernel_key_dtype(dtype),
         kernel_key_backend(backend),
         inplace(inplace),
-        view(view) {}
+        view(view),
+        extra_args(extra_args),
+        layout_transform_arg(layout_transform_arg),
+        layout_transform_inputs(layout_transform_inputs),
+        is_onednn_only(is_onednn_only),
+        dynamic_fallback(dynamic_fallback) {}
 };
 
 }  // namespace dialect

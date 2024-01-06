@@ -68,13 +68,15 @@ class InterpreterBaseImpl {
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true,
-      bool enable_job_schedule_profiler = false) = 0;
+      bool enable_job_schedule_profiler = false,
+      bool switch_stream = false) = 0;
 
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       bool need_fetch = true,
       bool enable_job_schedule_profiler = false,
-      bool enable_op_profiling = false) = 0;
+      bool enable_op_profiling = false,
+      bool switch_stream = false) = 0;
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 

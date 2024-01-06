@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -39,24 +40,31 @@ class DeadCodeEliminationPass : public pir::Pass {
     std::vector<pir::Operation*> deleted_ops;
     for (auto& op : block) {
       if (op.HasTrait<pir::SideEffectTrait>() ||
-          op.isa<paddle::dialect::DataOp>()) {
+          op.isa<paddle::dialect::DataOp>() ||
+          paddle::dialect::IsCustomOp(&op)) {
         continue;
       }
       if (op.use_empty()) {
         deleted_ops.push_back(&op);
       }
     }
+
     for (auto* op : deleted_ops) {
       op->Erase();
       (*num_erasers)++;
     }
-    for (auto& op : block) {
-      for (size_t i = 0; i < op.num_regions(); ++i) {
-        auto& inner_region = op.region(i);
-        for (auto& inner_block : inner_region) {
-          EraseOp(inner_block, num_erasers);
+
+    if (deleted_ops.empty()) {
+      for (auto& op : block) {
+        for (size_t i = 0; i < op.num_regions(); ++i) {
+          auto& inner_region = op.region(i);
+          for (auto& inner_block : inner_region) {
+            EraseOp(inner_block, num_erasers);
+          }
         }
       }
+    } else {
+      EraseOp(block, num_erasers);
     }
   }
 };
