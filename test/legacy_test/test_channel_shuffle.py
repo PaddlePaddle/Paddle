@@ -159,10 +159,10 @@ class TestChannelShuffleAPI(unittest.TestCase):
                 fetch_list=out_2,
                 use_prune=True,
             )
-            
+
             np.testing.assert_allclose(res_1[0], out_1_np)
             np.testing.assert_allclose(res_2[0], out_2_np)
-    
+
     def run_dygraph(self, groups, data_format):
         n, c, h, w = 2, 9, 4, 4
 
