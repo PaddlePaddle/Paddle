@@ -154,9 +154,12 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
     output_types.push_back(result.type());
   }
   auto *new_op = Create(inputs, attributes_, output_types, info_, num_regions_);
+  ir_mapping.Add(this, new_op);
+
   // record outputs mapping info
   for (uint32_t i = 0; i < num_results_; ++i) {
-    ir_mapping.Add(result(i), new_op->result(i));
+    ir_mapping.Add(static_cast<Value>(result(i)),
+                   static_cast<Value>(new_op->result(i)));
   }
 
   if (options.IsCloneRegions()) {

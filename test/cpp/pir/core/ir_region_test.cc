@@ -83,10 +83,12 @@ TEST(region, clone_op_test) {
   pir::Operation &new_op = *op.Clone(mapper, pir::CloneOptions(true, true));
 
   // (8) Check the cloned op recursively
+  EXPECT_EQ(mapper.Lookup(&op), &new_op);
   EXPECT_EQ(new_op.num_regions(), 1u);
   pir::Region &new_region = new_op.region(0);
   EXPECT_EQ(new_region.size(), 1u);
   pir::Block &new_block = new_region.front();
+  EXPECT_EQ(mapper.Lookup(&block), &new_block);
   EXPECT_EQ(new_block.size(), 3u);
 
   for (auto op_iter = block.begin(), new_op_iter = new_block.begin();
@@ -94,13 +96,15 @@ TEST(region, clone_op_test) {
        ++op_iter, ++new_op_iter) {
     pir::Operation &op = *op_iter;
     pir::Operation &new_op = *new_op_iter;
+    EXPECT_EQ(mapper.Lookup(&op), &new_op);
     EXPECT_EQ(op.num_operands(), new_op.num_operands());
     for (uint32_t i = 0; i < op.num_operands(); ++i) {
       EXPECT_EQ(mapper.Lookup(op.operand_source(i)), new_op.operand_source(i));
     }
     EXPECT_EQ(op.num_results(), new_op.num_results());
     for (uint32_t i = 0; i < op.num_results(); ++i) {
-      EXPECT_EQ(mapper.Lookup(op.result(i)), new_op.result(i));
+      EXPECT_EQ(mapper.Lookup(static_cast<pir::Value>(op.result(i))),
+                static_cast<pir::Value>(new_op.result(i)));
     }
     EXPECT_TRUE(std::equal(op.attributes().begin(),
                            op.attributes().end(),

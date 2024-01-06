@@ -73,7 +73,7 @@ class IR_API Region {
   void Walk(FuncT &&callback);
 
   // clone this region into another region, target region will be overwritten.
-  void CloneInto(Region &other, IrMapping &ir_mapping) const;  // NOLINT
+  void CloneInto(Region &other, IrMapping &ir_mapping);  // NOLINT
 
   // take the last block of region.
   // if region is empty, return nullptr;

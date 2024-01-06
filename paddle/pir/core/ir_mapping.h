@@ -17,21 +17,57 @@
 #include "paddle/pir/core/value.h"
 
 namespace pir {
+class Block;
+class Operation;
 
 class IrMapping {
  public:
-  void Add(Value from, Value to) { value_map_[from] = to; }
-
-  Value Lookup(Value from) const {
-    IR_ENFORCE(value_map_.count(from) > 0, "Not Found Value in IRMapping.");
-    return value_map_.at(from);
+  template <typename T>
+  void Add(T from, T to) {
+    mutable_map<T>()[from] = to;
   }
-  void Earse(Value from) { value_map_.erase(from); }
 
-  void Clear() { value_map_.clear(); }
+  template <typename T>
+  T Lookup(T from) const {
+    IR_ENFORCE(map<T>().count(from) > 0, "Not Found Target in IRMapping.");
+    return map<T>().at(from);
+  }
+
+  template <typename T>
+  void Earse(T from) {
+    mutable_map<T>().erase(from);
+  }
+
+  void Clear() {
+    value_map_.clear();
+    block_map_.clear();
+    operation_map_.clear();
+  }
 
  private:
-  std::unordered_map<Value, Value> value_map_;
+  template <typename T>
+  using MapType = std::unordered_map<T, T>;
+
+  template <typename T>
+  const MapType<T> &map() const {
+    if constexpr (std::is_convertible_v<T, Value>)
+      return value_map_;
+    else if constexpr (std::is_convertible_v<T, Block *>)
+      return block_map_;
+    else if constexpr (std::is_convertible_v<T, Operation *>)
+      return operation_map_;
+    else
+      IR_THROW("Not support type in IRMapping.");
+  }
+
+  template <typename T>
+  auto &mutable_map() {
+    return const_cast<MapType<T> &>(map<T>());
+  }
+
+  MapType<Value> value_map_;
+  MapType<Block *> block_map_;
+  MapType<Operation *> operation_map_;
 };
 
 }  // namespace pir
