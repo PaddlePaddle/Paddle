@@ -7063,9 +7063,9 @@ def copysign(x, y, name=None):
     Equation:
         .. math::
 
-            copysign(x{i},y{i})=\left\{\begin{matrix}
-            & -|(x{i})| & if y{i} <= 0.0\\
-            & |(x{i})| & if y{i} > 0.0
+            copysign(x_{i},y_{i})=\left\{\begin{matrix}
+            & -|(x_{i})| & if \space y_{i} < 0.0\\
+            & |(x_{i})| & if \space y_{i} >- 0.0
             \end{matrix}\right.
 
     Args:
