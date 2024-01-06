@@ -68,7 +68,7 @@ def clip_by_norm(x, max_norm, name=None):
              [0.50000000, 0.50000000]])
     """
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.clip_by_norm(x, max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
@@ -530,18 +530,6 @@ class ClipGradByNorm(ClipGradBase):
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
-        params_and_grads = []
-        for p, g in params_grads:
-            if g is None:
-                continue
-            if getattr(p, 'need_clip', True) is False:
-                params_and_grads.append((p, g))
-                continue
-            new_grad = clip_by_norm(x=g, max_norm=self.clip_norm)
-            params_and_grads.append((p, new_grad))
-        return params_and_grads
-
-    def _pir_clip(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
             if g is None:
