@@ -26,6 +26,7 @@ xccl_base_url=$2
 
 echo "xpu_base_url: $xpu_base_url"
 echo "xccl_base_url: $xccl_base_url"
+sandbox_pattern="^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"
 
 function check_files() {
     local url="$1"
@@ -72,6 +73,32 @@ function check_files() {
     rm -f ./$local_file_name
     rm -rf ./$local_dir
 }
+
+# check xpu_base_url type
+if [[ $xpu_base_url =~ $sandbox_pattern ]]; then
+    build_from="ipipe"
+    sandbox_version=${xpu_base_url}
+    irepo_token="369f0002-ca99-41ba-891c-e0046ae0b98c"
+    irepo_url="https://irepo.baidu-int.com/rest/prod/v3/baidu/xpu/sandbox/releases/${sandbox_version}/files"
+
+    unset http_proxy
+    echo "The URL contains 'sandbox/releases', download it from iPipe"
+    if [ ! -e "output.tar.gz" ]; then
+        wget -O output.tar.gz -q --no-check-certificate --header IREPO-TOKEN:${irepo_token} ${irepo_url}
+    fi
+
+    if [[ ! -d output ]]; then
+        tar -zxf output.tar.gz
+    fi
+    exit 0
+elif [[ $xpu_base_url != *"https://baidu-kunlun-product.su.bcebos.com"* ]]; then
+    build_from="local"
+    # TODO: specify local build method later
+    echo "The URL does not contain bos url, assume it is local path"
+else
+    build_from="bos"
+    echo "The URL is a bos url, will follow default download & compile logic"
+fi
 
 # XRE
 xre_tar_file_names=("xre-kylin_aarch64" "xre-bdcentos_x86_64" "xre-ubuntu_x86_64" "xre-centos7_x86_64")
