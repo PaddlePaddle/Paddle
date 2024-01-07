@@ -464,6 +464,13 @@ class AMPState:
                             op._set_attr(
                                 'out_dtype', _str_to_dtype(self.amp_dtype)
                             )
+
+        if (
+            op.has_attr('dtype')
+            and op.attr('dtype') == core.VarDesc.VarType.FP32
+        ):
+            op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
+
         return num_cast_ops
 
     def _insert_cast_op_backward(
@@ -640,6 +647,12 @@ class AMPState:
                             num_cast_ops += 1
                 else:
                     assert out_var.dtype == dst_dtype
+
+        if (
+            op.has_attr('dtype')
+            and op.attr('dtype') == core.VarDesc.VarType.FP32
+        ):
+            op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
 
         return num_cast_ops
 
