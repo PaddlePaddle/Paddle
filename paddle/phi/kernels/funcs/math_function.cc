@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -45,6 +47,8 @@ namespace funcs {
 
 using float16 = phi::dtype::float16;
 
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e4m3fn>;
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e5m2>;
 template struct SetConstant<phi::CPUContext, phi::dtype::float16>;
 template struct SetConstant<phi::CPUContext, phi::dtype::bfloat16>;
 template struct SetConstant<phi::CPUContext, float>;
