@@ -25,10 +25,10 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (out->IsSharedWith(x)) {
-    auto origin_x = x;
+    auto x_origin = x;
     PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
                               CastCUDAKernelImpl<T, data_t>(
-                                  dev_ctx, origin_x, out_dtype, out);
+                                  dev_ctx, x_origin, out_dtype, out);
                             }));
   } else {
     PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {

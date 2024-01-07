@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
-#include "paddle/phi/common/float16.h"
 #include "paddle/common/hostdevice.h"
+#include "paddle/phi/common/float16.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -62,8 +62,7 @@ struct PADDLE_ALIGN(1) float8_e5m2 {
     __nv_fp8_e5m2 tmp = __nv_fp8_e5m2(val);
     x = *reinterpret_cast<uint8_t*>(&tmp);
 #else
-    // refer to
-    // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e5m2.h
+    // CPU implementation.
     Bits fb, denorm_mask;
     fb.f = val;
 

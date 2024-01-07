@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,8 +60,7 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     __nv_fp8_e4m3 tmp = __nv_fp8_e4m3(val);
     x = *reinterpret_cast<uint8_t*>(&tmp);
 #else
-    // refer to
-    // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e4m3fn.h
+    // CPU implementation.
     Bits fb, denorm_mask;
     fb.f = val;
     constexpr uint32_t fp8_max = UINT32_C(1087) << 20;
@@ -163,41 +162,20 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     return static_cast<float>(
         *reinterpret_cast<const __nv_fp8_e4m3*>(&x));  // NOLINT
 #else
-    // refer to
-    // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e4m3fn.h
+    // CPU implementation.
     const uint32_t w = (uint32_t)x << 24;
     const uint32_t sign = w & UINT32_C(0x80000000);
     const uint32_t nonsign = w & UINT32_C(0x7FFFFFFF);
 
     // get the leading 0-bits in nonsin.
-    // have no idea why __builtin_clz identifier not found windows-openblas ci.
-    // so use a naive implementation temporarily.
-    uint32_t nonsign_tmp = nonsign;
-    uint32_t renorm_shift = 0;
-    if (nonsign_tmp == 0) {
-      renorm_shift = 32;
-    } else {
-      if ((nonsign_tmp & 0xFFFF0000) == 0) {
-        renorm_shift += 16;
-        nonsign_tmp <<= 16;
-      }
-      if ((nonsign_tmp & 0xFF000000) == 0) {
-        renorm_shift += 8;
-        nonsign_tmp <<= 8;
-      }
-      if ((nonsign_tmp & 0xF0000000) == 0) {
-        renorm_shift += 4;
-        nonsign_tmp <<= 4;
-      }
-      if ((nonsign_tmp & 0xC0000000) == 0) {
-        renorm_shift += 2;
-        nonsign_tmp <<= 2;
-      }
-      if ((nonsign_tmp & 0x80000000) == 0) {
-        renorm_shift += 1;
-      }
-    }
-
+#if defined(_WIN32)
+    uint32_t renorm_shift = __lzcnt(nonsign);
+#else
+    // Note: zero is not a supported input into `__builtin_clz`
+    uint32_t renorm_shift = nonsign != 0
+                                ? __builtin_clz(nonsign)
+                                : sizeof(uint32_t) * 8 /* bytes of uint32 */;
+#endif
     renorm_shift = renorm_shift > 4 ? renorm_shift - 4 : 0;
     const int32_t inf_nan_mask =
         ((int32_t)(nonsign + 0x01000000) >> 8) & INT32_C(0x7F800000);
