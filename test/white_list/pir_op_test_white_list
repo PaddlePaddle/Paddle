@@ -214,9 +214,7 @@ test_range
 test_reduce_op
 test_reduce_op_static_build
 test_repeat_interleave_op
-test_requantize_mkldnn_op
 test_reshape_bf16_op
-test_reshape_mkldnn_op
 test_reshape_op
 test_reverse_op
 test_roi_align_op
@@ -224,7 +222,6 @@ test_roi_pool_op
 test_roll_op
 test_row_conv_op
 test_rrelu_op
-test_scale_mkldnn_op
 test_scale_op
 test_scatter_nd_op
 test_scatter_op
@@ -242,9 +239,7 @@ test_sigmoid_cross_entropy_with_logits_op
 test_sign_op
 test_size_op
 test_slice_op
-test_softmax_bf16_mkldnn_op
 test_softmax_mask_fuse_upper_triangle_op
-test_softmax_mkldnn_op
 test_softmax_op
 test_solve_op
 test_sparse_momentum_op
@@ -254,7 +249,6 @@ test_split_mkldnn_op
 test_split_op
 test_squared_l2_norm_op
 test_squeeze2_op
-test_sum_bf16_mkldnn_op
 test_sum_mkldnn_op
 test_svd_op
 test_take_along_axis_op
