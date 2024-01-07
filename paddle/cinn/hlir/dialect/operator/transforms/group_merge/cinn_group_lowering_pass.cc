@@ -463,6 +463,7 @@ pir::Operation* ProcessGroup(
     pir::PatternRewriter& rewriter) {  // NOLINT
   std::vector<pir::Operation*> group_ops_view;
   std::unordered_set<pir::Value> value_view;
+  
   group->WalkOps([&group, &group_ops_view, &value_view](pir::Operation* op) {
     group_ops_view.push_back(op);
     VLOG(1) << "####### group@" << group.get() << " : " << op->name() << " @"
@@ -474,23 +475,32 @@ pir::Operation* ProcessGroup(
       value_view.insert(op->result(i));
     }
   });
+  
+  const auto GetShapeOrDataDimExprs=[&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+    const auto& key = GetValueId(&value);
+    auto iter = shape_analysis->value_id_to_shapeordata_.find(key);
+    CHECK(iter != shape_analysis->value_id_to_shapeordata_.end());
+    return iter->second;
+  };
 
   // 1. construct broadcast tree
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
   for (auto value : value_view) {
-    const auto& shape_dim_expr = shape_analysis->GetShapeOrDataForValue(&value);
+    const auto& shape_dim_expr = GetShapeOrDataDimExprs(value);
     const auto& data_shape = shape_dim_expr.data();
-    if (data_shape) {
-      all_value_dim_exprs->push_back(shape_dim_expr.shape());
+    if (data_shape.has_value()) {
+      all_value_dim_exprs->push_back(data_shape.value());
     } else {
-      all_value_dim_exprs->push_back(*data_shape);
+      all_value_dim_exprs->push_back(shape_dim_expr.shape());
     }
     value_to_dim_expr_idx[value] = all_value_dim_exprs->size() - 1;
   }
+  VLOG(4) << "before constructed. broadcast-leaf: \n" << ToTxtString(cinn::common::BroadcastTree(all_value_dim_exprs));
   cinn::common::BroadcastTree broadcast_tree =
       cinn::common::ConstructBroadcastTree(
           cinn::common::BroadcastLeaf(all_value_dim_exprs));
+  VLOG(4) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
 
   // 2. broadcast tree to condition op
   auto group_inputs = GetBlockOutsideInput(group->ops);
