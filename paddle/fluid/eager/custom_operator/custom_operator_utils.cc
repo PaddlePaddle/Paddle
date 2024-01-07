@@ -466,7 +466,7 @@ phi::distributed::SpmdInfo RunInferSpmdFn(
     auto all_inputs = ctx.AllMutableInput();
     for (auto& t : *all_inputs) {
       phi::distributed::DistMetaTensor meta_dist_input;
-      if (t.impl().get() && t.is_initialized()) {
+      if (t.impl().get()) {
         meta_dist_input =
             paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
       }
@@ -493,7 +493,7 @@ phi::distributed::SpmdInfo RunInferSpmdFn(
       for (size_t j = range.first; j < range.second; ++j) {
         auto& t = ctx.InputAt(j);
         phi::distributed::DistMetaTensor meta_tensor;
-        if (t.impl().get() && t.is_initialized()) {
+        if (t.impl().get()) {
           meta_tensor =
               paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
         }
@@ -504,7 +504,7 @@ phi::distributed::SpmdInfo RunInferSpmdFn(
       auto& range = ctx.InputRangeAt(i);
       auto& t = ctx.InputAt(range.first);
       phi::distributed::DistMetaTensor meta_tensor;
-      if (t.impl().get() && t.is_initialized()) {
+      if (t.impl().get()) {
         meta_tensor =
             paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
       }
