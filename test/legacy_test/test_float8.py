@@ -88,8 +88,8 @@ class Float8_E4M3FN_Test_CPU(unittest.TestCase):
 class Float8_E5M2_Test_CPU(Float8_E4M3FN_Test_CPU):
     def setUp(self):
         paddle.device.set_device("cpu")
-        self.dtype = "float8_e5m2"
         self.paddle_dtype = core.VarDesc.VarType.FP8_E5M2
+        self.dtype = "float8_e5m2"
 
 
 if __name__ == "__main__":
