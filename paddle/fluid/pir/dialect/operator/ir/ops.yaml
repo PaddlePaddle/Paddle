@@ -968,14 +968,11 @@
     func : prod
   backward : prod_grad
 
-- op : pull_sparse_v2
+- op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
   output : Tensor[](out){ids.size()}
-  infer_meta :
-    func : PullSparseV2InferMeta
-    param : [ids, w, embeddingdim, tableid, accessorclass, ctrlabelname, paddingid, scalesparsegrad, inputnames, is_distributed]
   kernel :
-    func : pull_sparse_v2
+    func : push_sparse_v2
     param : [ids, w, embeddingdim, tableid, accessorclass, ctrlabelname, paddingid, scalesparsegrad, inputnames, is_distributed]
     data_type : ids
 
