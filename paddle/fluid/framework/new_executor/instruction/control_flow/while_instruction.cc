@@ -157,6 +157,28 @@ void WhileInstruction::ShareInputsToOutputs() {
   }
 }
 
+void WhileInstruction::ShareOutputsToBlockArgs() {
+  for (size_t i = 0; i < body_block_->args_size(); ++i) {
+    auto block_arg = body_block_->arg(i);
+    auto var_name = body_inter_->GetNameByValue(block_arg);
+    auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
+
+    if (outputs_[i]->IsType<phi::DenseTensor>()) {
+      inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          outputs_[i]->Get<phi::DenseTensor>());
+    } else if (outputs_[i]->IsType<phi::TensorArray>()) {
+      const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
+      auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
+      *inner_array = outer_array;
+      VLOG(10) << inner_var
+               << " should be created: " << inner_var->IsInitialized();
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
+  }
+}
+
 void WhileInstruction::CopyOutputsToBlockArgs() {
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
     auto block_arg = body_block_->arg(i);
@@ -223,7 +245,8 @@ void WhileInstruction::Run() {
   VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     VLOG(6) << "while instruction pass args to body block";
-    CopyOutputsToBlockArgs();
+    // CopyOutputsToBlockArgs();
+    ShareOutputsToBlockArgs();
     VLOG(6) << "while instruction interpretercore run";
     body_inter_->Run({}, false);
     VLOG(6) << "while instruction get value form body block";

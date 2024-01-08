@@ -56,6 +56,7 @@ class WhileInstruction : public InstructionBase {
 
   // Pass argument to body_block for execution.
   void CopyOutputsToBlockArgs();
+  void ShareOutputsToBlockArgs();
 
   // Get return value from body_block after each execution.
   void ShareDatasToOutputs();
