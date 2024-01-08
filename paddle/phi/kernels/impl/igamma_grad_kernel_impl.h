@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <unsupported/Eigen/SpecialFunctions>
-
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -33,9 +31,8 @@ struct IgammaGradFunctor {
     const MT mp_x = static_cast<MT>(x_[idx]);
     const MT mp_a = static_cast<MT>(a_[idx]);
     const MT mp_a_1 = static_cast<MT>(a_[idx] - 1);
-    output_[idx] =
-        static_cast<T>(mp_dout * -Eigen::numext::exp(-mp_x) *
-                       Eigen::numext::pow(mp_x, mp_a_1) / std::tgamma(mp_a));
+    output_[idx] = static_cast<T>(mp_dout * -std::exp(-mp_x) *
+                                  std::pow(mp_x, mp_a_1) / std::tgamma(mp_a));
   }
 
  private:

@@ -21,11 +21,11 @@ import paddle
 from paddle.base import core
 
 
-def ref_igammac(x, a):
+def ref_gammainc(x, a):
     return special.gammainc(a, x)
 
 
-class TestIgammacApi(unittest.TestCase):
+class TestGammaincApi(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4, 5]
         self.init_dtype_type()
@@ -45,12 +45,12 @@ class TestIgammacApi(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('x', self.x_np.shape, self.x_np.dtype)
             a = paddle.static.data('a', self.a_np.shape, self.a_np.dtype)
-            out = paddle.igammac(x, a)
+            out = paddle.gammainc(x, a)
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(
                 feed={'x': self.x_np, 'a': self.a_np}, fetch_list=[out]
             )
-        out_ref = ref_igammac(self.x_np, self.a_np)
+        out_ref = ref_gammainc(self.x_np, self.a_np)
         np.testing.assert_allclose(out_ref, res, rtol=1e-6, atol=1e-6)
         self.assertEqual(out.dtype, x.dtype)
 
@@ -58,14 +58,14 @@ class TestIgammacApi(unittest.TestCase):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         a = paddle.to_tensor(self.a_np)
-        out = paddle.igammac(x, a)
-        out_ref = ref_igammac(self.x_np, self.a_np)
+        out = paddle.gammainc(x, a)
+        out_ref = ref_gammainc(self.x_np, self.a_np)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-6, atol=1e-6)
         self.assertEqual(out.dtype, x.dtype)
         paddle.enable_static()
 
 
-class TestIgammacApiFp32(TestIgammacApi):
+class TestGammaincApiFp32(TestGammaincApi):
     def init_dtype_type(self):
         self.dtype = "float32"
 

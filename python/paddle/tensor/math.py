@@ -5048,7 +5048,7 @@ def digamma_(x, name=None):
         return _C_ops.digamma_(x)
 
 
-def igamma(x, a, name=None):
+def gammaincc(x, a, name=None):
     r"""
     Computes the regularized upper incomplete gamma function.
 
@@ -5060,7 +5060,7 @@ def igamma(x, a, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the igamma of the input Tensor.
+        Tensor, the gammaincc of the input Tensor.
 
     Examples:
         .. code-block:: python
@@ -5069,7 +5069,7 @@ def igamma(x, a, name=None):
 
             >>> x = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
             >>> a = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
-            >>> out = paddle.igamma(x, a)
+            >>> out = paddle.gammaincc(x, a)
             >>> print(out)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1.        , 0.15729916, 0.00000774, 0.        , 0.        ])
@@ -5085,9 +5085,9 @@ def igamma(x, a, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.igamma(x, a)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'igamma')
-        check_variable_and_dtype(a, 'a', ['float32', 'float64'], 'igamma')
-        helper = LayerHelper('igamma', **locals())
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gammaincc')
+        check_variable_and_dtype(a, 'a', ['float32', 'float64'], 'gammaincc')
+        helper = LayerHelper('gammaincc', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='igamma', inputs={'x': x, 'a': a}, outputs={'out': out}
@@ -5096,16 +5096,16 @@ def igamma(x, a, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def igamma_(x, a, name=None):
+def gammaincc_(x, a, name=None):
     r"""
-    Inplace version of ``igamma`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_igamma`.
+    Inplace version of ``gammaincc`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_gammaincc`.
     """
     if in_dynamic_mode():
-        return _C_ops.igamma_(x, a)
+        return _C_ops.gammaincc_(x, a)
 
 
-def igammac(x, a, name=None):
+def gammainc(x, a, name=None):
     r"""
     Computes the regularized lower incomplete gamma function.
 
@@ -5117,7 +5117,7 @@ def igammac(x, a, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the igammac of the input Tensor.
+        Tensor, the gammainc of the input Tensor.
 
     Examples:
         .. code-block:: python
@@ -5126,19 +5126,19 @@ def igammac(x, a, name=None):
 
             >>> x = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
             >>> a = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
-            >>> out = paddle.igammac(x, a)
+            >>> out = paddle.gammainc(x, a)
             >>> print(out)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.        , 0.84270084, 0.99999225, 1.        , 1.        ])
     """
-    return 1 - paddle.igamma(x, a)
+    return 1 - paddle.gammaincc(x, a)
 
 
 @inplace_apis_in_dygraph_only
-def igammac_(x, a, name=None):
+def gammainc_(x, a, name=None):
     r"""
-    Inplace version of ``igammac`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_igammac`.
+    Inplace version of ``gammainc`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_gammainc`.
     """
     return (
         paddle.igamma_(x, a)
