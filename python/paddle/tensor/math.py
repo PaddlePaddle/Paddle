@@ -7101,7 +7101,7 @@ def ldexp_(x, y, name=None):
     return paddle.multiply_(x, paddle.pow(two, y))
 
 
-def _bitwise_op(op_name, x, y, out=None, name=None):
+def _bitwise_op(op_name, x, y, is_arithmetic, out=None, name=None):
     check_variable_and_dtype(
         x,
         "x",
@@ -7122,7 +7122,10 @@ def _bitwise_op(op_name, x, y, out=None, name=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
-        type=op_name, inputs={"x": x, "y": y}, outputs={"out": out}
+        type=op_name,
+        inputs={"x": x, "y": y},
+        outputs={"out": out},
+        attrs={'is_arithmetic': is_arithmetic},
     )
 
     return out
@@ -7159,32 +7162,21 @@ def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
             >>> import paddle
             >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
-            >>> paddle.bitwise_left_shift(x, y)
+            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=True)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
     """
     if in_dynamic_mode() and out is None:
-        if is_arithmetic:
-            return _C_ops.bitwise_left_shift_arithmetic(x, y)
-        else:
-            return _C_ops.bitwise_left_shift_logic(x, y)
-    if is_arithmetic:
-        return _bitwise_op(
-            op_name="bitwise_left_shift_arithmetic",
-            x=x,
-            y=y,
-            name=name,
-            out=out,
-        )
-    else:
-        return _bitwise_op(
-            op_name="bitwise_left_shift_logic",
-            x=x,
-            y=y,
-            name=name,
-            out=out,
-        )
+        return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
+    return _bitwise_op(
+        op_name="bitwise_left_shift",
+        x=x,
+        y=y,
+        is_arithmetic=is_arithmetic,
+        name=name,
+        out=out,
+    )
 
 
 @inplace_apis_in_dygraph_only
@@ -7201,10 +7193,7 @@ def bitwise_left_shift_(x, y, is_arithmetic=True, out=None, name=None):
             )
         )
     if in_dynamic_or_pir_mode():
-        if is_arithmetic:
-            return _C_ops.bitwise_left_shift_arithmetic_(x, y)
-        else:
-            return _C_ops.bitwise_left_shift_logic_(x, y)
+        return _C_ops.bitwise_left_shift_(x, y, is_arithmetic)
 
 
 def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
@@ -7238,32 +7227,22 @@ def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
             >>> import paddle
             >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
-            >>> paddle.bitwise_right_shift(x, y)
+            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=True)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[5 , 5 , 5 , 5 ],
                     [4 , 2 , 8 , 32]])
     """
     if in_dynamic_mode() and out is None:
-        if is_arithmetic:
-            return _C_ops.bitwise_right_shift_arithmetic(x, y)
-        else:
-            return _C_ops.bitwise_right_shift_logic(x, y)
-    if is_arithmetic:
-        return _bitwise_op(
-            op_name="bitwise_right_shift_arithmetic",
-            x=x,
-            y=y,
-            name=name,
-            out=out,
-        )
-    else:
-        return _bitwise_op(
-            op_name="bitwise_right_shift_logic",
-            x=x,
-            y=y,
-            name=name,
-            out=out,
-        )
+        return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
+
+    return _bitwise_op(
+        op_name="bitwise_right_shift",
+        x=x,
+        y=y,
+        is_arithmetic=is_arithmetic,
+        name=name,
+        out=out,
+    )
 
 
 @inplace_apis_in_dygraph_only
@@ -7281,10 +7260,7 @@ def bitwise_right_shift_(x, y, is_arithmetic=True, out=None, name=None):
         )
 
     if in_dynamic_or_pir_mode():
-        if is_arithmetic:
-            return _C_ops.bitwise_right_shift_arithmetic_(x, y)
-        else:
-            return _C_ops.bitwise_right_shift_logic_(x, y)
+        return _C_ops.bitwise_right_shift_(x, y, is_arithmetic)
 
 
 def hypot(x, y, name=None):

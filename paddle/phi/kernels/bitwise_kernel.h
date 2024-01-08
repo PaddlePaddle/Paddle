@@ -42,27 +42,17 @@ void BitwiseNotKernel(const Context& dev_ctx,
                       DenseTensor* out);
 
 template <typename T, typename Context>
-void BitwiseLeftShiftArithmeticKernel(const Context& dev_ctx,
-                                      const DenseTensor& x,
-                                      const DenseTensor& y,
-                                      DenseTensor* out);
+void BitwiseLeftShiftKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            bool is_arithmetic,
+                            DenseTensor* out);
 
 template <typename T, typename Context>
-void BitwiseLeftShiftLogicKernel(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& y,
-                                 DenseTensor* out);
-
-template <typename T, typename Context>
-void BitwiseRightShiftArithmeticKernel(const Context& dev_ctx,
-                                       const DenseTensor& x,
-                                       const DenseTensor& y,
-                                       DenseTensor* out);
-
-template <typename T, typename Context>
-void BitwiseRightShiftLogicKernel(const Context& dev_ctx,
-                                  const DenseTensor& x,
-                                  const DenseTensor& y,
-                                  DenseTensor* out);
+void BitwiseRightShiftKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             bool is_arithmetic,
+                             DenseTensor* out);
 
 }  // namespace phi

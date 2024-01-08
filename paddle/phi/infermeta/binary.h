@@ -231,6 +231,11 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void BitwiseShiftInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           bool is_arithmetic,
+                           MetaTensor* out);
+
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
