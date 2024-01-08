@@ -13,4 +13,4 @@
 # limitations under the License.
 
 export GLOG_v=4
-FLAG_logbuflevel=-1 FLAGS_print_ir=1 FLAGS_call_stack_level=2 FLAGS_enable_pir_api=1 python test_cinn_broadcast_symbolic_demo.py > output.log 2>&1
+FLAGS_cinn_bucket_compile=True FLAG_logbuflevel=-1 FLAGS_print_ir=1 FLAGS_call_stack_level=2 FLAGS_enable_pir_api=1 python test_cinn_broadcast_symbolic_demo.py > output.log 2>&1
