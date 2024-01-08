@@ -138,7 +138,6 @@ void PaddlePassContorller::LoadDefaultConfig() {
                        "split_layernorm_to_math_ops_pass",
                        "add_support_int8_pass",
                        "merge_layernorm_fuse_pass",
-                       "trt_map_ops_to_matrix_multiply_pass",
                        "elementwiseadd_transpose_pass"});
 
   for (auto ctrl_pass_name : ctrl_passes_) {
@@ -204,8 +203,7 @@ void PaddlePassContorller::LoadDefaultConfig() {
           ->SetPassDefaultState(static_cast<PassType>(1));
     }
 
-    if (ctrl_pass_name == "trt_map_ops_to_matrix_multiply_pass" ||
-        ctrl_pass_name == "trt_skip_layernorm_fuse_pass") {
+    if (ctrl_pass_name == "trt_skip_layernorm_fuse_pass") {
       pass_ctrl_map_[ctrl_pass_name]->support_categories_ =
           std::vector<std::string>{"trt", "trtlow"};
       pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"] =
