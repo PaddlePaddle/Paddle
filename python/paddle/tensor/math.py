@@ -16,6 +16,7 @@ math functions
 """
 
 import math
+import warnings
 
 import numpy as np
 
@@ -7064,7 +7065,7 @@ def copysign(x, y, name=None):
         .. math::
 
             copysign(x_{i},y_{i})=\left\{\begin{matrix}
-            & -|x_{i}| & if \space y_{i} < 0.0\\
+            & -|x_{i}| & if \space y_{i} <= 0.0\\
             & |x_{i}| & if \space y_{i} >= 0.0
             \end{matrix}\right.
 
@@ -7099,9 +7100,38 @@ def copysign(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
                    [-1.,  -2.,  -3.])
 
+        .. code-block:: python
+            :name: example_zero1
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([0.0], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                [1., 2., 3.])
+
+        .. code-block:: python
+            :name: example_zero2
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-0.0], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                [-1., -2., -3.])
+
+
     """
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        warnings.warn(
+            "The shape of broadcast output {} is different from the input tensor x with shape: {}, please make sure you are using copysign api correctly.".format(
+                out_shape, x.shape
+            )
+        )
+
     if in_dynamic_or_pir_mode():
         return _C_ops.copysign(x, y)
     else:
