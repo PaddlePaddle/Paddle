@@ -406,35 +406,7 @@ class Optimizer:
                     tensor.set_xpu_scale_value(
                         state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
                     )
-
-                model_np = np.array(tensor)
-
-                load_para = state_dict[var_tmp.name]
-
-                if isinstance(load_para, Variable):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, core.eager.Tensor):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, np.ndarray):
-                    load_para_np = load_para
-                else:
-                    raise RuntimeError(
-                        f"State dict type {str(type(load_para))} not supprt"
-                    )
-
-                assert (
-                    model_np.shape == load_para_np.shape
-                ), "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                    model_np.name, model_np.shape, load_para_np.shape
-                )
-
-                assert (
-                    model_np.dtype == load_para_np.dtype
-                ), "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    model_np.name, model_np.dtype, load_para_np.dtype
-                )
-
-                tensor.set(load_para_np, framework._current_expected_place())
+                var.set_value(state_dict[var_tmp.name])
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -1202,7 +1174,7 @@ class Optimizer:
                             # need to filter again here.
                             if (
                                 param_and_grad[1] is None
-                                or not param_and_grad[1]._is_initialized()
+                                or not param_and_grad[0]._is_initialized()
                             ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
@@ -1213,7 +1185,7 @@ class Optimizer:
                         for param_and_grad in parameters_and_grads['params']:
                             if (
                                 param_and_grad[1] is None
-                                or not param_and_grad[1]._is_initialized()
+                                or not param_and_grad[0]._is_initialized()
                             ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:

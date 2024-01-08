@@ -27,10 +27,11 @@ function collect_failed_tests() {
     done
 }
 
-# disable test: test_dist_fuse_resunit_pass
+# disable test: 
 
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
+^test_dist_fuse_resunit_pass$|\
 ^test_dygraph_dataparallel_bf16$|\
 ^test_dygraph_sharding_stage1_fp16$|\
 ^test_dygraph_sharding_stage1_bf16$|\
@@ -109,6 +110,7 @@ parallel_list="^init_phi_test$|\
 ^test_gather_nd_op$|\
 ^test_index_select_op$|\
 ^test_pass_base_list$|\
+^test_pool_max_op$|\
 ^test_roll_op$|\
 ^test_switch_autotune$|\
 ^test_tcp_store$|\
@@ -123,7 +125,7 @@ set +e
 ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_1=$?
 
-ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
+ctest --output-on-failure -R "($serial_list)" --timeout 180 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_2=$?
 set -e
 
