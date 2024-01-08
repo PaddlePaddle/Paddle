@@ -77,9 +77,11 @@ struct CachedDimExprToValueConverter {
   pir::Value GetInputShapeByInputTensor(pir::Value input_tensor) {
     auto iter = tensor2shape_.find(input_tensor);
     if (iter == tensor2shape_.end()) {
-      pir::Value input_shape =
+      pir::Value shape =
           rewriter->Build<paddle::dialect::ShapeOp>(input_tensor).out();
-      iter = tensor2shape_.emplace(input_tensor, input_shape).first;
+      pir::Value cast_shape =
+          rewriter->Build<paddle::dialect::CastOp>(shape, phi::DataType::INT64).out();
+      iter = tensor2shape_.emplace(input_tensor, cast_shape).first;
     }
     return iter->second;
   }
@@ -90,10 +92,11 @@ struct CachedDimExprToValueConverter {
       tensor2shape_;
 
   pir::Value ConvertToValueImpl(int64_t dim_expr) {
-    return rewriter
+    pir::Value ret = rewriter
         ->Build<paddle::dialect::FullIntArrayOp>(std::vector{dim_expr},
                                                  phi::DataType::INT64)
         .out();
+    return ret;
   }
 
   pir::Value ConvertToValueImpl(const std::string& symbol_name) {
@@ -110,8 +113,9 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertTensorDimToValue(const TensorDimInShape& tensor_dim) {
     pir::Value input_shape = GetInputShapeByInputTensor(tensor_dim.value);
-    return ConvertTensorDimToValue(
+    pir::Value ret = ConvertTensorDimToValue(
         TensorDimInData{.value = input_shape, .axis = tensor_dim.axis});
+    return ret;
   }
 
   pir::Value ConvertTensorDimToValue(const TensorDimInData& tensor_dim) {
@@ -331,8 +335,9 @@ class SplitGenerateShapeIntoShapeOps
       CachedDimExprToValueConverter* converter) const {
     const std::vector<pir::Value>& values_from_dim_exprs =
         GetValuesOfRewritedOps(dim_exprs, converter);
-    return converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs)
+    pir::Value vec = converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs)
         .out();
+    return converter->rewriter->Build<paddle::dialect::ConcatOp>(vec).out();
   }
 
   std::vector<pir::Value> GetValuesOfRewritedOps(
