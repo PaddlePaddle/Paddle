@@ -13,16 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 namespace paddle::dialect {
 
 bool InferSymbolicShapeInterface::InferSymbolicShape(
-    pir::Builder &builder,
-    const std::vector<pir::OpOperand> &operands,
-    std::vector<pir::Value> &reified_return_shapes) {
-  return impl_->infer_symbolic_shapes(
-      operation(), builder, operands, reified_return_shapes);
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return impl_->infer_symbolic_shapes(operation(), shape_analysis);
 }
 }  // namespace paddle::dialect
 
@@ -30,124 +29,282 @@ namespace paddle::dialect {
 
 namespace {
 
-bool DeriveShapeFromOperand(pir::Builder *builder,
-                            pir::Value operand,
-                            std::vector<pir::Value> *reified_return_shapes) {
-  auto shaped_type = operand.type().dyn_cast<pir::ShapedTypeInterface>();
-  if (!shaped_type) return false;
-  reified_return_shapes->assign(
-      {builder->Build<pir::shape::ShapeOfOp>(operand).result(0)});
+bool InferSymbolicShapeAllEqualUnary(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+  shape_analysis->value_id_to_shapeordata_[res_id] =
+      shape_analysis->value_id_to_shapeordata_[operand_source_id];
   return true;
 }
 
-// Returns a new scalar integer value having type `type`.
-//  Here `type` must be an integer or index type.
-pir::Value MaybeCastTo(pir::Builder &builder,  // NOLINT
-                       pir::Value value,
-                       pir::Type type) {
-  if (type == value.type()) return value;
-  // if (!type.IsIndex() && !value.type().IsIndex()) {
-  //   Value casted =
-  //       builder.Build<shape::IndexCastOp>(builder.index_type(), value)
-  //           .result(0);
-  //   return builder.Build<shape::IndexCastOp>(type, casted).result(0);
-  // }
-  // return builder.Build<shape::IndexCastOp>(type, value).result(0);
+bool InferSymbolicShapeAllEqualBinary(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+  shape_analysis->value_id_to_shapeordata_[res_id] =
+      shape_analysis->value_id_to_shapeordata_[operand_source_id];
+  return true;
 }
+
+bool InferSymbolicShapeElementWiseBinary(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source_0 = op->operand_source(0);
+  std::string operand_source_0_id = pir::GetValueId(&operand_source_0);
+  std::vector<symbol::DimExpr> shape_0{
+      shape_analysis->value_id_to_shapeordata_[operand_source_0_id].shape()};
+
+  pir::Value operand_source_1 = op->operand_source(1);
+  std::string operand_source_1_id = pir::GetValueId(&operand_source_1);
+  std::vector<symbol::DimExpr> shape_1{
+      shape_analysis->value_id_to_shapeordata_[operand_source_1_id].shape()};
+
+  if (shape_0.size() > shape_1.size()) {
+    for (size_t i = 0; i < shape_0.size() - shape_1.size(); i++) {
+      shape_1.emplace(shape_1.begin(), 1);
+    }
+  } else {
+    for (size_t i = 0; i < shape_1.size() - shape_0.size(); i++) {
+      shape_0.emplace(shape_0.begin(), 1);
+    }
+  }
+
+  std::vector<symbol::DimExpr> shapes;
+  symbol::DimExprBuilder builder{nullptr};
+  for (size_t i = 0; i < shape_0.size(); i++) {
+    shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
+  }
+
+  // TODO(lanxianghit): fill data when the operation is on shape computation
+  std::vector<symbol::DimExpr> data;
+
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
+}
+
 }  // namespace
 
-bool AbsOpInferSymbolicShape(
-    pir::Builder &builder,  // NOLINT
-    const std::vector<pir::OpOperand> &operands,
-    std::vector<pir::Value> &reified_return_shapes) {  // NOLINT
-  return DeriveShapeFromOperand(
-      &builder, operands.front().source(), &reified_return_shapes);
+bool AbsOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualUnary(op, shape_analysis);
 }
 
-bool Abs_OpInferSymbolicShape(
-    pir::Builder &builder,  // NOLINT
-    const std::vector<pir::OpOperand> &operands,
-    std::vector<pir::Value> &reified_return_shapes) {  // NOLINT
-  return DeriveShapeFromOperand(
-      &builder, operands.front().source(), &reified_return_shapes);
+bool Abs_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualUnary(op, shape_analysis);
 }
 
-bool TransposeOpInferSymbolicShape(
-    pir::Builder &builder,  // NOLINT
-    const std::vector<pir::OpOperand> &operands,
-    std::vector<pir::Value> &reified_return_shapes) {  // NOLINT
-  // auto operand_type = operands[0].type().dyn_cast<DenseTensorType>();
-  // // Currently not support unranked type.
-  // if (!operand_type) return false;
-  // std::vector<int64_t> permutation = this->permutation();
-  // std::vector<Value> shape_values(permutation.size());
-  // Type shape_scalar_type = builder.index_type();
-  // auto to_shape_scalar_type = [&](Value v) {
-  //   return MaybeCastTo(builder, v, shape_scalar_type);
-  // };
-  // auto shaped_type = operand_type.dyn_cast<ShapedTypeInterface>();
-  // auto shape_vector = shaped_type.GetDyShape();
-  // for (auto [idx, element] = std::tuple{0, shape_vector.begin()};
-  //      element != shape_vector.end();
-  //      ++idx, ++element) {
-  //   auto it = std::find(permutation.begin(), permutation.end(), idx);
-  //   // TODO(zhangbopd): Need BuildOrFold
-  //   Value value_dim = to_shape_scalar_type(
-  //       builder.Build<shape::TensorDimOp>(operands[0].source(),
-  //       idx).result(0));
-  //   shape_values[std::distance(permutation.begin(), it)] = value_dim;
-  // }
-  // Value output_shape =
-  //     builder.Build<shape::FromElementsOp>(shape_values).result(0);
-  // reified_return_shapes.push_back(output_shape);
+bool AddOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
 
+bool Add_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+
+bool CastOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualUnary(op, shape_analysis);
+}
+
+bool Cast_OpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualUnary(op, shape_analysis);
+}
+
+bool ExpOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualUnary(op, shape_analysis);
+}
+
+bool Exp_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualUnary(op, shape_analysis);
+}
+
+bool SubtractOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualBinary(op, shape_analysis);
+}
+
+bool Subtract_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeAllEqualBinary(op, shape_analysis);
+}
+
+bool ShapeOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  std::vector<symbol::DimExpr> shapes;
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      shapes,
+      shape_analysis->value_id_to_shapeordata_[operand_source_id].shape()};
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
   return true;
 }
 
-bool ConcatOpInferSymbolicShape(
-    pir::Builder &builder,  // NOLINT
-    const std::vector<pir::OpOperand> &operands,
-    std::vector<pir::Value> &reified_return_shapes) {  // NOLINT
-  // std::vector<Value> inputs = {x()};
-  // auto operand_type = inputs[0].type().dyn_cast<DenseTensorType>();
-  // // Currently not support unranked type.
-  // if (!operand_type) return false;
-  // Type shapeScalarType = builder.index_type();
-  // auto to_shape_scalar_type = [&](Value v) {
-  //   return MaybeCastTo(builder, v, shapeScalarType);
-  // };
-  // std::vector<std::vector<Value>> all_shape_values;
-  // for (size_t inputId = 0; inputId < inputs.size(); ++inputId) {
-  //   Value operand = inputs[inputId];
-  //   auto operand_type = operand.type().dyn_cast<DenseTensorType>();
-  //   if (!operand_type) return false;
-  //   std::vector<Value> shape_values;
-  //   auto shaped_type = operand_type.dyn_cast<ShapedTypeInterface>();
-  //   auto shape_vector = shaped_type.GetDyShape();
-  //   for (auto [idx, element] = std::tuple{0, shape_vector.begin()};
-  //        element != shape_vector.end();
-  //        ++idx, ++element) {
-  //     Value value_dim = to_shape_scalar_type(
-  //         builder.Build<shape::TensorDimOp>(operand, idx).result(0));
-  //     shape_values.push_back(value_dim);
-  //   }
-  //   all_shape_values.emplace_back(std::move(shape_values));
-  // }
-  // [[maybe_unused]] int axis = this->dimension();
-  // auto &shape_values = all_shape_values[0];
-  // for (size_t vecId = 1; vecId < all_shape_values.size(); ++vecId) {
-  //   auto &otherShapeValues = all_shape_values[vecId];
-  //   if (otherShapeValues.size() != shape_values.size()) return false;
-  // TODO(zhangbopd): AddIOp
-  // shape_values[axis] =
-  //     builder.Build<arith::AddIOp>(shape_values[axis],
-  //     otherShapeValues[axis]);
-  // }
-  // Value output_shape =
-  //     builder.Build<shape::FromElementsOp>(shape_values).result(0);
-  // reified_return_shapes.push_back(output_shape);
+bool ShapeSrOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ShapeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool StackOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+
+  symbol::ShapeOrDataDimExprs shape_data;
+  shape_data = shape_analysis->value_id_to_shapeordata_[operand_source_id];
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
+}
+
+bool ReshapeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source_1 = op->operand_source(1);
+  std::string operand_source_1_id = pir::GetValueId(&operand_source_1);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      *(shape_analysis->value_id_to_shapeordata_[operand_source_1_id].data())};
+
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
+}
+
+bool Reshape_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReshapeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool SliceOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  std::vector<symbol::DimExpr> shapes;
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+  }
+
+  auto operand_source_1 = op->operand_source(1);
+  std::string operand_source_1_id = pir::GetValueId(&operand_source_1);
+  auto starts_array =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_1_id]).data();
+  auto start = starts_array->at(0).Get<int64_t>();
+
+  auto operand_source_2 = op->operand_source(2);
+  std::string operand_source_2_id = pir::GetValueId(&operand_source_2);
+  auto ends_array =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_2_id]).data();
+  auto end = ends_array->at(0).Get<int64_t>();
+
+  std::vector<symbol::DimExpr> data;
+  auto source_data =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_id]).data();
+
+  for (int i = start; i < end; i++) {
+    data.emplace_back(source_data->at(i));
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
   return true;
 }
 
 }  // namespace paddle::dialect
+namespace cinn::dialect {
+
+bool SliceOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  std::vector<symbol::DimExpr> shapes;
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+  }
+
+  pir::AttributeMap attributes = op->attributes();
+
+  auto attr_starts =
+      attributes["starts"].dyn_cast<pir::ArrayAttribute>().AsVector();
+  auto start = attr_starts[0].dyn_cast<pir::Int64Attribute>().data();
+
+  auto attr_ends =
+      attributes["ends"].dyn_cast<pir::ArrayAttribute>().AsVector();
+  auto end = attr_ends[0].dyn_cast<pir::Int64Attribute>().data();
+
+  std::vector<symbol::DimExpr> data;
+  auto source_data =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_id]).data();
+
+  for (int i = start; i < end; i++) {
+    data.emplace_back(source_data->at(i));
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
+}
+
+}  // namespace cinn::dialect
+
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferSymbolicShapeInterface)

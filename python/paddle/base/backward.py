@@ -1949,6 +1949,27 @@ def _get_no_grad_set_name(no_grad_set):
     return no_grad_set_name
 
 
+def _get_no_grad_set_value(no_grad_set):
+    no_grad_set_value = paddle.autograd.backward_utils.ValueSet()
+    if no_grad_set is not None:
+        if isinstance(no_grad_set, (set, list, tuple)):
+            for i, no_grad_value in enumerate(no_grad_set):
+                if isinstance(no_grad_value, paddle.pir.Value):
+                    no_grad_set_value.add(no_grad_value)
+                else:
+                    raise TypeError(
+                        "The type of no_grad_set's member must be paddle.pir.Value, but received %s."
+                        % (type(no_grad_value))
+                    )
+        else:
+            raise TypeError(
+                "The type of no_grad_set should be set or list or tuple, but received {}".format(
+                    type(no_grad_set)
+                )
+            )
+    return no_grad_set_value
+
+
 @framework.static_only
 def append_backward(
     loss,

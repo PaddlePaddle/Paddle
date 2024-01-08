@@ -3,6 +3,7 @@
 
 add_subdirectory(spmd_rules)
 add_subdirectory(hybrid_strategy)
+add_subdirectory(custom_op)
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
@@ -162,6 +163,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
+  py_test_modules(test_semi_auto_parallel_lazy_init MODULES
+                  test_semi_auto_parallel_lazy_init)
+  set_tests_properties(test_semi_auto_parallel_lazy_init
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_semi_auto_parallel_in_framework MODULES
                   test_semi_auto_parallel_in_framework)
   set_tests_properties(test_semi_auto_parallel_in_framework
@@ -190,6 +195,13 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
   set_tests_properties(test_gpt_with_prim
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
+  py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
+  set_tests_properties(test_dist_checkpoint_utils
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+  py_test_modules(test_semi_auto_parallel_unshard_dtensor MODULES
+                  test_semi_auto_parallel_unshard_dtensor)
+  set_tests_properties(test_semi_auto_parallel_unshard_dtensor
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -285,3 +297,5 @@ endif()
 
 py_test_modules(test_job_schedule_profiler_range MODULES
                 test_job_schedule_profiler_range)
+
+set_pit_tests_properties()

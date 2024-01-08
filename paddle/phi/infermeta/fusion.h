@@ -807,14 +807,7 @@ void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& bias,
                  const int in_num_col_dims,
                  const std::string& activation_type,
-                 const bool use_mkldnn,
                  const bool padding_weights,
-                 const bool use_quantizer,
-                 const std::string& mkldnn_data_type,
-                 const float scale_in,
-                 const std::vector<float>& sclae_weights,
-                 const float scale_out,
-                 const bool force_fp32_output,
                  MetaTensor* out);
 
 void VariableLengthMemoryEfficientAttentionInferMeta(
@@ -838,7 +831,12 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               float alpha,
                               int head_num,
                               int head_dim,
+                              bool qkv_fc_fusion,
                               DataType out_dtype,
                               MetaTensor* qkv,
                               MetaTensor* qkv_max);
+void SinePosXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out);
+
 }  // namespace phi

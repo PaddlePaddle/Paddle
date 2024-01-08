@@ -428,7 +428,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           name (str, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if axis is None:
                 axis = -1
             return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
@@ -3192,9 +3192,9 @@ def triangular_solve(
 
     Args:
         x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
-            zero or more batch dimensions. Its data type should be float32 or float64.
+            zero or more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular
             system of equations. Default: True.
         transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
@@ -3233,10 +3233,16 @@ def triangular_solve(
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("triangular_solve", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'triangular_solve'
+            x,
+            'x',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64'], 'triangular_solve'
+            y,
+            'y',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 

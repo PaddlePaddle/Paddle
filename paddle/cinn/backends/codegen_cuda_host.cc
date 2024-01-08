@@ -198,6 +198,11 @@ llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
                  [](auto& arg) { return std::addressof(arg); });
   // @}
 
+  // Set local scope table
+  CHECK_EQ(ll_function_args.size(), func->args.size());
+  for (int i = 0; i < ll_function_args.size(); ++i) {
+    SetVar(func->args[i].name(), ll_function_args[i]);
+  }
   llvm::BasicBlock* entry = llvm::BasicBlock::Create(
       /*Context=*/b_->getContext(),
       /*Name=*/"entry",
@@ -205,6 +210,11 @@ llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
       /*InsertBefore=*/nullptr);
   b_->SetInsertPoint(entry);
   CodeGenLLVM::Visit(&func->body);
+
+  // Reset local scope table
+  for (const ir::Argument& func_arg : func->args) {
+    symbol_table_->Erase(func_arg.name());
+  }
   RetVoid();
 
   return f_;
