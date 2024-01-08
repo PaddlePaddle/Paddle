@@ -1557,5 +1557,8 @@ void TdmSamplerInferMeta(const MetaTensor& x,
     labels->set_dims(ddim);
     mask->set_dims(ddim);
   }
+  out->set_dtype(x.dtype());
+  labels->set_dtype(x.dtype());
+  mask->set_dtype(x.dtype());
 }
 }  // namespace phi
