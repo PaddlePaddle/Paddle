@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .call_ast_utils import get_static_function  # noqa: F401
 from .envs import (  # noqa: F401
     ENV_CLEAN_CODE,
     ENV_COST_MODEL,

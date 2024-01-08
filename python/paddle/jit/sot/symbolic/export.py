@@ -94,6 +94,7 @@ class PyFileGen:
         self.new_root(
             "import paddle",
             "import unittest",
+            "import numpy as np",
         )
 
     def create_layer(self):
@@ -159,17 +160,39 @@ class PyFileGen:
         test_inputs.append(")")
         setup.add_sub(*test_inputs)
 
-        dynamic_test = test_class.add_sub("def test_dynamic(self):")
-        dynamic_test.add_sub(
-            f"net = {self.SIR_name}()",
+        train = test_class.add_sub(
+            "def train(self, net, to_static, with_cinn=False):"
+        )
+        train.add_sub(
+            "if to_static:",
+            "    if with_cinn:",
+            "        build_strategy = paddle.static.BuildStrategy()",
+            "        build_strategy.build_cinn_pass = True",
+            "        net = paddle.jit.to_static(net, build_strategy=build_strategy, full_graph=True)",
+            "    else:",
+            "        net = paddle.jit.to_static(net, full_graph=True)",
             "outs = net(*self.inputs)",
+            "return outs",
         )
 
-        static_test = test_class.add_sub("def test_static(self):")
-        static_test.add_sub(
-            f"net = {self.SIR_name}()",
-            "net = paddle.jit.to_static(net)",
-            "outs = net(*self.inputs)",
+        test_ast_static = test_class.add_sub("def test_ast_static(self):")
+        test_ast_static.add_sub(
+            "net = SIR0()",
+            "dy_out = self.train(net, to_static=False)",
+            "st_out = self.train(net, to_static=True, with_cinn=False)",
+            "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
+            "    np.testing.assert_allclose(dy_out.numpy(), st_out.numpy(), atol=1e-8)",
+        )
+
+        test_ast_cinn_static = test_class.add_sub(
+            "def test_ast_cinn_static(self):"
+        )
+        test_ast_cinn_static.add_sub(
+            "net = SIR0()",
+            "dy_out = self.train(net, to_static=False)",
+            "st_out = self.train(net, to_static=True, with_cinn=True)",
+            "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
+            "    np.testing.assert_allclose(dy_out.numpy(), st_out.numpy(), atol=1e-8)",
         )
 
     def create_tail(self):
