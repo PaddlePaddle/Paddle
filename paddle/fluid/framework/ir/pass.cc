@@ -132,8 +132,7 @@ Graph *Pass::Apply(Graph *graph) const {
   } else {
     subgraph_passes = support_subgraph_passes;
   }
-  if (FLAGS_all_blocks_convert_trt && FLAGS_convert_all_blocks &&
-      graph->IsMainGraph() &&
+  if (graph->IsMainGraph() &&
       (std::count(subgraph_passes.begin(), subgraph_passes.end(), Type()) ||
        std::count(support_subgraph_generate_passes.begin(),
                   support_subgraph_generate_passes.end(),
