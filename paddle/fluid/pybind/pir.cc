@@ -130,6 +130,7 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -665,6 +666,14 @@ void BindValue(py::module *m) {
                   "is persistable"));
             }
           })
+      .def("is_tensorarray",
+           [](Value self) {
+             if (self.type().isa<DenseTensorArrayType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1406,7 +1415,7 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_(),
+          ->get_op_info_(op_name),
       paddle::dialect::IsLegacyOp(op_name));
 
   for (size_t i = 0; i < op->num_results(); ++i) {
@@ -1607,45 +1616,49 @@ static bool HasDynamicShape(const Program &program) {
   return false;
 }
 
-void ApplyPirPass(Program &forward_program) {  // NOLINT
+void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
+                 Program &program) {                          // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
-  bool has_dynamic_shape = HasDynamicShape(forward_program);
+  bool has_dynamic_shape = HasDynamicShape(program);
 
   auto shape_analysis =
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  pir::PassManager pass_manager(ctx);
-  pass_manager.AddPass(pir::CreateShapeOptimizationPass());
-  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
-  pass_manager.AddPass(
+  pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
-  pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  pass_manager->AddPass(pir::CreateBuildCinnPass());
 
-  if (has_dynamic_shape) {
-    pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
-  }
-
-  pass_manager.AddPass(
+  pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
-
-  pass_manager.Run(&forward_program);
-  VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
+  VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
+          << ", shape_analysis: " << shape_analysis;
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
 #endif
 }
+
+void InferSymbolicShapePass(
+    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
+    Program &program) {                          // NOLINT
+  if (FLAGS_pir_apply_shape_optimization_pass) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+}
+
 void BindIrPass(pybind11::module *m) {
-  m->def("apply_pir_pass", ApplyPirPass);
+  m->def("add_cinn_pass", AddCinnPass);
+  m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",

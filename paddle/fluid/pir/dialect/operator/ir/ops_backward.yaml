@@ -354,6 +354,7 @@
   kernel :
     func : hardswish_grad
   inplace : (out_grad -> x_grad)
+  composite : hardswish_grad(x, out_grad, x_grad)
 
 - backward_op : hsigmoid_loss_grad
   forward : hsigmoid_loss (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
@@ -512,6 +513,18 @@
   kernel :
     func : multiply_triple_grad
   optional : fwd_grad_grad_x, fwd_grad_grad_y, grad_x_grad, grad_y_grad, grad_grad_out_grad
+
+- backward_op : nce_grad
+  forward: nec (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false) ->  Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
+  args: (Tensor input, Tensor label, Tensor bias, Tensor weight, Tensor sample_logits, Tensor sample_labels, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, Tensor cost_grad, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
+  output: Tensor(input_grad), Tensor(bias_grad), Tensor(weight_grad)
+  infer_meta:
+    func: NceGradInferMeta
+    param: [input, bias, weight]
+  kernel:
+    func: nce_grad
+    data_type: input
+  optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
 
 - backward_op : norm_grad
   forward : norm (Tensor x, int axis, float epsilon, bool is_test) -> Tensor(out), Tensor(norm)
@@ -934,6 +947,16 @@
   kernel:
     func: fused_elemwise_add_activation_grad
   optional : x, intermediate_out
+
+- backward_op: shuffle_batch_grad
+  forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
+  args: (Tensor shuffle_idx, Tensor out_grad,int startup_seed=0)
+  output : Tensor(x_grad)
+  infer_meta:
+    func: ShuffleBatchGradInferMeta
+  kernel:
+    func: shuffle_batch_grad
+    data_type : out_grad
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)

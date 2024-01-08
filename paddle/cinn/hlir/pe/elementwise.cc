@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <string>
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/lang/builtin.h"
@@ -216,7 +217,7 @@ ir::Tensor Reshape(const ir::Tensor& A,
         }
         std::vector<Expr> indice_a;
         for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
-          auto temp = offset % A_expr_shape[i];
+          auto temp = common::AutoSimplify(offset % A_expr_shape[i]);
           indice_a.insert(indice_a.begin(), temp);
           offset = (offset - temp) / A_expr_shape[i];
         }

@@ -187,8 +187,17 @@ def shard_tensor(
         if isinstance(data, EagerParamBase):
 
             def lazy_init_hook(param, origin_hook):
+                for placement in param.placements:
+                    assert not placement.is_partial(), (
+                        "Lazy init not support partial reshard. Notice that: shard a param to partial "
+                        "won't save any memory, but will increase the communication cost!"
+                    )
+
                 # lazy init hook with randomness controlling
                 def _init_func(var, block):
+                    if dist.get_rank() not in param.process_mesh.process_ids:
+                        # None calc rank, just return no init.
+                        return
                     # get the unique rng name
                     rng_name = determinate_rng(
                         dist.get_rank(),
@@ -525,8 +534,7 @@ def shard_layer(
     else:
         # TODO(chenweihang): Support static mode branch later.
         raise NotImplementedError(
-            "`paddle.distributed.shard_layer` only supports dynamic graph mode "
-            "now. It will be supported for static graph mode later."
+            "`paddle.distributed.shard_layer` only supports dynamic graph mode."
         )
 
 
@@ -1010,6 +1018,12 @@ class DistModel:
     ):
         self._feed_name_list = []
         self._inner_strategy = self.__convert_strategy(strategy)
+        self._structured_to_parameter_name = {
+            k: v.name for k, v in layer.state_dict().items()
+        }
+        self._parameter_to_structured_name = {
+            v: k for k, v in self._structured_to_parameter_name.items()
+        }
         self._engine = Engine(
             layer, loss, optimizer, metrics, strategy=self._inner_strategy
         )
@@ -1252,6 +1266,15 @@ class DistModel:
             mode=self._engine._mode
         ).state_dict(mode)
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+        mapping_names = [
+            self._parameter_to_structured_name[k]
+            if k in self._parameter_to_structured_name
+            else k
+            for k in dist_state_dict.keys()
+        ]
+        dist_state_dict = dict(
+            zip(mapping_names, list(dist_state_dict.values()))
+        )
         return dist_state_dict
 
     def _build_distributed_state_dict(self, local_state_dict):
@@ -1326,7 +1349,12 @@ class DistModel:
                 ].process_mesh or check_placements_equal(
                     v.placements, cur_v.placements
                 ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} or placements:{v.placements} != {cur_v.placements} not match"
-            local_state_dict[k] = v._local_value()
+            param_name = (
+                self._structured_to_parameter_name[k]
+                if k in self._structured_to_parameter_name
+                else k
+            )
+            local_state_dict[param_name] = v._local_value()
         dist_main_program.set_state_dict(local_state_dict)
 
 
