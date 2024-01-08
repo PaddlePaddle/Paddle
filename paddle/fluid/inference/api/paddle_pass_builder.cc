@@ -88,7 +88,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "trt_remove_amp_strategy_op_pass",                              //
+  "set_subgraph_edge_pass",                                       //
+      "trt_remove_amp_strategy_op_pass",                          //
       "trt_support_nhwc_pass",                                    //
       "adaptive_pool2d_convert_global_pass",                      //
       "trt_map_ops_to_matrix_multiply_pass",                      //
@@ -536,11 +537,13 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
+      "qk_qkv_attention_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
       "fused_multi_transformer_int8_cachekv_layout_trans_pass",
+      "decoder_attention_xpu_fuse_pass",
       "one_beam_size_fuse_pass",
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
@@ -575,6 +578,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
       "elementwise_mul_add_fuse_pass",
+      "sine_pos_fuse_pass",
       // "auto_mixed_precision_pass",
       "cast_mixed_precision_op_fuse_pass",
       "xpu_quantize_op_pass",

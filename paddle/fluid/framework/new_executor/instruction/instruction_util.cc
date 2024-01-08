@@ -229,7 +229,14 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
     inner_outputs.insert(block->arg(arg_id));
   }
   for (auto& op : *block) {
-    VLOG(8) << "GetInternalOutputs of " << op.name();
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(8) << "GetInternalOutputs of " << op_name;
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
@@ -239,8 +246,10 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
         }
       }
     }
+
     for (size_t i = 0; i < op.num_results(); ++i) {
       inner_outputs.insert(op.result(i));
+      VLOG(10) << op_name << "'s inner_output: " << op.result(i).impl();
     }
   }
   return inner_outputs;
@@ -249,7 +258,14 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
 std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_inputs;
   for (auto& op : *block) {
-    VLOG(8) << "GetInternalInputs of " << op.name();
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(8) << "GetInternalInputs of " << op_name;
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
@@ -265,8 +281,7 @@ std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
     }
     for (size_t i = 0; i < op.num_operands(); ++i) {
       inner_inputs.insert(op.operand_source(i));
-      VLOG(10) << op.name()
-               << "'s inner_input: " << op.operand_source(i).impl();
+      VLOG(10) << op_name << "'s inner_input: " << op.operand_source(i).impl();
     }
   }
   return inner_inputs;
@@ -328,6 +343,55 @@ void InsertTuplePushContinerToOuts(
   for (pir::Value value : inner_stack_outputs) {
     outputs->emplace(value, GetValueIds(value, value_exec_info));
     VLOG(6) << "InsertTuplePushContinerToOuts of " << value.impl();
+  }
+}
+
+void InsertInplacedExternalInputsToOuts(
+    pir::Block* block,
+    const std::vector<pir::Value>& external_inputs,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs) {
+  for (auto& op : *block) {
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
+            .at("is_inplace")
+            .dyn_cast<pir::BoolAttribute>()
+            .data()) {
+      std::string op_name = op.name();
+      if (op.attributes().count("op_name")) {
+        op_name = op.attributes()
+                      .at("op_name")
+                      .dyn_cast<pir::StrAttribute>()
+                      .AsString();
+      }
+      pir::OpInfo op_info =
+          pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+      paddle::dialect::OpYamlInfoParser yaml_parser(
+          op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+              ->get_op_info_(op_name),
+          paddle::dialect::IsLegacyOp(op_name));
+
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        pir::Value value = op.result(i);
+        if (!IsInvalid(value)) {
+          VLOG(8) << "Number " << i << " result of " << op_name
+                  << " is not invalid, so skip build a variable.";
+          continue;
+        }
+        std::string value_name = yaml_parser.OutputNames()[i];
+        if (yaml_parser.HasInplace(value_name)) {
+          const std::string& inplace_name = yaml_parser.InplaceName(value_name);
+          pir::Value inplace_value =
+              op.operand_source(yaml_parser.InputName2Id().at(inplace_name));
+          if (std::find(external_inputs.begin(),
+                        external_inputs.end(),
+                        inplace_value) != external_inputs.end()) {
+            outputs->emplace(value,
+                             GetValueIds(inplace_value, value_exec_info));
+          }
+        }
+      }
+    }
   }
 }
 

@@ -103,6 +103,73 @@ def bernoulli(x, name=None):
         return out
 
 
+def binomial(count, prob, name=None):
+    r"""
+    Returns a tensor filled with random number from the Binomial Distribution, which supports Tensor shape
+    broadcasting. The returned Tensor's data type is int64.
+
+    .. math::
+
+        out_i \sim Binomial (n = count_i, p = prob_i)
+
+    Args:
+        count(Tensor): A tensor with each element specifying the size of a binomial distribution. The input
+            data type should be int32 or int64.
+        prob(Tensor): A tensor with each element specifying the probability of success in the binomial experiment.
+            The input data type should be bfloat16, float16, float32, float64.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A Tensor filled with binomial random values with the same shape as the broadcasted Tensors of
+        ``count`` and ``prob``. The data type is int64.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+
+            >>> n = paddle.to_tensor([10.0, 50.0])
+            >>> p = paddle.to_tensor([0.2, 0.6])
+            >>> out = paddle.binomial(n, p)
+            >>> print(out)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1 , 31])
+            >>> # doctest: -SKIP
+    """
+    if in_dynamic_or_pir_mode():
+        count, prob = paddle.broadcast_tensors(
+            [paddle.cast(count, dtype=prob.dtype), prob]
+        )
+        return _C_ops.binomial(count, prob)
+    else:
+        check_variable_and_dtype(count, "count", ["int32", "int64"], "binomial")
+        check_variable_and_dtype(
+            prob,
+            "prob",
+            ["bfloat16", "float16", "float32", "float64"],
+            "binomial",
+        )
+
+        count, prob = paddle.broadcast_tensors(
+            [paddle.cast(count, dtype=prob.dtype), prob]
+        )
+        helper = LayerHelper("binomial", **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=convert_np_dtype_to_dtype_('int64')
+        )
+        helper.append_op(
+            type='binomial',
+            inputs={"count": count, "prob": prob},
+            outputs={'out': out},
+            attrs={},
+        )
+        out.stop_gradient = True
+        return out
+
+
 def poisson(x, name=None):
     r"""
     Returns a tensor filled with random number from a Poisson Distribution.
@@ -145,6 +212,57 @@ def poisson(x, name=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='poisson', inputs={'X': x}, outputs={'Out': out}, attrs={}
+        )
+        return out
+
+
+def standard_gamma(x, name=None):
+    r"""
+    Returns a tensor filled with random number from a Standard Gamma Distribution.
+
+    .. math::
+
+        out_i \sim Gamma (alpha = x_i, beta = 1.0)
+
+    Args:
+        x(Tensor):  A tensor with rate parameter of standrad gamma Distribution. The data type
+            should be bfloat16, float16, float32, float64.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+
+            >>> x = paddle.uniform([2,3], min=1.0, max=5.0)
+            >>> out = paddle.standard_gamma(x)
+            >>> print(out)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[3.35393834, 0.80538225, 0.36511323],
+             [6.10344696, 4.28612375, 6.37196636]])
+            >>> # doctest: -SKIP
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.standard_gamma(x)
+    else:
+        check_variable_and_dtype(
+            x, "x", ["float32", "float64"], "standard_gamma"
+        )
+
+        helper = LayerHelper("standard_gamma", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='standard_gamma',
+            inputs={'x': x},
+            outputs={'out': out},
+            attrs={},
         )
         return out
 
@@ -362,7 +480,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
                     op_type_for_check, supported_dtypes, dtype
                 )
             )
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
@@ -581,7 +699,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
-            Defaule is 1.0
+            Default is 1.0
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
@@ -791,7 +909,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
                 )
             )
 
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():

@@ -20,12 +20,14 @@ from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.pir import (
     Program,
     get_current_insertion_point,
+    reset_insertion_point_to_start,
     set_insertion_point,
     set_insertion_point_to_block_end,
 )
 
 from .._pir_ops import parameter, set_parameter
 from ..base import unique_name
+from ..base.core import set_static_op_arg_pre_cast_hook
 from ..base.wrapped_decorator import signature_safe_contextmanager
 
 vartype_to_datatype = {
@@ -272,10 +274,13 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
+    regularizer = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
+    if 'regularizer' in kwargs:
+        regularizer = kwargs['regularizer']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -296,35 +301,40 @@ def create_parameter(
 
     main_program.move_parameters_from(startup_program)
     with program_guard(default_main_program()):
+        reset_insertion_point_to_start()
         param = parameter(op_result_name, dtype, shape)
         trainable = kwargs.get('trainable', True)
         param.stop_gradient = not trainable
         param.persistable = True
 
+    param.regularizer = regularizer
     return param
 
 
-def _convert_into_opresult(tensor):
+def _convert_into_value(tensor):
     """
     Convert Tensor into OpResult.
     """
     import paddle
-    from paddle.base import core, framework
     from paddle.jit.pir_dy2static.parameter_recorder import (
         _global_parameter_recorder,
     )
 
-    if isinstance(tensor, core.eager.Tensor):
-        # Check whether has been created before.
-        new_var = tensor.block._find_var_recursive(tensor.name)
-        is_persistable = True
-        if new_var is not None:
-            assert isinstance(new_var, framework.Variable)
-        else:
-            new_var = _global_parameter_recorder.get(
-                paddle.pir.core.default_main_program(), tensor
-            )
-        # add param into parameter recorder to collect all the params used in this program.
-        return new_var
-    else:
-        return tensor
+    if isinstance(tensor, paddle.Tensor):
+        return _global_parameter_recorder.get(
+            paddle.pir.core.default_main_program(), tensor
+        )
+    return tensor
+
+
+@signature_safe_contextmanager
+def static_op_arg_cast_guard(hook):
+    """
+    Set a hook function to cast the arguments of static op.
+    """
+
+    original_callback = set_static_op_arg_pre_cast_hook(hook)
+    try:
+        yield
+    finally:
+        set_static_op_arg_pre_cast_hook(original_callback)

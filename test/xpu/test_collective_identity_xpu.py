@@ -32,6 +32,7 @@ class TestCIdentityOp(TestDistBase):
             "float64",
             "int32",
             "int64",
+            "bfloat16",
         ]
         for dtype in dtypes_to_test:
             self.check_with_place(

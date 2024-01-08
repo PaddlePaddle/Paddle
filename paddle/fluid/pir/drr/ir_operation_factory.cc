@@ -24,13 +24,13 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 void OperationFactory::RegisterManualOpCreator() {
   RegisterOperationCreator(
       "pd_op.fused_gemm_epilogue",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         return rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
@@ -41,7 +41,7 @@ void OperationFactory::RegisterManualOpCreator() {
       });
   RegisterOperationCreator(
       "pd_op.fused_gemm_epilogue_grad",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         return rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
@@ -52,11 +52,22 @@ void OperationFactory::RegisterManualOpCreator() {
             attrs);
       });
   RegisterOperationCreator("builtin.combine",
-                           [](const std::vector<Value>& inputs,
+                           [](const std::vector<pir::Value>& inputs,
                               const pir::AttributeMap& attrs,
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
+  RegisterOperationCreator(
+      "pd_op.scale",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::ScaleOp>(
+            inputs[0].dyn_cast<pir::OpResult>(),
+            inputs[1].dyn_cast<pir::OpResult>(),
+            attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
+            attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
+      });
 }
 
 static pir::Attribute CreateIrAttribute(const std::any& obj) {
@@ -83,6 +94,9 @@ static pir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
     return IrAttrbuteCreator<std::vector<int64_t>>()(
         std::any_cast<std::vector<int64_t>>(obj));
+  } else if (obj.type() == typeid(std::vector<float>)) {
+    return IrAttrbuteCreator<std::vector<float>>()(
+        std::any_cast<std::vector<float>>(obj));
   } else if (obj.type() == typeid(phi::IntArray)) {
     return IrAttrbuteCreator<phi::IntArray>()(
         std::any_cast<phi::IntArray>(obj));
@@ -116,18 +130,18 @@ pir::AttributeMap CreateAttributeMap(const OpCall& op_call,
   return attr_map;
 }
 
-Value GetIrValueByDrrTensor(const Tensor& tensor,
-                            const MatchContextImpl& res_match_ctx) {
+pir::Value GetIrValueByDrrTensor(const Tensor& tensor,
+                                 const MatchContextImpl& res_match_ctx) {
   if (tensor.is_none()) {
-    return Value{};
+    return pir::Value{};
   }
   return res_match_ctx.GetIrValue(tensor.name()).get();
 }
 
-std::vector<Value> GetIrValuesByDrrTensors(
+std::vector<pir::Value> GetIrValuesByDrrTensors(
     const std::vector<const Tensor*>& tensors,
     const MatchContextImpl& res_match_ctx) {
-  std::vector<Value> ir_values;
+  std::vector<pir::Value> ir_values;
   ir_values.reserve(tensors.size());
   for (const auto* tensor : tensors) {
     ir_values.push_back(GetIrValueByDrrTensor(*tensor, res_match_ctx));
@@ -153,7 +167,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
                                 MatchContextImpl* res_match_ctx) {
   VLOG(6) << "Drr create [" << op_call.name() << "] op...";
   const auto& inputs = op_call.inputs();
-  std::vector<Value> ir_values =
+  std::vector<pir::Value> ir_values =
       GetIrValuesByDrrTensors(inputs, *res_match_ctx);
   pir::Operation* op = OperationFactory::Instance().CreateOperation(
       op_call.name(),
@@ -166,4 +180,4 @@ pir::Operation* CreateOperation(const OpCall& op_call,
 }
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

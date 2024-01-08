@@ -365,15 +365,19 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
 
-  std::vector<int64_t> slice_shape;
-  for (int64_t i = begin_norm_axis; i < static_cast<int64_t>(x_dim.size());
-       i++) {
-    slice_shape.push_back(x_dim[i]);
+  std::vector<int64_t> slice_shape_l;
+  std::vector<int64_t> slice_shape_r;
+  for (int64_t i = 0; i < static_cast<int64_t>(x_dim.size()); i++) {
+    if (i < begin_norm_axis) {
+      slice_shape_l.push_back(x_dim[i]);
+    } else {
+      slice_shape_r.push_back(x_dim[i]);
+    }
   }
   Tensor scale_cast;
   if (scale_ptr) {
-    if (slice_shape != scale_ptr->shape()) {
-      scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    if (slice_shape_r != scale_ptr->shape()) {
+      scale_cast = reshape<T>(*scale_ptr, slice_shape_r);
     } else {
       scale_cast = *scale_ptr;
     }
@@ -384,8 +388,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   }
   Tensor bias_cast;
   if (bias_ptr) {
-    if (slice_shape != bias_ptr->shape()) {
-      bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    if (slice_shape_r != bias_ptr->shape()) {
+      bias_cast = reshape<T>(*bias_ptr, slice_shape_r);
     } else {
       bias_cast = *bias_ptr;
     }
@@ -394,13 +398,14 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     }
     out = out + bias_cast;
   }
-  mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
-  variance = reshape<T>(variance, std::vector<int64_t>({-1}));
+  mean_ = reshape<T>(mean_, slice_shape_l);
+  variance = reshape<T>(variance, slice_shape_l);
 
+  // same as LayerNormInferMeta
+  // x: float32 --> out: float32, mean: float32, variance: float32
+  // x: float16 --> out: float16, mean: float32, variance: float32
   if (need_cast) {
     out = cast<T>(out, org_dtype);
-    mean_ = cast<T>(mean_, org_dtype);
-    variance = cast<T>(variance, org_dtype);
   }
 
   return std::make_tuple(out, mean_, variance);
@@ -521,6 +526,115 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto res = x * half * erf_out;
     return res;
   }
+}
+
+template <typename T>
+Tensor sigmoid_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  // res = 1 / (1 + exp(-x))
+  auto one = full<T>(common::vectorize(x_cast.dims()), 1, x_cast.dtype());
+  auto exp_tmp = exp<T>(
+      full<T>(common::vectorize(x_cast.dims()), -1, x_cast.dtype()) * x_cast);
+  auto res = one / (one + exp_tmp);
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
+Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
+  auto multiply_tmp =
+      full<T>(phi::vectorize(x.dims()), negative_slope, x.dtype()) * x;
+  if (negative_slope < 1.0) {
+    return maximum<T>(x, multiply_tmp);
+  } else {
+    return minimum<T>(x, multiply_tmp);
+  }
+}
+
+template <typename T>
+std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
+    const Tensor& x,
+    const paddle::optional<Tensor>& scale,
+    const paddle::optional<Tensor>& bias,
+    float epsilon) {
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  std::vector<int64_t> axis;
+  auto x_dim = common::vectorize<int64_t>(x.dims());
+  for (size_t i = 2; i < x_dim.size(); i++) {
+    axis.push_back(static_cast<int64_t>(i));
+  }
+
+  // out = (x - mean(x)) / sqrt(var + epsilon))
+  // var = mean((x-mean(x))^2)
+  auto mean_ = mean_decomp<T>(x_cast, IntArray(axis), true);
+  auto difference = x_cast - mean_;
+  auto var_tmp1 = difference * difference;
+  auto variance = mean_decomp<T>(var_tmp1, IntArray(axis), true);
+  auto var_tmp3 = variance + epsilon;
+  auto rsqrt_var = elementwise_pow<T>(
+      var_tmp3,
+      full<T>(common::vectorize(var_tmp3.dims()), 0.5, var_tmp3.dtype()));
+  auto out = difference / rsqrt_var;
+
+  auto scale_ptr = scale.get_ptr();
+  auto bias_ptr = bias.get_ptr();
+  std::vector<int64_t> slice_shape(x_dim.size(), 1);
+  slice_shape[1] = x_dim[1];
+
+  Tensor scale_cast;
+  if (scale_ptr) {
+    if (slice_shape != scale_ptr->shape()) {
+      scale_cast = reshape<T>(*scale_ptr, slice_shape);
+    } else {
+      scale_cast = *scale_ptr;
+    }
+    if (need_cast) {
+      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+    }
+    out = out * scale_cast;
+  }
+  Tensor bias_cast;
+  if (bias_ptr) {
+    if (slice_shape != bias_ptr->shape()) {
+      bias_cast = reshape<T>(*bias_ptr, slice_shape);
+    } else {
+      bias_cast = *bias_ptr;
+    }
+    if (need_cast) {
+      bias_cast = cast<T>(bias_cast, phi::DataType::FLOAT32);
+    }
+    out = out + bias_cast;
+  }
+
+  std::vector<int64_t> res_shape(1, -1);
+  auto mean_out = reshape<T>(mean_, res_shape);
+  auto variance_out = reshape<T>(1 / rsqrt_var, res_shape);
+
+  Tensor res;
+  if (need_cast) {
+    res = cast<T>(out, org_dtype);
+  } else {
+    res = out;
+  }
+
+  return std::make_tuple(res, mean_out, variance_out);
 }
 
 }  // namespace details

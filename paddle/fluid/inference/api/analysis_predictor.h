@@ -204,9 +204,10 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Run the prediction engine
   ///
+  /// \param switch_stream Whether the stream is switched
   /// \return Whether the function executed successfully
   ///
-  bool ZeroCopyRun() override;
+  bool ZeroCopyRun(bool switch_stream = false) override;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Note: Can only be used under thread_local semantics.

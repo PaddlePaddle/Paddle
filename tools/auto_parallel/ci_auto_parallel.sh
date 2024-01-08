@@ -38,10 +38,10 @@ for element in "${target_lists_for_semi_auto_ci[@]}";do
   fi
   count=$((count+1))
 done
-# get the location of "test/collective/fleet" in target_lists_for_dygraph_ci
+# get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
 count=0
 for element in "${target_lists_for_dygraph_ci[@]}";do
-  if [[ "$element" == "test/collective/fleet" ]]; then  
+  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then  
     test_dygraph_num=$count
     break
   fi
@@ -53,7 +53,9 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     dir2=${arr_file_name[1]}
     dir3=${arr_file_name[2]}
     dir4=${arr_file_name[3]}
-    file_item=$dir1/$dir2/$dir3/$dir4
+    dir5=${arr_file_name[4]}
+    dir6=${arr_file_name[5]}
+    file_item=$dir1/$dir2/$dir3/$dir4/$dir5/$dir6
     echo "file_name:"${file_name}, "path:"${file_item}
     if [ ! -f ${file_name} ];then # deleting files for PR
         continue
@@ -136,28 +138,28 @@ if [[ ${#case_list[*]} -ne 0 ]];then
     # Install paddle
     install_paddle
     case_num=1
-    export FLAGS_before_hook=0
+    export FLAGS_install_deps=0
     for case in ${case_list[*]};do
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         if [[ ${case} == "gpt-3_auto" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto $FLAGS_before_hook
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh gpt_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "gpt" | grep -v "pir" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_before_hook=1
+            export FLAGS_install_deps=1
+            export FLAGS_download_data="gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "gpt-3_auto_pir" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto_pir $FLAGS_before_hook
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh gpt_case_list_auto_pir $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "pir" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_before_hook=1
+            export FLAGS_install_deps=1
+            export FLAGS_download_data="gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "auto_unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh auto_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "gpt-3_dygraph" ]];then
-            # TODO: Support ci cases for dynamic hybrid parallel in PaddleNLP
-            # bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_dygraph $FLAGS_before_hook
-            print_info $? `ls -lt ${log_path} | grep "gpt" | grep -v "pir" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_before_hook=1
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
+            print_info $? `ls -lt ${log_path} | grep "llm_gpt" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "dygraph_unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test

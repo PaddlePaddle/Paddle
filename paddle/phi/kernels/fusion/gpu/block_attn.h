@@ -38,10 +38,17 @@ struct Block_AttN_params {
   // [bsz, 1, 1, time_step(cache_seq_length)+1]
   const T *attn_mask;
 
+  // mask_length is the 3th dimension of attn_mask.
+  int mask_length;
+  bool mask_broadcast_num_heads;
+
   // k_cache [max_block_num, num_head, block_size, head_size]
   // v_cache [max_block_num, num_head, block_size, head_size]
   T *k_cache;
   T *v_cache;
+
+  uint8_t *k_cache_I;
+  uint8_t *v_cache_I;
 
   const int *block_tables;
 
@@ -66,6 +73,11 @@ struct Block_AttN_params {
 
   bool add_qkv_bias;
   bool neox_rotary_style;
+
+  const float *cache_k_quant_scales = nullptr;
+  const float *cache_v_quant_scales = nullptr;
+  const float *cache_k_dequant_scales = nullptr;
+  const float *cache_v_dequant_scales = nullptr;
 };
 
 template <typename T,
@@ -75,6 +87,7 @@ template <typename T,
           int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK,
           int BLOCK_SIZE,
+          int USE_CACHE_INT8,
           typename LoadFunc,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
@@ -114,10 +127,29 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
+  using QK_Packed_Int8_t =
+      typename packed_type<uint8_t, num_elems<Qk_vec>::value>::type;
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
   const int tid = threadIdx.x;
   const int hi = blockIdx.x;
+
+  float k_quant_scale;
+  float v_quant_scale;
+  float k_dequant_scale;
+  float v_dequant_scale;
+
+  if (USE_CACHE_INT8 == 1) {  // static
+    k_quant_scale = params.cache_k_quant_scales[hi];
+    v_quant_scale = params.cache_v_quant_scales[hi];
+    k_dequant_scale = params.cache_k_dequant_scales[hi];
+    v_dequant_scale = params.cache_v_dequant_scales[hi];
+  } else if (USE_CACHE_INT8 == 2) {  // dynamic
+    k_quant_scale = params.cache_k_quant_scales[bi * params.num_head + hi];
+    v_quant_scale = params.cache_v_quant_scales[bi * params.num_head + hi];
+    k_dequant_scale = params.cache_k_dequant_scales[bi * params.num_head + hi];
+    v_dequant_scale = params.cache_v_dequant_scales[bi * params.num_head + hi];
+  }
 
   const int bhi = bi * params.num_head + hi;
   const int ti =
@@ -258,7 +290,14 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
       const int offset = base_cache_offset + tid * QK_VEC_SIZE;
-      *reinterpret_cast<Qk_vec *>(&params.k_cache[offset]) = k;
+      if (!USE_CACHE_INT8) {
+        *reinterpret_cast<Qk_vec *>(&params.k_cache[offset]) = k;
+      } else {
+        QK_Packed_Int8_t k_tmp = round_tmp<QK_Packed_Int8_t, Qk_vec>(
+            mul<Qk_vec, float, Qk_vec>(k_quant_scale, k));
+        *reinterpret_cast<QK_Packed_Int8_t *>(&params.k_cache_I[offset]) =
+            k_tmp;
+      }
     }
 
     qk = dot<Qk_vec, Qk_vec>(q, k);
@@ -277,12 +316,21 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   }
   if (tid == 0) {
     qk *= params.inv_sqrt_dh;
+    if (params.attn_mask) {
+      auto mask_bhi = bhi;
+      if (params.mask_broadcast_num_heads) {
+        mask_bhi = bi;
+      }
+      T mask = params.attn_mask[mask_bhi * params.mask_length + act_time_step];
+      qk += static_cast<float>(mask);
+    }
     qk_max = qk;
     qk_smem[act_time_step] = qk;
   }
   __syncthreads();
 
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
+  using K_vec_I = typename K_vec_I_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
@@ -317,18 +365,33 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       if (ti < act_time_step) {
-        k[ii] = (Dh == Dh_MAX || ii * THREADS_PER_KEY * K_VEC_SIZE < Dh)
-                    ? *reinterpret_cast<const K_vec *>(
-                          params.k_cache + k_offset +
-                          ii * THREADS_PER_KEY * K_VEC_SIZE)
-                    : k_vec_zero;
+        if (!USE_CACHE_INT8) {
+          k[ii] = (Dh == Dh_MAX || ii * THREADS_PER_KEY * K_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const K_vec *>(
+                            params.k_cache + k_offset +
+                            ii * THREADS_PER_KEY * K_VEC_SIZE)
+                      : k_vec_zero;
+        } else {
+          mul_pointer_v2<K_vec>(
+              &k[ii],
+              k_dequant_scale,
+              reinterpret_cast<K_vec_I *>(params.k_cache_I + k_offset +
+                                          ii * THREADS_PER_KEY * K_VEC_SIZE));
+        }
       } else {
         k[ii] = k_vec_zero;
       }
     }
 
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
-
+    if (params.attn_mask) {
+      auto mask_bhi = bhi;
+      if (params.mask_broadcast_num_heads) {
+        mask_bhi = bi;
+      }
+      T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
+      qk += static_cast<float>(mask);
+    }
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       qk_max = fmaxf(qk_max, qk);
       qk_smem[ti] = qk;
@@ -375,6 +438,8 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
   using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
+  using V_Packed_Int8_t =
+      typename packed_type<uint8_t, num_elems<V_vec>::value>::type;
 
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
@@ -397,7 +462,14 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
           physical_block_number * params.num_head * BLOCK_SIZE * Dh +
           hi * BLOCK_SIZE * Dh + block_offset * Dh + vi;
       V_vec v;
-      v = *reinterpret_cast<const V_vec *>(params.v_cache + v_offset);
+      if (!USE_CACHE_INT8) {
+        v = *reinterpret_cast<const V_vec *>(params.v_cache + v_offset);
+      } else {
+        mul_pointer_v2<V_vec>(
+            &v,
+            v_dequant_scale,
+            reinterpret_cast<V_Packed_Int8_t *>(params.v_cache_I + v_offset));
+      }
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
       float logit = logits_smem[ti];
       out = fma(logit, cast_to_float(v), out);
@@ -423,7 +495,14 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
       v = add(v, v_bias);
     }
 
-    *reinterpret_cast<V_vec *>(params.v_cache + base_cache_offset + vi) = v;
+    if (!USE_CACHE_INT8) {
+      *reinterpret_cast<V_vec *>(params.v_cache + base_cache_offset + vi) = v;
+    } else {
+      V_Packed_Int8_t v_tmp = round_tmp<V_Packed_Int8_t, V_vec>(
+          mul<V_vec, float, V_vec>(v_quant_scale, v));
+      *reinterpret_cast<V_Packed_Int8_t *>(params.v_cache_I +
+                                           base_cache_offset + vi) = v_tmp;
+    }
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
     out = fma(logits_smem[act_time_step], cast_to_float(v), out);
@@ -487,40 +566,83 @@ inline size_t smem_size_in_bytes(const Block_AttN_params<T> &params,
   return max(logits_table_sz, red_sz);
 }
 
-#define BLHA_LAUNCH_KERNEL(T,                                              \
-                           Dh,                                             \
-                           Dh_MAX,                                         \
-                           THDS_PER_KEY,                                   \
-                           THDS_PER_VALUE,                                 \
-                           THDS_PER_BLOCK,                                 \
-                           BLOCK_SIZE,                                     \
-                           stream,                                         \
-                           load_func,                                      \
-                           store_func)                                     \
-  size_t smem_sz =                                                         \
-      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);   \
-  constexpr auto kernel_fn = block_attention_kernel<T,                     \
-                                                    Dh,                    \
-                                                    Dh_MAX,                \
-                                                    THDS_PER_KEY,          \
-                                                    THDS_PER_VALUE,        \
-                                                    THDS_PER_BLOCK,        \
-                                                    BLOCK_SIZE,            \
-                                                    decltype(load_func),   \
-                                                    decltype(store_func)>; \
-  if (smem_sz > 0xc000) {                                                  \
-    cudaFuncSetAttribute(                                                  \
-        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
-  }                                                                        \
-  dim3 grid(params.num_head, params.batch_size);                           \
-  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
-      params, load_func, store_func);
+#define BLHA_LAUNCH_KERNEL(T,                                                  \
+                           Dh,                                                 \
+                           Dh_MAX,                                             \
+                           THDS_PER_KEY,                                       \
+                           THDS_PER_VALUE,                                     \
+                           THDS_PER_BLOCK,                                     \
+                           BLOCK_SIZE,                                         \
+                           stream,                                             \
+                           load_func,                                          \
+                           store_func,                                         \
+                           use_cachekv_int8)                                   \
+  size_t smem_sz =                                                             \
+      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);       \
+  if (params.cache_k_quant_scales) {                                           \
+    if (use_cachekv_int8 == 2) {                                               \
+      constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                        Dh,                    \
+                                                        Dh_MAX,                \
+                                                        THDS_PER_KEY,          \
+                                                        THDS_PER_VALUE,        \
+                                                        THDS_PER_BLOCK,        \
+                                                        BLOCK_SIZE,            \
+                                                        2,                     \
+                                                        decltype(load_func),   \
+                                                        decltype(store_func)>; \
+      if (smem_sz > 0xc000) {                                                  \
+        cudaFuncSetAttribute(                                                  \
+            kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
+      }                                                                        \
+      dim3 grid(params.num_head, params.batch_size);                           \
+      kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
+          params, load_func, store_func);                                      \
+    } else if (use_cachekv_int8 == 1) {                                        \
+      constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                        Dh,                    \
+                                                        Dh_MAX,                \
+                                                        THDS_PER_KEY,          \
+                                                        THDS_PER_VALUE,        \
+                                                        THDS_PER_BLOCK,        \
+                                                        BLOCK_SIZE,            \
+                                                        1,                     \
+                                                        decltype(load_func),   \
+                                                        decltype(store_func)>; \
+      if (smem_sz > 0xc000) {                                                  \
+        cudaFuncSetAttribute(                                                  \
+            kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
+      }                                                                        \
+      dim3 grid(params.num_head, params.batch_size);                           \
+      kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
+          params, load_func, store_func);                                      \
+    }                                                                          \
+  } else {                                                                     \
+    constexpr auto kernel_fn = block_attention_kernel<T,                       \
+                                                      Dh,                      \
+                                                      Dh_MAX,                  \
+                                                      THDS_PER_KEY,            \
+                                                      THDS_PER_VALUE,          \
+                                                      THDS_PER_BLOCK,          \
+                                                      BLOCK_SIZE,              \
+                                                      false,                   \
+                                                      decltype(load_func),     \
+                                                      decltype(store_func)>;   \
+    if (smem_sz > 0xc000) {                                                    \
+      cudaFuncSetAttribute(                                                    \
+          kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);    \
+    }                                                                          \
+    dim3 grid(params.num_head, params.batch_size);                             \
+    kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                      \
+        params, load_func, store_func);                                        \
+  }
 
 template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
 void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                                   const cudaStream_t &stream,
                                   LoadFunc load_func,
-                                  StoreFunc store_func) {
+                                  StoreFunc store_func,
+                                  const int use_cachekv_int8) {
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
   constexpr int BLOCKSIZE = 512;
   if (params.block_size == 16) {
@@ -533,7 +655,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        16,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 32) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -544,7 +667,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        32,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 64) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -555,7 +679,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        64,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 128) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -566,7 +691,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        128,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 256) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -577,7 +703,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        256,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("block_size = %d is unsupport!",
                                             params.block_size));
@@ -589,19 +716,20 @@ void dispatch_blha_impl_headsize(const phi::GPUContext &dev_ctx,
                                  const Block_AttN_params<T> &params,
                                  int dim_head,
                                  LoadFunc load_func,
-                                 StoreFunc store_func) {
+                                 StoreFunc store_func,
+                                 const int use_cachekv_int8) {
   switch (dim_head) {
     case 32:
       dispatch_blha_impl_blocksize<T, 32, 32>(
-          params, dev_ctx.stream(), load_func, store_func);
+          params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     case 64:
       dispatch_blha_impl_blocksize<T, 64, 64>(
-          params, dev_ctx.stream(), load_func, store_func);
+          params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     case 128:
       dispatch_blha_impl_blocksize<T, 128, 128>(
-          params, dev_ctx.stream(), load_func, store_func);
+          params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     default:
       PADDLE_THROW(
@@ -613,12 +741,14 @@ template <typename T>
 void DispatchBLHA(const phi::GPUContext &dev_ctx,
                   const phi::DenseTensor &qkv_tensor,
                   const Block_AttN_params<T> &params,
+                  int use_cachekv_int8,
                   int num_head,
                   int dim_head,
                   phi::DenseTensor *out_tensor) {
   MMHALoad<T> load_func(qkv_tensor.data<T>());
   MMHAStore<T> store_func(out_tensor->data<T>());
-  dispatch_blha_impl_headsize(dev_ctx, params, dim_head, load_func, store_func);
+  dispatch_blha_impl_headsize(
+      dev_ctx, params, dim_head, load_func, store_func, use_cachekv_int8);
 }
 
 template <typename T>
@@ -644,16 +774,56 @@ void blha(const phi::GPUContext &dev_ctx,
           const int rotary_emb_dims,
           float inv_sqrt_dh,
           const bool add_qkv_bias = true,
-          const bool neox_rotary_style = false) {
+          const bool neox_rotary_style = false,
+          const int quant_round_type = 1,
+          const float quant_max_bound = 127.0f,
+          const float quant_min_bound = -127.0f,
+          const phi::DenseTensor *cache_k_quant_scales = nullptr,
+          const phi::DenseTensor *cache_v_quant_scales = nullptr,
+          const phi::DenseTensor *cache_k_dequant_scales = nullptr,
+          const phi::DenseTensor *cache_v_dequant_scales = nullptr,
+          const phi::DenseTensor *dequant_qkv_scales = nullptr,
+          const phi::DenseTensor *shift = nullptr,
+          const phi::DenseTensor *smooth = nullptr,
+          const float quant_fmha_out_scale = -1,
+          int use_cachekv_int8 = 0) {
   Block_AttN_params<T> params;
 
-  params.k_cache = k_cache->data<T>();
-  params.v_cache = v_cache->data<T>();
+  if (cache_k_quant_scales) {
+    VLOG(1) << "blha quant cachekv";
+    params.k_cache_I = k_cache->data<uint8_t>();
+    params.v_cache_I = v_cache->data<uint8_t>();
+    params.cache_k_quant_scales = cache_k_quant_scales->data<float>();
+    params.cache_v_quant_scales = cache_v_quant_scales->data<float>();
+    params.cache_k_dequant_scales = cache_k_dequant_scales->data<float>();
+    params.cache_v_dequant_scales = cache_v_dequant_scales->data<float>();
+  } else {
+    VLOG(1) << "blha not quant cachekv";
+    params.k_cache = k_cache->data<T>();
+    params.v_cache = v_cache->data<T>();
+  }
 
   params.max_num_blocks_per_seq = max_num_blocks_per_seq;
   params.neox_rotary_style = neox_rotary_style;
+  params.attn_mask = nullptr;
+  bool mask_broadcast_num_heads = false;
   if (src_mask_tensor) {
+    if (src_mask_tensor->dims()[1] == 1) {
+      // all head share a mask.
+      mask_broadcast_num_heads = true;
+    } else if (src_mask_tensor->dims()[1] == num_head) {
+      mask_broadcast_num_heads = false;
+    } else {
+      PADDLE_THROW(errors::InvalidArgument(
+          "Unknow dimension for attn_mask, the num_head(2nd) "
+          "dimension is invalid, it should be 1 or num_head(%d), "
+          "but got %d",
+          num_head,
+          src_mask_tensor->dims()[1]));
+    }
     params.attn_mask = src_mask_tensor->data<T>();
+    params.mask_broadcast_num_heads = mask_broadcast_num_heads;
+    params.mask_length = src_mask_tensor->dims()[3];
   } else {
     params.attn_mask = nullptr;
   }
@@ -693,7 +863,13 @@ void blha(const phi::GPUContext &dev_ctx,
           << " block_size: " << block_size << " timestep: " << timestep
           << " rope_stride: " << params.rope_stride;
 
-  DispatchBLHA<T>(dev_ctx, qkv_tensor, params, num_head, dim_head, out_tensor);
+  DispatchBLHA<T>(dev_ctx,
+                  qkv_tensor,
+                  params,
+                  use_cachekv_int8,
+                  num_head,
+                  dim_head,
+                  out_tensor);
 }
 
 inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
@@ -743,6 +919,84 @@ inline cudaError_t GetNumBlocks(Func func,
   *num_blocks = std::max<int>(
       1, std::min<int64_t>(max_blocks, sm_count * max_active_blocks * waves));
   return cudaSuccess;
+}
+
+template <typename T, int VecSize = 1>
+__global__ void cache_int8_kernel(
+    const T *__restrict__ qkv,          // [num_tokens, 3, num_heads, head_size]
+    uint8_t *__restrict__ key_cache,    // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    uint8_t *__restrict__ value_cache,  // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
+    const int *__restrict__ padding_offsets,  // [num_tokens]
+    const int *__restrict__ seq_lens,         // [bsz]
+    const float *cache_k_scales,
+    const float *cache_v_scales,
+    const int max_seq_len,
+    const int max_blocks_per_seq,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    const int pre_cache_length,
+    const int elem_cnt,
+    const int round_type,
+    const float max_bound,
+    const float min_bound) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadKVT = phi::AlignedVector<uint8_t, VecSize>;
+  LoadT src_vec;
+  LoadKVT cache_vec;
+
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int64_t hidden_size = num_heads * head_size;
+  const int64_t offset = 2 * hidden_size;
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / offset;
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size + 1;  // skip q
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / head_size;
+    const int h_bias = qkv_bias % head_size;
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / max_seq_len;
+    if (seq_lens[ori_bi] == 0) continue;
+    const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
+
+    const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
+    const int block_idx = block_table_now[ori_seq_id / block_size];
+    const int block_offset = ori_seq_id % block_size;
+
+    const int tgt_idx = block_idx * num_heads * block_size * head_size +
+                        hi * block_size * head_size + block_offset * head_size +
+                        h_bias;
+    const int ori_idx = token_idx * 3 * hidden_size + qkv_id * hidden_size +
+                        hi * head_size + h_bias;
+    phi::Load<T, VecSize>(&qkv[ori_idx], &src_vec);
+
+    const float scale = qkv_id == 1 ? cache_k_scales[hi] : cache_v_scales[hi];
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      float quant_value = scale * static_cast<float>(src_vec[i]);
+      if (round_type == 0) {
+        quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+      } else {
+        quant_value = static_cast<float>(round(quant_value));
+      }
+      quant_value = quant_value > max_bound ? max_bound : quant_value;
+      quant_value = quant_value < min_bound ? min_bound : quant_value;
+      cache_vec[i] = static_cast<uint8_t>(quant_value + 128.0f);
+    }
+
+    if (qkv_id == 1) {
+      phi::Store<uint8_t, VecSize>(cache_vec, &key_cache[tgt_idx]);
+    } else {
+      phi::Store<uint8_t, VecSize>(cache_vec, &value_cache[tgt_idx]);
+    }
+  }
 }
 
 template <typename T, int VecSize = 1>
@@ -797,6 +1051,91 @@ __global__ void cache_kernel(
       phi::Store<T, VecSize>(src_vec, &key_cache[tgt_idx]);
     } else {
       phi::Store<T, VecSize>(src_vec, &value_cache[tgt_idx]);
+    }
+  }
+}
+
+template <typename T, int VecSize = 1>
+__global__ void write_pre_cache_int8_to_cache(
+    uint8_t *__restrict__ key_cache,  // [num_blocks, num_heads, block_size,
+                                      // head_size]
+    uint8_t *__restrict__ value_cache,
+    const T *__restrict__ pre_key_cache,  // [bsz, pre_cache_len, num_head,
+                                          // head_dim]
+    const T *__restrict__ pre_value_cache,
+    const int *__restrict__ block_tables,  // [bsz, max_blocks_per_seq]
+    const int *__restrict__ seq_lens,
+    const float *cache_k_scales,
+    const float *cache_v_scales,
+    const int max_seq_len,
+    const int max_blocks_per_seq,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    const int pre_cache_length,
+    const int elem_cnt,
+    const int round_type,
+    const float max_bound,
+    const float min_bound) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadKVT = phi::AlignedVector<uint8_t, VecSize>;
+  LoadT src_vec;
+  LoadKVT cache_vec;
+
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int hidden_size = pre_cache_length * head_size;
+  const int cache_hidden_size = num_heads * hidden_size;
+  const int offset = 2 * cache_hidden_size;
+
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int batch_id = linear_index / offset;
+    if (seq_lens[batch_id] == 0) continue;
+    const int *block_table_now = block_tables + batch_id * max_blocks_per_seq;
+
+    const int32_t cache_seq_id = (linear_index % hidden_size) / head_size;
+    const int32_t head_id = (linear_index % cache_hidden_size) / hidden_size;
+    const int32_t size_id = linear_index % head_size;
+
+    const int32_t kv_id = (linear_index % offset) / cache_hidden_size;
+    const int32_t read_id = batch_id * cache_hidden_size +
+                            head_id * hidden_size + cache_seq_id * head_size +
+                            size_id;
+    if (kv_id == 0) {
+      phi::Load<T, VecSize>(&pre_key_cache[read_id], &src_vec);
+    } else {
+      phi::Load<T, VecSize>(&pre_value_cache[read_id], &src_vec);
+    }
+
+    const int block_idx = block_table_now[cache_seq_id / block_size];
+    const int block_offset = cache_seq_id % block_size;
+
+    const int tgt_idx = block_idx * num_heads * block_size * head_size +
+                        head_id * block_size * head_size +
+                        block_offset * head_size + size_id;
+
+    const float scale =
+        kv_id == 0 ? cache_k_scales[head_id] : cache_v_scales[head_id];
+
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      float quant_value = scale * static_cast<float>(src_vec[i]);
+      if (round_type == 0) {
+        quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+      } else {
+        quant_value = static_cast<float>(round(quant_value));
+      }
+      quant_value = quant_value > max_bound ? max_bound : quant_value;
+      quant_value = quant_value < min_bound ? min_bound : quant_value;
+      cache_vec[i] = static_cast<uint8_t>(quant_value + 128.0f);
+    }
+
+    if (kv_id == 0) {
+      phi::Store<uint8_t, VecSize>(cache_vec, &key_cache[tgt_idx]);
+    } else {
+      phi::Store<uint8_t, VecSize>(cache_vec, &value_cache[tgt_idx]);
     }
   }
 }
@@ -872,6 +1211,8 @@ void CacheKernel(
     const phi::DenseTensor &seq_lens,
     const paddle::optional<DenseTensor> &pre_key_cache,
     const paddle::optional<DenseTensor> &pre_value_cache,
+    const paddle::optional<DenseTensor> &cache_k_scales,
+    const paddle::optional<DenseTensor> &cache_v_scales,
     const int batch_size,
     const int num_tokens,
     const int num_heads,
@@ -881,8 +1222,8 @@ void CacheKernel(
     phi::DenseTensor *key_cache_out,
     phi::DenseTensor *value_cache_out,
     const int round_type = 0,
-    const float max_bound = 0.0,
-    const float min_bound = 0.0) {
+    const float max_bound = 127.0,
+    const float min_bound = -127.0) {
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
@@ -897,36 +1238,37 @@ void CacheKernel(
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
 
-  VLOG(3) << "cache kv not quant";
-  cache_kernel<DataType_, PackSize>
-      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
-          reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>())),
-          reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
-          reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
-          block_tables.data<int>(),
-          padding_offsets.data<int>(),
-          seq_lens.data<int>(),
-          max_seq_len,
-          max_blocks_per_seq,
-          num_heads,
-          head_size,
-          block_size,
-          pre_cache_length,
-          elem_nums);
-
-  if (pre_key_cache) {
-    // stage 2: write pre_cache to cache [:pre_cache_length]
-    elem_nums = batch_size * num_heads * pre_cache_length * head_size * 2;
-    pack_num = elem_nums / PackSize;
-    GetNumBlocks(pack_num, &grid_size);
-    write_pre_cache_to_cache<DataType_, PackSize>
+  if (cache_k_scales) {
+    VLOG(1) << "cache kv quant";
+    cache_int8_kernel<DataType_, PackSize>
         <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+            reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>())),
+            key_cache_out->data<uint8_t>(),
+            value_cache_out->data<uint8_t>(),
+            block_tables.data<int>(),
+            padding_offsets.data<int>(),
+            seq_lens.data<int>(),
+            cache_k_scales.get().data<float>(),
+            cache_v_scales.get().data<float>(),
+            max_seq_len,
+            max_blocks_per_seq,
+            num_heads,
+            head_size,
+            block_size,
+            pre_cache_length,
+            elem_nums,
+            round_type,
+            max_bound,
+            min_bound);
+  } else {
+    VLOG(1) << "cache kv not quant";
+    cache_kernel<DataType_, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+            reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>())),
             reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
             reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
-            reinterpret_cast<const DataType_ *>(pre_key_cache.get().data<T>()),
-            reinterpret_cast<const DataType_ *>(
-                pre_value_cache.get().data<T>()),
             block_tables.data<int>(),
+            padding_offsets.data<int>(),
             seq_lens.data<int>(),
             max_seq_len,
             max_blocks_per_seq,
@@ -935,6 +1277,272 @@ void CacheKernel(
             block_size,
             pre_cache_length,
             elem_nums);
+  }
+
+  if (pre_key_cache) {
+    // stage 2: write pre_cache to cache [:pre_cache_length]
+    elem_nums = batch_size * num_heads * pre_cache_length * head_size * 2;
+    pack_num = elem_nums / PackSize;
+    GetNumBlocks(pack_num, &grid_size);
+    if (cache_k_scales) {
+      write_pre_cache_int8_to_cache<DataType_, PackSize>
+          <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+              key_cache_out->data<uint8_t>(),
+              value_cache_out->data<uint8_t>(),
+              reinterpret_cast<const DataType_ *>(
+                  pre_key_cache.get().data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_value_cache.get().data<T>()),
+              block_tables.data<int>(),
+              seq_lens.data<int>(),
+              cache_k_scales->data<float>(),
+              cache_v_scales->data<float>(),
+              max_seq_len,
+              max_blocks_per_seq,
+              num_heads,
+              head_size,
+              block_size,
+              pre_cache_length,
+              elem_nums,
+              round_type,
+              max_bound,
+              min_bound);
+    } else {
+      write_pre_cache_to_cache<DataType_, PackSize>
+          <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+              reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
+              reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_key_cache.get().data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_value_cache.get().data<T>()),
+              block_tables.data<int>(),
+              seq_lens.data<int>(),
+              max_seq_len,
+              max_blocks_per_seq,
+              num_heads,
+              head_size,
+              block_size,
+              pre_cache_length,
+              elem_nums);
+    }
+  }
+}
+
+template <typename T, int VecSize>
+__global__ void quant_write_cache_int8_kernel(
+    const T *__restrict__ qkv,          // [num_tokens, 3, num_heads, head_size]
+    uint8_t *__restrict__ key_cache,    // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    uint8_t *__restrict__ value_cache,  // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
+    const int *__restrict__ padding_offsets,  // [num_tokens]
+    const int *__restrict__ seq_lens,         // [bsz]
+    const int max_seq_len,
+    const int pre_cache_length,
+    const int max_blocks_per_seq,
+    const int num_tokens,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    float *k_quant_scales,
+    float *v_quant_scales,
+    float *k_dequant_scales,
+    float *v_dequant_scales) {
+  const int hi = blockIdx.x;
+  const int b_id = blockIdx.y;
+  if (seq_lens[b_id] <= 0) return;
+  const int qkv_id = blockIdx.z;
+
+  using InVec = phi::AlignedVector<T, VecSize>;
+  using OutVec = phi::AlignedVector<uint8_t, VecSize>;
+
+  InVec in_vec;
+  OutVec out_vec;
+  InVec abs_max_vec;
+#pragma unroll
+  for (int i = 0; i < VecSize; ++i) {
+    abs_max_vec[i] = 0.0f;
+  }
+
+  uint8_t *dst_ptr;
+  float *quant_scales;
+  float *dequant_scales;
+  if (qkv_id == 0) {
+    dst_ptr = key_cache;
+    quant_scales = k_quant_scales;
+    dequant_scales = k_dequant_scales;
+  } else {
+    dst_ptr = value_cache;
+    quant_scales = v_quant_scales;
+    dequant_scales = v_dequant_scales;
+  }
+
+  T local_abs_max;
+
+  for (int idx = threadIdx.x * VecSize; idx < num_tokens * head_size;
+       idx += blockDim.x * VecSize) {
+    int token_idx = idx / head_size;
+    int h_offset = idx % head_size;
+    int linear_idx = token_idx * 3 * num_heads * head_size +
+                     (qkv_id + 1) * num_heads * head_size + hi * head_size +
+                     h_offset;
+
+    Load<T, VecSize>(qkv + linear_idx, &in_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      abs_max_vec[i] = MaxFunc<T>()(abs_max_vec[i], AbsFunc<T>()(in_vec[i]));
+    }
+  }
+
+  local_abs_max = LocalReduceMax<T, InVec, VecSize>(abs_max_vec);
+  T abs_max_val = BlockReduceAbsMax<T>(local_abs_max, 0xffffffff);
+
+  __shared__ float quant_scale;
+  if (threadIdx.x == 0) {
+    quant_scale = 127.0f / static_cast<float>(abs_max_val);
+  }
+
+  __syncthreads();
+  for (int idx = threadIdx.x * VecSize; idx < num_tokens * head_size;
+       idx += blockDim.x * VecSize) {
+    int token_idx = idx / head_size;
+    int h_offset = idx % head_size;
+    int linear_idx = token_idx * 3 * num_heads * head_size +
+                     (qkv_id + 1) * num_heads * head_size + hi * head_size +
+                     h_offset;
+
+    Load<T, VecSize>(qkv + linear_idx, &in_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      out_vec[i] = QuantFunc<T>()(in_vec[i], quant_scale);
+    }
+
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / max_seq_len;
+    if (ori_bi != b_id) continue;
+    const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
+
+    const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
+    const int block_idx = block_table_now[ori_seq_id / block_size];
+    const int block_offset = ori_seq_id % block_size;
+    // [max_block_num, num_head, block_size, head_dim/x, x]
+    Store<uint8_t>(out_vec,
+                   dst_ptr + block_idx * num_heads * block_size * head_size +
+                       hi * block_size * head_size + block_offset * head_size +
+                       h_offset);
+  }
+
+  if (threadIdx.x == 0) {
+    quant_scales[b_id * num_heads + hi] = quant_scale;
+    dequant_scales[b_id * num_heads + hi] = 1.0f / quant_scale;
+  }
+}
+
+template <typename T>
+void DynamicQuantCacheKernel(
+    const phi::GPUContext &dev_ctx,
+    const phi::DenseTensor &qkv,  // [token_num, 3, num_head, head_dim]
+    const phi::DenseTensor &block_tables,
+    const phi::DenseTensor &padding_offsets,
+    const phi::DenseTensor &seq_lens,
+    const phi::DenseTensor &k_quant_scales,
+    const phi::DenseTensor &v_quant_scales,
+    const phi::DenseTensor &k_dequant_scales,
+    const phi::DenseTensor &v_dequant_scales,
+    const paddle::optional<DenseTensor> &pre_key_cache,
+    const paddle::optional<DenseTensor> &pre_value_cache,
+    const int batch_size,
+    const int num_heads,
+    const int head_size,
+    const int max_seq_len,
+    const int pre_cache_length,
+    phi::DenseTensor *key_cache_out,
+    phi::DenseTensor *value_cache_out) {
+  typedef PDDataTypeTraits<T> traits_;
+  typedef typename traits_::DataType DataType_;
+
+  const int num_tokens = padding_offsets.dims()[0];
+  const int max_blocks_per_seq = block_tables.dims()[1];
+  const int32_t block_size = key_cache_out->dims()[2];
+  constexpr int PackSize = 16 / sizeof(T);
+
+  assert(head_size % PackSize == 0);
+
+  const DataType_ *qkv_ptr = reinterpret_cast<const DataType_ *>(qkv.data<T>());
+
+  //  [max_block_num, num_head, block_size, head_dim]
+
+  uint8_t *cache_k_ptr = key_cache_out->data<uint8_t>();
+  uint8_t *cache_v_ptr = value_cache_out->data<uint8_t>();
+
+  float *k_quant_scales_data =
+      const_cast<float *>(k_quant_scales.data<float>());
+  float *k_dequant_scales_data =
+      const_cast<float *>(k_dequant_scales.data<float>());
+
+  float *v_quant_scales_data =
+      const_cast<float *>(v_quant_scales.data<float>());
+  float *v_dequant_scales_data =
+      const_cast<float *>(v_dequant_scales.data<float>());
+
+  constexpr int block_sz = 1024;
+
+  const int bsz = seq_lens.dims()[0];
+
+  dim3 grid(num_heads, bsz, 2);
+
+  // [token_num, 3, num_head, head_dim/x, x]->[max_block_num, num_head,
+  // block_size, head_dim/x, x] Quant and Write kv
+  quant_write_cache_int8_kernel<DataType_, PackSize>
+      <<<grid, block_sz, 0, dev_ctx.stream()>>>(qkv_ptr,
+                                                cache_k_ptr,
+                                                cache_v_ptr,
+                                                block_tables.data<int>(),
+                                                padding_offsets.data<int>(),
+                                                seq_lens.data<int>(),
+                                                max_seq_len,
+                                                pre_cache_length,
+                                                max_blocks_per_seq,
+                                                num_tokens,
+                                                num_heads,
+                                                head_size,
+                                                block_size,
+                                                k_quant_scales_data,
+                                                v_quant_scales_data,
+                                                k_dequant_scales_data,
+                                                v_dequant_scales_data);
+
+  if (pre_key_cache) {
+    // stage 2: write pre_cache to cache [:pre_cache_length]
+    const int elem_nums =
+        batch_size * num_heads * pre_cache_length * head_size * 2;
+    const int pack_num = elem_nums / PackSize;
+    const int blocksize = 128;
+    int grid_size = 1;
+    GetNumBlocks(pack_num, &grid_size);
+    write_pre_cache_int8_to_cache<DataType_, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+            key_cache_out->data<uint8_t>(),
+            value_cache_out->data<uint8_t>(),
+            reinterpret_cast<const DataType_ *>(pre_key_cache.get().data<T>()),
+            reinterpret_cast<const DataType_ *>(
+                pre_value_cache.get().data<T>()),
+            block_tables.data<int>(),
+            seq_lens.data<int>(),
+            k_quant_scales.data<float>(),
+            v_quant_scales.data<float>(),
+            max_seq_len,
+            max_blocks_per_seq,
+            num_heads,
+            head_size,
+            block_size,
+            pre_cache_length,
+            elem_nums,
+            1,
+            127.0f,
+            -127.0f);
   }
 }
 

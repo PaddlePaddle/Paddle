@@ -198,13 +198,15 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
                                                main_offset,
                                                dst_functor);
 #else
+    // we assume seed/offset is same across iterations
+    // seed_offset_data should preserved by cudaGraph pool
+    const phi::GPUContext* dev_ctx_p = &dev_ctx;
     void* functionPtr = reinterpret_cast<void*>(
         &(VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>));
     cudaFunction_t cudaFunc;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
 
     // seed_offset_data should preserved by cudaGraph pool
-    const phi::GPUContext* dev_ctx_p = &dev_ctx;
     auto gen_cuda = dev_ctx.GetGenerator();
     auto state_index = gen_cuda->GetStateIndex();
     auto parameterSetter =

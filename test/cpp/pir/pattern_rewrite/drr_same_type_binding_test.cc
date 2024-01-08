@@ -53,10 +53,10 @@ class SameTypeBindingTestPattern
     // This class is for test cases of the same type of OP.
     // (without considering the computational logic between OPs,
     // only focusing on the process of matching and replacing)
-    : public pir::drr::DrrPatternBase<SameTypeBindingTestPattern> {
+    : public paddle::drr::DrrPatternBase<SameTypeBindingTestPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern src = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern src = ctx->SourcePattern();
 
     // path 1
     const auto &transpose_1 =
@@ -141,7 +141,7 @@ class SameTypeBindingTestPattern
     const auto &relu_2 = src.Op("pd_op.relu");
     src.Tensor("output6") = relu_2(src.Tensor("add_2_out"));
 
-    pir::drr::ResultPattern res = src.ResultPattern();
+    paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &transpose_7 =
         res.Op("pd_op.transpose", {{"perm", src.Attr("perm_4")}});
     res.Tensor("output0") = transpose_7(res.Tensor("input_1"));
@@ -310,7 +310,7 @@ TEST(DrrTest, drr_demo) {
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
-  // pm.EnablePassTiming();
+  pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);

@@ -80,7 +80,26 @@ class InstructionBase {
     next_instrs_in_same_thread_.push_back(id);
   }
 
-  const EventInter& EventToRecord() const { return *event_to_record_; }
+  bool IsForceRecordEvent() const { return force_record_event_; }
+  void SetForceRecordEvent(bool force_record) {
+    force_record_event_ = force_record;
+  }
+
+  const std::vector<std::string>& EventsToWaitInfo() const {
+    return events_to_wait_info_;
+  }
+  void SetEventsToWaitInfo(const std::vector<std::string>& info) {
+    events_to_wait_info_ = info;
+  }
+
+  const std::string& EventToRecordInfo() const { return event_to_record_info_; }
+  void SetEventToRecordInfo(const std::string& info) {
+    event_to_record_info_ = info;
+  }
+
+  const std::shared_ptr<EventInter>& EventToRecord() const {
+    return event_to_record_;
+  }
   void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
                         platform::DeviceType waiter_type) {
     event_to_record_ = std::make_shared<EventInter>(id_, event, waiter_type);
@@ -93,6 +112,10 @@ class InstructionBase {
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type) {
     events_to_wait_.emplace_back(instr_id, event, waiter_type);
+  }
+
+  void AddEventToWait(const EventInter* event_inter) {
+    events_to_wait_.push_back(*event_inter);
   }
 
   void RecordEvent(const Place& place) const;
@@ -169,6 +192,12 @@ class InstructionBase {
   std::vector<size_t> next_instrs_in_different_thread_;
 
   std::vector<size_t> next_instrs_in_same_thread_;
+
+  bool force_record_event_{false};
+
+  std::vector<std::string> events_to_wait_info_;
+
+  std::string event_to_record_info_{"default"};
 
   std::shared_ptr<EventInter> event_to_record_;
 

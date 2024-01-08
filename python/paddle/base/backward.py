@@ -485,7 +485,12 @@ def _accumulate_gradients_by_sum_op_(
 
 
 def _accumulate_gradients_by_add_ops_(
-    var_name, renamed_vars, pending_sum_ops, op_idx, op_device=""
+    var_name,
+    renamed_vars,
+    pending_sum_ops,
+    op_idx,
+    op_device="",
+    grad_var_to_var=None,
 ):
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
@@ -508,6 +513,12 @@ def _accumulate_gradients_by_add_ops_(
                 {"op_device": op_device},
             )
         )
+        # record mapping between out grad var name and fwd var name (only for auto parallel)
+        if grad_var_to_var is not None:
+            if var_name in grad_var_to_var:
+                grad_var_to_var[out_name] = grad_var_to_var[var_name]
+            else:
+                grad_var_to_var[out_name] = var_name
     renamed_vars[var_name] = [var_name]
 
 
@@ -539,6 +550,8 @@ def _addup_repetitive_outputs_(
     var_device = collections.defaultdict(str)
 
     def _change_order_by_topo_order(var_name):
+        if topo_order_for_backward is None:
+            return
         origin_names = renamed_vars[var_name]
         origin_names.sort(key=lambda x: topo_order_for_grad_name[x])
 
@@ -570,6 +583,7 @@ def _addup_repetitive_outputs_(
                         pending_sum_ops,
                         idx,
                         var_device[var_name],
+                        grad_var_to_var,
                     )
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
@@ -1596,12 +1610,12 @@ def _append_backward_ops_(
             program._appending_grad_times
         ]
     # sum parameter's gradients' var given multiple var gradient
-    topo_order = _topo_order_map(block, target_vars)
     if os.environ.get("FLAGS_program_topo_reorder", "False") in [
         'True',
         '1',
         'true',
     ]:
+        topo_order = _topo_order_map(block, target_vars)
         topo_order_for_backward = _topo_bwd_order_map(
             topo_order, get_backward_op_desc
         )
@@ -1933,6 +1947,27 @@ def _get_no_grad_set_name(no_grad_set):
                 )
             )
     return no_grad_set_name
+
+
+def _get_no_grad_set_value(no_grad_set):
+    no_grad_set_value = paddle.autograd.backward_utils.ValueSet()
+    if no_grad_set is not None:
+        if isinstance(no_grad_set, (set, list, tuple)):
+            for i, no_grad_value in enumerate(no_grad_set):
+                if isinstance(no_grad_value, paddle.pir.Value):
+                    no_grad_set_value.add(no_grad_value)
+                else:
+                    raise TypeError(
+                        "The type of no_grad_set's member must be paddle.pir.Value, but received %s."
+                        % (type(no_grad_value))
+                    )
+        else:
+            raise TypeError(
+                "The type of no_grad_set should be set or list or tuple, but received {}".format(
+                    type(no_grad_set)
+                )
+            )
+    return no_grad_set_value
 
 
 @framework.static_only
@@ -2748,15 +2783,16 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         targets = _as_list(targets)
         inputs = _as_list(inputs)
         target_gradients = _as_list(target_gradients)
-        if no_grad_set is None:
-            no_grad_set = set()
-        elif no_grad_set is not set:
-            no_grad_set = set(no_grad_set)
-        else:
-            no_grad_set = no_grad_set
+
+        from paddle.autograd.backward_utils import ValueSet
         from paddle.autograd.ir_backward import (
             calc_gradient as pir_calc_gradient,
         )
+
+        if no_grad_set is None:
+            no_grad_set = ValueSet()
+        else:
+            no_grad_set = ValueSet(no_grad_set)
 
         input_grad = pir_calc_gradient(
             targets, inputs, target_gradients, no_grad_set

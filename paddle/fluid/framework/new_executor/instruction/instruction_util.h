@@ -59,6 +59,12 @@ void InsertTuplePushContinerToOuts(
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* outputs);
 
+void InsertInplacedExternalInputsToOuts(
+    pir::Block* block,
+    const std::vector<pir::Value>& external_inputs,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs);
+
 bool GetCondData(const phi::DenseTensor& cond);
 }  // namespace framework
 }  // namespace paddle

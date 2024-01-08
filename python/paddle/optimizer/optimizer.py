@@ -32,12 +32,15 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
     name_scope,
-    use_pir_api,
 )
 from paddle.regularizer import L2Decay
 
 from ..base import framework, unique_name
-from ..base.backward import _get_no_grad_set_name, append_backward
+from ..base.backward import (
+    _get_no_grad_set_name,
+    _get_no_grad_set_value,
+    append_backward,
+)
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
@@ -403,35 +406,7 @@ class Optimizer:
                     tensor.set_xpu_scale_value(
                         state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
                     )
-
-                model_np = np.array(tensor)
-
-                load_para = state_dict[var_tmp.name]
-
-                if isinstance(load_para, Variable):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, core.eager.Tensor):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, np.ndarray):
-                    load_para_np = load_para
-                else:
-                    raise RuntimeError(
-                        f"State dict type {str(type(load_para))} not supprt"
-                    )
-
-                assert (
-                    model_np.shape == load_para_np.shape
-                ), "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                    model_np.name, model_np.shape, load_para_np.shape
-                )
-
-                assert (
-                    model_np.dtype == load_para_np.dtype
-                ), "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    model_np.name, model_np.dtype, load_para_np.dtype
-                )
-
-                tensor.set(load_para_np, framework._current_expected_place())
+                var.set_value(state_dict[var_tmp.name])
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -795,19 +770,12 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    if not use_pir_api():
-                        with paddle.static.default_main_program()._lr_schedule_guard(
-                            is_with_opt=True
-                        ), framework.name_scope(
-                            'scale_with_param_lr'
-                        ):
-                            return self._global_learning_rate() * param_lr
-                    else:
-                        # TODO(dev): Currently there has not equivalent of op_role in PIR
-                        # mode, so we simply remove _lr_schedule_guard here, this should
-                        # be fixed in the future.
-                        with framework.name_scope('scale_with_param_lr'):
-                            return self._global_learning_rate() * param_lr
+                    with paddle.static.default_main_program()._lr_schedule_guard(
+                        is_with_opt=True
+                    ), framework.name_scope(
+                        'scale_with_param_lr'
+                    ):
+                        return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
 
@@ -1201,7 +1169,13 @@ class Optimizer:
                         self._set_auxiliary_var('found_inf', False)
                     if isinstance(parameters_and_grads, list):
                         for param_and_grad in parameters_and_grads:
-                            if param_and_grad[1] is None:
+                            # Parameters can be uninitialized in pipeline parallel of semi-auto parallel.
+                            # Since gradient clip and parameters update mixed up in one interface, so we
+                            # need to filter again here.
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[0]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 self._append_optimize_op(
@@ -1209,7 +1183,10 @@ class Optimizer:
                                 )
                     else:
                         for param_and_grad in parameters_and_grads['params']:
-                            if param_and_grad[1] is None:
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[0]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 param_grad_dict = {}
@@ -1643,15 +1620,26 @@ class Optimizer:
         return params_and_grads
 
     def _get_no_grad_set(self, loss, no_grad_set=None):
-        no_grad_set = _get_no_grad_set_name(no_grad_set)
-        parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = {
-            param.name for param in parameters if param.stop_gradient is True
-        }
-        # If the parameter is no trainable, it should not have a gradient.
-        no_grad_set.update(param_no_trainable)
-
-        return no_grad_set
+        if in_pir_mode():
+            no_grad_set = _get_no_grad_set_value(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = [
+                param for param in parameters if param.stop_gradient is True
+            ]
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
+        else:
+            no_grad_set = _get_no_grad_set_name(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = {
+                param.name
+                for param in parameters
+                if param.stop_gradient is True
+            }
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
 
     @framework.non_static_only
     def clear_grad(self, set_to_zero=True):

@@ -334,6 +334,7 @@
     func : dropout
     data_type : x
   optional : seed_tensor
+  intermediate : mask
   backward : dropout_grad
 
 - op : einsum
@@ -979,6 +980,15 @@
   intermediate : noise
   backward : rrelu_grad
 
+- op : sequence_mask
+  args: (Tensor x, Scalar(int) max_len, int out_dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: SequenceMaskScalarInferMeta
+  kernel:
+    func: sequence_mask_scalar
+    data_type : x
+
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
@@ -1100,6 +1110,7 @@
   output : Tensor(out)
   infer_meta :
     func : TileInferMeta
+    spmd_rule : TileInferSpmdDynamic
   kernel :
     func : tile
   backward : tile_grad

@@ -41,6 +41,7 @@ build_doc/
 *.user
 *.tmp
 *.pyc
+*.log
 
 .vscode
 .idea
@@ -96,6 +97,7 @@ paddle/phi/api/profiler/__init__.py
 python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
 paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp/*
+paddle/phi/ops/compat/generated_*
 python/paddle/base/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/fluid/ir_adaptor/translator/op_compat_info.cc
 paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*
@@ -106,5 +108,15 @@ paddle/fluid/pir/dialect/operator/ir/pd_api.*
 paddle/fluid/pir/dialect/operator/ir/op_decomp.cc
 paddle/fluid/pir/dialect/operator/ir/pd_op_vjp.cc
 paddle/fluid/pir/dialect/operator/ir/pd_op.*
+paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.*
+paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.*
+paddle/fluid/pir/dialect/operator/ir/pd_op_bwd.*
+paddle/fluid/pir/dialect/operator/ir/pd_op_fused.*
+paddle/fluid/pir/dialect/operator/ir/pd_op_fused_bwd.*
+paddle/fluid/pir/dialect/operator/ir/pd_pir_op.*
+paddle/fluid/pir/dialect/operator/ir/pd_pir_op_bwd.*
+paddle/fluid/pir/dialect/operator/ir/pd_pir_op_update.*
+paddle/fluid/pir/dialect/operator/ir/pd_op_info.*
 paddle/cinn/hlir/dialect/generated/ops.parsed.yaml
 paddle/cinn/hlir/dialect/operator/ir/cinn_op.*
+paddle/cinn/hlir/dialect/operator/ir/cinn_op_info.*

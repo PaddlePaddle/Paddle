@@ -81,6 +81,7 @@ message PpConfig {
     optional bool enable_timer = 3 [ default = false ];
     optional bool sharding_comm_overlap = 4 [ default = false ];
     optional bool profiling = 5 [ default = false ];
+    optional bool release_gradients = 6 [ default = false ];
 }
 
 message DygraphShardingConfig {
@@ -173,6 +174,7 @@ message BuildStrategy {
   optional bool fused_attention = 18 [ default = false];
   optional bool fused_feedforward = 19 [ default = false];
   optional bool fuse_dot_product_attention = 20 [ default = false ];
+  optional bool fuse_resunit = 21 [ default = false ];
 }
 
 message ExecutionStrategy {

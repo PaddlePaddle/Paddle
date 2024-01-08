@@ -35,7 +35,6 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.jit.dy2static as _jst
-from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
 
@@ -228,16 +227,18 @@ class TestEnableDeclarative(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_raise_error(self):
-        net = to_static(full_graph=True)(NetWithError())
+        net = paddle.jit.to_static(full_graph=True)(NetWithError())
         with self.assertRaises(ValueError):
             net(paddle.to_tensor(self.x))
 
     @test_legacy_and_pt_and_pir
     def test_enable_disable_to_static(self):
-        static_output = to_static(decorated_simple_func)(self.x, self.weight)
+        static_output = paddle.jit.to_static(decorated_simple_func)(
+            self.x, self.weight
+        )
 
         with enable_to_static_guard(False):
-            dygraph_output = to_static(decorated_simple_func)(
+            dygraph_output = paddle.jit.to_static(decorated_simple_func)(
                 self.x, self.weight
             )
             np.testing.assert_allclose(
@@ -313,14 +314,24 @@ class TestIfElseEarlyReturn(Dy2StTestBase):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
         out = static_func()
-        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
+        if isinstance(out, paddle.Tensor):
+            np.testing.assert_allclose(
+                paddle.to_tensor(answer), out, rtol=1e-05
+            )
+        elif isinstance(out, tuple):
+            np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
         out = static_func()
-        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
+        if isinstance(out, paddle.Tensor):
+            np.testing.assert_allclose(
+                paddle.to_tensor(answer), out, rtol=1e-05
+            )
+        elif isinstance(out, tuple):
+            np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
 
 class TestRemoveCommentInDy2St(Dy2StTestBase):
