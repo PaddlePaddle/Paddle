@@ -1266,6 +1266,7 @@ SplitedResult SplitForwardBackward(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
   std::for_each(
       forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
+
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
   range_block_do(
