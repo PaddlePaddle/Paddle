@@ -63,8 +63,8 @@ def check_all_puts(block, inputs, outputs):
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
-    if paddle.pir.is_fake_op_result(value):
-        state.value_to_valuegrad[value] = [[paddle.pir.fake_op_result()]]
+    if paddle.pir.is_fake_value(value):
+        state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
         return
     if copy_value.is_tensorarray():
         value_grad = paddle._pir_ops.create_array_like(
@@ -177,9 +177,9 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 visited_output.add(opresult)
                 continue
             else:
-                if paddle.pir.is_fake_op_result(opresult):
+                if paddle.pir.is_fake_value(opresult):
                     state.value_to_valuegrad[opresult] = [
-                        [paddle.pir.fake_op_result()]
+                        [paddle.pir.fake_value()]
                     ]
                 else:
                     grad_value = append_full_like(

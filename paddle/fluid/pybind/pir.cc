@@ -1014,14 +1014,14 @@ using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-pir::OpResult FakeOpResult() {
-  // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return pir::OpResult(nullptr);
+pir::Value FakeValue() {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return pir::Value(nullptr);
 }
 
-bool IsFakeOpResult(const pir::OpResult &result) {
-  // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return result.Value::impl() == nullptr || !result.Value::type();
+bool IsFakeValue(const pir::Value &value) {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return value.impl() == nullptr || !value.type();
 }
 
 static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
@@ -1114,7 +1114,7 @@ int AppendShadowOutputs(Program *forward_program,
   std::unordered_set<pir::OpResult> added_op_result;
 
   for (const auto &result : outputs_op_result) {
-    if (!added_op_result.count(result) || IsFakeOpResult(result)) {
+    if (!added_op_result.count(result) || IsFakeValue(result)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
       AppendShadowOutput(
           forward_program, result, shadow_output_name, start_point + counter);
@@ -1442,8 +1442,8 @@ void BindUtils(pybind11::module *m) {
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
-  m->def("fake_op_result", FakeOpResult);
-  m->def("is_fake_op_result", IsFakeOpResult);
+  m->def("fake_value", FakeValue);
+  m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
   });

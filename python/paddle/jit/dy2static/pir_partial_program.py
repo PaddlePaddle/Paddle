@@ -28,7 +28,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
-from paddle.pir import Value, fake_op_result, is_fake_op_result
+from paddle.pir import Value, fake_value, is_fake_value
 
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
@@ -133,7 +133,7 @@ class RunableProgram:
     @classmethod
     def _get_value_name_map_from_program(cls, program):
         ret = ValueDict()
-        ret[fake_op_result()] = "FakeVar"
+        ret[fake_value()] = "FakeVar"
         for op in program.global_block().ops:
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
@@ -757,7 +757,7 @@ class PartialProgramLayer:
                 forward_outputs_grads = []
                 for out_op_result in targets:
                     if out_op_result.stop_gradient is True:
-                        forward_outputs_grads.append(fake_op_result())
+                        forward_outputs_grads.append(fake_value())
                     else:
                         value = paddle.full_like(
                             out_op_result,
@@ -791,7 +791,7 @@ class PartialProgramLayer:
                         ),
                         grad_outputs=list(
                             filter(
-                                lambda x: not is_fake_op_result(x),
+                                lambda x: not is_fake_value(x),
                                 forward_outputs_grads,
                             )
                         ),
@@ -811,7 +811,7 @@ class PartialProgramLayer:
             # )
 
         mapping_op_result = (
-            lambda x: x if isinstance(x, Value) else fake_op_result()
+            lambda x: x if isinstance(x, Value) else fake_value()
         )
         inputs_size = len(inputs)
         x_grad_value = list(
@@ -822,12 +822,10 @@ class PartialProgramLayer:
 
         # insert grads name for RunableProgram (we need name for grad_inputs and grad_outputs)
         input_grads_to_append = list(
-            filter(lambda x: not is_fake_op_result(x), o_grad_value)
+            filter(lambda x: not is_fake_value(x), o_grad_value)
         )
         output_grads_to_append = list(
-            filter(
-                lambda x: not is_fake_op_result(x), x_grad_value + p_grad_value
-            )
+            filter(lambda x: not is_fake_value(x), x_grad_value + p_grad_value)
         )
         backward_end_op_index = len(program.global_block().ops)
         paddle.base.libpaddle.pir.append_shadow_outputs(
@@ -1020,7 +1018,7 @@ class PartialProgramLayer:
         forward_params_grads = train_program.param_grad_values
         train_program = train_program.program
         for param, value in zip(params, forward_params_grads):
-            if is_fake_op_result(value):
+            if is_fake_value(value):
                 continue
             if value.is_selected_row_type():
                 param._set_grad_type(
