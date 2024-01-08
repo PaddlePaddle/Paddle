@@ -55,10 +55,10 @@ class GroupOpGenerateShapeOpsPattern : public pir::OpRewritePattern<cinn::dialec
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
     ShapeOrDataDimExprsAccessor dim_exprs_accessor{
       .GetShapeOrDataDimExprs=[&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
-        return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
+        return shape_analysis.GetShapeOrDataForValue(&value);
       },
       .SetShapeOrDataDimExprs=[&](pir::Value value, const symbol::ShapeOrDataDimExprs& dim_exprs) {
-        shape_analysis.value_id_to_shapeordata_[GetValueId(&value)] = dim_exprs;
+        shape_analysis.SetShapeOrDataForValue(&value, dim_exprs);
       }
     };
     return RewriteGenerateShapeOpToRunFirst(ctx, group_op.block(), dim_exprs_accessor);

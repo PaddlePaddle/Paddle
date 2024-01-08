@@ -87,7 +87,7 @@ bool EraseOneExpand(
   return false;
 }
 
-void EraseExpandsInBlock(
+void EraseUneccessaryExpandsInBlock(
     pir::Block* block,
     pir::PatternRewriter& rewriter,  // NOLINT
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
@@ -489,20 +489,13 @@ pir::Operation* ProcessGroup(
       auto val = op->result(i);
     }
   });
-  
-  const auto GetShapeOrDataDimExprs=[&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
-    const auto& key = GetValueId(&value);
-    auto iter = shape_analysis->value_id_to_shapeordata_.find(key);
-    CHECK(iter != shape_analysis->value_id_to_shapeordata_.end());
-    return iter->second;
-  };
 
   // 1. construct broadcast tree
   VLOG(1) << "construct broadcast tree";
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
   for (auto value : value_view) {
-    const auto& shape_dim_expr = GetShapeOrDataDimExprs(value);
+    const auto& shape_dim_expr = shape_analysis->GetShapeOrDataForValue(&value);
     const auto& data_shape = shape_dim_expr.data();
     VLOG(1) << "#### value : " << pir::GetValueId(&value) << " : "
             << shape_dim_expr;
@@ -558,28 +551,36 @@ pir::Operation* ProcessGroup(
   shape_analysis->PrintAllShapeOrDataDimExprs();
   // 3. simply every condition block
   VLOG(1) << "simply condition block";
-  for (auto& [block, group] : group_map) {
-    EraseExpandsInBlock(block,
-                        rewriter,
-                        [&shape_analysis](pir::Value value)
-                            -> const symbol::ShapeOrDataDimExprs& {
-                          return shape_analysis->GetShapeOrDataForValue(&value);
-                        });
+  using DoEachMutBlockGroupT = std::function<void(pir::Block*, const cinn::dialect::ir::GroupPtr&)>;
+  const auto& ForEachMutBlockGroup = [&](const DoEachMutBlockGroupT& DoEach) {
+    for (auto& [block, group] : group_map) {
+      DoEach(block, group);
+
+      std::vector<pir::Operation*> group_new_ops;
+      group_new_ops.reserve(block->size());
+      std::unordered_set<pir::Operation*> group_ops_set;
+      for (auto& op : *block) {
+        if (!op.isa<pir::YieldOp>()) {
+          group_new_ops.push_back(&op);
+          group_ops_set.insert(&op);
+        }
+      }
+      group->ops = group_new_ops;
+      group->ops_set = group_ops_set;
+    }
+  };
+  auto GetShapeOrDataForValue = [&shape_analysis](pir::Value value)
+      -> const symbol::ShapeOrDataDimExprs& {
+    return shape_analysis->GetShapeOrDataForValue(&value);
+  };
+  ForEachMutBlockGroup([&](auto* block, const auto& group){
+    EraseUneccessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
+  });
+  VLOG(4) << "After EraseUneccessaryExpandsInBlock: " << *program;
+  ForEachMutBlockGroup([&](auto* block, const auto& group){
     ReplaceExpandWithBroadcast(
         rewriter.ir_context(), block, group->shape_analysis);
-
-    std::vector<pir::Operation*> group_new_ops;
-    group_new_ops.reserve(block->size());
-    std::unordered_set<pir::Operation*> group_ops_set;
-    for (auto& op : *block) {
-      if (!op.isa<pir::YieldOp>()) {
-        group_new_ops.push_back(&op);
-        group_ops_set.insert(&op);
-      }
-    }
-    group->ops = group_new_ops;
-    group->ops_set = group_ops_set;
-  }
+  });
   VLOG(4) << "After simply condition block: " << *program;
 
   // 4. complie condition block to jit_kernel_op
