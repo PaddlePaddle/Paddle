@@ -1501,7 +1501,7 @@ OpInfoTuple ArrayReadOp::GetOpInfo() {
                   false,
                   false,
                   false,
-                  true),
+                  false),
       OpInputInfo(
           "i", "paddle::dialect::ScalarAttribute", false, false, true, false)};
 
