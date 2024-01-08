@@ -30,6 +30,9 @@ namespace framework {
 using paddle::experimental::ExtractPlainVector;
 using paddle::experimental::WrapAsScalars;
 
+static std::vector<std::string> convertedOperators = {
+    "assign_value", "set_value", "set_value_grad"};
+
 std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
     ProgramDesc* program) {
   bool is_legacy_program = false;
@@ -55,6 +58,18 @@ std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
                          static_cast<uint32_t>(
                              _op_version_map->pair(i).op_version().version()));
       program_op_versions.insert(pair);
+    }
+
+    for (const std::string& op_name : convertedOperators) {
+      if (!current_op_versions.count(op_name)) continue;
+      // if op_name in  current_op_versions and op_name is not in
+      // program_op_versions, this op_name need to be converted into a new
+      // program from the old program.
+      if (!program_op_versions.count(op_name)) {
+        is_legacy_program = true;
+        legacy_op_versions.insert(
+            std::make_pair(op_name, paddle::framework::kLegacyProgramVersion));
+      }
     }
 
     for (const auto& pair : program_op_versions) {
@@ -311,16 +326,15 @@ void ConvertProgram(ProgramDesc* program) {
       OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
 
-      if (op_type == "assign_value") {
-        VLOG(3) << "Converting program from old to new, op_type=" << op_type;
-        ConvertAssignValueOp(op);
-      }
       if (!legacy_op_versions.count(op_type)) {
         continue;
       }
       VLOG(3) << "Converting program from old to new, op_type=" << op_type;
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
+      }
+      if (op_type == "assign_value") {
+        ConvertAssignValueOp(op);
       }
     }
   }
