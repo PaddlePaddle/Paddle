@@ -240,6 +240,49 @@ void WhileInstruction::ShareDatasToOutputs() {
   }
 }
 
+void WhileInstruction::CopyDatasToOutputs() {
+  {
+    auto& src_tensor = body_inter_->local_scope()
+                           ->GetVar(body_outputs_[0])
+                           ->Get<phi::DenseTensor>();
+    auto* dst_tensor = cond_var_->GetMutable<phi::DenseTensor>();
+    dst_tensor->set_meta(src_tensor.meta());
+    framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
+  }
+
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    auto& out_var_name = body_outputs_[i + 1];
+    auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
+    VLOG(6) << "copy data from " << out_var_name << " -> " << i << " output";
+
+    if (out_var->IsType<phi::DenseTensor>()) {
+      auto& src_tensor = out_var->Get<phi::DenseTensor>();
+      auto* dst_tensor = outputs_[i]->GetMutable<phi::DenseTensor>();
+      dst_tensor->set_meta(src_tensor.meta());
+      framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
+    } else if (out_var->IsType<phi::TensorArray>()) {
+      auto src_tensor_array = out_var->Get<phi::TensorArray>();
+      auto* dst_tensor_array = outputs_[i]->GetMutable<phi::TensorArray>();
+      dst_tensor_array->set_type(src_tensor_array.dtype());
+      dst_tensor_array->set_layout(src_tensor_array.layout());
+      while (dst_tensor_array->size() < src_tensor_array.size()) {
+        dst_tensor_array->emplace_back();
+      }
+      for (size_t id = 0; id < dst_tensor_array->size(); id++) {
+        auto& src_tensor = src_tensor_array[id];
+        phi::DenseTensor* tmp_dst_tensor = &dst_tensor_array->at(id);
+        tmp_dst_tensor->set_meta(src_tensor.meta());
+        framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
+      }
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", out_var->Type()));
+    }
+
+    VLOG(6) << "done";
+  }
+}
+
 void WhileInstruction::Run() {
   ShareInputsToOutputs();
   VLOG(6) << "while instruction start loop ...";
@@ -250,7 +293,8 @@ void WhileInstruction::Run() {
     VLOG(6) << "while instruction interpretercore run";
     body_inter_->Run({}, false);
     VLOG(6) << "while instruction get value form body block";
-    ShareDatasToOutputs();
+    // ShareDatasToOutputs();
+    CopyDatasToOutputs();
   }
   VLOG(6) << "while instruction run done";
 }

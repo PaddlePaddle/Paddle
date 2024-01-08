@@ -60,6 +60,7 @@ class WhileInstruction : public InstructionBase {
 
   // Get return value from body_block after each execution.
   void ShareDatasToOutputs();
+  void CopyDatasToOutputs();
 
   std::string name_{"while_instruction"};
 
