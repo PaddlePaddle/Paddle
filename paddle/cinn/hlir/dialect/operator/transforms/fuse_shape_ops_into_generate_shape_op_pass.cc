@@ -135,19 +135,23 @@ bool ProcessOp(paddle::dialect::ExpandOp op, pir::PatternRewriter* rewriter) {
     VLOG(1) << "Match GenerateShapeOp";
     return false;
   }
+  pir::ShapeConstraintIRAnalysis& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value =
-      [&op](pir::Value value) -> symbol::ShapeOrDataDimExprs {
-    pir::ShapeConstraintIRAnalysis& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(
-            op.x().defining_op()->GetParentProgram());
-    CHECK(shape_analysis.value_id_to_shapeordata_.find(GetValueId(&value)) !=
-          shape_analysis.value_id_to_shapeordata_.end());
-    return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
+      [&op, &shape_analysis](pir::Value value) -> symbol::ShapeOrDataDimExprs {
+    if (shape_analysis.value_id_to_shapeordata_.find(GetValueId(&value)) ==
+        shape_analysis.value_id_to_shapeordata_.end()) {
+      return symbol::ShapeOrDataDimExprs();
+    } else {
+      return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
+    }
   };
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewritedGenerateShapeOp(
           op.shape(), rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
+  shape_analysis.SetShapeOrDataForValue(&opt_generated_shape.value(),
+                                        ShapeOrDataDimExprs4Value(op.shape()));
   op->operand(1).set_source(opt_generated_shape.value());
   return true;
 }

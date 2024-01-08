@@ -55,6 +55,7 @@ bool SameInputOutputShape(
   const auto& shape = ShapeOrDataDimExprs4Value(expand_op.shape());
   const auto& out = ShapeOrDataDimExprs4Value(expand_op.out());
   if (x.data().has_value()) return false;
+  VLOG(1) << "";
   if (!shape.data().has_value()) return false;
   if (out.data().has_value()) return false;
   CHECK(shape.data().value() == out.shape());
@@ -73,14 +74,20 @@ bool EraseOneExpand(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
   for (auto expand_it = block->begin(); expand_it != block->end();
        ++expand_it) {
+    VLOG(1) << "###### EraseOneExpand op: " << expand_it->name();
     if (!expand_it->isa<paddle::dialect::ExpandOp>()) continue;
     auto expand = expand_it->dyn_cast<paddle::dialect::ExpandOp>();
+    VLOG(1) << "######### SameInputOutputShape Start";
     if (!SameInputOutputShape(expand, ShapeOrDataDimExprs4Value)) continue;
+    VLOG(1) << "######### SameInputOutputShape End";
     auto generate_shape_op =
         expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
     CHECK_NOTNULL(generate_shape_op);
+    VLOG(1) << "######### ReplaceAllUsesWithInput";
     ReplaceAllUsesWithInput(expand);
+    VLOG(1) << "######### EraseOp expand";
     rewriter.EraseOp(expand);
+    VLOG(1) << "######### EraseOp generate_shape_op";
     rewriter.EraseOp(generate_shape_op);
     return true;
   }
@@ -282,7 +289,9 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
 cinn::dialect::ir::GroupPtr CloneGroup(const cinn::dialect::ir::GroupPtr& group,
                                        pir::Block* block,
                                        pir::IrMapping* ir_mapping) {
-  return group->Clone(block, *ir_mapping);
+  auto new_group = group->Clone(block, *ir_mapping);
+  new_group->shape_analysis = group->shape_analysis;
+  return new_group;
 }
 
 void UpdateShapeAnalysis(
@@ -292,6 +301,10 @@ void UpdateShapeAnalysis(
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   for (const auto& [origin_val, new_val] : ir_mapping.value_map()) {
+    VLOG(1) << "#### UpdateShapeAnalysis origin_val: "
+            << pir::GetValueId(&origin_val);
+    VLOG(1) << "#### UpdateShapeAnalysis new_val: "
+            << pir::GetValueId(&new_val);
     const auto& shape_dim_expr =
         value_dim_exprs_list->at(value_to_dim_expr_idx.at(origin_val));
     const auto& origin_shape_or_data =
@@ -324,6 +337,12 @@ void SetLeafBlockByGroupView(
   auto origin_group_inputs = GetBlockOutsideInput(origin_group->ops);
   for (auto input : origin_group_inputs) {
     ir_mapping.Add(input, input);
+  }
+
+  VLOG(1) << "#### SetLeafBlockByGroupView origin_group->ops.size(): "
+          << origin_group->ops.size();
+  for (auto op : origin_group->ops) {
+    VLOG(1) << "##### op : " << op->name();
   }
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
@@ -473,6 +492,7 @@ pir::Operation* ProcessGroup(
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
       value_view.insert(op->result(i));
+      auto val = op->result(i);
     }
   });
   
@@ -484,14 +504,19 @@ pir::Operation* ProcessGroup(
   };
 
   // 1. construct broadcast tree
+  VLOG(1) << "construct broadcast tree";
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
   for (auto value : value_view) {
     const auto& shape_dim_expr = GetShapeOrDataDimExprs(value);
     const auto& data_shape = shape_dim_expr.data();
-    if (data_shape.has_value()) {
-      all_value_dim_exprs->push_back(data_shape.value());
+    VLOG(1) << "#### value : " << pir::GetValueId(&value) << " : "
+            << shape_dim_expr;
+    if (data_shape) {
+      VLOG(1) << "####### data_shape ";
+      all_value_dim_exprs->push_back(*data_shape);
     } else {
+      VLOG(1) << "####### shape ";
       all_value_dim_exprs->push_back(shape_dim_expr.shape());
     }
     value_to_dim_expr_idx[value] = all_value_dim_exprs->size() - 1;
@@ -503,6 +528,7 @@ pir::Operation* ProcessGroup(
   VLOG(4) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
 
   // 2. broadcast tree to condition op
+  VLOG(1) << "broadcast tree to condition op";
   auto group_inputs = GetBlockOutsideInput(group->ops);
   for (size_t i = 0; i < group_inputs.size(); ++i) {
     if (value_map.find(group_inputs[i]) != value_map.end()) {
@@ -518,8 +544,10 @@ pir::Operation* ProcessGroup(
     output_types.push_back(group->output_values[i].type());
   }
 
+  auto* origin_block = rewriter.block();
+
   std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr> group_map{
-      {rewriter.block(), group}};
+      {origin_block, group}};
   pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
                                                  group,
                                                  shape_analysis,
@@ -530,12 +558,22 @@ pir::Operation* ProcessGroup(
                                                  rewriter.block(),
                                                  &group_map);
 
+  if (cond_op) {
+    group_map.erase(origin_block);
+  }
+  auto* program = origin_block->parent_program();
+  VLOG(4) << "Before simply condition block: " << *program;
   // 3. simply every condition block
+  VLOG(1) << "simply condition block";
   for (auto& [block, group] : group_map) {
-    EraseExpandsInBlock(block, rewriter, [&shape_analysis](pir::Value value) {
+    VLOG(1) << "####### EraseExpandsInBlock: group@ " << group;
+    EraseExpandsInBlock(block, rewriter, [shape_analysis](pir::Value value) {
+      VLOG(1) << "GetShapeOrDataForValue for " << pir::GetValueId(&value);
       return shape_analysis->GetShapeOrDataForValue(&value);
     });
-    ReplaceExpandWithBroadcast(rewriter.ir_context(), block, shape_analysis);
+    VLOG(1) << "####### ReplaceExpandWithBroadcast: group@ " << group;
+    ReplaceExpandWithBroadcast(
+        rewriter.ir_context(), block, group->shape_analysis);
 
     std::vector<pir::Operation*> group_new_ops;
     group_new_ops.reserve(block->size());
@@ -549,8 +587,10 @@ pir::Operation* ProcessGroup(
     group->ops = group_new_ops;
     group->ops_set = group_ops_set;
   }
+  VLOG(4) << "After simply condition block: " << *program;
 
   // 4. complie condition block to jit_kernel_op
+  VLOG(1) << "complie condition block to jit_kernel_op";
   // prepare attribute for jit_kernel_op
   auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, group_map);
   // create jit_kernel_op
