@@ -20,6 +20,7 @@ import math
 import os
 import sys
 import time
+import re
 
 import numpy as np
 
@@ -1317,25 +1318,12 @@ class FleetUtil:
                 ...     is_data_hourly_placed=False)
 
         """
-        assert (
-            "|" not in days
-            and ";" not in days
-            and "\\" not in days
-            and "/" not in days
-            and "(" not in days
-            and ")" not in days
-            and "&" not in days
-        ), r"days should not contain [|,;,\,/,(,),&]"
+        pattern = r'^\d+|{[0-9]+}|{[0-9]+\.\.[0-9]+}$'
+        if not re.fullmatch(pattern, str(days)):
+             raise Exception("days format is not right")
         days = os.popen("echo -n " + days).read().split(" ")
-        assert (
-            "|" not in hours
-            and ";" not in hours
-            and "\\" not in hours
-            and "/" not in hours
-            and "(" not in hours
-            and ")" not in hours
-            and "&" not in hours
-        ), r"hours should not contain [|,;,\,/,(,),&]"
+        if not re.fullmatch(pattern, str(hours)):
+             raise Exception("hours format is not right")
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)
