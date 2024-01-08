@@ -72,9 +72,10 @@ class PipelineFThenBPass(PipelinePassBase):
     def _partial_programs(self, program):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        dist_context = self.get_attr("dist_context")
         types = [FORWARD, BACKWARD, OPT]
         sub_program_list = _program_for_fthenb_and_1f1b(
-            program, enable_send_recv_overlap
+            program, dist_context, enable_send_recv_overlap
         )
         return types, sub_program_list
 
@@ -348,9 +349,10 @@ class Pipeline1F1BPass(PipelinePassBase):
     def _partial_programs(self, program):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        dist_context = self.get_attr("dist_context")
         types = [FORWARD, BACKWARD, OPT]
         sub_programs = _program_for_fthenb_and_1f1b(
-            program, enable_send_recv_overlap
+            program, dist_context, enable_send_recv_overlap
         )
 
         enable_backward_forward_overlap = self.get_attr(
@@ -453,10 +455,11 @@ class PipelineEager1F1BPass(PipelinePassBase):
     def _partial_programs(self, program):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        dist_context = self.get_attr("dist_context")
         # TODO: More function will be added later. Now it uses the same logic as FTthenB and 1F1B.
         types = [FORWARD, BACKWARD, OPT]
         sub_program_list = _program_for_fthenb_and_1f1b(
-            program, enable_send_recv_overlap
+            program, dist_context, enable_send_recv_overlap
         )
         return types, sub_program_list
 

@@ -410,7 +410,7 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
             _create_var(src_block, dst_block, output_varname, force_create)
 
 
-def _insert_sync_for_fthenb_1f1b(program, dist_context=None):
+def _insert_sync_for_fthenb_1f1b(program, dist_context):
     """
     This implementation refers to lots of Paddle/python/paddle/base/optimizer.py.
     The difference between this function with 'PipelineOptimizer' is that
@@ -590,14 +590,16 @@ def _is_fetch_op(op):
     return op.type in ["fetch", "fetch_v2"]
 
 
-def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
+def _program_for_fthenb_and_1f1b(
+    program, dist_context, enable_send_recv_overlap=False
+):
     """
     This implementation is for fthenb and 1f1b programs and is called in partial_programs function.
     """
     if enable_send_recv_overlap:
         _overlap_send_recv(program)
     else:
-        _insert_sync_for_fthenb_1f1b(program)
+        _insert_sync_for_fthenb_1f1b(program, dist_context)
 
     fwd_prog = Program()
     bwd_prog = Program()
