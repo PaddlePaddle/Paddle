@@ -64,18 +64,18 @@ bool InferSymbolicShapeElementWiseBinary(
       shape_analysis->value_id_to_shapeordata_[operand_source_1_id].shape()};
 
   if (shape_0.size() > shape_1.size()) {
-    for (int i = 0; i < shape_0.size() - shape_1.size(); i++) {
+    for (size_t i = 0; i < shape_0.size() - shape_1.size(); i++) {
       shape_1.emplace(shape_1.begin(), 1);
     }
   } else {
-    for (int i = 0; i < shape_1.size() - shape_0.size(); i++) {
+    for (size_t i = 0; i < shape_1.size() - shape_0.size(); i++) {
       shape_0.emplace(shape_0.begin(), 1);
     }
   }
 
   std::vector<symbol::DimExpr> shapes;
   symbol::DimExprBuilder builder{nullptr};
-  for (int i = 0; i < shape_0.size(); i++) {
+  for (size_t i = 0; i < shape_0.size(); i++) {
     shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
   }
 
