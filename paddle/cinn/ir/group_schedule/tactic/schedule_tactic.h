@@ -58,9 +58,8 @@ struct BucketInfo {
 
 struct ScheduleContext {
   std::unordered_set<std::string> output_names;
-  ScheduleBlockNode* global_master;
-  IterativeSpaceInfo iter_space_info;
   Target target;
+  IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
 };
 

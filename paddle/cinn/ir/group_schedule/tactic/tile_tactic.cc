@@ -22,6 +22,7 @@ void TileTactic::Init(ScheduleContext* context) {
   context_ = context;
   // fake strategy
   auto GetFirstFactor = [](int num) {
+    if (num == 1) return 1;
     int factor = 1;
     for (int i = num - 1; i >= 1; --i) {
       if (num % i == 0) {
@@ -32,6 +33,8 @@ void TileTactic::Init(ScheduleContext* context) {
 
   bool has_rb_iter = !context_->iter_space_info.rb_space.empty();
   bool has_sp_iter = !context_->iter_space_info.sp_space.empty();
+  VLOG(6) << "has_sp_iter = " << has_sp_iter
+          << ", has_rb_iter = " << has_rb_iter;
   context_->iter_space_info.rb_space.clear();
   context_->iter_space_info.sp_space.clear();
 
@@ -40,20 +43,50 @@ void TileTactic::Init(ScheduleContext* context) {
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(context_->bucket_info.sp_lower_bound / sp_factor),
         IterativeSpaceInfo::AxisType::kCudaBlockX);
+    VLOG(6) << "sp_space: <"
+            << std::get<0>(context_->iter_space_info.sp_space.back())
+            << ", AxisType["
+            << static_cast<int>(
+                   std::get<1>(context_->iter_space_info.sp_space.back()))
+            << "]>";
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(sp_factor),
         has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaThreadY
                     : IterativeSpaceInfo::AxisType::kCudaThreadX);
+    VLOG(6) << "sp_space: <"
+            << std::get<0>(context_->iter_space_info.sp_space.back())
+            << ", AxisType["
+            << static_cast<int>(
+                   std::get<1>(context_->iter_space_info.sp_space.back()))
+            << "]>";
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kSerial);
+    VLOG(6) << "sp_space: <"
+            << std::get<0>(context_->iter_space_info.sp_space.back())
+            << ", AxisType["
+            << static_cast<int>(
+                   std::get<1>(context_->iter_space_info.sp_space.back()))
+            << "]>";
   }
 
   if (has_rb_iter) {
     context_->iter_space_info.rb_space.emplace_back(
         ir::Expr(context_->bucket_info.rb_lower_bound),
         IterativeSpaceInfo::AxisType::kCudaThreadX);
+    VLOG(6) << "rb_space: <"
+            << std::get<0>(context_->iter_space_info.rb_space.back())
+            << ", AxisType["
+            << static_cast<int>(
+                   std::get<1>(context_->iter_space_info.rb_space.back()))
+            << "]>";
     context_->iter_space_info.rb_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kSerial);
+    VLOG(6) << "rb_space: <"
+            << std::get<0>(context_->iter_space_info.rb_space.back())
+            << ", AxisType["
+            << static_cast<int>(
+                   std::get<1>(context_->iter_space_info.rb_space.back()))
+            << "]>";
   }
 }
 

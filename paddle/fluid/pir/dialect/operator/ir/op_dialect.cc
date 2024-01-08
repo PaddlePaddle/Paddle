@@ -44,21 +44,25 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    symbol::ShapeOrDataDimExprs value_shape;
+    std::vector<symbol::DimExpr> shapes;
+    std::vector<symbol::DimExpr> data;
 
-    // for (auto operand_source : op->operands_source()) {
-    //   std::string operand_source_id = pir::GetValueId(&operand_source);
-    //   auto source_shape_vec =
-    //       shape_analysis->value_id_to_shapeordata_[operand_source_id];
-    //   for (int i = 0; i < source_shape_vec.size(); i++) {
-    //     value_shape.second.emplace_back(source_shape_vec[i]);
-    //   }
-    // }
+    for (auto operand_source : op->operands_source()) {
+      std::string operand_source_id = pir::GetValueId(&operand_source);
+      auto source_data_p =
+          shape_analysis->value_id_to_shapeordata_[operand_source_id].data();
+      auto source_shape_vec =
+          source_data_p.value_or(std::vector<symbol::DimExpr>{});
+      for (size_t i = 0; i < source_shape_vec.size(); i++) {
+        data.emplace_back(source_shape_vec.at(i));
+      }
+    }
 
     auto res = op->result(0);
     auto res_id = pir::GetValueId(&res);
 
-    shape_analysis->value_id_to_shapeordata_[res_id] = value_shape;
+    symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+    shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
     return true;
   }
 
