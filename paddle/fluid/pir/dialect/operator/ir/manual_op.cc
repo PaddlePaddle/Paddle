@@ -2450,7 +2450,6 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
              input_values.size());
   pir::Value array_ = input_values[0];
   pir::Value x_ = input_values[1];
-  pir::Value i_ = input_values[2];
 
   VLOG(4) << "Builder construction outputs";
   paddle::dialect::DenseTensorArrayType array_type =

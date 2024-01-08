@@ -57,7 +57,7 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
 
   std::vector<pir::Type> InferMeta(const std::vector<pir::Value> &input_values,
                                    const pir::AttributeMap &attributes) {
-    impl_->infer_meta_by_value_(input_values, attributes);
+    return impl_->infer_meta_by_value_(input_values, attributes);
   }
 
  private:
