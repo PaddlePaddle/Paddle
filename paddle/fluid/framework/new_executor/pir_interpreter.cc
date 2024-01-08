@@ -1256,7 +1256,8 @@ paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
     bool need_fetch,
-    bool enable_job_schedule_profiler) {
+    bool enable_job_schedule_profiler,
+    bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   auto FeedInput = [&] {
@@ -1319,6 +1320,12 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (switch_stream) {
+      BuildInstruction();
+      VLOG(4) << "Done BuildInstruction";
+    }
+#endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
@@ -1351,7 +1358,8 @@ paddle::framework::FetchList PirInterpreter::Run(
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool need_fetch,
                               bool enable_job_schedule_profiler,
-                              bool enable_op_profiling) {
+                              bool enable_op_profiling,
+                              bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   if (enable_op_profiling) {
@@ -1402,6 +1410,12 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (switch_stream) {
+      BuildInstruction();
+      VLOG(4) << "Done BuildInstruction";
+    }
+#endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&

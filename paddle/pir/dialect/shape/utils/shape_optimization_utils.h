@@ -65,9 +65,6 @@ class IR_API SymbolicDimMgr {
  public:
   explicit SymbolicDimMgr(ModuleOp m);
 
-  // Loads pre-defined SymbolicDimOp ops from the module this mgr runs on.
-  bool Load();
-
   // Create a new symbolicDim instance owned by this mgr.
   SymbolicDimOp NewSymbolicDim(const std::string& name = {});
 
@@ -117,16 +114,11 @@ class IR_API SymbolicDimMgr {
   bool MapSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
                                   const SymbolicDimProduct& rhs);
 
-  // Saves the updated shape constraint IR
-  bool Save();
-
   // retuns the SymbolTable.
   SymbolTable& symbolTable() { return symbol_table_; }
 
  private:
   const std::string GetNextName();
-  bool SaveShapeConstraintGraph();
-  bool LoadShapeConstraintGraph();
   bool UpdateProductEqualityMap();
   bool IsMultipleOfKnownSymbolicDimProductEqualPair(
       const SymbolicDimProduct& lhs, const SymbolicDimProduct& rhs);
