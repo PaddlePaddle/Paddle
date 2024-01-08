@@ -2441,7 +2441,7 @@
   outputs :
     out : Out
 
-- op : push_sparse_v2
+- op : pull_sparse_v2
   inputs :
     { x : Ids, W : w}
   outputs :

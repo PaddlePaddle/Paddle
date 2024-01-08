@@ -594,6 +594,13 @@
     func : prod_grad
   composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
 
+- backward_op : push_sparse_v2
+  forward : pull_sparse_v2(Tensor[] ids, Tensor[] w, int embeddingdim, int tableid, str accessorclass, str ctrlabelname, int paddingid, bool scalesparsegrad, str[] inputnames, bool is_distributed) -> Tensor[](out){ids.size()}
+  args : (Tensor[] ids, Tensor[] out, Tensor[] w)
+  output : Tensor[](out){ids.size()}
+  kernel :
+    func : push_sparse_v2
+
 - backward_op : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int repeats, int axis)

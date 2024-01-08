@@ -22,7 +22,7 @@ from paddle.base.layer_helper import LayerHelper
 
 class TestPullSparseV2OpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
-        self.op_type = "push_sparse_v2"
+        self.op_type = "pull_sparse_v2"
         ids = paddle.ones(shape=(100, 2, 3), dtype='float32')
         w = paddle.ones(shape=(100, 2, 3), dtype='float32')
         out = paddle.ones(shape=(100, 2, 3), dtype='float32')
