@@ -134,8 +134,8 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
 #if IS_TRT_VERSION_GE(6000)
 
 #if IS_TRT_VERSION_GE(8500)
-  engine_->context()->setInputShape(x.c_str(), nvinfer1::Dims2{8, 32});
-  engine_->context()->setInputShape(shape.c_ste(), shape_dim);
+  engine_->context()->setInputShape("input", nvinfer1::Dims2{8, 32});
+  engine_->context()->setInputShape("shape", shape_dim);
 #else
   engine_->context()->setBindingDimensions(0, nvinfer1::Dims2{8, 32});
   engine_->context()->setBindingDimensions(1, shape_dim);
