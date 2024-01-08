@@ -23,12 +23,12 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         self._default_envs = {}
         self._changeable_envs = {"device_num": ["1", "2", "4", "8"]}
 
-    def test_save_load_state_dict(self):
+    def test_reshard(self):
         # save with 1 device
         ckpt_path = tempfile.TemporaryDirectory()
         super().setUp(num_of_devices=1, timeout=120, nnode=1)
         self.run_test_case(
-            "save_state_dict.py",
+            "semi_auto_save_state_dict.py",
             user_defined_envs={"device_num": "1", "ckpt_path": ckpt_path.name},
         )
 
@@ -44,7 +44,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
                 nnode=1,
             )
             self.run_test_case(
-                "load_state_dict.py",
+                "semi_auto_load_state_dict.py",
                 user_defined_envs=envs,
             )
         ckpt_path.cleanup()
@@ -53,7 +53,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         ckpt_path = tempfile.TemporaryDirectory()
         super().setUp(num_of_devices=4, timeout=120, nnode=1)
         self.run_test_case(
-            "save_state_dict.py",
+            "semi_auto_save_state_dict.py",
             user_defined_envs={"device_num": "4", "ckpt_path": ckpt_path.name},
         )
         # load with 1, 2, 4, 8 devices
@@ -68,10 +68,30 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
                 nnode=1,
             )
             self.run_test_case(
-                "load_state_dict.py",
+                "semi_auto_load_state_dict.py",
                 user_defined_envs=envs,
             )
         ckpt_path.cleanup()
+
+    def test_mutual_load_between_dynamic_and_static(self):
+        changeable_envs = {"device_num": ["2"]}
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, changeable_envs
+        )
+
+        for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
+            super().setUp(
+                num_of_devices=int(envs["device_num"]),
+                timeout=180,
+                nnode=1,
+            )
+            self.run_test_case(
+                "semi_auto_parallel_mutual_load_between_dynamic_and_static.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path.cleanup()
 
 
 if __name__ == '__main__':

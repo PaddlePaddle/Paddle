@@ -344,6 +344,7 @@
   kernel :
     func : hardswish_grad
   inplace : (out_grad -> x_grad)
+  composite : hardswish_grad(x, out_grad, x_grad)
 
 - backward_op : hsigmoid_loss_grad
   forward : hsigmoid_loss (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
