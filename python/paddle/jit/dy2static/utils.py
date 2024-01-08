@@ -1295,6 +1295,6 @@ def cuda_pinned_tensors_move_to_excepted_place(inputs):
                 and value.stop_gradient
                 and value.place._equals(cuda_pinned_place)
             ):
-                var = value._copy_to(expected_place, False)
+                var = value._copy_to(expected_place, True)
                 var.stop_gradient = True
                 var._share_buffer_to(value)
