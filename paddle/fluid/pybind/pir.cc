@@ -71,6 +71,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -85,7 +86,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #endif
 
 namespace py = pybind11;
