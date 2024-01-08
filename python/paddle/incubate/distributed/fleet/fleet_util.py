@@ -1320,10 +1320,10 @@ class FleetUtil:
         """
         pattern = r'^\d+|{[0-9]+}|{[0-9]+\.\.[0-9]+}$'
         if not re.fullmatch(pattern, str(days)):
-             raise Exception("days format is not right")
+            raise Exception("days format is not right")
         days = os.popen("echo -n " + days).read().split(" ")
         if not re.fullmatch(pattern, str(hours)):
-             raise Exception("hours format is not right")
+            raise Exception("hours format is not right")
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)
