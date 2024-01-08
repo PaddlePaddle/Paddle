@@ -903,10 +903,8 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  VLOG(3) << "group->shape_analysis:" << group->shape_analysis;
-  if (group->shape_analysis != nullptr) {
-    const auto& sym_vec =
-        group->shape_analysis->GetShapeOrDataForValue(&value).shape();
+  if (!group->value_to_shape_or_data_exprs.empty()) {
+    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
     std::vector<ir::Dim> sym_shape;
     for (auto& sym : sym_vec) {
       sym_shape.emplace_back(ir::Dim(input_id, sym));
@@ -984,9 +982,8 @@ void OpLowererImpl::CollectOutputInfo(
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    if (group->shape_analysis != nullptr) {
-      auto sym_vec =
-          group->shape_analysis->GetShapeOrDataForValue(&out_value).shape();
+    if (!group->value_to_shape_or_data_exprs.empty()) {
+      auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
       std::vector<ir::Dim> sym_shape;
       for (auto& sym : sym_vec) {
         sym_shape.emplace_back(ir::Dim(output_id, sym));
