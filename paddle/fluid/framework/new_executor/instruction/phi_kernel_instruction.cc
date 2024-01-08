@@ -74,6 +74,26 @@ PhiKernelInstruction::PhiKernelInstruction(
       SetSchedulingPriority(1);
     }
   }
+  if (op_attributes.count("force_record_event") != 0) {
+    SetForceRecordEvent(op_attributes.at("force_record_event")
+                            .dyn_cast<pir::BoolAttribute>()
+                            .data());
+  }
+  if (op_attributes.count("event_to_record") != 0) {
+    SetEventToRecordInfo(op_attributes.at("event_to_record")
+                             .dyn_cast<pir::StrAttribute>()
+                             .AsString());
+  }
+  if (op_attributes.count("events_to_wait") != 0) {
+    std::vector<std::string> events_to_wait;
+    auto array_attr = op_attributes.at("events_to_wait")
+                          .dyn_cast<pir::ArrayAttribute>()
+                          .AsVector();
+    for (auto& attr : array_attr) {
+      events_to_wait.push_back(attr.dyn_cast<pir::StrAttribute>().AsString());
+    }
+    SetEventsToWaitInfo(events_to_wait);
+  }
   VLOG(6) << "finish process dist attributes";
 
   SetKernelType(AnalyseOpFuncType(op, place));
@@ -90,7 +110,8 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
-      yaml_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
+      yaml_interface->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
@@ -156,12 +177,14 @@ PhiKernelInstruction::~PhiKernelInstruction() {
 }
 
 void PhiKernelInstruction::Run() {
+  VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
-  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
+  VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
+  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   (*(phi_kernel_))(&(kernel_context_));
-  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
+  VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
 
 }  // namespace framework

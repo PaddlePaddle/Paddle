@@ -20,6 +20,7 @@
 
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/iterator.h"
+#include "paddle/pir/core/visitors.h"
 
 namespace pir {
 
@@ -54,7 +55,6 @@ class IR_API Region {
 
   Block &front() { return *blocks_.front(); }
   Block &back() { return *blocks_.back(); }
-
   const Block &front() const { return *blocks_.front(); }
   const Block &back() const { return *blocks_.back(); }
 
@@ -64,6 +64,12 @@ class IR_API Region {
   Iterator insert(ConstIterator position, Block *block);
   Iterator erase(ConstIterator position);
   void clear();
+  void swap(Region &&other);
+
+  /// Operation Walkers, walk the operations in this region. The callback method
+  /// is called for each nested region, block or operation,
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(FuncT &&callback);
 
   // take the last block of region.
   // if region is empty, return nullptr;
@@ -71,7 +77,6 @@ class IR_API Region {
   void TakeBody(Region &&other);
 
   Operation *GetParent() const { return parent_; }
-  void set_parent(Operation *parent) { parent_ = parent; }
   // return the program which contains this region.
   // if region is not in a program, return nullptr.
   Program *parent_program() const;
@@ -79,7 +84,7 @@ class IR_API Region {
   IrContext *ir_context() const;
 
  private:
-  Operation *parent_{nullptr};  // not owned
-  std::list<Block *> blocks_;   // owned
+  Operation *const parent_{nullptr};  // not owned
+  std::list<Block *> blocks_;         // owned
 };
 }  // namespace pir

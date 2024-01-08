@@ -16,7 +16,7 @@
 
 #include <cstdint>
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class IrValue;
@@ -42,7 +42,8 @@ class ShapeInterface final {
 class DtypeInterface final {
  public:
   bool operator==(const DtypeInterface& other) const;
-  IrDtype dtype() const;
+
+  IrDtype get() const;
 
  private:
   explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
@@ -59,4 +60,4 @@ class TensorInterface {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

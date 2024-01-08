@@ -186,7 +186,7 @@ inline void Generator::print_state_info() {
 Generator::Generator() {
   auto seed = GetRandomSeed();
   current_index = states_.size();
-  states_.emplace_back(seed);
+  states_.emplace_back(-1, seed);
   print_state_info();
 }
 
@@ -203,12 +203,12 @@ Generator::Generator(uint64_t seed, int64_t device_id) {
   print_state_info();
 }
 
-phi::Generator::GeneratorState Generator::GetState() { return state().clone(); }
+phi::Generator::GeneratorState Generator::GetState() { return state(); }
 
 void Generator::SetState(const phi::Generator::GeneratorState& state) {
   std::lock_guard<std::mutex> lock(mu_);
   if (current_index < states_.size())
-    states_[current_index] = state.clone();
+    states_[current_index] = state;
   else
     PADDLE_THROW(phi::errors::NotFound("Generator index is not found"));
   print_state_info();

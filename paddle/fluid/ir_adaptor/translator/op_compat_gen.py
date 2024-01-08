@@ -127,6 +127,16 @@ def OpNameNormalizerInitialization(
                 )
 
     # special mapping list
+    op_name_mappings["deformable_conv_v1"] = "deformable_conv"
+    op_name_mappings["deformable_conv_v1_grad"] = "deformable_conv_grad"
+    op_arg_name_mappings["deformable_conv_v1"] = {
+        "x": "Input",
+        "offset": "Offset",
+        "filter": "Filter",
+        "mask": "Mask",
+        "out": "Output",
+    }
+
     op_arg_name_mappings["set_value_grad"]["values_grad"] = "ValueTensor@GRAD"
     op_arg_name_mappings["fetch"] = {"x": "X"}
     op_arg_name_mappings["elementwise_add_grad_grad"] = {
@@ -146,6 +156,13 @@ def OpNameNormalizerInitialization(
         "grad_scale_grad": "DDScale",
         "grad_bias_grad": "DDBias",
         "grad_out": "DY",
+    }
+    op_arg_name_mappings["matmul"] = {"x": "X", "y": "Y", "out": "Out"}
+
+    op_arg_name_mappings["matrix_rank"] = {
+        "x": "X",
+        "atol_tensor": "TolTensor",
+        "out": "Out",
     }
 
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")

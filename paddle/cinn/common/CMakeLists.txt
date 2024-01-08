@@ -21,9 +21,11 @@ gather_srcs(
   union_find.cc
   python_interpreter_guard.cc
   nvgpu_dev_info.cc
-  integer_set.cc)
-
-message(STATUS "srcs: ${cinnapi_src}")
+  integer_set.cc
+  dim_expr_simplify.cc
+  dim_expr_converter.cc
+  broadcast_tree.cc
+  dim_expr_util.cc)
 
 cinn_cc_test(test_equation_graph_topo_walker SRCS
              equation_graph_topo_walker_test.cc DEPS gtest glog)
@@ -46,4 +48,12 @@ cinn_cc_test(test_fp16_bf16_host SRCS float16_bfloat16_host_test.cc DEPS gtest
 if(WITH_CUDA)
   cinn_nv_test(test_fp16_bf16_cuda SRCS float16_bfloat16_cuda_test.cu DEPS
                gtest glog)
+endif()
+if(NOT CINN_ONLY)
+  cinn_cc_test(dim_expr_util_test SRCS dim_expr_util_test.cc DEPS cinncore)
+  cinn_cc_test(dim_expr_simplify_test SRCS dim_expr_simplify_test.cc DEPS
+               cinncore)
+  cinn_cc_test(dim_expr_converter_test SRCS dim_expr_converter_test.cc DEPS
+               cinncore)
+  cinn_cc_test(broadcast_tree_test SRCS broadcast_tree_test.cc DEPS cinncore)
 endif()

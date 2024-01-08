@@ -1950,7 +1950,7 @@ class SpectralNorm(Layer):
 
     def forward(self, x):
         weight = x
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.spectral_norm(
                 weight,
                 self.weight_u,

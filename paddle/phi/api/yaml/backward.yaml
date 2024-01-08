@@ -479,6 +479,7 @@
   output : Tensor(input_grad)
   infer_meta :
     func : CrossEntropyWithSoftmaxGradInferMeta
+    spmd_rule : CrossEntropyWithSoftmaxGradInferSpmd
   kernel :
     func : cross_entropy_with_softmax_grad
     data_type : loss_grad
@@ -921,6 +922,16 @@
   kernel :
     func : frame_grad
 
+- backward_op : gammaln_grad
+  forward : gammaln(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : gammaln_grad
+
 - backward_op : gather_grad
   forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
@@ -1096,6 +1107,17 @@
     param : [x]
   kernel :
     func : i1e_grad
+
+- backward_op : identity_loss_grad
+  forward : identity_loss (Tensor x, int reduction) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int reduction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : IdentityLossGradInferMeta
+  kernel :
+    func : identity_loss_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
@@ -2591,8 +2613,8 @@
   no_need_buffer : input
 
 - backward_op : weight_only_linear_grad
-  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch) -> Tensor(out)
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch)
+  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch, int group_size) -> Tensor(out)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch, int group_size)
   output : Tensor(x_grad)
   infer_meta :
     func : WeightOnlyLinearGradInferMeta

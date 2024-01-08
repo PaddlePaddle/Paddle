@@ -175,9 +175,10 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   /// \brief Run the prediction engine
   ///
+  /// \param switch_stream Whether the stream is switched
   /// \return Whether the function executed successfully
   ///
-  bool ZeroCopyRun() override;
+  bool ZeroCopyRun(bool switch_stream = false) override;
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.

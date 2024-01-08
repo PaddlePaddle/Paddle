@@ -18,6 +18,7 @@ from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
+import paddle.distributed as dist
 from paddle import _C_ops
 from paddle.base import core, framework, unique_name
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -671,6 +672,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
+        src_mesh = params_grads[0][0].process_mesh
+
         for p, g in params_grads:
             if g is None:
                 continue
@@ -687,6 +690,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
+
+            # if the gradient mesh is not equal to src mesh
+            # do reshard to get the result of squared_l2 from other pp stage mesh
+            if src_mesh is not None and g.process_mesh != src_mesh:
+                sum_square = dist.reshard(
+                    sum_square, src_mesh, sum_square.placements
+                )
+
             if (
                 sum_square.dtype == core.VarDesc.VarType.FP16
                 or sum_square.dtype == core.VarDesc.VarType.BF16
@@ -723,10 +734,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
         if len(sum_square_list) > 0:
             global_norm_var_fp64 = async_add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
+
         global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+            shape=[], dtype=sum_dtype, fill_value=self.clip_norm
         )
 
         need_clip = False
@@ -754,6 +766,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
+                if clip_input.process_mesh != g.process_mesh:
+                    clip_input = paddle.distributed.reshard(
+                        clip_input, g.process_mesh, clip_input.placements
+                    )
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:

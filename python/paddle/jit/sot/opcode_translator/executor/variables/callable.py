@@ -25,6 +25,7 @@ import paddle
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    get_static_function,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
@@ -177,6 +178,13 @@ class UserDefinedFunctionVariable(FunctionVariable):
             return result
 
         checkpoint = self.graph.save_memo()
+
+        static_function = get_static_function(self.value, "inline_call")
+        if static_function is not None:
+            output = self.graph.call_ast(static_function, *args, **kwargs)
+            if output is not None:
+                return output
+
         try:
             inline_executor = OpcodeInlineExecutor(self, *args, **kwargs)
             with EventGuard(

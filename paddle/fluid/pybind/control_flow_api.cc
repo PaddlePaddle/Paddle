@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -35,8 +36,12 @@
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
+using paddle::dialect::AssertOp;
+using paddle::dialect::HasElementsOp;
 using paddle::dialect::IfOp;
 using paddle::dialect::WhileOp;
+using paddle::pybind::PyIfOp;
+using paddle::pybind::PyWhileOp;
 using pir::Block;
 using pir::Builder;
 using pir::Operation;
@@ -48,8 +53,6 @@ using pir::Type;
 using pir::Value;
 using pir::YieldOp;
 using pybind11::return_value_policy;
-
-using paddle::pybind::PyIfOp;
 namespace {
 
 void BindIfOp(py::module* m) {
@@ -76,54 +79,63 @@ void BindIfOp(py::module* m) {
 }
 
 void BindWhileOp(py::module* m) {
-  m->def("build_while_op", [](Value cond, py::list loop_vars) {
+  m->def("build_while_op", [](Value cond, py::list loop_vars) -> PyWhileOp {
     std::vector<Value> loop_values;
     for (auto var : loop_vars) {
       loop_values.push_back(var.cast<Value>());
     }
-    return ApiBuilder::Instance().GetBuilder()->Build<WhileOp>(cond,
-                                                               loop_values);
+    return PyWhileOp(
+        ApiBuilder::Instance().GetBuilder()->Build<WhileOp>(cond, loop_values));
   });
-  py::class_<WhileOp> while_op(*m, "WhileOp", R"DOC(
+  py::class_<PyWhileOp> while_op(*m, "WhileOp", R"DOC(
     WhileOp in python api.
   )DOC");
-  while_op.def("body", &WhileOp::body, return_value_policy::reference)
-      .def("as_operation", &WhileOp::operation, return_value_policy::reference);
+  while_op.def("body", &PyWhileOp::body, return_value_policy::reference)
+      .def(
+          "as_operation", &PyWhileOp::operation, return_value_policy::reference)
+      .def("block_arguments",
+           &WhileOp::block_args,
+           return_value_policy::reference)
+      .def("optimize_update", &PyWhileOp::OptimizeUpdate);
 }
 
-void GetUsedExternalValueImpl(
-    std::unordered_set<Value>& defined_values,  // NOLINT
-    std::vector<Value>& used_values,            // NOLINT
-    const Operation& op) {
-  for (size_t index = 0; index < op.num_operands(); ++index) {
-    Value value = op.operand_source(index);
-    if (defined_values.find(value) == defined_values.end()) {
-      used_values.push_back(value);
-      defined_values.insert(value);
-    }
-  }
-  for (auto& region : op) {
-    for (auto& block : region) {
-      for (auto value : block.args()) {
-        defined_values.insert(value);
-      }
-    }
-    for (auto& block : region) {
-      for (auto& inner_op : block) {
-        GetUsedExternalValueImpl(defined_values, used_values, inner_op);
-      }
-    }
-  }
-  for (size_t index = 0; index < op.num_results(); ++index) {
-    defined_values.insert(op.result(index));
-  }
+void BindAssertOp(py::module* m) {
+  m->def("build_assert_op",
+         [](Value cond, const std::vector<Value>& data, int64_t summarize) {
+           auto data_combine_op =
+               ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(data);
+           return ApiBuilder::Instance().GetBuilder()->Build<AssertOp>(
+               cond, data_combine_op.out(), summarize);
+         });
+  py::class_<AssertOp> assert_op(*m, "AssertOp", R"DOC(
+    AssertOp in python api.
+  )DOC");
+  assert_op.def(
+      "as_operation", &AssertOp::operation, return_value_policy::reference);
 }
 
-std::vector<Value> GetUsedExternalValue(const Operation& op) {
-  std::unordered_set<Value> defined_values{nullptr};
-  std::vector<Value> used_values;
-  GetUsedExternalValueImpl(defined_values, used_values, op);
-  return used_values;
+Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
+  PADDLE_ENFORCE(fwd_op.isa<WhileOp>(),
+                 phi::errors::PreconditionNotMet(
+                     "param op of BuildHasElementsOp must be while op."));
+  auto fwdop = fwd_op.dyn_cast<WhileOp>();
+  TuplePushOp push_op;
+  for (auto iter = fwdop.body().rbegin(); iter != fwdop.body().rend(); ++iter) {
+    if (iter->isa<TuplePushOp>()) {
+      push_op = iter->dyn_cast<TuplePushOp>();
+      PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
+                        false,
+                        phi::errors::InvalidArgument(
+                            "The last container in foward while op must used "
+                            "after construct while_grad op"));
+      break;
+    }
+  }
+  auto new_cond = ApiBuilder::Instance()
+                      .GetBuilder()
+                      ->Build<HasElementsOp>(push_op.container())
+                      .out();
+  return new_cond;
 }
 
 void BuildPipeForBlock(Block* block) {
@@ -173,7 +185,7 @@ PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
 
 void PyIfOp::UpdateOutput() {
   PADDLE_ENFORCE_NOT_NULL(
-      *this,
+      operation_,
       paddle::platform::errors::InvalidArgument(
           "The if_op in PyIfOp used to update output can't be nullptr"));
   auto block = parent();
@@ -187,12 +199,77 @@ void PyIfOp::UpdateOutput() {
       cond(), true_region().TakeBack(), false_region().TakeBack());
   block->Assign(iter, new_if_op);
   IfOp::operator=(new_if_op);
-  VerifyRegion();
+  operation_->Verify();
+}
+
+PyWhileOp::PyWhileOp(WhileOp while_op) : WhileOp(while_op) {
+  PADDLE_ENFORCE_NOT_NULL(
+      operation_,
+      paddle::platform::errors::InvalidArgument(
+          "The while_op used to construct PyWhileOp can't be nullptr"));
+}
+
+std::vector<Value> PyWhileOp::OptimizeUpdate() {
+  PADDLE_ENFORCE_NOT_NULL(operation_,
+                          paddle::platform::errors::InvalidArgument(
+                              "The while_op in PyWhileOp used to remove unused "
+                              "loop vars can't be nullptr"));
+  auto parent_block = parent();
+  PADDLE_ENFORCE_NOT_NULL(
+      parent_block,
+      paddle::platform::errors::InvalidArgument(
+          "The parent block of while_op which used to remove "
+          "unused loop vars can't be nullptr"));
+
+  operation_->Verify();
+  auto& body_block = body();
+  auto yield_op = body_block.back().dyn_cast<YieldOp>();
+  auto operand_num = operation_->num_operands();
+  bool no_change = true;
+  std::vector<size_t> index_vec;
+  std::vector<Value> res, new_input, new_yield_val{yield_op.operand_source(0)};
+  for (uint32_t i = 0; i < num_results(); ++i) {
+    res.push_back(result(i));
+  }
+  for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
+       ++operand_index) {
+    if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
+      body_block.arg(arg_index).ReplaceAllUsesWith(
+          operand_source(operand_index));
+      body_block.EraseArgument(arg_index);
+      no_change = false;
+      res[operand_index - 1u] = operand_source(operand_index);
+    } else {
+      new_input.push_back(operand_source(operand_index));
+      index_vec.push_back(operand_index - 1u);
+      new_yield_val.push_back(yield_op.operand_source(operand_index));
+      ++arg_index;
+    }
+  }
+  if (no_change) return res;
+  Block::Iterator iter = **this;
+  Builder builder(ir_context(), false);
+  auto new_while_op = builder.Build<WhileOp>(cond(), new_input, false);
+  new_while_op->region(0).swap(std::move(operation_->region(0)));
+  parent_block->Assign(iter, new_while_op);
+  WhileOp::operator=(new_while_op);
+  body_block.pop_back();
+  builder.SetInsertionPointToBlockEnd(&body_block);
+  builder.Build<YieldOp>(new_yield_val);
+  operation_->Verify();
+  for (size_t result_index = 0; result_index < num_results(); ++result_index) {
+    res[index_vec[result_index]] = result(result_index);
+  }
+  return res;
 }
 
 void BindControlFlowApi(py::module* m) {
-  m->def("get_used_external_value", GetUsedExternalValue);
+  m->def("get_used_external_value",
+         [](const Operation& op) { return pir::GetUsedExternalValue(op); });
+  m->def("get_used_external_value",
+         [](const Block& block) { return pir::GetUsedExternalValue(block); });
   m->def("build_pipe_for_block", BuildPipeForBlock);
+  m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {
     std::vector<Value> input_values;
     for (auto input : inputs) {
@@ -200,9 +277,10 @@ void BindControlFlowApi(py::module* m) {
     }
     ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
   });
-
   BindIfOp(m);
   BindWhileOp(m);
+  BindAssertOp(m);
 }
+
 }  // namespace pybind
 }  // namespace paddle

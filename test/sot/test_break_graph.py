@@ -164,5 +164,26 @@ class TestBreakGraphResumePassNull(TestCaseBase):
         self.assert_results(break_graph_resume_pass_null, x, y)
 
 
+class MyLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.head = paddle.nn.Linear(3, 10)
+
+    def forward_features(self, x):
+        paddle.jit.sot.psdb.breakgraph()
+        return x
+
+    def forward(self, x):
+        x = self.forward_features(x)
+        return self.head(x)
+
+
+class TestBreakGraphInLayer(TestCaseBase):
+    def test_break_graph_in_layer(self):
+        x = paddle.rand([2, 3], dtype=paddle.float32)
+        net = MyLayer()
+        self.assert_results(net.forward, x)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -358,6 +358,11 @@ OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
   return *this;
 }
 
+OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
+  infer_spmd_fn_ = std::forward<InferSpmdFunc>(func);
+  return *this;
+}
+
 #ifdef PADDLE_WITH_TENSORRT
 OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func) {
   trt_infer_shape_fn_ = std::forward<TrtGetOutputDimsFunc>(func);
@@ -405,6 +410,11 @@ const InferShapeFunc& OpMetaInfoHelper::GetInferShapeFn(
 const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
     const paddle::OpMetaInfo& info) {
   return info.infer_dtype_fn_;
+}
+
+const InferSpmdFunc& OpMetaInfoHelper::GetInferSpmdFn(
+    const paddle::OpMetaInfo& info) {
+  return info.infer_spmd_fn_;
 }
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -556,6 +566,11 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
+  info_ptr_->SetInferSpmdFn(std::forward<InferSpmdFunc>(func));
   return *this;
 }
 

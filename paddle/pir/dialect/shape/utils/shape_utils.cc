@@ -14,7 +14,6 @@
 
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include <string>
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 namespace pir {
 
 bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
@@ -48,7 +47,6 @@ bool ShapeAnalysis::IsProductEqual(
 
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
     : m_(m), mgr_(m) {
-  mgr_.Load();
   for (auto& op : m.block()) {
     auto tie_shape_op = op.dyn_cast<shape::TieShapeOp>();
     if (!tie_shape_op) continue;
@@ -67,9 +65,7 @@ ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
   }
 }
 
-ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {
-  // mgr_.Save();
-}
+ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {}
 
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
@@ -136,7 +132,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
 }
 
-const std::vector<shape::SymbolicDimOp>&
+std::vector<shape::SymbolicDimOp>&
 ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
     const Value& value) {
   if (value_to_sym_dims_.find(value) == value_to_sym_dims_.end()) {
@@ -145,6 +141,10 @@ ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
               .second);
   }
   return value_to_sym_dims_.at(value);
+}
+
+symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {
+  return symbol::DimExprBuilder(&constraints_);
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
@@ -163,6 +163,25 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   }
 
   return it->second;
+}
+
+std::string GetValueId(Value* val) {
+  auto op_id = val->defining_op()->id();
+  auto val_idx = val->dyn_cast<OpResult>().index();
+
+  return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
+}
+
+const symbol::ShapeOrDataDimExprs&
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value* val) {
+  auto val_id = GetValueId(val);
+  return value_id_to_shapeordata_[val_id];
+}
+
+void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
+    Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  auto val_id = GetValueId(val);
+  value_id_to_shapeordata_[val_id] = shape_or_data;
 }
 
 }  // namespace pir

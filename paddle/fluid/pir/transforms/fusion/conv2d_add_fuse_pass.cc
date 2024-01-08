@@ -29,10 +29,10 @@
 namespace {
 
 class Conv2dAddFusePattern
-    : public pir::drr::DrrPatternBase<Conv2dAddFusePattern> {
+    : public paddle::drr::DrrPatternBase<Conv2dAddFusePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &conv2d =
         pat.Op(paddle::dialect::Conv2dOp::name(),
                {{"strides", pat.Attr("strides")},
@@ -46,7 +46,7 @@ class Conv2dAddFusePattern
            {&pat.Tensor("conv2d_out")});
     pat.Tensor("add_out") = add(pat.Tensor("conv2d_out"), pat.Tensor("bias"));
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv2d_add_act = res.Op(
         paddle::dialect::FusedConv2dAddActOp::name(),
@@ -58,21 +58,21 @@ class Conv2dAddFusePattern
             {"groups", pat.Attr("groups")},
             {"data_format", pat.Attr("data_format")},
             {"activation",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
+             res.Attr([](const paddle::drr::MatchContext &match_ctx)
                           -> std::string { return "identity"; })},
             {"split_channels",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
+             res.Attr([](const paddle::drr::MatchContext &match_ctx)
                           -> std::vector<int> { return {}; })},
             {"exhaustive_search",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+             res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
                return false;
              })},
             {"workspace_size_MB",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> int {
+             res.Attr([](const paddle::drr::MatchContext &match_ctx) -> int {
                return 32;
              })},
             {"fuse_alpha",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+             res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
                return 0.0f;
              })},
         }});

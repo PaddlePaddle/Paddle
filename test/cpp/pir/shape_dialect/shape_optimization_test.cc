@@ -43,10 +43,6 @@ TEST(shape_optimization, shape_optimization_pass) {
 
   // 5 ConstantOp + 5 TensorDim + 2 TieShape + op0 + op1 + 1 funcOp == 15 Ops.
   EXPECT_EQ(program.block()->size(), 2u);
-
-  pir::SymbolicDimMgr mgr(program.module_op());
-  EXPECT_TRUE(mgr.Load());
-  EXPECT_TRUE(mgr.Save());
 }
 
 TEST(shape_optimization, expand_shape_of_op_pattern) {
@@ -69,10 +65,6 @@ TEST(shape_optimization, expand_shape_of_op_pattern) {
   pm.EnableIRPrinting();
   pm.AddPass(pir::CreateShapeOptimizationPass());
   pm.Run(&program);
-
-  pir::SymbolicDimMgr mgr(program.module_op());
-  EXPECT_TRUE(mgr.Load());
-  EXPECT_TRUE(mgr.Save());
 }
 
 TEST(shape_optimization, dim_of_shaped_type_op_interface_pattern) {
@@ -100,8 +92,4 @@ TEST(shape_optimization, dim_of_shaped_type_op_interface_pattern) {
   pm.EnableIRPrinting();
   pm.AddPass(pir::CreateShapeOptimizationPass());
   pm.Run(&program);
-
-  pir::SymbolicDimMgr mgr(program.module_op());
-  EXPECT_TRUE(mgr.Load());
-  EXPECT_TRUE(mgr.Save());
 }

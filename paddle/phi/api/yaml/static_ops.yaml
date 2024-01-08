@@ -90,7 +90,7 @@
   backward : assign_grad
 
 - op : assign_value
-  args : (int[] shape, DataType dtype, int[] bool_values = {}, float[] fp32_values = {}, double[] fp64_values = {}, int[] int32_values = {}, int64_t[] int64_values = {})
+  args : (int[] shape, DataType dtype, Scalar[] values = {})
   output : Tensor(out)
   infer_meta :
     func : AssignValueInferMeta

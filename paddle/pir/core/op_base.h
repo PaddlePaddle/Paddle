@@ -68,6 +68,11 @@ class IR_API OpBase {
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
 
+  template <typename T = Type>
+  T result_type(uint32_t index) const {
+    return operation()->result_type<T>(index);
+  }
+
   void VerifySig() {}
 
   void VerifyRegion() {}
@@ -82,6 +87,7 @@ class IR_API OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
+  using Base = OpTraitBase<ConcreteTrait>;
   explicit OpTraitBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }

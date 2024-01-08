@@ -147,6 +147,31 @@ static PyObject *static_api_create_array(PyObject *self,
   }
 }
 
+static PyObject *static_api_create_array_like(PyObject *self,
+                                              PyObject *args,
+                                              PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add create_array_like op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "create_array_like", 0);
+
+    // Parse Attributes
+    PyObject *value_obj = PyTuple_GET_ITEM(args, 1);
+    float value = CastPyArg2Float(value_obj, "create_array_like", 1);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::create_array_like(input, value);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_array_length(PyObject *self,
                                          PyObject *args,
                                          PyObject *kwargs) {
@@ -181,7 +206,7 @@ static PyObject *static_api_array_read(PyObject *self,
 
     PyObject *i_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value i;
-    if (PyObject_CheckIROpResult(i_obj)) {
+    if (PyObject_CheckIRValue(i_obj)) {
       i = CastPyArg2Value(i_obj, "array_read", 1);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_read", 1);
@@ -215,7 +240,7 @@ static PyObject *static_api_array_write_(PyObject *self,
     auto x = CastPyArg2Value(x_obj, "array_write_", 1);
     PyObject *i_obj = PyTuple_GET_ITEM(args, 2);
     pir::Value i;
-    if (PyObject_CheckIROpResult(i_obj)) {
+    if (PyObject_CheckIRValue(i_obj)) {
       i = CastPyArg2Value(i_obj, "array_write_", 2);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_write_", 2);
@@ -274,6 +299,65 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
   }
 }
 
+PyObject *static_api_add_n_array(PyObject *self,
+                                 PyObject *args,
+                                 PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add add_n_array op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *inputs_obj = PyTuple_GET_ITEM(args, 0);
+    auto inputs = CastPyArg2VectorOfValue(inputs_obj, "add_n", 0);
+
+    // Parse Attributes
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::add_n_array(inputs);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+static PyObject *static_api_slice_array_dense(PyObject *self,
+                                              PyObject *args,
+                                              PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add slice_array_dense op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "slice_array_dense", 0);
+
+    PyObject *starts_obj = PyTuple_GET_ITEM(args, 1);
+    pir::Value starts;
+    if (PyObject_CheckIROpResult(starts_obj)) {
+      starts = CastPyArg2Value(starts_obj, "slice_array_dense", 1);
+    } else if (PyObject_CheckIRVectorOfOpResult(starts_obj)) {
+      std::vector<pir::Value> starts_tmp =
+          CastPyArg2VectorOfValue(starts_obj, "slice_array_dense", 1);
+      starts = paddle::dialect::stack(starts_tmp, /*axis*/ 0);
+
+    } else {
+      std::vector<int64_t> starts_tmp =
+          CastPyArg2Longs(starts_obj, "slice_array_dense", 1);
+      starts = paddle::dialect::full_int_array(
+          starts_tmp, phi::DataType::INT64, phi::CPUPlace());
+    }
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::slice_array_dense(input, starts);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
@@ -287,6 +371,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_create_array,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for create_array."},
+    {"create_array_like",
+     (PyCFunction)(void (*)(void))static_api_create_array_like,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for create_array_like."},
     {"array_length",
      (PyCFunction)(void (*)(void))static_api_array_length,
      METH_VARARGS | METH_KEYWORDS,
@@ -303,6 +391,14 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_array_to_tensor,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for array_to_tensor."},
+    {"add_n_array",
+     (PyCFunction)(void (*)(void))static_api_add_n_array,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for add_n_array."},
+    {"slice_array_dense",
+     (PyCFunction)(void (*)(void))static_api_slice_array_dense,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for slice_array_dense."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

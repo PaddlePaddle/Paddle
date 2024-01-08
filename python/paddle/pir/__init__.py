@@ -21,19 +21,19 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     Program,
     Type,
     Value,
-    parse_program,
     check_unregistered_ops,
+    create_shaped_type,
     fake_op_result,
+    get_current_insertion_point,
     is_fake_op_result,
+    parse_program,
     register_paddle_dialect,
     reset_insertion_point_to_end,
     reset_insertion_point_to_start,
-    get_current_insertion_point,
     set_insertion_point,
     set_insertion_point_to_block_end,
     translate_to_pir,
     translate_to_pir_with_param_map,
-    create_shaped_type,
 )
 
 from . import core  # noqa: F401

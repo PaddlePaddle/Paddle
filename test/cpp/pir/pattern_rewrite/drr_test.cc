@@ -24,11 +24,11 @@
 #include "paddle/pir/pass/pass_manager.h"
 
 class RemoveRedundentReshapePattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
+    : public paddle::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source patterns
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &reshape1 = pat.Op("pd_op.reshape");
     const auto &reshape2 = pat.Op("pd_op.reshape");
 
@@ -38,18 +38,18 @@ class RemoveRedundentReshapePattern
              {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
 
     // Result patterns
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     res.Op("pd_op.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
                             {&res.Tensor("ret"), &res.Tensor("xshape_1")});
   }
 };
 
 class FoldExpandToConstantPattern
-    : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
+    : public paddle::drr::DrrPatternBase<FoldExpandToConstantPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op("pd_op.full",
                                {{"shape", pat.Attr("shape_1")},
                                 {"value", pat.Attr("value_1")},
@@ -64,9 +64,9 @@ class FoldExpandToConstantPattern
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
     // Result patterns
-    pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> phi::IntArray {
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &new_perm_attr = res.Attr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::IntArray {
           auto shape =
               match_ctx.Attr<std::vector<int64_t>>("expand_shape_value");
 
@@ -82,10 +82,10 @@ class FoldExpandToConstantPattern
 };
 
 class RemoveRedundentTransposePattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
+    : public paddle::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &transpose1 =
         pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm_1")}});
     const auto &transpose2 =
@@ -93,9 +93,9 @@ class RemoveRedundentTransposePattern
 
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &new_perm_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> std::vector<int> {
+        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
           const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");
           std::vector<int> new_perm;
@@ -112,8 +112,8 @@ class RemoveRedundentTransposePattern
 };
 
 class RemoveRedundentCastPattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    : public paddle::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") = pat.Op(
         "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
@@ -126,9 +126,9 @@ class RemoveRedundentCastPattern
 };
 
 class RemoveUselessCastPattern
-    : public pir::drr::DrrPatternBase<RemoveUselessCastPattern> {
+    : public paddle::drr::DrrPatternBase<RemoveUselessCastPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("ret") = pat.Op("pd_op.cast")(pat.Tensor("arg0"));
     pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
@@ -215,7 +215,7 @@ TEST(DrrTest, drr_demo) {
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
-  // pm.EnablePassTiming();
+  pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);

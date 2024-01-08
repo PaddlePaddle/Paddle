@@ -18,6 +18,10 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if((NOT WITH_GPU) AND (NOT WITH_XPU))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
+
+if(WITH_COVERAGE)
+  list(REMOVE_ITEM TEST_OPS test_unique)
+endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
@@ -113,8 +117,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
-
-list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
 
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
@@ -559,6 +561,7 @@ if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
   list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
   list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
+  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_ctr2)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
@@ -852,10 +855,12 @@ if(WITH_HETERPS)
 endif()
 
 if(WIN32)
-  cc_test(
-    cc_imp_py_test
-    SRCS cc_imp_py_test.cc
-    DEPS python)
+  paddle_test(cc_imp_py_test SRCS cc_imp_py_test.cc)
+  if(WITH_ONNXRUNTIME)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(cc_imp_py_test)
+  endif()
 endif()
 
 set_tests_properties(
@@ -909,7 +914,9 @@ if(NOT WIN32)
 endif()
 
 if(WITH_DISTRIBUTE)
-  set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
+  if(NOT WITH_COVERAGE)
+    set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
+  endif()
   set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
                                                                        200)
   set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
@@ -1075,6 +1082,7 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
+set_tests_properties(test_pool_max_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
@@ -1356,6 +1364,10 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
 endif()
 
+if(WITH_COVERAGE)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_unique)
+endif()
+
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_c_embedding_op)
 endif()
@@ -1420,4 +1432,5 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
 
+set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pit_tests_properties()

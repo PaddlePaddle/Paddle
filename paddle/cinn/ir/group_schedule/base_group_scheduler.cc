@@ -33,5 +33,13 @@ std::unique_ptr<GroupScheduler> GroupScheduler::Make(
   }
 }
 
+std::unordered_set<std::string> GroupScheduler::OutputTensorNames() const {
+  std::unordered_set<std::string> output_tensor_names{output_tensor_names_};
+  for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
+    output_tensor_names.insert(node->id());
+  }
+  return output_tensor_names;
+}
+
 }  // namespace ir
 }  // namespace cinn

@@ -55,6 +55,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "test/cpp/pir/tools/macros_utils.h"
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, CPU, ALL_LAYOUT);
@@ -93,7 +95,7 @@ void Operation1::VerifySig() {
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
     "op2_attr1",
     "op2_attr2"};
-IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
@@ -108,7 +110,7 @@ class TestDialect : public pir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1>(); }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 // TODO(wilber): Add logical when ir support erase, replace or update.
@@ -400,8 +402,13 @@ TEST(pattern_rewrite, Patterns) {
   pm.AddPass(pir::CreateConv2dBnFusePass());
   pm.AddPass(pir::CreateConv2dAddActFusePass());
   pm.AddPass(pir::CreateConv2dAddFusePass());
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
@@ -438,8 +445,10 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ParameterOp>("a", dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ParameterOp>("b", dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("a"),
+                                                  dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("b"),
+                                                  dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
@@ -473,12 +482,42 @@ TEST(constant_folding, ConstantFolding) {
   BuildConstantFoldingProgram(&program, ctx, &scope);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 2u);
+}
+
+TEST(constant_folding, ConstantFolding_Train) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  paddle::framework::Scope scope;
+  BuildConstantFoldingProgram(&program, ctx, &scope);
+
+  pir::PassManager pm(ctx);
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  constant_folding_pass->Set("train_mode", new bool(true));
+
+  pm.AddPass(std::move(constant_folding_pass));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }
 
 void BuildConcatProgram(pir::Program *program, pir::IrContext *ctx) {
@@ -535,8 +574,13 @@ TEST(constant_folding, ConstantFolding_Combine) {
   BuildConcatProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
@@ -571,8 +615,13 @@ TEST(constant_folding, ConstantFolding_MultiOutput) {
   BuildMultiOutputProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  paddle::framework::Scope scope;
-  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kParamScopeAttr,
+                             new paddle::framework::Scope());
+  pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 

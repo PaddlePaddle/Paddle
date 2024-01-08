@@ -120,6 +120,8 @@ class ProgramTranslator {
   void TranslateGeneralOperation(const OpDesc* src_op,
                                  TranslationContext* translation_ctx,
                                  pir::Block* dst_block);
+
+  void InsertDataOpForSingleBlock(const BlockDesc& block);
   void GetParameterForSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
@@ -131,8 +133,8 @@ class ProgramTranslator {
   const VariableDefiningInfo& CreateUndefinedVariable(
       const std::string& var_name, const BlockDesc& block);
 
-  pir::Operation* InsertFullOrDataOpToBlock(pir::Block* insert_block,
-                                            pir::Type type);
+  pir::Operation* InsertDataOpOrCreateArrayToBlock(pir::Block* insert_block,
+                                                   pir::Type type);
 
   void TranslateIfOperation(const OpDesc* op,
                             TranslationContext* translation_ctx,

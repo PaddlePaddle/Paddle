@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parser/lexer.h"
@@ -23,7 +24,7 @@ using AttributeMap = std::unordered_map<std::string, pir::Attribute>;
 using OpAttributeInfoMap = std::map<std::string, std::string>;
 
 namespace pir {
-class IrParser {
+class IR_API IrParser {
  public:
   std::unique_ptr<Lexer> lexer;
   IrContext* ctx;
