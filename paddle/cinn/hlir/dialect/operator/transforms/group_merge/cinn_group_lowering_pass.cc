@@ -111,10 +111,20 @@ void ReplaceExpandWithBroadcast(
             .defining_op()
             ->isa<cinn::dialect::GenerateShapeOp>()) {
       builder.SetInsertionPointAfter(op);
-      auto broadcast =
-          builder.Build<cinn::dialect::BroadcastOp>(op->operand_source(0),
-                                                    std::vector<int64_t>{-1},
-                                                    std::vector<int64_t>{-1});
+      auto x_rank = op->operand_source(0)
+                        .type()
+                        .dyn_cast<pir::ShapedTypeInterface>()
+                        .GetRank();
+      auto out_rank =
+          op->result(0).type().dyn_cast<pir::ShapedTypeInterface>().GetRank();
+      std::vector<int64_t> broadcast_axes(x_rank, 0);
+      size_t index_gap = out_rank - x_rank;
+      for (size_t i = 0; i < x_rank; ++i) {
+        broadcast_axes[i] = i + index_gap;
+      }
+      std::vector<int64_t> out_shape(out_rank, -1);
+      auto broadcast = builder.Build<cinn::dialect::BroadcastOp>(
+          op->operand_source(0), broadcast_axes, out_shape);
       auto broadcast_out = broadcast.result(0);
       auto expand_out = op->result(0);
       expand_out.ReplaceAllUsesWith(broadcast_out);
@@ -397,15 +407,16 @@ pir::Operation* CreateConditionBlock(
         lhs_eq_rhs_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_rhs_block = lhs_eq_rhs_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
-    CreateConditionBlock(branch.Get<1>(),
-                         origin_group,
-                         shape_analysis,
-                         value_to_dim_expr_idx,
-                         group_inputs,
-                         output_types,
-                         builder,
-                         &lhs_eq_rhs_block,
-                         group_map);
+    auto* sub_block_op = CreateConditionBlock(branch.Get<1>(),
+                                              origin_group,
+                                              shape_analysis,
+                                              value_to_dim_expr_idx,
+                                              group_inputs,
+                                              output_types,
+                                              builder,
+                                              &lhs_eq_rhs_block,
+                                              group_map);
+    builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
 
     pir::Block& lhs_not_eq_rhs_block = lhs_eq_rhs_cond_op.false_block();
     builder.SetInsertionPointToBlockEnd(&lhs_not_eq_rhs_block);
@@ -627,15 +638,9 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
       value2id[yeild_op->operand_source(i)] = i;
     }
-    std::unordered_map<pir::Value, pir::Value> value_map;
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
-    auto shape_analysis_ =
-        std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
-    shape_analysis.PrintAllShapeOrDataDimExprs();
     auto shape_analysis_ =
         std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
     VLOG(1) << "shape_analysis: " << &shape_analysis
@@ -654,6 +659,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     VLOG(1) << "###### GeneralFusionMergePass op_fusion size: "
             << op_fusion.size();
 
+    std::unordered_map<pir::Value, pir::Value> value_map;
     for (auto group : group_list) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
