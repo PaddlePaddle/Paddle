@@ -6,6 +6,7 @@ test_adagrad_op
 test_adagrad_op_static_build
 test_adamax_op
 test_addmm_op
+test_affine_grid_op
 test_allclose_op
 test_amp_check_finite_and_scale_op
 test_angle_op
@@ -201,6 +202,7 @@ test_pixel_shuffle_op
 test_poisson_op                 
 test_polygamma_op
 test_pool2d_op
+test_pool3d_op
 test_pool_max_op
 test_prelu_mkldnn_op
 test_prelu_op
