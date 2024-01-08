@@ -1,0 +1,27 @@
+.template: &TEMPLATE
+  variables:
+    PADDLE_BRANCH: "${CI_COMMIT_REF_NAME}"
+    DOWNSTREAM_BRANCH: main
+  stage: deploy
+  trigger:
+    project: dl/dgx/paddle
+    strategy: depend
+    branch: "${DOWNSTREAM_BRANCH}"
+
+auto-trigger:
+  <<: *TEMPLATE
+  when: always
+  only:
+    - merge_requests
+    - schedules
+    - tags
+    - web
+
+manual-trigger:
+  <<: *TEMPLATE
+  when: manual
+  except:
+    - merge_requests
+    - schedules
+    - tags
+    - web
