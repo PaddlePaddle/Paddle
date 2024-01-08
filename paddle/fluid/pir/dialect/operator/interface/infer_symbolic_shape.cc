@@ -43,6 +43,44 @@ bool SameOperandsAndResultShape(
   return true;
 }
 
+bool InferSymbolicShapeElementWiseBinary(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source_0 = op->operand_source(0);
+  std::string operand_source_0_id = pir::GetValueId(&operand_source_0);
+  std::vector<symbol::DimExpr> shape_0{
+      shape_analysis->value_id_to_shapeordata_[operand_source_0_id].shape()};
+
+  pir::Value operand_source_1 = op->operand_source(1);
+  std::string operand_source_1_id = pir::GetValueId(&operand_source_1);
+  std::vector<symbol::DimExpr> shape_1{
+      shape_analysis->value_id_to_shapeordata_[operand_source_1_id].shape()};
+
+  if (shape_0.size() > shape_1.size()) {
+    for (size_t i = 0; i < shape_0.size() - shape_1.size(); i++) {
+      shape_1.emplace(shape_1.begin(), 1);
+    }
+  } else {
+    for (size_t i = 0; i < shape_1.size() - shape_0.size(); i++) {
+      shape_0.emplace(shape_0.begin(), 1);
+    }
+  }
+
+  std::vector<symbol::DimExpr> shapes;
+  symbol::DimExprBuilder builder{nullptr};
+  for (size_t i = 0; i < shape_0.size(); i++) {
+    shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
+  }
+
+  // TODO(lanxianghit): fill data when the operation is on shape computation
+  std::vector<symbol::DimExpr> data;
+
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
+}
+
 }  // namespace
 
 namespace paddle::dialect {
@@ -85,6 +123,16 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
   shape_analysis->value_to_shape_or_data_[res] = shape_data;
 
   return true;
+}
+
+bool AddOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+
+bool Add_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
 bool CastOpInferSymbolicShape(pir::Operation *op,
