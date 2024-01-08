@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .call_ast_utils import get_static_function, try_ast_func  # noqa: F401
 from .envs import (  # noqa: F401
     ENV_CLEAN_CODE,
     ENV_COST_MODEL,
     ENV_MIN_GRAPH_SIZE,
     ENV_SHOW_TRACKERS,
     ENV_SOT_LOG_LEVEL,
-    ENV_STRICT_MODE,
     ENV_SOT_WITH_CONTROL_FLOW,
+    ENV_STRICT_MODE,
     cost_model_guard,
     min_graph_size_guard,
     strict_mode_guard,
@@ -51,8 +52,8 @@ from .utils import (  # noqa: F401
     count_if,
     current_tmp_name_records,
     execute_time,
-    flatten_extend,
     flatten,
+    flatten_extend,
     get_unbound_method,
     hashable,
     in_paddle_module,
@@ -72,4 +73,3 @@ from .utils import (  # noqa: F401
     no_eval_frame,
     tmp_name_guard,
 )
-from .call_ast_utils import get_static_function, try_ast_func

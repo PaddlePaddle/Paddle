@@ -16,7 +16,7 @@
 
 #include "paddle/pir/core/operation.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 class IrOperation {
@@ -30,4 +30,4 @@ class IrOperation {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

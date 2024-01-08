@@ -67,19 +67,25 @@ FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
     bool need_fetch,
-    bool enable_job_schedule_profiler) {
-  return impl_->Run(
-      feed_names, feed_tensors, need_fetch, enable_job_schedule_profiler);
+    bool enable_job_schedule_profiler,
+    bool switch_stream) {
+  return impl_->Run(feed_names,
+                    feed_tensors,
+                    need_fetch,
+                    enable_job_schedule_profiler,
+                    switch_stream);
 }
 
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
                                bool need_fetch,
                                bool enable_job_schedule_profiler,
-                               bool enable_op_profiling) {
+                               bool enable_op_profiling,
+                               bool switch_stream) {
   return impl_->Run(feed_names,
                     need_fetch,
                     enable_job_schedule_profiler,
-                    enable_op_profiling);
+                    enable_op_profiling,
+                    switch_stream);
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
