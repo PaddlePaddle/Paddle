@@ -95,10 +95,6 @@ std::vector<int64_t> GetBroadcastAxis(pir::Operation* reshape_op,
         op_broadcast_axes[forward_out_index];
   }
 
-  for (auto dim : new_broadcast_axes) {
-    std::cerr << "dim  " << dim << std::endl;
-  }
-
   return new_broadcast_axes;
 }
 

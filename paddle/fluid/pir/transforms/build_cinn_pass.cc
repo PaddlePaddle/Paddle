@@ -116,7 +116,9 @@ class OpTransInfo {
                                                     "concat",
                                                     "embedding",
                                                     "gather_nd",
-                                                    "split"};
+                                                    "split",
+                                                    "pool2d",
+                                                    "arange"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,

@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import os
 import sys
-import shutil
-import argparse
 import unittest
+
 os.environ['FLAGS_enable_pir_api'] = "1"
-os.environ['FLAGS_cinn_new_group_scheduler']="1" 
+os.environ['FLAGS_cinn_new_group_scheduler'] = "1"
 import numpy as np
+
 import paddle
 from paddle.base.data_feeder import convert_dtype
-from paddle.jit.dy2static.export_subgraph import get_saving_dir
 
 
 class ProgramInfo:
@@ -89,12 +89,11 @@ class Parser:
         return fetchs
 
 
-
 class TestTask(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.file_path = args.file_path
-    
+
     def test_phi(self):
         self.check_infer(enable_cinn=False)
 
@@ -106,11 +105,18 @@ class TestTask(unittest.TestCase):
         feed = program_info.random_feeds()
         fetch_list = program_info.fetch_list()
         self.run_program(program_info.program, feed, fetch_list, enable_cinn)
-    
+
     def run_program(self, program, feed, fetch_list, enable_cinn):
         if enable_cinn:
-            paddle.base.libpaddle.pir.apply_pir_pass(program)
-        exe = paddle.static.Executor(paddle.CUDAPlace(2))
+            print(program)
+            paddle.decomposition.decomp.decompose(program, [])
+            # print( program )
+            fwd_pm = paddle.base.libpaddle.pir.PassManager()
+            paddle.base.libpaddle.pir.add_cinn_pass(fwd_pm, program)
+            fwd_pm.run(program)
+            # print( program )
+
+        exe = paddle.static.Executor(paddle.CUDAPlace(0))
         outs = exe._run_pir_impl(
             program,
             feed=feed,
@@ -121,6 +127,7 @@ class TestTask(unittest.TestCase):
             return_numpy=True,
         )
         return outs
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

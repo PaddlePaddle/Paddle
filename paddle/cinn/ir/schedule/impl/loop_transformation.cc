@@ -451,7 +451,7 @@ void StScheduleImpl::BroadcastToElementwise(const std::string& block_name,
 
   Expr broadcast_body = broadcast_loop->body;
 
-  std::cerr << "broadcast body  " << broadcast_body << std::endl;
+  // std::cerr << "broadcast body  " << broadcast_body << std::endl;
 
   auto schedule_realize = broadcast_body.As<ir::Block>()
                               ->expr_fields()[0]
