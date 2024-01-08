@@ -12,11 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #include <memory>
-
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/operation.h"
 
 namespace pir {
 

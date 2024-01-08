@@ -24,12 +24,14 @@ class IrMapping {
  public:
   template <typename T>
   void Add(T from, T to) {
+    if (!from) return;
     MutableMap<T>()[from] = to;
   }
 
   template <typename T>
   T Lookup(T from) const {
-    IR_ENFORCE(Map<T>().count(from) > 0, "Not Found Target in IRMapping.");
+    if (!from) return static_cast<T>(nullptr);
+    IR_ENFORCE(Map<T>().count(from) > 0, "Not found key in IRMapping.");
     return Map<T>().at(from);
   }
 

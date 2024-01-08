@@ -1018,10 +1018,10 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
     Program &program) {  // NOLINT
   // Limitation of this function:
   // 1. don't support Parameters.
-  pir::IrMapping ir_mapping;
-  auto cloned_program = program.Clone(ir_mapping);
+  pir::IrMapping mapper;
+  auto cloned_program = program.Clone(mapper);
   std::vector<pir::OpResult> associated_array_key, associated_array_value;
-  for (auto &pair : ir_mapping.Map<pir::Value>()) {
+  for (auto &pair : mapper.Map<pir::Value>()) {
     associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
     associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
