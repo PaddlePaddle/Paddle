@@ -59,13 +59,13 @@ class NestSequence:
         """
         Flattens the nested sequences into single list and remove duplicate variables + non-variable elements.
         """
-        variable_map = ValueDict()  # opresult -> list idx
+        variable_map = ValueDict()  # value -> list idx
         variable_list = []
         for value in paddle.utils.flatten(self._raw_input):
             if not isinstance(value, Value):
                 continue
             if value in variable_map:
-                # remove duplicate opresults.
+                # remove duplicate values.
                 continue
             variable_map[value] = len(variable_list)
             variable_list.append(value)
@@ -810,15 +810,11 @@ class PartialProgramLayer:
             # start_idx + 1, main_program, program
             # )
 
-        mapping_op_result = (
-            lambda x: x if isinstance(x, Value) else fake_value()
-        )
+        mapping_value = lambda x: x if isinstance(x, Value) else fake_value()
         inputs_size = len(inputs)
-        x_grad_value = list(
-            map(mapping_op_result, grad_info_map[0:inputs_size])
-        )
-        p_grad_value = list(map(mapping_op_result, grad_info_map[inputs_size:]))
-        o_grad_value = list(map(mapping_op_result, forward_outputs_grads))
+        x_grad_value = list(map(mapping_value, grad_info_map[0:inputs_size]))
+        p_grad_value = list(map(mapping_value, grad_info_map[inputs_size:]))
+        o_grad_value = list(map(mapping_value, forward_outputs_grads))
 
         # insert grads name for RunableProgram (we need name for grad_inputs and grad_outputs)
         input_grads_to_append = list(
