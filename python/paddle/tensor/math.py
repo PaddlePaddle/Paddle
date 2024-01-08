@@ -7158,7 +7158,6 @@ def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
 
     Examples:
         .. code-block:: python
-
             :name: example1
 
             >>> import paddle
@@ -7170,7 +7169,6 @@ def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
                     [64 , 136, 128, 130]])
 
         .. code-block:: python
-
             :name: example2
 
             >>> import paddle
