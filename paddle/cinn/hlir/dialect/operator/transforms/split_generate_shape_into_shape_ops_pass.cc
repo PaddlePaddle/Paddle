@@ -118,7 +118,7 @@ struct CachedDimExprToValueConverter {
     return rewriter
         ->Build<paddle::dialect::SliceOp>(
             tensor_dim.value,
-            std::vector{0LL},
+            std::vector<int64_t>{0LL},
             std::vector<int64_t>{tensor_dim.axis},
             std::vector<int64_t>{tensor_dim.axis + 1},
             std::vector<int64_t>{},
