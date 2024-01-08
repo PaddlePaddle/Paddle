@@ -73,20 +73,14 @@ bool EraseOneExpand(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
   for (auto expand_it = block->begin(); expand_it != block->end();
        ++expand_it) {
-    VLOG(1) << "###### EraseOneExpand op: " << expand_it->name();
     if (!expand_it->isa<paddle::dialect::ExpandOp>()) continue;
     auto expand = expand_it->dyn_cast<paddle::dialect::ExpandOp>();
-    VLOG(1) << "######### SameInputOutputShape Start";
     if (!SameInputOutputShape(expand, ShapeOrDataDimExprs4Value)) continue;
-    VLOG(1) << "######### SameInputOutputShape End";
     auto generate_shape_op =
         expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
     CHECK_NOTNULL(generate_shape_op);
-    VLOG(1) << "######### ReplaceAllUsesWithInput";
     ReplaceAllUsesWithInput(expand);
-    VLOG(1) << "######### EraseOp expand";
     rewriter.EraseOp(expand);
-    VLOG(1) << "######### EraseOp generate_shape_op";
     rewriter.EraseOp(generate_shape_op);
     return true;
   }
@@ -107,13 +101,11 @@ void ReplaceExpandWithBroadcast(
     pir::Block* block,
     const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   std::vector<pir::Operation*> op_list;
-  VLOG(1) << "######## ReplaceExpandWithBroadcast block: @" << block;
   for (auto& op : *block) {
     op_list.push_back(&op);
   }
   pir::Builder builder(ir_context, block);
   for (auto* op : op_list) {
-    VLOG(1) << "###### ReplaceExpandWithBroadcast op: " << op->name();
     if (op && op->isa<paddle::dialect::ExpandOp>() &&
         op->operand_source(1)
             .defining_op()
@@ -129,10 +121,9 @@ void ReplaceExpandWithBroadcast(
       shape_analysis->SetShapeOrDataForValue(
           &broadcast_out, shape_analysis->GetShapeOrDataForValue(&expand_out));
       CHECK(op->use_empty());
-      VLOG(1) << "##### erase op: " << op->name() << "### block: @"
-              << op->GetParent();
+      auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();
-      op->operand_source(1).defining_op()->Erase();
+      generate_shape_op->Erase();
     }
   }
 }
@@ -508,10 +499,8 @@ pir::Operation* ProcessGroup(
     VLOG(1) << "#### value : " << pir::GetValueId(&value) << " : "
             << shape_dim_expr;
     if (data_shape) {
-      VLOG(1) << "####### data_shape ";
       all_value_dim_exprs->push_back(*data_shape);
     } else {
-      VLOG(1) << "####### shape ";
       all_value_dim_exprs->push_back(shape_dim_expr.shape());
     }
     value_to_dim_expr_idx[value] = all_value_dim_exprs->size() - 1;
@@ -560,14 +549,12 @@ pir::Operation* ProcessGroup(
   // 3. simply every condition block
   VLOG(1) << "simply condition block";
   for (auto& [block, group] : group_map) {
-    VLOG(1) << "####### EraseExpandsInBlock: group@ " << group;
     EraseExpandsInBlock(block,
                         rewriter,
                         [&shape_analysis](pir::Value value)
                             -> const symbol::ShapeOrDataDimExprs& {
                           return shape_analysis->GetShapeOrDataForValue(&value);
                         });
-    VLOG(1) << "####### ReplaceExpandWithBroadcast: group@ " << group;
     ReplaceExpandWithBroadcast(
         rewriter.ir_context(), block, group->shape_analysis);
 
