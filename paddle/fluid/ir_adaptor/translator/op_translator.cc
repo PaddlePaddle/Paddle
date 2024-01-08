@@ -234,6 +234,8 @@ inline bool HasOpInfo(pir::IrContext* ctx,
                       const OpDesc& op_desc,
                       std::string prefix) {
   std::string target_op_name = prefix + OpNameCompatibleMapping(op_desc.Type());
+  LOG(INFO) << "target_op_name in has opinfo:" << target_op_name;
+  LOG(INFO) << "is inplace:" << IsInplace(op_desc);
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
