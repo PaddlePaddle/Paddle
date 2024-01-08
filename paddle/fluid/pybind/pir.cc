@@ -537,8 +537,8 @@ void BindOperation(py::module *m) {
              return op_list;
            })
       .def("replace_all_uses_with",
-           [](Operation &self, const std::vector<OpResult> &op_results) {
-             self.ReplaceAllUsesWith(op_results);
+           [](Operation &self, const std::vector<Value> &values) {
+             self.ReplaceAllUsesWith(values);
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
