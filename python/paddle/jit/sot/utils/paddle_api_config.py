@@ -84,7 +84,15 @@ paddle_api_module_prefix = {
     "paddle.nn.layer.activation",
 }
 
-break_graph_set = set([paddle.matmul])
+break_graph_set = set([
+    paddle.matmul,
+    paddle.nn.functional.conv1d,
+    paddle.nn.functional.conv1d_transpose,
+    paddle.nn.functional.conv2d,
+    paddle.nn.functional.conv2d_transpose,
+    paddle.nn.functional.conv3d,
+    paddle.nn.functional.conv3d_transpose,
+    ])
 
 
 break_graph_tensor_method = {
@@ -94,7 +102,16 @@ break_graph_tensor_method = {
     # TODO: Browse all possible functions and make prior judgments.
 }
 
-not_supported_paddle_layer = {paddle.nn.RNN}
+not_supported_paddle_layer = {
+    paddle.nn.RNN, 
+    paddle.nn.Linear, 
+    paddle.nn.Conv1D, 
+    paddle.nn.Conv2D, 
+    paddle.nn.Conv1DTranspose,
+    paddle.nn.Conv2D,
+    paddle.nn.Conv2DTranspose,
+    paddle.nn.Conv3D,
+    paddle.nn.Conv3DTranspose}
 
 
 def is_not_supported_paddle_layer(layer_class):

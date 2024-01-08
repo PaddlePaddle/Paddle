@@ -530,8 +530,8 @@ class PaddleLayerVariable(LayerVariable):
         super().__init__(layer, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        if self.value.__class__.__name__ in ['Linear', 'Conv2D']:
-            raise BreakGraphError()
+        if is_not_supported_paddle_layer(type(self.value)):
+            raise BreakGraphError("Trigger is_not_supported_paddle_layer for ", type(self.value))
         self.graph.add_global_guarded_variable(self)
         # when layer is created in forward function, we use strong ref because it can't have
         # weigths and buffers, see PaddleLayerClassVariable for details.
@@ -565,7 +565,6 @@ class PaddleLayerVariable(LayerVariable):
                 and value._forward_pre_hooks
                 or hasattr(value, "_forward_post_hooks")
                 and value._forward_post_hooks
-                or is_not_supported_paddle_layer(type(value))
             ):
                 return None
             if value.__module__.startswith("paddle.nn."):
