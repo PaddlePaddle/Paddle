@@ -168,14 +168,32 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     const uint32_t nonsign = w & UINT32_C(0x7FFFFFFF);
 
     // get the leading 0-bits in nonsin.
-#if defined(_WIN32)
-    uint32_t renorm_shift = __lzcnt(nonsign);
-#else
-    // Note: zero is not a supported input into `__builtin_clz`
-    uint32_t renorm_shift = nonsign != 0
-                                ? __builtin_clz(nonsign)
-                                : sizeof(uint32_t) * 8 /* bytes of uint32 */;
-#endif
+    uint32_t nonsign_tmp = nonsign;
+    uint32_t renorm_shift = 0;
+    if (nonsign_tmp == 0) {
+      renorm_shift = sizeof(uint32_t) * CHAR_BIT;
+    } else {
+      if ((nonsign_tmp & 0xFFFF0000) == 0) {
+        renorm_shift += 16;
+        nonsign_tmp <<= 16;
+      }
+      if ((nonsign_tmp & 0xFF000000) == 0) {
+        renorm_shift += 8;
+        nonsign_tmp <<= 8;
+      }
+      if ((nonsign_tmp & 0xF0000000) == 0) {
+        renorm_shift += 4;
+        nonsign_tmp <<= 4;
+      }
+      if ((nonsign_tmp & 0xC0000000) == 0) {
+        renorm_shift += 2;
+        nonsign_tmp <<= 2;
+      }
+      if ((nonsign_tmp & 0x80000000) == 0) {
+        renorm_shift += 1;
+      }
+    }
+
     renorm_shift = renorm_shift > 4 ? renorm_shift - 4 : 0;
     const int32_t inf_nan_mask =
         ((int32_t)(nonsign + 0x01000000) >> 8) & INT32_C(0x7F800000);
