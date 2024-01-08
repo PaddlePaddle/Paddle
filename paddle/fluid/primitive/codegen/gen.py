@@ -55,6 +55,7 @@ BACKENDS_BLACK_LIST = [
 
 # prim op with one input and one output, with no attribute
 UNARY_PRIM_VJP_OPS = [
+    'abs_grad',
     'erf_grad',
     'exp_grad',
     'floor_grad',
@@ -103,6 +104,7 @@ CUSTOM_VJP = [
     'dropout_grad',
     'gelu_grad',
     'hardswish_grad',
+    'instance_norm_grad',
     'layer_norm_grad',
     'leaky_relu_grad',
     'relu_grad',

@@ -139,9 +139,9 @@ bool ReshapeOpInferSymbolicShape(
   pir::OpResult res = op->result(0);
   std::string res_id = pir::GetValueId(&res);
 
-  symbol::ShapeOrDataDimExprs shape_data;
+  symbol::ShapeOrDataDimExprs shape_data{
+      *(shape_analysis->value_id_to_shapeordata_[operand_source_1_id].data())};
 
-  shape_data = shape_analysis->value_id_to_shapeordata_[operand_source_1_id];
   shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
   return true;
 }
@@ -149,6 +149,54 @@ bool ReshapeOpInferSymbolicShape(
 bool Reshape_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReshapeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool SliceOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  std::vector<symbol::DimExpr> shapes;
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+  }
+
+  auto operand_source_1 = op->operand_source(1);
+  std::string operand_source_1_id = pir::GetValueId(&operand_source_1);
+  auto starts_array =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_1_id]).data();
+  auto start = starts_array->at(0).Get<int64_t>();
+
+  auto operand_source_2 = op->operand_source(2);
+  std::string operand_source_2_id = pir::GetValueId(&operand_source_2);
+  auto ends_array =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_2_id]).data();
+  auto end = ends_array->at(0).Get<int64_t>();
+
+  std::vector<symbol::DimExpr> data;
+  auto source_data =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_id]).data();
+
+  for (int i = start; i < end; i++) {
+    data.emplace_back(source_data->at(i));
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
 }
 
 }  // namespace paddle::dialect
@@ -177,17 +225,25 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     shapes.push_back(dim_expr);
   }
 
-  // pir::AttributeMap attributes = op->attributes();
+  pir::AttributeMap attributes = op->attributes();
 
-  // auto attr_starts =
-  //     attributes["starts"].dyn_cast<pir::ArrayAttribute>().AsVector();
-  // auto start = attr_starts[0].dyn_cast<pir::Int64Attribute>().data();
+  auto attr_starts =
+      attributes["starts"].dyn_cast<pir::ArrayAttribute>().AsVector();
+  auto start = attr_starts[0].dyn_cast<pir::Int64Attribute>().data();
 
-  // auto attr_ends =
-  //     attributes["ends"].dyn_cast<pir::ArrayAttribute>().AsVector();
-  // auto end = attr_ends[0].dyn_cast<pir::Int64Attribute>().data();
+  auto attr_ends =
+      attributes["ends"].dyn_cast<pir::ArrayAttribute>().AsVector();
+  auto end = attr_ends[0].dyn_cast<pir::Int64Attribute>().data();
 
-  symbol::ShapeOrDataDimExprs shape_data{shapes};
+  std::vector<symbol::DimExpr> data;
+  auto source_data =
+      (shape_analysis->value_id_to_shapeordata_[operand_source_id]).data();
+
+  for (int i = start; i < end; i++) {
+    data.emplace_back(source_data->at(i));
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
   shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
   return true;
 }

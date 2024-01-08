@@ -16,6 +16,7 @@
 #include <variant>
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/operation.h"
@@ -24,7 +25,7 @@
 namespace cinn {
 namespace dialect {
 
-class GroupOp : public pir::Op<GroupOp> {
+class IR_API GroupOp : public pir::Op<GroupOp> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.group"; }
@@ -121,7 +122,7 @@ class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
 }  // namespace dialect
 }  // namespace cinn
 
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

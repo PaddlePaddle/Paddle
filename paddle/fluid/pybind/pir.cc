@@ -132,6 +132,7 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -1647,10 +1648,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
-  if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
-  }
-
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
   VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
@@ -1661,8 +1658,18 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       "compile PaddlePaddle with CINN"));
 #endif
 }
+
+void InferSymbolicShapePass(
+    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
+    Program &program) {                          // NOLINT
+  if (FLAGS_pir_apply_shape_optimization_pass) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+}
+
 void BindIrPass(pybind11::module *m) {
   m->def("add_cinn_pass", AddCinnPass);
+  m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
