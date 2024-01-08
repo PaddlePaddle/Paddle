@@ -182,7 +182,7 @@ class PyFileGen:
             "dy_out = self.train(net, to_static=False)",
             "st_out = self.train(net, to_static=True, with_cinn=False)",
             "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
-            "    np.testing.assert_allclose(dy_out.numpy(), st_out.numpy(), atol=1e-8)",
+            "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
         )
 
         test_ast_cinn_static = test_class.add_sub(
@@ -193,7 +193,7 @@ class PyFileGen:
             "dy_out = self.train(net, to_static=False)",
             "st_out = self.train(net, to_static=True, with_cinn=True)",
             "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
-            "    np.testing.assert_allclose(dy_out.numpy(), st_out.numpy(), atol=1e-8)",
+            "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
         )
 
     def create_tail(self):
