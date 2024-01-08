@@ -147,8 +147,8 @@ class TestStaticReshard(unittest.TestCase):
 
         # static training
         data_loader = self.create_data_loader()
-        dist_model, dist_loader = dist.to_static(
-            dy2static_layer, data_loader, loss_fn, dy2static_opt
+        dist_model = dist.to_static(
+            dy2static_layer, None, data_loader, loss_fn, dy2static_opt
         )
 
         program = dist_model._engine._dist_contexts["train"].dist_main_programs[

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+from typing import Union
 
 import numpy as np
 
@@ -204,7 +205,26 @@ class ProcessMesh(core.ProcessMesh):
             else:
                 return ProcessMesh([new_mesh])
 
-    def get_dim_size(self, dim_name):
+    def get_rank_by_dim(self, dim: Union[str, int], process_id: int) -> int:
+        if process_id not in self._process_ids:
+            return -1
+
+        if isinstance(dim, int):
+            dim_name = self._dim_names[dim]
+        elif isinstance(dim, str):
+            dim_name = dim
+        else:
+            raise ValueError("dim must be a string or an integer.")
+        dim_name_index = self._dim_names.index(dim_name)
+        return int(np.where(self._mesh == process_id)[dim_name_index])
+
+    def get_dim_size(self, dim: Union[str, int]) -> int:
+        if isinstance(dim, int):
+            dim_name = self._dim_names[dim]
+        elif isinstance(dim, str):
+            dim_name = dim
+        else:
+            raise ValueError("dim must be a string or an integer.")
         assert dim_name in self._dim_names
         return self._shape[self._dim_names.index(dim_name)]
 

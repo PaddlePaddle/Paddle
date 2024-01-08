@@ -204,7 +204,7 @@ class TestShardLayer(unittest.TestCase):
 
         loader = self.create_data_loader()
 
-        dist_model, dist_loader = dist.to_static(sharded_layer, loader)
+        dist_model = dist.to_static(sharded_layer, None, loader)
 
         serial_main_program = dist_model.serial_main_program()
         for param in serial_main_program.all_parameters():
@@ -232,7 +232,7 @@ class TestShardLayer(unittest.TestCase):
         sharded_buffers_layer = dist.shard_layer(layer, self.mesh, shard_fn)
 
         loader = self.create_data_loader()
-        dist_model, dist_loader = dist.to_static(sharded_buffers_layer, loader)
+        dist_model = dist.to_static(sharded_buffers_layer, None, loader)
 
         serial_main_program = dist_model.serial_main_program()
         for param in serial_main_program.all_parameters():
