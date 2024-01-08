@@ -55,7 +55,6 @@ bool SameInputOutputShape(
   const auto& shape = ShapeOrDataDimExprs4Value(expand_op.shape());
   const auto& out = ShapeOrDataDimExprs4Value(expand_op.out());
   if (x.data().has_value()) return false;
-  VLOG(1) << "";
   if (!shape.data().has_value()) return false;
   if (out.data().has_value()) return false;
   CHECK(shape.data().value() == out.shape());
@@ -108,11 +107,13 @@ void ReplaceExpandWithBroadcast(
     pir::Block* block,
     const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   std::vector<pir::Operation*> op_list;
+  VLOG(1) << "######## ReplaceExpandWithBroadcast block: @" << block;
   for (auto& op : *block) {
     op_list.push_back(&op);
   }
   pir::Builder builder(ir_context, block);
   for (auto* op : op_list) {
+    VLOG(1) << "###### ReplaceExpandWithBroadcast op: " << op->name();
     if (op && op->isa<paddle::dialect::ExpandOp>() &&
         op->operand_source(1)
             .defining_op()
@@ -127,7 +128,9 @@ void ReplaceExpandWithBroadcast(
       expand_out.ReplaceAllUsesWith(broadcast_out);
       shape_analysis->SetShapeOrDataForValue(
           &broadcast_out, shape_analysis->GetShapeOrDataForValue(&expand_out));
-
+      CHECK(op->use_empty());
+      VLOG(1) << "##### erase op: " << op->name() << "### block: @"
+              << op->GetParent();
       op->Erase();
       op->operand_source(1).defining_op()->Erase();
     }
@@ -553,14 +556,17 @@ pir::Operation* ProcessGroup(
   }
   auto* program = origin_block->parent_program();
   VLOG(4) << "Before simply condition block: " << *program;
+  shape_analysis->PrintAllShapeOrDataDimExprs();
   // 3. simply every condition block
   VLOG(1) << "simply condition block";
   for (auto& [block, group] : group_map) {
     VLOG(1) << "####### EraseExpandsInBlock: group@ " << group;
-    EraseExpandsInBlock(block, rewriter, [shape_analysis](pir::Value value) {
-      VLOG(1) << "GetShapeOrDataForValue for " << pir::GetValueId(&value);
-      return shape_analysis->GetShapeOrDataForValue(&value);
-    });
+    EraseExpandsInBlock(block,
+                        rewriter,
+                        [&shape_analysis](pir::Value value)
+                            -> const symbol::ShapeOrDataDimExprs& {
+                          return shape_analysis->GetShapeOrDataForValue(&value);
+                        });
     VLOG(1) << "####### ReplaceExpandWithBroadcast: group@ " << group;
     ReplaceExpandWithBroadcast(
         rewriter.ir_context(), block, group->shape_analysis);
@@ -638,7 +644,6 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
     VLOG(1) << "shape_analysis: " << &shape_analysis
             << " program:" << group_op->GetParentProgram();
-    VLOG(1) << "########### PrintAllShapeOrDataDimExprs ";
     shape_analysis.PrintAllShapeOrDataDimExprs();
 
     // op fusion
@@ -646,7 +651,6 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         GetOpListNotIncludeYield(group_op.ops()),
         GetOutputOpList(group_op.ops()),
         shape_analysis_);
-    VLOG(1) << "###### OpFusionPass op_fusion size: " << op_fusion.size();
 
     // fusion merge
     auto group_list = cinn::dialect::ir::GeneralFusionMergePassInternal(
