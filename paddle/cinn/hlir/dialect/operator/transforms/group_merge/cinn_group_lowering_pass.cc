@@ -372,6 +372,23 @@ void SetLeafBlockByGroupView(
   group_map->insert({block, new_group});
 }
 
+std::vector<pir::Value> GetOpOuputValues(const pir::Operation* op) {
+  std::vector<pir::Value> outputs;
+  outputs.reserve(op->num_results());
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    outputs.push_back(op->result(i));
+  }
+  return outputs;
+}
+
+void InsertYieldOpForCondBlock(pir::Operation* cond_op,
+                               pir::Builder& builder) {  // NOLINT
+  if (cond_op) {
+    builder.SetInsertionPointAfter(cond_op);
+    builder.Build<pir::YieldOp>(GetOpOuputValues(cond_op));
+  }
+}
+
 // Visit broadcast_tree by dfs
 pir::Operation* CreateConditionBlock(
     const cinn::common::BroadcastTree& broadcast_tree,
@@ -407,16 +424,16 @@ pir::Operation* CreateConditionBlock(
         lhs_eq_rhs_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_rhs_block = lhs_eq_rhs_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
-    auto* sub_block_op = CreateConditionBlock(branch.Get<1>(),
-                                              origin_group,
-                                              shape_analysis,
-                                              value_to_dim_expr_idx,
-                                              group_inputs,
-                                              output_types,
-                                              builder,
-                                              &lhs_eq_rhs_block,
-                                              group_map);
-    builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
+    auto* lhs_eq_rhs_block_op = CreateConditionBlock(branch.Get<1>(),
+                                                     origin_group,
+                                                     shape_analysis,
+                                                     value_to_dim_expr_idx,
+                                                     group_inputs,
+                                                     output_types,
+                                                     builder,
+                                                     &lhs_eq_rhs_block,
+                                                     group_map);
+    InsertYieldOpForCondBlock(lhs_eq_rhs_block_op, builder);
 
     pir::Block& lhs_not_eq_rhs_block = lhs_eq_rhs_cond_op.false_block();
     builder.SetInsertionPointToBlockEnd(&lhs_not_eq_rhs_block);
@@ -426,28 +443,33 @@ pir::Operation* CreateConditionBlock(
         lhs_eq_one_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_one_block = lhs_eq_one_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_one_block);
-    CreateConditionBlock(branch.Get<2>(),
-                         origin_group,
-                         shape_analysis,
-                         value_to_dim_expr_idx,
-                         group_inputs,
-                         output_types,
-                         builder,
-                         &lhs_eq_one_block,
-                         group_map);
+    auto* lhs_eq_one_block_op = CreateConditionBlock(branch.Get<2>(),
+                                                     origin_group,
+                                                     shape_analysis,
+                                                     value_to_dim_expr_idx,
+                                                     group_inputs,
+                                                     output_types,
+                                                     builder,
+                                                     &lhs_eq_one_block,
+                                                     group_map);
+    InsertYieldOpForCondBlock(lhs_eq_one_block_op, builder);
 
     // lhs != rhs && rhs == 1
     pir::Block& rhs_eq_one_block = lhs_eq_one_cond_op.false_block();
     builder.SetInsertionPointToBlockEnd(&rhs_eq_one_block);
-    CreateConditionBlock(branch.Get<3>(),
-                         origin_group,
-                         shape_analysis,
-                         value_to_dim_expr_idx,
-                         group_inputs,
-                         output_types,
-                         builder,
-                         &rhs_eq_one_block,
-                         group_map);
+    auto* rhs_eq_one_block_op = CreateConditionBlock(branch.Get<3>(),
+                                                     origin_group,
+                                                     shape_analysis,
+                                                     value_to_dim_expr_idx,
+                                                     group_inputs,
+                                                     output_types,
+                                                     builder,
+                                                     &rhs_eq_one_block,
+                                                     group_map);
+    InsertYieldOpForCondBlock(rhs_eq_one_block_op, builder);
+
+    builder.SetInsertionPointToBlockEnd(&lhs_not_eq_rhs_block);
+    builder.Build<pir::YieldOp>(GetOpOuputValues(lhs_eq_one_cond_op));
 
     return lhs_eq_rhs_cond_op;
   }
@@ -596,8 +618,7 @@ pir::Operation* ProcessGroup(
     ReplaceExpandWithBroadcast(
         rewriter.ir_context(), block, group->shape_analysis);
   });
-  VLOG(4) << "After simply condition block: " << *program;
-
+  VLOG(1) << "After simply condition block: " << *program;
   // 4. complie condition block to jit_kernel_op
   VLOG(1) << "complie condition block to jit_kernel_op";
   // prepare attribute for jit_kernel_op
@@ -605,7 +626,9 @@ pir::Operation* ProcessGroup(
   // create jit_kernel_op
   if (cond_op) {  // has condition block
     for (auto& [block, group] : group_map) {
-      rewriter.SetInsertionPointToBlockEnd(block);
+      auto& yeild_op = block->back();
+      CHECK(yeild_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
+      rewriter.set_insertion_point(&yeild_op);
       auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
           group_inputs, op_attr_map.at(group), output_types);
       auto group_output_values = group->GetGroupOutputValues();
@@ -613,6 +636,19 @@ pir::Operation* ProcessGroup(
       for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
         rewriter.ReplaceAllUsesWith(group_output_values[i],
                                     jit_kernel_op.result(i));
+      }
+
+      // Delete origin group ops
+      std::vector<pir::Operation*> group_ops;
+      for (auto iter = block->rbegin(); iter != block->rend(); iter++) {
+        if (!iter->isa<pir::YieldOp>()) {
+          group_ops.push_back(&(*iter));
+        }
+      }
+      for (auto* op : group_ops) {
+        if (op->use_empty()) {
+          op->Erase();
+        }
       }
     }
     return cond_op;
@@ -694,6 +730,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     value_map.clear();
     VLOG(4) << "Before GroupOpPattern.EraseOp: " << *program;
     rewriter.EraseOp(group_op);
+    VLOG(1) << "After GroupOpPattern.EraseOp: " << *program;
     return true;
   }
 
