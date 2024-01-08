@@ -45,7 +45,7 @@ class GradLinearLayer(paddle.nn.Layer):
     def forward(self, x):
         x.stop_gradient = False
         tmp = x + x
-        for i in range(1):
+        for i in range(10):
             tmp = self.linear(tmp)
         out = tmp
         dx = paddle.grad(
