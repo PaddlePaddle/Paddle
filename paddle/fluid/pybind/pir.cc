@@ -89,6 +89,7 @@
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/rewrite_generate_shape_ops_to_run_first_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #endif
 
 namespace py = pybind11;
@@ -1657,6 +1658,9 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
+  pass_manager->AddPass(
+    std::make_unique<cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
+  VLOG(4) << "After SplitGenerateShapeIntoShapeOpsPass: " << program;
   VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
           << ", shape_analysis: " << shape_analysis;
 #else
