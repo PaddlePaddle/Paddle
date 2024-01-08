@@ -50,11 +50,46 @@ class SetValueConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(3) << "convert a set value op to tensorrt";
     framework::OpDesc op_desc(op, nullptr);
+    int64_t axes = 0;
+    int64_t starts = 0;
+    int64_t steps = 1;
+    int64_t ends = 0;
+    GET_ATTR_FROM_VECTOR(axes);
+    GET_ATTR_FROM_VECTOR(starts);
+    GET_ATTR_FROM_VECTOR(steps);
+    GET_ATTR_FROM_VECTOR(ends);
+
+    VLOG(3) << "axes is: " << axes;
+    VLOG(3) << "starts is: " << starts;
+    VLOG(3) << "steps is: " << steps;
+    VLOG(3) << "ends is: " << ends;
 
     auto* inputs = engine_->GetITensor(op_desc.Input("Input")[0]);
+
+    auto input_dims = inputs->getDimensions();
+
+    // check params and refill
+    if (axes < 0) {
+      axes += input_dims.nbDims;
+    }
+
+    if (ends < 0) {
+      ends += input_dims.d[axes];
+    }
+    if (ends >= input_dims.d[axes]) {
+      ends = input_dims.d[axes];
+    }
+
+    VLOG(3) << "after standardization" << axes;
+    VLOG(3) << "axes is: " << axes;
+    VLOG(3) << "starts is: " << starts;
+    VLOG(3) << "steps is: " << steps;
+    VLOG(3) << "ends is: " << ends;
+
     auto output_name = op_desc.Output("Out")[0];
     nvinfer1::ITensor* updates;
-    if (op_desc.Input("ValueTensor").size() > 0) {
+    if (op_desc.HasInput("ValueTensor") &&
+        op_desc.Input("ValueTensor").size() > 0) {
       updates = engine_->GetITensor(op_desc.Input("ValueTensor")[0]);
     } else {
       int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
@@ -64,26 +99,32 @@ class SetValueConverter : public OpConverter {
                             "set_value OP dtype must be float"));
       float value = PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>,
                                      op_desc.GetAttr("values"))[0]
-                        .to<int>();
+                        .to<float>();
       VLOG(3) << "the attribute value is: " << value;
-      nvinfer1::Dims tmp_dim;
-      tmp_dim.nbDims = inputs->getDimensions().nbDims;
-      for (int i = 0; i < tmp_dim.nbDims; i++) tmp_dim.d[i] = 1;
-      updates = AddConstantLayer(&value, tmp_dim);
+
+      nvinfer1::ITensor* input_shape_tensor = Shape(inputs);
+      std::vector<nvinfer1::ITensor*> vec_tensor;
+      for (int32_t i = 0; i < input_dims.nbDims; ++i) {
+        vec_tensor.push_back(GetEleTensorOfShape(input_shape_tensor, i));
+      }
+      std::vector<int32_t> axes_vec(1, (ends - 1 - starts) / steps + 1);
+      vec_tensor[axes] = Add1DConstantLayer(axes_vec, "axes_vec", false);
+      nvinfer1::ITensor* output_shape_tensor = Concat(vec_tensor, 0);
+      updates = FillConstantLayer(
+          output_shape_tensor, inputs->getDimensions().nbDims, value);
     }
 
     // for log
     {
-      nvinfer1::Dims tmp_dims = inputs->getDimensions();
       std::vector<int> tmp_vec;
-      for (int i = 0; i < tmp_dims.nbDims; i++)
-        tmp_vec.push_back(tmp_dims.d[i]);
+      for (int i = 0; i < input_dims.nbDims; i++)
+        tmp_vec.push_back(input_dims.d[i]);
       VLOG(3) << "Input(Name:" << op_desc.Input("Input")[0] << ")"
               << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
               << "]";
 
       tmp_vec.clear();
-      tmp_dims = updates->getDimensions();
+      nvinfer1::Dims tmp_dims = updates->getDimensions();
       for (int i = 0; i < tmp_dims.nbDims; i++)
         tmp_vec.push_back(tmp_dims.d[i]);
       VLOG(3) << "updates tensor"
@@ -129,22 +170,7 @@ class SetValueConverter : public OpConverter {
               << "]";
     }
 
-    int64_t axes = 0;
-    int64_t starts = 0;
-    int64_t steps = 1;
-    int64_t ends = 0;
-    GET_ATTR_FROM_VECTOR(axes);
-    GET_ATTR_FROM_VECTOR(starts);
-    GET_ATTR_FROM_VECTOR(steps);
-    GET_ATTR_FROM_VECTOR(ends);
-
-    VLOG(3) << "axes is: " << axes;
-    VLOG(3) << "starts is: " << starts;
-    VLOG(3) << "steps is: " << steps;
-    VLOG(3) << "ends is: " << ends;
-
     // calculate dims
-    auto input_dims = inputs->getDimensions();
     auto update_dims = updates->getDimensions();
 
     PADDLE_ENFORCE_GT(
@@ -162,24 +188,6 @@ class SetValueConverter : public OpConverter {
             "the update_dims.d[%d] must be greater than 0, but received %d",
             axes,
             update_dims.d[axes]));
-
-    // check params and refill
-    if (axes < 0) {
-      axes += input_dims.nbDims;
-    }
-
-    if (ends < 0) {
-      ends += input_dims.d[axes];
-    }
-    if (ends >= input_dims.d[axes]) {
-      ends = input_dims.d[axes];
-    }
-
-    VLOG(3) << "after standardization" << axes;
-    VLOG(3) << "axes is: " << axes;
-    VLOG(3) << "starts is: " << starts;
-    VLOG(3) << "steps is: " << steps;
-    VLOG(3) << "ends is: " << ends;
 
     PADDLE_ENFORCE_LE(axes,
                       input_dims.nbDims,

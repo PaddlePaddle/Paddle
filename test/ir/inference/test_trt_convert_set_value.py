@@ -33,58 +33,96 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         def generate_input2():
             return np.random.random([2, 2, 3]).astype(np.float32)
 
-        ops_config = [
-            {
-                "op_type": "set_value",
-                "op_inputs": {
+        for update_scalar in [True, False]:
+            self.update_scalar = update_scalar
+            set_value_inputs = {}
+            if update_scalar:
+                set_value_inputs = {
+                    "Input": ["input_data"],
+                }
+            else:
+                set_value_inputs = {
                     "Input": ["input_data"],
                     "ValueTensor": ["update_data"],
+                }
+            ops_config = [
+                {
+                    "op_type": "set_value",
+                    "op_inputs": set_value_inputs,
+                    "op_outputs": {"Out": ["input_data"]},
+                    "op_attrs": {
+                        "axes": [1],
+                        "starts": [0],
+                        "ends": [2],
+                        "steps": [1],
+                        "decrease_axes": [],
+                        "values": [0.0],
+                    },
                 },
-                "op_outputs": {"Out": ["input_data"]},
-                "op_attrs": {
-                    "axes": [1],
-                    "starts": [0],
-                    "ends": [2],
-                    "steps": [1],
-                    "decrease_axes": [],
+                {
+                    "op_type": "relu",
+                    "op_inputs": {
+                        "X": ["input_data"],
+                    },
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": {},
                 },
-            },
-            {
-                "op_type": "relu",
-                "op_inputs": {
-                    "X": ["input_data"],
-                },
-                "op_outputs": {"Out": ["output_data"]},
-                "op_attrs": {},
-            },
-        ]
-        ops = self.generate_op_config(ops_config)
-        program_config = ProgramConfig(
-            ops=ops,
-            weights={},
-            inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input1)),
-                "update_data": TensorConfig(data_gen=partial(generate_input2)),
-            },
-            outputs=["output_data"],
-        )
+            ]
 
-        yield program_config
+            ops = self.generate_op_config(ops_config)
+            if update_scalar:
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={},
+                    inputs={
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1)
+                        ),
+                    },
+                    outputs=["output_data"],
+                )
+            else:
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={},
+                    inputs={
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1)
+                        ),
+                        "update_data": TensorConfig(
+                            data_gen=partial(generate_input2)
+                        ),
+                    },
+                    outputs=["output_data"],
+                )
+
+            yield program_config
 
     def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [2, 3, 3],
-                "update_data": [2, 2, 3],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [3, 3, 4],
-                "update_data": [3, 2, 4],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [3, 3, 3],
-                "update_data": [3, 2, 3],
-            }
+            if self.update_scalar:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [2, 3, 3],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [3, 3, 4],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [3, 3, 3],
+                }
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [2, 3, 3],
+                    "update_data": [2, 2, 3],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [3, 3, 4],
+                    "update_data": [3, 2, 4],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [3, 3, 3],
+                    "update_data": [3, 2, 3],
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -94,9 +132,14 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if dynamic_shape:
                 ver = paddle_infer.get_trt_compile_version()
-                if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
-                    return 1, 4
-                return 1, 3
+                if self.update_scalar:
+                    if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
+                        return 1, 3
+                    return 1, 2
+                else:
+                    if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
+                        return 1, 4
+                    return 1, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
