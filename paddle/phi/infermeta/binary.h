@@ -221,9 +221,9 @@ void DropoutNdInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* mask);
 
-void ElementwiseInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          MetaTensor* out);
+TEST_API void ElementwiseInferMeta(const MetaTensor& x,
+                                   const MetaTensor& y,
+                                   MetaTensor* out);
 
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
@@ -455,6 +455,15 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            int out_dtype,
                            MetaTensor* y);
 
+void ShuffleBatchInferMeta(const MetaTensor& x,
+                           const MetaTensor& seed,
+                           int startup_seed,
+                           MetaTensor* out,
+                           MetaTensor* shuffle_idx,
+                           MetaTensor* seed_out
+
+);
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);
@@ -539,6 +548,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
                                DataType out_dtype,
+                               const int32_t group_size,
                                MetaTensor* out);
 
 }  // namespace phi

@@ -220,9 +220,7 @@ def array_write(x, i, array=None):
     elif in_pir_mode():
         check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
         if not isinstance(x, paddle.pir.Value):
-            raise TypeError(
-                f"x should be pir.OpResult, but recevied {type(x)}."
-            )
+            raise TypeError(f"x should be pir.Value, but recevied {type(x)}.")
         if array is not None:
             if (
                 not isinstance(array, paddle.pir.Value)
@@ -232,7 +230,7 @@ def array_write(x, i, array=None):
         if array is None:
             array = paddle._pir_ops.create_array(x.dtype)
 
-        array = paddle._pir_ops.array_write_(array, x, i)
+        paddle._pir_ops.array_write_(array, x, i)
         return array
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
@@ -304,7 +302,7 @@ def create_array(dtype, initialized_list=None):
     for val in array:
         if not isinstance(val, (Variable, paddle.pir.Value)):
             raise TypeError(
-                "All values in `initialized_list` should be Variable or pir.OpResult, but recevied {}.".format(
+                "All values in `initialized_list` should be Variable or pir.Value, but recevied {}.".format(
                     type(val)
                 )
             )

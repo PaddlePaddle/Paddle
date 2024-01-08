@@ -74,9 +74,8 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
             "backend": ["gpu"],
             "use_sp": ["true", "false"],
             "use_param_group": ["false", "true"],
-            # TODO(Yuang Liu): add recompute ut to pp after fixing pp probs
-            # "recompute": ["true", "false"],
-            # "recompute_granularity": ["full", "full_attn", "core_attn"],
+            "recompute": ["true", "false"],
+            "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy(self):
@@ -103,9 +102,28 @@ class TestSemiAutoParallelLlamaACC(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {
             "backend": ["gpu"],
+            "recompute": ["true", "false"],
+            "recompute_granularity": ["full", "full_attn", "core_attn"],
         }
 
     def test_simple_net_hybrid_strategy_acc(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_llama.py",
+                user_defined_envs=envs,
+            )
+
+
+class TestSemiAutoParallelLlamaLazyInit(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
+        self._default_envs = {"dp": "2", "mp": "2", "pp": "2", "acc_step": "2"}
+        self._changeable_envs = {"backend": ["gpu"], "use_lazy_init": ["true"]}
+
+    def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )

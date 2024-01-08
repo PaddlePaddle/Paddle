@@ -57,7 +57,7 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
         out = last_op.results()
         self.assertEqual(out[0].stop_gradient, False)
         self.assertEqual(last_op.name(), "pd_op.while")
-        self.assertEqual(len(out), 2)
+        self.assertEqual(len(out), 1)
 
     def test_get_used_external_value(self):
         main_program = paddle.static.Program()
@@ -104,7 +104,7 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
                 [input] for input in get_used_external_value(body_block)
             ]
             self.assertEqual(len(while_input), 4)
-            while_input_stop_graditents = [[True], [False], [True], [True]]
+            while_input_stop_gradients = [[True], [False], [True], [True]]
             while_output = [[value] for value in while_op.results()]
             while_output_grad = [[out_grad], [out_grad], [out_grad]]
             self.assertEqual(has_vjp(while_op), True)
@@ -113,7 +113,7 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
                 while_input,
                 while_output,
                 while_output_grad,
-                while_input_stop_graditents,
+                while_input_stop_gradients,
             )
 
             self.assertEqual(grad_outs[0][0], None)
@@ -180,7 +180,7 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .ops[-1]
                 .as_while_op()
                 .body()
-                .ops[-2]
+                .ops[-4]
                 .name(),
                 "cf.has_elements",
             )
@@ -190,7 +190,7 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .ops[-1]
                 .as_while_op()
                 .body()
-                .ops[-3]
+                .ops[-5]
                 .name(),
                 "pd_op.add_grad",
             )

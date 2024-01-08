@@ -47,9 +47,12 @@ static const std::unordered_set<std::string>
 
         GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
 #undef GEN_FUNC_NAME
+#undef GEN_FUNC_NAME_WITH_TYPE
+#undef CINN_NVGPU_FUNC_TYPE
+#undef CINN_NVGPU_FUNC2STRING
 };
 
-bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
+static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
   ir::ScheduleBlockRealize* sch_block_realize =
       block.As<ir::ScheduleBlockRealize>();
   CHECK_NOTNULL(sch_block_realize);

@@ -3176,7 +3176,7 @@ def sigmoid_focal_loss(
                 )
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         one = _C_ops.full(logit.shape, 1.0, logit.dtype, place)
 
@@ -3193,7 +3193,10 @@ def sigmoid_focal_loss(
             ),
         )
 
-        alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        if in_dynamic_mode():
+            alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        else:
+            alpha = paddle.to_tensor(alpha, dtype=loss.dtype)
         alpha_t = _C_ops.add(
             _C_ops.multiply(alpha, label),
             _C_ops.multiply(
@@ -3202,7 +3205,8 @@ def sigmoid_focal_loss(
         )
         loss = _C_ops.multiply(alpha_t, loss)
 
-        gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        if in_dynamic_mode():
+            gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
         gamma_t = _C_ops.pow(_C_ops.subtract(one, p_t), gamma)
         loss = _C_ops.multiply(gamma_t, loss)
 
