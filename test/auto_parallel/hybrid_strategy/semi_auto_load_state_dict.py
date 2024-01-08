@@ -15,7 +15,7 @@
 import os
 
 import numpy as np
-from auto_parallel.hybrid_strategy.save_state_dict import (
+from auto_parallel.hybrid_strategy.semi_auto_save_state_dict import (
     get_global_state_dict,
 )
 

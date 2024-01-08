@@ -41,6 +41,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'lrn',
     'match_matrix_tensor',
     'matmul',
+    'max_pool2d_v2',
     'max_pool2d_with_index',
     'max_pool3d_with_index',
     'minus',
