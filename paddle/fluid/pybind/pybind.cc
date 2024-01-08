@@ -245,6 +245,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithCudnnFrontend() {
+#ifndef PADDLE_WITH_CUDNN_FRONTEND
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithDISTRIBUTE() {
 #if !defined(PADDLE_WITH_DISTRIBUTE)
   return false;
@@ -2105,6 +2113,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_cudnn_frontend", IsCompiledWithCudnnFrontend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);

@@ -2343,6 +2343,37 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   mask->set_dtype(phi::CppTypeToDataType<int>::Type());
 }
 
+void MaxPoolV2InferMeta(const MetaTensor& x,
+                        const std::vector<int>& kernel_size,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& data_format,
+                        bool global_pooling,
+                        bool adaptive,
+                        MetaTensor* out,
+                        MetaTensor* saved_idx,
+                        MetaConfig config) {
+  PADDLE_ENFORCE_EQ(adaptive,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "max_pool2d_v2 op does not support adaptive."));
+  Pool2DInferMeta(x,
+                  kernel_size,
+                  strides,
+                  paddings,
+                  false,
+                  false,
+                  data_format,
+                  "max",
+                  global_pooling,
+                  adaptive,
+                  "EXPLICIT",
+                  out,
+                  config);
+  saved_idx->set_dims(out->dims());
+  saved_idx->set_dtype(phi::CppTypeToDataType<int>::Type());
+}
+
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());

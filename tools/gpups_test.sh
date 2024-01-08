@@ -106,6 +106,7 @@ parallel_list="^init_phi_test$|\
 ^test_gather_nd_op$|\
 ^test_index_select_op$|\
 ^test_pass_base_list$|\
+^test_pool_max_op$|\
 ^test_roll_op$|\
 ^test_switch_autotune$|\
 ^test_tcp_store$|\

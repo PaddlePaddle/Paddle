@@ -1073,6 +1073,7 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
+set_tests_properties(test_pool_max_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)

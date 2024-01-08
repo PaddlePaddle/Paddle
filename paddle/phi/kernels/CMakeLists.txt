@@ -177,7 +177,9 @@ if(NOT WITH_CUDNN_FRONTEND)
     "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
     "fusion/gpu/fused_scale_bias_add_relu_kernel.cu"
     "fusion/gpu/fused_dconv_drelu_dbn_kernel.cu"
-    "fusion/gpu/fused_dot_product_attention_op.cu")
+    "fusion/gpu/fused_dot_product_attention_op.cu"
+    "fusion/gpu/max_pool2d_v2_grad_kernel.cu"
+    "fusion/gpu/max_pool2d_v2_kernel.cu")
 endif()
 
 set(cc_search_pattern

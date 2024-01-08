@@ -51,3 +51,14 @@
     func : fused_rotary_position_embedding_grad
     data_type : out_q_grad
   support_dygraph_mode : true
+
+- backward_op : max_pool2d_v2_grad
+  forward : max_pool2d_v2(Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, str data_format = "NCHW", bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(saved_idx)
+  args : (Tensor x, Tensor out, Tensor saved_idx, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, str data_format, bool global_pooling, bool adaptive)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : max_pool2d_v2_grad
+    param: [x, out, saved_idx, out_grad, kernel_size, strides, paddings, data_format, global_pooling, adaptive]
