@@ -111,10 +111,20 @@ void ReplaceExpandWithBroadcast(
             .defining_op()
             ->isa<cinn::dialect::GenerateShapeOp>()) {
       builder.SetInsertionPointAfter(op);
-      auto broadcast =
-          builder.Build<cinn::dialect::BroadcastOp>(op->operand_source(0),
-                                                    std::vector<int64_t>{-1},
-                                                    std::vector<int64_t>{-1});
+      auto x_rank = op->operand_source(0)
+                        .type()
+                        .dyn_cast<pir::ShapedTypeInterface>()
+                        .GetRank();
+      auto out_rank =
+          op->result(0).type().dyn_cast<pir::ShapedTypeInterface>().GetRank();
+      std::vector<int64_t> broadcast_axes(x_rank, 0);
+      size_t index_gap = out_rank - x_rank;
+      for (size_t i = 0; i < x_rank; ++i) {
+        broadcast_axes[i] = i + index_gap;
+      }
+      std::vector<int64_t> out_shape(out_rank, -1);
+      auto broadcast = builder.Build<cinn::dialect::BroadcastOp>(
+          op->operand_source(0), broadcast_axes, out_shape);
       auto broadcast_out = broadcast.result(0);
       auto expand_out = op->result(0);
       expand_out.ReplaceAllUsesWith(broadcast_out);
@@ -345,9 +355,12 @@ void SetLeafBlockByGroupView(
   // Insert YieldOp for outputs
   std::vector<pir::Value> outputs;
   builder.SetInsertionPointToBlockEnd(block);
-  for (auto output : origin_group->output_values) {
+  for (auto output : origin_group->GetGroupOutputValues()) {
     outputs.push_back(ir_mapping.Lookup(output));
+    VLOG(1) << "##### output: " << pir::GetValueId(&output)
+            << " new output: " << pir::GetValueId(&outputs.back());
   }
+  VLOG(1) << "###### Insert YieldOp for outputs: " << outputs.size();
   builder.Build<pir::YieldOp>(outputs);
 
   UpdateShapeAnalysis(new_group,
@@ -394,15 +407,16 @@ pir::Operation* CreateConditionBlock(
         lhs_eq_rhs_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_rhs_block = lhs_eq_rhs_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
-    CreateConditionBlock(branch.Get<1>(),
-                         origin_group,
-                         shape_analysis,
-                         value_to_dim_expr_idx,
-                         group_inputs,
-                         output_types,
-                         builder,
-                         &lhs_eq_rhs_block,
-                         group_map);
+    auto* sub_block_op = CreateConditionBlock(branch.Get<1>(),
+                                              origin_group,
+                                              shape_analysis,
+                                              value_to_dim_expr_idx,
+                                              group_inputs,
+                                              output_types,
+                                              builder,
+                                              &lhs_eq_rhs_block,
+                                              group_map);
+    builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
 
     pir::Block& lhs_not_eq_rhs_block = lhs_eq_rhs_cond_op.false_block();
     builder.SetInsertionPointToBlockEnd(&lhs_not_eq_rhs_block);
@@ -525,8 +539,9 @@ pir::Operation* ProcessGroup(
   }
 
   std::vector<pir::Type> output_types;
-  for (size_t i = 0; i < group->output_values.size(); ++i) {
-    output_types.push_back(group->output_values[i].type());
+  auto group_output_values = group->GetGroupOutputValues();
+  for (size_t i = 0; i < group_output_values.size(); ++i) {
+    output_types.push_back(group_output_values[i].type());
   }
 
   auto* origin_block = rewriter.block();
@@ -593,9 +608,10 @@ pir::Operation* ProcessGroup(
       rewriter.SetInsertionPointToBlockEnd(block);
       auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
           group_inputs, op_attr_map.at(group), output_types);
-      CHECK(jit_kernel_op.num_results() == group->output_values.size());
+      auto group_output_values = group->GetGroupOutputValues();
+      CHECK(jit_kernel_op.num_results() == group_output_values.size());
       for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
-        rewriter.ReplaceAllUsesWith(group->output_values[i],
+        rewriter.ReplaceAllUsesWith(group_output_values[i],
                                     jit_kernel_op.result(i));
       }
     }
@@ -633,11 +649,9 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
       value2id[yeild_op->operand_source(i)] = i;
     }
-    std::unordered_map<pir::Value, pir::Value> value_map;
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
-    shape_analysis.PrintAllShapeOrDataDimExprs();
     auto shape_analysis_ =
         std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
     VLOG(1) << "shape_analysis: " << &shape_analysis
@@ -656,6 +670,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     VLOG(1) << "###### GeneralFusionMergePass op_fusion size: "
             << op_fusion.size();
 
+    std::unordered_map<pir::Value, pir::Value> value_map;
     for (auto group : group_list) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
@@ -666,13 +681,14 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
 
       pir::Operation* complied_op = ProcessGroup(
           group, shape_analysis_, ir_compiler, value_map, rewriter);
+      auto group_output_values = group->GetGroupOutputValues();
       for (size_t i = 0; i < complied_op->num_results(); ++i) {
-        auto find_it = value2id.find(group->output_values[i]);
+        auto find_it = value2id.find(group_output_values[i]);
         if (find_it != value2id.end()) {
           rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
                                       complied_op->result(i));
         }
-        value_map[group->output_values[i]] = complied_op->result(i);
+        value_map[group_output_values[i]] = complied_op->result(i);
       }
     }
     value_map.clear();
