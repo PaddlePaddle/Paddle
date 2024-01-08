@@ -361,6 +361,13 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             bool keep_dim,
                             MetaTensor* x_grad);
 
+void NceGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& bias,
+                      const MetaTensor& weight,
+                      MetaTensor* input_grad,
+                      MetaTensor* bias_grad,
+                      MetaTensor* weight_grad);
+
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,
                           const MetaTensor& weight,
@@ -427,6 +434,11 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                const MetaTensor& out_grad,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
+
+void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
+                               const MetaTensor& out_grad,
+                               int startup_seed,
+                               MetaTensor* x_grad);
 
 void SpectralNormGradInferMeta(const MetaTensor& weight,
                                const MetaTensor& u,
