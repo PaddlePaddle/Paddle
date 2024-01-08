@@ -63,6 +63,9 @@ def check_all_puts(block, inputs, outputs):
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
+    if paddle.pir.is_fake_op_result(value):
+        state.value_to_valuegrad[value] = [[paddle.pir.fake_op_result()]]
+        return
     if copy_value.is_tensorarray():
         value_grad = paddle._pir_ops.create_array_like(
             copy_value,
@@ -278,7 +281,6 @@ def update_no_grad_set_after_prune(
     from inputs to outputs add value not in the path to no_grad_set,
     from outputs to inputs add value not in the path to no_grad_set,
     '''
-    breakpoint()
     inputs_set = ValueSet(inputs)
     for input in inputs:
         if not input.use_empty():
@@ -297,8 +299,6 @@ def update_no_grad_set_after_prune(
             for value in get_real_op_inputs(op):
                 if value not in inputs_set:
                     no_grad_set.add(value)
-
-    breakpoint()
 
     outputs_set = ValueSet(outputs)
     no_grad_set_tmp = ValueSet()
@@ -639,7 +639,6 @@ def append_backward_ops(
                 inputs.append(tmp_input)
 
                 if input in no_grad_set or input.stop_gradient is True:
-                    breakpoint()
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
@@ -706,9 +705,7 @@ def append_backward_ops(
                     new_value = return_map_value(
                         value, control_flow_value_to_copyvalue_map
                     )
-                    value_grad = append_full_like(
-                        0.0, new_value, value, state, backward_ops
-                    )
+                    append_full_like(0.0, new_value, value, state, backward_ops)
                 input_grad = state.value_to_valuegrad[value][0][0]
 
                 inputs_grad.append(input_grad)
@@ -923,7 +920,6 @@ def append_backward_ops(
                         update_input_grad_map(op, input_grads, origin_inputs)
                     else:
                         # create grad_op
-                        print(fwd_block.program)
                         before_ops_num = len(bwd_block.ops)
                         with dynamic_shape_prim_vjp_guard(op, inputs):
                             input_grads = paddle.framework.core.call_vjp(
@@ -934,8 +930,6 @@ def append_backward_ops(
                                 input_grad_stopgradients,
                             )
                         after_ops_num = len(bwd_block.ops)
-                        breakpoint()
-                        print(fwd_block.program)
 
                         # update grad_op structure
                         bwd_ops = [

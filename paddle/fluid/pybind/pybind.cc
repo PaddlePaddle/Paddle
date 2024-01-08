@@ -749,7 +749,6 @@ void BindVjp(pybind11::module *m) {
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
             if (!vjp_res[i][j]) {
-              VLOG(0) << "vjp_res[" << i << "][" << j << "] is nullptr";
               sub_res.append(nullptr);
             } else {
               sub_res.append(vjp_res[i][j]);

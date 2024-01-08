@@ -171,12 +171,17 @@ std::string GetValueInfo(Value v) {
   } else if (auto arg = v.dyn_cast<BlockArgument>()) {
     ss << "block_arg, index = " << arg.index();
   }
-  ss << ", dtype=" << v.type();
-  if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    ss << ", place="
-       << v.type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-              .place();
+  if (!v.type()) {
+    VLOG(0) << "[GetValueInfo] The type of value is nullptr.";
+    ss << ", dtype=<<NULL TYPE>>";
+  } else {
+    ss << ", dtype=" << v.type();
+    if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      ss << ", place="
+         << v.type()
+                .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                .place();
+    }
   }
   return ss.str();
 }
@@ -421,7 +426,6 @@ void BindBlock(py::module *m) {
       });
 }
 
-
 void BindOperation(py::module *m) {
   py::class_<Operation> op(*m, "Operation", R"DOC(
     In IR, all the operation are represented by Operation, and Operation
@@ -535,14 +539,13 @@ void BindOperation(py::module *m) {
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
-      .def("__repr__",
-           [](Operation &self) {
-             std::ostringstream print_stream;
-             print_stream << "Operation(";
-             self.Print(print_stream);
-             print_stream << ")";
-             return print_stream.str();
-           });
+      .def("__repr__", [](Operation &self) {
+        std::ostringstream print_stream;
+        print_stream << "Operation(";
+        self.Print(print_stream);
+        print_stream << ")";
+        return print_stream.str();
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -559,8 +562,7 @@ py::str Value2String(Value self) {
   std::ostringstream print_stream;
   print_stream << "Value(";
   print_stream << GetValueInfo(self);
-  auto stop_gradient =
-      self.attribute<BoolAttribute>(kAttrStopGradients);
+  auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
   if (stop_gradient && !stop_gradient.data()) {
     print_stream << ", stop_gradient=False";
   } else {
@@ -570,11 +572,10 @@ py::str Value2String(Value self) {
   return print_stream.str();
 }
 
-
-
 phi::DataType GetValueDtype(Value value) {
   if (!value.type()) {
-    VLOG(0) << "type is NULL";
+    VLOG(0) << "[GetValueDtype] The type of value is nullptr.";
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
   if (value.type().isa<DenseTensorType>()) {
     return paddle::dialect::TransToPhiDataType(
@@ -593,6 +594,10 @@ phi::DataType GetValueDtype(Value value) {
 }
 
 const phi::DDim &GetValueDims(Value value) {
+  if (!value.type()) {
+    VLOG(0) << "[GetValueDims] The type of value is nullptr.";
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
   } else if (value.type().isa<SelectedRowsType>()) {

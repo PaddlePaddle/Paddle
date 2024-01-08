@@ -16,14 +16,14 @@ import os
 import tempfile
 import unittest
 
+import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    enable_to_static_guard,
-    test_ast_only,
-    test_pir_only,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
+from paddle.framework import use_pir_api
 
 
 class GradLayer(paddle.nn.Layer):
@@ -75,18 +75,11 @@ class TestGrad(Dy2StTestBase):
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
-    def _run(self, func, to_static):
-        with enable_to_static_guard(to_static):
-            ret = func(self.x).numpy()
-        return ret
-
-    @test_pir_only
-    @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_forward(self):
-        # dygraph_res = self._run(self.func, to_static=False)
-        # static_res = self._run(self.func, to_static=True)
+        dygraph_res = self.func(self.x).numpy()
         static_res = paddle.jit.to_static(self.func)(self.x).numpy()
-        # np.testing.assert_allclose(static_res, dygraph_res, rtol=1e-05)
+        np.testing.assert_allclose(static_res, dygraph_res, rtol=1e-05)
 
 
 class TestGradLinear(TestGrad):
@@ -106,40 +99,48 @@ class TestGradLinear(TestGrad):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    # def test_save_infer_program(self):
-    #     self.setUp()  # make self.func change to ast mode
-    #     input_spec = [
-    #         paddle.static.InputSpec(shape=[10, 2, 5], dtype='float32')
-    #     ]
-    #     paddle.jit.save(self.func, self.infer_model_path, input_spec=input_spec)
-    #     load_func = paddle.jit.load(self.infer_model_path)
+    @test_legacy_and_pt_and_pir
+    def test_save_infer_program(self):
+        # TODO(pir-save-load): Fix this after we support save/load in PIR
+        if use_pir_api():
+            return
+        static_fn = paddle.jit.to_static(self.func)
+        input_spec = [
+            paddle.static.InputSpec(shape=[10, 2, 5], dtype='float32')
+        ]
+        paddle.jit.save(static_fn, self.infer_model_path, input_spec=input_spec)
+        load_func = paddle.jit.load(self.infer_model_path)
 
-    #     origin_res = self.func(self.x).numpy()
-    #     load_res = load_func(self.x).numpy()
-    #     np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
+        origin_res = static_fn(self.x).numpy()
+        load_res = load_func(self.x).numpy()
+        np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
 
-    # def test_save_train_program(self):
-    #     self.setUp()  # make self.func change to ast mode
-    #     grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
-    #     optimizer = paddle.optimizer.SGD(
-    #         learning_rate=0.01,
-    #         grad_clip=grad_clip,
-    #         parameters=self.func.parameters(),
-    #     )
-    #     for i in range(10):
-    #         out = self.func(self.x)
-    #         avg_loss = paddle.mean(paddle.abs(out - 1))
-    #         avg_loss.backward()
-    #         optimizer.minimize(avg_loss)
+    @test_legacy_and_pt_and_pir
+    def test_save_train_program(self):
+        static_fn = paddle.jit.to_static(self.func)
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.01,
+            grad_clip=grad_clip,
+            parameters=static_fn.parameters(),
+        )
+        for i in range(10):
+            out = static_fn(self.x)
+            avg_loss = paddle.mean(paddle.abs(out - 1))
+            avg_loss.backward()
+            optimizer.minimize(avg_loss)
 
-    #         self.func.clear_gradients()
+            static_fn.clear_gradients()
 
-    #     paddle.jit.save(self.func, self.train_model_path)
-    #     load_func = paddle.jit.load(self.train_model_path)
+        # TODO(pir-save-load): Fix this after we support save/load in PIR
+        if use_pir_api():
+            return
+        paddle.jit.save(static_fn, self.train_model_path)
+        load_func = paddle.jit.load(self.train_model_path)
 
-    #     origin_res = self.func(self.x).numpy()
-    #     load_res = load_func(self.x).numpy()
-    #     np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
+        origin_res = static_fn(self.x).numpy()
+        load_res = load_func(self.x).numpy()
+        np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
 
 
 class TestNoGradLinear(TestGradLinear):
