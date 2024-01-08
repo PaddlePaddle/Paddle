@@ -116,12 +116,13 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertTensorDimToValue(const TensorDimInData& tensor_dim) {
     return rewriter
-        ->Build<paddle::dialect::SliceOp>(tensor_dim.value,
-                                          std::vector{0LL},
-                                          std::vector{tensor_dim.axis},
-                                          std::vector{tensor_dim.axis + 1},
-                                          std::vector<int64_t>{},
-                                          std::vector<int64_t>{})
+        ->Build<paddle::dialect::SliceOp>(
+            tensor_dim.value,
+            std::vector{0LL},
+            std::vector<int64_t>{tensor_dim.axis},
+            std::vector<int64_t>{tensor_dim.axis + 1},
+            std::vector<int64_t>{},
+            std::vector<int64_t>{})
         .out();
   }
 
@@ -262,7 +263,7 @@ class SplitGenerateShapeIntoShapeOps
       InsertSymbolBinding(op, symbol_binding, &symbol_name2tenso_dim);
     }
     return [map = std::move(symbol_name2tenso_dim)](
-               const std::string& symbol_name) {
+               const std::string& symbol_name) -> std::optional<TensorDim> {
       auto iter = map.find(symbol_name);
       if (iter == map.end()) return std::nullopt;
       return iter->second;
@@ -272,10 +273,10 @@ class SplitGenerateShapeIntoShapeOps
   void InsertSymbolBinding(
       cinn::dialect::GenerateShapeOp op,
       const cinn::dialect::GenerateShapeOp::SymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) {
+      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
     return std::visit(
         [&](const auto& impl) {
-          return InsertSymbolBindingImpl(impl, symbol_name2tenso_dim);
+          return InsertSymbolBindingImpl(op, impl, symbol_name2tenso_dim);
         },
         symbol_binding);
   }
@@ -283,7 +284,7 @@ class SplitGenerateShapeIntoShapeOps
   void InsertSymbolBindingImpl(
       cinn::dialect::GenerateShapeOp op,
       const cinn::dialect::GenerateShapeOp::DataSymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) {
+      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
     (*symbol_name2tenso_dim)[symbol_binding.symbol_name] = TensorDimInData{
         .value = op.operand_source(symbol_binding.input_tensor_idx),
         .axis = symbol_binding.input_tensor_dim_idx};
@@ -292,7 +293,7 @@ class SplitGenerateShapeIntoShapeOps
   void InsertSymbolBindingImpl(
       cinn::dialect::GenerateShapeOp op,
       const cinn::dialect::GenerateShapeOp::ShapeSymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) {
+      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
     (*symbol_name2tenso_dim)[symbol_binding.symbol_name] = TensorDimInShape{
         .value = op.operand_source(symbol_binding.input_tensor_idx),
         .axis = symbol_binding.input_tensor_dim_idx};
