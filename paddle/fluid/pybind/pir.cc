@@ -1087,7 +1087,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
 }
 
 void AppendShadowOutput(Program *forward_program,
-                        const pir::OpResult &result,
+                        const pir::Value &value,
                         const std::string &name,
                         size_t start_point) {
   pir::IrContext *ctx = pir::IrContext::Instance();
@@ -1096,7 +1096,7 @@ void AppendShadowOutput(Program *forward_program,
       {"output_name", pir::StrAttribute::get(ctx, name)},
   };
   pir::Operation *operation =
-      pir::Operation::Create({result}, attribute_map, {}, op_info);
+      pir::Operation::Create({value}, attribute_map, {}, op_info);
   auto position = forward_program->block()->begin();
   std::advance(position, start_point);
   if (position == forward_program->block()->end()) {
@@ -1107,19 +1107,19 @@ void AppendShadowOutput(Program *forward_program,
 }
 
 int AppendShadowOutputs(Program *forward_program,
-                        const std::vector<pir::OpResult> &outputs_op_result,
+                        const std::vector<pir::Value> &outputs,
                         int start_point,
                         std::string name_prefix) {
   int counter = 0;
-  std::unordered_set<pir::OpResult> added_op_result;
+  std::unordered_set<pir::Value> added_value;
 
-  for (const auto &result : outputs_op_result) {
-    if (!added_op_result.count(result) || IsFakeValue(result)) {
+  for (const auto &value : outputs) {
+    if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
       AppendShadowOutput(
-          forward_program, result, shadow_output_name, start_point + counter);
+          forward_program, value, shadow_output_name, start_point + counter);
       counter += 1;
-      added_op_result.insert(result);
+      added_value.insert(value);
     }
   }
   // return the inserted op.
@@ -1128,51 +1128,17 @@ int AppendShadowOutputs(Program *forward_program,
 
 SplitedResult SplitForwardBackward(
     const Program &program,
-    const std::vector<pir::OpResult> &op_result_forward_inputs,
-    const std::vector<pir::OpResult> &op_result_forward_params,
-    const std::vector<pir::OpResult> &op_result_forward_outputs,
-    const std::vector<pir::OpResult> &op_result_forward_inputs_grads,
-    const std::vector<pir::OpResult> &op_result_forward_params_grads,
-    const std::vector<pir::OpResult> &op_result_forward_outputs_grads,
+    const std::vector<pir::Value> &forward_inputs,
+    const std::vector<pir::Value> &forward_params,
+    const std::vector<pir::Value> &forward_outputs,
+    const std::vector<pir::Value> &forward_inputs_grads,
+    const std::vector<pir::Value> &forward_params_grads,
+    const std::vector<pir::Value> &forward_outputs_grads,
     const std::vector<int> &forward_range,
     const std::vector<int> &backward_range) {
-  // transform opresult -> value
-  std::vector<pir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
-      forward_outputs_grads, forward_params, forward_params_grads;
-
-  auto op_result_to_value = [](const pir::OpResult &r) {
-    if (r.impl() == nullptr) return Value(nullptr);
-    return Value(r.Value::impl());
-  };
-
-  std::transform(op_result_forward_inputs.begin(),
-                 op_result_forward_inputs.end(),
-                 std::back_inserter(forward_inputs),
-                 op_result_to_value);
-  std::transform(op_result_forward_outputs.begin(),
-                 op_result_forward_outputs.end(),
-                 std::back_inserter(forward_outputs),
-                 op_result_to_value);
-  std::transform(op_result_forward_inputs_grads.begin(),
-                 op_result_forward_inputs_grads.end(),
-                 std::back_inserter(forward_inputs_grads),
-                 op_result_to_value);
-  std::transform(op_result_forward_outputs_grads.begin(),
-                 op_result_forward_outputs_grads.end(),
-                 std::back_inserter(forward_outputs_grads),
-                 op_result_to_value);
-  std::transform(op_result_forward_params.begin(),
-                 op_result_forward_params.end(),
-                 std::back_inserter(forward_params),
-                 op_result_to_value);
-  std::transform(op_result_forward_params_grads.begin(),
-                 op_result_forward_params_grads.end(),
-                 std::back_inserter(forward_params_grads),
-                 op_result_to_value);
-
   std::vector<pir::Value> forward_in_out_values;
-  for (auto &v : std::vector<std::vector<pir::Value> *>(
-           {&forward_inputs, &forward_outputs, &forward_params})) {
+  for (auto &v :
+       std::vector({&forward_inputs, &forward_outputs, &forward_params})) {
     forward_in_out_values.insert(
         forward_in_out_values.end(), v->begin(), v->end());
   }
