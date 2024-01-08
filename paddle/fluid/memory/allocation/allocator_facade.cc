@@ -841,6 +841,7 @@ class AllocatorFacadePrivate {
       VLOG(8) << "[CUDAMallocAsyncAllocator] Init CUDA allocator for stream "
               << stream << " in place " << p;
       InitCUDAMallocAsyncAllocator(p, stream);
+      WrapCUDARetryAllocator(p, stream, FLAGS_gpu_allocator_retry_time);
       WrapStatAllocator(p, stream);
     } else {
       if (LIKELY(!HasCUDAAllocator(p, stream))) {

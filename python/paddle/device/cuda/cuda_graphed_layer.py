@@ -129,7 +129,8 @@ class CUDAGraphLayerStatus(Enum):
 
     WARMUP = 1
     RECORD = 2
-    CUDAGRAPH = 3
+    WAIT_BACKWARD_RECORD = 3
+    CUDAGRAPH = 4
 
 
 class CUDAGraphContext:
@@ -147,58 +148,39 @@ class CUDAGraphContext:
         """
         self.layer = layer
         self.num_warmup_steps = num_warmup_steps
-        self.graph_index = -1
         self._step = 0
-        self.forward_graph = []
-        self.backward_graph = []
+        self.forward_graph = CUDAGraphWithStaticInputOutput(
+            self.num_warmup_steps
+        )
+        self.backward_graph = CUDAGraphWithStaticInputOutput(
+            self.num_warmup_steps
+        )
 
-        # Queue for saved tensors to support virtual pipeline, assuming FIFO order
-        self.saved_tensor = deque()
+        # Queue for saved tensors to support 1f1b/interleved scheduler, assuming FIFO order
+        self.queue = deque()
         self.status = CUDAGraphLayerStatus.WARMUP
 
-    def append_graph(self):
-        new_forward_graph = CUDAGraphWithStaticInputOutput(
-            self.num_warmup_steps
-        )
-        new_backward_graph = CUDAGraphWithStaticInputOutput(
-            self.num_warmup_steps
-        )
-        self.forward_graph.append(new_forward_graph)
-        self.backward_graph.append(new_backward_graph)
-        self.graph_index += 1
-
-    def current_forward_graph(self):
-        return self.forward_graph[self.graph_index]
-
-    def current_backward_graph(self):
-        return self.backward_graph[self.graph_index]
-
-    def reset_graph_index(self):
-        self.graph_index = 0
-
     def queue_push(self, args):
-        self.saved_tensor.append(args)
+        self.queue.append(args)
 
     def queue_pop(self):
-        return self.saved_tensor.popleft()
+        return self.queue.popleft()
 
-    def next_graph(self):
-        self.graph_index += 1
-
-    def update_status(self):
-        if self._step < self.num_warmup_steps:
-            self.status = CUDAGraphLayerStatus.WARMUP
-        elif self._step == self.num_warmup_steps:
-            self.status = CUDAGraphLayerStatus.RECORD
-        else:
-            self.status = CUDAGraphLayerStatus.CUDAGRAPH
-
-    def step(self):
+    def warmup_step(self):
         self._step += 1
-        self.update_status()
+        if self._step == self.num_warmup_steps:
+            self.status = CUDAGraphLayerStatus.RECORD
+
+    def record_step(self):
+        self.status = CUDAGraphLayerStatus.WAIT_BACKWARD_RECORD
+
+    def backward_record_step(self):
+        self.status = CUDAGraphLayerStatus.CUDAGRAPH
 
     def is_warmup_step(self):
-        return self.status == CUDAGraphLayerStatus.WARMUP
+        return (self.status == CUDAGraphLayerStatus.WARMUP) or (
+            self.status == CUDAGraphLayerStatus.WAIT_BACKWARD_RECORD
+        )
 
     def is_record_step(self):
         return self.status == CUDAGraphLayerStatus.RECORD
@@ -230,31 +212,31 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             # In warmup step, perform the operation with gradient tracking
             with paddle.enable_grad():
                 y = context.layer(*args, **kwargs)
-            context.queue_push((args, y, None))
-
+            context.queue_push((CUDAGraphLayerStatus.WARMUP, args, y))
+            context.warmup_step()
         elif context.is_record_step():
             # In record step, record the forward pass in CUDA graph
             logging.info(
                 f"{id(context)} FW (cudagraph-record)".center(100, "-")
             )
-            context.append_graph()
-            g = context.current_forward_graph()
 
             def forward(*args, **kwargs):
                 with paddle.enable_grad():
                     return context.layer(*args, **kwargs)
 
-            y = g.record(forward, *args, **kwargs)
-            context.queue_push((args, y, context.current_backward_graph()))
-
+            y = context.forward_graph.record(forward, *args, **kwargs)
+            context.queue_push((CUDAGraphLayerStatus.RECORD, args, y))
+            context.record_step()
         else:
             # In CUDA graph step, replay the recorded graph
-            g = context.current_forward_graph()
-            y = g.replay(*args, **kwargs)
+            y = context.forward_graph.replay(*args, **kwargs)
             context.queue_push(
-                (g.args_static, y, context.current_backward_graph())
+                (
+                    CUDAGraphLayerStatus.CUDAGRAPH,
+                    context.forward_graph.args_static,
+                    y,
+                )
             )
-            context.next_graph()
 
         ctx.save_for_backward(context)
         return detach(y)
@@ -267,26 +249,25 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         """
         (context,) = ctx.saved_tensor()
 
-        args, input_var, g = context.queue_pop()
+        status, args, input_var = context.queue_pop()
 
         y = None
         # Check the type of input_var and select an appropriate tensor for the backward operation
         if isinstance(input_var, paddle.Tensor):
-            # Directly use the tensor if input_var itself is a tensor and eligible for gradient computation
             y = input_var
         elif isinstance(input_var, (list, tuple)):
-            # Iterate through the list or tuple to find an eligible tensor for the backward operation
             for v in input_var:
                 if isinstance(v, paddle.Tensor) and (not v.stop_gradient):
                     y = v  # Select the first eligible tensor
-                    break  # Exit the loop once an eligible tensor is found
+                    break
 
         assert isinstance(y, paddle.Tensor)
 
-        if context.is_warmup_step():
+        if status == CUDAGraphLayerStatus.WARMUP:
             # In warmup step, perform standard backward operation
             y.backward(dy)
-        elif context.is_record_step():
+
+        elif status == CUDAGraphLayerStatus.RECORD:
             # In record step, record the backward pass in CUDA graph
             logging.info(
                 f"{id(context)} BW (cudagraph-record)".center(100, "-")
@@ -295,17 +276,13 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             def backward(y, dy):
                 y.backward(dy)
 
-            g.record(backward, y, dy)
+            context.backward_graph.record(backward, y, dy)
+            context.backward_record_step()
         else:
             # In CUDA graph step, replay the recorded graph for backward pass
-            g.replay(y, dy)
+            context.backward_graph.replay(y, dy)
 
         args_grad = tuple(get_grad(x) for x in args)
-        # Step the global state if the queue is empty
-        if len(context.saved_tensor) == 0:
-            if context.is_record_step() or context.is_cuda_graph_step():
-                context.reset_graph_index()
-            context.step()
 
         return args_grad
 

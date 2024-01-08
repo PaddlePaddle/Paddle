@@ -266,6 +266,8 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaDeviceGetDefaultMemPool(&memPool_, dev_id_));
       uint64_t thresholdVal = FLAGS_cuda_memory_async_pool_realease_threshold;
+      VLOG(10) << "[cudaMallocAsync] set cudaMemPoolAttrReleaseThreshold to "
+               << thresholdVal;
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemPoolSetAttribute(memPool_,
                                   cudaMemPoolAttrReleaseThreshold,

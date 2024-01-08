@@ -221,6 +221,10 @@ class PipelineLayerChunk(nn.Layer):
             self.add_sublayer(str(len(self.run_function)), sublayer)
         self.run_function.append(sublayer)
 
+    def extend(self, layer_list):
+        for layer in layer_list:
+            self.append(layer)
+
     def get_run_function(self):
         return self.run_function
 
