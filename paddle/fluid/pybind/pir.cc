@@ -172,7 +172,6 @@ std::string GetValueInfo(Value v) {
     ss << "block_arg, index = " << arg.index();
   }
   if (!v.type()) {
-    VLOG(0) << "[GetValueInfo] The type of value is nullptr.";
     ss << ", dtype=<<NULL TYPE>>";
   } else {
     ss << ", dtype=" << v.type();
@@ -182,6 +181,12 @@ std::string GetValueInfo(Value v) {
                 .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
                 .place();
     }
+  }
+  auto stop_gradient = v.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    ss << ", stop_gradient=False";
+  } else {
+    ss << ", stop_gradient=True";
   }
   return ss.str();
 }
@@ -562,19 +567,12 @@ py::str Value2String(Value self) {
   std::ostringstream print_stream;
   print_stream << "Value(";
   print_stream << GetValueInfo(self);
-  auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
-  if (stop_gradient && !stop_gradient.data()) {
-    print_stream << ", stop_gradient=False";
-  } else {
-    print_stream << ", stop_gradient=True";
-  }
   print_stream << ")";
   return print_stream.str();
 }
 
 phi::DataType GetValueDtype(Value value) {
   if (!value.type()) {
-    VLOG(0) << "[GetValueDtype] The type of value is nullptr.";
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
   if (value.type().isa<DenseTensorType>()) {
@@ -595,7 +593,6 @@ phi::DataType GetValueDtype(Value value) {
 
 const phi::DDim &GetValueDims(Value value) {
   if (!value.type()) {
-    VLOG(0) << "[GetValueDims] The type of value is nullptr.";
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
   if (value.type().isa<DenseTensorType>()) {
