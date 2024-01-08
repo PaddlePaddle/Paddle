@@ -57,3 +57,9 @@ def min_graph_size_guard(value: int):
 def with_control_flow_guard(value: bool):
     with EnvironmentVariableGuard(ENV_SOT_WITH_CONTROL_FLOW, value):
         yield
+
+
+@contextmanager
+def with_export_guard(value: str):
+    with EnvironmentVariableGuard(ENV_SOT_EXPORT, value):
+        yield

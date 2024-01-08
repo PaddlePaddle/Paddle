@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from itertools import chain
 
 from paddle.utils import flatten
@@ -258,25 +259,34 @@ class PyFileGen:
         input_str = self.create_input_string(args, kwargs)
         api = stmt.api
         api_str = api.__module__ + "." + api.__name__
-        compute_code = f"out = {api_str}({input_str})"
-        unpack_codes = self.create_unpack_output_string(stmt.outputs)
-        return [compute_code] + unpack_codes
+        if isinstance(stmt.outputs, Symbol):
+            return [f"{stmt.outputs.name} = {api_str}({input_str})"]
+        else:
+            compute_code = f"out = {api_str}({input_str})"
+            unpack_codes = self.create_unpack_output_string(stmt.outputs)
+            return [compute_code] + unpack_codes
 
     def create_method_stmt(self, stmt):
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args[1:], kwargs)
         method_str = args[0].name + "." + stmt.method
-        compute_code = f"out = {method_str}({input_str})"
-        unpack_codes = self.create_unpack_output_string(stmt.outputs)
-        return [compute_code] + unpack_codes
+        if isinstance(stmt.outputs, Symbol):
+            return [f"{stmt.outputs.name} = {method_str}({input_str})"]
+        else:
+            compute_code = f"out = {method_str}({input_str})"
+            unpack_codes = self.create_unpack_output_string(stmt.outputs)
+            return [compute_code] + unpack_codes
 
     def create_layer_stmt(self, stmt):
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args, kwargs)
         layer_str = "self." + self.layer_name_map[id(stmt.layer())]
-        compute_code = f"out = {layer_str}({input_str})"
-        unpack_codes = self.create_unpack_output_string(stmt.outputs)
-        return [compute_code] + unpack_codes
+        if isinstance(stmt.outputs, Symbol):
+            return [f"{stmt.outputs.name} = {layer_str}({input_str})"]
+        else:
+            compute_code = f"out = {layer_str}({input_str})"
+            unpack_codes = self.create_unpack_output_string(stmt.outputs)
+            return [compute_code] + unpack_codes
 
 
 def export(SIR, path):
@@ -287,5 +297,8 @@ def export(SIR, path):
         print("[SOT] Export SIR Failed:", e)
         return
 
-    with open(path + f"/{SIR.name}.py", "w") as f:
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    with open(os.path.join(path, f"{SIR.name}.py"), "w") as f:
         f.write(string)

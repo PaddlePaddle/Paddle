@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .call_ast_utils import get_static_function  # noqa: F401
+from .call_ast_utils import get_static_function, try_ast_func  # noqa: F401
 from .envs import (  # noqa: F401
     ENV_CLEAN_CODE,
     ENV_COST_MODEL,
@@ -26,6 +26,7 @@ from .envs import (  # noqa: F401
     min_graph_size_guard,
     strict_mode_guard,
     with_control_flow_guard,
+    with_export_guard,
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,
