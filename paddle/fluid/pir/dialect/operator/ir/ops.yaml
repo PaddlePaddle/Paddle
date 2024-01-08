@@ -24,6 +24,7 @@
     func : add
   inplace : (x -> out)
   backward : add_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : add_n
   args : (Tensor[] inputs)
