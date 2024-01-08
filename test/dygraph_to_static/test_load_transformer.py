@@ -71,5 +71,27 @@ class TestLoad2(Dy2StTestBase):
         np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
 
 
+class LoadInCallKwargsNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.extra_inputs = []
+
+    def forward(self, x):
+        for i in range(len(self.extra_inputs)):
+            x = paddle.nn.functional.linear(weight=self.extra_inputs[i].T, x=x)
+        return x
+
+
+class TestLoadInCallKwargs(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
+    def test_name_load_nograd(self):
+        net = LoadInCallKwargsNet()
+        x = paddle.rand([10, 10])
+        net.extra_inputs.append(paddle.rand([10, 10]))
+        output_st = paddle.jit.to_static(net)(x)
+        output_dy = net(x)
+        np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
+
+
 if __name__ == "__main__":
     unittest.main()

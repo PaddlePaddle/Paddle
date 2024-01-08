@@ -14,64 +14,127 @@ limitations under the License. */
 
 #pragma once
 
-#include <stdint.h>
-
 #include <atomic>
+#include <cstdint>
 #include <deque>
-#include <iostream>  // temp for debug
 #include <memory>
 #include <mutex>  // NOLINT
 #include <random>
 #include <typeinfo>
 #include <utility>
+#include <vector>
 
 #include "paddle/phi/common/place.h"
 
 namespace phi {
 
+#define MAGIC_RANDOM_SEED 34342423252
 class Generator {
  public:
   struct GeneratorState {
-    int64_t device = -1;
-    uint64_t current_seed = 34342423252;
-    uint64_t thread_offset = 0;
-    std::mt19937_64 cpu_engine;
+    int64_t device;
+    uint64_t seed;
+    uint64_t offset;
+    std::shared_ptr<std::mt19937_64> cpu_engine;
+
+    GeneratorState(int64_t device_ = -1,
+                   uint64_t seed_ = MAGIC_RANDOM_SEED,
+                   uint64_t offset_ = 0)
+        : device(device_), seed(seed_), offset(offset_) {
+      std::seed_seq seq({seed});
+      cpu_engine = std::make_shared<std::mt19937_64>(seq);
+    }
+
+    GeneratorState(const GeneratorState& state)
+        : device(state.device), seed(state.seed), offset(state.offset) {
+      if (state.cpu_engine) {
+        std::seed_seq seq({state.seed});
+        cpu_engine = std::make_shared<std::mt19937_64>(seq);
+        // Clone the engine state
+        *(cpu_engine) = *(state.cpu_engine);
+      }
+    }
+
+    GeneratorState& operator=(const GeneratorState& state) {
+      if (this != &state) {
+        device = state.device;
+        seed = state.seed;
+        offset = state.offset;
+
+        if (state.cpu_engine) {
+          std::seed_seq seq({state.seed});
+          cpu_engine = std::make_shared<std::mt19937_64>(seq);
+          *cpu_engine = *(state.cpu_engine);
+        } else {
+          cpu_engine = nullptr;
+        }
+      }
+      return *this;
+    }
+
+    void reset(uint64_t new_seed = MAGIC_RANDOM_SEED) {
+      std::seed_seq seq({new_seed});
+      cpu_engine->seed(seq);
+      offset = 0;
+      seed = new_seed;
+    }
   };
 
   Generator();
 
   explicit Generator(uint64_t seed);
 
-  Generator(uint64_t seed, uint64_t device_id);
+  Generator(uint64_t seed, int64_t device_id);
 
   Generator(const Generator& other) = delete;
 
   ~Generator() = default;
 
-  // get random state
+  // Retrieves the cloned current state of the generator.
   GeneratorState GetState();
-  // set random state
+  // Directly sets the generator's current state to a specified state.
   void SetState(const GeneratorState&);
-  // get current seed
+
+  // Retrieves the seed of the current generator state.
   uint64_t GetCurrentSeed();
-  // random a seed and get
+  // Retrieves the offset of the current generator state.
+  uint64_t GetCurrentOffset();
+
+  // Retrieves the index of the current generator state.
+  uint64_t GetStateIndex();
+  // Sets the index for the current generator state, switching the active state.
+  void SetStateIndex(uint64_t StateIndex);
+
+  // Registers a new state with the generator and switch to new state.
+  // Returns the index of this new state.
+  uint64_t RegisterStateIndex(const GeneratorState&);
+
+  // Generates and sets a new random seed.
   uint64_t Seed();
-  // set seed
+  // Sets the seed of the current generator state.
   void SetCurrentSeed(uint64_t seed);
-  // get cpu engine
+
+  // Retrieves cpu cpu_engine in current state.
   std::shared_ptr<std::mt19937_64> GetCPUEngine();
-  // set cpu engine
-  void SetCPUEngine(std::shared_ptr<std::mt19937_64>);
+  // Set CPU random number generation cpu_engine to current state
+  void SetCPUEngine(std::shared_ptr<std::mt19937_64> cpu_engine);
 
   uint64_t Random64();
 
+  // Increments the offset of the current generator state by a specified amount
+  // and returns the new seed and offset.
   std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increment_offset);
 
-  uint64_t get_device_id() { return this->state_.device; }
-
  private:
-  GeneratorState state_;
-  std::shared_ptr<std::mt19937_64> engine_;
+  // Accesses the current generator state by index.
+  inline GeneratorState& state();
+  // Accesses the current cpu cpu_engine by index.
+  inline std::shared_ptr<std::mt19937_64> cpu_engine();
+  // Outputs detailed information about the current generator state to the log.
+  inline void print_state_info();
+
+  size_t current_index = 0;
+  std::vector<GeneratorState> states_;
   mutable std::mutex mu_;
 };
 
