@@ -89,6 +89,7 @@ OTHER_PRIM_VJP_OPS = [
     'gather_grad',
     'gather_nd_grad',
     'pad_grad',
+    'prod_grad',
     'max_grad',
     'scatter_grad',
     'scatter_nd_add_grad',
@@ -101,12 +102,15 @@ OTHER_PRIM_VJP_OPS = [
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'batch_norm_grad',
     'dropout_grad',
     'gelu_grad',
+    'group_norm_grad',
     'hardswish_grad',
     'instance_norm_grad',
     'layer_norm_grad',
     'leaky_relu_grad',
+    'minimum_grad',
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
