@@ -279,6 +279,12 @@ class AMPState:
                         self.dist_context,
                     )
                 elif self._is_fp16_op(op.desc.original_id()) is True:
+                    # deal with op with attribute 'dtype', such as 'fill_constant'
+                    if (
+                        op.has_attr('dtype')
+                        and op.attr('dtype') == core.VarDesc.VarType.FP32
+                    ):
+                        op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
                     num_cast_ops = self._insert_cast_op_forward(
                         block,
                         op,
@@ -311,9 +317,13 @@ class AMPState:
                             self.dist_context,
                             appended_grad_times,
                         )
-                    elif (
-                        self._is_fp16_op(op.desc.original_id()) is True
-                    ):  # fp16/bf16
+                    elif self._is_fp16_op(op.desc.original_id()) is True:
+                        # deal with op with attribute 'dtype', such as 'fill_constant'
+                        if (
+                            op.has_attr('dtype')
+                            and op.attr('dtype') == core.VarDesc.VarType.FP32
+                        ):
+                            op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
                         num_cast_ops = self._insert_cast_op_backward(
                             block,
                             op,
@@ -464,12 +474,6 @@ class AMPState:
                             op._set_attr(
                                 'out_dtype', _str_to_dtype(self.amp_dtype)
                             )
-
-        if (
-            op.has_attr('dtype')
-            and op.attr('dtype') == core.VarDesc.VarType.FP32
-        ):
-            op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
 
         return num_cast_ops
 
