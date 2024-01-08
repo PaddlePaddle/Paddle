@@ -232,6 +232,7 @@ def _append_gradient_merge_backward_op(
                     attrs={
                         'axis': -1,
                         OP_ROLE_KEY: OpRole.Backward,
+                        "op_namescope": "/auto_parallel/gradient_merge",
                     },
                 )
 
