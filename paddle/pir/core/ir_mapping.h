@@ -51,19 +51,26 @@ class IrMapping {
 
   template <typename T>
   const MapType<T> &Map() const {
-    if constexpr (std::is_convertible_v<T, Value>)
+    if constexpr (std::is_convertible<T, Value>::value)
       return value_map_;
-    else if constexpr (std::is_convertible_v<T, Block *>)
+    else if constexpr (std::is_convertible<T, Block *>::value)
       return block_map_;
-    else if constexpr (std::is_convertible_v<T, Operation *>)
+    else if constexpr (std::is_convertible<T, Operation *>::value)
       return operation_map_;
     else
       IR_THROW("Not support type in IRMapping.");
   }
 
   template <typename T>
-  auto &MutableMap() {
-    return const_cast<MapType<T> &>(Map<T>());
+  MapType<T> &MutableMap() {
+    if constexpr (std::is_convertible<T, Value>::value)
+      return value_map_;
+    else if constexpr (std::is_convertible<T, Block *>::value)
+      return block_map_;
+    else if constexpr (std::is_convertible<T, Operation *>::value)
+      return operation_map_;
+    else
+      IR_THROW("Not support type in IRMapping.");
   }
 
  private:
