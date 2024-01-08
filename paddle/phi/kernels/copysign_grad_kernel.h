@@ -23,8 +23,8 @@ namespace phi {
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
-template <typename T, typename U>
-inline HOSTDEVICE auto copysign_func(const T& a, const U& b) {
+template <typename T>
+inline HOSTDEVICE auto copysign_func(const T& a, const T& b) {
 #ifdef WIN32
   using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
   return static_cast<T>(std::copysign(static_cast<U>(a), static_cast<U>(b)));
