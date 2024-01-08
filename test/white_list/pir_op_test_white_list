@@ -7,6 +7,7 @@ test_adagrad_op
 test_adagrad_op_static_build
 test_adamax_op
 test_addmm_op
+test_adamw_op
 test_allclose_op
 test_amp_check_finite_and_scale_op
 test_angle_op
