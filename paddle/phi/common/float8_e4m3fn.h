@@ -171,7 +171,7 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     uint32_t nonsign_tmp = nonsign;
     uint32_t renorm_shift = 0;
     if (nonsign_tmp == 0) {
-      renorm_shift = sizeof(uint32_t) * CHAR_BIT;
+      renorm_shift = sizeof(uint32_t) * 8;
     } else {
       if ((nonsign_tmp & 0xFFFF0000) == 0) {
         renorm_shift += 16;
