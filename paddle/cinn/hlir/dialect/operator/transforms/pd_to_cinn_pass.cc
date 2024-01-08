@@ -253,11 +253,12 @@ class Pool2dOpPattern
       auto attrs = op->attributes();
       attrs["kernel_size"] =
           pir::ArrayAttribute::get(pir::IrContext::Instance(), kernel_size);
-      attrs["strides"] = attrs.at("stride_size");
       attrs["stride_size"] = attrs.at("strides");
       attrs["padding_size"] = attrs.at("paddings");
+      attrs["pool_type"] = attrs.at("pooling_type");
       attrs.erase("strides");
       attrs.erase("paddings");
+      attrs.erase("pooling_type");
 
       auto cinn_reshape = rewriter.Build<cinn::dialect::Pool2dOp>(
           op->operand_source(0).dyn_cast<pir::OpResult>(), attrs);
