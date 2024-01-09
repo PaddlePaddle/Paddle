@@ -3050,6 +3050,8 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
     return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
   } else if (rhs.isa<std::int64_t>()) {
     return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
+  } else if (lhs == rhs) {
+    return lhs;
   } else {
     return symbol::Broadcast<symbol::DimExpr>{
         symbol::List<symbol::DimExpr>{lhs, rhs}};

@@ -508,7 +508,7 @@ pir::Operation* ProcessGroup(
     pir::PatternRewriter& rewriter) {  // NOLINT
   std::vector<pir::Operation*> group_ops_view;
   std::unordered_set<pir::Value> value_view;
-  
+
   group->WalkOps([&group, &group_ops_view, &value_view](pir::Operation* op) {
     group_ops_view.push_back(op);
     VLOG(1) << "####### group@" << group.get() << " : " << op->name() << " @"
@@ -537,7 +537,8 @@ pir::Operation* ProcessGroup(
     }
     value_to_dim_expr_idx[value] = all_value_dim_exprs->size() - 1;
   }
-  VLOG(4) << "before constructed. broadcast-leaf: \n" << ToTxtString(cinn::common::BroadcastTree(all_value_dim_exprs));
+  VLOG(4) << "before constructed. broadcast-leaf: \n"
+          << ToTxtString(cinn::common::BroadcastTree(all_value_dim_exprs));
   cinn::common::BroadcastTree broadcast_tree =
       cinn::common::ConstructBroadcastTree(
           cinn::common::BroadcastLeaf(all_value_dim_exprs));
@@ -558,7 +559,7 @@ pir::Operation* ProcessGroup(
     output_types.push_back(group_output_values[i].type());
   }
 
-  auto* origin_block = rewriter.block();
+  auto* origin_block = group->ops.front()->GetParent();
 
   std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr> group_map{
       {origin_block, group}};
@@ -580,7 +581,8 @@ pir::Operation* ProcessGroup(
   shape_analysis->PrintAllShapeOrDataDimExprs();
   // 3. simply every condition block
   VLOG(1) << "simply condition block";
-  using DoEachMutBlockGroupT = std::function<void(pir::Block*, const cinn::dialect::ir::GroupPtr&)>;
+  using DoEachMutBlockGroupT =
+      std::function<void(pir::Block*, const cinn::dialect::ir::GroupPtr&)>;
   const auto& ForEachMutBlockGroup = [&](const DoEachMutBlockGroupT& DoEach) {
     for (auto& [block, group] : group_map) {
       DoEach(block, group);
@@ -599,36 +601,22 @@ pir::Operation* ProcessGroup(
       group->ops_set = group_ops_set;
     }
   };
-  ForEachMutBlockGroup([&](auto* block, const auto& group){
-    auto GetShapeOrDataForValue = [&group](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+  ForEachMutBlockGroup([&](auto* block, const auto& group) {
+    auto GetShapeOrDataForValue =
+        [&group](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
       return group->GetShapeOrDataExprs(value);
     };
     EraseUneccessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
   });
   VLOG(4) << "After EraseUneccessaryExpandsInBlock: " << *program;
-  ForEachMutBlockGroup([&](auto* block, const auto& group){
+  ForEachMutBlockGroup([&](auto* block, const auto& group) {
     ReplaceExpandWithBroadcast(rewriter.ir_context(), block, group);
   });
   VLOG(1) << "After simply condition block: " << *program;
   // 4. complie condition block to jit_kernel_op
-  VLOG(1) << "complie condition block to jit_kernel_op";
+  VLOG(1) << "complie condition block to jit_kernel_op, group number: "
+          << group_map.size();
   // prepare attribute for jit_kernel_op
-  VLOG(1) << "##### group_map : " << group_map.size();
-  for (auto& [block, group] : group_map) {
-    VLOG(1) << "####### complie group @" << group;
-    for (const auto& [value, shape_or_data] :
-         group->value_to_shape_or_data_exprs) {
-      VLOG(1) << " value: " << pir::GetValueId(&value)
-              << " shape_or_data: " << shape_or_data;
-    }
-    for (auto* op : group->ops) {
-      VLOG(1) << " op: " << op->name() << " id: " << op->id();
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        auto result = op->result(i);
-        VLOG(1) << " result[" << i << "] : " << pir::GetValueId(&result);
-      }
-    }
-  }
   auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, group_map);
   // create jit_kernel_op
   if (cond_op) {  // has condition block
