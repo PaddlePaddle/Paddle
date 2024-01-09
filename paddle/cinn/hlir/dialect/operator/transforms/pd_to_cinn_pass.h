@@ -33,6 +33,8 @@ class PdOpToCinnOpPass : public pir::PatternRewritePass {
 
 void PdOp2CinnOpConverter(::pir::Program *program);
 
+IR_API std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass();
+
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

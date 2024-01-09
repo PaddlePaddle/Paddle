@@ -1589,8 +1589,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
-
+  pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
