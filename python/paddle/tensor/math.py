@@ -7075,7 +7075,7 @@ def copysign(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): the output tensor, the data type is float64.
+        out (Tensor), the output tensor. The data type is float64.
 
     Examples:
 
