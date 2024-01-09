@@ -73,6 +73,12 @@ bool IsReductionSBlock(ir::Expr block);
 
 bool IsBroadcastSBlock(ir::Expr block);
 
+std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices);
+
+void AnalyzeScheduleBlockReadWriteBuffer(ir::ScheduleBlock* sche_block);
+
+std::string GetBlockName(const ir::Expr block);
+
 }  // namespace analyzer
 }  // namespace ir
 }  // namespace cinn
