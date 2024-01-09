@@ -31,11 +31,11 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class SumOpPattern : public pir::drr::DrrPatternBase<SumOpPattern> {
+class SumOpPattern : public paddle::drr::DrrPatternBase<SumOpPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    paddle::drr::SourcePattern pattern = ctx->SourcePattern();
     const auto &full_int_array =
         pattern.Op(paddle::dialect::FullIntArrayOp::name(),
                    {{"value", pattern.Attr("axis_info")},
@@ -48,7 +48,7 @@ class SumOpPattern : public pir::drr::DrrPatternBase<SumOpPattern> {
     pattern.Tensor("ret") = sum(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = pattern.ResultPattern();
+    paddle::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_sum =
         res.Op(cinn::dialect::ReduceSumOp::name(),
                {{"dim", pattern.Attr("axis_info")},
@@ -57,11 +57,11 @@ class SumOpPattern : public pir::drr::DrrPatternBase<SumOpPattern> {
   }
 };
 
-class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
+class MaxOpPattern : public paddle::drr::DrrPatternBase<MaxOpPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    paddle::drr::SourcePattern pattern = ctx->SourcePattern();
     const auto &full_int_array =
         pattern.Op(paddle::dialect::FullIntArrayOp::name(),
                    {{"value", pattern.Attr("axis_info")},
@@ -73,7 +73,7 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
     pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = pattern.ResultPattern();
+    paddle::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceMaxOp::name(),
                {{"dim", pattern.Attr("axis_info")},
@@ -82,11 +82,11 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
   }
 };
 
-class MinOpPattern : public pir::drr::DrrPatternBase<MinOpPattern> {
+class MinOpPattern : public paddle::drr::DrrPatternBase<MinOpPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    paddle::drr::SourcePattern pattern = ctx->SourcePattern();
     const auto &full_int_array =
         pattern.Op(paddle::dialect::FullIntArrayOp::name(),
                    {{"value", pattern.Attr("axis_info")},
@@ -98,7 +98,7 @@ class MinOpPattern : public pir::drr::DrrPatternBase<MinOpPattern> {
     pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = pattern.ResultPattern();
+    paddle::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceMinOp::name(),
                {{"dim", pattern.Attr("axis_info")},
@@ -107,11 +107,11 @@ class MinOpPattern : public pir::drr::DrrPatternBase<MinOpPattern> {
   }
 };
 
-class ProdOpPattern : public pir::drr::DrrPatternBase<ProdOpPattern> {
+class ProdOpPattern : public paddle::drr::DrrPatternBase<ProdOpPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    paddle::drr::SourcePattern pattern = ctx->SourcePattern();
     const auto &full_int_array =
         pattern.Op(paddle::dialect::FullIntArrayOp::name(),
                    {{"value", pattern.Attr("axis_info")},
@@ -123,7 +123,7 @@ class ProdOpPattern : public pir::drr::DrrPatternBase<ProdOpPattern> {
     pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = pattern.ResultPattern();
+    paddle::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceProdOp::name(),
                {{"dim", pattern.Attr("axis_info")},
@@ -216,6 +216,52 @@ class ReshapeOpPattern
 
       auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
           op->operand_source(0).dyn_cast<pir::OpResult>(), vec_out_shape);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
+class Pool2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Pool2dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Pool2dOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::Pool2dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto kernel_size_gen_op =
+        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+
+    if (auto full_op =
+            kernel_size_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>()) {
+      auto kernel_size_attr =
+          full_op.attribute("value").dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      // kernel_size is generator by full op
+      // get attribute value from full op
+      std::vector<pir::Attribute> kernel_size;
+      for (size_t i = 0; i < static_cast<size_t>(kernel_size_attr.size());
+           i++) {
+        pir::Attribute attr = pir::Int32Attribute::get(
+            pir::IrContext::Instance(),
+            kernel_size_attr[i].dyn_cast<::pir::Int64Attribute>().data());
+        kernel_size.push_back(attr);
+      }
+      auto attrs = op->attributes();
+      attrs["kernel_size"] =
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), kernel_size);
+      attrs["stride_size"] = attrs.at("strides");
+      attrs["padding_size"] = attrs.at("paddings");
+      attrs["pool_type"] = attrs.at("pooling_type");
+      attrs.erase("strides");
+      attrs.erase("paddings");
+      attrs.erase("pooling_type");
+
+      auto cinn_reshape = rewriter.Build<cinn::dialect::Pool2dOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(), attrs);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
       rewriter.EraseOp(op);
 
@@ -552,11 +598,11 @@ class SplitWithNumOpPattern
   }
 };
 
-class UniformOpPattern : public pir::drr::DrrPatternBase<UniformOpPattern> {
+class UniformOpPattern : public paddle::drr::DrrPatternBase<UniformOpPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    paddle::drr::SourcePattern pattern = ctx->SourcePattern();
     const auto &full_int_array =
         pattern.Op(paddle::dialect::FullIntArrayOp::name(),
                    {{"value", pattern.Attr("axis_info")},
@@ -585,7 +631,7 @@ class UniformOpPattern : public pir::drr::DrrPatternBase<UniformOpPattern> {
     // int64_t[] shape,  float min, float max, int seed, DataType dtype, int
     // diag_num, int diag_step, float diag_val)
     //  Result patterns
-    pir::drr::ResultPattern res = pattern.ResultPattern();
+    paddle::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_uniform =
         res.Op(cinn::dialect::UniformRandomOp::name(),
                {{"shape", pattern.Attr("axis_info")},
@@ -613,6 +659,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(MinOpPattern().Build(context));
   ps.Add(ProdOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
+  ps.Add<Pool2dOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
   ps.Add<PowOpPattern>(context);

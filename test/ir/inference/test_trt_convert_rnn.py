@@ -46,7 +46,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                         "is_bidirec": is_bidirec,
                                         "is_test": True,
                                         "dropout_prob": 0.0,
-                                        # for my convience
+                                        # for my convenience
                                         "batch": batch,
                                         "seq_len": seq_len,
                                     }

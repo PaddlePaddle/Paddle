@@ -31,6 +31,7 @@ namespace backends {
 #define KERNEL_ARGS "kernel_args"
 #define KERNEL_ARGS_NUM "kernel_args_num"
 #define KERNEL_STREAM "kernel_stream"
+#define TENSOR_SHAPE_ARGS "tensor_shape_args"
 
 /**
  * Split a CINN Module into two separate modules, one cantains the host
@@ -150,7 +151,8 @@ struct CollectBucketStrategyHostFunctionVisitor
       : CollectHostFunctionVisitor(module_name),
         kernel_args_(KERNEL_ARGS, type_of<void*>()),
         kernel_args_num_(KERNEL_ARGS_NUM, type_of<int>()),
-        kernel_stream_(KERNEL_STREAM, type_of<void*>()) {}
+        kernel_stream_(KERNEL_STREAM, type_of<void*>()),
+        tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int32_t**>()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -181,6 +183,25 @@ struct CollectBucketStrategyHostFunctionVisitor
                                 {});
     host_module_builder.AddFunctionWithoutOptim(
         host_func.as_lowered_func_ref());
+
+    // Parse LoweredFunc to infer output tensor's shape
+    std::vector<ir::Expr> infer_shape_func_body_stmts(arg_defs_);
+    infer_shape_func_body_stmts.insert(
+        infer_shape_func_body_stmts.end(),
+        op->infer_shape_func.as_lowered_func()->body);
+
+    std::vector<ir::Argument> infer_shape_arguments = {
+        ir::Argument(kernel_args_, ir::Argument::IO::kOutput),
+        ir::Argument(kernel_args_num_, ir::Argument::IO::kInput),
+        ir::Argument(tensor_shape_args_, ir::Argument::IO::kOutput)};
+
+    ir::Expr host_infer_shape_func =
+        ir::_LoweredFunc_::Make(op->infer_shape_func.as_lowered_func()->name,
+                                infer_shape_arguments,
+                                ir::Block::Make(infer_shape_func_body_stmts),
+                                {});
+    host_module_builder.AddFunctionWithoutOptim(
+        host_infer_shape_func.as_lowered_func_ref());
   }
 
   void ProcessLoweredFunc(ir::Expr func, ir::Expr predicate);
@@ -199,6 +220,7 @@ struct CollectBucketStrategyHostFunctionVisitor
   ir::Var kernel_args_;
   ir::Var kernel_args_num_;
   ir::Var kernel_stream_;
+  ir::Var tensor_shape_args_;
 };
 
 }  // namespace detail

@@ -49,12 +49,12 @@ class PassTest(unittest.TestCase):
         )
         op_names = [op.name() for op in program.global_block().ops]
         for valid_op_name, valid_op_count in self.valid_op_map.items():
-            acctual_valid_op_count = op_names.count(valid_op_name)
+            actual_valid_op_count = op_names.count(valid_op_name)
             self.assertTrue(
-                valid_op_count == acctual_valid_op_count,
+                valid_op_count == actual_valid_op_count,
                 "Checking of the number of fused operator < {} > failed. "
                 "Expected: {}, Received: {}".format(
-                    valid_op_name, valid_op_count, acctual_valid_op_count
+                    valid_op_name, valid_op_count, actual_valid_op_count
                 ),
             )
 

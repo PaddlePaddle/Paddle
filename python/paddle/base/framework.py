@@ -1855,6 +1855,16 @@ class Variable(metaclass=VariableMetaClass):
             skip_vars_in_backward_input=[self],
         )
 
+    def apply(self, func):
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        try:
+            return func(self)
+        except:
+            raise ValueError(f"The PyFunc {func.__name__} could not be applied")
+
     def __str__(self):
         return self._to_readable_code()
 
@@ -7588,10 +7598,12 @@ class EagerParamBase(core.eager.Tensor):
         mesh = kwargs.get("process_mesh", None)
         placements = kwargs.get("placements", None)
         src_tensor = tensor
+
         if mesh is not None and placements is not None:
             src_tensor = core.eager.Tensor(
                 tensor, process_mesh=mesh, placements=placements
             )
+            param.name = tensor.name + ".dist"
 
         # 3. set param data
         param._set_impl(src_tensor)

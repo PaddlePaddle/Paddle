@@ -102,12 +102,18 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                               "The dtype in output[%d] of "
                               "true_block&false_block must be equal.",
                               i));
-        PADDLE_ENFORCE_EQ(l_type.data_layout(),
-                          r_type.data_layout(),
-                          phi::errors::PreconditionNotMet(
-                              "The date_layout in output[%d] of "
-                              "true_block&false_block must be equal.",
-                              i));
+        if (l_type.data_layout() != phi::DataLayout::UNDEFINED &&
+            r_type.data_layout() != phi::DataLayout::UNDEFINED) {
+          PADDLE_ENFORCE_EQ(
+              l_type.data_layout(),
+              r_type.data_layout(),
+              phi::errors::PreconditionNotMet(
+                  "The data_layout in output[%d] of "
+                  "true_block (%s) & false_block (%s) must be equal.",
+                  i,
+                  l_type.data_layout(),
+                  r_type.data_layout()));
+        }
         PADDLE_ENFORCE_EQ(l_type.lod(),
                           r_type.lod(),
                           phi::errors::PreconditionNotMet(
@@ -287,20 +293,30 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
-                    const std::vector<pir::Value> &inputs) {
+                    const std::vector<pir::Value> &inputs,
+                    bool construct_body) {
   argument.AddInput(cond);
   argument.AddInputs(inputs);
-  auto &body = argument.AddRegion().emplace_back();
   std::vector<pir::Attribute> outs_stop_gradient;
-  for (auto val : inputs) {
-    argument.AddOutput(val.type());
-    auto arg = body.AddArgument(val.type());
-
-    auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
-    arg.set_attribute(kStopGradientAttrName,
-                      bool_attr ? bool_attr : builder.bool_attr(false));
-    outs_stop_gradient.push_back(bool_attr ? bool_attr
-                                           : builder.bool_attr(false));
+  if (construct_body) {
+    auto &body = argument.AddRegion().emplace_back();
+    for (auto val : inputs) {
+      argument.AddOutput(val.type());
+      auto arg = body.AddArgument(val.type());
+      auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
+      outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                             : builder.bool_attr(false));
+      arg.set_attribute(kStopGradientAttrName,
+                        bool_attr ? bool_attr : builder.bool_attr(false));
+    }
+  } else {
+    argument.AddRegion(nullptr);
+    for (auto val : inputs) {
+      argument.AddOutput(val.type());
+      auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
+      outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                             : builder.bool_attr(false));
+    }
   }
 
   argument.AddAttribute(
@@ -341,6 +357,96 @@ void WhileOp::Print(pir::IrPrinter &printer) {
     printer.PrintOperation(&item);
   }
   os << "\n }";
+}
+
+void WhileOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: WhileOp.";
+  auto input_size = num_operands();
+  PADDLE_ENFORCE_GE(
+      input_size,
+      1u,
+      phi::errors::PreconditionNotMet(
+          "The size %d of inputs must be greater or equal to 1.", input_size));
+
+  if (auto cond_type = operand_type(0).dyn_cast<pir::DenseTensorType>()) {
+    PADDLE_ENFORCE_EQ(
+        cond_type.dtype().isa<pir::BoolType>(),
+        true,
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th input, it should be a "
+            "bool DenseTensorType."));
+  } else if (auto cond_type =
+                 operand_type(0).dyn_cast<AllocatedDenseTensorType>()) {
+    PADDLE_ENFORCE_EQ(
+        cond_type.dtype().isa<pir::BoolType>(),
+        true,
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th input, it should be a "
+            "bool DenseTensorType."));
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Currently,  the while op cond input only support bool dense_tensor "
+        "and bool allocated_dense_tensor."));
+  }
+  PADDLE_ENFORCE_EQ((*this)->num_regions(),
+                    1u,
+                    phi::errors::PreconditionNotMet(
+                        "The size %d of regions must be equal to 1.",
+                        (*this)->num_regions()));
+  auto output_size = num_results();
+  PADDLE_ENFORCE_EQ(output_size + 1,
+                    input_size,
+                    phi::errors::PreconditionNotMet(
+                        "The result size (%d) not equal to input size(%d) + 1.",
+                        num_results(),
+                        input_size));
+  for (size_t index = 0; index < output_size; ++index) {
+    PADDLE_ENFORCE_EQ(
+        operand_type(index + 1),
+        result_type(index),
+        phi::errors::PreconditionNotMet(
+            "The (%d) result and operand type is not equal.", index));
+  }
+}
+
+void WhileOp::VerifyRegion() {
+  VLOG(4) << "Start verifying sub regions for: WhileOp.";
+  PADDLE_ENFORCE_EQ(
+      (*this)->region(0).size(),
+      1u,
+      phi::errors::PreconditionNotMet("The size %d of body_region must be 1.",
+                                      (*this)->region(0).size()));
+  auto &body_block = body();
+  auto output_size = num_results();
+  PADDLE_ENFORCE_EQ(
+      body_block.args_size(),
+      output_size,
+      phi::errors::PreconditionNotMet(
+          "The result size (%d) not equal to block args size(%d) + 1.",
+          output_size,
+          body_block.args_size()));
+
+  PADDLE_ENFORCE_EQ(
+      body_block.empty(),
+      false,
+      phi::errors::PreconditionNotMet("The body block is empty."));
+
+  auto yield_op = body_block.back().dyn_cast<pir::YieldOp>();
+  auto input_size = num_operands();
+  PADDLE_ENFORCE_EQ(
+      yield_op && yield_op.num_operands() == input_size,
+      true,
+      phi::errors::PreconditionNotMet(
+          "The body block yield size not equal to operands size."));
+  // Todo: fix other bugs and make the following code work.
+  // for (size_t index = 0; index < input_size; ++index) {
+  //   PADDLE_ENFORCE_EQ(
+  //       operand_type(index),
+  //       yield_op.operand_type(index),
+  //       phi::errors::PreconditionNotMet(
+  //           "The (%d) operand and block yield type is not equal.", index));
+  // }
+  VLOG(4) << "Successful end verifying sub regions for: WhileOp.";
 }
 
 std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(

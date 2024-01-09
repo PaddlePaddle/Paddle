@@ -39,7 +39,7 @@ class TestFcElementwiseLayerNormFusePattern(PassTest):
         for x_shape in [[3, 2]]:
             for w_shape in [[2, 3]]:
                 for y_shape in [[1, 3], [3]]:
-                    for bais_shape in [[3, 3]]:
+                    for bias_shape in [[3, 3]]:
                         for with_relu in [True, False]:
                             with paddle.pir_utils.IrGuard():
                                 start_prog = paddle.static.Program()
@@ -68,7 +68,7 @@ class TestFcElementwiseLayerNormFusePattern(PassTest):
 
                                     bias1 = paddle.static.data(
                                         name='bias1',
-                                        shape=bais_shape,
+                                        shape=bias_shape,
                                         dtype='float32',
                                     )
 
@@ -93,7 +93,7 @@ class TestFcElementwiseLayerNormFusePattern(PassTest):
                                             "float32"
                                         ),
                                         "bias1": np.random.random(
-                                            bais_shape
+                                            bias_shape
                                         ).astype("float32"),
                                     }
                                     self.fetch_list = [out]

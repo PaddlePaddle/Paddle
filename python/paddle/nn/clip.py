@@ -18,6 +18,7 @@ from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
+import paddle.distributed as dist
 from paddle import _C_ops
 from paddle.base import core, framework, unique_name
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -67,7 +68,7 @@ def clip_by_norm(x, max_norm, name=None):
              [0.50000000, 0.50000000]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.clip_by_norm(x, max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
@@ -527,8 +528,7 @@ class ClipGradByNorm(ClipGradBase):
     def __str__(self):
         return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
-    @imperative_base.no_grad()
-    def _dygraph_clip(self, params_grads):
+    def _clip_gradients(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
             if g is None:
@@ -539,6 +539,13 @@ class ClipGradByNorm(ClipGradBase):
             new_grad = clip_by_norm(x=g, max_norm=self.clip_norm)
             params_and_grads.append((p, new_grad))
         return params_and_grads
+
+    @imperative_base.no_grad()
+    def _dygraph_clip(self, params_grads):
+        return self._clip_gradients(params_grads)
+
+    def _pir_clip(self, params_grads):
+        return self._clip_gradients(params_grads)
 
     def _static_clip(self, params_grads):
         params_and_grads = []
@@ -661,8 +668,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
         # are so many hard code depends on `add_n` in the legacy static
         # manual hybrid-parallel.
         self._async_add_n = None
-        # just for auto parallel.
-        self._pp_mesh = None
 
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
@@ -673,6 +678,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
+        src_mesh = params_grads[0][0].process_mesh
+
         for p, g in params_grads:
             if g is None:
                 continue
@@ -689,6 +696,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
+
+            # if the gradient mesh is not equal to src mesh
+            # do reshard to get the result of squared_l2 from other pp stage mesh
+            if src_mesh is not None and g.process_mesh != src_mesh:
+                sum_square = dist.reshard(
+                    sum_square, src_mesh, sum_square.placements
+                )
+
             if (
                 sum_square.dtype == core.VarDesc.VarType.FP16
                 or sum_square.dtype == core.VarDesc.VarType.BF16
@@ -715,64 +730,21 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
             global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
-            if self._pp_mesh is not None:
-                # sync pp
-                global_norm_var_fp16 = (
-                    paddle.distributed.auto_parallel.api.dtensor_from_local(
-                        global_norm_var_fp16._local_value().reshape([-1]),
-                        self._pp_mesh,
-                        [paddle.distributed.Partial()],
-                    )
-                )
-                global_norm_var_fp16 = paddle.distributed.reshard(
-                    global_norm_var_fp16,
-                    self._pp_mesh,
-                    [paddle.distributed.Replicate()],
-                )
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
             global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
-            if self._pp_mesh is not None:
-                # sync pp
-                global_norm_var_fp32 = (
-                    paddle.distributed.auto_parallel.api.dtensor_from_local(
-                        global_norm_var_fp32._local_value().reshape([-1]),
-                        self._pp_mesh,
-                        [paddle.distributed.Partial()],
-                    )
-                )
-                global_norm_var_fp32 = paddle.distributed.reshard(
-                    global_norm_var_fp32,
-                    self._pp_mesh,
-                    [paddle.distributed.Replicate()],
-                )
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
                 global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
         if len(sum_square_list) > 0:
             global_norm_var_fp64 = async_add_n(sum_square_list)
-            if self._pp_mesh is not None:
-                # sync pp
-                global_norm_var_fp64 = (
-                    paddle.distributed.auto_parallel.api.dtensor_from_local(
-                        global_norm_var_fp64._local_value().reshape([-1]),
-                        self._pp_mesh,
-                        [paddle.distributed.Partial()],
-                    )
-                )
-                global_norm_var_fp64 = paddle.distributed.reshard(
-                    global_norm_var_fp64,
-                    self._pp_mesh,
-                    [paddle.distributed.Replicate()],
-                )
             global_norm_var.append(global_norm_var_fp64)
-        if self._pp_mesh is not None:
-            global_norm_var = [t._local_value() for t in global_norm_var]
+
         global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+            shape=[], dtype=sum_dtype, fill_value=self.clip_norm
         )
 
         need_clip = False
@@ -800,6 +772,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
+                if clip_input.process_mesh != g.process_mesh:
+                    clip_input = paddle.distributed.reshard(
+                        clip_input, g.process_mesh, clip_input.placements
+                    )
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
