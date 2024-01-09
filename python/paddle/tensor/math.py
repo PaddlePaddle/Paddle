@@ -7065,7 +7065,7 @@ def copysign(x, y, name=None):
         .. math::
 
             copysign(x_{i},y_{i})=\left\{\begin{matrix}
-            & -|x_{i}| & if \space y_{i} <= 0.0\\
+            & -|x_{i}| & if \space y_{i} <= -0.0\\
             & |x_{i}| & if \space y_{i} >= 0.0
             \end{matrix}\right.
 
@@ -7075,7 +7075,7 @@ def copysign(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor), the output tensor. The data type is float64.
+        out (Tensor), the output tensor. The data type is the same as the input tensor.
 
     Examples:
 
