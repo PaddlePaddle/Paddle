@@ -93,7 +93,7 @@ class TestMatmulSparseDense(unittest.TestCase):
         self.check_result([8, 16, 12], [8, 12, 10], 'csr')
 
 
-class TestMatmulSparseSparseIndex64(unittest.TestCase):
+class TestMatmulSparseSparseInt64Index(unittest.TestCase):
     # x: sparse, y: sparse, out: sparse
     def check_result(self, x_shape, y_shape, format):
         origin_x = paddle.rand(x_shape)
@@ -149,7 +149,7 @@ class TestMatmulSparseSparseIndex64(unittest.TestCase):
         self.check_result([8, 16, 12], [8, 12, 10], 'csr')
 
 
-class TestMatmulSparseSparseIndex32(unittest.TestCase):
+class TestMatmulSparseSparseInt32Index(unittest.TestCase):
     # x: sparse, y: sparse, out: sparse
     def check_result(self, x_shape, y_shape, format):
         origin_x = paddle.rand(x_shape)
