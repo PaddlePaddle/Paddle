@@ -1550,15 +1550,21 @@ void TdmSamplerInferMeta(const MetaTensor& x,
     auto output_dims = phi::vectorize(input_dims);
     auto batch_size = output_dims[0];
     out->set_dims(phi::make_ddim({batch_size, sample_res_length}));
-    labels->set_dims(phi::make_ddim({batch_size, sample_res_length}));
     mask->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    if (labels) {
+      labels->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    }
   } else {
     out->set_dims(ddim);
-    labels->set_dims(ddim);
     mask->set_dims(ddim);
+    if (labels) {
+      labels->set_dims(ddim);
+    }
   }
   out->set_dtype(x.dtype());
-  labels->set_dtype(x.dtype());
   mask->set_dtype(x.dtype());
+  if (labels) {
+    labels->set_dtype(x.dtype());
+  }
 }
 }  // namespace phi
