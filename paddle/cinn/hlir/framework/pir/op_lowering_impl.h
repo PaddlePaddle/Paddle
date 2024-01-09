@@ -105,8 +105,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * variables, applying low-level optimization passes, etc.
    * @param group The group to be lowered.
    * @param tensor_map All tensors used for calculating the group.
-   * @param done_op_schedule Mark whether the Op level schedule has been
-   * applied.
+   * @param is_remove_tmp_buffer_in_args Determine whether to remove
+   * intermediate variables as func args.
    * @param func_bodies The scheduled func bodies of group.
    * @param group_func_arg_tensors Tensors used as the group function arguments.
    * @param group_func_args Arguments used as the group function arguments.
@@ -115,7 +115,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   std::vector<ir::LoweredFunc> PostProcess(
       const GroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-      bool done_op_schedule,
+      bool is_remove_tmp_buffer_in_args,
       std::vector<ir::Expr> func_bodies,
       std::vector<ir::Tensor>* group_func_arg_tensors,
       std::vector<ir::Argument>* group_func_args);
