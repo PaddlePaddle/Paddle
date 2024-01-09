@@ -59,7 +59,7 @@ def parameter_accuracy(body):
         'Security',
         'Deprecations',
         'Others',
-        ]
+    ]
     body = re.sub("\r\n", "", body)
     type_end = body.find('### PR Types')
     changes_end = body.find('### Description')
