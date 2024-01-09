@@ -51,7 +51,9 @@ class TestReshapeSemiAutoParallel(SemiAutoParallelTestBase):
         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         x = paddle.ones([10, 20, 30])
         x = dist.shard_tensor(x, mesh, [Shard(0)])
-        x.reshape([0, -1, x.shape[-1]])
+        y = x.reshape([-1, 0, x.shape[0]])
+        assert y.shape == [30, 20, 10]
+        assert y._local_shape == [15, 20, 10]
 
     def run_test_case(self):
         if self._backend == "cpu":
