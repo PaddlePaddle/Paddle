@@ -131,9 +131,16 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   std::vector<int> shape_v = {8, 8, 4};
   PrepareInputOutput(x_v, {8, 8, 4});
   PrepareShapeInput(shape_v);
+#if IS_TRT_VERSION_GE(8500)
+  const char *tensorName1 = engine_->engine()->getBindingName(0);
+  const char *tensorName2 = engine_->engine()->getBindingName(1);
+  engine_->context()->setInputShape(tensorName1, nvinfer1::Dims2{8, 32});
+  engine_->context()->setInputShape(tensorName2, shape_dim);
+#else
   engine_->context()->setBindingDimensions(0, nvinfer1::Dims2{8, 32});
   engine_->context()->setBindingDimensions(1, shape_dim);
   engine_->context()->setInputShapeBinding(1, shape_v.data());
+#endif
   auto *x_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
   auto *shape_gpu_data = shape_.mutable_data<int>(ctx_->GetPlace());
   auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
@@ -141,6 +148,12 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   buffers[0] = reinterpret_cast<void *>(x_gpu_data);
   buffers[1] = reinterpret_cast<void *>(shape_gpu_data);
   buffers[2] = reinterpret_cast<void *>(y_gpu_data);
+#if IS_TRT_VERSION_GE(8500)
+  for (int i = 0; i < buffers.size(); i++) {
+    auto name = engine_->context()->getBindingName(i);
+    engine_->context()->setTensorAddress(name, (*buffers)[i]);
+  }
+#endif
 
   engine_->Execute(-1, &buffers, ctx_->stream());
   cudaStreamSynchronize(ctx_->stream());
