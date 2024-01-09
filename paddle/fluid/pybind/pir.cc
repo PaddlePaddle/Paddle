@@ -1030,7 +1030,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
   pir::IrMapping mapper;
   auto cloned_program = program.Clone(mapper);
   std::vector<pir::OpResult> associated_array_key, associated_array_value;
-  for (auto &pair : mapper.Map<pir::Value>()) {
+  for (auto &pair : mapper.GetMap<pir::Value>()) {
     associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
     associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
@@ -1119,12 +1119,12 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
       });
-  auto &forward_value_map = forward_mapper.MutableMap<pir::Value>();
+  auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
-  auto &backward_value_map = backward_mapper.MutableMap<pir::Value>();
+  auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
   auto create_data_fn = [&backward_builder,
                          &backward_inputs,
