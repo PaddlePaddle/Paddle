@@ -343,6 +343,7 @@ class SplitGenerateShapeIntoShapeOps
       CachedDimExprToValueConverter* converter) const {
     const std::vector<pir::Value>& values_from_dim_exprs =
         GetValuesOfRewritedOps(dim_exprs, converter);
+    if (values_from_dim_exprs.size() == 1) return values_from_dim_exprs.at(0);
     pir::Value vec = converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs)
         .out();
     return converter->rewriter->Build<paddle::dialect::ConcatOp>(vec).out();
