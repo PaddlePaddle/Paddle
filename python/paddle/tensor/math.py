@@ -7059,7 +7059,7 @@ def ldexp_(x, y, name=None):
 
 def copysign(x, y, name=None):
     r"""
-    Create a new floating-point tensor with the magnitude of input and the sign of other, elementwise.
+    Create a new floating-point tensor with the magnitude of input ``x`` and the sign of ``y``, elementwise.
 
     Equation:
         .. math::
