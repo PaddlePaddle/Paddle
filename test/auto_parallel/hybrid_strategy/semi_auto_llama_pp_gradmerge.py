@@ -34,7 +34,7 @@ class Config:
     intermediate_size = 11008
     max_position_embeddings = 2048
     seq_length = 2048
-    num_hidden_layers = 2
+    num_hidden_layers = 4
     num_attention_heads = 32
     num_key_value_heads = 32
     initializer_range = 0.02
@@ -46,6 +46,7 @@ class Config:
     recompute = False
     recompute_granularity = None
     use_lazy_init = False
+    virtual_pp_degree = 1
 
 
 class RandomDataset(Dataset):
@@ -101,14 +102,17 @@ class TestLlamaAuto:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        if os.getenv("virtual_pp_degree"):
+            self.config.virtual_pp_degree = int(os.getenv("virtual_pp_degree"))
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
         if os.getenv("recompute") == "true":
             self.config.recompute = True
         self.config.recompute_granularity = os.getenv("recompute_granularity")
-        if os.getenv("use_lazy_init") == "true":
-            self.config.use_lazy_init = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
+        self.schedule_mode = os.getenv("pp_schedule_mode")
+        self.vpp_seg_method = os.getenv("virtual_pipeline_seg_method")
+        self.only_static = os.getenv("only_static")
 
         self.init_dist_env()
 
@@ -130,6 +134,9 @@ class TestLlamaAuto:
         set_global_mesh(global_mesh)
 
     def run_llama(self, to_static=0):
+        if self.only_static and to_static == 0:
+            return
+
         if self.config.use_lazy_init:
             with LazyGuard():
                 model = LlamaForCausalLMAuto(self.config)
@@ -138,6 +145,7 @@ class TestLlamaAuto:
                 param.initialize()
         else:
             model = LlamaForCausalLMAuto(self.config)
+        model = LlamaForCausalLMAuto(self.config)
         criterion = LlamaPretrainingCriterionAuto(self.config)
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(
@@ -146,23 +154,26 @@ class TestLlamaAuto:
         optimizer = create_optimizer(model, lr_scheduler)
         optimizer = dist.shard_optimizer(optimizer)
 
-        train_dataset = RandomDataset(self.config.seq_length)
-        train_sampler = BatchSampler(
-            train_dataset,
-            batch_size=2,
-            shuffle=True,
-            drop_last=True,
-        )
-        train_dataloader = DataLoader(
-            train_dataset,
-            batch_sampler=train_sampler,
-            num_workers=0,
-        )
+        micro_bsz = 2
+        global_bsz = micro_bsz * self.dp * self.gradient_accumulation_steps
 
         global_step = 1
         tr_loss = float(0)
 
         if not to_static:
+            train_dataset = RandomDataset(self.config.seq_length)
+            train_sampler = BatchSampler(
+                train_dataset,
+                batch_size=micro_bsz,
+                shuffle=True,
+                drop_last=True,
+            )
+            train_dataloader = DataLoader(
+                train_dataset,
+                batch_sampler=train_sampler,
+                num_workers=0,
+            )
+
             model.train()
             for epoch_idx in range(1):
                 for step, inputs in enumerate(train_dataloader):
@@ -189,25 +200,79 @@ class TestLlamaAuto:
                     if global_step // self.gradient_accumulation_steps >= 10:
                         break
         else:
-            strategy = None
-            if self.gradient_accumulation_steps > 1:
-                strategy = dist.Strategy()
+            strategy = dist.Strategy()
+            if self.pp > 1 and self.gradient_accumulation_steps > 1:
+                strategy.pipeline.enable = True
                 strategy.pipeline.accumulate_steps = (
                     self.gradient_accumulation_steps
                 )
+                strategy.pipeline.micro_batch_size = micro_bsz
+                strategy.pipeline.schedule_mode = self.schedule_mode or "1F1B"
+                strategy.pipeline.vpp_degree = (
+                    self.config.virtual_pp_degree or 1
+                )
+                strategy.pipeline.vpp_seg_method = self.vpp_seg_method or ""
+            elif self.gradient_accumulation_steps > 1:
+                strategy.gradient_merge.enable = True
+                strategy.gradient_merge.k_steps = (
+                    self.gradient_accumulation_steps
+                )
+                strategy.gradient_merge.avg = True
+
+            train_dataset = RandomDataset(self.config.seq_length)
+            train_sampler = BatchSampler(
+                train_dataset,
+                batch_size=global_bsz,
+                shuffle=True,
+                drop_last=True,
+            )
+            train_dataloader = DataLoader(
+                train_dataset,
+                batch_sampler=train_sampler,
+                num_workers=0,
+            )
 
             dist_model, dist_loader = dist.to_static(
                 model, train_dataloader, criterion, optimizer, strategy=strategy
             )
 
-            dist_model.train()
-            for step, inputs in enumerate(dist_loader()):
-                input_ids, labels = inputs
-                loss = dist_model(input_ids, labels)
-                print(step, loss)
+            def validate_batch(batch):
+                if self.gradient_accumulation_steps == 1 or self.pp > 1:
+                    batches = [batch]
+                else:
+                    split_batches = [
+                        np.split(
+                            np.array(b), self.gradient_accumulation_steps, 0
+                        )
+                        for b in batch
+                    ]
+                    batches = []
+                    for i in range(len(split_batches[0])):
+                        micro_batch = [
+                            split_batch[i] for split_batch in split_batches
+                        ]
+                        batches.append(micro_batch)
+                return batches
 
-                if step >= 10:
-                    break
+            dist_model.train()
+            for epoch_idx in range(1):
+                for step, inputs in enumerate(dist_loader()):
+                    batches = validate_batch(inputs)
+                    for micro_batch in batches:
+                        input_ids, labels = micro_batch
+                        tr_loss_step = dist_model(input_ids, labels)
+
+                        if self.gradient_accumulation_steps > 1:
+                            tr_loss_step /= self.gradient_accumulation_steps
+
+                        tr_loss += tr_loss_step
+
+                    print(f"step: {step}  loss: {np.array(tr_loss)}")
+                    lr_scheduler.step()
+                    tr_loss = float(0)
+
+                    if step >= 10:
+                        break
 
     def run_test_cases(self):
         self.run_llama(to_static=0)
