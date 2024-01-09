@@ -149,9 +149,9 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   buffers[1] = reinterpret_cast<void *>(shape_gpu_data);
   buffers[2] = reinterpret_cast<void *>(y_gpu_data);
 #if IS_TRT_VERSION_GE(8500)
-  for (int i = 0; i < buffers.size(); i++) {
+  for (size_t i = 0; i < buffers.size(); i++) {
     auto name = engine_->engine()->getBindingName(i);
-    engine_->context()->setTensorAddress(name, (*buffers)[i]);
+    engine_->context()->setTensorAddress(name, buffers[i]);
   }
 #endif
 
