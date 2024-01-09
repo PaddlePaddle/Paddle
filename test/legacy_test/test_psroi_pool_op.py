@@ -399,14 +399,13 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
 
 class TestPSROIPoolStaticAPI_NOLOD(unittest.TestCase):
     def setUp(self):
-        paddle.enable_static()
         self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
         self.boxes = np.array(
             [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]]
         ).astype(np.float32)
         self.boxes_num = np.array([1, 2]).astype(np.int32)
 
-    def test_function_in_static(self):
+    def test_function_in_pir(self):
         with paddle.pir_utils.IrGuard():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
