@@ -131,17 +131,9 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   std::vector<int> shape_v = {8, 8, 4};
   PrepareInputOutput(x_v, {8, 8, 4});
   PrepareShapeInput(shape_v);
-#if IS_TRT_VERSION_GE(6000)
-
-#if IS_TRT_VERSION_GE(8500)
-  engine_->context()->setInputShape("input", nvinfer1::Dims2{8, 32});
-  engine_->context()->setInputShape("shape", shape_dim);
-#else
   engine_->context()->setBindingDimensions(0, nvinfer1::Dims2{8, 32});
   engine_->context()->setBindingDimensions(1, shape_dim);
   engine_->context()->setInputShapeBinding(1, shape_v.data());
-#endif
-#endif
   auto *x_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
   auto *shape_gpu_data = shape_.mutable_data<int>(ctx_->GetPlace());
   auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
