@@ -1496,11 +1496,13 @@ void HandleForSpecialOp(
 
 void PushBackOutputTypes(pir::IrContext* ctx,
                          pir::Operation* op_item,
+                         const pir::Type& origin_type,
                          const phi::Place& out_place,
                          const phi::KernelKey& kernel_key,
                          std::vector<pir::Type>* op_output_types,
                          size_t index) {
-  auto result_type = op_item->result(index).type();
+  auto result_type = origin_type;
+  // auto result_type = op_item->result(index).type();
   if (!result_type) {
     op_output_types->push_back(result_type);
   } else if (result_type.isa<DenseTensorType>() ||
@@ -1583,8 +1585,13 @@ void HandleForCustomOp(
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
     phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
-    PushBackOutputTypes(
-        ctx, op_item, out_place, kernel_key, &op_output_types, i);
+    PushBackOutputTypes(ctx,
+                        op_item,
+                        op_item->result(i).type(),
+                        out_place,
+                        kernel_key,
+                        &op_output_types,
+                        i);
   }
 
   // Prepare input
@@ -1666,11 +1673,12 @@ void HandleForCustomOp(
   block->push_back(op);
 }
 
-std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
-                                    const std::string& kernel_fn_str,
-                                    const phi::KernelKey& kernel_key,
-                                    pir::IrContext* ctx,
-                                    std::vector<pir::Value> new_vec_inputs) {
+std::vector<pir::Type> BuildOutputs(
+    pir::Operation* op_item,
+    const std::string& kernel_fn_str,
+    const phi::KernelKey& kernel_key,
+    pir::IrContext* ctx,
+    const std::vector<pir::Value>& new_vec_inputs) {
   if (op_item->num_results() == 0) {
     return {};
   }
@@ -1701,6 +1709,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
   pir::AttributeMap attribute_map = op_item->attributes();
   std::vector<pir::Type> output_types =
       InferMetaByValue(op_item, input_values, attribute_map);
+  std::cout << "==============1 done======" << std::endl;
 
   bool is_ouput_changed = false;
   for (size_t i = 0; i < op_item->num_results(); ++i) {
@@ -1717,14 +1726,33 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
           (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
         out_place = phi::TransToPhiPlace(output_defs[i].backend);
       }
-      PushBackOutputTypes(
-          ctx, op_item, out_place, kernel_key, &op_output_types, i);
+      PushBackOutputTypes(ctx,
+                          op_item,
+                          op_item->result(i).type(),
+                          out_place,
+                          kernel_key,
+                          &op_output_types,
+                          i);
     }
-    return op_output_types;
   } else {
-    output_types = InferMetaByValue(op_item, new_vec_inputs, attribute_map);
-    return output_types;
+    auto base_types = InferMetaByValue(op_item, new_vec_inputs, attribute_map);
+    std::cout << "==============2 done======" << std::endl;
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
+      if ((!UnchangeOutputOps.count(op_item->name())) &&
+          (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
+        out_place = phi::TransToPhiPlace(output_defs[i].backend);
+      }
+      PushBackOutputTypes(ctx,
+                          op_item,
+                          base_types[i],
+                          out_place,
+                          kernel_key,
+                          &op_output_types,
+                          i);
+    }
   }
+  return output_types;
 }
 
 std::vector<pir::Value> BuildInputs(
@@ -1994,9 +2022,10 @@ std::vector<pir::Value> BuildInputs(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
       } else {
-        PADDLE_THROW(
-            phi::errors::Unimplemented("only support allocated dense tensor "
-                                       "type and selected rows for now"));
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "only support allocated dense tensor "
+            "type and selected rows for now, but receive %s",
+            new_in_type));
       }
     }
 

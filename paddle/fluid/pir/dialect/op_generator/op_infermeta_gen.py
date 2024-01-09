@@ -27,9 +27,9 @@ std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input
 """
 
 CREATE_INPUT_VALUE_TEMPLATE = """
-  pir::Value {input_name}_ = input_values[{index}];"""
+  pir::Value {input_name}_ = input_values[{index}]; (void){input_name}_;"""
 
-GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
+ENFORCE_INPUT_NUM_TEMPLATE = """
   IR_ENFORCE(input_values.size() == {op_input_name_list_size},
       "Num of inputs is expected to be {op_input_name_list_size} but got %d.", input_values.size());
 """
@@ -38,6 +38,24 @@ OP_INFERMETA_BY_INVOKE_TEMPLATE = """
 std::vector<pir::Type> {op_name}::InferMeta(const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes) {{
   return {invoke_class}::InferMeta(input_values, attributes);
 }}
+"""
+
+GET_INPUT_TYPE_TEMPLATE = """
+  {type} {name};
+  if ({name}_.type().isa<{type}>()) {{
+    {name} = {name}_.type().dyn_cast<{type}>(); (void){name};
+  }} else if ({name}_.type().isa<{allocated_type}>()) {{
+    {allocated_type} allocated_{name} = {name}_.type().dyn_cast<{allocated_type}>();
+    {name} = {type}::get(pir::IrContext::Instance(),
+                                            allocated_{name}.dtype(),
+                                            allocated_{name}.dims(),
+                                            allocated_{name}.data_layout(),
+                                            allocated_{name}.lod(),
+                                            allocated_{name}.offset());
+    (void){name};
+  }} else {{
+    PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
+  }}
 """
 
 
@@ -53,7 +71,7 @@ def get_infermeta_inputs_str(
     if mutable_attr_is_input:
         op_input_name_list_size += len(op_mutable_attribute_name_list)
 
-    infermeta_inputs_str = GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+    infermeta_inputs_str = ENFORCE_INPUT_NUM_TEMPLATE.format(
         op_input_name_list_size=str(op_input_name_list_size),
     )
 
@@ -93,8 +111,14 @@ def get_infermeta_inputs_str(
         # is a Tensor
         else:
             if op_input_optional_list[idx] == 'false':
-                infermeta_inputs_str += "  {type} {name} = {name}_.type().dyn_cast<{type}>(); (void){name};\n".format(
-                    type=op_input_type_list[idx], name=op_input_name_list[idx]
+                type = op_input_type_list[idx]
+                allocated_type = type.replace(
+                    'DenseTensorType', 'AllocatedDenseTensorType'
+                ).replace("SelectedRowsType", "AllocatedSelectedRowsType")
+                infermeta_inputs_str += GET_INPUT_TYPE_TEMPLATE.format(
+                    type=type,
+                    name=op_input_name_list[idx],
+                    allocated_type=allocated_type,
                 )
 
     return infermeta_inputs_str
@@ -146,11 +170,23 @@ def GenBuildOutputsPart2(
 
     CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_{name};
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
-    vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
-                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
-                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
+    if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
+        auto {name}_type = {name}[i].dyn_cast<paddle::dialect::DenseTensorType>();
+        vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
+                                                                    {name}_type.dims(),
+                                                                    {name}_type.data_layout(),
+                                                                    {name}_type.lod(),
+                                                                    {name}_type.offset()));
+    }} else if({name}[i].isa<paddle::dialect::AllocatedDenseTensorType>()){{
+        auto {name}_type = {name}[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+        vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
+                                                                    {name}_type.dims(),
+                                                                    {name}_type.data_layout(),
+                                                                    {name}_type.lod(),
+                                                                    {name}_type.offset()));
+    }} else {{
+        PADDLE_THROW(phi::errors::Unimplemented("Only support DenseTensorType or AllocatedDenseTensorType"));
+    }}
   }}
   std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
   for (size_t i=0; i < vec_ir_tensor_{name}.size(); i++) {{
@@ -167,11 +203,23 @@ def GenBuildOutputsPart2(
   if ({name}_.impl() != nullptr) {{
     pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>();
     for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
-        vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
-                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
-                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
-                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
+        if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
+          auto {name}_type = {name}[i].dyn_cast<paddle::dialect::DenseTensorType>();
+          vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
+                                                                        {name}_type.dims(),
+                                                                        {name}_type.data_layout(),
+                                                                        {name}_type.lod(),
+                                                                        {name}_type.offset()));
+        }} else if({name}[i].isa<paddle::dialect::AllocatedDenseTensorType>()){{
+          auto {name}_type = {name}[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+          vec_ir_tensor_{name}.push_back(paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
+                                                                        {name}_type.dims(),
+                                                                        {name}_type.data_layout(),
+                                                                        {name}_type.lod(),
+                                                                        {name}_type.offset()));
+        }} else {{
+            PADDLE_THROW(phi::errors::Unimplemented("Only support DenseTensorType or AllocatedDenseTensorType"));
+        }}
     }}
   }}
 
@@ -205,8 +253,16 @@ def GenBuildOutputsPart2(
     }}
     {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
     {name}.SetFromTensor(true);
+  }} else if ({name}_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {{
+    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dims();
+    size_t {name}_size = common::product({name}_dim);
+    if (common::contain_unknown_dim({name}_dim)) {{
+      {name}_size = 1;
+    }}
+    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
+    {name}.SetFromTensor(true);
   }} else {{
-    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
+    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType or AllocatedDenseTensorType"));
   }}\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
@@ -225,8 +281,15 @@ def GenBuildOutputsPart2(
       {name}_size = 1;
     }}
     {name} = std::vector<int64_t>({name}_size, -1);
+  }} else if ({name}_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {{
+    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dims();
+    size_t {name}_size = common::product({name}_dim);
+    if (common::contain_unknown_dim({name}_dim)) {{
+      {name}_size = 1;
+    }}
+    {name} = std::vector<int64_t>({name}_size, -1);
   }} else {{
-    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
+    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType or AllocatedDenseTensorType"));
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
