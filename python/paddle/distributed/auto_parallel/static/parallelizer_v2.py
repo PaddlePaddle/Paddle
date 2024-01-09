@@ -503,6 +503,7 @@ class Parallelizer:
                         ir_pass_list.append(p)
                     else:
                         new_pass_list.append(new_pass(p))
+                        new_pass_list[-1].set_dist_context(self._dist_context)
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 

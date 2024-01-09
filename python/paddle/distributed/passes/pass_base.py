@@ -140,6 +140,7 @@ def new_pass(name, pass_attrs={}):
 class CPPPassWrapper(PassBase):
     def __init__(self):
         super().__init__()
+        self._dist_context = None
 
     @property
     def cpp_name(self):
@@ -163,6 +164,9 @@ class CPPPassWrapper(PassBase):
             self._attrs,
             self.cpp_attr_types,
         )
+
+    def set_dist_context(self, dist_context):
+        self._dist_context = dist_context
 
 
 def _fusion_opt_last_rule(pass_before, pass_after):
