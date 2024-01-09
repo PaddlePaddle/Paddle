@@ -1263,6 +1263,7 @@
     func : sum
     data_type : x
   backward : sum_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)
