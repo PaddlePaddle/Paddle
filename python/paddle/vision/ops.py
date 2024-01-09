@@ -15,13 +15,19 @@
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode, in_dynamic_or_pir_mode
+from ..base.framework import (
+    Variable,
+    convert_np_dtype_to_dtype_,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
@@ -1226,7 +1232,7 @@ def distribute_fpn_proposals(
         num_lvl < 100
     ), "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             rois_num is not None
         ), "rois_num should not be None in dygraph mode."
@@ -1319,8 +1325,9 @@ def read_file(filename, name=None):
             [142773]
     """
 
-    if in_dygraph_mode():
-        return _legacy_C_ops.read_file('filename', filename)
+    attr_dtype = convert_np_dtype_to_dtype_('uint8')
+    if in_dynamic_or_pir_mode():
+        return _C_ops.read_file(filename, attr_dtype, paddle.CPUPlace())
     else:
         inputs = {}
         attrs = {'filename': filename}
@@ -1368,7 +1375,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             >>> print(img.shape)
             [3, 400, 300]
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
     else:
         inputs = {'X': x}
@@ -2138,6 +2145,27 @@ def generate_proposals(
             scores, bbox_deltas, img_size, anchors, variances, *attrs
         )
 
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif in_pir_mode():
+        assert (
+            return_rois_num
+        ), "return_rois_num should be True in PaddlePaddle inner op mode."
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
+            scores,
+            bbox_deltas,
+            img_size,
+            anchors,
+            variances,
+            pre_nms_top_n,
+            post_nms_top_n,
+            nms_thresh,
+            min_size,
+            eta,
+            pixel_offset,
+        )
+        rpn_rois.stop_gradient = True
+        rpn_roi_probs.stop_gradient = True
+        rpn_rois_num.stop_gradient = True
         return rpn_rois, rpn_roi_probs, rpn_rois_num
     else:
         helper = LayerHelper('generate_proposals_v2', **locals())

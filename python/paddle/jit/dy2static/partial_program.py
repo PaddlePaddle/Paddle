@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from copy import deepcopy
 
 import numpy as np
@@ -229,10 +228,7 @@ class PartialProgramLayer:
         in_vars, in_var_names = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(in_vars)
-        # TODO(dev): Currently AST + PT has some issues in control flow, so we only
-        # enable SOT + PT in 2.6, we will fix it later.
-        is_dy2st_test = os.environ.get("DY2ST_TEST", None) == "True"
-        attrs = self._prepare_attributes(force_not_use_pt=(not is_dy2st_test))
+        attrs = self._prepare_attributes()
         attrs.extend(["x_names", in_var_names])
 
         self._sync_lr_value_with_scheduler()
@@ -259,7 +255,7 @@ class PartialProgramLayer:
         """
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(inputs)
-        attrs = self._prepare_attributes(force_not_use_pt=False)
+        attrs = self._prepare_attributes()
         attrs.extend(["x_names", self._in_var_names])
 
         self._sync_lr_value_with_scheduler()
@@ -296,14 +292,7 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
-        if (
-            get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]
-            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
-                'FLAGS_enable_pir_with_pt_in_dy2st'
-            ]
-        ):
+        if self._in_pir_pt_mode or self._enable_pir_in_executor:
             _scope_cache = self._pir_scope_cache
         else:
             _scope_cache = self._legacy_scope_cache
@@ -768,7 +757,28 @@ class PartialProgramLayer:
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
 
-    def _prepare_attributes(self, force_not_use_pt=False):
+    @property
+    def _in_pir_pt_mode(self):
+        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
+        is_prim_enabled = (
+            core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
+        )
+        in_cinn_backend = self._backend == "CINN"
+        is_cinn_enabled = self._build_strategy.build_cinn_pass
+        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+            in_pir_pt_mode = False
+        return in_pir_pt_mode
+
+    @property
+    def _enable_pir_in_executor(self):
+        enable_pir_in_executor_flag = 'FLAGS_enable_pir_in_executor'
+        enable_pir_in_executor = get_flags(enable_pir_in_executor_flag)[
+            enable_pir_in_executor_flag
+        ]
+        return enable_pir_in_executor
+
+    def _prepare_attributes(self):
         attrs = [
             'forward_global_block',
             self.forward_program.desc.block(0),
@@ -804,17 +814,7 @@ class PartialProgramLayer:
                 )
             )
 
-        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
-        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
-        is_prim_enabled = (
-            core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
-        )
-        in_cinn_backend = self._backend == "CINN"
-        is_cinn_enabled = self._build_strategy.build_cinn_pass
-        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
-            in_pir_pt_mode = False
-        if force_not_use_pt:
-            in_pir_pt_mode = False
+        in_pir_pt_mode = self._in_pir_pt_mode
         attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
 
         return attrs
@@ -901,21 +901,13 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
-        in_pir_pt_mode = (
-            get_flags('FLAGS_enable_pir_in_executor')[
-                'FLAGS_enable_pir_in_executor'
-            ]
-            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
-                'FLAGS_enable_pir_with_pt_in_dy2st'
-            ]
-        )
         if forward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not in_pir_pt_mode:
+            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -929,7 +921,7 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not in_pir_pt_mode:
+            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
                 _apply_pass(
                     backward_program,
                     empty_startup_program,

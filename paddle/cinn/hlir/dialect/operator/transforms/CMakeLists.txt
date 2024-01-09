@@ -19,4 +19,32 @@ if(NOT CINN_ONLY)
     pir
     cinn_op_dialect
     op_dialect_vjp)
+
+  cinn_cc_library(
+    fuse_shape_ops_into_generate_shape_op_pass
+    SRCS
+    fuse_shape_ops_into_generate_shape_op_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
+  cinn_cc_library(
+    fully_insert_broadcast_pass
+    SRCS
+    fully_insert_broadcast_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
+  cinn_cc_library(
+    split_generate_shape_into_shape_ops_pass
+    SRCS
+    split_generate_shape_into_shape_ops_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
 endif()

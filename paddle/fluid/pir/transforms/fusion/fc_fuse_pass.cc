@@ -21,10 +21,10 @@
 
 namespace {
 
-class MatmulAddPattern : public pir::drr::DrrPatternBase<MatmulAddPattern> {
+class MatmulAddPattern : public paddle::drr::DrrPatternBase<MatmulAddPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("transpose_x")},
                                  {"transpose_y", pat.Attr("transpose_y")}});
@@ -32,7 +32,7 @@ class MatmulAddPattern : public pir::drr::DrrPatternBase<MatmulAddPattern> {
     matmul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("matmul_out")});
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("y"));
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       if (match_ctx.Tensor("w").Shape().size() != 2 ||
           match_ctx.Tensor("x").Shape().size() < 2) {
         return false;
@@ -56,63 +56,42 @@ class MatmulAddPattern : public pir::drr::DrrPatternBase<MatmulAddPattern> {
       return false;
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &in_num_col_dims_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
           return match_ctx.Tensor("x").Shape().size() - 1;
         });
-    const auto &false_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
+    const auto &false_attr =
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return false;
+        });
 
-    const auto &fc = res.Op(
-        paddle::dialect::FcOp::name(),
-        {{
-            {"in_num_col_dims", in_num_col_dims_attr},
-            {"activation_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return ""; })},
-            {"use_mkldnn", false_attr},
-            {"padding_weights", false_attr},
-            {"use_quantizer", false_attr},
-            {"mkldnn_data_type",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::string { return "float32"; })},
-            {"scale_in",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"scale_weights",
-             res.Attr([](const pir::drr::MatchContext &match_ctx)
-                          -> std::vector<float> { return {1.0f}; })},
-            {"scale_out",
-             res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-               return 1.0f;
-             })},
-            {"force_fp32_output", false_attr},
-        }});
+    const auto &fc =
+        res.Op(paddle::dialect::FcOp::name(),
+               {{
+                   {"in_num_col_dims", in_num_col_dims_attr},
+                   {"activation_type",
+                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
+                                 -> std::string { return ""; })},
+                   {"padding_weights", false_attr},
+               }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
        {&res.Tensor("add_out")});
   }
 };
 
-class FcWithReluPattern : public pir::drr::DrrPatternBase<FcWithReluPattern> {
+class FcWithReluPattern
+    : public paddle::drr::DrrPatternBase<FcWithReluPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fc =
         pat.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                    {"activation_type", pat.Attr("activation_type")},
-                   {"use_mkldnn", pat.Attr("use_mkldnn")},
                    {"padding_weights", pat.Attr("padding_weights")},
-                   {"use_quantizer", pat.Attr("use_quantizer")},
-                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                   {"scale_in", pat.Attr("scale_in")},
-                   {"scale_weights", pat.Attr("scale_weights")},
-                   {"scale_out", pat.Attr("scale_out")},
-                   {"force_fp32_output", pat.Attr("force_fp32_output")},
                }});
     fc({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("y")},
        {&pat.Tensor("fc_out")});
@@ -120,27 +99,20 @@ class FcWithReluPattern : public pir::drr::DrrPatternBase<FcWithReluPattern> {
     relu({&pat.Tensor("fc_out")}, {&pat.Tensor("relu_out")});
 
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return match_ctx.Attr<std::string>("activation_type").empty();
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fc_with_relu =
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                    {"activation_type",
-                    res.Attr([](const pir::drr::MatchContext &match_ctx)
+                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
                                  -> std::string { return "relu"; })},
-                   {"use_mkldnn", pat.Attr("use_mkldnn")},
                    {"padding_weights", pat.Attr("padding_weights")},
-                   {"use_quantizer", pat.Attr("use_quantizer")},
-                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                   {"scale_in", pat.Attr("scale_in")},
-                   {"scale_weights", pat.Attr("scale_weights")},
-                   {"scale_out", pat.Attr("scale_out")},
-                   {"force_fp32_output", pat.Attr("force_fp32_output")},
                }});
     fc_with_relu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
                  {&res.Tensor("relu_out")});

@@ -29,4 +29,5 @@ vjp_interface_black_list = [
     'fused_rotary_position_embedding',
     'fused_bias_dropout_residual_layer_norm',
     'fused_dot_product_attention',
+    'max_pool2d_v2',
 ]

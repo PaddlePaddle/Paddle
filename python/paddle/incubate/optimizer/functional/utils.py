@@ -23,7 +23,7 @@ def check_input_type(input, name, op_name):
         if not isinstance(input, paddle.Tensor):
             raise ValueError(f"The input: {input} must be tensor.")
     else:
-        check_type(input, name, Variable, op_name)
+        check_type(input, name, (Variable, paddle.pir.Value), op_name)
 
 
 def check_initial_inverse_hessian_estimate(H0):
@@ -72,7 +72,7 @@ def check_initial_inverse_hessian_estimate(H0):
         paddle.static.nn.cond(is_symmetric, None, false_fn)
         # eigvals only support cpu
         paddle.set_device("cpu")
-        eigvals = paddle.paddle.linalg.eigvals(H0)
+        eigvals = paddle.linalg.eigvals(H0)
         is_positive = paddle.all(eigvals.real() > 0.0) and paddle.all(
             eigvals.imag() == 0.0
         )

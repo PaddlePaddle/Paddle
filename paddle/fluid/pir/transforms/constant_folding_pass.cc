@@ -126,20 +126,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                pir::PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "constant_folding_pass applys rewrite on [" << op->name()
             << "] op";
-    pir::Program new_program(rewriter.ir_context());
-    auto output_var_names =
-        BuildProgramFromOperation(op, &new_program, rewriter);
-
-    // execute program
-    for (auto output_var_name : output_var_names) {
-      exe_config_->skip_gc_vars.insert(output_var_name);
-    }
-    auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
-    paddle::framework::InterpreterCore core(
-        place_, {}, kernel_program->block(), scope_, *exe_config_);
-
-    core.Run({});
+    auto output_var_names = RunOp(op, rewriter);
 
     // ParameterOp and ConstantTensorOp should be created in the top-level block
     rewriter.SetInsertionPointToStart(
@@ -236,6 +223,27 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
+ protected:
+  std::vector<std::string> RunOp(
+      pir::Operation* op,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    pir::Program new_program(rewriter.ir_context());
+    auto output_var_names =
+        BuildProgramFromOperation(op, &new_program, rewriter);
+
+    // execute program
+    for (auto output_var_name : output_var_names) {
+      exe_config_->skip_gc_vars.insert(output_var_name);
+    }
+    auto kernel_program =
+        paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
+    paddle::framework::InterpreterCore core(
+        place_, {}, kernel_program->block(), scope_, *exe_config_);
+
+    core.Run({});
+    return output_var_names;
+  }
+
   std::vector<std::string> BuildProgramFromOperation(
       pir::Operation* op,
       pir::Program* new_program,
@@ -299,7 +307,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return output_var_names;
   }
 
- private:
+ protected:
   size_t* counter_;
   phi::Place place_;
   paddle::framework::Scope* scope_;
@@ -307,20 +315,105 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   std::vector<std::string>* deleted_vars_;
 };
 
+class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
+ public:
+  ConstantFoldingPatternForTrain(
+      pir::IrContext* context,
+      size_t* counter,
+      const phi::Place& place,
+      paddle::framework::Scope* scope,
+      paddle::framework::interpreter::ExecutionConfig* exe_config,
+      std::vector<std::string>* deleted_vars)
+      : ConstantFoldingPattern(
+            context, counter, place, scope, exe_config, deleted_vars) {}
+
+  bool Match(pir::Operation* op) const override {
+    VLOG(4) << "constant_folding_pass applys match on [" << op->name()
+            << "] op";
+    if (!ConstantFoldingPattern::Match(op)) {
+      return false;
+    }
+    for (uint32_t i = 0; i < op->num_operands(); i++) {
+      // inputs must come from or constant op
+      auto* prev_op = pir::GetDefiningOpForInput(op, i);
+      if (!prev_op || !prev_op->isa<pir::ConstantTensorOp>()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void Rewrite(pir::Operation* op,
+               pir::PatternRewriter& rewriter) const override {  // NOLINT
+    VLOG(4) << "constant_folding_pass for train applys rewrite on ["
+            << op->name() << "] op";
+
+    auto output_var_names = RunOp(op, rewriter);
+
+    // ConstantTensorOp should be created in the top-level block
+    rewriter.SetInsertionPointToStart(
+        rewriter.block()->parent_program()->block());
+
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      if (!op->result(i) || !op->result(i).type()) {
+        continue;
+      }
+      std::string output_var_name = output_var_names[i];
+      PADDLE_ENFORCE_NOT_NULL(
+          scope_->FindVar(output_var_name),
+          phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                       output_var_name));
+
+      auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
+          rewriter.tensor_name_attr(output_var_name), op->result(i).type());
+      constant_op->set_attribute(
+          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+      rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
+    }
+    rewriter.EraseOp(op);
+    VLOG(4) << "constant_folding_pass for traun applied rewrite on ["
+            << op->name() << "] op";
+  }
+};
+
 class ConstantFoldingPass : public pir::Pass {
  public:
-  explicit ConstantFoldingPass(const phi::Place& place,
-                               paddle::framework::Scope* scope)
-      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope) {
-    PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
-  }
+  ConstantFoldingPass()
+      : pir::Pass("constant_folding_pass", 1),
+        place_(phi::CPUPlace{}),
+        scope_(nullptr) {}
 
  private:
   bool Initialize(pir::IrContext* context) override {
+    IR_ENFORCE(Has(pir::kPlaceAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, place attribute is required!"
+               "Use Set method to set the place attribute.");
+    IR_ENFORCE(Has(pir::kParamScopeAttr),
+               "Pass initialize failed."
+               "When using ConstantFoldingPass, scope attribute is required!"
+               "Use Set method to set the scope attribute.");
+
+    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
+
+    PADDLE_ENFORCE_NOT_NULL(
+        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+
     pir::RewritePatternSet ps(context);
-    ps.Add<ConstantFoldingPattern>(
-        context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
+
+    if (Has("train_mode") && Get<bool>("train_mode")) {
+      ps.Add<ConstantFoldingPatternForTrain>(context,
+                                             &counter_,
+                                             phi::CPUPlace{},
+                                             scope_,
+                                             &exe_config_,
+                                             &deleted_vars_);
+    } else {
+      ps.Add<ConstantFoldingPattern>(
+          context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
+    }
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -354,9 +447,8 @@ class ConstantFoldingPass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope) {
-  return std::make_unique<ConstantFoldingPass>(place, scope);
+std::unique_ptr<Pass> CreateConstantFoldingPass() {
+  return std::make_unique<ConstantFoldingPass>();
 }
 
 }  // namespace pir
