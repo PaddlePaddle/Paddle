@@ -142,9 +142,6 @@ bool ProcessOp(paddle::dialect::ExpandOp op, pir::PatternRewriter* rewriter) {
           pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
     return shape_analysis.GetShapeOrDataForValue(&value);
   };
-  if (ShapeOrDataDimExprs4Value(op.shape()).shape().empty()) {
-    return false;
-  }
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewritedGenerateShapeOp(
           op.shape(), rewriter, ShapeOrDataDimExprs4Value);

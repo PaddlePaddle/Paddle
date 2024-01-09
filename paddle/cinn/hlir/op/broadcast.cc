@@ -636,6 +636,14 @@ CINN_REGISTER_HELPER(broadcast_ops) {
           "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
       .set_support_level(4);
 
+    CINN_REGISTER_OP(expand)
+      .describe("expand one tensor to the target shape")
+      .set_num_inputs(2)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
+      .set_support_level(4);
+
   CINN_REGISTER_OP(isclose)
       .describe(
           "This operator checks if all x and y satisfy the condition: |x - y| "

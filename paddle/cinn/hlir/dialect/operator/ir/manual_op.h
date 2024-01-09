@@ -21,6 +21,8 @@
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 
 namespace cinn {
 namespace dialect {
@@ -83,7 +85,8 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
   void VerifySig() const {}
 };
 
-class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
+class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp,
+                                              paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.generate_shape"; }
@@ -112,6 +115,8 @@ class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
   void VerifySig() {}
 
   pir::OpResult out() { return result(0); }
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 
   static pir::Attribute ConvertSymbolBindingsToAttribute(
       pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT

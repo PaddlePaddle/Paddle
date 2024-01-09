@@ -89,6 +89,9 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/rewrite_generate_shape_ops_to_run_first_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #endif
 
 namespace py = pybind11;
@@ -1600,6 +1603,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
         std::make_unique<
             cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    //pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
   cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
@@ -1607,6 +1611,11 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(pir::CreateBuildCinnPass());
+
+  if (has_dynamic_shape) {
+    //pass_manager->AddPass(cinn::dialect::ir::CreateRewriteGenerateShapeOpsToRunFirstPass());
+    //pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));

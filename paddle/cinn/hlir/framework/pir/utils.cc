@@ -241,9 +241,7 @@ int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
 OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
-  if (op_name == "generate_shape") {
-    return hlir::framework::kNonFusible;
-  }
+  if (op_name == "generate_shape") return hlir::framework::kNonFusible;
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
   CHECK(op_pattern_dict.Find(cinn_op));
   auto kind = op_pattern_dict[cinn_op];
