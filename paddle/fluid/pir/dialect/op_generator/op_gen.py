@@ -1149,20 +1149,20 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
         if (
             op_info.backward_name
             and op_info.op_phi_name[0] not in vjp_interface_black_list
-            and dialect_name != "pd_onednn_op"
+            and dialect_name != "onednn_op"
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
 
-        if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+        if dialect_name == "pd_op" or dialect_name == "onednn_op":
             op_interfaces += ["paddle::dialect::GetKernelTypeForVarInterface"]
 
         # if op has custom vjp rule, then append a CustomVjpTrait to it
         if (
             op_info.op_phi_name[0] in custom_vjp_op_name_list
-            and dialect_name != "pd_onednn_op"
+            and dialect_name != "onednn_op"
         ):
             op_traits += ["paddle::dialect::CustomVjpTrait"]
 
@@ -1184,7 +1184,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
             if op_name[-1] == "_":
                 op_traits += ["paddle::dialect::InplaceTrait"]
 
-            if dialect_name == "pd_onednn_op":
+            if dialect_name == "onednn_op":
                 op_traits += ["paddle::dialect::OneDNNTrait"]
 
             if op_info.is_onednn_only:
@@ -1208,7 +1208,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 if (
                     op_name in decomp_interface_declare_gen_op_list
                     and kernel_func_name in decomp_interface_declare_gen_op_list
-                    and dialect_name != "pd_onednn_op"
+                    and dialect_name != "onednn_op"
                 ):
                     op_interfaces = op_interfaces + [
                         "paddle::dialect::DecompInterface"
@@ -1272,7 +1272,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 build_func_with_muta_attr_is_input = ""
 
                 get_kernel_type_for_var_declare_str = ""
-                if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+                if dialect_name == "pd_op" or dialect_name == "onednn_op":
                     get_kernel_type_for_var_declare_str = (
                         get_kernel_type_for_var_declare_template
                     )
@@ -1607,7 +1607,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     origin_op_name=op_info.op_yaml_item['name'],
                 )
 
-                if dialect_name == "pd_onednn_op":
+                if dialect_name == "onednn_op":
                     if len(op_info.onednn_extra_args) > 0:
                         args_name = []
                         for arg in op_info.onednn_extra_args:
@@ -1698,7 +1698,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
 
                 # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
-                if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+                if dialect_name == "pd_op" or dialect_name == "onednn_op":
                     op_get_kernel_type_for_var_str = (
                         gen_kernel_type_for_var_str(
                             op_class_name,
@@ -1727,7 +1727,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         op_info.backward_name
                         and op_info.op_phi_name[0]
                         not in vjp_interface_black_list
-                        and dialect_name != "pd_onednn_op"
+                        and dialect_name != "onednn_op"
                     ):
                         op_vjp_str = gen_op_vjp_str(
                             op_class_name,
@@ -1758,7 +1758,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     ops_defined_list.append(infer_symbolic_shape_define_str)
 
                     # NOTE(chenxi67)skip if dialect_name==cinn
-                    if dialect_name == "cinn" or dialect_name == "pd_onednn_op":
+                    if dialect_name == "cinn" or dialect_name == "onednn_op":
                         pass
                     else:
                         ops_vjp_defined_list.append(op_vjp_str)
@@ -1855,7 +1855,7 @@ def OpGenerator(
     # (2) parse yaml files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
-    if dialect_name == "pd_onednn_op":
+    if dialect_name == "onednn_op":
         with open(ops_onednn_extra_yaml_file, "r") as f:
             ops_onednn_extra = yaml.safe_load(f)
             ops_onednn_extra_map = {}
@@ -1890,7 +1890,7 @@ def OpGenerator(
         op_info_items = {}
         for op in op_yaml_items:
             op_compat_item = None
-            if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+            if dialect_name == "pd_op" or dialect_name == "onednn_op":
                 op_compat_item = op_compat_parser.get_compat(op['name'])
 
             if (
@@ -1916,7 +1916,7 @@ def OpGenerator(
                 ) = op_compat_parser.parse_support_tensor(op)
                 op_compat_item['scalar'] = scalar_item
                 op_compat_item['int_array'] = int_array_item
-            if dialect_name == "pd_onednn_op":
+            if dialect_name == "onednn_op":
                 if first_file:
                     first_file = False
                     op["is_onednn_only"] = True
@@ -1934,7 +1934,7 @@ def OpGenerator(
             all_op_info_items[op['name']] = item
 
         op_infos.append(op_info_items)
-    if dialect_name == "pd_onednn_op":
+    if dialect_name == "onednn_op":
         op_infos = [all_op_info_items]
 
     # (3) auto code gen
@@ -2047,7 +2047,7 @@ def OpGenerator(
                 namespace=name, input=source_file_str
             )  # Add namespaces
 
-        if dialect_name == "pd_onednn_op":
+        if dialect_name == "onednn_op":
             op_def_h_file_tmp = (
                 "paddle/fluid/pir/dialect/operator/ir/pd_op.h\"\n#include \""
                 + op_def_h_file
@@ -2070,7 +2070,7 @@ def OpGenerator(
     vjp_source_file_str = VJP_CC_FILE_TEMPLATE.format(input=vjp_source_file_str)
     if (
         dialect_name != 'cinn'
-        and dialect_name != 'pd_onednn_op'
+        and dialect_name != 'onednn_op'
         and op_vjp_cc_file
     ):
         with open(op_vjp_cc_file, 'w') as f:

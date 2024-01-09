@@ -123,9 +123,9 @@ if(WITH_MKLDNN)
   set(op_onednn_info_file_tmp ${op_onednn_info_file}.tmp)
 
   set(onednn_op_namespace paddle,onednn,dialect)
-  set(onednn_dialect_name pd_onednn_op)
-  set(onednn_op_header_file ${PD_DIALECT_SOURCE_DIR}/pd_onednn_op.h)
-  set(onednn_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_onednn_op.cc)
+  set(onednn_dialect_name onednn_op)
+  set(onednn_op_header_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.h)
+  set(onednn_op_source_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.cc)
   set(onednn_op_header_file_tmp ${onednn_op_header_file}.tmp)
   set(onednn_op_source_file_tmp ${onednn_op_source_file}.tmp)
 

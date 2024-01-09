@@ -731,7 +731,7 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(PhiKernelInstruction);
       }
 #ifdef PADDLE_WITH_DNNL
-    } else if (op.dialect()->name() == "pd_onednn_kernel") {
+    } else if (op.dialect()->name() == "onednn_kernel") {
       auto op_name = op.attributes()
                          .at("op_name")
                          .dyn_cast<::pir::StrAttribute>()
