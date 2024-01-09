@@ -1843,7 +1843,6 @@ class Executor:
                 'true',
             ]
             self._log_force_set_program_cache(use_program_cache)
-
         if in_pir_mode():
             res = self._run_pir_impl(
                 program=program,

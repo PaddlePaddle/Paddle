@@ -534,7 +534,7 @@ def monkey_patch_variable():
             if lhs_dtype != rhs_dtype:
                 if method_name in SUPPORT_PROMOTION_OPS:
                     if core.need_type_promotion(lhs_dtype, rhs_dtype):
-                        # only report warning here, real promotion deal in Executor before run
+                        # only report warning here, real promotion deal in Executor
                         warnings.warn(
                             f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted"
                         )
