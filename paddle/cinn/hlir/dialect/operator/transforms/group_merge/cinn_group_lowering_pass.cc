@@ -757,9 +757,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         }
         value_map[group_output_values[i]] = complied_op->result(i);
         shape_analysis_->SetShapeOrDataForValue(
-            &group_output_values[i],
-            shape_analysis_->GetShapeOrDataForValue(
-                &value_map[group_output_values[i]]));
+            &value_map[group_output_values[i]],
+            shape_analysis_->GetShapeOrDataForValue(&group_output_values[i]));
       }
     }
     value_map.clear();

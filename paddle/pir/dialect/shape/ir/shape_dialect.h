@@ -23,7 +23,11 @@ namespace pir::shape {
 class IR_API ShapeDialect : public Dialect {
  public:
   explicit ShapeDialect(IrContext* context);
+
   static const char* name() { return "shape"; }
+
+  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+
   void PrintOperation(Operation* op,
                       IrPrinter& printer) const override;  // NOLINT
 

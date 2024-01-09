@@ -162,6 +162,21 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
   }
 }
 
+DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+                       const DDim& global_dims,
+                       const TensorDistAttr& dist_attr)
+    : global_dims_(global_dims), dist_attr_(dist_attr) {
+  process_mesh_ = dist_attr_.process_mesh();
+  placements_ = ToPlacements(dist_attr);
+  if (IsCurRankInMesh(process_mesh_)) {
+    value_ = local_value;
+  } else {
+    value_ = std::make_shared<DenseTensor>(
+        std::make_shared<phi::Allocation>(nullptr, 0, local_value->place()),
+        phi::DenseTensorMeta(local_value->dtype(), global_dims_));
+  }
+}
+
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const ProcessMesh& process_mesh,
                        const Placements& placements)

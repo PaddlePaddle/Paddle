@@ -2470,6 +2470,16 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "starts or steps)";
         return false;
       }
+      if (desc.HasAttr("axes")) {
+        auto axes =
+            PADDLE_GET_CONST(std::vector<int64_t>, desc.GetAttr("axes"));
+        if (axes.size() != 1UL) {
+          VLOG(3) << "the set_value op"
+                  << "has more than one element in attribute axes, it can not "
+                     "enter into trt.";
+          return false;
+        }
+      }
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {

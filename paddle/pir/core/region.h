@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/visitors.h"
 
@@ -70,6 +71,9 @@ class IR_API Region {
   /// is called for each nested region, block or operation,
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(FuncT &&callback);
+
+  // clone this region into another region, target region will be overwritten.
+  void CloneInto(Region &other, IrMapping &ir_mapping);  // NOLINT
 
   // take the last block of region.
   // if region is empty, return nullptr;

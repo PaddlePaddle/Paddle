@@ -164,20 +164,19 @@ std::string GetValueId(const Value* val) {
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(const Value* val) {
   auto val_id = GetValueId(val);
-  CHECK(value_id_to_shapeordata_.count(val_id))
+  CHECK(value_to_shape_or_data_.count(*val))
       << "Cannot find shape or data for value: " << val_id;
-  return value_id_to_shapeordata_.at(val_id);
+  return value_to_shape_or_data_.at(*val);
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     const Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  auto val_id = GetValueId(val);
-  value_id_to_shapeordata_[val_id] = shape_or_data;
+  value_to_shape_or_data_[*val] = shape_or_data;
 }
 
 void ShapeConstraintIRAnalysis::PrintAllShapeOrDataDimExprs() const {
-  for (const auto& [id, shape_or_data] : value_id_to_shapeordata_) {
-    VLOG(0) << id << " : " << shape_or_data;
+  for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
+    LOG(INFO) << GetValueId(&value) << " : " << shape_or_data;
   }
 }
 
