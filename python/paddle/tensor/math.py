@@ -5150,7 +5150,7 @@ def gammaincc_(x, a, name=None):
     Please refer to :ref:`api_paddle_gammaincc`.
     """
     if in_dynamic_mode():
-        return _C_ops.gammaincc_(x, a)
+        return _C_ops.igamma_(x, a)
 
 
 def gammainc(x, a, name=None):
@@ -5189,7 +5189,7 @@ def gammainc_(x, a, name=None):
     Please refer to :ref:`api_paddle_gammainc`.
     """
     return (
-        paddle.igamma_(x, a)
+        paddle.gammaincc_(x, a)
         .multiply_(paddle.full_like(x, -1.0))
         .add_(paddle.full_like(x, 1.0))
     )

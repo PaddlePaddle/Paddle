@@ -885,7 +885,7 @@ class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
         return paddle.neg(var)
 
 
-class TestDygraphInplaceIgamma(TestDygraphInplaceWithContinuous):
+class TestDygraphInplaceGammaincc(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.shape = (3, 40)
         self.dtype = "float32"
@@ -895,13 +895,13 @@ class TestDygraphInplaceIgamma(TestDygraphInplaceWithContinuous):
         self.a = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
 
     def inplace_api_processing(self, var):
-        return paddle.igamma_(var, a=self.a)
+        return paddle.gammaincc_(var, a=self.a)
 
     def non_inplace_api_processing(self, var):
-        return paddle.igamma(var, a=self.a)
+        return paddle.gammaincc(var, a=self.a)
 
 
-class TestDygraphInplaceIgammac(TestDygraphInplaceWithContinuous):
+class TestDygraphInplaceGammainc(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.shape = (3, 40)
         self.dtype = "float32"
@@ -911,10 +911,10 @@ class TestDygraphInplaceIgammac(TestDygraphInplaceWithContinuous):
         self.a = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
 
     def inplace_api_processing(self, var):
-        return paddle.igammac_(var, a=self.a)
+        return paddle.gammainc_(var, a=self.a)
 
     def non_inplace_api_processing(self, var):
-        return paddle.igammac(var, a=self.a)
+        return paddle.gammainc(var, a=self.a)
 
     def test_forward_version(self):
         with paddle.base.dygraph.guard():
