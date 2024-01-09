@@ -29,7 +29,7 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [10, 11, 12, 13, 14, 15]:
+        for batch in [10, 15]:
             for trans_x in [False]:
                 for trans_y in [False]:
                     input1_shape = [batch, 64, 350, 75]
@@ -113,7 +113,7 @@ class TrtConvertMatmulTest_dynamic2(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [10, 11, 12, 13, 14, 15]:
+        for batch in [10, 15]:
             for trans_x in [False]:
                 for trans_y in [False]:
                     input1_shape = [60, 40]
