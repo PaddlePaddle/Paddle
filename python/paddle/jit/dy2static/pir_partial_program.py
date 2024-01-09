@@ -548,27 +548,19 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
-            # TODO(lanxianghit) mv this into pass_fn
-            def shape_pass_fn(forward_program, backward_program):
-                pm = paddle.base.libpaddle.pir.PassManager()
-                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
-                    pm, forward_program
-                )
-                pm.run(forward_program)
-                return forward_program, backward_program
 
             def pass_fn(forward_program, backward_program):
                 pm = paddle.base.libpaddle.pir.PassManager()
+                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm)
                 if self._build_strategy.build_cinn_pass:
                     paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
-                    pm.run(forward_program)
+                pm.run(forward_program)
                 return forward_program, backward_program
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
             if self._hooker:
                 self._hooker.after_infer(infer_program)
-            infer_program.apply_pir_program_pass(shape_pass_fn)
             infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:

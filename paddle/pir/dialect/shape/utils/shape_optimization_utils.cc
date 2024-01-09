@@ -48,17 +48,7 @@ bool CompareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
   return false;
 }
 
-SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
-  for (auto& op : m.block()) {
-    if (op.isa<shape::FuncOp>()) {
-      symbol_table_ = SymbolTable(&op);
-      return;
-    }
-  }
-  Builder builder = Builder(m_.ir_context(), &m_.block(), m_.block().begin());
-  shape::FuncOp func = builder.Build<shape::FuncOp>();
-  symbol_table_ = SymbolTable(func);
-}
+SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {}
 
 bool SymbolicDimMgr::MapSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
                                                 const SymbolicDimProduct& rhs) {
