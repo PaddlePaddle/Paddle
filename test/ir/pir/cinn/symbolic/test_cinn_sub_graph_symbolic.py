@@ -106,7 +106,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
         out = net(self.x)
         return out
 
-    def test_eval_symolic(self):
+    def test_eval_symbolic(self):
         cinn_out = self.eval_symbolic(use_cinn=True)
         dy_out = self.eval_symbolic(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
@@ -128,7 +128,7 @@ class TestCinnDyShapeBase(TestCinnSubGraphBase):
         out = net(self.x)
         return out
 
-    def test_eval_symolic(self):
+    def test_eval_symbolic(self):
         import os
 
         is_debug = os.getenv('IS_DEBUG_DY_SHAPE')
@@ -161,7 +161,7 @@ class TestCinnDyShapeBC(TestCinnDyShapeBase):
         out = net(self.x, self.y)
         return out
 
-    def test_eval_symolic(self):
+    def test_eval_symbolic(self):
         # cinn_out = self.eval_symbolic(use_cinn=True)
         dy_out = self.eval_symbolic(use_cinn=False)
         # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
