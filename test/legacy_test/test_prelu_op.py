@@ -80,6 +80,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
+    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.static.data(
