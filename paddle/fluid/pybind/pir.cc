@@ -1538,11 +1538,12 @@ static bool HasDynamicShape(const Program &program) {
       continue;
     }
     for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i)
-                              .type()
-                              .dyn_cast<pir::ShapedTypeInterface>()
-                              .IsDynamicShape()) {
-        return true;
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          return true;
+        }
       }
     }
   }
