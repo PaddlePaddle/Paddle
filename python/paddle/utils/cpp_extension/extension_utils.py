@@ -1074,13 +1074,7 @@ def _gen_output_content(
 {indent}    start_idx += len({lower_in_names})
 {indent}else:
 {indent}    res.append(None)
-{indent}    start_idx += 1"""
-            if IS_WINDOWS:
-                static_content += f"""
-{indent}if {lower_in_names} is not None:
-{indent}    outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
-            else:
-                static_content += f"""
+{indent}    start_idx += 1
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = {lower_in_names}"""
 
@@ -1090,12 +1084,7 @@ def _gen_output_content(
             lower_in_names = in_names[in_idx].split("@")[0].lower()
             dynamic_content += f"""
 {indent}res.append(outs[start_idx: start_idx + len({lower_in_names})])
-{indent}start_idx += len({lower_in_names})"""
-            if IS_WINDOWS:
-                static_content += f"""
-{indent}outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
-            else:
-                static_content += f"""
+{indent}start_idx += len({lower_in_names})
 {indent}outs['{out_name}'] = {lower_in_names}"""
         elif (
             in_idx != -1 and "@OPTIONAL" in in_names[in_idx]
@@ -1106,13 +1095,7 @@ def _gen_output_content(
 {indent}    res.append(outs[start_idx])
 {indent}else:
 {indent}    res.append(None)
-{indent}start_idx += 1"""
-            if IS_WINDOWS:
-                static_content += f"""
-{indent}if {lower_in_names} is not None:
-{indent}    outs['{out_name}'] = helper.create_variable(dtype='float32')"""
-            else:
-                static_content += f"""
+{indent}start_idx += 1
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = {lower_in_names}"""
         elif (

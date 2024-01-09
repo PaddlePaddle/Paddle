@@ -97,7 +97,6 @@ static const std::unordered_set<std::string> SpecialInplaceOps = {
 
 inline bool IsInplace(const OpDesc& op_desc) {
   if (SpecialNonInplaceOps.count(op_desc.Type())) {
-    LOG(INFO) << "come into special non inplace ops";
     return false;
   }
   if (SpecialInplaceOps.count(op_desc.Type())) {
@@ -106,15 +105,6 @@ inline bool IsInplace(const OpDesc& op_desc) {
   bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
-  LOG(INFO) << "input_names empty:" << input_names.empty();
-  for (auto input_name : input_names) {
-    LOG(INFO) << "input name:" << input_name;
-  }
-
-  LOG(INFO) << "output_names empty:" << output_names.empty();
-  for (auto output_name : output_names) {
-    LOG(INFO) << "output name:" << output_name;
-  }
 
   if (input_names.empty() || output_names.empty()) {
     return inplace;
@@ -128,7 +118,6 @@ inline bool IsInplace(const OpDesc& op_desc) {
                         output_names.begin(),
                         output_names.end(),
                         std::back_inserter(name_intersection));
-  LOG(INFO) << "name_intersection empty:" << name_intersection.empty();
   if (!name_intersection.empty()) {
     std::string redundant_variables = std::accumulate(
         std::next(name_intersection.begin()),
@@ -245,8 +234,6 @@ inline bool HasOpInfo(pir::IrContext* ctx,
                       const OpDesc& op_desc,
                       std::string prefix) {
   std::string target_op_name = prefix + OpNameCompatibleMapping(op_desc.Type());
-  LOG(INFO) << "target_op_name in has opinfo:" << target_op_name;
-  LOG(INFO) << "is inplace:" << IsInplace(op_desc);
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
