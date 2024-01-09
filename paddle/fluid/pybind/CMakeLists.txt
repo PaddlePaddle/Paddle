@@ -58,7 +58,8 @@ if(WITH_CINN)
       pd_to_cinn_pass
       sub_graph_checker
       fully_insert_broadcast_pass
-      fuse_shape_ops_into_generate_shape_op_pass)
+      fuse_shape_ops_into_generate_shape_op_pass
+      split_generate_shape_into_shape_ops_pass)
 endif()
 
 if(WITH_PSCORE)
