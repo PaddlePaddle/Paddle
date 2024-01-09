@@ -86,6 +86,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
@@ -1619,7 +1620,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
   pass_manager->AddPass(
-    std::make_unique<cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
+      std::make_unique<
+          cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
   VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
           << ", shape_analysis: " << shape_analysis;
 #else
