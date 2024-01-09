@@ -24,8 +24,8 @@ import paddle
 
 
 def tensor_astype(x, y):
-    x = x.astype(y.dtype)
-    return x, x.dtype
+    z = x.astype(y.dtype)
+    return z
 
 
 def tensor_dtype_guard(x):
