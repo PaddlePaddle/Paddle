@@ -22,22 +22,77 @@ class Operation;
 
 class IrMapping {
  public:
+  template <typename T, typename Enable = void>
+  struct ElementTypeTraits;
+
   template <typename T>
-  void Add(T from, T to) {
+  struct ElementTypeTraits<
+      T,
+      std::enable_if_t<std::is_convertible<T, Value>::value>> {
+    using Type = Value;
+  };
+
+  template <typename T>
+  struct ElementTypeTraits<
+      T,
+      std::enable_if_t<std::is_convertible<T, const Block *>::value>> {
+    using Type = const Block *;
+  };
+
+  template <typename T>
+  struct ElementTypeTraits<
+      T,
+      std::enable_if_t<std::is_convertible<T, const Operation *>::value>> {
+    using Type = const Operation *;
+  };
+
+  template <typename T>
+  using ElementType = typename ElementTypeTraits<T>::Type;
+
+  template <typename T>
+  using MapType = std::unordered_map<T, T>;
+
+  template <typename T>
+  const MapType<T> &Map() const {
+    if constexpr (std::is_same<T, Value>::value)
+      return value_map_;
+    else if constexpr (std::is_same<T, const Block *>::value)
+      return block_map_;
+    else if constexpr (std::is_same<T, const Operation *>::value)
+      return operation_map_;
+    else
+      IR_THROW("Not support type in IRMapping.");
+  }
+
+  template <typename T>
+  MapType<T> &MutableMap() {
+    if constexpr (std::is_same<T, Value>::value)
+      return value_map_;
+    else if constexpr (std::is_same<T, const Block *>::value)
+      return block_map_;
+    else if constexpr (std::is_same<T, const Operation *>::value)
+      return operation_map_;
+    else
+      IR_THROW("Not support type in IRMapping.");
+  }
+
+  template <typename T1, typename T2, typename ElementT = ElementType<T1>>
+  void Add(T1 from, T2 to) {
     if (!from) return;
-    MutableMap<T>()[from] = to;
+    MutableMap<ElementT>()[static_cast<ElementT>(from)] =
+        static_cast<ElementT>(to);
   }
 
-  template <typename T>
-  T Lookup(T from) const {
-    if (!from) return static_cast<T>(nullptr);
-    IR_ENFORCE(Map<T>().count(from) > 0, "Not found key in IRMapping.");
-    return Map<T>().at(from);
+  template <typename T, typename ElementT = ElementType<T>>
+  ElementT Lookup(T from) const {
+    if (!from) return static_cast<ElementT>(nullptr);
+    IR_ENFORCE(Map<ElementT>().count(from) > 0, "Not found key in IRMapping.");
+    return Map<ElementT>().at(static_cast<ElementT>(from));
   }
 
-  template <typename T>
+  template <typename T, typename ElementT = ElementType<T>>
   void Earse(T from) {
-    MutableMap<T>().erase(from);
+    MutableMap<ElementT>().erase(static_cast<ElementT>(from));
   }
 
   void Clear() {
@@ -46,37 +101,10 @@ class IrMapping {
     operation_map_.clear();
   }
 
-  template <typename T>
-  using MapType = std::unordered_map<T, T>;
-
-  template <typename T>
-  const MapType<T> &Map() const {
-    if constexpr (std::is_convertible<T, Value>::value)
-      return value_map_;
-    else if constexpr (std::is_convertible<T, Block *>::value)
-      return block_map_;
-    else if constexpr (std::is_convertible<T, Operation *>::value)
-      return operation_map_;
-    else
-      IR_THROW("Not support type in IRMapping.");
-  }
-
-  template <typename T>
-  MapType<T> &MutableMap() {
-    if constexpr (std::is_convertible<T, Value>::value)
-      return value_map_;
-    else if constexpr (std::is_convertible<T, Block *>::value)
-      return block_map_;
-    else if constexpr (std::is_convertible<T, Operation *>::value)
-      return operation_map_;
-    else
-      IR_THROW("Not support type in IRMapping.");
-  }
-
  private:
   MapType<Value> value_map_;
-  MapType<Block *> block_map_;
-  MapType<Operation *> operation_map_;
+  MapType<const Block *> block_map_;
+  MapType<const Operation *> operation_map_;
 };
 
 }  // namespace pir

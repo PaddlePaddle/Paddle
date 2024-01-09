@@ -72,7 +72,7 @@ class IR_API alignas(8) Operation final
   /// \brief Deep copy all information and create a new operation.
   ///
   Operation *Clone(IrMapping &ir_mapping,
-                   CloneOptions options = CloneOptions());
+                   CloneOptions options = CloneOptions()) const;
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
@@ -114,7 +114,7 @@ class IR_API alignas(8) Operation final
   T result_type(uint32_t index) const {
     return result(index).type().dyn_cast<T>();
   }
-  std::vector<OpResult> results();
+  std::vector<OpResult> results() const;
 
   ///
   /// \brief op input related public interfaces

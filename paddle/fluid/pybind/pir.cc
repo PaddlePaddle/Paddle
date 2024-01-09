@@ -1024,7 +1024,7 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 using OpResultMap =
     std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    Program &program) {  // NOLINT
+    const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   pir::IrMapping mapper;

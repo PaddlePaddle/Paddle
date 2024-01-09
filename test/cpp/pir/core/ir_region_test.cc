@@ -103,7 +103,7 @@ TEST(region, clone_op_test) {
     }
     EXPECT_EQ(op.num_results(), new_op.num_results());
     for (uint32_t i = 0; i < op.num_results(); ++i) {
-      EXPECT_EQ(mapper.Lookup(static_cast<pir::Value>(op.result(i))),
+      EXPECT_EQ(mapper.Lookup(op.result(i)),
                 static_cast<pir::Value>(new_op.result(i)));
     }
     EXPECT_TRUE(std::equal(op.attributes().begin(),

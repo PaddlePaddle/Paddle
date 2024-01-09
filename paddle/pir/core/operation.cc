@@ -137,7 +137,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   return op;
 }
 
-Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
+Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
   IR_ENFORCE(num_successors_ == 0,
              "Operation::Clone is not unimplemented for multiple successors.");
 
@@ -153,13 +153,13 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
   for (auto &result : results()) {
     output_types.push_back(result.type());
   }
-  auto *new_op = Create(inputs, attributes_, output_types, info_, num_regions_);
+  Operation *new_op =
+      Create(inputs, attributes_, output_types, info_, num_regions_);
   ir_mapping.Add(this, new_op);
 
   // record outputs mapping info
   for (uint32_t i = 0; i < num_results_; ++i) {
-    ir_mapping.Add(static_cast<Value>(result(i)),
-                   static_cast<Value>(new_op->result(i)));
+    ir_mapping.Add(result(i), new_op->result(i));
   }
 
   if (options.IsCloneRegions()) {
@@ -247,7 +247,7 @@ Operation::Operation(const AttributeMap &attributes,
 ///
 /// \brief op ouput related public interfaces implementation
 ///
-std::vector<OpResult> Operation::results() {
+std::vector<OpResult> Operation::results() const {
   std::vector<OpResult> res;
   for (uint32_t i = 0; i < num_results(); ++i) {
     res.push_back(result(i));
