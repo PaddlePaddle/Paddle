@@ -197,12 +197,14 @@ void MatmulCooCooGradKernel(const Context& dev_ctx,
                             SparseCooTensor* dx,
                             SparseCooTensor* dy) {
   // cusparseSpGEMM only support CSR now, so use COO->CSR->COO.
-  SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
-  SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
-  SparseCsrTensor dout_csr = CooToCsr<T, Context>(dev_ctx, dout);
-  SparseCsrTensor dx_csr, dy_csr;
-  dx_csr.set_dims(dx->dims());
-  dy_csr.set_dims(dy->dims());
+  SparseCsrTensor x_csr, y_csr, dout_csr, dx_csr, dy_csr;
+  CooToCsrKernel<T>(dev_ctx, x, &x_csr);
+  CooToCsrKernel<T>(dev_ctx, y, &y_csr);
+  CooToCsrKernel<T>(dev_ctx, dout, &dout_csr);
+  MetaTensor meta_dx_csr(&dx_csr);
+  phi::UnchangedInferMeta(dx, &meta_dx_csr);
+  MetaTensor meta_dy_csr(&dy_csr);
+  phi::UnchangedInferMeta(dy, &meta_dy_csr);
   MatmulCsrCsrGradKernel<T>(dev_ctx, x_csr, y_csr, dout_csr, &dx_csr, &dy_csr);
   CsrToCooKernel<T>(dev_ctx, dx_csr, dx);
   CsrToCooKernel<T>(dev_ctx, dy_csr, dy);

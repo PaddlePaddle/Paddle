@@ -96,8 +96,7 @@ class TestMatmulSparseDense(unittest.TestCase):
 class TestMatmulSparseSparseIndex64(unittest.TestCase):
     # x: sparse, y: sparse, out: sparse
     def check_result(self, x_shape, y_shape, format):
-        mask = paddle.randint(0, 2, x_shape)
-        origin_x = paddle.rand(x_shape) * mask
+        origin_x = paddle.rand(x_shape)
         origin_y = paddle.rand(y_shape)
 
         dense_x = origin_x.detach()
@@ -121,17 +120,17 @@ class TestMatmulSparseSparseIndex64(unittest.TestCase):
         np.testing.assert_allclose(
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
         )
-        if get_cuda_version() >= 11030:
-            dense_out.backward()
-            sp_out.backward()
-            np.testing.assert_allclose(
-                sp_x.grad.to_dense().numpy(),
-                dense_x.grad.numpy(),
-                rtol=1e-05,
-            )
-            np.testing.assert_allclose(
-                sp_y.grad.to_dense().numpy(), dense_y.grad.numpy(), rtol=1e-05
-            )
+
+        dense_out.backward()
+        sp_out.backward()
+        np.testing.assert_allclose(
+            sp_x.grad.to_dense().numpy(),
+            dense_x.grad.numpy(),
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            sp_y.grad.to_dense().numpy(), dense_y.grad.numpy(), rtol=1e-05
+        )
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
@@ -142,8 +141,8 @@ class TestMatmulSparseSparseIndex64(unittest.TestCase):
         self.check_result([16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
-        "only support cuda>=11.8",
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        "only support cuda>=11.0",
     )
     def test_matmul_3d(self):
         self.check_result([8, 16, 12], [8, 12, 10], 'coo')
@@ -153,8 +152,7 @@ class TestMatmulSparseSparseIndex64(unittest.TestCase):
 class TestMatmulSparseSparseIndex32(unittest.TestCase):
     # x: sparse, y: sparse, out: sparse
     def check_result(self, x_shape, y_shape, format):
-        mask = paddle.randint(0, 2, x_shape)
-        origin_x = paddle.rand(x_shape) * mask
+        origin_x = paddle.rand(x_shape)
         origin_y = paddle.rand(y_shape)
 
         dense_x = origin_x.detach()
@@ -196,23 +194,22 @@ class TestMatmulSparseSparseIndex32(unittest.TestCase):
 
         sp_x.stop_gradient = False
         sp_y.stop_gradient = False
-
         sp_out = paddle.sparse.matmul(sp_x, sp_y)
 
         np.testing.assert_allclose(
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
         )
-        if get_cuda_version() >= 11030:
-            dense_out.backward()
-            sp_out.backward()
-            np.testing.assert_allclose(
-                sp_x.grad.to_dense().numpy(),
-                dense_x.grad.numpy(),
-                rtol=1e-05,
-            )
-            np.testing.assert_allclose(
-                sp_y.grad.to_dense().numpy(), dense_y.grad.numpy(), rtol=1e-05
-            )
+
+        dense_out.backward()
+        sp_out.backward()
+        np.testing.assert_allclose(
+            sp_x.grad.to_dense().numpy(),
+            dense_x.grad.numpy(),
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            sp_y.grad.to_dense().numpy(), dense_y.grad.numpy(), rtol=1e-05
+        )
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
@@ -223,8 +220,8 @@ class TestMatmulSparseSparseIndex32(unittest.TestCase):
         self.check_result([16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
-        "only support cuda>=11.8",
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        "only support cuda>=11.0",
     )
     def test_matmul_3d(self):
         self.check_result([8, 16, 12], [8, 12, 10], 'coo')
