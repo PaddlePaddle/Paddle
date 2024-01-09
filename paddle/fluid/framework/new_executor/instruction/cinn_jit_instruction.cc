@@ -50,8 +50,6 @@ class CinnJitInstruction::FnPtrImpl {
     }
     // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
     for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
-      func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
-          int_arg_mp.second.dim_idx));
       func_args_.emplace_back(static_cast<int64_t>(
           kernel_args[int_arg_mp.second.arg_idx]->dims().at(
               int_arg_mp.second.dim_idx)));

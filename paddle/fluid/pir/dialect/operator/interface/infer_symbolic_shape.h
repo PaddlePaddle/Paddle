@@ -68,6 +68,12 @@ bool AbsOpInferSymbolicShape(pir::Operation *op,
 bool Abs_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis);
 
+bool AddOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool Add_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool CastOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis);
 
