@@ -173,6 +173,13 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     return cuda_graph_.Launch(stream);
   }
 
+#if IS_TRT_VERSION_GE(8500)
+  for (size_t j = 0; j < buffers->size(); ++j) {
+    auto name = context->getEngine().getBindingName(j);
+    context->setTensorAddress(name, (*buffers)[j]);
+  }
+#endif
+
   bool ret;
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);

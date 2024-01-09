@@ -703,8 +703,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "The TRT Engine OP only support "
             "float/double/int32_t/int64_t/float16/bool input."));
       }
-      const char *binding_name = engine->engine()->getBindingName(bind_index);
-      trt_context->setTensorAddress(binding_name, buffers[bind_index]);
     }
 
     // Bind output tensor to TRT.
@@ -771,8 +769,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       buffers[bind_index] = static_cast<void *>(
           fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
       output_index += 1;
-      const char *binding_name = engine->engine()->getBindingName(bind_index);
-      trt_context->setTensorAddress(binding_name, buffers[bind_index]);
     }
 
     if (!engine->with_dynamic_shape()) {
