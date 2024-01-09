@@ -483,19 +483,17 @@ RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
               non_negative_product *= tmp_j;
             }
             PADDLE_ENFORCE(x_numel % non_negative_product == 0,
-                           phi::errors::InvalidArgument("Cannot infer real value for -1."));
+                           phi::errors::InvalidArgument("Cannot infer real shape for -1."));
             shape_i = x_numel / non_negative_product;
           }
           int64_t dim = out_dist_attr.dims_mapping()[i];
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE_EQ(shape_i % mesh_dim,
-                0,
+          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
                 phi::errors::InvalidArgument(
                     "Reshape only support local shape dim is divisible "
                     "by the mesh dim, however local_shape[%lld] is %lld "
-                    "and shard mesh dims is %lld.",
-                    i, shape_i, mesh_dim));
+                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
           local_shape.push_back(shape_i / mesh_dim);
         } else {
           local_shape.push_back(shape.GetData()[i]);
