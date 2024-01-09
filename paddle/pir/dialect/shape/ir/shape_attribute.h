@@ -14,27 +14,24 @@
 
 #pragma once
 
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute_storage.h"
 
 namespace pir::shape {
-///
-/// \brief Shape Dialect:
-///
-class IR_API ShapeDialect : public Dialect {
+
+class IR_API SymbolAttribute : public Attribute {
  public:
-  explicit ShapeDialect(IrContext* context);
+  using Attribute::Attribute;
 
-  static const char* name() { return "shape"; }
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(SymbolAttribute, SymbolAttributeStorage);
 
-  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+  symbol::ShapeOrDataDimExprs data() const;
 
-  void PrintOperation(Operation* op,
-                      IrPrinter& printer) const override;  // NOLINT
-
- private:
-  void initialize();
+  static SymbolAttribute get(IrContext* ctx,
+                             const symbol::ShapeOrDataDimExprs& value);
 };
 
 }  // namespace pir::shape
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::SymbolAttribute)

@@ -52,6 +52,17 @@ class TestDistTensor(unittest.TestCase):
         self.assertEqual(dist_tensor_with_numpy.placements, placements)
         self.assertEqual(dist_tensor_with_tensor.placements, placements)
 
+    def test_dist_parameter(self):
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        placements = [Replicate(), Replicate()]
+
+        dense_param = paddle.create_parameter(
+            [10, 5], name="linear_1.weight", dtype='float32'
+        )
+        dist_param = dist.shard_tensor(dense_param, mesh, placements)
+
+        self.assertEqual(dense_param.name + ".dist", dist_param.name)
+
 
 class TestDistTensorFromFn(unittest.TestCase):
     def run_dtensor_from_fn(self):

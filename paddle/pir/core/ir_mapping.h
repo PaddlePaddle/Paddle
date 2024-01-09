@@ -14,24 +14,69 @@
 #pragma once
 #include <unordered_map>
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 
 namespace pir {
+class Block;
+class Operation;
 
 class IrMapping {
  public:
-  void Add(Value from, Value to) { value_map_[from] = to; }
-
-  Value Lookup(Value from) const {
-    IR_ENFORCE(value_map_.count(from) > 0, "Not Found Value in IRMapping.");
-    return value_map_.at(from);
+  template <typename T>
+  void Add(T from, T to) {
+    if (!from) return;
+    MutableMap<T>()[from] = to;
   }
-  void Earse(Value from) { value_map_.erase(from); }
 
-  void Clear() { value_map_.clear(); }
+  template <typename T>
+  T Lookup(T from) const {
+    if (!from) return static_cast<T>(nullptr);
+    IR_ENFORCE(Map<T>().count(from) > 0, "Not found key in IRMapping.");
+    return Map<T>().at(from);
+  }
+
+  template <typename T>
+  void Earse(T from) {
+    MutableMap<T>().erase(from);
+  }
+
+  void Clear() {
+    value_map_.clear();
+    block_map_.clear();
+    operation_map_.clear();
+  }
+
+  template <typename T>
+  using MapType = std::unordered_map<T, T>;
+
+  template <typename T>
+  const MapType<T> &Map() const {
+    if constexpr (std::is_convertible<T, Value>::value)
+      return value_map_;
+    else if constexpr (std::is_convertible<T, Block *>::value)
+      return block_map_;
+    else if constexpr (std::is_convertible<T, Operation *>::value)
+      return operation_map_;
+    else
+      IR_THROW("Not support type in IRMapping.");
+  }
+
+  template <typename T>
+  MapType<T> &MutableMap() {
+    if constexpr (std::is_convertible<T, Value>::value)
+      return value_map_;
+    else if constexpr (std::is_convertible<T, Block *>::value)
+      return block_map_;
+    else if constexpr (std::is_convertible<T, Operation *>::value)
+      return operation_map_;
+    else
+      IR_THROW("Not support type in IRMapping.");
+  }
 
  private:
-  std::unordered_map<Value, Value> value_map_;
+  MapType<Value> value_map_;
+  MapType<Block *> block_map_;
+  MapType<Operation *> operation_map_;
 };
 
 }  // namespace pir
