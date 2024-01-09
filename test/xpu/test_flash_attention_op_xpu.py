@@ -204,7 +204,8 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
         self.return_softmax = False
 
 
-# TODO(houj04) un-comment following REAL cases after correctness check
+# The following three REAL unit tests are disabled because they take a VERY LONG time to run, although they all pass under XHPC v20240105.
+
 # class TestFlashAttentionAPITestEB(TestFlashAttentionAPI):
 #    def setUp(self):
 #        self.place = paddle.XPUPlace(0)
@@ -213,8 +214,6 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
 #        self.causal = True
 #        self.return_softmax = False
 
-
-# TODO(houj04) un-comment following REAL cases after correctness check
 # class TestFlashAttentionAPITestLlama7B(TestFlashAttentionAPI):
 #    def setUp(self):
 #        self.place = paddle.XPUPlace(0)
@@ -223,8 +222,6 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
 #        self.causal = True
 #        self.return_softmax = False
 
-
-# TODO(houj04) un-comment following REAL cases after correctness check
 # class TestFlashAttentionAPITestLlama65B(TestFlashAttentionAPI):
 #    def setUp(self):
 #        self.place = paddle.XPUPlace(0)
