@@ -19,6 +19,7 @@
 #include <numeric>
 #include <string>
 #include <tuple>
+#include <typeinfo>
 #include <unordered_map>
 #include <vector>
 
@@ -37,12 +38,16 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/utils.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/utils/blank.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
@@ -982,25 +987,28 @@ struct AssignValueOpTranscriber : public OpTranscriber {
         ctx, phi::Place(phi::AllocationType::UNDEFINED));
     attribute_map["place"] = attr_place;
 
-    if (op_desc.HasAttr("bool_values")) {
-      legacy_attr = op_desc.GetAttr("bool_values");
-    } else if (op_desc.HasAttr("fp32_values")) {
-      legacy_attr = op_desc.GetAttr("fp32_values");
-    } else if (op_desc.HasAttr("int32_values")) {
-      legacy_attr = op_desc.GetAttr("int32_values");
-    } else if (op_desc.HasAttr("int64_values")) {
-      legacy_attr = op_desc.GetAttr("int64_values");
-    } else if (op_desc.HasAttr("values")) {
-      legacy_attr = op_desc.GetAttr("values");
-    } else {
-      IR_THROW(
-          "Op assign_value should have attribute `**_values` or `values` but "
-          "not find");
+    const std::vector<std::string> possible_attrs = {
+        "bool_values", "fp32_values", "int32_values", "int64_values", "values"};
+    for (const auto& attr_name : possible_attrs) {
+      if (!op_desc.HasAttr(attr_name)) {
+        continue;
+      }
+      legacy_attr = op_desc.GetAttr(attr_name);
+      pir::Attribute attr_values = attribute_translator(
+          attr_info_maps.at("values").type_name, legacy_attr);
+      if (attr_values && attr_values.isa<pir::ArrayAttribute>() &&
+          !attr_values.dyn_cast<pir::ArrayAttribute>().empty()) {
+        attribute_map["values"] = attr_values;
+        VLOG(10) << "[op assign_value][values]" << attr_name << " "
+                 << attr_values;
+        break;
+      }
     }
 
-    pir::Attribute attr_values = attribute_translator(
-        attr_info_maps.at("values").type_name, legacy_attr);
-    attribute_map["values"] = attr_values;
+    IR_ENFORCE(
+        attribute_map.find("values") != attribute_map.end(),
+        "Op assign_value should have attribute `**_values` or `values` but "
+        "not find");
 
     TranslateOpDistAttribute(op_desc, &attribute_map);
 
@@ -2062,7 +2070,8 @@ struct SelectInputOpTranscriber : public OpTranscriber {
         auto& attribute_translator = AttributeTranslator::instance();
         undefine_value.defining_op()->set_attribute(
             "shape",
-            attribute_translator(common::vectorize(undefined_var_type.dims())));
+            attribute_translator("pir::ArrayAttribute<pir::Int32Attribute>",
+                                 common::vectorize(undefined_var_type.dims())));
       }
       auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
       auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();

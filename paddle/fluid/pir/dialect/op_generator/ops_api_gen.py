@@ -104,6 +104,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'assign_value',
     'share_data',
     'onednn_to_paddle_layout',
+    'memcpy_d2h_multi_io',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
