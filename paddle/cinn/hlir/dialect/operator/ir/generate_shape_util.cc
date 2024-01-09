@@ -350,6 +350,12 @@ std::optional<DimExpr> GetDimExprBySymbolBindingImpl(
   return shape_or_data_dim_expr.shape().at(dim_idx);
 }
 
+std::string GetSymbolNameBySymbolBinding(
+    const GenerateShapeOp::SymbolBinding& symbol_binding) {
+  return std::visit([](const auto& impl) { return impl.symbol_name; },
+                    symbol_binding);
+}
+
 }  // namespace
 
 std::function<std::optional<DimExpr>(const std::string& symbol_name)>
@@ -359,6 +365,10 @@ MakeGetterDimExpr4SymbolName(
         DimExpr4InputDim) {
   std::unordered_map<std::string, std::vector<GenerateShapeOp::SymbolBinding>>
       symbol_name2symbol_bindins{};
+  for (const auto& symbol_binding : symbol_bindings) {
+    symbol_name2symbol_bindins[GetSymbolNameBySymbolBinding(symbol_binding)]
+        .emplace_back(symbol_binding);
+  }
   const auto& GetDimExpr =
       [&](const GenerateShapeOp::SymbolBinding& symbol_binding) {
         return std::visit(
