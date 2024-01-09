@@ -15,20 +15,12 @@
 #pragma once
 
 #include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-class FullyInsertBroadcastPass : public pir::PatternRewritePass {
- public:
-  FullyInsertBroadcastPass();
-
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
-
-  bool CanApplyOn(pir::Operation *op) const override;
-};
+IR_API std::unique_ptr<pir::Pass> CreateInsertBroadcastPass();
 
 }  // namespace ir
 }  // namespace dialect
