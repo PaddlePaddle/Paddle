@@ -1608,9 +1608,11 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
 void InferSymbolicShapePass(
     std::shared_ptr<PassManager> &pass_manager) {  // NOLINT
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  if (FLAGS_pir_apply_shape_optimization_pass) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
 }
 
 void BindIrPass(pybind11::module *m) {
