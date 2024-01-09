@@ -117,5 +117,38 @@ class TestSemiAutoParallelLlamaACC(test_base.CommunicationTestDistBase):
             )
 
 
+class TestSemiAutoParallelLlama3DVPP(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
+        self._default_envs = {
+            "seed": "2023",
+            "dp": "2",
+            "mp": "2",
+            "pp": "2",
+            "acc_step": "2",
+            "pp_schedule_mode": "VPP",
+            "virtual_pp_degree": "2",
+            "virtual_pipeline_seg_method": "LlamaDecoderLayerAuto",
+            "only_static": "true",
+        }
+        self._changeable_envs = {
+            "backend": ["gpu"],
+            "use_sp": ["true"],
+            "use_param_group": ["true"],
+            "recompute": ["true"],
+            "recompute_granularity": ["full"],
+        }
+
+    def test_simple_net_hybrid_strategy(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_llama.py",
+                user_defined_envs=envs,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

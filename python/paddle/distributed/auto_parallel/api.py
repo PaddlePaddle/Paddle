@@ -1017,24 +1017,19 @@ class DistModel:
 
         # convert dygraph model to static model
         batch_size = loader.batch_sampler.batch_size
-        inputs_spec, labels_spec = self._engine._prepare_data_spec(
-            loader.dataset, None, batch_size
-        )
+        (
+            self._engine._inputs_spec,
+            self._engine._labels_spec,
+        ) = self._engine._prepare_data_spec(loader.dataset, None, batch_size)
 
         if optimizer is not None and loss is not None:
             # get the static graph in train mode
-            self._engine.prepare(
-                inputs_spec, labels_spec, mode="train", init_parameters=False
-            )
+            self._engine._prepare_program(mode="train", init_parameters=False)
         if loss is not None:
             # get the static graph in eval mode
-            self._engine.prepare(
-                inputs_spec, labels_spec, mode="eval", init_parameters=False
-            )
+            self._engine._prepare_program(mode="eval", init_parameters=False)
         # get the static graph in predict mode
-        self._engine.prepare(
-            inputs_spec, None, mode="predict", init_parameters=False
-        )
+        self._engine._prepare_program(mode="predict", init_parameters=False)
 
         # set the default mode
         if optimizer is not None and loss is not None:
