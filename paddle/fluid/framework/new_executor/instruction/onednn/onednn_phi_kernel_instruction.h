@@ -70,7 +70,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
 
   std::set<int> layout_transform_inputs_{};
   phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
-  std::map<std::string, RuntimeAttribute> extra_attr_{};
+  std::map<std::string, phi::Attribute> extra_attr_{};
   std::map<std::string, std::vector<std::string>> inputs_{};
   std::map<std::string, std::vector<std::string>> outputs_{};
 };
