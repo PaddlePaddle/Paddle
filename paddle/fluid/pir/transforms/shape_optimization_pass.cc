@@ -365,14 +365,17 @@ void DebugPrintOpInfo(
       auto shape_data = shape_analysis->value_id_to_shapeordata_[value_id];
       print_stream << ", ShapeOrData.shape: [";
 
-      for (auto str : shape_data.shape()) {
-        int64_t* i = std::get_if<int64_t>(&str);
-        std::string* s = std::get_if<std::string>(&str);
-        if (i) {
-          print_stream << *i << ", ";
-        } else if (s) {
-          print_stream << *s << ", ";
-        }
+      // for (auto str : shape_data.shape()) {
+      //   int64_t* i = std::get_if<int64_t>(&str);
+      //   std::string* s = std::get_if<std::string>(&str);
+      //   if (i) {
+      //     print_stream << *i << ", ";
+      //   } else if (s) {
+      //     print_stream << *s << ", ";
+      //   }
+      // }
+      for (auto dim : shape_data.shape()) {
+        print_stream << dim << ", ";
       }
 
       print_stream << "], ShapeOrData.data: [";

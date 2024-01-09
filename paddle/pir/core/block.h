@@ -146,7 +146,7 @@ class IR_API Block {
   friend class Region;
   void SetParent(Region *parent);
 
-  // Take out corresponding Operation and its ownershipe.
+  // Take out corresponding Operation and its ownership.
   friend class Operation;
   Operation *Take(Operation *op);
 

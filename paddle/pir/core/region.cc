@@ -42,6 +42,46 @@ Region::Iterator Region::erase(ConstIterator position) {
   return blocks_.erase(position);
 }
 
+void Region::CloneInto(Region &other, IrMapping &ir_mapping) {
+  if (empty()) {
+    return;
+  }
+  other.clear();
+  auto clone_options = CloneOptions(false, false);
+  // clone blocks, block arguments and sub operations
+  for (auto &block : *this) {
+    auto new_block = new Block;
+    ir_mapping.Add(&block, new_block);
+    for (auto &arg : block.args()) {
+      ir_mapping.Add(arg, new_block->AddArgument(arg.type()));
+    }
+    other.push_back(new_block);
+    // clone sub operations, but not map operands nor clone regions
+    for (auto op_iter = block.begin(); op_iter != block.end(); ++op_iter) {
+      new_block->push_back(op_iter->Clone(ir_mapping, clone_options));
+    }
+  }
+  // after all operation results are mapped, map operands and clone regions.
+  {
+    auto iter = begin();
+    auto new_iter = other.begin();
+    for (; iter != end(); ++iter, ++new_iter) {
+      auto op_iter = iter->begin();
+      auto new_op_iter = new_iter->begin();
+      for (; op_iter != iter->end(); ++op_iter, ++new_op_iter) {
+        Operation &op = *op_iter;
+        Operation &new_op = *new_op_iter;
+        // operands of new_op are same as op, now map them.
+        for (uint32_t i = 0; i < op.num_operands(); ++i)
+          new_op.operand(i).set_source(ir_mapping.Lookup(op.operand_source(i)));
+        // clone sub regions
+        for (uint32_t i = 0; i < op.num_regions(); ++i)
+          op.region(i).CloneInto(new_op.region(i), ir_mapping);
+      }
+    }
+  }
+}
+
 std::unique_ptr<pir::Block> Region::TakeBack() {
   Block *block = nullptr;
   if (!blocks_.empty()) {
