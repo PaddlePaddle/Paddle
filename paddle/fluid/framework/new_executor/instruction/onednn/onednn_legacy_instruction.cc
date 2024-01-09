@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
@@ -30,7 +30,7 @@
 #include "paddle/phi/core/type_defs.h"
 
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"

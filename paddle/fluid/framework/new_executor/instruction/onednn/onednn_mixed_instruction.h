@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
 
 namespace pir {
 class Operation;
