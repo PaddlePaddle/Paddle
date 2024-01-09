@@ -138,13 +138,9 @@ bool ProcessOp(paddle::dialect::ExpandOp op, pir::PatternRewriter* rewriter) {
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value =
-      [&op, &shape_analysis](pir::Value value) -> symbol::ShapeOrDataDimExprs {
-    if (shape_analysis.value_id_to_shapeordata_.find(GetValueId(&value)) ==
-        shape_analysis.value_id_to_shapeordata_.end()) {
-      return symbol::ShapeOrDataDimExprs();
-    } else {
-      return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
-    }
+      [&op, &shape_analysis](
+          pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+    return shape_analysis.GetShapeOrDataForValue(&value);
   };
   if (ShapeOrDataDimExprs4Value(op.shape()).shape().empty()) {
     return false;
