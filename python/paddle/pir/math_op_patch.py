@@ -499,7 +499,7 @@ def monkey_patch_value():
     def append(self, var):
         """
         **Notes**:
-           **The type Value must be LoD Tensor Array.
+           **The type Value must be Tensor Array.
 
         """
         if not self.is_dense_tensor_array_type():
@@ -511,6 +511,28 @@ def monkey_patch_value():
         from paddle.tensor.array import array_length, array_write
 
         array_write(x=var, i=array_length(self), array=self)
+
+    def pop(self, *args):
+        """
+        The type variable must be Tensor Array.
+        When self is LoDTensorArray, calling pop is similar to Python's pop on list.
+        This interface is used to simplify dygraph to static graph operations.
+
+        Args:
+            self(Variable): The source variable, which must be LOD_TENSOR_ARRAY
+            *args: optional, a int means index.
+        Returns:
+            Variable: self[index]
+        """
+        from paddle.jit.dy2static.convert_operators import _run_paddle_pop
+
+        if not self.is_dense_tensor_array_type():
+            raise TypeError(
+                "Only Value with pd_op.tensor_array support `pop` method, but received type: {}".format(
+                    self.type()
+                )
+            )
+        return _run_paddle_pop(self, *args)
 
     def set_shape(self, shape):
         assert (
@@ -544,6 +566,7 @@ def monkey_patch_value():
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
+        ('pop', pop),
         ('set_shape', set_shape),
         ('__hash__', value_hash),
         # For basic operators

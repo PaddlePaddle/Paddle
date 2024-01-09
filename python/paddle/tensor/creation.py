@@ -2305,7 +2305,7 @@ def assign(x, output=None):
              [2.5 2.5]]
     """
     # speed up
-    if x is output and isinstance(x, (Variable, paddle.pir.OpResult)):
+    if x is output and isinstance(x, (Variable, paddle.pir.Value)):
         return x
 
     input = x
@@ -2315,7 +2315,7 @@ def assign(x, output=None):
         'input',
         (
             Variable,
-            paddle.pir.OpResult,
+            paddle.pir.Value,
             np.ndarray,
             list,
             tuple,
@@ -2335,7 +2335,7 @@ def assign(x, output=None):
     # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.OpResult)):
+    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.Value)):
         if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
@@ -2376,14 +2376,14 @@ def assign(x, output=None):
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(
-            isinstance(x, (Variable, paddle.pir.OpResult)) for x in input
+            isinstance(x, (Variable, paddle.pir.Value)) for x in input
         ):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 x.shape == (1,)
                 for x in input
                 if isinstance(
-                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                    x, (Variable, core.eager.Tensor, paddle.pir.Value)
                 )
             ):
                 raise TypeError(
@@ -2392,7 +2392,7 @@ def assign(x, output=None):
 
             def convert_scalar(x):
                 if not isinstance(
-                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                    x, (Variable, core.eager.Tensor, paddle.pir.Value)
                 ):
                     return assign(x)
                 return x
