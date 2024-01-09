@@ -277,8 +277,9 @@ class TestRMSPropV2(unittest.TestCase):
     def test_rmsprop(self):
         paddle.enable_static()
         place = base.CPUPlace()
-        main = base.Program()
-        with base.program_guard(main):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.nn.Linear(
@@ -298,7 +299,7 @@ class TestRMSPropV2(unittest.TestCase):
             )
             feeder = base.DataFeeder(place=place, feed_list=[x, y])
             exe = base.Executor(place)
-            exe.run(base.default_startup_program())
+            exe.run(startup)
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
@@ -489,12 +490,61 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         out = []
         for idx in range(5):
             (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
+                train_program, feed={"X": x}, fetch_list=[loss]
             )
             out.append(loss_data)
         return out
 
-    @test_with_pir_api
+    def pir_rmsprop_mp(self, mp, use_amp):
+        with paddle.pir_utils.IrGuard():
+            paddle.seed(100)
+            np.random.seed(100)
+            exe = paddle.static.Executor('gpu')
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            optimizer = paddle.optimizer.RMSProp(0.1)
+            optimizer._multi_precision = mp
+
+            if use_amp:
+                optimizer = paddle.static.amp.decorate(
+                    optimizer,
+                    init_loss_scaling=128.0,
+                    use_dynamic_loss_scaling=True,
+                    use_pure_fp16=True,
+                    use_fp16_guard=False,
+                )
+            with paddle.static.program_guard(train_program, startup_program):
+                if use_amp:
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float16'
+                    )
+                else:
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float32'
+                    )
+                hidden = paddle.nn.Linear(
+                    in_features=data.shape[-1], out_features=10
+                )(data)
+                loss = paddle.mean(hidden)
+                optimizer.minimize(loss)
+            exe.run(startup_program)
+
+            if use_amp:
+                optimizer.amp_init(
+                    place=paddle.CUDAPlace(0),
+                    scope=paddle.static.global_scope(),
+                )
+                x = np.random.random(size=(2, 2)).astype('float16')
+            else:
+                x = np.random.random(size=(2, 2)).astype('float32')
+            out = []
+            for idx in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"X": x}, fetch_list=[loss]
+                )
+                out.append(loss_data)
+            return out
+
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -523,6 +573,16 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
             np.testing.assert_allclose(
                 output1_st[idx].astype('float32'),
                 output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test pir mode"
+        output1_pir = self.pir_rmsprop_mp(use_amp=True, mp=True)
+        output2_pir = self.pir_rmsprop_mp(use_amp=False, mp=False)
+        for idx in range(len(output1_pir)):
+            np.testing.assert_allclose(
+                output1_pir[idx].astype('float32'),
+                output2_pir[idx].astype('float32'),
                 rtol=1e-05,
                 atol=0.1,
             )
