@@ -605,7 +605,7 @@ def _prepare_grad_outputs(fwd_op, bwd_op):
             new_grad_outputs.append(grad_outputs[index])
             index += 1
         else:
-            new_grad_outputs.append([pir.fake_op_result()])
+            new_grad_outputs.append([pir.fake_value()])
     return new_grad_outputs
 
 
@@ -679,7 +679,7 @@ def _decomp_bwd_with_vjp(
             if grad_input[0] is not None and grad_input[0].initialized():
                 res.append(grad_input[0])
             else:
-                res.append(pir.fake_op_result())
+                res.append(pir.fake_value())
         assert len(res) == len(
             bwd_op.results()
         ), "results of original backward op do not match results of decomposed backward op"
@@ -752,7 +752,7 @@ def _decomp_bwd_without_vjp(
             res.append(new_grad_inputs[input_grads_idx])
             input_grads_idx += 1
         else:
-            res.append(pir.fake_op_result())
+            res.append(pir.fake_value())
 
     # step4: upgrade grad_var_to_var
     _upgrade_grad_var_to_var(

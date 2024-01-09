@@ -70,6 +70,21 @@ WhileInstruction::WhileInstruction(
   GetInputIds(op, *parent_exe_info, &inputs);
   auto body_outside_inputs =
       GetExternalInputs(body_block_, *parent_exe_info, &inputs);
+  // NOTE(chenxi67): the variable corresponding to container value if a
+  // <VariableRefArray> Type. It will recursively get the ID of internal
+  // variables when use GetValueId() method. However, the copy_var pushed into
+  // the tuple does not have a corresponding ID, and will insert a -1. Here we
+  // remove the value of -1.
+  for (auto& item : inputs) {
+    auto& var_vec = item.second;
+    for (auto it = var_vec.begin(); it != var_vec.end();) {
+      if (*it == -1) {
+        it = var_vec.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;

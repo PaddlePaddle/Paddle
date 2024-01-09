@@ -2983,50 +2983,6 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
 
 namespace {
 
-void ShapeBroadcastOpInferMeta(const phi::MetaTensor &x,
-                               const phi::MetaTensor &y,
-                               phi::MetaTensor *out) {
-  PADDLE_ENFORCE_EQ(
-      x.dims().size(),
-      1,
-      phi::errors::PreconditionNotMet(
-          "The size %d of x.dims() must be equal to 1.", x.dims().size()));
-  PADDLE_ENFORCE_EQ(
-      y.dims().size(),
-      1,
-      phi::errors::PreconditionNotMet(
-          "The size %d of y.dims() must be equal to 1.", y.dims().size()));
-  out->set_dims({std::max<int64_t>(x.dims().at(0), y.dims().at(0))});
-  // dtype need promote when meet input dtype with more precision
-  paddle::experimental::DataTypeSet dtype_set{x.dtype()};
-  dtype_set = dtype_set | paddle::experimental::DataTypeSet(y.dtype());
-  DataType promote_result = PromoteTypes(dtype_set);
-  if (promote_result == DataType::UNDEFINED) {
-    promote_result = x.dtype();
-  }
-  out->set_dtype(promote_result);
-  out->set_layout(x.layout());
-  out->share_lod(x);
-}
-
-}  // namespace
-
-void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(ShapeBroadcastOpInferMeta);
-  fn(infer_meta);
-}
-
-phi::DataType ShapeBroadcastOp::GetKernelTypeForVar(
-    const std::string &var_name,
-    const phi::DataType &tensor_dtype,
-    const phi::DataType &expected_kernel_dtype) {
-  VLOG(4) << "Get KernelType for Var of op: ShapeBroadcastOp";
-
-  return expected_kernel_dtype;
-}
-
-namespace {
-
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
   if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
