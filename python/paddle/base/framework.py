@@ -4863,9 +4863,74 @@ def _apply_pass(
         pass_attrs,
         pass_attr_types,
     )
-    main_program._rebuild_from_desc(tmp_main_program, dist_context)
+
+    block_num = tmp_main_program.num_blocks()
+    op_dist_attrs = [[]] * block_num
+    op_types = [[]] * block_num
+
+    for idx in range(block_num):
+        block = main_program.blocks[idx]
+        for op in block.ops:
+            if dist_context is not None:
+                attr = dist_context.get_op_dist_attr_for_program(op)
+                op_dist_attrs[idx].append(attr)
+                op_types[idx].append(op.type)
+
+    main_program._rebuild_from_desc(tmp_main_program)
     startup_program._rebuild_from_desc(tmp_startup_program)
+
+    # set dist attr for op
+    if dist_context is not None:
+        _set_op_dist_attr(
+            main_program.blocks, op_types, op_dist_attrs, dist_context
+        )
     return attrs
+
+
+def _set_op_dist_attr(blocks, op_types, op_dist_attrs, dist_context):
+    block_num = len(blocks)
+    for idx in range(block_num):
+        block = blocks[idx]
+        origin_op_idx = 0
+        not_replaced_op_idxs = []
+        new_op_idxs = []
+
+        for op_idx in range(len(block.ops)):
+            op = block.ops[op_idx]
+            if op.type in op_types[idx]:
+                while (
+                    origin_op_idx < len(op_types[idx]) - 1
+                    and op_types[idx][origin_op_idx] != op.type
+                ):
+                    origin_op_idx += 1
+                dist_context.set_op_dist_attr_for_program(
+                    op, op_dist_attrs[idx][origin_op_idx]
+                )
+                not_replaced_op_idxs.append(origin_op_idx)
+                origin_op_idx += 1
+            else:
+                new_op_idxs.append(op_idx)
+
+        replaced_op_idx = [
+            i
+            for i in range(len(op_types[idx]))
+            if i not in not_replaced_op_idxs
+        ]
+        replaced_op_types = [op_types[idx][i] for i in replaced_op_idx]
+
+        replaced_op_dist_attr = [
+            op_dist_attrs[idx][i]
+            for i in range(len(replaced_op_types))
+            if replaced_op_types[i].startswith(replaced_op_types[0])
+        ]
+
+        assert len(replaced_op_dist_attr) == len(new_op_idxs)
+
+        for i in range(len(new_op_idxs)):
+            op = block.ops[new_op_idxs[i]]
+            dist_context.set_op_dist_attr_for_program(
+                op, replaced_op_dist_attr[i]
+            )
 
 
 class IrNode:
@@ -5950,24 +6015,15 @@ class Program:
 
         return all_new_vars
 
-    def _rebuild_from_desc(self, desc, dist_context=None):
+    def _rebuild_from_desc(self, desc):
         all_new_vars = self._find_var_class_kwargs(desc)
         block_num = desc.num_blocks()
         assert block_num == len(all_new_vars)
         assert block_num == self.desc.num_blocks()
 
-        op_dist_attrs = [[]] * block_num
-        op_types = [[]] * block_num
-
         # clear old blocks and desc
         for idx in range(block_num):
             block = self.blocks[idx]
-            for op in block.ops:
-                if dist_context is not None:
-                    attr = dist_context.get_op_dist_attr_for_program(op)
-                    op_dist_attrs[idx].append(attr)
-                    op_types[idx].append(op.type)
-
             block.vars.clear()
             block.ops.clear()
 
@@ -5996,55 +6052,6 @@ class Program:
                 op_desc = block_desc.op(op_idx)
                 op = Operator(block=block, desc=op_desc)
                 block.ops.append(op)
-
-        # set dist attr for op
-        if dist_context is not None:
-            self._set_op_dist_attr(op_types, op_dist_attrs, dist_context)
-
-    def _set_op_dist_attr(self, op_types, op_dist_attrs, dist_context):
-        block_num = self.desc.num_blocks()
-        for idx in range(block_num):
-            block = self.blocks[idx]
-            origin_op_idx = 0
-            not_replaced_op_idxs = []
-            new_op_idxs = []
-
-            for op_idx in range(len(block.ops)):
-                op = block.ops[op_idx]
-                if op.type in op_types[idx]:
-                    while (
-                        origin_op_idx < len(op_types[idx]) - 1
-                        and op_types[idx][origin_op_idx] != op.type
-                    ):
-                        origin_op_idx += 1
-                    dist_context.set_op_dist_attr_for_program(
-                        op, op_dist_attrs[idx][origin_op_idx]
-                    )
-                    not_replaced_op_idxs.append(origin_op_idx)
-                    origin_op_idx += 1
-                else:
-                    new_op_idxs.append(op_idx)
-
-            replaced_op_idx = [
-                i
-                for i in range(len(op_types[idx]))
-                if i not in not_replaced_op_idxs
-            ]
-            replaced_op_types = [op_types[idx][i] for i in replaced_op_idx]
-
-            replaced_op_dist_attr = [
-                op_dist_attrs[idx][i]
-                for i in range(len(replaced_op_types))
-                if replaced_op_types[i].startswith(replaced_op_types[0])
-            ]
-
-            assert len(replaced_op_dist_attr) == len(new_op_idxs)
-
-            for i in range(len(new_op_idxs)):
-                op = block.ops[new_op_idxs[i]]
-                dist_context.set_op_dist_attr_for_program(
-                    op, replaced_op_dist_attr[i]
-                )
 
     def global_seed(self, seed=0):
         """
