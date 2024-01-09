@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
-#include "paddle/fluid/framework/type_defs.h"
 
 namespace pir {
 class Operation;
@@ -25,9 +24,6 @@ namespace paddle {
 namespace framework {
 class Scope;
 class ValueExecutionInfo;
-
-using FluidAttribute = paddle::framework::Attribute;
-using PIRAttribute = pir::Attribute;
 
 class OneDNNLegacyKernelInstruction : public InstructionBase {
  public:

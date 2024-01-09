@@ -25,9 +25,6 @@ namespace framework {
 class Scope;
 class ValueExecutionInfo;
 
-using RuntimeAttribute = phi::Attribute;
-using PIRAttribute = pir::Attribute;
-
 class OneDNNMixedPhiKernelInstruction : public OneDNNPhiKernelInstruction {
  public:
   OneDNNMixedPhiKernelInstruction(size_t id,

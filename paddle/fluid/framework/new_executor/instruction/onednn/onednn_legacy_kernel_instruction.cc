@@ -36,11 +36,12 @@
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
+
 namespace paddle {
 namespace framework {
 
-FluidAttribute ConvertPirAttribute2FluidAttribute(
-    PIRAttribute attr,
+static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
+    pir::Attribute attr,
     const std::string& attr_name,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   auto& attr_type_name = op_yaml_info.AttrTypeName(attr_name);
@@ -160,7 +161,7 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
     AttributeMap attr_map = operator_base_->RuntimeAttrs();
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
-      attr_map[attr_name] = ConvertPirAttribute2FluidAttribute(
+      attr_map[attr_name] = ConvertPirAttribute2FrameworkAttribute(
           op_attributes.at(attr_name), attr_name, yaml_info_parser);
     }
     operator_base_->SetRuntimeAttributeMap(attr_map);

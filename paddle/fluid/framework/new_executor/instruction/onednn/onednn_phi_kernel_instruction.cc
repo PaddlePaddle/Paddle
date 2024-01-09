@@ -43,8 +43,8 @@
 namespace paddle {
 namespace framework {
 
-RuntimeAttribute ConvertPirAttribute2RuntimeAttribute(
-    PIRAttribute attr,
+static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
+    pir::Attribute attr,
     const std::string& attr_name,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   auto& attr_type_name = op_yaml_info.AttrTypeName(attr_name);

@@ -68,13 +68,11 @@ const std::unordered_set<std::string> LegacyOpList = {
     NceGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
-    CReduceMinOp::name()};
-
 #ifdef PADDLE_WITH_DNNL
-const std::unordered_set<std::string> OneDNNLegacyOpList = {
     paddle::onednn::dialect::LrnOp::name(),
-    paddle::onednn::dialect::LrnGradOp::name()};
+    paddle::onednn::dialect::LrnGradOp::name(),
 #endif
+    CReduceMinOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -234,13 +232,7 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
   return kAttrCastMap[attr_type](attr);
 }
 
-bool IsLegacyOp(const std::string& name) {
-#ifdef PADDLE_WITH_DNNL
-  return OneDNNLegacyOpList.count(name) || LegacyOpList.count(name);
-#else
-  return LegacyOpList.count(name);
-#endif
-}
+bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
