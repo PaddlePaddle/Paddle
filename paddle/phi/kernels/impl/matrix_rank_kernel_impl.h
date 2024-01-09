@@ -54,20 +54,6 @@ static DDim GetVHDDim(const DDim& x_dim, int k) {
   return common::make_ddim(x_vec);
 }
 
-static DDim GetSumvalueDim(const DDim& dim, int k, bool keep_dim, int axis) {
-  auto vec = common::vectorize(dim);
-  vec.erase(vec.end() - 2, vec.end());
-  if (keep_dim && axis == 0) {
-    vec.push_back(1);
-    vec.push_back(k);
-  } else if (keep_dim && axis == 1) {
-    vec.push_back(k);
-    vec.push_back(1);
-  } else {
-    vec.push_back(k);
-  }
-  return common::make_ddim(vec);
-}
 }  // namespace detail
 
 template <typename T>

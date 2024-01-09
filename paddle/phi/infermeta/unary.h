@@ -432,20 +432,6 @@ void PNormInferMeta(const MetaTensor& x,
                     bool asvector,
                     MetaTensor* out);
 
-void PMatrixNormInferMeta(const MetaTensor& x,
-                          float porder,
-                          const std::vector<int>& axis,
-                          float epsilon,
-                          bool keepdim,
-                          bool asvector,
-                          MetaTensor* out);
-
-void NuclearNormInferMeta(const MetaTensor& x,
-                          const std::vector<int>& axis,
-                          bool keepdim,
-                          bool reduce_all,
-                          MetaTensor* out);
-
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,
                    const std::vector<int>& strides,

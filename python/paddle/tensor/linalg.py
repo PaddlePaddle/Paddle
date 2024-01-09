@@ -374,6 +374,21 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
              [4., 3., 2., 1.]])
     """
 
+    def _backshift_permutation(dim0, dim1, dimn):
+        """
+        Auxiliary function for matrix_norm
+        Computes the permutation that moves the two given dimensions to the back
+        """
+        ret = [i for i in range(dimn) if i != dim0 and i != dim1]
+        ret.extend((dim0, dim1))
+        return ret
+
+    def _inverse_permutation(perm):
+        """
+        Given a permutation, returns its inverse. It's equivalent to argsort on an array
+        """
+        return [i for i, j in sorted(enumerate(perm), key=lambda ij: ij[1])]
+
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
@@ -424,8 +439,21 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           name (str, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
+
+        perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
+        inv_perm = _inverse_permutation(perm)
+
         if in_dynamic_mode():
-            return _C_ops.nuclear_norm(input, axis, keepdim, False)
+            transposed = _C_ops.transpose(input, perm)
+            u, s, vh = _C_ops.svd(transposed, False)
+            result = _C_ops.sum(s, -1, None, keepdim)
+            if keepdim:
+                result = _C_ops.transpose(
+                    _C_ops.unsqueeze(result, -1), inv_perm
+                )
+            return result
+
+            # return _C_ops.nuclear_norm(input, axis, keepdim, False)
 
         attrs = {'axis': axis, 'keepdim': keepdim}
 
@@ -433,18 +461,80 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             input, 'input', ['float32', 'float64'], 'nuclear_norm'
         )
 
-        helper = LayerHelper('nuclear_norm', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype()
+        block = LayerHelper('nuclear_nrom', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
         )
 
-        helper.append_op(
-            type='nuclear_norm',
-            inputs={'x': input},
-            outputs={'out': out},
-            attrs=attrs,
+        transpose_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
         )
+        input_shape = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        block.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [transpose_out], 'XShape': [input_shape]},
+            attrs={'axis': perm},
+        )
+
+        u = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        s = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        vt = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        block.append_op(
+            type='svd',
+            inputs={'X': [transpose_out]},
+            outputs={'U': u, 'VH': vt, 'S': s},
+            attrs={'full_matrices': False},
+        )
+
+        reduce_all, sum_axis = _get_reduce_axis(-1, s)
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': s},
+            outputs={'Out': out},
+            attrs={
+                'dim': sum_axis,
+                'keep_dim': keepdim,
+                'reduce_all': reduce_all,
+            },
+        )
+
+        if keepdim:
+            unsqueeze_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+
+            block.append_op(
+                type='unsqueeze2',
+                inputs={'X': [out]},
+                outputs={'Out': [unsqueeze_out], 'XShape': [input_shape]},
+                attrs={'axes': [-1]},
+            )
+
+            block.append_op(
+                type='transpose2',
+                inputs={'X': [unsqueeze_out]},
+                outputs={'Out': [out], 'XShape': [input_shape]},
+                attrs={'axis': inv_perm},
+            )
+
         return out
+        # helper = LayerHelper('nuclear_norm', **locals())
+
+        # out = helper.create_variable_for_type_inference(
+        #     dtype=helper.input_dtype()
+        # )
+
+        # helper.append_op(
+        #     type='nuclear_norm',
+        #     inputs={'x': input},
+        #     outputs={'out': out},
+        #     attrs=attrs,
+        # )
+        # return out
 
     def vector_norm(
         input, porder=None, axis=None, keepdim=False, asvector=False, name=None
@@ -544,11 +634,40 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           name (str, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
+
+        perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
+        inv_perm = _inverse_permutation(perm)
+
         if in_dynamic_mode():
-            out = _C_ops.p_matrix_norm(
-                input, porder, axis, 1e-12, keepdim, True
-            )
-            return out
+            abs_ord = abs(porder)
+
+            max_min = _C_ops.max if porder > 0.0 else _C_ops.min
+
+            if abs_ord == 2.0:
+                transpose_out = _C_ops.transpose(input, perm)
+                u, s, vh = _C_ops.svd(transpose_out, False)
+                result = max_min(s, -1, keepdim)
+                if keepdim:
+                    result = _C_ops.transpose(
+                        _C_ops.unsqueeze(result, -1), inv_perm
+                    )
+                return result
+            else:  # 1,-1,inf,-inf
+                dim0, dim1 = axis
+                if abs_ord == np.float64("inf"):
+                    dim0, dim1 = dim1, dim0
+                if not keepdim and (dim0 < dim1):
+                    dim1 -= 1
+                return max_min(
+                    vector_norm(input, 1.0, axis=dim0, keepdim=keepdim),
+                    dim1,
+                    keepdim,
+                )
+
+            # out = _C_ops.p_matrix_norm(
+            #     input, porder, axis, 1e-12, keepdim, True
+            # )
+            # return out
 
         check_variable_and_dtype(
             input,
@@ -557,25 +676,143 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             'p_matrix_norm',
         )
 
-        attrs = {
-            'porder': porder,
-            'axis': axis,
-            'keepdim': keepdim,
-            'asvector': False,
-            'epsilon': 1e-12,
-        }
-        helper = LayerHelper('p_matrix_norm', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype()
+        block = LayerHelper('p_matrix_norm', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
         )
 
-        helper.append_op(
-            type='p_matrix_norm',
-            inputs={'x': input},
-            outputs={'out': out},
-            attrs=attrs,
-        )
-        return out
+        abs_ord = abs(porder)
+
+        if abs_ord == 2.0:
+            transpose_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            input_shape = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+
+            block.append_op(
+                type='transpose2',
+                inputs={'X': [input]},
+                outputs={'Out': [transpose_out], 'XShape': [input_shape]},
+                attrs={'axis': perm},
+            )
+
+            u = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            s = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            vt = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            block.append_op(
+                type='svd',
+                inputs={'X': [transpose_out]},
+                outputs={'U': u, 'VH': vt, 'S': s},
+                attrs={'full_matrices': False},
+            )
+
+            reduce_type = 'reduce_max' if porder > 0 else 'reduce_min'
+            reduce_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            reduce_all, max_min_axis = _get_reduce_axis(-1, s)
+            block.append_op(
+                type=reduce_type,
+                inputs={'X': s},
+                outputs={'Out': reduce_out},
+                attrs={
+                    'dim': max_min_axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all,
+                },
+            )
+
+            if keepdim:
+                unsqueeze_out = block.create_variable_for_type_inference(
+                    dtype=block.input_dtype()
+                )
+
+                block.append_op(
+                    type='unsqueeze2',
+                    inputs={'X': [reduce_out]},
+                    outputs={'Out': [unsqueeze_out], 'XShape': [input_shape]},
+                    attrs={'axes': [-1]},
+                )
+
+                block.append_op(
+                    type='transpose2',
+                    inputs={'X': [unsqueeze_out]},
+                    outputs={'Out': [out], 'XShape': [input_shape]},
+                    attrs={'axis': inv_perm},
+                )
+                return out
+
+            return reduce_out
+
+        else:
+            dim0, dim1 = axis
+            if abs_ord == np.float64("inf"):
+                dim0, dim1 = dim1, dim0
+            if not keepdim and (dim0 < dim1):
+                dim1 -= 1
+
+            vector_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+
+            attrs = {
+                'axis': dim0,
+                'porder': 1,
+                'keepdim': keepdim,
+                'asvector': False,
+                'epsilon': 1e-12,
+            }
+
+            block.append_op(
+                type='p_norm',
+                inputs={'X': input},
+                outputs={'Out': vector_out},
+                attrs=attrs,
+            )
+
+            reduce_type = 'reduce_max' if porder > 0 else 'reduce_min'
+            reduce_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            reduce_all, max_min_axis = _get_reduce_axis(dim1, vector_out)
+            block.append_op(
+                type=reduce_type,
+                inputs={'X': vector_out},
+                outputs={'Out': reduce_out},
+                attrs={
+                    'dim': max_min_axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all,
+                },
+            )
+            return reduce_out
+        # attrs = {
+        #     'porder': porder,
+        #     'axis': axis,
+        #     'keepdim': keepdim,
+        #     'asvector': False,
+        #     'epsilon': 1e-12,
+        # }
+        # helper = LayerHelper('p_matrix_norm', **locals())
+        # out = helper.create_variable_for_type_inference(
+        #     dtype=helper.input_dtype()
+        # )
+
+        # helper.append_op(
+        #     type='p_matrix_norm',
+        #     inputs={'x': input},
+        #     outputs={'out': out},
+        #     attrs=attrs,
+        # )
+        # return out
 
     if axis is None and p is not None:
         if isinstance(p, str):
