@@ -7235,8 +7235,7 @@ def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
 
     Examples:
         .. code-block:: python
-
-            :name: example1
+            :name: bitwise_right_shift_example1
 
             >>> import paddle
             >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
