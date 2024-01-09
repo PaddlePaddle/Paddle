@@ -2510,27 +2510,6 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   out->share_lod(x);
 }
 
-void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
-                           const std::vector<const MetaTensor*>& w,
-                           int embeddingdim,
-                           int tableid,
-                           const std::string& accessorclass,
-                           const std::string& ctrlabelname,
-                           int paddingid,
-                           bool scalesparsegrad,
-                           const std::vector<std::string>& inputnames,
-                           bool is_distributed,
-                           std::vector<MetaTensor*> out) {
-  auto ids_dims = ids[0]->dims();
-  auto output_dims = common::vectorize<int>(ids_dims);
-  output_dims.push_back(ids_dims[1]);
-  for (size_t i = 0; i < out.size(); i++) {
-    out[i]->set_dims(common::make_ddim(output_dims));
-    out[i]->share_lod(*(ids[i]));
-    out[i]->set_dtype(ids[i]->dtype());
-  }
-}
-
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
                     const std::string& data_format,

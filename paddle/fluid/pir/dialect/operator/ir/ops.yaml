@@ -968,16 +968,16 @@
     func : prod
   backward : prod_grad
 
-- op : pull_sparse_v2
-  args : (Tensor[] ids, Tensor[] w, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
-  output : Tensor[](out){ids.size()}
+- op : push_sparse_v2
+  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
+  output : Tensor[](out_grad_out){out_grad_in.size()}
   infer_meta :
-    func : PullSparseV2InferMetaBase
+    func : UnchangedInferMeta
+    param : [out_grad_in]
   kernel :
-    func : pull_sparse_v2
-    param : [ids, w, embeddingdim, tableid, accessorclass, ctrlabelname, paddingid, scalesparsegrad, inputnames, is_distributed]
-    data_type : ids
-  backward : push_sparse_v2
+    func : push_sparse_v2
+    data_type : out_grad_in
+  inplace: (out_grad_in -> out_grad_out)
 
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})

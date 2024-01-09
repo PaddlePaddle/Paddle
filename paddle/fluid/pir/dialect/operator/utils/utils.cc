@@ -63,7 +63,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     NceOp::name(),
     NceGradOp::name(),
     CReduceMinOp::name(),
-    PullSparseV2Op::name()};
+    PushSparseV2Op::name()};
 
 const std::unordered_set<std::string> OneDNNLegacyOpList = {};
 enum class AttrType {
