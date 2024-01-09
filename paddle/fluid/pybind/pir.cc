@@ -30,6 +30,7 @@
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -85,13 +86,11 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/fully_insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/rewrite_generate_shape_ops_to_run_first_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/rewrite_generate_shape_ops_to_run_first_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #endif
 
 namespace py = pybind11;
@@ -457,6 +456,7 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
              for (auto &pair : self.attributes()) {
+               if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
                attrs_dict[pair.first.c_str()] =
                    paddle::dialect::GetAttributeData(pair.second);
              }
@@ -1603,7 +1603,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
         std::make_unique<
             cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-    //pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    // pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
   cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
@@ -1613,8 +1613,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   if (has_dynamic_shape) {
-    //pass_manager->AddPass(cinn::dialect::ir::CreateRewriteGenerateShapeOpsToRunFirstPass());
-    //pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateRewriteGenerateShapeOpsToRunFirstPass());
+    // pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 
   pass_manager->AddPass(
