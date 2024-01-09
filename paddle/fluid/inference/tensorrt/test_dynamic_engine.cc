@@ -154,13 +154,20 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
     engine_->context()->setTensorAddress(name, buffers[i]);
   }
 #endif
+
   engine_->Execute(-1, &buffers, ctx_->stream());
   cudaStreamSynchronize(ctx_->stream());
+
   std::vector<float> y_cpu;
   GetOutput(&y_cpu);
   ASSERT_EQ(y_cpu[0], 0);
   ASSERT_EQ(y_cpu[1], 1);
+#if IS_TRT_VERSION_GE(8500)
+  const char *name1 = engine_->engine()->getBindingName(2);
+  auto dims = engine_->context()->getTensorShape(name1);
+#else
   auto dims = engine_->context()->getBindingDimensions(2);
+#endif
   ASSERT_EQ(dims.nbDims, 3);
   ASSERT_EQ(dims.d[0], 8);
   ASSERT_EQ(dims.d[1], 8);
