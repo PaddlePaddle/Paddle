@@ -1660,7 +1660,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
   pass_manager->AddPass(
     std::make_unique<cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
-  VLOG(4) << "After SplitGenerateShapeIntoShapeOpsPass: " << program;
   VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
           << ", shape_analysis: " << shape_analysis;
 #else
