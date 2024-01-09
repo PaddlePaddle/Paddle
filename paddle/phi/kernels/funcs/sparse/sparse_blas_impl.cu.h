@@ -26,6 +26,7 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -39,6 +40,15 @@ cudaDataType_t GetGpuDataType() {
     return CUDA_R_64F;
   } else if (std::is_same<T, phi::dtype::float16>::value) {
     return CUDA_R_16F;
+  }
+}
+
+template <typename T>
+cusparseIndexType_t GetCusparseIndexType() {
+  if (std::is_same<T, int32_t>::value) {
+    return CUSPARSE_INDEX_32I;
+  } else if (std::is_same<T, int64_t>::value) {
+    return CUSPARSE_INDEX_64I;
   }
 }
 
@@ -86,9 +96,9 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
   const IntT* crows_data = x.non_zero_crows().data<IntT>();
   const IntT* cols_data = x.non_zero_cols().data<IntT>();
   const T* values_data = x.non_zero_elements().data<T>();
-
   int64_t batch_nnz = x.nnz() / batch_size;
   cudaDataType_t gpu_type = GetGpuDataType<T>();
+  cusparseIndexType_t index_type = GetCusparseIndexType<IntT>();
   dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseCreateCsr(descriptor,
                                     M,
@@ -97,8 +107,8 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                     const_cast<IntT*>(crows_data),
                                     const_cast<IntT*>(cols_data),
                                     const_cast<T*>(values_data),
-                                    CUSPARSE_INDEX_64I,
-                                    CUSPARSE_INDEX_64I,
+                                    index_type,
+                                    index_type,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
@@ -143,6 +153,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 
   int64_t batch_nnz = nnz / batch_size;
   cudaDataType_t gpu_type = GetGpuDataType<T>();
+  cusparseIndexType_t index_type = GetCusparseIndexType<IntT>();
   dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseCreateCoo(descriptor,
                                     M,
@@ -151,7 +162,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                     const_cast<IntT*>(rows_data),
                                     const_cast<IntT*>(cols_data),
                                     const_cast<T*>(values_data),
-                                    CUSPARSE_INDEX_64I,
+                                    index_type,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
@@ -481,6 +492,126 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
 }
 #endif
 
+/************* SPARSE*SPARSE->SPARSE MATMUL ************/
+template <>
+template <typename T>
+void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
+                                         bool transb,
+                                         T alpha,
+                                         const SparseCsrTensor& mat_a,
+                                         const SparseCsrTensor& mat_b,
+                                         T beta,
+                                         SparseCsrTensor* mat_out) const {
+  auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
+  auto b_descriptor = CuSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
+  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+
+  cudaDataType_t gpu_type = GetGpuDataType<T>();
+  size_t buffer_a_size = 0, buffer_b_size = 0;
+
+  cusparseSpGEMMDescr_t spgemmDesc;
+  phi::dynload::cusparseSpGEMM_createDescr(&spgemmDesc);
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_workEstimation(handle,
+                                                GetTransposeOperation(transa),
+                                                GetTransposeOperation(transb),
+                                                &alpha,
+                                                a_descriptor.descriptor(),
+                                                b_descriptor.descriptor(),
+                                                &beta,
+                                                out_descriptor.descriptor(),
+                                                gpu_type,
+                                                CUSPARSE_SPGEMM_DEFAULT,
+                                                spgemmDesc,
+                                                &buffer_a_size,
+                                                nullptr);
+  });
+
+  phi::Allocator::AllocationPtr tmp_buffer_a = phi::memory_utils::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_a_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+  void* tmp_buffer_a_ptr = tmp_buffer_a->ptr();
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_workEstimation(handle,
+                                                GetTransposeOperation(transa),
+                                                GetTransposeOperation(transb),
+                                                &alpha,
+                                                a_descriptor.descriptor(),
+                                                b_descriptor.descriptor(),
+                                                &beta,
+                                                out_descriptor.descriptor(),
+                                                gpu_type,
+                                                CUSPARSE_SPGEMM_DEFAULT,
+                                                spgemmDesc,
+                                                &buffer_a_size,
+                                                tmp_buffer_a_ptr);
+  });
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_compute(handle,
+                                         GetTransposeOperation(transa),
+                                         GetTransposeOperation(transb),
+                                         &alpha,
+                                         a_descriptor.descriptor(),
+                                         b_descriptor.descriptor(),
+                                         &beta,
+                                         out_descriptor.descriptor(),
+                                         gpu_type,
+                                         CUSPARSE_SPGEMM_DEFAULT,
+                                         spgemmDesc,
+                                         &buffer_b_size,
+                                         nullptr);
+  });
+
+  phi::Allocator::AllocationPtr tmp_buffer_b = phi::memory_utils::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_b_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+  void* tmp_buffer_b_ptr = tmp_buffer_b->ptr();
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_compute(handle,
+                                         GetTransposeOperation(transa),
+                                         GetTransposeOperation(transb),
+                                         &alpha,
+                                         a_descriptor.descriptor(),
+                                         b_descriptor.descriptor(),
+                                         &beta,
+                                         out_descriptor.descriptor(),
+                                         gpu_type,
+                                         CUSPARSE_SPGEMM_DEFAULT,
+                                         spgemmDesc,
+                                         &buffer_b_size,
+                                         tmp_buffer_b_ptr);
+  });
+
+  int64_t num_rows, num_cols, nnz;
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpMatGetSize(
+        out_descriptor.descriptor(), &num_rows, &num_cols, &nnz);
+  });
+  *(mat_out->mutable_cols()) = phi::Empty<int32_t>(dev_ctx_, {nnz});
+  *(mat_out->mutable_values()) = phi::Empty<T>(dev_ctx_, {nnz});
+  auto res_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_copy(handle,
+                                      GetTransposeOperation(transa),
+                                      GetTransposeOperation(transb),
+                                      &alpha,
+                                      a_descriptor.descriptor(),
+                                      b_descriptor.descriptor(),
+                                      &beta,
+                                      res_descriptor.descriptor(),
+                                      gpu_type,
+                                      CUSPARSE_SPGEMM_DEFAULT,
+                                      spgemmDesc);
+  });
+
+  phi::dynload::cusparseSpGEMM_destroyDescr(spgemmDesc);
+}
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi
