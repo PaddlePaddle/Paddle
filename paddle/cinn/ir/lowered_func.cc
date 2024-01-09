@@ -398,11 +398,21 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     } else if (arg.type() == type_of<void*>()) {
       pod_cast_expr =
           ir::intrinsics::PodValueToX::Make(load_expr, type_of<void*>());
+    } else if (arg.type() == type_of<int32_t*>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t*>());
+    } else if (arg.type() == type_of<int32_t**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t**>());
+    } else if (arg.type() == type_of<void**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<void**>());
     } else {
       LOG(ERROR) << "Not supported type [" << arg.type() << "]";
       CINN_NOT_IMPLEMENTED
     }
 
+    VLOG(6) << "args " << i << "convert";
     Expr let_expr = Let::Make(_arg, pod_cast_expr);
     CHECK(let_expr.type().valid());
     argument_prepare_exprs.push_back(let_expr);

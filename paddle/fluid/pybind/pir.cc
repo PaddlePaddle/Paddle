@@ -130,6 +130,7 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -897,47 +898,6 @@ void BindInsertionPoint(pybind11::module *m) {
     InsertionPoint class represents the insertion point in the Builder.)DOC");
 }
 
-Operation *BuildOpFrom(
-    Operation *to_copy_op,
-    std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
-  pir::OperationArgument to_create_argument(to_copy_op->info());
-  to_create_argument.attributes = to_copy_op->attributes();
-
-  VLOG(6) << "start copy op: " << to_copy_op->name();
-  auto origin_results = to_copy_op->results();
-  VLOG(6) << "start translate origin results into op type.";
-  std::transform(origin_results.begin(),
-                 origin_results.end(),
-                 std::back_inserter(to_create_argument.output_types),
-                 [](const pir::OpResult &r) {
-                   // OpResult -> OpType
-                   return r.type();
-                 });
-
-  // transform by value_map dict.
-  VLOG(6) << "start create op.";
-  auto origin_operands = to_copy_op->operands();
-  std::transform(origin_operands.begin(),
-                 origin_operands.end(),
-                 std::back_inserter(to_create_argument.inputs),
-                 [&value_map](const pir::OpOperand &operand) {
-                   // Operand -> OpResult
-                   return value_map[operand.source()];
-                 });
-  auto *cloned_op = Operation::Create(std::move(to_create_argument));
-
-  std::vector<int> tmp;
-  std::transform(origin_results.begin(),
-                 origin_results.end(),
-                 cloned_op->results().begin(),
-                 std::back_inserter(tmp),  // NOLINT, just a placeholder.
-                 [&value_map](const OpResult &a, const OpResult &b) {  // NOLINT
-                   value_map[a.Value::impl()] = b.Value::impl();
-                   return 1;
-                 });
-  return cloned_op;
-}
-
 std::list<Operation *>::const_iterator list_offset(const Block *block,
                                                    int start_idx) {
   auto it = block->begin();
@@ -1056,19 +1016,13 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 using OpResultMap =
     std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    const Program &program) {
+    Program &program) {  // NOLINT
   // Limitation of this function:
   // 1. don't support Parameters.
-  // 2. don't support Regions in operator.
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  auto cloned_program = std::make_shared<Program>(ctx);
-  std::unordered_map<pir::Value, pir::Value> value_map;
-  for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(&op, value_map);
-    cloned_program->block()->push_back(cloned_op);
-  }
+  pir::IrMapping mapper;
+  auto cloned_program = program.Clone(mapper);
   std::vector<pir::OpResult> associated_array_key, associated_array_value;
-  for (auto &pair : value_map) {
+  for (auto &pair : mapper.Map<pir::Value>()) {
     associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
     associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
@@ -1177,21 +1131,26 @@ SplitedResult SplitForwardBackward(
   std::unordered_set<pir::Value> backward_inputs;
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
-  std::unordered_map<pir::Value, pir::Value> forward_value_map;
-  std::unordered_map<pir::Value, pir::Value> backward_value_map;
   pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
   bool has_backward = (backward_range[1] > backward_range[0]);
 
   // forward program construct.
   VLOG(4) << "start create forward program.";
-  range_block_do(program.block(),
-                 forward_range,
-                 [&forward_value_map, &forward_program](Operation *op) {
-                   auto *cloned_op = BuildOpFrom(op, forward_value_map);
-                   forward_program->block()->push_back(cloned_op);
-                 });
+  pir::IrMapping forward_mapper;
+  auto clone_options = pir::CloneOptions(true, true);
+  range_block_do(
+      program.block(),
+      forward_range,
+      [&forward_mapper, &forward_program, &clone_options](Operation *op) {
+        auto *cloned_op = op->Clone(forward_mapper, clone_options);
+        forward_program->block()->push_back(cloned_op);
+      });
+  auto &forward_value_map = forward_mapper.MutableMap<pir::Value>();
+
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
+  pir::IrMapping backward_mapper;
+  auto &backward_value_map = backward_mapper.MutableMap<pir::Value>();
   int counter = 0;
   auto create_data_fn = [&backward_builder,
                          &backward_inputs,
@@ -1310,12 +1269,13 @@ SplitedResult SplitForwardBackward(
 
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
-  range_block_do(program.block(),
-                 backward_range,
-                 [&backward_value_map, &backward_program](Operation *op) {
-                   auto *cloned_op = BuildOpFrom(op, backward_value_map);
-                   backward_program->block()->push_back(cloned_op);
-                 });
+  range_block_do(
+      program.block(),
+      backward_range,
+      [&backward_mapper, &backward_program, &clone_options](Operation *op) {
+        auto *cloned_op = op->Clone(backward_mapper, clone_options);
+        backward_program->block()->push_back(cloned_op);
+      });
   // counter = 0;
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   if (has_backward) {
@@ -1629,17 +1589,12 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(pir::CreateBuildCinnPass());
-
-  if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
-  }
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
@@ -1651,8 +1606,18 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       "compile PaddlePaddle with CINN"));
 #endif
 }
+
+void InferSymbolicShapePass(
+    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
+    Program &program) {                          // NOLINT
+  if (FLAGS_pir_apply_shape_optimization_pass) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+}
+
 void BindIrPass(pybind11::module *m) {
   m->def("add_cinn_pass", AddCinnPass);
+  m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",

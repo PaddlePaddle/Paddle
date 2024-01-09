@@ -205,25 +205,37 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
         &(VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>));
     cudaFunction_t cudaFunc;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
-    auto parameterSetter =
-        [numel, dev_ctx_p, seed, offset, seed_offset_data, seed_tensor_ptr](
-            phi::backends::gpu::CUDAKernelParams& params) {
-          uint64_t seed_data, increment;
-          // we get the seed_data/increment from seed/offset
-          phi::funcs::GetSeedDataAndIncrement(*dev_ctx_p,
-                                              seed_tensor_ptr,
-                                              false,  // fix_seed
-                                              seed,
-                                              offset,
-                                              &seed_data,
-                                              &increment);
-          params.As<uint64_t>(2) = seed_data;
-          params.As<uint64_t>(6) = increment;
-          VLOG(10) << "CUDA_GRAPH seed_data = " << seed_data
-                   << ", increment = " << increment;
 
-          seed_offset_data[0] = static_cast<int64_t>(seed_data);
-          seed_offset_data[1] = static_cast<int64_t>(increment);
+    // seed_offset_data should preserved by cudaGraph pool
+    auto gen_cuda = dev_ctx.GetGenerator();
+    auto state_index = gen_cuda->GetStateIndex();
+    auto parameterSetter =
+        [dev_ctx_p,
+         offset,
+         seed_offset_data,
+         state_index,
+         seed_tensor_ptr,
+         fix_seed](phi::backends::gpu::CUDAKernelParams& params) {
+          if (!fix_seed) {
+            auto gen_cuda = dev_ctx_p->GetGenerator();
+            // ensure the generator use correct state index
+            gen_cuda->SetStateIndex(state_index);
+
+            // we assume seed is null pointer
+            // seed copy to cpu is meaningless here
+            assert(seed_tensor_ptr == nullptr);
+
+            uint64_t seed, increment;
+            std::tie(seed, increment) = gen_cuda->IncrementOffset(offset);
+            VLOG(10) << "CUDA_GRAPH seed = " << seed
+                     << ", increment = " << increment;
+
+            params.As<uint64_t>(2) = seed;
+            params.As<uint64_t>(6) = increment;
+
+            seed_offset_data[0] = static_cast<int64_t>(seed);
+            seed_offset_data[1] = static_cast<int64_t>(increment);
+          }
         };
     phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
         cudaKernelCallback = [=](unsigned int id) {
@@ -241,7 +253,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
         cudaFunc, parameterSetter, cudaKernelCallback);
 
-    VLOG(10) << "NON_CUDA_GRAPH seed_data = " << seed_data
+    VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
              << ", increment = " << increment;
 #endif
   } else {
