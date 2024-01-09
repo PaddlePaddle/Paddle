@@ -15,7 +15,7 @@
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -251,7 +251,7 @@ def weighted_sample_neighbors(
                 "`eids` should not be None if `return_eids` is True."
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         (
             out_neighbors,
             out_count,

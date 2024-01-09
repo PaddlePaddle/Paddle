@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer  # noqa: F401
-from .adagrad import Adagrad  # noqa: F401
-from .adam import Adam  # noqa: F401
-from .adamw import AdamW  # noqa: F401
-from .adamax import Adamax  # noqa: F401
-from .rmsprop import RMSProp  # noqa: F401
-from .adadelta import Adadelta  # noqa: F401
-from .sgd import SGD  # noqa: F401
-from .momentum import Momentum  # noqa: F401
-from .lamb import Lamb  # noqa: F401
-from .lbfgs import LBFGS  # noqa: F401
 from . import lr  # noqa: F401
+from .adadelta import Adadelta
+from .adagrad import Adagrad
+from .adam import Adam
+from .adamax import Adamax
+from .adamw import AdamW
+from .lamb import Lamb
+from .lbfgs import LBFGS
+from .momentum import Momentum
+from .optimizer import Optimizer
+from .rmsprop import RMSProp
+from .rprop import Rprop
+from .sgd import SGD
 
-__all__ = [  # noqa
+__all__ = [
     'Optimizer',
     'Adagrad',
     'Adam',
@@ -34,6 +35,7 @@ __all__ = [  # noqa
     'RMSProp',
     'Adadelta',
     'SGD',
+    'Rprop',
     'Momentum',
     'Lamb',
     'LBFGS',

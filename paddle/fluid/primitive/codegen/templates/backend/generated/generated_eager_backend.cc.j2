@@ -12,13 +12,14 @@ namespace backend {
 
 {%- macro args(inputs, attrs) -%}  {#- Arguments are variable pass into method -#}
   {{common.sequence('', '', ', ', inputs)}}
-  {%- if attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between inputs and attrs -#}
+  {%- if attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between 
+  nputs and attrs -#}
   {{common.sequence('', '', ', ', attrs)}}
 {%- endmacro -%}
 
-{%- macro sig(name, inputs, attrs, outputs, inplace_map) -%}
+{%- macro sig(name, inputs, attrs, outputs) -%}
 template <>
-{{common.ret(outputs, inplace_map)}} {{name}}<Tensor>({{common.params(inputs, attrs, False)}})
+{{common.ret(outputs)}} {{name}}<Tensor>({{common.params(inputs, attrs, False)}})
 {%- endmacro -%}
 
 {% macro body(name, inputs, attrs, outputs) %}
@@ -27,21 +28,15 @@ template <>
   {%- set attr_names = [] -%}
   {%- for i in attrs -%} {%- do attr_names.append(i.name) -%} {%-endfor-%}
   {% filter indent(2, True) %}
-VLOG(4) << "Eager Prim API {name}_ad_func call";
+VLOG(4) << "Eager Prim API {{name}}_ad_func call";
 return ::{{name}}_ad_func({{common.args(input_names, attr_names)}});
   {% endfilter %}
 {% endmacro %}
 
 
 {% for api in apis %}
-  {%- if api.is_prim and api.name in backend_white_list -%}
-  {% set inplace_map = {} %}
-  {% if 'inplace' in api and api.inplace != None %}
-    {% for source, target in api.inplace.items() %}
-      {% do inplace_map.update({source: target}) %}
-    {% endfor %}
-  {% endif %}
-{{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate, inplace_map)}} {
+  {%- if api.is_prim and api.name not in backend_black_list and api.name[-1] !=  '_' -%}
+{{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} {
 {{body(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} 
 }
 

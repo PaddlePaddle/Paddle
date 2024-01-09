@@ -51,7 +51,7 @@ class ConditionalBlockOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    bool need_run;
+    bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       // When is_scalar_condition is True, the conditional variable is a scalar,
       // whether need to execute the operators in sub-block depends on the
@@ -103,13 +103,21 @@ class ConditionalBlockOp : public ConditionalOp {
                                                       dev_place);
 
         framework::interpreter::ExecutionConfig execution_config;
+        if (HasAttr("used_for_inference") && Attr<bool>("used_for_inference")) {
+          execution_config.used_for_inference = true;
+        }
         execution_config.create_local_scope = false;
         execution_config.used_for_control_flow_op = true;
         execution_config.skip_gc_vars =
             std::set<std::string>(skip_vars.begin(), skip_vars.end());
-
+        // add for performance in gpugraph transformer mode
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+        execution_config.used_for_inference = true;
+#endif
         core_.reset(new InterpreterCore(
             dev_place, *block, &cur_scope, execution_config));
+        core_->SetOutputHooks(output_hookfuncs_);
+        core_->SetInputHooks(input_hookfuncs_);
         VLOG(10) << "[interpreterCore] created:" << core_;
       } else {
         BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
@@ -147,7 +155,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    bool need_run;
+    bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       auto xs = this->InputTensors(scope, ConditionalOp::kCondition);
       need_run = ScalarCondition(xs);

@@ -93,7 +93,7 @@ class DataFeedDesc:
 
     def set_batch_size(self, batch_size):
         r"""
-        Set :attr:`batch_size` in :ref:`api_base_DataFeedDesc` . :attr:`batch_size` can be changed during training.
+        Set :attr:`batch_size` in ``paddle.base.DataFeedDesc`` . :attr:`batch_size` can be changed during training.
 
         Examples:
             .. code-block:: python

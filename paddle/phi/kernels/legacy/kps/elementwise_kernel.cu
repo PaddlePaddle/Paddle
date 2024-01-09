@@ -23,105 +23,14 @@
 namespace phi {
 
 DEFINE_CUDA_ELEMENTWISE_OP(Add)
-
-// Create the definition of Divide
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
-
-// Create the definition of Multiply
 DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
-
-// Create the definition of Subtract
 DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
-
-template <typename T, typename Context>
-void MaximumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::MaximumFunctor<T>(), axis);
-}
-
-template <typename T, typename Context>
-void MinimumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::MinimumFunctor<T>(), axis);
-}
-
-template <typename T, typename Context>
-void RemainderRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        int axis,
-                        DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::RemainderFunctor<T>(), axis);
-}
-
-template <typename T, typename Context>
-void FloorDivideRawKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          int axis,
-                          DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::FloorDivideFunctor<T>(), axis);
-}
-
-template <typename T, typename Context>
-void ElementwisePowRawKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             int axis,
-                             DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::ElementwisePowFunctor<T>(), axis);
-}
+DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
+DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
+DEFINE_CUDA_ELEMENTWISE_OP(Remainder)
+DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
+DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 
 }  // namespace phi
 
@@ -156,6 +65,9 @@ PD_REGISTER_KERNEL(add_raw,
                    double,
                    int16_t,
                    int,
+                   bool,
+                   uint8_t,
+                   int8_t,
                    int64_t,
                    float16,
                    bfloat16,
@@ -168,8 +80,12 @@ PD_REGISTER_KERNEL(divide_raw,
                    phi::DivideRawKernel,
                    float,
                    double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
                    int,
                    int64_t,
+                   bool,
                    float16,
                    bfloat16,
                    complex64,

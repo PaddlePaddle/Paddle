@@ -103,7 +103,7 @@ def _get_valid_program(program=None):
         program = program._program
         if program is None:
             raise TypeError(
-                "The type of input program is invalid, expected tyep is Program, but received None"
+                "The type of input program is invalid, expected type is Program, but received None"
             )
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended."
@@ -950,9 +950,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning(
                 "The old way to load inference model is deprecated. Please specify path_prefix."
-                " model path: {}, params path: {}".format(
-                    model_path, params_path
-                )
+                f" model path: {model_path}, params path: {params_path}"
             )
 
         program_bytes = load_from_file(model_path)
@@ -1137,6 +1135,8 @@ def save_vars(
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
+        # flush to root_scope
+        executor.flush()
         executor.run(save_program)
         if save_to_memory:
             return global_scope().find_var(params_var_name).get_bytes()

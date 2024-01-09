@@ -38,6 +38,9 @@ namespace paddle {
 namespace pybind {
 
 void BindCommContextManager(py::module *m) {
+  auto P2POption = py::class_<phi::distributed::P2POption>(*m, "P2POption")
+                       .def(py::init<>());
+
   auto CommContextManager =
       py::class_<phi::distributed::CommContextManager,
                  std::shared_ptr<phi::distributed::CommContextManager>>(
@@ -49,6 +52,23 @@ void BindCommContextManager(py::module *m) {
           .def_static(
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
+              py::arg("store"),
+              py::arg("unique_comm_key"),
+              py::arg("rank"),
+              py::arg("size"),
+              py::arg("hash_key") = "",
+              py::arg("p2p_opt") = nullptr,
+              py::call_guard<py::gil_scoped_release>())
+#endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+          .def_static(
+              "create_bkcl_comm_context",
+              &phi::distributed::CommContextManager::CreateBKCLCommContext,
+              py::arg("store"),
+              py::arg("unique_comm_key"),
+              py::arg("rank"),
+              py::arg("size"),
+              py::arg("hash_key") = "",
               py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_GLOO)

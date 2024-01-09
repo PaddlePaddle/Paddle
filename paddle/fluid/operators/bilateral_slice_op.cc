@@ -51,7 +51,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     int64_t coeffs_chans = grid_dims[1];
     int64_t input_chans = input_dims[1];
 
-    int64_t output_chans;
+    int64_t output_chans = 0;
     if ((!ctx->IsRuntime()) && ((coeffs_chans < 0) || (input_chans < 0))) {
       output_chans = -1;
     } else {
@@ -81,7 +81,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     output_dims.push_back(h);
     output_dims.push_back(w);
 
-    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(output_dims));
   }
 
  protected:

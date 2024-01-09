@@ -37,7 +37,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "RecomputeOptimizer",
+            "AMPOptimizer",
+            "LarsOptimizer",
+            "LambOptimizer",
+            "ASPOptimizer",
+        ]
 
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
@@ -131,12 +137,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
-        self.inner_opt.minimize(
+        optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
         if startup_program is None:
             startup_program = paddle.static.default_startup_program()
-
         #        print("program after inner optimizer minimize:",
         #              str(loss.block.program))
         self._set_origin_programs([loss])
@@ -145,7 +150,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             self.pass_ctx
         )
         ps_builder._build_programs()
-        return None, None
+        return optimize_ops, params_grads
 
     def minimize_losses_impl(
         self,

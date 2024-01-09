@@ -46,7 +46,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                         "is_bidirec": is_bidirec,
                                         "is_test": True,
                                         "dropout_prob": 0.0,
-                                        # for my convience
+                                        # for my convenience
                                         "batch": batch,
                                         "seq_len": seq_len,
                                     }
@@ -264,12 +264,10 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), tol_fp32
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), tol_half

@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 
 #ifdef __NVCC__
 #include <cub/cub.cuh>
@@ -38,6 +38,7 @@ namespace math {
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process
  */
+using DataLayout = phi::DataLayout;
 template <typename DeviceContext,
           typename T,
           bool fuse_relu_before_conv = false>

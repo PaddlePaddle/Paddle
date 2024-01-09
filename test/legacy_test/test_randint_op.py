@@ -46,7 +46,7 @@ class TestRandintOp(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -66,6 +66,14 @@ class TestRandintOpError(unittest.TestCase):
             self.assertRaises(
                 TypeError, paddle.randint, 5, shape=[shape_tensor]
             )
+
+    def test_pir_error(self):
+        with paddle.pir_utils.IrGuard():
+            self.assertRaises(TypeError, paddle.randint, 5, shape=np.array([2]))
+            self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
+            self.assertRaises(ValueError, paddle.randint, 5, 5)
+            self.assertRaises(ValueError, paddle.randint, -5)
+            self.assertRaises(ValueError, paddle.randint, 5, shape=['2'])
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
@@ -87,7 +95,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -107,7 +115,7 @@ class TestRandint_attr_tensor(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output, check_new_ir=True)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))

@@ -40,7 +40,7 @@ void FirstInFirstOut(size_t queue_cap,
   size_t count = 0;
   while (true) {
     std::this_thread::sleep_for(std::chrono::milliseconds(receive_time_gap));
-    size_t elem;
+    size_t elem = 0;
     if (!q.Receive(&elem)) {
       break;
     }
@@ -76,7 +76,7 @@ TEST(BlockingQueue, SenderBlockingTest) {
   EXPECT_EQ(send_count, queue_cap);
   std::vector<size_t> res;
   while (true) {
-    size_t elem;
+    size_t elem = 0;
     if (!q.Receive(&elem)) {
       break;
     }
@@ -93,7 +93,7 @@ TEST(BlockingQueue, ReceiverBlockingTest) {
   BlockingQueue<size_t> q(queue_cap);
   std::vector<size_t> receive_res;
   std::thread receiver([&]() {
-    size_t elem;
+    size_t elem = 0;
     while (true) {
       if (!q.Receive(&elem)) {
         break;
@@ -162,7 +162,7 @@ void MultiSenderMultiReceiver(const size_t queue_cap,
       while (true) {
         std::this_thread::sleep_for(
             std::chrono::milliseconds(receive_time_gap));
-        size_t elem;
+        size_t elem = 0;
         if (!q.Receive(&elem)) {
           break;
         }
@@ -230,7 +230,7 @@ TEST(BlockingQueue, speed_test_mode) {
   for (size_t i = 0; i < queue_size; ++i) {
     q1.Send(i);
   }
-  size_t b;
+  size_t b = 0;
   for (size_t i = 0; i < queue_size; ++i) {
     q1.Receive(&b);
     EXPECT_EQ(b, i);

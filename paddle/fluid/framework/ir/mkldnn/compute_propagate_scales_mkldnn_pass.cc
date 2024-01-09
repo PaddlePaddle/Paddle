@@ -121,7 +121,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
 
       phi::DenseTensor tmp_tensor;
       std::vector<int64_t> reshape_dims = {dims[0], volume};
-      tmp_tensor.Resize(phi::make_ddim(reshape_dims));
+      tmp_tensor.Resize(common::make_ddim(reshape_dims));
       auto* weight_data = weight_tensor->data<float>();
       auto* tmp_data = tmp_tensor.mutable_data<float>(phi::CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {
@@ -412,7 +412,7 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
       auto out_iter = var_quant_scales->find(op_node->Op()->Output("Out")[0]);
       if (out_iter != var_quant_scales->end()) {
         std::vector<std::string> input_names = op_node->Op()->Input("X");
-        for (auto input_name : input_names) {
+        for (auto const& input_name : input_names) {
           auto concat_in_iter = var_quant_scales->find(input_name);
           if (concat_in_iter == var_quant_scales->end())
             (*var_quant_scales)[input_name] = out_iter->second;

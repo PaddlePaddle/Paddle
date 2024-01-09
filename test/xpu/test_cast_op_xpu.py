@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -31,6 +32,7 @@ typeid_dict = {
     'int64': int(core.VarDesc.VarType.INT64),
     'float32': int(core.VarDesc.VarType.FP32),
     'float16': int(core.VarDesc.VarType.FP16),
+    'bfloat16': int(core.VarDesc.VarType.BF16),
     'bool': int(core.VarDesc.VarType.BOOL),
     'int8': int(core.VarDesc.VarType.INT8),
     'uint8': int(core.VarDesc.VarType.UINT8),
@@ -48,6 +50,7 @@ class XPUTestCastOp(XPUOpTestWrapper):
         classes = []
         for out_type in {
             'float16',
+            'bfloat16',
             'float32',
             'int32',
             'int64',
@@ -71,8 +74,18 @@ class XPUTestCastOp(XPUOpTestWrapper):
                 else self.out_typename
             )
 
-            self.inputs = {'X': ipt.astype(in_typename)}
-            self.outputs = {'Out': ipt.astype(in_typename).astype(out_typename)}
+            if in_typename == "bfloat16":
+                ipt_x = convert_float_to_uint16(ipt)
+            else:
+                ipt_x = ipt.astype(in_typename)
+
+            if out_typename == "bfloat16":
+                opt = convert_uint16_to_float(convert_float_to_uint16(ipt_x))
+            else:
+                opt = ipt_x.astype(out_typename)
+
+            self.inputs = {'X': ipt_x}
+            self.outputs = {'Out': opt}
             self.attrs = {
                 'in_dtype': typeid_dict[in_typename],
                 'out_dtype': typeid_dict[out_typename],

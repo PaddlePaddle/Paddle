@@ -28,7 +28,7 @@ void CummaxGradKernel(const Context& dev_ctx,
                       const DenseTensor& indices,
                       const DenseTensor& out_grad,
                       int axis,
-                      int dtype,
+                      DataType dtype,
                       DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
@@ -36,13 +36,13 @@ void CummaxGradKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis = axis + x.dims().size();
   }
-  auto indices_type = phi::TransToPhiDataType(dtype);
-  if (indices_type == DataType::INT32) {
+
+  if (dtype == DataType::INT32) {
     phi::funcs::gpu_scatter_add_kernel<T, int32_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
-  } else if (indices_type == DataType::INT64) {
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
+  } else if (dtype == DataType::INT64) {
     phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
   }
 }
 
@@ -52,7 +52,7 @@ void CumminGradKernel(const Context& dev_ctx,
                       const DenseTensor& indices,
                       const DenseTensor& out_grad,
                       int axis,
-                      int dtype,
+                      DataType dtype,
                       DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
@@ -60,13 +60,13 @@ void CumminGradKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis = axis + x.dims().size();
   }
-  auto indices_type = phi::TransToPhiDataType(dtype);
-  if (indices_type == DataType::INT32) {
+
+  if (dtype == DataType::INT32) {
     phi::funcs::gpu_scatter_add_kernel<T, int32_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
-  } else if (indices_type == DataType::INT64) {
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
+  } else if (dtype == DataType::INT64) {
     phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
-        *x_grad, axis, indices, out_grad, dev_ctx);
+        *x_grad, axis, indices, out_grad, true, dev_ctx);
   }
 }
 

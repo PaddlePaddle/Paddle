@@ -142,7 +142,6 @@ class Uniform(distribution.Distribution):
                 'float64',
             ]:
                 self.dtype = high.dtype
-            # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
             if self.dtype != convert_dtype(self.low.dtype):
                 self.low = paddle.cast(self.low, dtype=self.dtype)

@@ -20,11 +20,7 @@ import paddle
 from paddle import _C_ops
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import (
-    in_dygraph_mode,
-    in_dynamic_or_pir_mode,
-    in_pir_mode,
-)
+from ..base.framework import in_dynamic_or_pir_mode, in_pir_mode
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
 from .creation import _complex_to_real_dtype, assign
@@ -53,7 +49,7 @@ def rank(input):
             >>> print(rank.numpy())
             3
     """
-    check_type(input, 'input', (Variable), 'input')
+    check_type(input, 'input', (Variable, paddle.pir.Value), 'input')
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
 
@@ -167,12 +163,16 @@ def is_complex(x):
             >>> print(paddle.is_complex(x))
             False
     """
-    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_complex_dtype = (
         dtype == core.VarDesc.VarType.COMPLEX64
         or dtype == core.VarDesc.VarType.COMPLEX128
+        or dtype == core.DataType.COMPLEX64
+        or dtype == core.DataType.COMPLEX128
     )
     return is_complex_dtype
 
@@ -300,7 +300,7 @@ def real(x, name=None):
             [[1., 2., 3.],
              [4., 5., 6.]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.real(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
@@ -348,7 +348,7 @@ def imag(x, name=None):
             [[6., 5., 4.],
              [3., 2., 1.]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.imag(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')

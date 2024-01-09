@@ -20,7 +20,7 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
-#include "paddle/phi/core/hostdevice.h"
+#include "paddle/common/hostdevice.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuComplex.h>
 #include <thrust/complex.h>
@@ -73,6 +73,14 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
     real = c.real();
     imag = c.imag();
   }
+
+#if defined(PADDLE_WITH_CCCL)
+  template <typename T1>
+  HOSTDEVICE inline explicit complex(const cuda::std::complex<T1>& c) {
+    real = c.real();
+    imag = c.imag();
+  }
+#endif
 
   template <typename T1>
   HOSTDEVICE inline explicit operator thrust::complex<T1>() const {

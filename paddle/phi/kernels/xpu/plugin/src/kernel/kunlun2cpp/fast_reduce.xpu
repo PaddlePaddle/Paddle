@@ -112,19 +112,18 @@ __global__ void fast_reduce_sum_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
     if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_sum_align16(xlm + j, t);
       }
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
-      primitive_cast<T, float>((T*)xlm, xlm, readlen);
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_sum(xlm + j, t);
       }
-      primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
   }
   return;
 }
@@ -147,19 +146,18 @@ __global__ void fast_reduce_mean_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
     if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_sum_align16(xlm + j, t) / t;
       }
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
-      primitive_cast<T, float>((T*)xlm, xlm, readlen);
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_sum(xlm + j, t) / t;
       }
-      primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
   }
   return;
 }
@@ -182,19 +180,18 @@ __global__ void fast_reduce_max_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
     if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_max_align16(xlm + j, t);
       }
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
-      primitive_cast<T, float>((T*)xlm, xlm, readlen);
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_max(xlm + j, t);
       }
-      primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
   }
   return;
 }
@@ -217,19 +214,18 @@ __global__ void fast_reduce_min_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
     if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_min_align16(xlm + j, t);
       }
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
-      primitive_cast<T, float>((T*)xlm, xlm, readlen);
       for (int j = 0; j < readlen; j += t) {
         ylm[j / t] = do_min(xlm + j, t);
       }
-      primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
-      LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
   }
   return;
 }
@@ -239,12 +235,14 @@ __global__ void fast_reduce_min_tiny(const T* x, T* y, int m, int t) {
       const DTYPE* x, DTYPE* y, int m, int t);
 _XPU_DEF__FAST_REDUCE_SUM_TINY_(float);
 _XPU_DEF__FAST_REDUCE_SUM_TINY_(float16);
+_XPU_DEF__FAST_REDUCE_SUM_TINY_(bfloat16);
 
 #define _XPU_DEF__FAST_REDUCE_MEAN_TINY_(DTYPE)          \
   template __global__ void fast_reduce_mean_tiny<DTYPE>( \
       const DTYPE* x, DTYPE* y, int m, int t);
 _XPU_DEF__FAST_REDUCE_MEAN_TINY_(float);
 _XPU_DEF__FAST_REDUCE_MEAN_TINY_(float16);
+_XPU_DEF__FAST_REDUCE_MEAN_TINY_(bfloat16);
 
 #define _XPU_DEF__FAST_REDUCE_MAX_TINY_(DTYPE)          \
   template __global__ void fast_reduce_max_tiny<DTYPE>( \

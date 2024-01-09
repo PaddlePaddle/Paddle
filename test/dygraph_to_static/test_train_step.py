@@ -17,10 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from dygraph_to_static_util import (
-    enable_fallback_guard,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_pt_only
 
 import paddle
 
@@ -53,7 +50,7 @@ class TinyModel(paddle.nn.Layer):
         return self.layer1(data)
 
 
-class TestTrainStepTinyModel(unittest.TestCase):
+class TestTrainStepTinyModel(Dy2StTestBase):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
@@ -80,14 +77,17 @@ class TestTrainStepTinyModel(unittest.TestCase):
             losses.append(loss)
         return losses
 
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only
+    @test_pt_only
     def test_train_step(self):
         reset_seed()
         dygraph_losses = self.get_train_step_losses(
             self.train_step_func, self.steps
         )
         reset_seed()
-        static_func = paddle.jit.to_static(self.train_step_func)
+        static_func = paddle.jit.to_static(
+            self.train_step_func, full_graph=True
+        )
         static_losses = self.get_train_step_losses(static_func, self.steps)
         self.assertEqual(len(dygraph_losses), len(static_losses))
         for dygraph_loss, static_loss in zip(dygraph_losses, static_losses):
@@ -437,6 +437,22 @@ class TestTrainStepTinyModelLRCyclicLR(TestTrainStepTinyModel):
         self.rtol = 1e-4
 
 
+class TestTrainStepTinyModelCosineAnnealingWarmRestarts(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.lr_creator = partial(
+            paddle.optimizer.lr.CosineAnnealingWarmRestarts,
+            learning_rate=0.5,
+            T_0=1,
+            T_mult=1,
+        )
+        self.optimizer_creator = paddle.optimizer.SGD
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 3
+        self.rtol = 1e-4
+
+
 if __name__ == "__main__":
-    with enable_fallback_guard("False"):
-        unittest.main()
+    unittest.main()

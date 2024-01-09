@@ -27,7 +27,7 @@ void PadKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   std::vector<int> pad_left, pad_right;
-  std::vector<int> xshape = vectorize<int>(x.dims());
+  std::vector<int> xshape = common::vectorize<int>(x.dims());
 
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     pad_left.push_back(paddings[i * 2]);

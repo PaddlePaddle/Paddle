@@ -30,7 +30,7 @@ KernelKey Pad3dGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
     return phi::KernelKey(tensor.place(),
-                          phi::StringToDataLayout(data_format),
+                          common::StringToDataLayout(data_format),
                           expected_kernel_type.dtype());
   }
 #endif

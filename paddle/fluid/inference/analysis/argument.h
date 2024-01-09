@@ -280,6 +280,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_optimization_level,
                       TensorRtOptimizationLevel,
                       int);
+  DECL_ARGUMENT_FIELD(tensorrt_ops_run_float,
+                      TensorRtOpsRunFloat,
+                      std::unordered_set<std::string>);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
@@ -330,6 +333,10 @@ struct Argument {
                       XpuFcAutotuneFileWriteback,
                       bool);
   DECL_ARGUMENT_FIELD(xpu_gemm_compute_precision, XpuGemmComputePrecision, int);
+  using quant_post_type = std::map<std::string, int>;
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_methods,
+                      XpuQuantPostDynamicWeightMethods,
+                      quant_post_type);
   DECL_ARGUMENT_FIELD(xpu_transformer_softmax_optimize_level,
                       XpuTransformerSoftmaxOptimizeLevel,
                       int);

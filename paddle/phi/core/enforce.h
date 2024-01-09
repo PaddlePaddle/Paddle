@@ -11,19 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __GNUC__
-#include <cxxabi.h>  // for __cxa_demangle
-#endif               // __GNUC__
-
-#if !defined(_WIN32)
-#include <dlfcn.h>   // dladdr
-#include <unistd.h>  // sleep, usleep
-#else                // _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#include <windows.h>  // GetModuleFileName, Sleep
-#endif
+#include "paddle/common/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
@@ -51,17 +39,10 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <utility>
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
 #include <execinfo.h>
 #endif
-
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "paddle/phi/core/errors.h"
-
-#include "paddle/utils/string/printf.h"
-#include "paddle/utils/string/to_string.h"
-#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -70,7 +51,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
-
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -82,7 +62,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
-
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
@@ -93,67 +72,12 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
-
-#include "paddle/utils/variant.h"
-
-namespace phi {
-class ErrorSummary;
-}  // namespace phi
-
-namespace phi {
-namespace proto {}  // namespace proto
-}  // namespace phi
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
 
 namespace phi {
 namespace enforce {
-
-/** HELPER MACROS AND FUNCTIONS **/
-#ifndef PADDLE_MAY_THROW
-#define PADDLE_MAY_THROW noexcept(false)
-#endif
-
-// Because most enforce conditions would evaluate to true, we can use
-// __builtin_expect to instruct the C++ compiler to generate code that
-// always forces branch prediction of true.
-// This generates faster binary code. __builtin_expect is since C++11.
-// For more details, please check https://stackoverflow.com/a/43870188/724872.
-#if !defined(_WIN32)
-#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
-#else
-// there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition)
-#endif
-
-#if !defined(_WIN32)
-#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
-#else
-// there is no equivalent intrinsics in msvc.
-#define LIKELY(condition) (condition)
-#endif
-
-#if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
-#define HANDLE_THE_ERROR try {
-#define END_HANDLE_THE_ERROR            \
-  }                                     \
-  catch (const std::exception& e) {     \
-    std::cout << e.what() << std::endl; \
-    throw;                              \
-  }
-#else
-#define HANDLE_THE_ERROR
-#define END_HANDLE_THE_ERROR
-#endif
-
-#ifdef __GNUC__
-inline std::string demangle(std::string name) {
-  int status = -4;  // some arbitrary value to eliminate the compiler warning
-  std::unique_ptr<char, void (*)(void*)> res{
-      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
-  return (status == 0) ? res.get() : name;
-}
-#else
-inline std::string demangle(std::string name) { return name; }
-#endif
 
 namespace details {
 template <typename T>
@@ -229,7 +153,6 @@ struct BinaryCompareMessageConverter<false> {
 }  // namespace details
 
 TEST_API int GetCallStackLevel();
-TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
 TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 
 template <typename StrType>
@@ -257,7 +180,7 @@ std::string GetCompleteTraceBackString(StrType&& what,
   sout << paddle::string::Sprintf(
               "%s (at %s:%d)", std::forward<StrType>(what), file, line)
        << std::endl;
-  return GetCurrentTraceBackString() + sout.str();
+  return ::common::enforce::GetCurrentTraceBackString() + sout.str();
 }
 
 template <typename StrType>
@@ -266,7 +189,8 @@ static std::string GetTraceBackString(StrType&& what,
                                       int line) {
   if (GetCallStackLevel() > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
-    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+    return ::common::enforce::GetCurrentTraceBackString() +
+           GetErrorSumaryString(what, file, line);
   } else {
     return GetErrorSumaryString(what, file, line);
   }
@@ -315,7 +239,7 @@ struct EnforceNotMet : public std::exception {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 
-  EnforceNotMet(const phi::ErrorSummary& error, const char* file, int line)
+  EnforceNotMet(const common::ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
         err_str_(GetTraceBackString(error.to_string(), file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
@@ -329,7 +253,7 @@ struct EnforceNotMet : public std::exception {
     }
   }
 
-  phi::ErrorCode code() const { return code_; }
+  common::ErrorCode code() const { return code_; }
 
   const std::string& error_str() const { return err_str_; }
 
@@ -347,7 +271,7 @@ struct EnforceNotMet : public std::exception {
 
  private:
   // Used to determine the final type of exception thrown
-  phi::ErrorCode code_ = phi::ErrorCode::LEGACY;
+  common::ErrorCode code_ = common::ErrorCode::LEGACY;
   // Complete error message
   // e.g. InvalidArgumentError: ***
   std::string err_str_;
@@ -518,7 +442,7 @@ struct EnforceNotMet : public std::exception {
           "  1. The %s is not the %s of operator %s;\n"                 \
           "  2. The %s has no corresponding variable passed in;\n"      \
           "  3. The %s corresponding variable is not initialized.",     \
-          phi::demangle(                                                \
+          common::demangle(                                             \
               typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
                   .name()),                                             \
           __ROLE,                                                       \
@@ -579,8 +503,8 @@ namespace details {
               "paddle::get failed, cannot get value "                        \
               "(%s) by type %s, its type is %s.",                            \
               expression,                                                    \
-              phi::enforce::demangle(typeid(OutputType).name()),             \
-              phi::enforce::demangle(input.type().name())),                  \
+              common::demangle(typeid(OutputType).name()),                   \
+              common::demangle(input.type().name())),                        \
           file,                                                              \
           line);                                                             \
       END_HANDLE_THE_ERROR                                                   \

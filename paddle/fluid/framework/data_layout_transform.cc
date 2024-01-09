@@ -92,7 +92,7 @@ void TransDataLayout(DataLayout from_layout,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(phi::make_ddim(dst_dim));
+  out->Resize(common::make_ddim(dst_dim));
   out->mutable_data(place, in.dtype());
 
   framework::VisitDataType(

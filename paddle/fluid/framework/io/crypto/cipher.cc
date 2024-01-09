@@ -24,8 +24,8 @@ namespace framework {
 std::shared_ptr<Cipher> CipherFactory::CreateCipher(
     const std::string& config_file) {
   std::string cipher_name;
-  int iv_size;
-  int tag_size;
+  int iv_size = 0;
+  int tag_size = 0;
   std::unordered_map<std::string, std::string> config;
   if (!config_file.empty()) {
     config = CipherUtils::LoadConfig(config_file);

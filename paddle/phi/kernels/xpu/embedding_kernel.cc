@@ -117,4 +117,5 @@ PD_REGISTER_KERNEL(embedding,
                    ALL_LAYOUT,
                    phi::EmbeddingKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

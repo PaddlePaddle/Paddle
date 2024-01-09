@@ -18,15 +18,18 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/type.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace dialect {
 
 using DenseTensorType = pir::DenseTensorType;
-class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
-                                                    pir::Type,
-                                                    SelectedRowsTypeStorage,
-                                                    pir::ShapedTypeInterface> {
+
+class TEST_API SelectedRowsType
+    : public pir::Type::TypeBase<SelectedRowsType,
+                                 pir::Type,
+                                 SelectedRowsTypeStorage,
+                                 pir::ShapedTypeInterface> {
  public:
   using Base::Base;
 
@@ -41,7 +44,20 @@ class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
   const size_t &offset() const;
 };
 
+class DenseTensorArrayType
+    : public pir::Type::TypeBase<DenseTensorArrayType,
+                                 pir::Type,
+                                 DenseTensorArrayTypeStorage> {
+ public:
+  using Base::Base;
+
+  const pir::Type &dtype() const;
+
+  const phi::DataLayout &data_layout() const;
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)

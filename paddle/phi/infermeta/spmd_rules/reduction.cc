@@ -29,8 +29,15 @@ using phi::distributed::auto_parallel::str_join;
 ////////////////// Utils Functions //////////////////
 std::string GetOutputNotation(int input_ndim,
                               const std::string& input_axes,
-                              std::vector<int> reduce_dims,
+                              std::vector<int64_t> reduce_dims,
                               bool keep_dim) {
+  // if input_axes is empty means reduce all
+  if (reduce_dims.empty()) {
+    for (int i = 0; i < input_ndim; ++i) {
+      reduce_dims.emplace_back(i);
+    }
+  }
+
   // convert the negative dim value to normal dim value
   for (auto& reduce_dim : reduce_dims) {
     if (reduce_dim < 0) {
@@ -40,7 +47,7 @@ std::string GetOutputNotation(int input_ndim,
 
   std::string output_axes = "";
   for (int i = 0; i < input_ndim; i++) {
-    std::vector<int>::iterator iter =
+    std::vector<int64_t>::iterator iter =
         std::find(reduce_dims.begin(), reduce_dims.end(), i);
     if (iter != reduce_dims.end()) {
       // if i is reduce dim, the corresponding input axis
@@ -58,11 +65,12 @@ std::string GetOutputNotation(int input_ndim,
   return output_axes;
 }
 
-SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
-                            const std::vector<int>& axis,
-                            bool keep_dim) {
+SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
+                                const std::vector<int64_t>& axis,
+                                bool keep_dim,
+                                int reduce_type) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -95,6 +103,9 @@ SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
+  auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
@@ -102,9 +113,8 @@ SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
   // Step3.1 Output Partial
   std::vector<int64_t> partial_on_dims =
       ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
-  out_dist_attr.set_partial_status(
-      partial_on_dims /*, handle reduce_type in future  */);
-
+  out_dist_attr.set_partial_status(partial_on_dims,
+                                   static_cast<ReduceType>(reduce_type));
   // Step3.2  handle input tensor partial (TODO)
   // If the op is a linear op, i.e. `linearity` is true, it supports
   // the input to be partial. Otherwise, the input cannot be partial
@@ -116,18 +126,55 @@ SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]";
   VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "] "
-          << "partial_on_dims: [" + str_join(partial_on_dims) + "]\n\n";
+          << "partial_on_dims: [" + str_join(partial_on_dims)
+          << " with reduce_type " << reduce_type << "]\n\n";
 
-  return {{x_dist_attr_src}, {out_dist_attr}};
+  return {{x_dist_attr_dst}, {out_dist_attr}};
+}
+
+SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
+                            const std::vector<int64_t>& axis,
+                            bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis, keep_dim, static_cast<int>(ReduceType::kRedSum));
+}
+
+SpmdInfo ReductionMeanInferSpmdDynamic(const DistMetaTensor& x,
+                                       const IntArray& axis,
+                                       bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAvg));
+}
+
+SpmdInfo ReductionSumInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      DataType dtype,
+                                      bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedSum));
+}
+
+SpmdInfo ReductionMaxInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedMax));
+}
+
+SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAll));
 }
 
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
-                                   const std::vector<int>& axis,
+                                   const std::vector<int64_t>& axis,
                                    bool keep_dim) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto out_shape = phi::vectorize(out.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
@@ -159,7 +206,7 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
 
   // initialize input dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
-  TensorDistAttr x_dist_attr_dst(x.dist_attr());
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
   // Step3: handle partial (TODO)
@@ -172,6 +219,69 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
   return {{x_dist_attr_dst}, {out_dist_attr_src}};
+}
+
+SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& out_grad,
+                                const IntArray& axis,
+                                bool keep_dim,
+                                bool reduce_all) {
+  TensorDistAttr out_grad_dist_attr = out_grad.dist_attr();
+  out_grad_dist_attr.clean_partial_status();
+  TensorDistAttr x_dist_attr = out_grad_dist_attr;
+  TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
+
+  std::vector<int64_t> x_dim = common::vectorize(x.dims());
+  std::vector<int64_t> out_grad_dim = common::vectorize(out_grad.dims());
+
+  if (x_dim.size() != out_grad_dim.size()) {
+    auto dims_mapping = x_dist_attr.dims_mapping();
+    auto axis_value = axis.GetData();
+
+    for (size_t i = 0; i < axis_value.size(); ++i) {
+      if (axis_value[i] < 0) {
+        axis_value[i] += x_dim.size();
+      }
+    }
+    std::sort(axis_value.begin(), axis_value.end());
+
+    // if the input_axes is empty means to reduce all
+    if (axis_value.empty()) {
+      for (size_t i = 0; i < x_dim.size(); ++i) {
+        axis_value.emplace_back(i);
+      }
+    }
+
+    for (const auto& axis : axis_value) {
+      dims_mapping.insert(dims_mapping.begin() + axis, -1);
+    }
+    x_dist_attr.set_dims_mapping(dims_mapping);
+    x_grad_dist_attr.set_dims_mapping(dims_mapping);
+    x_dist_attr.set_default_dynamic_dims(dims_mapping);
+    x_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
+  }
+
+  return {{x_dist_attr, out_grad_dist_attr}, {x_grad_dist_attr}};
+}
+
+SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& out,
+                                const DistMetaTensor& out_grad,
+                                const IntArray& axis,
+                                bool keep_dim,
+                                bool reduce_all) {
+  SpmdInfo spmd_info =
+      ReductionGradInferSpmd(x, out_grad, axis, keep_dim, reduce_all);
+  // NOTE(zhonghui): dist_attr of max/min out must be changed to Replicate if it
+  // is Partial, Otherwise each shard will generate a gradient and have a
+  // position of 1. But in fact, the gradient of max has only one position that
+  // is 1, and all other positions are zero.
+  TensorDistAttr out_dist_attr = out_grad.dist_attr();
+  if (out_dist_attr.is_partial()) {
+    out_dist_attr.clean_partial_status();
+  }
+  spmd_info.first.insert(spmd_info.first.begin() + 1, out_dist_attr);
+  return spmd_info;
 }
 
 }  // namespace distributed

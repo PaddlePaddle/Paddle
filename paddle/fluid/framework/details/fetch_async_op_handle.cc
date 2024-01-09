@@ -78,8 +78,8 @@ static void CheckTensorAttrs(const phi::DenseTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
-            phi::DataLayoutToString(layout),
-            phi::DataLayoutToString(tensor->layout()),
+            common::DataLayoutToString(layout),
+            common::DataLayoutToString(tensor->layout()),
             offset));
   }
 
@@ -175,7 +175,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   // for 0D tensor, can't concat eath tensor. So stack 0D and concat 1+D tensor
   if (rank == 0) {
     int src_lodtensor_size = static_cast<int>(src_lodtensors.size());
-    new_dim = phi::make_ddim(std::vector<int>({src_lodtensor_size}));
+    new_dim = common::make_ddim(std::vector<int>({src_lodtensor_size}));
   } else {
     bool find_first_dims = false;
     for (auto *t : src_lodtensors) {

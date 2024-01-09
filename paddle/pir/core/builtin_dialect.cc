@@ -46,13 +46,18 @@ void BuiltinDialect::initialize() {
                      DoubleAttribute,
                      PointerAttribute,
                      Int32Attribute,
+                     IndexAttribute,
                      Int64Attribute,
                      ArrayAttribute,
-                     TypeAttribute>();
+                     TypeAttribute,
+                     TensorNameAttribute,
+                     Complex64Attribute,
+                     Complex128Attribute>();
 
   RegisterOps<ModuleOp,
-              GetParameterOp,
+              ParameterOp,
               SetParameterOp,
+              ShadowOutputOp,
               CombineOp,
               SliceOp,
               SplitOp,

@@ -48,6 +48,10 @@ class TEST_API BlockDesc {
 
   int32_t Parent() const { return desc_->parent_idx(); }
 
+  void SetParent(int32_t parent_id) const {
+    return desc_->set_parent_idx(parent_id);
+  }
+
   int32_t ForwardBlockID() const { return desc_->forward_block_idx(); }
 
   VarDesc *Var(const std::string &name_bytes);
@@ -98,7 +102,7 @@ class TEST_API BlockDesc {
 
   void RemoveOpInternal(const OpDesc *op_desc);
 
-  void RemoveVar(const std::string &name) { vars_.erase(name); }
+  void RemoveVar(const std::string &name);
 
   std::vector<OpDesc *> AllOps() const;
 

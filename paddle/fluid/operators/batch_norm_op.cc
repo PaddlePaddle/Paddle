@@ -35,8 +35,6 @@ namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "BatchNorm");
   OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "BatchNorm");
   OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance", "BatchNorm");
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "BatchNorm");
@@ -81,7 +79,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
@@ -118,48 +116,55 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]);
 
-  auto scale_dim = ctx->GetInputDim("Scale");
-  auto bias_dim = ctx->GetInputDim("Bias");
+  if (ctx->HasInput("Scale")) {
+    auto scale_dim = ctx->GetInputDim("Scale");
+    PADDLE_ENFORCE_EQ(
+        scale_dim.size(),
+        1UL,
+        platform::errors::InvalidArgument(
+            "ShapeError: the dimension of scale must equal to 1."
+            "But received: the shape of scale is [%s], the dimension "
+            "of scale is [%d]",
+            scale_dim,
+            scale_dim.size()));
+  }
 
-  PADDLE_ENFORCE_EQ(
-      scale_dim.size(),
-      1UL,
-      platform::errors::InvalidArgument(
-          "ShapeError: the dimension of scale must equal to 1."
-          "But received: the shape of scale is [%s], the dimension "
-          "of scale is [%d]",
-          scale_dim,
-          scale_dim.size()));
-  PADDLE_ENFORCE_EQ(bias_dim.size(),
-                    1UL,
-                    platform::errors::InvalidArgument(
-                        "ShapeError: the dimension of bias must equal to 1."
-                        "But received: the shape of bias is [%s],the dimension "
-                        "of bias is [%d]",
-                        bias_dim,
-                        bias_dim.size()));
+  if (ctx->HasInput("Bias")) {
+    auto bias_dim = ctx->GetInputDim("Bias");
+    PADDLE_ENFORCE_EQ(
+        bias_dim.size(),
+        1UL,
+        platform::errors::InvalidArgument(
+            "ShapeError: the dimension of bias must equal to 1."
+            "But received: the shape of bias is [%s],the dimension "
+            "of bias is [%d]",
+            bias_dim,
+            bias_dim.size()));
+  }
 
   bool check = true;
-  if ((!ctx->IsRuntime()) &&
-      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+  if (!ctx->HasInput("Scale") || !ctx->HasInput("Bias") ||
+      ((!ctx->IsRuntime()) &&
+       (common::product(ctx->GetInputDim("Scale")) <= 0 ||
+        common::product(ctx->GetInputDim("Bias")) <= 0))) {
     check = false;
   }
 
   if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0],
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0],
                       C,
                       platform::errors::InvalidArgument(
                           "ShapeError: the shape of scale must equal to [%d]"
                           "But received: the shape of scale is [%d]",
                           C,
-                          scale_dim[0]));
-    PADDLE_ENFORCE_EQ(bias_dim[0],
+                          ctx->GetInputDim("Scale")[0]));
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0],
                       C,
                       platform::errors::InvalidArgument(
                           "ShapeError: the shape of bias must equal to [%d]"
                           "But received: the shape of bias is [%d]",
                           C,
-                          bias_dim[0]));
+                          ctx->GetInputDim("Bias")[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
   ctx->ShareLoD("X", "Y");
@@ -185,16 +190,20 @@ phi::KernelKey BatchNormOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     bn_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
-      platform::errors::InvalidArgument("Scale input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
-      platform::errors::InvalidArgument("Bias input should be of float type"));
+  if (ctx.HasInput("Scale")) {
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+  }
   PADDLE_ENFORCE_EQ(
       bn_param_type,
       framework::TransToProtoVarType(
@@ -205,7 +214,6 @@ phi::KernelKey BatchNormOp::GetExpectedKernelType(
                         ctx.Input<phi::DenseTensor>("Variance")->dtype()),
                     platform::errors::InvalidArgument(
                         "Variance input should be of float type"));
-
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
@@ -222,7 +230,7 @@ phi::KernelKey BatchNormOp::GetKernelTypeForVar(
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
+    auto dl = common::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
@@ -257,10 +265,12 @@ void BatchNormOpMaker::Make() {
   AddInput("X", "The input tensor");
   AddInput("Scale",
            "Scale is a 1-dimensional tensor of size C "
-           "that is applied to the output");
+           "that is applied to the output")
+      .AsDispensable();
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
-           "that is applied to the output");
+           "that is applied to the output")
+      .AsDispensable();
   AddInput("Mean",
            "The global mean (for training) or "
            "estimated mean (for testing)");
@@ -359,7 +369,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
@@ -409,7 +419,7 @@ phi::KernelKey BatchNormGradOp::GetKernelTypeForVar(
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
+    auto dl = common::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
@@ -501,7 +511,7 @@ void BatchNormDoubleGradOp::InferShape(
 
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
   const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]

@@ -63,24 +63,23 @@ class LarsMomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.base as base
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            paddle.enable_static()
-            np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-            inp = paddle.static.data(
-                name="inp", shape=[2, 2], dtype='float32')
-            out = paddle.static.nn.fc(inp, size=3)
-            out = paddle.sum(out)
-            optimizer = base.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
-            optimizer.minimize(out)
+            >>> paddle.enable_static()
+            >>> np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+            >>> inp = paddle.static.data(
+            ...     name="inp", shape=[2, 2], dtype='float32')
+            >>> out = paddle.static.nn.fc(inp, size=3)
+            >>> out = paddle.sum(out)
+            >>> optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+            >>> optimizer.minimize(out)
 
-            exe = base.Executor(base.CPUPlace())
-            exe.run(base.default_startup_program())
-            exe.run(
-                feed={"inp": np_inp},
-                fetch_list=[out.name])
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> exe.run(
+            ...     feed={"inp": np_inp},
+            ...     fetch_list=[out.name])
     """
     _velocity_acc_str = "velocity"
 

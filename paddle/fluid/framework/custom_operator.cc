@@ -110,7 +110,7 @@ static void RunKernelFunc(
         // tensor here.
         custom_vec_in.emplace_back(paddle::Tensor());
       }
-      kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
+      kernel_ctx.EmplaceBackInputs(custom_vec_in);
     } else {                        // inputs Tensor
       if (ctx.HasInput(in_name)) {  // general Tensor inputs
         auto* x = ctx.Input<phi::DenseTensor>(in_name);
@@ -231,7 +231,7 @@ static void RunKernelFunc(
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
-      kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
+      kernel_ctx.EmplaceBackOutputs(custom_vec_out);
     } else {
       // handle inplace optional outputs = None case
       if (!ctx.HasOutput(out_name)) {
@@ -318,7 +318,7 @@ static void RunKernelFunc(
       }
     }
   } catch (platform::EnforceNotMet& exception) {
-    throw std::move(exception);
+    throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::External("%s", ex.what()));
   } catch (...) {
@@ -434,7 +434,7 @@ static void RunInferShapeFunc(
                        vec_ddim.end(),
                        std::back_inserter(vec_shape),
                        [&](const DDim& ddim) -> std::vector<int64_t> {
-                         return phi::vectorize(ddim);
+                         return common::vectorize(ddim);
                        });
 
       } else {  // optional inputs, `vec_shape` is empty
@@ -450,7 +450,7 @@ static void RunInferShapeFunc(
     } else {
       if (ctx->HasInput(in_name)) {  // general inputs
         auto ddim = ctx->GetInputDim(in_name);
-        input_shapes.emplace_back(phi::vectorize(ddim));
+        input_shapes.emplace_back(common::vectorize(ddim));
       } else {  // optional inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
@@ -582,7 +582,7 @@ static void RunInferShapeFunc(
       } else {
         // Set output dims by the output of InferShapeFn
         ctx->SetOutputDim(out_name,
-                          phi::make_ddim(output_shapes[output_shape_idx++]));
+                          common::make_ddim(output_shapes[output_shape_idx++]));
       }
     }
   }

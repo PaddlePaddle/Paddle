@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/vol2col.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace funcs {
@@ -123,7 +124,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
 
             int64_t col_idx =
                 ((c * output_depth + d) * output_height + h) * output_width + w;
-            int64_t vol_idx;
+            int64_t vol_idx = 0;
             if (data_layout != DataLayout::kNHWC) {
               vol_idx = ((c_in * input_depth + d_pad) * input_height + h_pad) *
                             input_width +
@@ -248,7 +249,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
 
             if (h_pad >= 0 && h_pad < input_height && w_pad >= 0 &&
                 w_pad < input_width && d_pad >= 0 && d_pad < input_depth) {
-              int vol_idx;
+              int vol_idx = 0;
               if (data_layout != DataLayout::kNHWC) {
                 vol_idx = ((cIm * input_depth + d_pad) * input_height + h_pad) *
                               input_width +

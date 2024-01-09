@@ -51,7 +51,7 @@ void TopkKernel(const Context& dev_ctx,
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
 
     return;
   }
@@ -65,7 +65,7 @@ void TopkKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_NOT_NULL(indices_int_data);
 
     const size_t row =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const size_t col = in_dims[in_dims.size() - 1];
     int r = xpu::sorted_topk<XPUType>(dev_ctx.x_context(),
                                       reinterpret_cast<const XPUType*>(in_data),
@@ -131,8 +131,8 @@ void TopkKernel(const Context& dev_ctx,
     int32_t* trans_idx_int32_data =
         RAII_GUARD.alloc_l3_or_gm<int32_t>(out->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(trans_idx_int32_data);
-    const size_t row =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const size_t row = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const size_t col = trans_dims[trans_dims.size() - 1];
 
     // Do top k on transposed input

@@ -21,7 +21,7 @@ import paddle
 from . import _C_ops
 from .base.data_feeder import check_variable_and_dtype
 from .base.layer_helper import LayerHelper
-from .framework import in_dynamic_mode
+from .framework import in_dynamic_or_pir_mode
 from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
 
@@ -913,9 +913,7 @@ def fft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return fftn(x, s, axes, norm, name)
 
@@ -981,9 +979,7 @@ def ifft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return ifftn(x, s, axes, norm, name)
 
@@ -1043,9 +1039,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return rfftn(x, s, axes, norm, name)
 
@@ -1097,9 +1091,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return irfftn(x, s, axes, norm, name)
 
@@ -1144,9 +1136,7 @@ def hfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return hfftn(x, s, axes, norm, name)
 
@@ -1205,9 +1195,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".format(
-                    axes
-                )
+                f"Invalid FFT argument axes ({axes}), it should be a sequence of 2 integers."
             )
     return ihfftn(x, s, axes, norm, name)
 
@@ -1416,7 +1404,7 @@ def fft_c2c(x, n, axis, norm, forward, name):
         s = [n]
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
@@ -1447,7 +1435,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         _check_fft_n(n)
         s = [n]
         x = _resize_fft_input(x, s, axes)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
         op_type = 'fft_r2c'
@@ -1490,7 +1478,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
         s = [n // 2 + 1]
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if n is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, n)
         else:
@@ -1549,7 +1537,7 @@ def fftn_c2c(x, s, axes, norm, forward, name):
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
@@ -1599,7 +1587,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
         op_type = 'fft_r2c'
@@ -1663,7 +1651,7 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         fft_input_shape[-1] = fft_input_shape[-1] // 2 + 1
         x = _resize_fft_input(x, fft_input_shape, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if s is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, s[-1])
         else:

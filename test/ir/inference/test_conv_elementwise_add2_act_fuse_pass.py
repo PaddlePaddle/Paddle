@@ -45,7 +45,7 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, ["conv2d_fusion"], (1e-4, 1e-5)
+        yield config, ["fused_conv2d_add_act"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]
@@ -190,7 +190,7 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
                 )
             )
 
-            # 9. Generate legal elemntwise_add: X of conv2d
+            # 9. Generate legal elementwise_add: X of conv2d
             bias_2_dict = {}
             bias_2_dict[1] = [
                 x_shape[0],

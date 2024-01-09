@@ -21,26 +21,37 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace ast_gen_ius {
 
 TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
-  std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
-
-  for (auto& tensor : tensors) {
+  for (const ir::Tensor& tensor : tensors) {
     output_tensor_names_.insert(tensor->name);
-    std::set<ir::Expr> used_tensors = ir::ir_utils::CollectIRNodes(
-        tensor->body(), [](const Expr* x) { return x->as_tensor(); });
-    for (const Expr& x : used_tensors) {
-      const ir::Tensor to_dep = x.as_tensor_ref();
-      all_tensors.insert(to_dep);
-      this->CtrlDepend(tensor, to_dep);
-    }
+    this->Insert(tensor);
   }
+}
 
-  for (const ir::Tensor& t : all_tensors) {
-    name_to_tensor_.insert({t->name, t});
+void TensorGroup::ShowLog() const {
+  VLOG(6) << "Showing log for TensorGroup";
+  for (auto& p : name_to_tensor_) {
+    VLOG(6) << "Tensor name = " << p.first << " depends on {";
+    if (ctrl_dep_.count(p.first)) {
+      for (auto& dep_name : ctrl_dep_.at(p.first)) {
+        VLOG(6) << dep_name;
+      }
+    }
+    VLOG(6) << "}";
+  }
+}
+
+TensorGroup::TensorGroup(
+    const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
+  for (const auto& map_pair : tensor_map) {
+    const ir::Tensor& tensor = map_pair.second;
+    output_tensor_names_.insert(tensor->name);
+    this->Insert(tensor);
   }
 }
 
@@ -51,7 +62,23 @@ bool TensorGroup::Contain(const std::string& name) const {
 }
 
 void TensorGroup::Insert(const ir::Tensor& tensor) {
-  name_to_tensor_.insert({tensor->name, tensor});
+  if (!name_to_tensor_.count(tensor->name)) {
+    name_to_tensor_.insert({tensor->name, tensor});
+  }
+
+  // Using set to de-duplicate
+  std::set<ir::Tensor> dep_tensors;
+  std::set<ir::Expr> used_tensors = ir::ir_utils::CollectIRNodes(
+      tensor->body(), [](const Expr* x) { return x->as_tensor(); });
+  for (const Expr& x : used_tensors) {
+    const ir::Tensor to_dep = x.as_tensor_ref();
+    dep_tensors.insert(to_dep);
+    this->CtrlDepend(tensor, to_dep);
+  }
+
+  for (const ir::Tensor& t : dep_tensors) {
+    this->Insert(t);
+  }
 }
 
 ir::Tensor TensorGroup::Get(const std::string& name) {
@@ -72,6 +99,8 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   for (const auto& dep_pair : ctrl_dep_) {
     const std::unordered_set<std::string>& dep_tensor_names = dep_pair.second;
     in_degree[dep_pair.first] = dep_tensor_names.size();
+    VLOG(6) << "indegree[" << dep_pair.first
+            << "] = " << dep_tensor_names.size();
   }
 
   std::vector<ir::Tensor> ret;
@@ -95,7 +124,6 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   while (!node_set.empty()) {
     const std::string cur = *(node_set.begin());
     node_set.erase(node_set.begin());
-
     if (!input_arg_names.count(cur)) {
       ret.push_back(name_to_tensor_[cur]);
     }
@@ -185,6 +213,46 @@ absl::flat_hash_map<std::string, ir::Tensor> TensorGroup::AllocateBuffers() {
   }
 
   return name_to_tensor_;
+}
+
+void StageMapShareMemory(const poly::StageMap& stages) {
+  absl::flat_hash_map<std::string, ir::_Tensor_*> tensor_map;
+  for (auto& stage : stages) {
+    tensor_map[stage.second->tensor()->name] = stage.second->tensor();
+  }
+  for (auto& stage : stages) {
+    if (!stage.second->tensor()->buffer.defined() &&
+        !stage.second->meta.tensors_to_share_buffer_with.empty()) {
+      for (auto& str : stage.second->meta.tensors_to_share_buffer_with) {
+        if (tensor_map[str]->buffer.defined()) {
+          auto edited_shape = tensor_map[str]->buffer->shape;
+          stage.second->tensor()->Bind(tensor_map[str]->buffer);
+          tensor_map[str]->buffer->shape = edited_shape;
+          VLOG(3) << "Stage Tensor " << stage.second->tensor()->name
+                  << " bind buffer to " << tensor_map[str]->name << " , "
+                  << tensor_map[str]->buffer->name;
+        }
+      }
+    }
+  }
+}
+
+TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map) {
+  std::vector<ir::Tensor> stage_tensors;
+  std::set<ir::Tensor> reshape_tensors;
+  for (auto iter = stage_map.begin(); iter != stage_map.end(); ++iter) {
+    if (iter->second->has_expression()) {
+      const std::string& tensor_name = iter->first;
+      stage_tensors.push_back(ir::Tensor(iter->second->tensor()));
+      if (utils::Endswith(tensor_name, "_reshape")) {
+        reshape_tensors.insert(ir::Tensor(iter->second->tensor()));
+      }
+    }
+  }
+
+  ast_gen_ius::TensorGroup tensor_group(stage_tensors);
+  StageMapShareMemory(stage_map);
+  return tensor_group;
 }
 
 }  // namespace ast_gen_ius

@@ -317,7 +317,7 @@ Ort::Value ONNXRuntimePredictor::GetOrtValue(const ONNXDesc &desc,
   size_t size =
       tensor->numel() *
       framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));
-  std::vector<int64_t> shape = phi::vectorize<int64_t>(tensor->dims());
+  std::vector<int64_t> shape = common::vectorize<int64_t>(tensor->dims());
   return Ort::Value::CreateTensor(memory_info,
                                   static_cast<void *>(tensor->data()),
                                   size,
@@ -333,7 +333,7 @@ bool ONNXRuntimePredictor::Run(const std::vector<PaddleTensor> &inputs,
   return false;
 }
 
-bool ONNXRuntimePredictor::ZeroCopyRun() {
+bool ONNXRuntimePredictor::ZeroCopyRun(bool switch_stream) {
   try {
     const char *device_name = platform::is_cpu_place(place_) ? "Cpu" : "Cuda";
     std::vector<Ort::Value> inputs;

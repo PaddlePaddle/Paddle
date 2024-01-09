@@ -419,16 +419,31 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
         Node* w_node = FindNodeWithName(graph, w_name);
         Node* w_intx = nullptr;
         Node* w_max = nullptr;
+        Node* scale_max = nullptr;
         PADDLE_ENFORCE_NE(
             w_node,
             nullptr,
             platform::errors::Fatal("w node should not be nullptr"));
         if (quant_post_dynamic_weight_precision == 0) {
-          PrepareWeight<int8_t>(
-              graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
+          PrepareWeight<float, int8_t>(graph,
+                                       scope,
+                                       block,
+                                       w_node,
+                                       &w_intx,
+                                       &w_max,
+                                       &scale_max,
+                                       need_transpose,
+                                       std::vector<float>({}));
         } else {
-          PrepareWeight<int16_t>(
-              graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
+          PrepareWeight<float, int16_t>(graph,
+                                        scope,
+                                        block,
+                                        w_node,
+                                        &w_intx,
+                                        &w_max,
+                                        &scale_max,
+                                        need_transpose,
+                                        std::vector<float>({}));
         }
         w_nodes->push_back(w_node);
         w_intx_nodes->push_back(w_intx);
@@ -551,7 +566,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
       // Update dst var_desc in block
       VarDesc dst_desc(max_buffer_name);
       dst_desc.SetPersistable(true);
-      dst_desc.SetShape(vectorize(max_buffer_tensor.dims()));
+      dst_desc.SetShape(common::vectorize(max_buffer_tensor.dims()));
       dst_desc.SetDataType(
           framework::TransToProtoVarType(max_buffer_tensor.dtype()));
       max_buffer_node = graph->CreateVarNode(&dst_desc);

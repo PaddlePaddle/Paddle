@@ -45,6 +45,23 @@ std::vector<Tensor> add_n_grad<LazyTensor>(const std::vector<Tensor>& x,
   return x_grad;
 }
 
+template <>
+Tensor embedding_grad<LazyTensor>(const Tensor& x,
+                                  const Tensor& weight,
+                                  const Tensor& out_grad,
+                                  int64_t padding_idx,
+                                  bool sparse) {
+  pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
+  pir::Value weight_res =
+      std::static_pointer_cast<LazyTensor>(weight.impl())->value();
+  pir::Value out_grad_res =
+      std::static_pointer_cast<LazyTensor>(out_grad.impl())->value();
+  auto op_res = paddle::dialect::embedding_grad(
+      x_res, weight_res, out_grad_res, padding_idx, sparse);
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+  return out;
+}
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

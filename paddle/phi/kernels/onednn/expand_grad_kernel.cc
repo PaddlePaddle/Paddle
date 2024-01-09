@@ -26,8 +26,8 @@ void ExpandGradKernel(const Context& dev_ctx,
                       DenseTensor* in_grad) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto in_grad_vec_dims = vectorize(in_grad->dims());
-  auto out_grad_vec_dims = vectorize(out_grad.dims());
+  auto in_grad_vec_dims = common::vectorize(in_grad->dims());
+  auto out_grad_vec_dims = common::vectorize(out_grad.dims());
 
   if (in_grad_vec_dims.size() != out_grad_vec_dims.size()) {
     in_grad_vec_dims.insert(in_grad_vec_dims.begin(),
@@ -81,9 +81,10 @@ void ExpandGradKernel(const Context& dev_ctx,
     reduction_p->execute(astream, reduction_args);
     astream.wait();
     in_grad->set_layout(DataLayout::ONEDNN);
-    const auto in_grad_md_dims = in_grad->dims().size() != 0
-                                     ? vectorize<int64_t>(in_grad->dims())
-                                     : std::vector<int64_t>{1};
+    const auto in_grad_md_dims =
+        in_grad->dims().size() != 0
+            ? common::vectorize<int64_t>(in_grad->dims())
+            : std::vector<int64_t>{1};
     in_grad->set_mem_desc(dst_memory_p->get_desc().reshape(in_grad_md_dims));
   }
 }

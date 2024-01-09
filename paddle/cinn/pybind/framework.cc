@@ -51,15 +51,15 @@ void BindFramework(pybind11::module *m) {
               const std::vector<ir::Tensor> &inputs,
               const std::vector<Type> &out_types,
               const std::vector<std::vector<int>> &output_shapes,
-              const common::Target &target) {
+              const cinn::common::Target &target) {
              const Operator *op_ptr = Operator::Get(key);
              auto impl = OpStrategy::SelectImpl(
                  self[op_ptr](attrs, inputs, out_types, output_shapes, target));
-             std::vector<common::CINNValue> temp_inputs;
+             std::vector<cinn::common::CINNValue> temp_inputs;
              std::vector<ir::Tensor> res;
              for (auto &tensor : inputs) {
                res.push_back(tensor);
-               temp_inputs.push_back(common::CINNValue(tensor));
+               temp_inputs.push_back(cinn::common::CINNValue(tensor));
              }
 
              ir::LoweredFunc func;
@@ -73,7 +73,7 @@ void BindFramework(pybind11::module *m) {
              std::vector<ir::LoweredFunc> funcs =
                  hlir::framework::GetFuncFromImpl(
                      impl,
-                     common::CINNValuePack{temp_inputs},
+                     cinn::common::CINNValuePack{temp_inputs},
                      res,
                      input_output_names,
                      key,
@@ -114,7 +114,7 @@ void BindFramework(pybind11::module *m) {
       .def("get_tensor",
            [](Scope &self, const std::string &name, const Target &target) {
              auto t = self.GetTensor(name);
-             py::dtype dt(common::Type2Str(t->type()));
+             py::dtype dt(cinn::common::Type2Str(t->type()));
              py::array::ShapeContainer shape(t->shape().data().begin(),
                                              t->shape().data().end());
              py::array array(std::move(dt), std::move(shape));
@@ -140,8 +140,10 @@ void BindFramework(pybind11::module *m) {
            })
       .def("var_names", &Scope::var_names);
 
-  py::class_<common::Shared<hlir::framework::_Tensor_>>(*m, "SharedTensor");
-  py::class_<Tensor, common::Shared<hlir::framework::_Tensor_>>(*m, "Tensor")
+  py::class_<cinn::common::Shared<hlir::framework::_Tensor_>>(*m,
+                                                              "SharedTensor");
+  py::class_<Tensor, cinn::common::Shared<hlir::framework::_Tensor_>>(*m,
+                                                                      "Tensor")
       .def(py::init<>())
       .def("shape",
            [](hlir::framework::Tensor &self) { return self->shape().data(); })
@@ -151,8 +153,9 @@ void BindFramework(pybind11::module *m) {
            })
       .def(
           "numpy",
-          [](hlir::framework::Tensor &self, const common::Target &target) {
-            std::string type_str = common::Type2Str(self->type());
+          [](hlir::framework::Tensor &self,
+             const cinn::common::Target &target) {
+            std::string type_str = cinn::common::Type2Str(self->type());
             if (type_str == "bfloat16") {
               type_str = "uint16";
             }
@@ -183,8 +186,9 @@ void BindFramework(pybind11::module *m) {
           "from_numpy",
           [](hlir::framework::Tensor &self,
              py::array array,
-             const common::Target &target) {
-            CHECK(array.dtype().is(py::dtype(common::Type2Str(self->type()))))
+             const cinn::common::Target &target) {
+            CHECK(array.dtype().is(
+                py::dtype(cinn::common::Type2Str(self->type()))))
                 << "currently only support float32 data type as input";
             hlir::framework::shape_t shape;
             std::copy_n(array.shape(), array.ndim(), std::back_inserter(shape));
