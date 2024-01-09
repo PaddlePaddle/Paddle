@@ -17,13 +17,13 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
 namespace sparse {
-
 __global__ void TransposeCooCudaKernel(const int64_t *x_indices_data,
                                        const int *perm,
                                        const std::size_t n_dim,
@@ -36,39 +36,38 @@ __global__ void TransposeCooCudaKernel(const int64_t *x_indices_data,
   }
 }
 
-template <typename T>
-__global__ void TransposeCsr2DCudaKernel(const int64_t *x_crows_data,
-                                         const int64_t *x_cols_data,
+template <typename T, typename IntT>
+__global__ void TransposeCsr2DCudaKernel(const IntT *x_crows_data,
+                                         const IntT *x_cols_data,
                                          const T *x_values_data,
                                          const int *perm,
-                                         const int64_t *x_dims,
-                                         const int64_t *out_dims,
-                                         const int64_t x_nnz,
-                                         int64_t *out_crows_data,
-                                         int64_t *out_cols_data,
+                                         const IntT *x_dims,
+                                         const IntT *out_dims,
+                                         const IntT x_nnz,
+                                         IntT *out_crows_data,
+                                         IntT *out_cols_data,
                                          T *out_values_data) {
-  int64_t __index__ =
-      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IntT __index__ = static_cast<IntT>(blockIdx.x) * blockDim.x + threadIdx.x;
   // compute out_crows_data by x_cols_data
-  for (int64_t i = __index__; i <= out_dims[0]; i += blockDim.x * gridDim.x) {
+  for (IntT i = __index__; i <= out_dims[0]; i += blockDim.x * gridDim.x) {
     out_crows_data[i] = 0;
   }
   __syncthreads();
   if (__index__ == 0) {
-    for (int64_t i = 0; i < x_nnz; ++i) {
+    for (IntT i = 0; i < x_nnz; ++i) {
       int j = x_cols_data[i];
       out_crows_data[j + 2]++;
     }
-    for (int64_t i = 0; i < out_dims[0]; i += 1) {
+    for (IntT i = 0; i < out_dims[0]; i += 1) {
       out_crows_data[i + 1] += out_crows_data[i];
     }
     // compute out_cols_data and out_values_data by out_crows_data and x
     for (int i = 0; i < x_dims[0]; ++i) {
-      int64_t start = x_crows_data[i];
-      int64_t end = x_crows_data[i + 1];
-      for (int64_t j = start; j < end; ++j) {
-        int64_t x_cols_j = x_cols_data[j] + 1;
-        int64_t jjj = out_crows_data[x_cols_j];
+      IntT start = x_crows_data[i];
+      IntT end = x_crows_data[i + 1];
+      for (IntT j = start; j < end; ++j) {
+        IntT x_cols_j = x_cols_data[j] + 1;
+        IntT jjj = out_crows_data[x_cols_j];
         out_cols_data[jjj] = i;
         out_values_data[jjj] = x_values_data[j];
         out_crows_data[x_cols_j]++;
@@ -77,20 +76,19 @@ __global__ void TransposeCsr2DCudaKernel(const int64_t *x_crows_data,
   }
 }
 
-template <typename T>
-__global__ void TransposeCsr3DCudaKernel(const int64_t *x_crows_data,
-                                         const int64_t *x_cols_data,
+template <typename T, typename IntT>
+__global__ void TransposeCsr3DCudaKernel(const IntT *x_crows_data,
+                                         const IntT *x_cols_data,
                                          const T *x_values_data,
                                          const int *perm,
-                                         const int64_t *x_dims,
-                                         const int64_t *out_dims,
+                                         const IntT *x_dims,
+                                         const IntT *out_dims,
                                          const std::size_t n_dim,
-                                         const int64_t x_nnz,
-                                         int64_t *out_crows_data,
-                                         int64_t *out_cols_data,
+                                         const IntT x_nnz,
+                                         IntT *out_crows_data,
+                                         IntT *out_cols_data,
                                          T *out_values_data) {
-  int64_t __index__ =
-      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IntT __index__ = static_cast<IntT>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (__index__ == 0) {
     int out_n_rows = out_dims[1];
     int x_n_rows = x_dims[1];
@@ -109,11 +107,11 @@ __global__ void TransposeCsr3DCudaKernel(const int64_t *x_crows_data,
         }
         // compute out_cols_data and out_values_data by out_crows_data and x
         for (int i = 0; i < x_n_rows; ++i) {
-          int64_t start = x_crows_data[i];
-          int64_t end = x_crows_data[i + 1];
-          for (int64_t j = start; j < end; ++j) {
-            int64_t x_cols_j = x_cols_data[j] + 1;
-            int64_t jjj = out_crows_data[x_cols_j];
+          IntT start = x_crows_data[i];
+          IntT end = x_crows_data[i + 1];
+          for (IntT j = start; j < end; ++j) {
+            IntT x_cols_j = x_cols_data[j] + 1;
+            IntT jjj = out_crows_data[x_cols_j];
             out_cols_data[jjj] = i;
             out_values_data[jjj] = x_values_data[j];
             out_crows_data[x_cols_j]++;
@@ -192,11 +190,11 @@ void TransposeCooKernel(const Context &dev_ctx,
       x_indices_data, d_perm, n_dim, x_nnz, out_indices_data);
 }
 
-template <typename T, typename Context>
-void TransposeCsrKernel(const Context &dev_ctx,
-                        const SparseCsrTensor &x,
-                        const std::vector<int> &perm,
-                        SparseCsrTensor *out) {
+template <typename T, typename Context, typename IntT>
+void TransposeCsrImpl(const Context &dev_ctx,
+                      const SparseCsrTensor &x,
+                      const std::vector<int> &perm,
+                      SparseCsrTensor *out) {
   std::size_t n_dim = perm.size();
   const DenseTensor &x_crows = x.crows();
   const DenseTensor &x_cols = x.cols();
@@ -213,12 +211,12 @@ void TransposeCsrKernel(const Context &dev_ctx,
   // create out sparse tensor
   DDim out_dims = x.dims().transpose(perm);
   if (n_dim == 2) {
-    out_crows = Empty<int64_t, Context>(dev_ctx, {out_dims[0] + 1});
+    out_crows = Empty<IntT, Context>(dev_ctx, {out_dims[0] + 1});
   } else {
     out_crows =
-        Empty<int64_t, Context>(dev_ctx, {out_dims[0] * (out_dims[1] + 1)});
+        Empty<IntT, Context>(dev_ctx, {out_dims[0] * (out_dims[1] + 1)});
   }
-  out_cols = EmptyLike<int64_t, Context>(dev_ctx, x.cols());
+  out_cols = EmptyLike<IntT, Context>(dev_ctx, x.cols());
   out_values = EmptyLike<T, Context>(dev_ctx, x.values());
   out->SetMember(out_crows, out_cols, out_values, out_dims);
   // transpose by two stages
@@ -238,14 +236,14 @@ void TransposeCsrKernel(const Context &dev_ctx,
     TransposeCsrKernel<T, Context>(dev_ctx, temp, {2, 0, 1}, out);
     return;
   }
-  int64_t *out_crows_data = out_crows.data<int64_t>();
-  int64_t *out_cols_data = out_cols.data<int64_t>();
+  IntT *out_crows_data = out_crows.data<IntT>();
+  IntT *out_cols_data = out_cols.data<IntT>();
   T *out_values_data = out_values.data<T>();
-  const int64_t *x_crows_data = x_crows.data<int64_t>();
-  const int64_t *x_cols_data = x_cols.data<int64_t>();
+  const IntT *x_crows_data = x_crows.data<IntT>();
+  const IntT *x_cols_data = x_cols.data<IntT>();
   const T *x_values_data = x_values.data<T>();
   int *d_perm;
-  int64_t *d_x_dims, *d_out_dims;
+  IntT *d_x_dims, *d_out_dims;
 
   auto d_perm_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
@@ -260,58 +258,71 @@ void TransposeCsrKernel(const Context &dev_ctx,
                      dev_ctx.stream());
   auto d_x_dims_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
-      sizeof(int64_t) * x.dims().size(),
+      sizeof(IntT) * x.dims().size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  d_x_dims = reinterpret_cast<int64_t *>(d_x_dims_tensor->ptr());
+  d_x_dims = reinterpret_cast<IntT *>(d_x_dims_tensor->ptr());
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_x_dims,
                      phi::CPUPlace(),
                      x.dims().Get(),
-                     sizeof(int64_t) * x.dims().size(),
+                     sizeof(IntT) * x.dims().size(),
                      dev_ctx.stream());
   auto d_out_dims_tensor = memory_utils::Alloc(
       dev_ctx.GetPlace(),
-      sizeof(int64_t) * out_dims.size(),
+      sizeof(IntT) * out_dims.size(),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  d_out_dims = reinterpret_cast<int64_t *>(d_out_dims_tensor->ptr());
+  d_out_dims = reinterpret_cast<IntT *>(d_out_dims_tensor->ptr());
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_out_dims,
                      phi::CPUPlace(),
                      out_dims.Get(),
-                     sizeof(int64_t) * out_dims.size(),
+                     sizeof(IntT) * out_dims.size(),
                      dev_ctx.stream());
 
-  int64_t x_nnz = x.nnz();
+  IntT x_nnz = static_cast<IntT>(x.nnz());
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_dims[0], 1);
   if (perm.size() == 2) {
-    TransposeCsr2DCudaKernel<T><<<config.block_per_grid.x,
-                                  config.thread_per_block.x,
-                                  0,
-                                  dev_ctx.stream()>>>(x_crows_data,
-                                                      x_cols_data,
-                                                      x_values_data,
-                                                      d_perm,
-                                                      d_x_dims,
-                                                      d_out_dims,
-                                                      x_nnz,
-                                                      out_crows_data,
-                                                      out_cols_data,
-                                                      out_values_data);
+    TransposeCsr2DCudaKernel<T, IntT><<<config.block_per_grid.x,
+                                        config.thread_per_block.x,
+                                        0,
+                                        dev_ctx.stream()>>>(x_crows_data,
+                                                            x_cols_data,
+                                                            x_values_data,
+                                                            d_perm,
+                                                            d_x_dims,
+                                                            d_out_dims,
+                                                            x_nnz,
+                                                            out_crows_data,
+                                                            out_cols_data,
+                                                            out_values_data);
   } else {
-    TransposeCsr3DCudaKernel<T><<<1, 1, 0, dev_ctx.stream()>>>(x_crows_data,
-                                                               x_cols_data,
-                                                               x_values_data,
-                                                               d_perm,
-                                                               d_x_dims,
-                                                               d_out_dims,
-                                                               perm.size(),
-                                                               x_nnz,
-                                                               out_crows_data,
-                                                               out_cols_data,
-                                                               out_values_data);
+    TransposeCsr3DCudaKernel<T, IntT>
+        <<<1, 1, 0, dev_ctx.stream()>>>(x_crows_data,
+                                        x_cols_data,
+                                        x_values_data,
+                                        d_perm,
+                                        d_x_dims,
+                                        d_out_dims,
+                                        perm.size(),
+                                        x_nnz,
+                                        out_crows_data,
+                                        out_cols_data,
+                                        out_values_data);
   }
 }
+
+template <typename T, typename Context>
+void TransposeCsrKernel(const Context &dev_ctx,
+                        const SparseCsrTensor &x,
+                        const std::vector<int> &perm,
+                        SparseCsrTensor *out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.crows().dtype(), "TransposeCsrKernel", ([&] {
+                                 TransposeCsrImpl<T, Context, data_t>(
+                                     dev_ctx, x, perm, out);
+                               }));
+}
+
 }  // namespace sparse
 }  // namespace phi
 

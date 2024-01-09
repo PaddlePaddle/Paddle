@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -116,6 +117,83 @@ void MatmulCsrDenseKernel(const Context& dev_ctx,
                           const DenseTensor& y,
                           DenseTensor* out) {
   MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MatmulCsrCsrKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const SparseCsrTensor& y,
+                        SparseCsrTensor* out) {
+#if CUDA_VERSION >= 11000
+  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
+  auto x_ndims = xdim_vec.size();
+  auto y_ndims = ydim_vec.size();
+  PADDLE_ENFORCE_EQ(
+      x_ndims,
+      y_ndims,
+      phi::errors::PreconditionNotMet("The dims size of Input(x) and Input(y) "
+                                      "should be equal, But received X's "
+                                      "dimensions=%d, Y's dimensions=%d.",
+                                      x_ndims,
+                                      y_ndims));
+  PADDLE_ENFORCE_GE(
+      x_ndims,
+      2,
+      phi::errors::InvalidArgument("the dims size of Input(x) and "
+                                   "Input(y) must be greater than "
+                                   "or eaqual to 2."));
+
+  for (size_t i = 0; i < x_ndims - 2; ++i) {
+    PADDLE_ENFORCE_EQ(xdim_vec[i],
+                      ydim_vec[i],
+                      phi::errors::InvalidArgument(
+                          "x.dim[%d] and x.dim[%d] must be eaqul.", i, i));
+  }
+
+  PADDLE_ENFORCE_GE(
+      xdim_vec[x_ndims - 1],
+      ydim_vec[y_ndims - 2],
+      phi::errors::PreconditionNotMet(
+          "The shape of Input(x) and Input(y) is not suitable for matmul "
+          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+
+  std::vector<int64_t> out_dim_vec = phi::vectorize(out->dims());
+  int batch_size = 1;
+  for (int i = 0; i < out_dim_vec.size() - 2; i++) {
+    batch_size *= out_dim_vec[i];
+  }
+
+  int64_t out_crows_size = batch_size * (xdim_vec[x_ndims - 2] + 1);
+  DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx, {out_crows_size});
+  DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx, {0});
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {0});
+  out->SetMember(out_crows, out_cols, out_values, out->dims());
+
+  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  sparse_blas.SPGEMM(
+      false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
+#else
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "forward of 'sparse.matmul' use cusparseSPGEMM, "
+      "which is supported from CUDA 11.0"));
+#endif
+#endif
+}
+
+template <typename T, typename Context>
+void MatmulCooCooKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const SparseCooTensor& y,
+                        SparseCooTensor* out) {
+  // 'cusparseSPGEMM' only support CSR now, so use COO->CSR->COO,
+  SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
+  SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
+  SparseCsrTensor out_csr;
+  out_csr.set_dims(out->dims());
+  MatmulCsrCsrKernel<T>(dev_ctx, x_csr, y_csr, &out_csr);
+  CsrToCooKernel<T>(dev_ctx, out_csr, out);
 }
 
 template <typename T, typename Context>
@@ -220,6 +298,24 @@ PD_REGISTER_KERNEL(matmul_coo_dense,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(matmul_coo_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCooCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(matmul_csr_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCsrCsrKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(masked_matmul_csr,

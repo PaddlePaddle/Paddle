@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -140,6 +141,75 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void MatmulCsrCsrGradKernel(const Context& dev_ctx,
+                            const SparseCsrTensor& x,
+                            const SparseCsrTensor& y,
+                            const SparseCsrTensor& dout,
+                            SparseCsrTensor* dx,
+                            SparseCsrTensor* dy) {
+#if CUDA_VERSION >= 11030
+  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+
+  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  auto x_ndims = xdim_vec.size();
+  std::vector<int> perm;
+  if (x_ndims == 2) {
+    perm = {1, 0};
+  } else {
+    perm = {0, 2, 1};
+  }
+
+  // dx{SparseCsr} = dout{Dense} * y'{Dense}
+  if (dx) {
+    // InferMeta of SparseCsrTensor 'dx', CreateLikeInferMeta
+    EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
+    // cusparseSPGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
+    SparseCsrTensor trans_y;
+    TransposeCsrKernel<T, Context>(dev_ctx, y, perm, &trans_y);
+
+    sparse_blas.SPGEMM(
+        false, false, static_cast<T>(1), dout, trans_y, static_cast<T>(0), dx);
+  }
+
+  // dy{Dense} = x'{SparseCsr} * dout{Dense}
+  if (dy) {
+    // InferMeta of DenseTensor 'dy'
+    EmptyLikeCsrKernel<T, Context>(dev_ctx, y, dy);
+    SparseCsrTensor trans_x;
+    TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &trans_x);
+
+    sparse_blas.SPGEMM(
+        false, false, static_cast<T>(1), trans_x, dout, static_cast<T>(0), dy);
+  }
+#else
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "backward of 'sparse.matmul' use cusparseSPGEMM, which is supported from "
+      "CUDA 11.3"));
+#endif
+#endif
+}
+
+template <typename T, typename Context>
+void MatmulCooCooGradKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const SparseCooTensor& y,
+                            const SparseCooTensor& dout,
+                            SparseCooTensor* dx,
+                            SparseCooTensor* dy) {
+  // 'cusparseSPGEMM' only support CSR now, so use COO->CSR->COO,
+  SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
+  SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
+  SparseCsrTensor dout_csr = CooToCsr<T, Context>(dev_ctx, dout);
+  SparseCsrTensor dx_csr, dy_csr;
+  dx_csr.set_dims(dx->dims());
+  dy_csr.set_dims(dy->dims());
+  MatmulCsrCsrGradKernel<T>(dev_ctx, x_csr, y_csr, dout_csr, &dx_csr, &dy_csr);
+  CsrToCooKernel<T>(dev_ctx, dx_csr, dx);
+  CsrToCooKernel<T>(dev_ctx, dy_csr, dy);
+}
+
+template <typename T, typename Context>
 void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
@@ -209,6 +279,24 @@ PD_REGISTER_KERNEL(matmul_csr_dense_grad,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+
+PD_REGISTER_KERNEL(matmul_csr_csr_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCsrCsrGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+
+PD_REGISTER_KERNEL(matmul_coo_coo_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCooCooGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
 PD_REGISTER_KERNEL(masked_matmul_csr_grad,
