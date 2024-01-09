@@ -185,6 +185,7 @@ void CastCsrKernel(const Context& dev_ctx,
           dev_ctx, x_crows, index_dtype, out_crows);
     });
 
+    
     phi::MetaTensor cols_meta(out_cols);
     cols_meta.set_dims(x_cols.dims());
     cols_meta.set_dtype(index_dtype);
