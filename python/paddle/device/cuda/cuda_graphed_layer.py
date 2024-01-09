@@ -20,64 +20,56 @@ import paddle
 
 from .graphs import CUDAGraph
 
-# Tensor manipulation functions
 
-
-def clone(x):
-    """Clones a Paddle Tensor, preserving the stop_gradient property."""
-    if isinstance(x, paddle.Tensor):
-        c = x.clone()
-        c.stop_gradient = x.stop_gradient
-        return c
-    return x
-
-
-def detach(input_var):
-    """
-    Detaches a Paddle Tensor or collection of Tensors from the computation graph.
-    It preserves the 'stop_gradient' property for individual tensors.
-
-    Args:
-        input_var (paddle.Tensor | list | tuple | dict): A Paddle Tensor or a collection
-        of Tensors (list, tuple, or dictionary) to be detached from the computation graph.
-
-    Returns:
-        A single detached Tensor or a collection of detached Tensors (matching the input type)
-        with the 'stop_gradient' property preserved.
-    """
-
-    def detach_tensor(tensor):
-        # Detach an individual tensor and preserve its 'stop_gradient' property
-        if isinstance(tensor, paddle.Tensor):
-            detached_tensor = tensor.detach()
-            detached_tensor.stop_gradient = tensor.stop_gradient
-            return detached_tensor
-        return tensor
-
-    # Process input based on its type (Tensor, list, tuple, or dict)
-    if isinstance(input_var, paddle.Tensor):
-        return detach_tensor(input_var)
-    elif isinstance(input_var, list):
-        return [detach_tensor(item) for item in input_var]
+def recurive_apply(function, input_var):
+    if isinstance(input_var, list):
+        return [recurive_apply(function, item) for item in input_var]
     elif isinstance(input_var, tuple):
-        return tuple(detach_tensor(item) for item in input_var)
+        return tuple(recurive_apply(function, item) for item in input_var)
     elif isinstance(input_var, dict):
-        return {key: detach_tensor(value) for key, value in input_var.items()}
+        return {
+            key: recurive_apply(function, value)
+            for key, value in input_var.items()
+        }
+    else:
+        return function(input_var)
 
-    # Return the input as-is if it's not a Tensor or collection of Tensors
-    return input_var
+
+def detach_tensor(tensor):
+    # Detach an individual tensor and preserve its 'stop_gradient' property
+    if isinstance(tensor, paddle.Tensor):
+        detached_tensor = tensor.detach()
+        detached_tensor.stop_gradient = tensor.stop_gradient
+        return detached_tensor
+    return tensor
 
 
-def get_grad(x):
+def recurive_flatten_args(target):
+    ret = []
+
+    def append(arg):
+        if isinstance(arg, paddle.Tensor):
+            if not arg.stop_gradient:
+                ret.append(arg)
+
+    recurive_apply(append, target)
+    return ret
+
+
+detach = lambda x: recurive_apply(detach_tensor, x)
+
+
+def get_grad_tensor(x):
     """Returns the gradient of a Paddle Tensor if it's a tensor; otherwise, returns the input."""
     if isinstance(x, paddle.Tensor):
-        return x.grad
-    return x
+        if x.stop_gradient:
+            return None
+        else:
+            return x.grad
+    return None
 
 
 # CUDA Graph with Static Input and Output
-
-
 class CUDAGraphWithStaticInputOutput:
     def __init__(self, num_warmup_steps):
         self.num_warmup_steps = num_warmup_steps
@@ -155,6 +147,7 @@ class CUDAGraphContext:
         self.backward_graph = CUDAGraphWithStaticInputOutput(
             self.num_warmup_steps
         )
+        self.recorded_grad_tesor = None
 
         # Queue for saved tensors to support 1f1b/interleved scheduler, assuming FIFO order
         self.queue = deque()
@@ -200,91 +193,125 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
     """
 
     @staticmethod
-    def forward(ctx, context, *args, **kwargs):
+    def forward(ctx, context, arg_tuple, require_grads, *grad_inputs):
         """
         Handles the forward pass of the layer. It operates differently based on the
         context's status: warmup, recording, or CUDA graph step.
         """
+        args, kwargs = arg_tuple
         # Detach all inputs from the computational graph
         args = detach(args)
         kwargs = detach(kwargs)
+
+        detached_grad_inputs = [
+            *recurive_flatten_args(args),
+            *recurive_flatten_args(tuple(kwargs.values())),
+        ]
+
         if context.is_warmup_step():
             # In warmup step, perform the operation with gradient tracking
             with paddle.enable_grad():
                 y = context.layer(*args, **kwargs)
-            context.queue_push((CUDAGraphLayerStatus.WARMUP, args, y))
+
+            context.queue_push(
+                (
+                    CUDAGraphLayerStatus.WARMUP,
+                    require_grads,
+                    detached_grad_inputs,
+                    y,
+                )
+            )
             context.warmup_step()
         elif context.is_record_step():
             # In record step, record the forward pass in CUDA graph
-            logging.info(
-                f"{id(context)} FW (cudagraph-record)".center(100, "-")
-            )
+            print(f"{id(context)} FW (cudagraph-record)".center(100, "-"))
 
             def forward(*args, **kwargs):
                 with paddle.enable_grad():
                     return context.layer(*args, **kwargs)
 
             y = context.forward_graph.record(forward, *args, **kwargs)
-            context.queue_push((CUDAGraphLayerStatus.RECORD, args, y))
+
+            context.queue_push(
+                (
+                    CUDAGraphLayerStatus.RECORD,
+                    require_grads,
+                    detached_grad_inputs,
+                    y,
+                )
+            )
             context.record_step()
         else:
             # In CUDA graph step, replay the recorded graph
             y = context.forward_graph.replay(*args, **kwargs)
-            context.queue_push(
-                (
-                    CUDAGraphLayerStatus.CUDAGRAPH,
-                    context.forward_graph.args_static,
-                    y,
-                )
-            )
+            context.queue_push((CUDAGraphLayerStatus.CUDAGRAPH, None, None, y))
 
         ctx.save_for_backward(context)
         return detach(y)
 
     @staticmethod
-    def backward(ctx, dy):
+    def backward(ctx, *dys):
         """
         Handles the backward pass of the layer. Similar to forward, it handles
         backward based on the context's status: warmup, recording, or CUDA graph step.
         """
         (context,) = ctx.saved_tensor()
 
-        status, args, input_var = context.queue_pop()
+        status, require_grads, detached_grad_inputs, ys = context.queue_pop()
 
-        y = None
-        # Check the type of input_var and select an appropriate tensor for the backward operation
-        if isinstance(input_var, paddle.Tensor):
-            y = input_var
-        elif isinstance(input_var, (list, tuple)):
-            for v in input_var:
+        # [TODO] when there is multiple output tensor, we support only one y that allows backward
+        y, dy = None, None
+        if isinstance(ys, paddle.Tensor):
+            y, dy = ys, dys[0]
+        elif isinstance(ys, (list, tuple)):
+            for v, dv in zip(ys, dys):
                 if isinstance(v, paddle.Tensor) and (not v.stop_gradient):
-                    y = v  # Select the first eligible tensor
+                    y, dy = v, dv
                     break
-
-        assert isinstance(y, paddle.Tensor)
+        assert isinstance(y, paddle.Tensor) and isinstance(dy, paddle.Tensor)
 
         if status == CUDAGraphLayerStatus.WARMUP:
             # In warmup step, perform standard backward operation
             y.backward(dy)
-
         elif status == CUDAGraphLayerStatus.RECORD:
             # In record step, record the backward pass in CUDA graph
-            logging.info(
-                f"{id(context)} BW (cudagraph-record)".center(100, "-")
-            )
+            print(f"{id(context)} BW (cudagraph-record)".center(100, "-"))
 
             def backward(y, dy):
                 y.backward(dy)
 
             context.backward_graph.record(backward, y, dy)
             context.backward_record_step()
-        else:
+        elif status == CUDAGraphLayerStatus.CUDAGRAPH:
             # In CUDA graph step, replay the recorded graph for backward pass
             context.backward_graph.replay(y, dy)
+            args_grad = context.recorded_grad_tesor
+        else:
+            raise RuntimeError("Unknown cuda graph status")
 
-        args_grad = tuple(get_grad(x) for x in args)
+        if (
+            status == CUDAGraphLayerStatus.WARMUP
+            or status == CUDAGraphLayerStatus.RECORD
+        ):
+            args_grad = []
+            for require_grad, detached_x in zip(
+                require_grads, detached_grad_inputs
+            ):
+                if require_grad:
+                    if detached_x.grad is None:
+                        args_grad.append(paddle.zeros(detached_x.shape))
+                    else:
+                        args_grad.append(detached_x.grad)
+                else:
+                    args_grad.append(None)
 
-        return args_grad
+        if status == CUDAGraphLayerStatus.RECORD:
+            # preserve the grad and we can get the output of these grad when replay
+            context.recorded_grad_tesor = args_grad
+        elif status == CUDAGraphLayerStatus.CUDAGRAPH:
+            args_grad = context.recorded_grad_tesor
+
+        return tuple(args_grad)
 
 
 class CUDAGraphedLayer(paddle.nn.Layer):
@@ -331,7 +358,15 @@ class CUDAGraphedLayer(paddle.nn.Layer):
         self.add_sublayer(f"Graphed {type(layer).__name__}", layer)
 
     def forward(self, *args, **kwargs):
-        return _CUDAGraphedLayer.apply(self.context, *args, **kwargs)
+        # We collect them into a list of tensor that required grad
+        grad_inputs = [
+            *recurive_flatten_args(args),
+            *recurive_flatten_args(tuple(kwargs.values())),
+        ]
+        require_grads = [not x.stop_gradient for x in grad_inputs]
+        return _CUDAGraphedLayer.apply(
+            self.context, (args, kwargs), require_grads, *grad_inputs
+        )
 
     def is_warmup_step(self):
         return self.context.is_warmup_step()
