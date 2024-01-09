@@ -36,6 +36,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
+    FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
     FusedGemmEpilogueOp::name(),
@@ -59,6 +60,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
+    NceOp::name(),
+    NceGradOp::name(),
     CReduceMinOp::name()};
 
 const std::unordered_set<std::string> OneDNNLegacyOpList = {};

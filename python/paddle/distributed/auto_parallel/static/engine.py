@@ -257,34 +257,21 @@ class Engine:
 
         self.enable_job_schedule_profiler = False
 
-    def _prepare_data_spec(self, data, split, batch_size, collate_fn=None):
+    def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
         labels_spec = []
-
-        def _collate_data(data):
-            data = [data] if not isinstance(data, list) else data
-            return data if collate_fn is None else collate_fn(data)
-
         if isinstance(data, paddle.io.IterableDataset):
             if split is None:
-                inputs, labels = _collate_data(next(iter(data)))
+                inputs, labels = next(iter(data))
             else:
-                sample = _collate_data(next(iter(data)))
+                sample = next(iter(data))
                 inputs = sample[:split]
                 labels = sample[split:]
         elif isinstance(data, paddle.io.Dataset):
             if split is None:
-                if isinstance(data[0], dict):
-                    tuple_data = tuple(_collate_data(data[0]).values())
-                    assert len(tuple_data) >= 1
-                    inputs = tuple_data[0]
-                    labels = (
-                        tuple_data[0] if len(tuple_data) == 1 else tuple_data[1]
-                    )
-                else:
-                    inputs, labels = _collate_data(data[0])
+                inputs, labels = data[0]
             else:
-                sample = _collate_data(data[0])
+                sample = data[0]
                 inputs = sample[:split]
                 labels = sample[split:]
         else:

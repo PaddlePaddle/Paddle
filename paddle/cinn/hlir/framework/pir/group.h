@@ -68,22 +68,22 @@ struct Group {
     // Mapper from original to new ops.
     std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
     ::pir::CloneOptions clone_options(false, true);
-    for (auto* op : this->ops_set) {
+    for (auto* op : ops) {
+      VLOG(4) << "clone op :" << op->name();
       auto* new_op = op->Clone(ir_mapping, clone_options);
-      // NOTE(dev): Must call MoveTo to deal with ownership, otherwise it
+      // NOTE(dev): Must call block.insert to deal with ownership, otherwise it
       // will lead memory-leak.
-      new_op->MoveTo(target_block, target_block->end());
+      target_block->insert(target_block->end(), new_op);
       new_ops.push_back(new_op);
       ops_mapper[op] = new_op;
     }
     // Construct Base information for new Group
     auto new_group = std::make_shared<Group>(new_ops);
-    this->CollectOps();
     for (auto& iter : this->input_ops) {
-      new_group->input_ops[ops_mapper[iter.first]] = iter.second;
+      new_group->input_ops[ops_mapper.at(iter.first)] = iter.second;
     }
     for (auto* op : this->output_ops) {
-      new_group->output_ops.insert(ops_mapper[op]);
+      new_group->output_ops.insert(ops_mapper.at(op));
     }
 
     return new_group;

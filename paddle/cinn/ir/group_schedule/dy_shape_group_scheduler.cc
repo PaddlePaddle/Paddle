@@ -15,65 +15,117 @@
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
 #include "paddle/cinn/ir/group_schedule/tactic/align_iter_space_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 
 namespace cinn {
 namespace ir {
 
 void DynamicShapeGroupScheduler::Init() {
-  schedule_context_.output_names = OutputTensorNames();
-  schedule_context_.global_master = FindGlobalMasterNode();
-  schedule_context_.iter_space_info =
-      ConstructIterSpaceInfo(schedule_context_.global_master);
-  schedule_context_.target = target_;
+  InitBuckets();
   tactics_.emplace_back(new AlignIterSpaceTactic());
+  tactics_.emplace_back(new TileTactic());
   tactics_.emplace_back(new ComputeInlineTactic());
+  tactics_.emplace_back(new BindCudaTactic());
   tactics_.emplace_back(new ArrangeStorageTactic());
 }
 
-void DynamicShapeGroupScheduler::Schedule() {
-  // Fake schedule for test
-  ApplyTactics();
-  std::vector<Expr> all_blocks = ir_sch_->GetAllBlocks();
-  auto block0_loops = ir_sch_->GetLoops(all_blocks[0]);
-  auto splited_loops1 = ir_sch_->Split(block0_loops[0], {1024, -1});
-  ir_sch_->Bind(splited_loops1[0], "threadIdx.x");
-
-  ir::Expr predicate1 = ir::LE::Make(Expr(1023), Expr(1024));
-  std::unique_ptr<ir::IRSchedule> new_ir_sch1 =
-      std::make_unique<ir::IRSchedule>(*ir_sch_);
-  ir_schs_.emplace_back(predicate1, std::move(new_ir_sch1));
+void DynamicShapeGroupScheduler::InitBuckets() {
+  std::unordered_set<std::string> output_names = OutputTensorNames();
+  ir::Expr fake_predicate = ir::LE::Make(Expr(1023), Expr(1024));
+  auto InitBucket = [&](BucketInfo&& bucket_info) {
+    std::unique_ptr<ir::IRSchedule> ir_sch =
+        std::make_unique<ir::IRSchedule>(*ir_sch_);
+    std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph =
+        std::make_unique<ir::ScheduleBlockGraph>(*ir_sch);
+    ir::ScheduleBlockNode* global_master =
+        FindGlobalMasterNode(schedule_block_graph);
+    IterativeSpaceInfo iter_space_info = ConstructIterSpaceInfo(global_master);
+    SymbolicPredicate sp_lower_bound_predicate = ir::GE::Make(
+        iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_lower_bound));
+    SymbolicPredicate sp_upper_bound_predicate = ir::LT::Make(
+        iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_upper_bound));
+    SymbolicPredicate rb_lower_bound_predicate = ir::GE::Make(
+        iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_lower_bound));
+    SymbolicPredicate rb_upper_bound_predicate = ir::LT::Make(
+        iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_upper_bound));
+    SymbolicPredicate sp_predicate =
+        ir::And::Make(sp_lower_bound_predicate, sp_upper_bound_predicate);
+    SymbolicPredicate rb_predicate =
+        ir::And::Make(rb_lower_bound_predicate, rb_upper_bound_predicate);
+    SymbolicPredicate predicate = ir::And::Make(sp_predicate, rb_predicate);
+    ScheduleContext schedule_context{output_names,
+                                     target_,
+                                     std::move(iter_space_info),
+                                     std::move(bucket_info)};
+    BucketContext bucket_context{std::move(predicate),
+                                 std::move(ir_sch),
+                                 std::move(schedule_block_graph),
+                                 std::move(schedule_context)};
+    bucket_contexts_.emplace_back(std::move(bucket_context));
+  };
+  // naive buckets
+  // 1. {sp_extent[1 - 1024], rb_extent[1 - 256]}
+  InitBucket({/* sp_lower_bound = */ 1,
+              /* sp_upper_bound = */ 1024,
+              /* rb_lower_bound = */ 1,
+              /* rb_upper_bound = */ 256});
+  // 2. {sp_extent[1024 - +oo], rb_extent[1 - 256]}
+  InitBucket({/* sp_lower_bound = */ 1024,
+              /* sp_upper_bound = */ INT_MAX,
+              /* rb_lower_bound = */ 1,
+              /* rb_upper_bound = */ 256});
+  // 3. {sp_extent[1 - 1024], rb_extent[256 - +oo]}
+  InitBucket({/* sp_lower_bound = */ 1,
+              /* sp_upper_bound = */ 1024,
+              /* rb_lower_bound = */ 256,
+              /* rb_upper_bound = */ INT_MAX});
+  // 4. {sp_extent[1024 - +oo], rb_extent[256 - +oo]}
+  InitBucket({/* sp_lower_bound = */ 1024,
+              /* sp_upper_bound = */ INT_MAX,
+              /* rb_lower_bound = */ 256,
+              /* rb_upper_bound = */ INT_MAX});
 }
 
-void DynamicShapeGroupScheduler::ApplyTactics() {
-  schedule_block_graph_->Update(*ir_sch_);
+void DynamicShapeGroupScheduler::Schedule() {
+  for (BucketContext& bucket_context : bucket_contexts_) {
+    VLOG(4) << "===========================Apply tactics on Bucket ["
+            << bucket_context.predicate << "]==========================";
+    ApplyTactics(&bucket_context);
+  }
+}
+
+void DynamicShapeGroupScheduler::ApplyTactics(BucketContext* bucket_context) {
+  bucket_context->schedule_block_graph->Update(*(bucket_context->ir_sch));
   for (const auto& tactic : tactics_) {
     VLOG(5) << "[Start " << tactic->TacticName() << "] func body:\n"
-            << ir_sch_->GetModule().GetExprs().front();
+            << bucket_context->ir_sch->GetModule().GetExprs().front();
     auto ApplyTacticFunc = [&](ir::ScheduleBlockNode* node) {
       VLOG(6) << "before applying [" << tactic->TacticName()
               << "] on ScheduleBlockNode [" << node->id() << "] func body:\n"
-              << ir_sch_->GetModule().GetExprs().front();
-      tactic->Init(&schedule_context_);
-      tactic->Apply(ir_sch_, node->id());
+              << bucket_context->ir_sch->GetModule().GetExprs().front();
+      tactic->Apply(bucket_context->ir_sch.get(), node->id());
       VLOG(6) << "after applying [" << tactic->TacticName()
               << "] on ScheduleBlockNode [" << node->id() << "] func body:\n"
-              << ir_sch_->GetModule().GetExprs().front();
+              << bucket_context->ir_sch->GetModule().GetExprs().front();
     };
-    schedule_block_graph_->DFSTopoWalk(ApplyTacticFunc);
-    schedule_block_graph_->Update(*ir_sch_);
-    VLOG(5) << "[End " << tactic->TacticName()
-            << "] func body: " << ir_sch_->GetModule().GetExprs().front();
+    tactic->Init(&(bucket_context->schedule_context));
+    bucket_context->schedule_block_graph->DFSTopoWalk(ApplyTacticFunc);
+    bucket_context->schedule_block_graph->Update(*(bucket_context->ir_sch));
+    VLOG(5) << "[End " << tactic->TacticName() << "] func body: "
+            << bucket_context->ir_sch->GetModule().GetExprs().front();
   }
 }
 
 std::vector<std::pair<SymbolicPredicate, ir::Expr>>
 DynamicShapeGroupScheduler::GetIRs() {
   std::vector<std::pair<SymbolicPredicate, ir::Expr>> irs;
-  for (auto& sch_pair : ir_schs_) {
-    irs.emplace_back(sch_pair.first,
-                     sch_pair.second->GetModule().GetExprs()[0]);
+  for (BucketContext& context : bucket_contexts_) {
+    irs.emplace_back(context.predicate,
+                     context.ir_sch->GetModule().GetExprs()[0]);
   }
   return irs;
 }
@@ -90,12 +142,13 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
   std::vector<ir::Var> iter_vars = block.As<ir::ScheduleBlockRealize>()
                                        ->schedule_block.As<ir::ScheduleBlock>()
                                        ->iter_vars;
-  std::vector<ir::Expr> loops = ir_sch_->GetLoops(block);
+  std::vector<ir::Expr> loops = node->GetLoops();
   std::unordered_set<ir::Var> reduce_iter_vars =
       analyzer::GetReduceIterVars(block);
   std::unordered_map<ir::Var, ir::Expr> iter_var2value =
       analyzer::GetIterVarToValueOfSBlock(block);
 
+  // init iter info
   if (!reduce_iter_vars.empty()) {
     std::set<ir::Expr> reduce_loads = ir::ir_utils::CollectIRNodesWithoutTensor(
         block,
@@ -161,10 +214,25 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
       info.rb_last_order.push_back(i);
     }
   }
+  // init total extents
+  ir::Expr sp_extent = ir::Expr(1);
+  ir::Expr rb_extent = ir::Expr(1);
+  for (const auto& axis : info.sp_space) {
+    const ir::Expr& extent = std::get<0>(axis);
+    sp_extent = sp_extent * extent;
+  }
+  for (const auto& axis : info.rb_space) {
+    const ir::Expr& extent = std::get<0>(axis);
+    rb_extent = rb_extent * extent;
+  }
+  info.total_sp_extent = sp_extent;
+  info.total_rb_extent = rb_extent;
+
   return info;
 }
 
-ir::ScheduleBlockNode* DynamicShapeGroupScheduler::FindGlobalMasterNode() {
+ir::ScheduleBlockNode* DynamicShapeGroupScheduler::FindGlobalMasterNode(
+    const std::unique_ptr<ir::ScheduleBlockGraph>& schedule_block_graph) {
   ir::ScheduleBlockNode* master = nullptr;
   // 1. reduce
   auto FindReduce = [&](ir::ScheduleBlockNode* node) {
@@ -172,7 +240,7 @@ ir::ScheduleBlockNode* DynamicShapeGroupScheduler::FindGlobalMasterNode() {
       master = node;
     }
   };
-  schedule_block_graph_->NodesWalk(FindReduce);
+  schedule_block_graph->NodesWalk(FindReduce);
   if (master != nullptr) {
     VLOG(6) << "Find the global master node: " << master->id();
     return master;
@@ -183,13 +251,13 @@ ir::ScheduleBlockNode* DynamicShapeGroupScheduler::FindGlobalMasterNode() {
       master = node;
     }
   };
-  schedule_block_graph_->NodesWalk(FindBroadcast);
+  schedule_block_graph->NodesWalk(FindBroadcast);
   if (master != nullptr) {
     VLOG(6) << "Find the global master node: " << master->id();
     return master;
   }
   // 3. end point
-  master = schedule_block_graph_->EndPoints().back();
+  master = schedule_block_graph->EndPoints().back();
   VLOG(6) << "Find the global master node: " << master->id();
   return master;
 }

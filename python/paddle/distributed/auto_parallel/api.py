@@ -169,15 +169,16 @@ def shard_tensor(
     place = paddle.framework._get_paddle_place(place)
 
     # 1. create dense tensor
-    # `paddle.to_tensor` supports both dynamic and static mode
     if stop_gradient is None:
         stop_gradient = getattr(data, "stop_gradient", True)
+
     if isinstance(data, EagerParamBase) and not data._is_initialized():
         assert (
             data._init_func is not None
         ), "Get an uninitialized param with an unregistered init_func."
         tensor = data
     else:
+        # `paddle.to_tensor` supports both dynamic and static mode
         tensor = paddle.to_tensor(
             data, dtype=dtype, place=place, stop_gradient=stop_gradient
         )
@@ -195,6 +196,9 @@ def shard_tensor(
 
                 # lazy init hook with randomness controlling
                 def _init_func(var, block):
+                    if dist.get_rank() not in param.process_mesh.process_ids:
+                        # None calc rank, just return no init.
+                        return
                     # get the unique rng name
                     rng_name = determinate_rng(
                         dist.get_rank(),
@@ -1016,6 +1020,12 @@ class DistModel:
     ):
         self._feed_name_list = []
         self._inner_strategy = self.__convert_strategy(strategy)
+        self._structured_to_parameter_name = {
+            k: v.name for k, v in layer.state_dict().items()
+        }
+        self._parameter_to_structured_name = {
+            v: k for k, v in self._structured_to_parameter_name.items()
+        }
         self._engine = Engine(
             layer, loss, optimizer, metrics, strategy=self._inner_strategy
         )
@@ -1026,7 +1036,7 @@ class DistModel:
         batch_size = loader.batch_sampler.batch_size
         if input_spec is None:
             inputs_spec, labels_spec = self._engine._prepare_data_spec(
-                loader.dataset, None, batch_size, collate_fn=loader.collate_fn
+                loader.dataset, None, batch_size
             )
         else:
             assert any(
@@ -1055,22 +1065,28 @@ class DistModel:
                     for spec in labels_spec
                 )
 
-            inputs_spec = self._engine._validate_spec(inputs_spec)
-            labels_spec = self._engine._validate_spec(labels_spec)
-
         if optimizer is not None and loss is not None:
             # get the static graph in train mode
             self._engine.prepare(
-                inputs_spec, labels_spec, mode="train", init_parameters=False
+                copy.deepcopy(inputs_spec),
+                copy.deepcopy(labels_spec),
+                mode="train",
+                init_parameters=False,
             )
         if loss is not None:
             # get the static graph in eval mode
             self._engine.prepare(
-                inputs_spec, labels_spec, mode="eval", init_parameters=False
+                copy.deepcopy(inputs_spec),
+                copy.deepcopy(labels_spec),
+                mode="eval",
+                init_parameters=False,
             )
         # get the static graph in predict mode
         self._engine.prepare(
-            inputs_spec, None, mode="predict", init_parameters=False
+            copy.deepcopy(inputs_spec),
+            None,
+            mode="predict",
+            init_parameters=False,
         )
 
         # set the default mode
@@ -1237,11 +1253,11 @@ class DistModel:
             return None
         inner_strategy = auto_strategy.Strategy()
         inner_strategy.fused_passes.enable = strategy.fused_passes.enable
-        if strategy.fused_passes.gemm_epilogue is True:
+        if getattr(strategy.fused_passes, "gemm_epilogue", False):
             inner_strategy.fused_passes.fused_passes_list.append(
                 "fused_gemm_epilogue_pass"
             )
-        if strategy.fused_passes.dropout_add is True:
+        if getattr(strategy.fused_passes, "dropout_add", False):
             inner_strategy.fused_passes.fused_passes_list.append(
                 "fused_dropout_add_pass"
             )
@@ -1291,6 +1307,15 @@ class DistModel:
             mode=self._engine._mode
         ).state_dict(mode)
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+        mapping_names = [
+            self._parameter_to_structured_name[k]
+            if k in self._parameter_to_structured_name
+            else k
+            for k in dist_state_dict.keys()
+        ]
+        dist_state_dict = dict(
+            zip(mapping_names, list(dist_state_dict.values()))
+        )
         return dist_state_dict
 
     def _build_distributed_state_dict(self, local_state_dict):
@@ -1365,7 +1390,12 @@ class DistModel:
                 ].process_mesh or check_placements_equal(
                     v.placements, cur_v.placements
                 ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} or placements:{v.placements} != {cur_v.placements} not match"
-            local_state_dict[k] = v._local_value()
+            param_name = (
+                self._structured_to_parameter_name[k]
+                if k in self._structured_to_parameter_name
+                else k
+            )
+            local_state_dict[param_name] = v._local_value()
         dist_main_program.set_state_dict(local_state_dict)
 
 
