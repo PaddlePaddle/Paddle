@@ -1641,6 +1641,9 @@ class Executor:
         op.desc._rename_input(var_name.name, out_var.name)
 
     def _process_type_promotion(self, program):
+        # not support pir for now
+        if not isinstance(program, Program):
+            return
         global_block = program.global_block()
         all_params = global_block.all_parameters()
         for block in program.blocks:
@@ -1841,9 +1844,6 @@ class Executor:
             ]
             self._log_force_set_program_cache(use_program_cache)
 
-        # do type promotion if necessary
-        self._process_type_promotion(self, program)
-
         if in_pir_mode():
             res = self._run_pir_impl(
                 program=program,
@@ -1855,6 +1855,8 @@ class Executor:
                 return_numpy=return_numpy,
             )
         else:
+            # do type promotion if necessary
+            self._process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,
