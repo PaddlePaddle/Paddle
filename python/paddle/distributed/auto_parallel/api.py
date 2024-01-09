@@ -1010,6 +1010,7 @@ class DistModel:
         loader,
         loss=None,
         optimizer=None,
+        input_spec=None,
         strategy=None,
         metrics=None,
     ):
@@ -1023,9 +1024,39 @@ class DistModel:
 
         # convert dygraph model to static model
         batch_size = loader.batch_sampler.batch_size
-        inputs_spec, labels_spec = self._engine._prepare_data_spec(
-            loader.dataset, None, batch_size
-        )
+        if input_spec is None:
+            inputs_spec, labels_spec = self._engine._prepare_data_spec(
+                loader.dataset, None, batch_size, collate_fn=loader.collate_fn
+            )
+        else:
+            assert any(
+                isinstance(input_spec, specs_type)
+                for specs_type in [list, tuple]
+            )
+            inputs_spec, labels_spec = tuple(input_spec)
+
+            if inputs_spec is not None:
+                assert any(
+                    isinstance(inputs_spec, specs_type)
+                    for specs_type in [list, tuple]
+                ) and all(
+                    isinstance(spec, paddle.static.InputSpec)
+                    for spec in inputs_spec
+                )
+            else:
+                raise ValueError("`inputs_spec` should not be None")
+
+            if labels_spec is not None:
+                assert any(
+                    isinstance(labels_spec, specs_type)
+                    for specs_type in [list, tuple]
+                ) and all(
+                    isinstance(spec, paddle.static.InputSpec)
+                    for spec in labels_spec
+                )
+
+            inputs_spec = self._engine._validate_spec(inputs_spec)
+            labels_spec = self._engine._validate_spec(labels_spec)
 
         if optimizer is not None and loss is not None:
             # get the static graph in train mode
@@ -1053,7 +1084,10 @@ class DistModel:
         # get DistributedDataLoader for static mode auto-parallelism
         batch_size = self._engine._validate_batch_size(batch_size)
         self.dist_loader = self._engine._prepare_dataloader(
-            loader.dataset, return_list=True, batch_size=batch_size
+            loader.dataset,
+            return_list=True,
+            batch_size=batch_size,
+            collate_fn=loader.collate_fn,
         )
 
     def train(self):
@@ -1340,6 +1374,7 @@ def to_static(
     loader=None,
     loss=None,
     optimizer=None,
+    input_spec=None,
     strategy=None,
 ):
     """
@@ -1464,7 +1499,7 @@ def to_static(
     if isinstance(optimizer, _ShardOptimizer):
         optimizer = optimizer._inner_opt
 
-    dist_model = DistModel(layer, loader, loss, optimizer, strategy)
+    dist_model = DistModel(layer, loader, loss, optimizer, input_spec, strategy)
     dist_loader = dist_model.dist_loader
 
     return dist_model, dist_loader
