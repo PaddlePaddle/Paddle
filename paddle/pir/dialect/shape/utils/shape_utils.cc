@@ -47,7 +47,6 @@ bool ShapeAnalysis::IsProductEqual(
 
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
     : m_(m), mgr_(m) {
-  mgr_.Load();
   for (auto& op : m.block()) {
     auto tie_shape_op = op.dyn_cast<shape::TieShapeOp>();
     if (!tie_shape_op) continue;
@@ -66,9 +65,7 @@ ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
   }
 }
 
-ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {
-  // mgr_.Save();
-}
+ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {}
 
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
@@ -178,13 +175,13 @@ std::string GetValueId(Value* val) {
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value* val) {
   auto val_id = GetValueId(val);
-  return value_id_to_shapeordata[val_id];
+  return value_id_to_shapeordata_[val_id];
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   auto val_id = GetValueId(val);
-  value_id_to_shapeordata[val_id] = shape_or_data;
+  value_id_to_shapeordata_[val_id] = shape_or_data;
 }
 
 }  // namespace pir
