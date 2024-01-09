@@ -92,6 +92,13 @@ struct Group {
     return new_group;
   }
 
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
+      const ::pir::Value& value) {
+    CHECK(value_to_shape_or_data_exprs.count(value))
+        << "value not found in value_to_shape_or_data_exprs";
+    return value_to_shape_or_data_exprs.at(value);
+  }
+
   // distance to last group.
   int depth{0};
   int max_depth{0};
@@ -121,6 +128,8 @@ struct Group {
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
   std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_exprs;
 
   // for op lowering.
   std::vector<std::string> input_names;

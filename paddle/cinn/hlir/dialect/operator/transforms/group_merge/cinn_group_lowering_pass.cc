@@ -96,10 +96,9 @@ void EraseUneccessaryExpandsInBlock(
   }
 }
 
-void ReplaceExpandWithBroadcast(
-    pir::IrContext* ir_context,
-    pir::Block* block,
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
+                                pir::Block* block,
+                                const cinn::dialect::ir::GroupPtr& group) {
   std::vector<pir::Operation*> op_list;
   for (auto& op : *block) {
     op_list.push_back(&op);
@@ -128,8 +127,8 @@ void ReplaceExpandWithBroadcast(
       auto broadcast_out = broadcast.result(0);
       auto expand_out = op->result(0);
       expand_out.ReplaceAllUsesWith(broadcast_out);
-      shape_analysis->SetShapeOrDataForValue(
-          &broadcast_out, shape_analysis->GetShapeOrDataForValue(&expand_out));
+      group->value_to_shape_or_data_exprs[broadcast_out] =
+          group->GetShapeOrDataExprs(expand_out);
       CHECK(op->use_empty());
       auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();
@@ -298,29 +297,28 @@ cinn::dialect::ir::GroupPtr CloneGroup(const cinn::dialect::ir::GroupPtr& group,
   return new_group;
 }
 
-void UpdateShapeAnalysis(
-    const cinn::dialect::ir::GroupPtr& group,
+void UpdateGroupShapeExprs(
+    const cinn::dialect::ir::GroupPtr& new_group,
+    const cinn::dialect::ir::GroupPtr& origin_group,
     const pir::IrMapping& ir_mapping,
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
-    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx) {
   for (const auto& [origin_val, new_val] : ir_mapping.value_map()) {
-    VLOG(1) << "#### UpdateShapeAnalysis origin_val: "
+    VLOG(1) << "#### UpdateGroupShapeExprs origin_val: "
             << pir::GetValueId(&origin_val);
-    VLOG(1) << "#### UpdateShapeAnalysis new_val: "
+    VLOG(1) << "#### UpdateGroupShapeExprs new_val: "
             << pir::GetValueId(&new_val);
     const auto& shape_dim_expr =
         value_dim_exprs_list->at(value_to_dim_expr_idx.at(origin_val));
     const auto& origin_shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(&origin_val);
+        origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
-      shape_analysis->SetShapeOrDataForValue(
-          &new_val,
+      new_group->value_to_shape_or_data_exprs[new_val] =
           symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(
-              shape_dim_expr));
+              shape_dim_expr);
     } else {
-      shape_analysis->SetShapeOrDataForValue(
-          &new_val, symbol::ShapeOrDataDimExprs{shape_dim_expr});
+      new_group->value_to_shape_or_data_exprs[new_val] =
+          symbol::ShapeOrDataDimExprs(shape_dim_expr);
     }
   }
 }
@@ -328,7 +326,6 @@ void UpdateShapeAnalysis(
 void SetLeafBlockByGroupView(
     const cinn::dialect::ir::GroupPtr& origin_group,
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     pir::Builder& builder,  // NOLINT
     pir::Block* block,
@@ -363,11 +360,11 @@ void SetLeafBlockByGroupView(
   VLOG(1) << "###### Insert YieldOp for outputs: " << outputs.size();
   builder.Build<pir::YieldOp>(outputs);
 
-  UpdateShapeAnalysis(new_group,
-                      ir_mapping,
-                      value_dim_exprs_list,
-                      value_to_dim_expr_idx,
-                      new_group->shape_analysis.get());
+  UpdateGroupShapeExprs(new_group,
+                        origin_group,
+                        ir_mapping,
+                        value_dim_exprs_list,
+                        value_to_dim_expr_idx);
 
   group_map->insert({block, new_group});
 }
@@ -405,7 +402,6 @@ pir::Operation* CreateConditionBlock(
         broadcast_tree.Get<cinn::common::BroadcastLeaf>();
     SetLeafBlockByGroupView(origin_group,
                             broadcast_leaf,
-                            shape_analysis,
                             value_to_dim_expr_idx,
                             builder,
                             block,
@@ -522,7 +518,6 @@ pir::Operation* ProcessGroup(
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
       value_view.insert(op->result(i));
-      auto val = op->result(i);
     }
   });
 
@@ -531,7 +526,7 @@ pir::Operation* ProcessGroup(
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
   for (auto value : value_view) {
-    const auto& shape_dim_expr = shape_analysis->GetShapeOrDataForValue(&value);
+    const auto& shape_dim_expr = group->GetShapeOrDataExprs(value);
     const auto& data_shape = shape_dim_expr.data();
     VLOG(1) << "#### value : " << pir::GetValueId(&value) << " : "
             << shape_dim_expr;
@@ -553,9 +548,6 @@ pir::Operation* ProcessGroup(
   auto group_inputs = GetBlockOutsideInput(group->ops);
   for (size_t i = 0; i < group_inputs.size(); ++i) {
     if (value_map.find(group_inputs[i]) != value_map.end()) {
-      shape_analysis->SetShapeOrDataForValue(
-          &value_map.at(group_inputs[i]),
-          shape_analysis->GetShapeOrDataForValue(&group_inputs[i]));
       group_inputs[i] = value_map.at(group_inputs[i]);
     }
   }
@@ -592,6 +584,7 @@ pir::Operation* ProcessGroup(
   const auto& ForEachMutBlockGroup = [&](const DoEachMutBlockGroupT& DoEach) {
     for (auto& [block, group] : group_map) {
       DoEach(block, group);
+      DoEach(block, group);
 
       std::vector<pir::Operation*> group_new_ops;
       group_new_ops.reserve(block->size());
@@ -606,25 +599,40 @@ pir::Operation* ProcessGroup(
       group->ops_set = group_ops_set;
     }
   };
-  auto GetShapeOrDataForValue = [&shape_analysis](pir::Value value)
-      -> const symbol::ShapeOrDataDimExprs& {
-    return shape_analysis->GetShapeOrDataForValue(&value);
-  };
   ForEachMutBlockGroup([&](auto* block, const auto& group){
+    auto GetShapeOrDataForValue = [&group](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+      return group->GetShapeOrDataExprs(value);
+    };
     EraseUneccessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
   });
   VLOG(4) << "After EraseUneccessaryExpandsInBlock: " << *program;
   ForEachMutBlockGroup([&](auto* block, const auto& group){
-    ReplaceExpandWithBroadcast(
-        rewriter.ir_context(), block, group->shape_analysis);
+    ReplaceExpandWithBroadcast(rewriter.ir_context(), block, group);
   });
   VLOG(1) << "After simply condition block: " << *program;
   // 4. complie condition block to jit_kernel_op
   VLOG(1) << "complie condition block to jit_kernel_op";
   // prepare attribute for jit_kernel_op
+  VLOG(1) << "##### group_map : " << group_map.size();
+  for (auto& [block, group] : group_map) {
+    VLOG(1) << "####### complie group @" << group;
+    for (const auto& [value, shape_or_data] :
+         group->value_to_shape_or_data_exprs) {
+      VLOG(1) << " value: " << pir::GetValueId(&value)
+              << " shape_or_data: " << shape_or_data;
+    }
+    for (auto* op : group->ops) {
+      VLOG(1) << " op: " << op->name() << " id: " << op->id();
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        auto result = op->result(i);
+        VLOG(1) << " result[" << i << "] : " << pir::GetValueId(&result);
+      }
+    }
+  }
   auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, group_map);
   // create jit_kernel_op
   if (cond_op) {  // has condition block
+    VLOG(1) << "##### group_map : " << group_map.size();
     for (auto& [block, group] : group_map) {
       auto& yeild_op = block->back();
       CHECK(yeild_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
@@ -658,6 +666,28 @@ pir::Operation* ProcessGroup(
         group_inputs, op_attr_map.at(group_map.begin()->second), output_types);
     return jit_kernel_op;
   }
+}
+
+std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+CreateGroupShapeOrDataExprs(
+    const cinn::dialect::ir::GroupPtr& group,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
+  for (auto* op : group->ops) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto operand = op->operand_source(i);
+      value2shape.insert(
+          {operand, shape_analysis->GetShapeOrDataForValue(&operand)});
+    }
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      if (value2shape.find(result) == value2shape.end()) {
+        value2shape.insert(
+            {result, shape_analysis->GetShapeOrDataForValue(&result)});
+      }
+    }
+  }
+  return value2shape;
 }
 
 class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
@@ -710,7 +740,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     for (auto group : group_list) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
-      group->shape_analysis = shape_analysis_;
+      group->value_to_shape_or_data_exprs =
+          CreateGroupShapeOrDataExprs(group, shape_analysis_);
       if (FLAGS_cinn_enable_map_expr) {
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }
@@ -725,6 +756,10 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
                                       complied_op->result(i));
         }
         value_map[group_output_values[i]] = complied_op->result(i);
+        shape_analysis_->SetShapeOrDataForValue(
+            &group_output_values[i],
+            shape_analysis_->GetShapeOrDataForValue(
+                &value_map[group_output_values[i]]));
       }
     }
     value_map.clear();
