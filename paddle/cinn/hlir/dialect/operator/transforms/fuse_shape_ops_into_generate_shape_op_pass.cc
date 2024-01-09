@@ -182,9 +182,10 @@ pir::RewritePatternSet FuseShapeOpsIntoGenerateShapeOpPass::InitializePatterns(
 }
 
 bool FuseShapeOpsIntoGenerateShapeOpPass::CanApplyOn(pir::Operation* op) const {
+  if (!(op->isa<pir::ModuleOp>() && op->num_regions() > 0)) return false;
   auto* program = op->GetParentProgram();
   VLOG(4) << "Before FuseShapeOpsIntoGenerateShapeOpPass: " << *program;
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return true;
 }
 
 }  // namespace ir

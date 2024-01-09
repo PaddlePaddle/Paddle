@@ -423,9 +423,10 @@ class ShapeOptimizationPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    if (!(op->isa<pir::ModuleOp>() && op->num_regions() > 0)) return false;
     auto* program = op->GetParentProgram();
     VLOG(4) << "Before ShapeOptimizationPass: " << *program;
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return true;
   }
 };
 

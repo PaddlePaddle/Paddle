@@ -78,9 +78,10 @@ class RewriteGenerateShapeOpsToRunFirstPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    if (!(op->isa<pir::ModuleOp>() && op->num_regions() > 0)) return false;
     auto* program = op->GetParentProgram();
     VLOG(4) << "Before RewriteGenerateShapeOpsToRunFirstPass: " << *program;
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return true;
   }
 
 };

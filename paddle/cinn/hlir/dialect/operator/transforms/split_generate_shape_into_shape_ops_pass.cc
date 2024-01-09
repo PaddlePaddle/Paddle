@@ -381,9 +381,10 @@ pir::RewritePatternSet SplitGenerateShapeIntoShapeOpsPass::InitializePatterns(
 }
 
 bool SplitGenerateShapeIntoShapeOpsPass::CanApplyOn(pir::Operation* op) const {
+  if (!(op->isa<pir::ModuleOp>() && op->num_regions() > 0)) return false;
   auto* program = op->GetParentProgram();
   VLOG(4) << "Before SplitGenerateShapeIntoShapeOpsPass: " << *program;
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return true;
 }
 
 }  // namespace ir
