@@ -13,10 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/pooling.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include <algorithm>
 #include <vector>
-
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi {
 namespace funcs {

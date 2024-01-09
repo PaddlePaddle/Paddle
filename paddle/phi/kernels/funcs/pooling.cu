@@ -23,11 +23,11 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/funcs/random.cuh"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
-#include "paddle/phi/kernels/funcs/distribution_helper.h"
-#include "paddle/phi/kernels/funcs/random.cuh"
 
 namespace phi {
 namespace funcs {
