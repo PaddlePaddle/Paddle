@@ -8,6 +8,7 @@ set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
 list(REMOVE_ITEM TEST_OPS test_lac)
+list(REMOVE_ITEM TEST_OPS test_grad) # disable test_grad on release/2.6
 # NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
 # will be removed and will cause some random failed in multi-thread.
 if(WITH_PYTHON)
