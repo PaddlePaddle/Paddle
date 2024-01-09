@@ -1980,7 +1980,7 @@ def add_n(inputs, name=None):
              [14., 16., 18.]])
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(inputs, (Variable, paddle.pir.OpResult)):
+        if isinstance(inputs, (Variable, paddle.pir.Value)):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:

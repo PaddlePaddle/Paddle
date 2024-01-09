@@ -63,9 +63,6 @@ def check_all_puts(block, inputs, outputs):
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
-    if paddle.pir.is_fake_value(value):
-        state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
-        return
     if copy_value.is_tensorarray():
         value_grad = paddle._pir_ops.create_array_like(
             copy_value,
@@ -177,9 +174,9 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 visited_output.add(opresult)
                 continue
             else:
-                if paddle.pir.is_fake_value(opresult):
+                if paddle.pir.is_fake_op_result(opresult):
                     state.value_to_valuegrad[opresult] = [
-                        [paddle.pir.fake_value()]
+                        [paddle.pir.fake_op_result()]
                     ]
                 else:
                     grad_value = append_full_like(
@@ -460,14 +457,15 @@ def append_backward_ops(
         # value is input of more than one fwd_op,
         # so more than one bwd_op create input_grad,
         # need add sum op to accumulate gradient
+        add_n_list = []
+        for item in state.value_to_valuegrad[value]:
+            add_n_list.append(
+                return_map_value(item[0], bwd_value_to_block_argument_map)
+            )
         if value.is_tensorarray():
-            add_n_value = paddle._pir_ops.add_n_array(
-                [item[0] for item in state.value_to_valuegrad[value]]
-            )
+            add_n_value = paddle._pir_ops.add_n_array(add_n_list)
         else:
-            add_n_value = paddle.add_n(
-                [item[0] for item in state.value_to_valuegrad[value]]
-            )
+            add_n_value = paddle.add_n(add_n_list)
 
         add_n_op = add_n_value.get_defining_op()
         combine_op = add_n_op.operand_source(0).get_defining_op()
@@ -705,7 +703,9 @@ def append_backward_ops(
                     new_value = return_map_value(
                         value, control_flow_value_to_copyvalue_map
                     )
-                    append_full_like(0.0, new_value, value, state, backward_ops)
+                    value_grad = append_full_like(
+                        0.0, new_value, value, state, backward_ops
+                    )
                 input_grad = state.value_to_valuegrad[value][0][0]
 
                 inputs_grad.append(input_grad)
@@ -902,6 +902,9 @@ def append_backward_ops(
                             _,
                             sub_bwd_value_to_block_argument_map,
                         ) = argument_to_value(grad_op)
+                        sub_bwd_value_to_block_argument_map.update(
+                            bwd_value_to_block_argument_map
+                        )
                         while_grad_block = grad_op.as_while_op().body()
                         sub_backward_ops = []
                         append_backward_ops(
