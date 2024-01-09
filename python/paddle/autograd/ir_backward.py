@@ -579,8 +579,6 @@ def append_backward_ops(
             "pd_op.if",
             "pd_op.while",
             "cf.tuple_push",
-            "pd_op.increment_",
-            "pd_op.increment",
         ]:
             grad_semantic_info = [
                 True for _ in range(len(get_real_op_inputs(op)))
@@ -785,7 +783,7 @@ def append_backward_ops(
                     input_grad_stopgradients,
                 ) = make_input_with_input_stopgradient(op)
 
-                if op.name() in ["cf.tuple_push", "pd_op.increment_"]:
+                if op.name() == "cf.tuple_push":
                     with dynamic_shape_prim_vjp_guard(op, inputs):
                         copy_out = paddle.framework.core.call_vjp(
                             op,
@@ -797,17 +795,7 @@ def append_backward_ops(
 
                     pop_op = bwd_block.ops[-1]
                     bwd_ops = [pop_op]
-                    tmp_inputs = (
-                        inputs
-                        if op.name() == "pd_op.increment_"
-                        else inputs[1:]
-                    )
-                    tmp_copy_out = (
-                        copy_out
-                        if op.name() == "pd_op.increment_"
-                        else copy_out[1:]
-                    )
-                    for output, copy_output in zip(tmp_inputs, tmp_copy_out):
+                    for output, copy_output in zip(inputs[1:], copy_out[1:]):
                         control_flow_value_to_copyvalue_map[
                             output[0]
                         ] = copy_output[0]
@@ -819,7 +807,7 @@ def append_backward_ops(
                     # should be delete (prune sub_graph)
                     if (
                         len(output_grads) == 0 or all(zero_flag)
-                    ) and op.name() != "pd_op.while":
+                    ) and op.name() not in ["pd_op.while", "pd_op.increment_"]:
                         continue
 
                     if op.name() == "pd_op.if":

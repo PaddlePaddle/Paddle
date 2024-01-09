@@ -4726,7 +4726,8 @@ def increment(x, value=1.0, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
     )
     if in_pir_mode():
-        return _C_ops.increment_(x, value)
+        _C_ops.increment_(x, value)
+        return x
     else:
         helper = LayerHelper("increment", **locals())
         helper.append_op(
