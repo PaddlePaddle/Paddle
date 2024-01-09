@@ -24,6 +24,7 @@
     func : add
   inplace : (x -> out)
   backward : add_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : add_n
   args : (Tensor[] inputs)
@@ -1190,6 +1191,7 @@
   kernel :
     func : slice
   backward : slice_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)

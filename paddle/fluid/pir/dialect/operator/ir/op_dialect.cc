@@ -26,6 +26,7 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
 namespace paddle {
 namespace dialect {
@@ -44,21 +45,44 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    symbol::ShapeOrDataDimExprs value_shape;
+    std::vector<symbol::DimExpr> out_dims;
 
-    // for (auto operand_source : op->operands_source()) {
-    //   std::string operand_source_id = pir::GetValueId(&operand_source);
-    //   auto source_shape_vec =
-    //       shape_analysis->value_id_to_shapeordata_[operand_source_id];
-    //   for (int i = 0; i < source_shape_vec.size(); i++) {
-    //     value_shape.second.emplace_back(source_shape_vec[i]);
-    //   }
-    // }
+    // Currently for all operand : type.dims == 1u
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto type =
+          op->operand(i).type().dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(type, "Currently only support DenseTensorType.");
+      IR_ENFORCE(type.dims().size() == 0u,
+                 "Currently CombineOp only support 0-d DenseTensorType for "
+                 "InferSymbolicShape. But the dims of the %d-th "
+                 "DenseTensorType is %d.",
+                 i,
+                 type.dims().size());
+    }
 
+    auto operand_source_1st_data =
+        shape_analysis->value_to_shape_or_data_[op->operand_source(0)].data();
+    if (operand_source_1st_data.has_value()) {
+      for (auto operand_source : op->operands_source()) {
+        auto source_data =
+            shape_analysis->value_to_shape_or_data_[operand_source]
+                .data()
+                .value();
+        out_dims.push_back(source_data[0]);
+      }
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{out_dims};
+    if (operand_source_1st_data.has_value()) {
+      shape_data =
+          symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+    }
+
+    op->set_attribute("symbolic_shape",
+                      pir::shape::SymbolAttribute::get(
+                          pir::IrContext::Instance(), shape_data));
     auto res = op->result(0);
-    auto res_id = pir::GetValueId(&res);
-
-    shape_analysis->value_id_to_shapeordata_[res_id] = value_shape;
+    shape_analysis->value_to_shape_or_data_[res] = shape_data;
     return true;
   }
 

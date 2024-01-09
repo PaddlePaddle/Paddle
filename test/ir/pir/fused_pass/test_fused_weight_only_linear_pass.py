@@ -44,7 +44,7 @@ def get_cuda_version():
     "weight_only_linear requires CUDA >= 11.2",
 )
 class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
-    def is_conifg_valid(self, w_shape, bias_shape):
+    def is_config_valid(self, w_shape, bias_shape):
         if w_shape[-1] != bias_shape[0]:
             return False
 
@@ -99,7 +99,7 @@ class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
         for dtype in ['float16', "float32"]:
             for w_shape in [[64, 64], [64, 15]]:
                 for bias_shape in [[64], [15]]:
-                    if self.is_conifg_valid(w_shape, bias_shape) is False:
+                    if self.is_config_valid(w_shape, bias_shape) is False:
                         continue
                     with paddle.pir_utils.IrGuard():
                         start_prog = paddle.static.Program()
