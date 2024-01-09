@@ -127,6 +127,16 @@ def OpNameNormalizerInitialization(
                 )
 
     # special mapping list
+    op_name_mappings["deformable_conv_v1"] = "deformable_conv"
+    op_name_mappings["deformable_conv_v1_grad"] = "deformable_conv_grad"
+    op_arg_name_mappings["deformable_conv_v1"] = {
+        "x": "Input",
+        "offset": "Offset",
+        "filter": "Filter",
+        "mask": "Mask",
+        "out": "Output",
+    }
+
     op_arg_name_mappings["set_value_grad"]["values_grad"] = "ValueTensor@GRAD"
     op_arg_name_mappings["fetch"] = {"x": "X"}
     op_arg_name_mappings["elementwise_add_grad_grad"] = {

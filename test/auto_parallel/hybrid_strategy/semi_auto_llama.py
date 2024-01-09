@@ -24,6 +24,7 @@ from semi_auto_parallel_llama_model import (
 
 import paddle
 import paddle.distributed as dist
+from paddle import LazyGuard
 from paddle.io import BatchSampler, DataLoader, Dataset
 
 
@@ -44,6 +45,7 @@ class Config:
     rope = True
     recompute = False
     recompute_granularity = None
+    use_lazy_init = False
     virtual_pp_degree = 1
 
 
@@ -135,6 +137,14 @@ class TestLlamaAuto:
         if self.only_static and to_static == 0:
             return
 
+        if self.config.use_lazy_init:
+            with LazyGuard():
+                model = LlamaForCausalLMAuto(self.config)
+            for param in model.parameters():
+                assert not param._is_initialized()
+                param.initialize()
+        else:
+            model = LlamaForCausalLMAuto(self.config)
         model = LlamaForCausalLMAuto(self.config)
         criterion = LlamaPretrainingCriterionAuto(self.config)
 

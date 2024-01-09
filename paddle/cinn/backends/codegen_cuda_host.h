@@ -53,7 +53,7 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
     } else if (op->name == runtime::intrinsic::call_cuda_kernel) {
       return LowerCUDAKernelCall(op);
     } else {
-      CINN_NOT_IMPLEMENTED;
+      return CodeGenLLVM::Visit(op);
     }
   }
 
