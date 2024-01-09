@@ -107,6 +107,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   std::vector<void *> buffers(3);
   std::cout << "with_dynamic_shape: " << engine_->with_dynamic_shape()
             << std::endl;
+  std::cout << "Creating input x with shape(-1,32) " << std::endl;
   auto *x = engine_->DeclareInput(
       "input", nvinfer1::DataType::kFLOAT, nvinfer1::Dims2{-1, 32});
   nvinfer1::Dims shape_dim;
@@ -131,10 +132,13 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   std::vector<int> shape_v = {8, 8, 4};
   PrepareInputOutput(x_v, {8, 8, 4});
   PrepareShapeInput(shape_v);
+  std::cout << "Setting binding dimensions for input " << std::endl;
   engine_->context()->setBindingDimensions(0, nvinfer1::Dims2{8, 32});
+  std::cout << "Setting binding dimensions for shape " << std::endl;
   engine_->context()->setBindingDimensions(1, shape_dim);
   engine_->context()->setInputShapeBinding(1, shape_v.data());
 
+  std::cout << "Preparing GPU data buffers" << std::endl;
   auto *x_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
   auto *shape_gpu_data = shape_.mutable_data<int>(ctx_->GetPlace());
   auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
@@ -143,8 +147,11 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   buffers[1] = reinterpret_cast<void *>(shape_gpu_data);
   buffers[2] = reinterpret_cast<void *>(y_gpu_data);
 
+  std::cout << "Executing engine" << std::endl;
   engine_->Execute(-1, &buffers, ctx_->stream());
+  std::cout << "Synchronizing CUDA stream" << std::endl;
   cudaStreamSynchronize(ctx_->stream());
+  std::cout << "Retrieving output" << std::endl;
   std::vector<float> y_cpu;
   GetOutput(&y_cpu);
   ASSERT_EQ(y_cpu[0], 0);
