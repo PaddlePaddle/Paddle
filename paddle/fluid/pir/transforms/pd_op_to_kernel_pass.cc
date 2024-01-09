@@ -92,7 +92,7 @@ static const std::vector<pir::Type> InferMetaByValue(
       pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto infer_meta_interface =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
-  std::vector<pir::Type> output_type;
+  std::vector<pir::Type> output_types;
   if (infer_meta_interface) {
     output_types =
         infer_meta_interface->infer_meta_by_value_(input_values, attribute_map);
