@@ -496,9 +496,9 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
 
 /************* SPARSE*SPARSE->SPARSE MATMUL ************/
 template <typename T>
-__global__ void GetBatchNNZ(const int32_t* crow_data,
-                            int64_t rows,
-                            int32_t* batch_nnz) {
+__global__ void GetCsrBatchNNZ(const int32_t* crow_data,
+                               int64_t rows,
+                               int32_t* batch_nnz) {
   int64_t i = static_cast<int64_t>(threadIdx.x);
   batch_nnz[i] = crow_data[(i + 1) * (rows + 1) - 1];
 }
@@ -542,12 +542,6 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
   auto b_ndims = b_dim_vec.size();
   const int64_t b_rows = b_dim_vec[b_ndims - 2];
   const int64_t b_cols = b_dim_vec[b_ndims - 1];
-  int b_batch_size = 1;
-  for (int i = 0; i < b_ndims - 2; i++) {
-    b_batch_size *= b_dim_vec[i];
-  }
-
-  const int batch_size = a_batch_size;
 
   // cusparseSpGEMM only support 32-bit indices.
   DenseTensor a_crows_int, a_cols_int, b_crows_int, b_cols_int;
@@ -593,6 +587,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
   const T* b_values_data = mat_b.values().data<T>();
   const int32_t* out_crows_data = mat_out->crows().data<int32_t>();
 
+  const int batch_size = a_batch_size;
   std::vector<int32_t> a_batch_nnz_vec(batch_size);
   std::vector<int32_t> b_batch_nnz_vec(batch_size);
 
@@ -606,7 +601,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
     void* tmp_buffer_ptr = tmp_buffer->ptr();
 
-    GetBatchNNZ<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
+    GetCsrBatchNNZ<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         a_crows_data, a_rows, static_cast<int32_t*>(tmp_buffer_ptr));
     phi::backends::gpu::GpuMemcpyAsync(a_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,
@@ -614,7 +609,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx_.stream());
 
-    GetBatchNNZ<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
+    GetCsrBatchNNZ<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         b_crows_data, b_rows, static_cast<int32_t*>(tmp_buffer_ptr));
     phi::backends::gpu::GpuMemcpyAsync(b_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,
