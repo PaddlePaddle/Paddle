@@ -991,7 +991,10 @@ void BuildOpFuncList(const platform::Place& place,
       std::rethrow_exception(std::current_exception());
     }
 
-    if (FLAGS_save_static_runtime_data) {
+    // inplace case: If you save the input and output of share_buff, it will
+    // cause the saved input of the op corresponding to share_buff to be
+    // overwritten by the output.
+    if (FLAGS_save_static_runtime_data && (op->Type() != "share_buffer")) {
       VLOG(6) << "start to save paddle variable";
       auto root_path = FLAGS_static_runtime_data_save_path;
       for (auto& vname : op->InputVars()) {
