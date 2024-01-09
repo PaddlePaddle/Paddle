@@ -167,8 +167,8 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   ASSERT_EQ(y_cpu[0], 0);
   ASSERT_EQ(y_cpu[1], 1);
 #if IS_TRT_VERSION_GE(8500)
-  const char *name = engine_->engine()->getBindingName(2);
-  auto dims = engine_->context()->getTensorShape(name);
+  const char *name1 = engine_->engine()->getBindingName(2);
+  auto dims = engine_->context()->getTensorShape(name1);
 #else
   auto dims = engine_->context()->getBindingDimensions(2);
 #endif
