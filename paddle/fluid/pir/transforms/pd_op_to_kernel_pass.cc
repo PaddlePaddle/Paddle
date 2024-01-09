@@ -92,11 +92,12 @@ static const std::vector<pir::Type> InferMetaByValue(
       pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto infer_meta_interface =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
+  std::vector<pir::Type> output_type;
   if (infer_meta_interface) {
-    std::vector<pir::Type> output_types =
+    output_types =
         infer_meta_interface->infer_meta_by_value_(input_values, attribute_map);
-    return output_types;
   }
+  return output_types;
 }
 
 std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
@@ -1716,6 +1717,7 @@ std::vector<pir::Type> BuildOutputs(
       break;
     }
   }
+  if (output_types.size() == 0) is_ouput_changed = true;
   if (is_ouput_changed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
@@ -1734,6 +1736,9 @@ std::vector<pir::Type> BuildOutputs(
   } else {
     auto base_types = InferMetaByValue(op_item, new_vec_inputs, attribute_map);
     std::cout << "==============2 done======" << std::endl;
+    if (base_types.size() != op_item->num_results()) {
+      std::cout << "wrong!!!!!!" << std::endl;
+    }
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
       if ((!UnchangeOutputOps.count(op_item->name())) &&
