@@ -97,6 +97,7 @@ static const std::unordered_set<std::string> SpecialInplaceOps = {
 
 inline bool IsInplace(const OpDesc& op_desc) {
   if (SpecialNonInplaceOps.count(op_desc.Type())) {
+    LOG(INFO) << "come into special non inplace ops";
     return false;
   }
   if (SpecialInplaceOps.count(op_desc.Type())) {
@@ -105,6 +106,8 @@ inline bool IsInplace(const OpDesc& op_desc) {
   bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
+  LOG(INFO) << "input_names empty:" << input_names.empty();
+  LOG(INFO) << "output_names empty:" << output_names.empty();
   if (input_names.empty() || output_names.empty()) {
     return inplace;
   }
@@ -117,7 +120,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
                         output_names.begin(),
                         output_names.end(),
                         std::back_inserter(name_intersection));
-
+  LOG(INFO) << "name_intersection empty:" << name_intersection.empty();
   if (!name_intersection.empty()) {
     std::string redundant_variables = std::accumulate(
         std::next(name_intersection.begin()),
