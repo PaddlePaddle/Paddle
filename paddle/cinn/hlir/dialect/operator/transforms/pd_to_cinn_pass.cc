@@ -432,13 +432,16 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
           op->operand_source(0), vec_sections, axis);
 
-      int index = 0;
       auto orig_out = op.result(0);
       for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
         auto slice_op = (it++)->owner();
         CHECK(slice_op->isa<::pir::SliceOp>());
+        int index = slice_op->dyn_cast<::pir::SliceOp>()
+                        .attribute("index")
+                        .dyn_cast<::pir::Int32Attribute>()
+                        .data();
         rewriter.ReplaceAllUsesWith(slice_op->result(0),
-                                    cinn_split.result(index++));
+                                    cinn_split.result(index));
         rewriter.EraseOp(slice_op);
       }
       rewriter.EraseOp(op);
@@ -487,13 +490,17 @@ class SplitWithNumOpPattern
       auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
           op->operand_source(0), sections, axis);
 
-      int index = 0;
       auto orig_out = op.result(0);
       for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
-        auto split_op = (it++)->owner();
-        rewriter.ReplaceAllUsesWith(split_op->result(0),
-                                    cinn_split.result(index++));
-        rewriter.EraseOp(split_op);
+        auto slice_op = (it++)->owner();
+        CHECK(slice_op->isa<::pir::SliceOp>());
+        int index = slice_op->dyn_cast<::pir::SliceOp>()
+                        .attribute("index")
+                        .dyn_cast<::pir::Int32Attribute>()
+                        .data();
+        rewriter.ReplaceAllUsesWith(slice_op->result(0),
+                                    cinn_split.result(index));
+        rewriter.EraseOp(slice_op);
       }
 
       rewriter.EraseOp(op);
