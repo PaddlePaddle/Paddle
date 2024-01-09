@@ -24,7 +24,6 @@ test_bce_loss
 test_bernoulli_op               
 test_bicubic_interp_v2_op
 test_bilateral_slice_op
-test_bilinear_interp_v2_mkldnn_op
 test_bilinear_interp_v2_op
 test_bilinear_tensor_product_op
 test_bincount_op
