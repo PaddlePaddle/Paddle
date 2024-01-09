@@ -476,7 +476,11 @@ RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
               if (i == j) {
                 continue;
               }
-              non_negative_product *= shape.GetData()[j];
+              int64_t tmp_j = shape.GetData()[j];
+              if (tmp_j == 0) {
+                tmp_j = x_shape[j];
+              }
+              non_negative_product *= tmp_j;
             }
             PADDLE_ENFORCE(x_numel % non_negative_product == 0,
                            phi::errors::InvalidArgument("Cannot infer real value for -1."));
