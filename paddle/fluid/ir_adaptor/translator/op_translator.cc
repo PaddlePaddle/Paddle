@@ -107,7 +107,15 @@ inline bool IsInplace(const OpDesc& op_desc) {
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
   LOG(INFO) << "input_names empty:" << input_names.empty();
+  for (auto input_name : input_names) {
+    LOG(INFO) << "input name:" << input_name;
+  }
+
   LOG(INFO) << "output_names empty:" << output_names.empty();
+  for (auto output_name : output_names) {
+    LOG(INFO) << "output name:" << output_name;
+  }
+
   if (input_names.empty() || output_names.empty()) {
     return inplace;
   }
