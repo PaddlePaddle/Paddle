@@ -107,6 +107,7 @@ struct SpmdInferImpl<phi::distributed::SpmdInfo (*)(Args...), impl_fn> {
         const std::vector<CustomSpmdInferTensorArg>& inputs,
         const std::vector<CustomSpmdInferAttrArg>& attrs,
         PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0, "attributes must come after tensor inputs");
       PD_INFER_SPMD_CHECK_INPUTS_SIZE_GT(inputs, in_idx);
       auto& arg = PADDLE_GET_CONST(
           std::vector<phi::distributed::DistMetaTensor>, inputs[in_idx]);
