@@ -131,7 +131,7 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
 void ProgramTranslator::Translate() {
   GetParameterForSingleBlock(legacy_program_->Block(0));
 
-  InsertDataOpForSingleBlock(legacy_program_->Block(0));
+  // InsertDataOpForSingleBlock(legacy_program_->Block(0));
 
   TranslateBlock(legacy_program_->Block(0),
                  0,
