@@ -75,7 +75,7 @@ std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
             // it indicates that the operator may need to be converted.
             // Further judgement: if the operator does not exist in the
             // program_op_version_map, the operator needs to be converted.
-            // Moreover, if the operator does exist but its program_op_version_
+            // Moreover, if the operator does exist and its program_op_version_
             // is less than current_op_version, the operator also needs to be
             // converted.
             if (!program_op_versions.count(op_type) ||
