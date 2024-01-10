@@ -303,8 +303,6 @@ void ConvertProgram(ProgramDesc* program) {
 
   auto legacy_op_results = DetectLegacyOps(program);
   bool is_legacy_program = legacy_op_results.first;
-  // const std::unordered_map<std::string, uint32_t>& legacy_op_versions =
-  //     legacy_op_results.second;
   const std::unordered_multimap<std::string, OpDesc*>& legacy_ops =
       legacy_op_results.second;
 
