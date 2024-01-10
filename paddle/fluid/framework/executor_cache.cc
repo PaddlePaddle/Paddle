@@ -562,6 +562,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     pm.AddPass(::pir::CreateInplacePass());
     if (VLOG_IS_ON(6)) {
       pm.EnableIRPrinting();
+      pm.EnablePrintStatistics();
     }
     pm.Run(res.get());
     if (FLAGS_print_ir) {

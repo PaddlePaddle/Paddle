@@ -844,7 +844,15 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (FLAGS_pir_apply_inplace_pass) {
         lowered_pm.AddPass(::pir::CreateInplacePass());
       }
+      if (!config_.glog_info_disabled()) {
+        lowered_pm.EnablePrintStatistics();
+      }
+      if (config_.ir_debug_) {
+        lowered_pm.EnableIRPrinting();
+      }
       lowered_pm.Run(pir_program_.get());
+
+      LOG(INFO) << "======= pir optimization completed =======";
 
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
@@ -1867,7 +1875,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.reset(nullptr);
   }
 #endif
-  LOG(INFO) << "======= optimize end =======";
+  LOG(INFO) << "======= ir optimization completed =======";
 }
 
 template <>
