@@ -29,18 +29,10 @@ namespace cinn::dialect {
 std::optional<symbol::DimExpr> ConvertAttributeToDimExpr(
     ::pir::Attribute attribute);
 
-std::optional<symbol::DimExpr> SubstituteDimExpr(
+symbol::DimExpr SubstituteDimExpr(
     const symbol::DimExpr& dim_expr,
     const std::function<std::optional<symbol::DimExpr>(
         const std::string& symbol_name)>& DimExpr4SymbolName);
-
-std::function<std::optional<symbol::DimExpr>(const std::string& symbol_name)>
-MakeGetterDimExpr4SymbolName(
-    const std::vector<std::tuple<std::string /*symbol_name*/,
-                                 int /*in_tensor_idx*/,
-                                 int /*in_tensor_dim_idx*/>>& symbol_bindings,
-    const std::function<std::optional<symbol::DimExpr>(
-        int in_tensor_idx, int in_tensor_dim_idx)>& DimExpr4InputDim);
 
 std::function<std::optional<symbol::DimExpr>(const std::string& symbol_name)>
 MakeGetterDimExpr4SymbolName(
@@ -49,7 +41,7 @@ MakeGetterDimExpr4SymbolName(
         DimExpr4InputDim);
 
 using ShapeOrDataDimExprs4ValueT =
-    std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
+    std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
 
 // Returns true if success.
 bool MakeGenerateShapeOpAttribute(
