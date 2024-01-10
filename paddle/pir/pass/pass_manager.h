@@ -42,7 +42,9 @@ class IR_API PassManager {
 
   const std::vector<std::unique_ptr<Pass>> &passes() const { return passes_; }
 
-  bool Empty() const { return passes_.empty(); }
+  bool empty() const { return passes_.empty(); }
+
+  void clear() { passes_.clear(); }
 
   IrContext *context() const { return context_; }
 
@@ -115,6 +117,8 @@ class IR_API PassManager {
 
   void EnablePassTiming(bool print_module = true);
 
+  void EnablePrintStatistics();
+
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
  private:
@@ -128,6 +132,8 @@ class IR_API PassManager {
   uint8_t opt_level_;
 
   bool verify_{true};
+
+  bool disable_log_{false};
 
   std::vector<std::unique_ptr<Pass>> passes_;
 

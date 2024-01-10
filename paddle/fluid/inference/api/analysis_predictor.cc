@@ -828,8 +828,13 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//
-
-        // gpu_pm.EnableIRPrinting();
+        if (!config_.glog_info_disabled()) {
+          gpu_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          gpu_pm.EnableIRPrinting();
+          gpu_pm.EnablePassTiming();
+        }
         gpu_pm.Run(pir_program_.get());
       }
 
