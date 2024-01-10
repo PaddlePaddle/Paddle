@@ -40,6 +40,7 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/core/region.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
@@ -419,11 +420,18 @@ class ConstantFoldingPass : public pir::Pass {
   }
 
   void Run(pir::Operation* op) override {
+    int64_t num_ops{0};
+    for (uint32_t i = 0; i < op->num_regions(); ++i) {
+      auto& region = op->region(i);
+      for (auto& block : region) {
+        num_ops += block.size();
+      }
+    }
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
     pir::ApplyPatternsGreedily(op, patterns_, cfg);
-    PrintStatistics(counter_);
+    PrintStatistics(counter_, num_ops);
     // delete old parameter var
     scope_->EraseVars(deleted_vars_);
     if (place_.GetType() != phi::AllocationType::CPU) {
