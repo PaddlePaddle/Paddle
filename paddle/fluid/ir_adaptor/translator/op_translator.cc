@@ -105,6 +105,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
   bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
+
   if (input_names.empty() || output_names.empty()) {
     return inplace;
   }
@@ -117,7 +118,6 @@ inline bool IsInplace(const OpDesc& op_desc) {
                         output_names.begin(),
                         output_names.end(),
                         std::back_inserter(name_intersection));
-
   if (!name_intersection.empty()) {
     std::string redundant_variables = std::accumulate(
         std::next(name_intersection.begin()),

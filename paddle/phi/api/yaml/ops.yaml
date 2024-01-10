@@ -343,6 +343,16 @@
     backend : x
   inplace: (x -> out)
 
+- op : bitwise_left_shift
+  args : (Tensor x, Tensor y, bool is_arithmetic = true)
+  output : Tensor(out)
+  infer_meta :
+    func : BitwiseShiftInferMeta
+  kernel :
+    func : bitwise_left_shift
+    backend : x
+  inplace: (x -> out)
+
 - op : bitwise_not
   args : (Tensor x)
   output : Tensor(out)
@@ -361,6 +371,16 @@
     func : ElementwiseInferMeta
   kernel :
     func : bitwise_or
+    backend : x
+  inplace: (x -> out)
+
+- op : bitwise_right_shift
+  args : (Tensor x, Tensor y, bool is_arithmetic = true)
+  output : Tensor(out)
+  infer_meta :
+    func : BitwiseShiftInferMeta
+  kernel :
+    func : bitwise_right_shift
     backend : x
   inplace: (x -> out)
 
@@ -664,6 +684,7 @@
     param : [name, shape, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
@@ -1041,6 +1062,7 @@
     param : [value, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gammaln
   args : (Tensor x)

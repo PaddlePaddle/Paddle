@@ -71,6 +71,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -85,7 +86,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #endif
 
 namespace py = pybind11;
@@ -171,12 +171,22 @@ std::string GetValueInfo(Value v) {
   } else if (auto arg = v.dyn_cast<BlockArgument>()) {
     ss << "block_arg, index = " << arg.index();
   }
-  ss << ", dtype=" << v.type();
-  if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    ss << ", place="
-       << v.type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-              .place();
+  if (!v.type()) {
+    ss << ", dtype=<<NULL TYPE>>";
+  } else {
+    ss << ", dtype=" << v.type();
+    if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      ss << ", place="
+         << v.type()
+                .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                .place();
+    }
+  }
+  auto stop_gradient = v.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    ss << ", stop_gradient=False";
+  } else {
+    ss << ", stop_gradient=True";
   }
   return ss.str();
 }
@@ -527,13 +537,20 @@ void BindOperation(py::module *m) {
              return op_list;
            })
       .def("replace_all_uses_with",
-           [](Operation &self, const std::vector<OpResult> &op_results) {
-             self.ReplaceAllUsesWith(op_results);
+           [](Operation &self, const std::vector<Value> &values) {
+             self.ReplaceAllUsesWith(values);
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
       .def("as_while_op",
-           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); });
+           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def("__repr__", [](Operation &self) {
+        std::ostringstream print_stream;
+        print_stream << "Operation(";
+        self.Print(print_stream);
+        print_stream << ")";
+        return print_stream.str();
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -555,6 +572,9 @@ py::str Value2String(Value self) {
 }
 
 phi::DataType GetValueDtype(Value value) {
+  if (!value.type()) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
   if (value.type().isa<DenseTensorType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorType>().dtype());
@@ -572,6 +592,9 @@ phi::DataType GetValueDtype(Value value) {
 }
 
 const phi::DDim &GetValueDims(Value value) {
+  if (!value.type()) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
   } else if (value.type().isa<SelectedRowsType>()) {
@@ -768,21 +791,6 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
-      .def("__str__",
-           [](Value self) -> py::str {
-             std::ostringstream print_stream;
-             print_stream << "Value(";
-             print_stream << GetValueInfo(self);
-             auto stop_gradient =
-                 self.attribute<BoolAttribute>(kAttrStopGradients);
-             if (stop_gradient && !stop_gradient.data()) {
-               print_stream << ", stop_gradient=False";
-             } else {
-               print_stream << ", stop_gradient=True";
-             }
-             print_stream << ")";
-             return print_stream.str();
-           })
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
@@ -965,14 +973,14 @@ using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-pir::OpResult FakeOpResult() {
-  // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return pir::OpResult(nullptr);
+pir::Value FakeValue() {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return pir::Value(nullptr);
 }
 
-bool IsFakeOpResult(const pir::OpResult &result) {
-  // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return result.Value::impl() == nullptr || !result.Value::type();
+bool IsFakeValue(const pir::Value &value) {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return value.impl() == nullptr || !value.type();
 }
 
 static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
@@ -1032,7 +1040,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
 }
 
 void AppendShadowOutput(Program *forward_program,
-                        const pir::OpResult &result,
+                        const pir::Value &value,
                         const std::string &name,
                         size_t start_point) {
   pir::IrContext *ctx = pir::IrContext::Instance();
@@ -1041,7 +1049,7 @@ void AppendShadowOutput(Program *forward_program,
       {"output_name", pir::StrAttribute::get(ctx, name)},
   };
   pir::Operation *operation =
-      pir::Operation::Create({result}, attribute_map, {}, op_info);
+      pir::Operation::Create({value}, attribute_map, {}, op_info);
   auto position = forward_program->block()->begin();
   std::advance(position, start_point);
   if (position == forward_program->block()->end()) {
@@ -1052,19 +1060,19 @@ void AppendShadowOutput(Program *forward_program,
 }
 
 int AppendShadowOutputs(Program *forward_program,
-                        const std::vector<pir::OpResult> &outputs_op_result,
+                        const std::vector<pir::Value> &outputs,
                         int start_point,
                         std::string name_prefix) {
   int counter = 0;
-  std::unordered_set<pir::OpResult> added_op_result;
+  std::unordered_set<pir::Value> added_value;
 
-  for (const auto &result : outputs_op_result) {
-    if (!added_op_result.count(result) || IsFakeOpResult(result)) {
+  for (const auto &value : outputs) {
+    if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
       AppendShadowOutput(
-          forward_program, result, shadow_output_name, start_point + counter);
+          forward_program, value, shadow_output_name, start_point + counter);
       counter += 1;
-      added_op_result.insert(result);
+      added_value.insert(value);
     }
   }
   // return the inserted op.
@@ -1073,51 +1081,17 @@ int AppendShadowOutputs(Program *forward_program,
 
 SplitedResult SplitForwardBackward(
     const Program &program,
-    const std::vector<pir::OpResult> &op_result_forward_inputs,
-    const std::vector<pir::OpResult> &op_result_forward_params,
-    const std::vector<pir::OpResult> &op_result_forward_outputs,
-    const std::vector<pir::OpResult> &op_result_forward_inputs_grads,
-    const std::vector<pir::OpResult> &op_result_forward_params_grads,
-    const std::vector<pir::OpResult> &op_result_forward_outputs_grads,
+    const std::vector<pir::Value> &forward_inputs,
+    const std::vector<pir::Value> &forward_params,
+    const std::vector<pir::Value> &forward_outputs,
+    const std::vector<pir::Value> &forward_inputs_grads,
+    const std::vector<pir::Value> &forward_params_grads,
+    const std::vector<pir::Value> &forward_outputs_grads,
     const std::vector<int> &forward_range,
     const std::vector<int> &backward_range) {
-  // transform opresult -> value
-  std::vector<pir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
-      forward_outputs_grads, forward_params, forward_params_grads;
-
-  auto op_result_to_value = [](const pir::OpResult &r) {
-    if (r.impl() == nullptr) return Value(nullptr);
-    return Value(r.Value::impl());
-  };
-
-  std::transform(op_result_forward_inputs.begin(),
-                 op_result_forward_inputs.end(),
-                 std::back_inserter(forward_inputs),
-                 op_result_to_value);
-  std::transform(op_result_forward_outputs.begin(),
-                 op_result_forward_outputs.end(),
-                 std::back_inserter(forward_outputs),
-                 op_result_to_value);
-  std::transform(op_result_forward_inputs_grads.begin(),
-                 op_result_forward_inputs_grads.end(),
-                 std::back_inserter(forward_inputs_grads),
-                 op_result_to_value);
-  std::transform(op_result_forward_outputs_grads.begin(),
-                 op_result_forward_outputs_grads.end(),
-                 std::back_inserter(forward_outputs_grads),
-                 op_result_to_value);
-  std::transform(op_result_forward_params.begin(),
-                 op_result_forward_params.end(),
-                 std::back_inserter(forward_params),
-                 op_result_to_value);
-  std::transform(op_result_forward_params_grads.begin(),
-                 op_result_forward_params_grads.end(),
-                 std::back_inserter(forward_params_grads),
-                 op_result_to_value);
-
   std::vector<pir::Value> forward_in_out_values;
-  for (auto &v : std::vector<std::vector<pir::Value> *>(
-           {&forward_inputs, &forward_outputs, &forward_params})) {
+  for (auto &v :
+       std::vector({&forward_inputs, &forward_outputs, &forward_params})) {
     forward_in_out_values.insert(
         forward_in_out_values.end(), v->begin(), v->end());
   }
@@ -1393,8 +1367,8 @@ void BindUtils(pybind11::module *m) {
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
-  m->def("fake_op_result", FakeOpResult);
-  m->def("is_fake_op_result", IsFakeOpResult);
+  m->def("fake_value", FakeValue);
+  m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
   });
@@ -1564,11 +1538,12 @@ static bool HasDynamicShape(const Program &program) {
       continue;
     }
     for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i)
-                              .type()
-                              .dyn_cast<pir::ShapedTypeInterface>()
-                              .IsDynamicShape()) {
-        return true;
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          return true;
+        }
       }
     }
   }
@@ -1611,6 +1586,8 @@ void InferSymbolicShapePass(
     std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     Program &program) {                          // NOLINT
   if (FLAGS_pir_apply_shape_optimization_pass) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
