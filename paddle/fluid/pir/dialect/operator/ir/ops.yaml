@@ -1100,14 +1100,13 @@
   optional : out
 
 - op : seed
-  args : (int seed, bool deterministic, str rng_name, Place place)
+  args : (int seed, bool deterministic, str rng_name, bool force_cpu)
   output : Tensor(out)
   infer_meta:
     func: SeedInferMeta
     param: [seed]
   kernel:
     func: seed
-    backend : place
 
 - op : send_v2
   args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)
