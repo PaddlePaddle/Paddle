@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <Python.h>
 #include <frameobject.h>
+#include <string.h>
 
 #if PY_VERSION_HEX >= 0x03080000 && PY_VERSION_HEX < 0x3090000
 #define Py_BUILD_CORE  // internal/pycore_pymem.h need this macro
@@ -129,7 +130,7 @@ PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
   PyInterpreterFrameProxy *self =
       (PyInterpreterFrameProxy *)type->tp_alloc(type, 0);
   if (!self) {
-    // VLOG(7) << "Failed to allocate PyInterpreterFrameProxy";
+    eval_frame_log("Failed to allocate PyInterpreterFrameProxy");
     return NULL;
   }
   self->frame = frame;
@@ -453,7 +454,7 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   _PyInterpreterFrame *shadow =
       (_PyInterpreterFrame *)malloc(sizeof(PyObject *) * size);
   if (shadow == NULL) {
-    // VLOG(7) << "Failed to allocate memory for shadow frame.";
+    eval_frame_log("Failed to allocate memory for shadow frame.");
     return NULL;
   }
   // Create a new function object from code object. Refer to MAKE_FUNCTION.
@@ -476,7 +477,7 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   // The namemap to map the name to index in new frame localsplus.
   PyObject *namemap = PyDict_New();
   if (namemap == NULL) {
-    // VLOG(7) << "Failed to create namemap.";
+    eval_frame_log("Failed to create namemap.");
     free(shadow);
     return NULL;
   }
@@ -563,6 +564,11 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
                                     PyObject *callback) {
   PyObject *out;
   eval_frame_callback_set(Py_None);
+
+  char buffer[256] = {0};
+  strcat(buffer, "Trigger Code: ");
+  strcat(buffer, pystr_to_cstr(frame->f_code->co_name));
+  eval_frame_log(buffer);
 
 // https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
 // https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
@@ -718,7 +724,6 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   // NOTE: multi-threading is not supported now
   if (old_callback != Py_None && new_callback == Py_None) {
     if (old_eval_frame != &_PyEval_EvalFrameDefault) {
-      // VLOG(7) << "set _PyEval_EvalFrameDefault";
 #if PY_VERSION_HEX >= 0x03090000
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &_PyEval_EvalFrameDefault);
@@ -728,7 +733,6 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
     }
   } else if (old_callback == Py_None && new_callback != Py_None) {
     if (old_eval_frame != &custom_eval_frame_shim) {
-      // VLOG(7) << "set custom_eval_frame_shim";
 #if PY_VERSION_HEX >= 0x03090000
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &custom_eval_frame_shim);
@@ -746,7 +750,6 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
 
 PyObject *set_eval_frame_py(PyObject *callback) {
   if (callback != Py_None && !PyCallable_Check(callback)) {
-    // VLOG(7) << "callback is not a callable or none, invalid arguments.";
     Py_INCREF(Py_None);
     return Py_None;
   }
@@ -755,14 +758,13 @@ PyObject *set_eval_frame_py(PyObject *callback) {
 
 PyMODINIT_FUNC PyInit__eval_frame() {
   PyThread_tss_create(&eval_frame_callback_key);
-  // VLOG(7) << "Set PyThread_tss_create return: " << result;
 
   Py_INCREF(Py_None);
   eval_frame_callback_set(Py_None);
 
 #if PY_VERSION_HEX >= 0x030b0000
   if (PyType_Ready(&PyInterpreterFrameProxyType) < 0) {
-    // VLOG(7) << "PyInterpreterFrameProxyType has not been ready!";
+    eval_frame_log("PyInterpreterFrameProxyType has not been ready!");
   }
   Py_INCREF(&PyInterpreterFrameProxyType);
 #endif

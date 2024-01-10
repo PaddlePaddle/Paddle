@@ -35,6 +35,8 @@ PyObject* set_with_graph(PyObject* code);
 PyObject* setup_codes_with_graph(PyObject* code_tuple);
 PyObject* no_skip_codes(PyObject* code_tuple);
 PyObject* skip_file_prefix(PyObject* filepath_tuple);
+const char* pystr_to_cstr(PyObject* pystr);
+void eval_frame_log(const char* str);
 
 #ifdef __cplusplus
 }

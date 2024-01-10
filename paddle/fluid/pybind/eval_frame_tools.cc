@@ -16,6 +16,7 @@
 
 #include <Python.h>
 
+#include <stdlib.h>
 #include <unordered_set>
 
 #include "paddle/common/errors.h"
@@ -132,7 +133,9 @@ int SkipCodeInfo::is_no_skip_code(PyCodeObject* code) {
 
 int SkipCodeInfo::in_skip_path(PyObject* filename) {
   const char* name = pystr_to_cstr(filename);
-  return root->check_filename(name);
+  int result = root->check_filename(name);
+  VLOG(8) << "Skip Check: " << result << ", " << name;
+  return result;
 }
 
 /*========================== code status ==============================*/
@@ -171,12 +174,19 @@ int CodeStatus::is_code_without_graph(PyCodeObject* code) {
     code_info = new CodeInfo();
     code_map.emplace(code, code_info);
   }
-  if (code_info->state == WITHOUT_GRAPH) return 1;
-  if (code_info->state == UNKNOW) {
+
+  if (code_info->state == WITHOUT_GRAPH) {
+    VLOG(8) << "Code Status: WITHOUT_GRAPH";
+    return 1;
+  } else if (code_info->state == UNKNOW) {
+    VLOG(8) << "Code Status: UNKNOW";
     code_info->counter += 1;
     if (code_info->counter >= 10) code_info->state = WITHOUT_GRAPH;
+    return 0;
+  } else {
+    VLOG(8) << "Code Status: WITH_GRAPH";
+    return 0;
   }
-  return 0;
 }
 
 void CodeStatus::set_with_graph(PyCodeObject* code) {
@@ -214,6 +224,7 @@ int need_skip(FrameObject* frame) {
   PyObject* co_filename = code->co_filename;
 
   if (skip_info.is_no_skip_code(code)) {
+    VLOG(8) << "Skip Check: is no skip code";
     return 0;
   }
 
@@ -242,6 +253,8 @@ int is_code_without_graph(PyCodeObject* code) {
   auto& code_status = CodeStatus::Instance();
   return code_status.is_code_without_graph(code);
 }
+
+void eval_frame_log(const char* str) { VLOG(8) << str; }
 
 /*========================== pybind ===============================*/
 PyObject* set_with_graph(PyObject* code) {
