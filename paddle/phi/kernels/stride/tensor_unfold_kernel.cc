@@ -66,6 +66,7 @@ void TensorUnfoldKernel(const Context& dev_ctx,
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = input.offset();
   out->set_meta(meta);
+  out->ResetHolder(input.Holder());
   out->ShareInplaceVersionCounterWith(input);
 }
 
