@@ -94,7 +94,10 @@ PhiKernelInstruction::PhiKernelInstruction(
     }
     SetEventsToWaitInfo(events_to_wait);
   }
-  VLOG(6) << "finish process dist attributes";
+  VLOG(0) << "finish process dist attributes for " << op_name
+          << " : [execution_stream, stream_priority, scheduling_priority] = ["
+          << GetExecutionStream() << ", " << GetStreamPriority << ", "
+          << GetSchedulingPriority << "]";
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
