@@ -1641,6 +1641,8 @@ class Executor:
         op.desc._rename_input(var_name.name, out_var.name)
 
     def _process_type_promotion(self, program):
+        if program is None:
+            program = default_main_program()
         # not support pir for now
         if not isinstance(program, Program):
             return
