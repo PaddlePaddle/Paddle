@@ -305,7 +305,7 @@ def export(SIR, path):
         pygen = PyFileGen(SIR)
         string = pygen.gen_py_codes()
     except ExportError as e:
-        print("[SOT] Export SIR Failed:", e)
+        print(f"[SOT] Export {SIR.name} Failed:", e)
         return
 
     if not os.path.exists(path):
@@ -313,3 +313,4 @@ def export(SIR, path):
 
     with open(os.path.join(path, f"{SIR.name}.py"), "w") as f:
         f.write(string)
+        print(f"[SOT] Export {SIR.name} Sucess")

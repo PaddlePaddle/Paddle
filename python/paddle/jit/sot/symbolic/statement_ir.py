@@ -228,6 +228,8 @@ class StatementIR:
         new_sir.outputs = list(self.outputs)
         new_sir.statements = list(self.statements)
         new_sir.symbol_meta_map = dict(self.symbol_meta_map.items())
+        new_sir.param_symbol = set(self.param_symbol)
+        new_sir.non_param_symbol = set(self.non_param_symbol)
         return new_sir
 
     def set_parameter_info(self, params, non_params):
