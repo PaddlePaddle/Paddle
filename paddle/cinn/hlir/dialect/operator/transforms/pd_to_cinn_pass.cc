@@ -435,7 +435,8 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       auto orig_out = op.result(0);
       for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
         auto slice_op = (it++)->owner();
-        CHECK(slice_op->isa<::pir::SliceOp>());
+        CHECK(slice_op->isa<::pir::SliceOp>())
+            << "Currently only support pir::slice as downstream op";
         int index = slice_op->dyn_cast<::pir::SliceOp>()
                         .attribute("index")
                         .dyn_cast<::pir::Int32Attribute>()
