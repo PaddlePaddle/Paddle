@@ -28,12 +28,7 @@ nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc
   DEPS dynload_cuda device_context dynamic_loader)
-if(NOT WIN32 AND WITH_CINN)
-  nv_test(
-    test_tensorrt_engine
-    SRCS test_engine.cc test_dynamic_engine.cc
-    DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin python)
-elseif(NOT WIN32)
+if(NOT WIN32)
   nv_test(
     test_tensorrt_engine
     SRCS test_engine.cc test_dynamic_engine.cc
