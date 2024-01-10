@@ -264,8 +264,12 @@ void InitDistTensorWithTensor(TensorObject* self,
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::unsafe_autograd_meta(src)->Persistable());
+    egr::EagerUtils::autograd_meta(&(self->tensor))
+        ->SetStopGradient(
+            egr::EagerUtils::unsafe_autograd_meta(src)->StopGradient());
   } else {
     egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
+    egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(false);
   }
 #else
   PADDLE_THROW(platform::errors::Unavailable(
@@ -308,8 +312,12 @@ void InitDistTensorWithTensor(TensorObject* self,
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::unsafe_autograd_meta(local_tensor)->Persistable());
+    egr::EagerUtils::autograd_meta(&(self->tensor))
+        ->SetStopGradient(
+            egr::EagerUtils::unsafe_autograd_meta(src)->StopGradient());
   } else {
     egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
+    egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(false);
   }
 #else
   PADDLE_THROW(platform::errors::Unavailable(
