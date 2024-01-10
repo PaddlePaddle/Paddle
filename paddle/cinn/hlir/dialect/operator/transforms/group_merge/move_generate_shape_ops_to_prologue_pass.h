@@ -21,7 +21,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<::pir::Pass> CreateRewriteGenerateShapeOpsToRunFirstPass();
+std::unique_ptr<::pir::Pass> CreateMoveGenerateShapeOpsToProloguePass();
 
 }  // namespace ir
 }  // namespace dialect
