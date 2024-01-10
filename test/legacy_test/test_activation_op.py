@@ -2944,6 +2944,7 @@ class TestRelu6API(unittest.TestCase):
             out_ref = ref_relu6(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2955,10 +2956,11 @@ class TestRelu6API(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.relu6, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.relu6(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.relu6(x_fp16)
 
 
 class TestRelu6APIWarnings(unittest.TestCase):
