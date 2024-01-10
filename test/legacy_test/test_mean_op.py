@@ -23,6 +23,9 @@ from test_sum_op import TestReduceOPTensorAxisBase
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.framework import (
+    in_pir_mode,
+)
 from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
@@ -84,34 +87,32 @@ class TestMeanOpError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
-            # The input dtype of mean_op must be float16, float32, float64.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            self.assertRaises(TypeError, paddle.mean, input2)
-            input3 = paddle.static.data(
-                name='input3', shape=[-1, 4], dtype="float16"
-            )
-            paddle.nn.functional.softmax(input3)
+            if not in_pir_mode():
+                # The input dtype of mean_op must be float16, float32, float64.
+                input2 = paddle.static.data(
+                    name='input2', shape=[-1, 12, 10], dtype="int32"
+                )
+                self.assertRaises(TypeError, paddle.mean, input2)
+                input3 = paddle.static.data(
+                    name='input3', shape=[-1, 4], dtype="float16"
+                )
+                paddle.nn.functional.softmax(input3)
+            else:
+                input2 = paddle.static.data(
+                    name='input2', shape=[2, 3, 4, 5], dtype="int32"
+                )
 
-        with paddle.pir_utils.IrGuard(), program_guard(Program(), Program()):
-            input1 = 12
-            self.assertRaises(TypeError, paddle.mean, input1)
+                out = paddle.mean(input2)
 
-            input2 = paddle.static.data(
-                name='input2', shape=[2, 3, 4, 5], dtype="int32"
-            )
-
-            out = paddle.mean(input2)
-
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'input2': self.x}, fetch_list=[out])
+                exe = paddle.static.Executor(self.place)
+                res = exe.run(feed={'input2': self.x}, fetch_list=[out])
 
         paddle.disable_static()
 
