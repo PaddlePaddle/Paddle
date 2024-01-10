@@ -104,6 +104,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'assign_value',
     'share_data',
     'onednn_to_paddle_layout',
+    'lrn',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -130,6 +131,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_dot_product_attention',
     'nce',
     'lars_momentum',
+    'max_pool2d_v2',
     'recv_v2',
     'rnn_',
     'row_conv',

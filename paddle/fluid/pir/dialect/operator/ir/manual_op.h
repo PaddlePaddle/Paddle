@@ -557,9 +557,7 @@ class Increment_Op
 
 class IR_API ShapeBroadcastOp
     : public pir::Op<ShapeBroadcastOp,
-                     paddle::dialect::InferSymbolicShapeInterface,
-                     paddle::dialect::InferMetaInterface,
-                     paddle::dialect::GetKernelTypeForVarInterface> {
+                     paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.shape_broadcast"; }
@@ -575,13 +573,6 @@ class IR_API ShapeBroadcastOp
   pir::Value x() { return operand_source(0); }
   pir::Value y() { return operand_source(1); }
   pir::OpResult out() { return result(0); }
-
-  static void InferMeta(phi::InferMetaContext *infer_meta);
-
-  static phi::DataType GetKernelTypeForVar(
-      const std::string &var_name,
-      const phi::DataType &tensor_dtype,
-      const phi::DataType &expected_kernel_dtype);
 
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
