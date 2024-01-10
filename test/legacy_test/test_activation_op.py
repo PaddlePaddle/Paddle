@@ -2956,10 +2956,11 @@ class TestRelu6API(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.relu6, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.relu6(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.relu6(x_fp16)
 
 
 class TestRelu6APIWarnings(unittest.TestCase):
