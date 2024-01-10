@@ -833,7 +833,6 @@ bool AnalysisPredictor::PrepareExecutor() {
         }
         if (config_.ir_debug_) {
           gpu_pm.EnableIRPrinting();
-          gpu_pm.EnablePassTiming();
         }
         gpu_pm.Run(pir_program_.get());
       }

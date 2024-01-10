@@ -15,6 +15,7 @@
 #include <chrono>
 #include <iomanip>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
@@ -63,7 +64,9 @@ class PassTimer : public PassInstrumentation {
 
   void RunAfterPipeline(Operation* op) override {
     pipeline_timers_[op].Stop();
-    PrintTime(op, std::cout);
+    std::ostringstream oss;
+    PrintTime(op, oss);
+    std::cout << oss.str();
   }
 
   void RunBeforePass(Pass* pass, Operation* op) override {

@@ -15,11 +15,9 @@
 #pragma once
 
 #include <cstdint>
-#include <iostream>
 #include <memory>
 #include <vector>
 
-#include "paddle/pir/core/program.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace pir {
@@ -56,7 +54,7 @@ class IR_API PassManager {
 
   class IRPrinterOption {
    public:
-    using PrintCallBack = std::function<void(std::ostream &)>;
+    using PrintCallBack = std::function<void()>;
 
     explicit IRPrinterOption(
         const std::function<bool(Pass *, Operation *)> &enable_print_before =
@@ -64,13 +62,11 @@ class IR_API PassManager {
         const std::function<bool(Pass *, Operation *)> &enable_print_after =
             [](Pass *, Operation *) { return true; },
         bool print_module = true,
-        bool print_on_change = true,
-        std::ostream &os = std::cout)
+        bool print_on_change = true)
         : enable_print_before_(enable_print_before),
           enable_print_after_(enable_print_after),
           print_module_(print_module),
-          print_on_change_(print_on_change),
-          os(os) {
+          print_on_change_(print_on_change) {
       assert((enable_print_before_ || enable_print_after_) &&
              "expected at least one valid filter function");
     }
@@ -81,7 +77,7 @@ class IR_API PassManager {
                               Operation *op,
                               const PrintCallBack &print_callback) {
       if (enable_print_before_ && enable_print_before_(pass, op)) {
-        print_callback(os);
+        print_callback();
       }
     }
 
@@ -89,7 +85,7 @@ class IR_API PassManager {
                              Operation *op,
                              const PrintCallBack &print_callback) {
       if (enable_print_after_ && enable_print_after_(pass, op)) {
-        print_callback(os);
+        print_callback();
       }
     }
 
@@ -106,8 +102,6 @@ class IR_API PassManager {
     bool print_module_;
 
     bool print_on_change_;
-
-    std::ostream &os;
 
     // TODO(liuyuanle): Add flags to control printing behavior.
   };
