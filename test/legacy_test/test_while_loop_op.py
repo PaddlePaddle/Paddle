@@ -295,7 +295,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             feed_i = np.ones(1).astype('float32')
             feed_x = np.ones(1).astype('float32')
             data = np.asarray([100]).astype('float32')
-            i_grad = np.asarray([0]).astype('float32')
+            i_grad = np.asarray([20]).astype('float32')
             x_grad = np.asarray([0]).astype('float32')
 
             for p, g in grad_list:
@@ -308,6 +308,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 feed={'i': feed_i, 'x': feed_x},
                 fetch_list=[mean, di, dx],
             )
+
             np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
             np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
             np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
