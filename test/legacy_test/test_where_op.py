@@ -672,6 +672,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
 
 
 class TestWhereOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

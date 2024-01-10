@@ -465,6 +465,7 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         def test_type():
             paddle.add_n([11, 22])
@@ -486,6 +487,7 @@ class TestRaiseSumError(unittest.TestCase):
 
 
 class TestRaiseSumsError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         def test_type():
             paddle.add_n([11, 22])
@@ -531,6 +533,7 @@ class TestRaiseSumsError(unittest.TestCase):
 
 
 class TestSumOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         def test_empty_list_input():
             with base.dygraph.guard():
