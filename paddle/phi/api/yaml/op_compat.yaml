@@ -1904,6 +1904,10 @@
 
 - op : lrn
   backward : lrn_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, mid_out : MidOut}
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 

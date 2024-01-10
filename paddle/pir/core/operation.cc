@@ -138,8 +138,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 }
 
 Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
-  IR_ENFORCE(!options.IsCloneRegions() || num_regions_ <= 0,
-             "Operation CloneRegions is unimplemented currently.");
   IR_ENFORCE(num_successors_ == 0,
              "Operation::Clone is not unimplemented for multiple successors.");
 
@@ -156,10 +154,21 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
     output_types.push_back(result.type());
   }
   auto *new_op = Create(inputs, attributes_, output_types, info_, num_regions_);
+  ir_mapping.Add(this, new_op);
+
   // record outputs mapping info
   for (uint32_t i = 0; i < num_results_; ++i) {
-    ir_mapping.Add(result(i), new_op->result(i));
+    ir_mapping.Add(static_cast<Value>(result(i)),
+                   static_cast<Value>(new_op->result(i)));
   }
+
+  if (options.IsCloneRegions()) {
+    // clone regions recursively
+    for (uint32_t i = 0; i < num_regions_; ++i) {
+      this->region(i).CloneInto(new_op->region(i), ir_mapping);
+    }
+  }
+
   return new_op;
 }
 

@@ -809,4 +809,9 @@ void NumberCountInferMeta(const MetaTensor& x,
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void LrnInferMeta(const MetaTensor& x,
+                  int n,
+                  MetaTensor* out,
+                  MetaTensor* mid_out);
+
 }  // namespace phi
