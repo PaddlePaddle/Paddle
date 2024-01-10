@@ -61,10 +61,11 @@ void TensorUnfoldKernel(const Context& dev_ctx,
     }
   }
 
-  out->Resize(DDim(shape.data(), static_cast<int>(shape.size())));
-  out->set_strides(DDim(stride.data(), static_cast<int>(stride.size())));
-  out->set_offset(input.offset());
-  out->ResetHolder(input.Holder());
+  auto meta = out->meta();
+  meta.dims = DDim(shape.data(), static_cast<int>(shape.size()));
+  meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
+  meta.offset = input.offset();
+  out->set_meta(meta);
   out->ShareInplaceVersionCounterWith(input);
 }
 
