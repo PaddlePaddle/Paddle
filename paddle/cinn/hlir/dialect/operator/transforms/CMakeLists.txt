@@ -2,7 +2,8 @@ if(NOT CINN_ONLY)
 
   file(GLOB_RECURSE cinn_transforms_srcs "*.cc")
 
-  set(cinn_transforms_deps pir drr op_dialect cinn_op_dialect op_dialect_vjp)
+  set(cinn_transforms_deps pir drr op_dialect cinn_op_dialect op_dialect_vjp
+                           cinn_runtime_dialect)
 
   cc_library(
     cinn_transforms
