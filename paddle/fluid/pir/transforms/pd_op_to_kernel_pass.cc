@@ -2092,18 +2092,13 @@ pir::Operation* BuildKernelOp(
       op_attribute.emplace(
           "extra_args",
           pir::ArrayAttribute::get(pir::IrContext::Instance(), extra_args));
-      op_attribute.emplace(
-          "layout_transform_arg",
-          pir::StrAttribute::get(
-              ctx, op_info_parser->OpRuntimeInfo().layout_transform_arg));
-      std::vector<pir::Attribute> layout_transform_inputs;
-      for (auto& input :
-           op_info_parser->OpRuntimeInfo().layout_transform_inputs) {
-        layout_transform_inputs.push_back(pir::StrAttribute::get(ctx, input));
+      std::vector<pir::Attribute> data_format_tensors;
+      for (auto& input : op_info_parser->OpRuntimeInfo().data_format_tensors) {
+        data_format_tensors.push_back(pir::StrAttribute::get(ctx, input));
       }
-      op_attribute.emplace("layout_transform_inputs",
+      op_attribute.emplace("data_format_tensors",
                            pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                                    layout_transform_inputs));
+                                                    data_format_tensors));
       op_attribute.emplace(
           "is_onednn_only",
           pir::BoolAttribute::get(
