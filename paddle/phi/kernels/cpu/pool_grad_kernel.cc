@@ -45,7 +45,7 @@ PD_REGISTER_KERNEL(max_pool3d_with_index_grad,
   kernel->InputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
 }
 
-PD_REGISTER_KERNEL(fractional_max_pool2d_with_index_grad,
+PD_REGISTER_KERNEL(fractional_max_pool2d_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::FractionalMaxPool2dWithIndexGradKernel,
@@ -55,7 +55,7 @@ PD_REGISTER_KERNEL(fractional_max_pool2d_with_index_grad,
   kernel->InputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
 }
 
-PD_REGISTER_KERNEL(fractional_max_pool3d_with_index_grad,
+PD_REGISTER_KERNEL(fractional_max_pool3d_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::FractionalMaxPool3dWithIndexGradKernel,

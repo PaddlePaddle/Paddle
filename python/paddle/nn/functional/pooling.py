@@ -2199,13 +2199,13 @@ def fractional_max_pool2d(
             output_size[1] = in_w
 
     if in_dygraph_mode():
-        pool_out = _C_ops.fractional_max_pool2d_with_index(
+        pool_out = _C_ops.fractional_max_pool2d(
             x, output_size, kernel_size, float(random_u), return_mask
         )
         return pool_out if return_mask else pool_out[0]
 
     else:
-        l_type = 'fractional_max_pool2d_with_index'
+        l_type = 'fractional_max_pool2d'
 
         check_variable_and_dtype(
             x,
@@ -2356,7 +2356,7 @@ def fractional_max_pool3d(
             output_size[2] = in_w
 
     if in_dygraph_mode():
-        pool_out = _C_ops.fractional_max_pool3d_with_index(
+        pool_out = _C_ops.fractional_max_pool3d(
             x,
             output_size,
             kernel_size,
@@ -2366,7 +2366,7 @@ def fractional_max_pool3d(
         return pool_out if return_mask else pool_out[0]
 
     else:
-        l_type = 'fractional_max_pool3d_with_index'
+        l_type = 'fractional_max_pool3d'
 
         check_variable_and_dtype(
             x,

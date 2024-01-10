@@ -101,15 +101,15 @@ def fractional_max_pool2D_forward_naive(
     return out, mask
 
 
-# ----------------fractional_max_pool2d_with_index----------------
-def fractional_max_pool2d_with_index_wapper(
+# ----------------fractional_max_pool2d----------------
+def fractional_max_pool2d_wapper(
     x,
     output_size=None,
     kernel_size=[0, 0],
     random_u=None,
     return_mask=True,
 ):
-    return paddle._C_ops.fractional_max_pool2d_with_index(
+    return paddle._C_ops.fractional_max_pool2d(
         x,
         output_size,
         kernel_size,
@@ -120,8 +120,8 @@ def fractional_max_pool2d_with_index_wapper(
 
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
-        self.op_type = "fractional_max_pool2d_with_index"
-        self.python_api = fractional_max_pool2d_with_index_wapper
+        self.op_type = "fractional_max_pool2d"
+        self.python_api = fractional_max_pool2d_wapper
         self.pool_forward_naive = fractional_max_pool2D_forward_naive
 
         self.init_test_case()
@@ -212,7 +212,7 @@ class TestCase3(TestMaxPoolWithIndex_Op):
         self.return_mask = True
 
 
-# ----------------fractional_max_pool2d_with_index_fp16----------------
+# ----------------fractional_max_pool2d_fp16----------------
 def create_test_fp16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -243,7 +243,7 @@ create_test_fp16_class(TestCase2)
 create_test_fp16_class(TestCase3)
 
 
-# ----------------fractional_max_pool2d_with_index_bf16----------------
+# ----------------fractional_max_pool2d_bf16----------------
 def create_test_bf16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()

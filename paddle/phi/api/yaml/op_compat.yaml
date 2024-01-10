@@ -1161,13 +1161,13 @@
   outputs :
     out : Y
 
-- op : fractional_max_pool2d_with_index
+- op : fractional_max_pool2d
   inputs :
     {x : X}
   outputs :
     {out : Out, mask : Mask}
 
-- op : fractional_max_pool3d_with_index
+- op : fractional_max_pool3d
   inputs :
     {x : X}
   outputs :
