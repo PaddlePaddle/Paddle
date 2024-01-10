@@ -325,9 +325,13 @@ static pir::OpResult AddPlaceTransferOp(pir::Value in,
   } else if ((src_place.GetType() == phi::AllocationType::GPU) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
     copy_kernel_key.set_backend(phi::Backend::GPU);
+    std::string copy_kernel_name = "memcpy_d2h";
+    if (in.type().isa<AllocatedDenseTensorArrayType>()) {
+      copy_kernel_name = "memcpy_d2h_multi_io";
+    }
     op_attribute = {
-        {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_d2h")},
-        {"kernel_name", pir::StrAttribute::get(ctx, "memcpy_d2h")},
+        {"op_name", pir::StrAttribute::get(ctx, "pd_op." + copy_kernel_name)},
+        {"kernel_name", pir::StrAttribute::get(ctx, copy_kernel_name)},
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 0)}};
   } else {

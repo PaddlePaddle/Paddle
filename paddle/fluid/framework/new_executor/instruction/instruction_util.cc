@@ -181,7 +181,9 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
       return OpFuncType::kGpuSync;
     }
 
-    if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
+    if (platform::is_gpu_place(place) &&
+        (op_name == "pd_op.memcpy_d2h" ||
+         op_name == "pd_op.memcpy_d2h_multi_io")) {
       return OpFuncType::kGpuSync;
     }
 
