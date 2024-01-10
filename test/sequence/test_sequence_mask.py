@@ -24,6 +24,7 @@ from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
     program_guard,
 )
+from python.paddle.pir_utils import test_with_pir_api
 
 
 def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
@@ -168,15 +169,14 @@ class SequenceMaskTest5_tensor_attr(SequenceMaskTestBase_tensor_attr):
 
 
 class TestSequenceMaskOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.uniform(1, 5, [4]).astype("float32")
 
             def test_Variable():
                 # the input must be Variable
-                paddle.static.nn.sequence_lod.sequence_mask(
-                    input_data, maxlen=4
-                )
+                paddle.nn.functional.sequence_mask(input_data, maxlen=4)
 
             self.assertRaises(TypeError, test_Variable)
 
