@@ -16,6 +16,8 @@
 
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/cinn/common/dim_expr_simplify.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
@@ -190,7 +192,13 @@ void GenerateShapeOp::Build(
     const std::vector<pir::Value>& inputs,
     const std::vector<pir::Attribute>& output_dim_exprs,
     const GenerateShapeOp::SymbolBindings& symbol_bindings) {
-  CHECK(!inputs.empty());
+  CHECK(!inputs.empty()) << ". output_dim_exprs: " << [&] {
+    std::stringstream ss;
+    for (const auto& attr : output_dim_exprs) {
+      ss << attr;
+    }
+    return ss.str();
+  }();
   argument.AddInputs(inputs);
   argument.AddAttribute("output_dim_exprs",
                         builder.array_attr(output_dim_exprs));
@@ -343,6 +351,55 @@ GenerateShapeOp::ConvertAttributeToSymbolBindings(
     ret.emplace_back(opt_symbol_binding.value());
   }
   return std::move(ret);
+}
+
+bool GenerateShapeOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  const auto attr_dim_exprs = [&] {
+    std::vector<symbol::DimExpr> dim_exprs{};
+    pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
+    CHECK(dim_expr_attr.isa<pir::ArrayAttribute>());
+    auto array = dim_expr_attr.dyn_cast<pir::ArrayAttribute>();
+    for (int i = 0; i < array.size(); ++i) {
+      const auto& dim_expr = ConvertAttributeToDimExpr(array.at(i));
+      CHECK(dim_expr.has_value());
+      dim_exprs.push_back(dim_expr.value());
+    }
+    return dim_exprs;
+  }();
+  const auto symbol_bindings = [&] {
+    pir::Attribute symbol_bindings_attr =
+        this->attributes().at("symbol_bindings");
+    auto symbol_bindings =
+        ConvertAttributeToSymbolBindings(symbol_bindings_attr);
+    CHECK(symbol_bindings.has_value());
+    return symbol_bindings.value();
+  }();
+  auto DimExprs4InputDim =
+      [&](int input_idx) -> const symbol::ShapeOrDataDimExprs& {
+    pir::Value input = this->operand_source(input_idx);
+    CHECK(shape_analysis->HasShapeOrDataForValue(&input));
+    return shape_analysis->GetShapeOrDataForValue(&input);
+  };
+  auto DimExprs4SymbolName =
+      MakeGetterDimExpr4SymbolName(symbol_bindings, DimExprs4InputDim);
+  const auto substituted_dim_exprs = [&] {
+    std::vector<symbol::DimExpr> dim_exprs{};
+    dim_exprs.reserve(attr_dim_exprs.size());
+    for (const auto& attr_dim_expr : attr_dim_exprs) {
+      const auto& substituted =
+          SubstituteDimExpr(attr_dim_expr, DimExprs4SymbolName);
+      const auto& simplified = common::SimplifyDimExpr(substituted);
+      dim_exprs.push_back(simplified);
+    }
+    return dim_exprs;
+  }();
+  const auto shape_or_data_dim_exprs =
+      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(
+          substituted_dim_exprs);
+  shape_analysis->SetShapeOrDataForValue(&(this->out()),
+                                         shape_or_data_dim_exprs);
+  return true;
 }
 
 }  // namespace dialect
