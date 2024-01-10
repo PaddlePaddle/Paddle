@@ -505,6 +505,24 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 with self.assertRaises(TypeError):
                     x.append(array)
 
+    def test_pop(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
+                init_data = [
+                    np.random.random(shape).astype('float32')
+                    for shape in [[10, 4], [8, 12], [1]]
+                ]
+
+                array = paddle.tensor.create_array(
+                    'int64', [paddle.to_tensor(x) for x in init_data]
+                )
+                # TODO(SigureMo): add op test for assign(tensor_array)
+                paddle.assign(array)
+                # array.append(x)
+                # array.pop()
+
     def test_neg(self):
         x_np = np.random.uniform(-1, 1, [10, 1024]).astype(np.float32)
         res = -x_np
