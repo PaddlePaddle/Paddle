@@ -94,10 +94,11 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[2, 3], dtype='float16'
-            )
-            F.prelu(x=x_fp16, weight=weight_fp32)
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[2, 3], dtype='float16'
+                )
+                F.prelu(x=x_fp16, weight=weight_fp32)
 
 
 class TestNNPReluAPI(unittest.TestCase):
