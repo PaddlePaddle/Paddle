@@ -15,6 +15,7 @@
 import os
 from itertools import chain
 
+import paddle
 from paddle.utils import flatten
 
 from ..utils import ConstTypes, ExportError, NameGenerator
@@ -155,11 +156,23 @@ class PyFileGen:
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
                 meta = self.SIR.symbol_meta_map[inp.name]
-                test_inputs.append(
-                    f"    paddle.rand(shape={meta.shape}, dtype={meta.dtype}),"
-                )
+                shape_str = "[1]" if len(meta.shape) == 0 else str(meta.shape)
+                if meta.dtype in (
+                    paddle.int8,
+                    paddle.int16,
+                    paddle.int32,
+                    paddle.int64,
+                ):
+                    test_inputs.append(
+                        f"    paddle.randint(low=0, high=10, shape={shape_str}, dtype={meta.dtype}),"
+                    )
+                else:
+                    test_inputs.append(
+                        f"    paddle.rand(shape={shape_str}, dtype={meta.dtype}),"
+                    )
         test_inputs.append(")")
         setup.add_sub(*test_inputs)
+        setup.add_sub(f"self.net = {self.SIR_name}()")
 
         train = test_class.add_sub(
             "def train(self, net, to_static, with_cinn=False):"
@@ -178,9 +191,8 @@ class PyFileGen:
 
         test_ast_static = test_class.add_sub("def test_ast_static(self):")
         test_ast_static.add_sub(
-            "net = SIR0()",
-            "dy_out = self.train(net, to_static=False)",
-            "st_out = self.train(net, to_static=True, with_cinn=False)",
+            "dy_out = self.train(self.net, to_static=False)",
+            "st_out = self.train(self.net, to_static=True, with_cinn=False)",
             "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
             "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
         )
@@ -189,9 +201,8 @@ class PyFileGen:
             "def test_ast_cinn_static(self):"
         )
         test_ast_cinn_static.add_sub(
-            "net = SIR0()",
-            "dy_out = self.train(net, to_static=False)",
-            "st_out = self.train(net, to_static=True, with_cinn=True)",
+            "dy_out = self.train(self.net, to_static=False)",
+            "st_out = self.train(self.net, to_static=True, with_cinn=True)",
             "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
             "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
         )
