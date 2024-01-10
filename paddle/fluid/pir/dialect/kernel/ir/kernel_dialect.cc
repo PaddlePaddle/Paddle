@@ -136,9 +136,7 @@ CustomKernelDialect::CustomKernelDialect(pir::IrContext *context)
 }
 
 void CustomKernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
   RegisterOps<dialect::CustomKernelOp>();
-  RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
 void CustomKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
