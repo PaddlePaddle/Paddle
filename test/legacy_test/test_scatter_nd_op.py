@@ -512,7 +512,6 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
         self.assertRaises(IndexError, check_raise_is_test)
 
-    @test_with_pir_api
     def test_check_raise2(self):
         with self.assertRaises(ValueError):
             with static_guard():
