@@ -25,21 +25,15 @@ namespace framework {
 class Scope;
 class ValueExecutionInfo;
 
-using RuntimeAttribute = phi::Attribute;
-using PIRAttribute = pir::Attribute;
-
-class OneDNNPhiKernelInstruction : public InstructionBase {
+class OneDNNLegacyKernelInstruction : public InstructionBase {
  public:
-  OneDNNPhiKernelInstruction(size_t id,
-                             const platform::Place& place,
-                             ::pir::Operation* op,
-                             const ValueExecutionInfo* value_exec_info);
+  OneDNNLegacyKernelInstruction(size_t id,
+                                const platform::Place& place,
+                                ::pir::Operation* op,
+                                const ValueExecutionInfo* value_exec_info);
 
-  ~OneDNNPhiKernelInstruction();
-
+  ~OneDNNLegacyKernelInstruction();
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
-
-  const phi::KernelContext& KernelContext() const { return kernel_context_; }
 
   const phi::InferMetaContext& InferMetaContext() const {
     return infer_meta_context_;
@@ -49,33 +43,32 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
     return infer_meta_interface_;
   }
 
-  ::pir::Operation* Operation() const override { return op_; }
-
   void Run() override;
 
-  const std::string& Name() const override { return phi_op_name_; }
+  const std::string& Name() const override { return legacy_op_name_; }
+
+  ::pir::Operation* Operation() const override { return op_; }
 
  private:
+  std::string legacy_op_name_;
+
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
       nullptr};  // not owned
 
   phi::InferMetaContext infer_meta_context_;
 
-  phi::KernelContext kernel_context_;
+  paddle::framework::ExecutionContext* kernel_context_{nullptr};
+  std::shared_ptr<framework::RuntimeContext> runtime_context_;
+  std::shared_ptr<paddle::framework::OperatorBase> operator_base_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
-
-  std::string phi_op_name_;
 
   ::pir::Operation* op_{nullptr};  // not owned
 
   const ValueExecutionInfo* value_exec_info_;  // not owned
 
-  std::set<int> layout_transform_inputs_{};
+  std::set<std::string> layout_transform_inputs_{};
   phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
-  std::map<std::string, RuntimeAttribute> extra_attr_{};
-  std::map<std::string, std::vector<std::string>> inputs_{};
-  std::map<std::string, std::vector<std::string>> outputs_{};
 };
 
 }  // namespace framework
