@@ -93,9 +93,9 @@ class TestShardTensorDynamic(unittest.TestCase):
         self.assertEqual(d_tensor.process_mesh, self.mesh)
 
     def test_stop_gradient(self):
-        x = paddle.ones([10, 10])
+        x = paddle.ones([4, 1024, 512])
         x.stop_gradient = False
-        x = dist.shard_tensor(x, self.mesh, [Shard(0)])
+        x = dist.shard_tensor(x, self.mesh, [Shard(0), Replicate()])
         assert not x.stop_gradient
 
 
