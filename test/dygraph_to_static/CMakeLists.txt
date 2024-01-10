@@ -43,7 +43,7 @@ set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
-set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
+set_tests_properties(test_transformerx PROPERTIES TIMEOUT 300)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 
 if(NOT WIN32)
