@@ -313,4 +313,4 @@ def export(SIR, path):
 
     with open(os.path.join(path, f"{SIR.name}.py"), "w") as f:
         f.write(string)
-        print(f"[SOT] Export {SIR.name} Sucess")
+        print(f"[SOT] Export {SIR.name} Sucess with size {len(SIR.statements)}")
