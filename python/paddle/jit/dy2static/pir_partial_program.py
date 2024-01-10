@@ -623,7 +623,9 @@ class PartialProgramLayer:
         Return current train or eval program hash id.
         """
         if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError("not implement error.")
+            raise NotImplementedError(
+                "Currently, AMP is not supported in PIR mode"
+            )
         if self.training:
             return self._train_program_id
         else:
@@ -632,13 +634,17 @@ class PartialProgramLayer:
     @cached_property
     def train_program(self):
         if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError("not implement error.")
+            raise NotImplementedError(
+                "Currently, AMP is not supported in PIR mode"
+            )
         return self._create_program()
 
     @cached_property
     def infer_program(self):
         if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError("not implement error.")
+            raise NotImplementedError(
+                "Currently, AMP is not supported in PIR mode"
+            )
         return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program):
