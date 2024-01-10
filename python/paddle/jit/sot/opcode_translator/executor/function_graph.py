@@ -24,6 +24,8 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any, Callable
 
+from paddle.utils import flatten
+
 from ...infer_meta import (
     InferMetaCache,
     LayerInferMetaCache,
@@ -67,6 +69,7 @@ from .variables import (
     ListVariable,
     NullVariable,
     PaddleLayerVariable,
+    ParameterVariable,
     TensorVariable,
     VariableBase,
     VariableFactory,
@@ -115,6 +118,19 @@ def get_symbol_meta_map(inputs):
 
     map_variables(func, inputs)
     return output
+
+
+def get_params_and_non_param_symbol(*args, **kwargs):
+    params = set()
+    non_params = set()
+
+    for value in flatten([args, kwargs]):
+        if isinstance(value, ParameterVariable):
+            params.add(value.get_symbol())
+        elif isinstance(value, TensorVariable):
+            non_params.add(value.get_symbol())
+
+    return params, non_params
 
 
 class FunctionGraph:
@@ -559,6 +575,8 @@ class FunctionGraph:
 
         self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(args))
         self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(kwargs))
+        params, non_params = get_params_and_non_param_symbol(*args, **kwargs)
+        self.sir_ctx.TOS.set_parameter_info(params, non_params)
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 

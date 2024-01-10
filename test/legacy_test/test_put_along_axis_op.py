@@ -738,6 +738,45 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             run(place)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestPutAlongAxisAPILargeCase(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [64, 1327104]
+        self.index_shape = [64, 1327104]
+        self.index_np = np.zeros(self.index_shape).astype('int64')
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+        self.axis = 1
+        self.value_np = np.ones(self.index_shape).astype(np.float32)
+        self.x_feed = copy.deepcopy(self.x_np)
+        self.place = [paddle.CUDAPlace(0)]
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor = paddle.to_tensor(self.index_np)
+            value_tensor = paddle.to_tensor(self.value_np)
+            out = paddle.put_along_axis(
+                x_tensor, index_tensor, value_tensor, self.axis
+            )
+            np.array(
+                np.put_along_axis(
+                    self.x_np, self.index_np, self.value_np, self.axis
+                )
+            )
+            out_ref = self.x_np
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
 class TestPutAlongAxisAPICase2(TestPutAlongAxisAPI):
     def setUp(self):
         np.random.seed(0)

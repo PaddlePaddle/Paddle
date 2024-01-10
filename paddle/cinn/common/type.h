@@ -251,6 +251,18 @@ inline Type type_of<uint8_t*>() {
   return x;
 }
 template <>
+inline Type type_of<int32_t*>() {
+  Type x = Int(32);
+  x.set_cpp_handle();
+  return x;
+}
+template <>
+inline Type type_of<int32_t**>() {
+  Type x = Int(32);
+  x.set_cpp_handle2();
+  return x;
+}
+template <>
 inline Type type_of<void*>() {
   Type x = type_of<void>();
   x.set_cpp_handle();

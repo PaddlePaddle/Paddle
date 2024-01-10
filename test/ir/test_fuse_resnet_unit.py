@@ -33,7 +33,7 @@ np.random.seed(0)
     "and device's compute capability is at least 7.0 and less than 9.0",
 )
 class TestFuseResNetUnit(unittest.TestCase):
-    def test_fuse_resenet_unit(self):
+    def test_fuse_resnet_unit(self):
         place = paddle.CUDAPlace(0)
         program = paddle.static.Program()
         startup_program = paddle.static.Program()

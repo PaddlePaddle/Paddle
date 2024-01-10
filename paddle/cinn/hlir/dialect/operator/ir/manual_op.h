@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #pragma once
+#include <variant>
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/operation.h"
@@ -23,7 +25,7 @@
 namespace cinn {
 namespace dialect {
 
-class GroupOp : public pir::Op<GroupOp> {
+class IR_API GroupOp : public pir::Op<GroupOp> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.group"; }
@@ -81,9 +83,46 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
   void VerifySig() const {}
 };
 
+class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cinn_op.generate_shape"; }
+  static constexpr uint32_t attributes_num = 2;
+  static const char *attributes_name[attributes_num];
+
+  struct SymbolBindingBase {
+    std::string symbol_name;
+    int64_t input_tensor_idx;
+    int64_t input_tensor_dim_idx;
+  };
+
+  struct DataSymbolBinding : public SymbolBindingBase {};
+  struct ShapeSymbolBinding : public SymbolBindingBase {};
+
+  using SymbolBinding = std::variant<DataSymbolBinding, ShapeSymbolBinding>;
+
+  using SymbolBindings = std::vector<SymbolBinding>;
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Value> &inputs,
+                    const std::vector<pir::Attribute> &output_dim_exprs,
+                    const SymbolBindings &symbol_bindings);
+
+  void VerifySig() {}
+
+  pir::OpResult out() { return result(0); }
+
+  static pir::Attribute ConvertSymbolBindingsToAttribute(
+      pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT
+  static std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(
+      const pir::Attribute &symbol_bindings);
+};
+
 }  // namespace dialect
 }  // namespace cinn
 
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

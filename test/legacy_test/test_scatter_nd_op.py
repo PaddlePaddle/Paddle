@@ -98,7 +98,11 @@ class TestScatterNdAddSimpleOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+            ['X', 'Updates'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -133,7 +137,12 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+                place,
+                ['X', 'Updates'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -176,7 +185,11 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+            ['X', 'Updates'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -211,7 +224,12 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+                place,
+                ['X', 'Updates'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 

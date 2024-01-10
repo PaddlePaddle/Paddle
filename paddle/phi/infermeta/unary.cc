@@ -358,6 +358,7 @@ void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
   const phi::DDim out_dims(in_dims.Get(), input_rank - 1);
   output->set_dims(out_dims);
   output->share_lod(input);
+  output->set_dtype(dtype::ToComplex(input.dtype()));
 }
 
 void BatchSizeLikeInferMeta(const MetaTensor& x,
@@ -521,6 +522,11 @@ void CIdentityInferMeta(const MetaTensor& x,
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
+  out->set_layout(x.layout());
+}
+
+void CreateArrayLikeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
 
@@ -2344,6 +2350,37 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   mask->set_dtype(phi::CppTypeToDataType<int>::Type());
 }
 
+void MaxPoolV2InferMeta(const MetaTensor& x,
+                        const std::vector<int>& kernel_size,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& data_format,
+                        bool global_pooling,
+                        bool adaptive,
+                        MetaTensor* out,
+                        MetaTensor* saved_idx,
+                        MetaConfig config) {
+  PADDLE_ENFORCE_EQ(adaptive,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "max_pool2d_v2 op does not support adaptive."));
+  Pool2DInferMeta(x,
+                  kernel_size,
+                  strides,
+                  paddings,
+                  false,
+                  false,
+                  data_format,
+                  "max",
+                  global_pooling,
+                  adaptive,
+                  "EXPLICIT",
+                  out,
+                  config);
+  saved_idx->set_dims(out->dims());
+  saved_idx->set_dtype(phi::CppTypeToDataType<int>::Type());
+}
+
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());
@@ -3687,7 +3724,8 @@ void SliceArrayDenseInferMeta(const MetaTensor& input,
   if (config.is_runtime) {
     return;
   }
-  out->set_dims(input.dims());
+  // out->set_dims(input.dims());
+  out->set_dtype(input.dtype());
 }
 
 void SliceRawInferMeta(const MetaTensor& input,
@@ -5335,6 +5373,41 @@ void NumberCountInferMeta(const MetaTensor& x,
                           int upper_range,
                           MetaTensor* out) {
   out->share_meta(x);
+}
+
+void LrnInferMeta(const MetaTensor& x,
+                  int n,
+                  MetaTensor* out,
+                  MetaTensor* mid_out) {
+  auto x_dim = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      4,
+      phi::errors::InvalidArgument("Input(input) rank should be 4, "
+                                   "but received input rank (%d) != 4",
+                                   x_dim.size()));
+
+  PADDLE_ENFORCE_GT(
+      n,
+      0UL,
+      phi::errors::InvalidArgument("Argument(n) should be positive, "
+                                   "but received n(%d) not greater than 0",
+                                   n));
+  PADDLE_ENFORCE_EQ(
+      n % 2,
+      1UL,
+      phi::errors::InvalidArgument("Argument(n) should be odd value, "
+                                   "but received n(%d) is not an odd value",
+                                   n));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+  mid_out->set_dtype(x.dtype());
+  mid_out->set_dims(x.dims());
+  mid_out->set_layout(x.layout());
+  mid_out->share_lod(x);
 }
 
 }  // namespace phi

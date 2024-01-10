@@ -1904,6 +1904,10 @@
 
 - op : lrn
   backward : lrn_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, mid_out : MidOut}
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
@@ -2799,6 +2803,13 @@
     out : Out
     xout : XOut
 
+- op : shuffle_batch
+  backward: shuffle_batch_grad
+  inputs:
+    {x : X, seed : Seed}
+  outputs:
+    {out : Out, shuffle_idx : ShuffleIdx, seed_out : SeedOut}
+
 - op : shuffle_channel
   backward : shuffle_channel_grad
   extra :
@@ -3436,6 +3447,12 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op: ftrl
+  inputs:
+    {param: Param, squared_accumulator: SquaredAccumulator, linear_accumulator: LinearAccumulator, grad: Grad, learning_rate: LearningRate}
+  outputs:
+    {param_out: ParamOut, squared_accum_out: SquaredAccumOut, linear_accum_out: LinearAccumOut}
+
 - op: full_batch_size_like (fill_constant_batch_size_like)
   inputs:
     {input: Input}
@@ -3509,6 +3526,13 @@
     x : X
   outputs :
     out : Out
+
+- op: nce
+  backward: nce_grad
+  inputs:
+    {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
+  outputs:
+    {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
 
 - op: number_count
   inputs :
