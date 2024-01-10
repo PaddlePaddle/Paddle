@@ -277,7 +277,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
 
   // Step2: build layout_transform information
   if (op_attributes.count("data_format_tensors")) {
-    if (op_attributes.coutn("data_format")) {
+    if (op_attributes.count("data_format")) {
       auto data_layout = op_attributes.at("data_format")
                              .dyn_cast<pir::StrAttribute>()
                              .AsString();
