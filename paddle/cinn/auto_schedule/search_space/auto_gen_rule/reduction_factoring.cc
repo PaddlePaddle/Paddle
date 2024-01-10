@@ -112,6 +112,7 @@ void ReductionFactoring::Apply(const std::string& block_name,
   ir::Expr block = ir_schedule->GetBlock(block_name);
   std::vector<ir::Expr> all_loops = ir_schedule->GetLoops(block_name);
 
+  std::cerr << "factoring !!!!!!!!!!!!!!!!!!\n";
   std::vector<ir::Expr> new_loop_order;
   size_t num_spatial_loops = 0;
   size_t num_reduction_loops = 0;

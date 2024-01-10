@@ -343,12 +343,116 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
-  VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
-  if (apply_group_schedule) {
-    DoGroupSchedule(ir_sch, group, tensor_map, tmp_tensor_info);
-    VLOG(3) << "After group schedule, ir is: \n"
-            << ir_sch.GetModule().GetExprs().at(0);
+
+  std::cerr << "after lower ops   \n" << ir_sch.GetModule().GetExprs().at(0) << std::endl;
+
+
+
+  // merge loops
+  for( size_t i = 0; i < ops.size(); ++i )
+  {
+   
+    auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)));
+   
+    ir_sch.Fuse({loops[0], loops[1]});
+
+    // if( ops[i]->name() == "cinn_op.reduce_sum")
+    // {
+     
+    // //   auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)) + "_2");
+
+    // //   ir_sch.Fuse({loops[0], loops[1]});
+    // //  std::cerr << loops[0] << std::endl;
+    // }
   }
+
+  // std::cerr << "after merge  loops  \n" << ir_sch.GetModule().GetExprs().at(0) << std::endl;
+
+   for( size_t i = 0; i < ops.size(); ++i )
+  {
+    std::cerr << "op name " << ops[i]->name() << std::endl;
+    auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)));    
+   
+
+    
+    auto splited_loops = ir_sch.Split( loops[0], std::vector<int>({ -1, 2}));
+    
+  }
+
+  // std::cerr << "after split flatten  loops  \n" << ir_sch.GetModule().GetExprs().at(0) << std::endl;
+
+   for( size_t i = 0; i < ops.size(); ++i )
+  {   
+    auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)));    
+   
+
+    
+    auto splited_loops = ir_sch.Split( loops[2], std::vector<int>({ -1, 4}));
+      
+      if ( ops[i]->name() == "cinn_op.reduce_sum")
+      {
+        ir_sch.FactorizeReduction(splited_loops[0], 0);
+      }
+  
+  }
+
+  // std::cerr << "after split reduce  loops  \n" << ir_sch.GetModule().GetExprs().at(0) << std::endl;
+ 
+  for( size_t i = 0; i < ops.size(); ++i )
+  {    
+    auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)));    
+   
+
+    
+    ir_sch.Reorder( {  loops[2], loops[1] });
+
+    if( ops[i]->name() == "cinn_op.reduce_sum" )
+    {
+      auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)) + "_rf");
+      ir_sch.Reorder( {  loops[2], loops[1] });
+    }
+    
+  }
+
+
+  // std::cerr << "after reorder  loops  \n" << ir_sch.GetModule().GetExprs().at(0) << std::endl;
+
+  for( size_t i = 0; i < ops.size(); ++i )
+  {    
+    auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)));   
+
+    ir_sch.Bind(loops[0], "blockIdx.x");
+    // ir_sch.Bind(loops[1], "threadIdx.y");
+      ir_sch.Bind(loops[1], "threadIdx.x");
+
+
+    if( ops[i]->name() == "cinn_op.reduce_sum")
+    {
+      auto loops = ir_sch.GetLoops( ValueName( ops[i]->result(0)) + "_rf");
+
+      ir_sch.Bind(loops[0], "blockIdx.x");
+      // ir_sch.Bind(loops[1], "threadIdx.y");
+      ir_sch.Bind(loops[1], "threadIdx.x");
+    }
+  }
+
+  // std::cerr << "after bind thread   \n" << ir_sch.GetModule().GetExprs().at(0) << std::endl;
+
+  auto block0 = ir_sch.GetBlock("var");
+  ir_sch.SetBuffer(block0, "local", false);
+  // auto block1 = ir_sch.GetBlock("var_2_tmp");
+  // ir_sch.SetBuffer(block1, "local", false);
+
+  auto block1 = ir_sch.GetBlock("var_2_rf");
+  ir_sch.SetBuffer(block1, "local", false);
+
+  // std::cerr << "after set buffer   \n" << ir_sch.GetModule().GetExprs().at(0) << std::endl;
+  VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
+  // if (apply_group_schedule) {
+  //   DoGroupSchedule(ir_sch, group, tensor_map, tmp_tensor_info);
+  //   VLOG(3) << "After group schedule, ir is: \n"
+  //           << ir_sch.GetModule().GetExprs().at(0);
+  // }
 
   // 3.Do post-processing,
   // including preparing function args and temporary variables,
@@ -576,10 +680,11 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
 
-    if (apply_op_schedule && (this->*schedule_determine_func)(op)) {
-      // 3.Perform the schedule of Op
-      func_bodies.push_back(DoOpSchedule(op_impl, op_func_arg_tensors, funcs));
-    } else {
+    // if (apply_op_schedule && (this->*schedule_determine_func)(op)) {
+    //   // 3.Perform the schedule of Op
+    //   func_bodies.push_back(DoOpSchedule(op_impl, op_func_arg_tensors, funcs));
+    // } else 
+    {
       for (const ir::LoweredFunc& func : funcs) {
         func_bodies.push_back(func->body);
       }

@@ -87,7 +87,9 @@ Expr Optimize(Expr e,
 
 ir::Module Optimize(const ir::Module& module, const Target& target) {
   auto copied = ir::ir_utils::IRCopy(Expr(module));
+  std::cerr << "before replace" << std::endl;
   ReplaceCrossThreadReduction(&copied);
+  std::cerr << "after replace " << std::endl;
   UnrollLoop(&copied);
   VectorizeLoops(&copied, Target());
   VLOG(10) << "After VectorizeLoops:" << copied.as_module_ref();

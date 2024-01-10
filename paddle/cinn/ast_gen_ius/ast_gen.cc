@@ -63,6 +63,7 @@ ir::Expr ConvertReduceBody(ir::Expr body,
 }
 
 ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
+  std::cerr << "ast gen build !!!!!!!!!!!!!" << std::endl;
   const std::vector<ir::Var>& axis = tensor->axis();
   const std::vector<ir::Expr>& shape = tensor->shape;
   size_t axis_len = axis.size();
@@ -74,6 +75,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
   }
 
   if (tensor->is_reduce_tensor()) {
+    std::cerr << "ast gen  !!!!!!!!!!!!!!!!!!!!!!!! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
     // Make an init Tensor for domain without reduce axis
     Expr init_value = tensor->GetReduceInitVal();
     // TODO(zhhsplendid): Clean the handcoded "__reduce_init" string
@@ -199,6 +201,9 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     }
     return body;
   } else {
+
+    std::cerr << "reduce here !!!!!!!!!!!!!!!!!!\n";
+    std::cerr << "tensor body \n" << tensor->body() << std::endl;
     ir::Expr body = ir::Store::Make(tensor, tensor->body(), axis_exprs);
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> block_vars;
@@ -218,6 +223,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     body = ir::ScheduleBlockRealize::Make(
         iter_values,
         ir::ScheduleBlock::Make(block_vars, {}, {}, tensor->name, body));
+    std::cerr << "!!! init body " << body << std::endl;
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
       ir::Var loop_var = axis[i];
       ir::Expr loop_extent = shape[i];
@@ -228,7 +234,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                            ir::DeviceAPI::Host,
                            ir::Block::Make({body}));
     }
+
+    std::cerr << "final body " << body << std::endl;
     return body;
+
   }
 }
 

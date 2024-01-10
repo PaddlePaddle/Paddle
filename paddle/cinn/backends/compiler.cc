@@ -285,6 +285,7 @@ void Compiler::CompileCudaModule(const Module& module,
   CHECK(!source_code.empty())
       << "Compile CUDA C code failed from device module:\n"
       << device_module;
+  std::cerr << "source code \n" << source_code << std::endl;
   VLOG(3) << "[CUDA] C:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
   using runtime::cuda::CUDAModule;

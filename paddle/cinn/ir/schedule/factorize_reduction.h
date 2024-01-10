@@ -386,12 +386,15 @@ class RBBlockCreater : public ReduceBlockCreater {
   void CreateUpdateStmt() override {
     Expr original_store_body = original_update_stmt_.As<ir::Store>()->value;
     Expr new_store_body = ir_utils::IRCopy(original_store_body);
+    Expr right_expr;
 #define REPLACE_RF_TENSOR(Op)                                    \
   if (new_store_body.As<Op>()) {                                 \
     auto* node = new_store_body.As<Op>();                        \
+    std::cerr << node->node_type() << std::endl;                 \
     CHECK(node);                                                 \
     auto& operand = node->b();                                   \
     operand = Load::Make(rf_tensor_, rf_tensor_access_indices_); \
+    right_expr = Load::Make(rf_tensor_, rf_tensor_access_indices_); \
   }
 
     REPLACE_RF_TENSOR(Add)
@@ -409,9 +412,14 @@ class RBBlockCreater : public ReduceBlockCreater {
     Expr original_store_tensor = original_update_stmt_.As<ir::Store>()->tensor;
     std::vector<Expr> original_store_indices =
         original_update_stmt_.As<ir::Store>()->indices;
+    right_expr = lang::CallExtern("cinn_block_reduce_sum_fp32_internal", {right_expr});
+    std::cerr << " right expr " << right_expr << std::endl;
+    std::cerr << " new_store_body " << new_store_body << std::endl;
+    
     new_update_stmt_ = ir::Store::Make(
-        original_store_tensor, new_store_body, original_store_indices);
+        original_store_tensor, right_expr, original_store_indices);
     ReplaceExpr(&new_update_stmt_, original_indice2new_expr_);
+    std::cerr << "new update smt " << new_update_stmt_ << std::endl;
     VLOG(4) << "new_update_stmt of write back block: \n" << new_update_stmt_;
   }
 
