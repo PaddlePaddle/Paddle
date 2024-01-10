@@ -20,9 +20,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base.framework import (
-    Program,
     convert_np_dtype_to_dtype_,
-    program_guard,
 )
 from python.paddle.pir_utils import test_with_pir_api
 
@@ -171,7 +169,9 @@ class SequenceMaskTest5_tensor_attr(SequenceMaskTestBase_tensor_attr):
 class TestSequenceMaskOpError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_data = np.random.uniform(1, 5, [4]).astype("float32")
 
             def test_Variable():
