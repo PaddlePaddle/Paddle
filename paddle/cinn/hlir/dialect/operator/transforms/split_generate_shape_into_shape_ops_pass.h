@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
@@ -22,9 +21,9 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
+class SplitGenerateShapeIntoShapeOpsPass : public pir::PatternRewritePass {
  public:
-  FuseShapeOpsIntoGenerateShapeOpPass();
+  SplitGenerateShapeIntoShapeOpsPass();
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 

@@ -74,7 +74,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                [-0.43333334,  2.23333335]]]])
     """
     if not isinstance(theta, (Variable, paddle.pir.Value)):
-        raise ValueError("The theta should be a Tensor.")
+        raise TypeError("The theta should be a Tensor.")
 
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
