@@ -66,6 +66,7 @@
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
@@ -100,6 +101,8 @@ using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
+using pir::CloneOptions;
+using pir::IrMapping;
 using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
@@ -431,6 +434,36 @@ void BindBlock(py::module *m) {
       });
 }
 
+void BindIrMapping(py::module *m) {
+  py::class_<IrMapping> ir_mapping(*m, "IrMapping", R"DOC(
+    OpResult class represents the value(output) defined by a result of operation.
+    Notes:
+        The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
+        when build network.
+  )DOC");
+  ir_mapping.def(py::init<>())
+      .def("look_up",
+           [](IrMapping &self, Value from) { return self.Lookup(from); })
+      .def("add", [](IrMapping &self, Value from, Value to) {
+        self.Add<Value>(from, to);
+      });
+}
+
+void BindCloneOptions(py::module *m) {
+  py::class_<CloneOptions> clone_options(*m, "CloneOptions", R"DOC(
+    OpResult class represents the value(output) defined by a result of operation.
+    Notes:
+        The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
+        when build network.
+  )DOC");
+  clone_options.def(
+      "__init__",
+      [](CloneOptions &self, bool clone_regions, bool clone_operands) {
+        new (&self) CloneOptions(clone_regions, clone_operands);
+      },
+      return_value_policy::reference);
+}
+
 void BindOperation(py::module *m) {
   py::class_<Operation> op(*m, "Operation", R"DOC(
     In IR, all the operation are represented by Operation, and Operation
@@ -544,13 +577,21 @@ void BindOperation(py::module *m) {
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
-      .def("__repr__", [](Operation &self) {
-        std::ostringstream print_stream;
-        print_stream << "Operation(";
-        self.Print(print_stream);
-        print_stream << ")";
-        return print_stream.str();
-      });
+      .def("__repr__",
+           [](Operation &self) {
+             std::ostringstream print_stream;
+             print_stream << "Operation(";
+             self.Print(print_stream);
+             print_stream << ")";
+             return print_stream.str();
+           })
+      .def(
+          "clone",
+          [](Operation &self, IrMapping &ir_mapping, CloneOptions options) {
+            auto op = self.Clone(ir_mapping, options);
+            return ApiBuilder::Instance().GetBuilder()->Insert(op);
+          },
+          return_value_policy::reference);
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -1645,8 +1686,10 @@ void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);
-  BindOperation(&ir_module);
   BindValue(&ir_module);
+  BindIrMapping(&ir_module);
+  BindCloneOptions(&ir_module);
+  BindOperation(&ir_module);
   BindOpOperand(&ir_module);
   BindOpResult(&ir_module);
   BindType(&ir_module);
