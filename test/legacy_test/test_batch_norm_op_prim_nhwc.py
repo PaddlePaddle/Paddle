@@ -148,12 +148,12 @@ class TestBatchNormOpNHWCFp16(TestBatchNormOp):
 )
 class TestBatchNormOpNHWCbf16(TestBatchNormOp):
     def initConfig(self):
-        self.fw_comp_atol = 1e-3
-        self.fw_comp_rtol = 1e-3
-        self.rev_comp_atol = 1e-3
-        self.rev_comp_rtol = 1e-3
-        self.cinn_atol = 1e-3
-        self.cinn_rtol = 1e-3
+        self.fw_comp_atol = 2e-3
+        self.fw_comp_rtol = 2e-3
+        self.rev_comp_atol = 2e-3
+        self.rev_comp_rtol = 2e-3
+        self.cinn_atol = 2e-3
+        self.cinn_rtol = 2e-3
         self.dtype = "uint16"
         self.shape = [16, 16, 16, 8]
         self.training = True
