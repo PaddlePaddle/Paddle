@@ -115,6 +115,14 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
             for item in op["attrs"]:
                 if item["name"] == "data_format":
                     item["name"] = "data_layout"
+            value = op["attr_dict"].pop('data_format')
+            op["attr_dict"]['data_layout'] = value
+            for i in range(len(op["kernel"]["param"])):
+                if op["kernel"]["param"][i] == "data_format":
+                    op["kernel"]["param"][i] = "data_layout"
+            for i in range(len(op["infer_meta"]["param"])):
+                if op["infer_meta"]["param"][i] == "data_format":
+                    op["infer_meta"]["param"][i] = "data_layout"
         add_fluid_name(op["inputs"])
         add_fluid_name(op["attrs"])
         add_fluid_name(op["outputs"])
@@ -122,6 +130,27 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
     for bw_op in backward_ops:
         bw_op['op_name'] = SPARSE_OP_PREFIX + bw_op['name']
         bw_op['name'] = bw_op['op_name']
+
+        if bw_op['name'] in [
+            SPARSE_OP_PREFIX + "batch_norm_grad",
+            SPARSE_OP_PREFIX + "sync_batch_norm_grad",
+        ]:
+            for item in bw_op["attrs"]:
+                if item["name"] == "data_format":
+                    item["name"] = "data_layout"
+            for item in bw_op["forward"]["attrs"]:
+                if item["name"] == "data_format":
+                    item["name"] = "data_layout"
+                    item["fluid_name"] = "data_layout"
+            value = bw_op["attr_dict"].pop('data_format')
+            bw_op["attr_dict"]['data_layout'] = value
+            for i in range(len(bw_op["kernel"]["param"])):
+                if bw_op["kernel"]["param"][i] == "data_format":
+                    bw_op["kernel"]["param"][i] = "data_layout"
+            for i in range(len(bw_op["infer_meta"]["param"])):
+                if bw_op["infer_meta"]["param"][i] == "data_format":
+                    bw_op["infer_meta"]["param"][i] = "data_layout"
+
         add_fluid_name(bw_op["inputs"])
         add_fluid_name(bw_op["attrs"])
         add_fluid_name(bw_op["outputs"])
