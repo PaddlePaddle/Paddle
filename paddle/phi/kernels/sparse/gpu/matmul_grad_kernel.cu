@@ -147,7 +147,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
                             const SparseCsrTensor& dout,
                             SparseCsrTensor* dx,
                             SparseCsrTensor* dy) {
-#if CUDA_VERSION >= 11030
+#if CUDA_VERSION >= 11000
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
@@ -183,8 +183,8 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
 #else
 #ifdef PADDLE_WITH_CUDA
   PADDLE_THROW(phi::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSPGEMM, which is supported from "
-      "CUDA 11.3"));
+      "backward of 'sparse.matmul' use cusparseSpGEMM, which is supported from "
+      "CUDA 11.0"));
 #endif
 #endif
 }

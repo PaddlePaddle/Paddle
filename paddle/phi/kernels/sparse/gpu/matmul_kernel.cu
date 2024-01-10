@@ -177,7 +177,7 @@ void MatmulCooCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const SparseCooTensor& y,
                         SparseCooTensor* out) {
-  // 'cusparseSPGEMM' only support CSR now, so use COO->CSR->COO.
+  // 'cusparseSpGEMM' only support CSR now, so use COO->CSR->COO.
   SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
   SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
   SparseCsrTensor out_csr;
