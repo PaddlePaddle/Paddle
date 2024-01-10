@@ -33,7 +33,15 @@ from filters import (
     to_scalar_tensor_name,
     to_variable_names,
 )
-from generate_op import add_fluid_name, process_invoke_op
+from generate_op import (
+    add_compat_name,
+    add_fluid_name,
+    parse_drop_empty_grad,
+    parse_get_expected_kerneltype,
+    parse_keep_signature,
+    process_invoke_op,
+    to_phi_and_fluid_op_name_without_underline,
+)
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
 from tests_utils import (
@@ -90,7 +98,13 @@ def restruct_io(op):
 SPARSE_OP_PREFIX = 'sparse_'
 
 
-def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
+def main(
+    op_yaml_path,
+    backward_yaml_path,
+    op_compat_yaml_path,
+    output_op_path,
+    output_arg_map_path,
+):
     with open(op_yaml_path, "rt") as f:
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
@@ -100,6 +114,13 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
         backward_ops = yaml.safe_load(f)
         backward_ops = [restruct_io(op) for op in backward_ops]
     backward_op_dict = to_named_dict(backward_ops)
+
+    with open(op_compat_yaml_path, "rt") as f:
+        op_fluid_map_list = yaml.safe_load(f)
+        for op_args in op_fluid_map_list:
+            op_args["op"] = to_phi_and_fluid_op_name_without_underline(
+                op_args["op"]
+            )
 
     for op in ops:
         if op['name'][-1] == '_':
@@ -124,6 +145,17 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
             bw_op['invoke']['args'] = [
                 param.strip() for param in bw_op['invoke']['args'].split(',')
             ]
+
+    # deal the drop_empty_grad of bw_op by op_compat.yaml
+    parse_drop_empty_grad(op_fluid_map_list, backward_op_dict)
+
+    parse_get_expected_kerneltype(
+        op_fluid_map_list, forward_op_dict, backward_op_dict
+    )
+
+    parse_keep_signature(op_fluid_map_list, forward_op_dict, backward_op_dict)
+
+    add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict)
 
     # prepare for invoke case
     process_invoke_op(forward_op_dict, backward_op_dict)
@@ -182,6 +214,9 @@ if __name__ == "__main__":
         help="parsed backward sparse ops yaml file.",
     )
     parser.add_argument(
+        '--op_compat_yaml_path', type=str, help="ops args compat yaml file."
+    )
+    parser.add_argument(
         "--output_op_path", type=str, help="path to save generated operators."
     )
     parser.add_argument(
@@ -194,6 +229,7 @@ if __name__ == "__main__":
     main(
         args.ops_yaml_path,
         args.backward_ops_yaml_path,
+        args.op_compat_yaml_path,
         args.output_op_path,
         args.output_arg_map_path,
     )
