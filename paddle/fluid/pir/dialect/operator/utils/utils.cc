@@ -278,6 +278,40 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   return data_type;
 }
 
+std::string GetValueDataType(const pir::Type& type) {
+  if (type.isa<pir::DenseTensorType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<pir::DenseTensorType>().dtype()));
+  } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
+  } else if (type.isa<DenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<DenseTensorArrayType>().dtype()));
+  } else if (type.isa<pir::VectorType>()) {
+    auto vec_value = type.dyn_cast<pir::VectorType>();
+    if (vec_value.size() > 0) {
+      return GetValueDataType(vec_value[0]);
+    } else {
+      return "";
+    }
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dtype()));
+  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>().dtype()));
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+            .dtype()));
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidType("Currently, we can only get dtype for "
+                                 "DenseTensorType and SelectedRowsType."));
+  }
+}
+
 std::string GetValueDataType(const pir::Value& value) {
   if (value.type().isa<pir::DenseTensorType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
@@ -288,6 +322,13 @@ std::string GetValueDataType(const pir::Value& value) {
   } else if (value.type().isa<DenseTensorArrayType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorArrayType>().dtype()));
+  } else if (value.type().isa<pir::VectorType>()) {
+    auto vec_value = value.type().dyn_cast<pir::VectorType>();
+    if (vec_value.size() > 0) {
+      return GetValueDataType(vec_value[0]);
+    } else {
+      return "";
+    }
   } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type()
