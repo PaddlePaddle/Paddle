@@ -68,6 +68,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
 
+void TensorToArrayInferMeta(const MetaTensor& x,
+                            const MetaTensor& out_grad,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* x_grad);
+
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);

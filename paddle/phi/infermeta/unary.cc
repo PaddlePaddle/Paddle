@@ -175,6 +175,15 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
   out_index->set_dims(common::make_ddim({-1}));
 }
 
+void TensorToArrayInferMeta(const MetaTensor& x,
+                            const MetaTensor& out_grad,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* x_grad) {
+  x_grad->set_dtype(x.dtype());
+  x_grad->set_layout(x.layout());
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,

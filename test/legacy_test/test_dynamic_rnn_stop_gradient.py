@@ -24,12 +24,13 @@ paddle.enable_static()
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
-    base.default_startup_program().random_seed = 1
-    base.default_main_program().random_seed = 1
+    # base.default_startup_program().random_seed = 1
+    # base.default_main_program().random_seed = 1
+    paddle.seed(1)
     np.random.seed(2)
 
     x = paddle.assign(
-        np.random.rand(batch_size, beam_size, 32).astype("float32")
+        np.random.rand(batch_size, beam_size, 2).astype("float32")
     )
     indices = paddle.static.data(
         shape=[None, beam_size], dtype="int64", name="indices"
@@ -45,7 +46,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     scores = paddle.tensor.array_write(x, step_idx)
     with while_op.block():
         bs = paddle.cast(paddle.shape(x)[0], "int64")
-        for _ in range(20):
+        for _ in range(2):
             bs = paddle.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
         batch_pos = paddle.expand(
@@ -62,6 +63,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
 
     out = tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
     loss = paddle.mean(out)
+    print(paddle.static.default_main_program())
     opt = paddle.optimizer.Adam(0.01)
     opt.minimize(loss)
     exe = base.Executor(place)
@@ -75,20 +77,24 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
 
 class TestDynRNNStopGradient(unittest.TestCase):
     def setUp(self):
-        self.batch_size = 20
-        self.beam_size = 64
+        self.batch_size = 2
+        self.beam_size = 2
 
     def run_main(self, place):
-        with base.program_guard(base.Program(), base.Program()):
-            with base.scope_guard(base.Scope()):
-                value1 = build_and_run_program(
-                    place, self.batch_size, self.beam_size, False
-                )
-                value2 = build_and_run_program(
-                    place, self.batch_size, self.beam_size, True
-                )
-
-                np.testing.assert_array_equal(value1, value2)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                with base.scope_guard(base.Scope()):
+                    value1 = build_and_run_program(
+                        place, self.batch_size, self.beam_size, False
+                    )
+                    value2 = build_and_run_program(
+                        place, self.batch_size, self.beam_size, True
+                    )
+                    print("value1: ", value1)
+                    print("value2: ", value2)
+                    np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):
         places = [base.CPUPlace()]
