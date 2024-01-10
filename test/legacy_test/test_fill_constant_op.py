@@ -501,7 +501,7 @@ class TestFillConstantOpError(unittest.TestCase):
             )
 
             self.assertRaises(
-                ValueError,
+                TypeError,
                 paddle.tensor.fill_constant,
                 shape=[1.1],
                 value=5,
@@ -511,7 +511,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             x3 = np.random.randn(100, 100).astype('int32')
             self.assertRaises(
-                ValueError,
+                TypeError,
                 paddle.tensor.fill_constant,
                 shape=[100, 100],
                 value=5,
