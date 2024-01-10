@@ -114,11 +114,12 @@ class TestAssignBFP16Op(op_test.OpTest):
 
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
+    @test_with_pir_api
     def test_assign_LoDTensorArray(self):
         paddle.enable_static()
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
             y = paddle.tensor.fill_constant(
@@ -133,11 +134,11 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             append_backward(mean)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
-        exe = base.Executor(place)
+        exe = paddle.static.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
         feed_add = feed_x + ones

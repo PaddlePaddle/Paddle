@@ -519,8 +519,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     'int64', [paddle.to_tensor(x) for x in init_data]
                 )
                 # TODO(SigureMo): add op test for assign(tensor_array)
-                paddle.assign(array)
-                # array.append(x)
+                # paddle.assign(array)
+                array.append(x)
                 # array.pop()
 
     def test_neg(self):
