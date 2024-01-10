@@ -56,8 +56,8 @@ class IRPrinting : public PassInstrumentation {
           "IRPrinting on " + op->name() + " before " + pass->name() + " pass";
       detail::PrintHeader(header, oss);
       PrintIR(op, option_->print_module(), oss);
-      oss << "\n\n";
-      std::cout << oss.str();
+      oss << "\n";
+      std::cout << oss.str() << std::endl;
     });
   }
 
@@ -72,8 +72,8 @@ class IRPrinting : public PassInstrumentation {
           "IRPrinting on " + op->name() + " after " + pass->name() + " pass";
       detail::PrintHeader(header, oss);
       PrintIR(op, option_->print_module(), oss);
-      oss << "\n\n";
-      std::cout << oss.str();
+      oss << "\n";
+      std::cout << oss.str() << std::endl;
     });
   }
 

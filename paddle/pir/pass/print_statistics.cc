@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/macros.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/utils/string/pretty_log.h"
+
+REGISTER_FILE_SYMBOLS(print_statistics);
 
 namespace pir {
 

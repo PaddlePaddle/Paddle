@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+
 #include "paddle/common/ddim.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
-#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/core/ir_printer.h"
 

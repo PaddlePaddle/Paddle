@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/executor_cache.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -24,6 +25,8 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+
+DECLARE_FILE_SYMBOLS(print_statistics);
 
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 PHI_DECLARE_bool(print_ir);
