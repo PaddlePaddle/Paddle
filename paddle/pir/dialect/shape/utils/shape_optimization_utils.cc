@@ -166,9 +166,7 @@ const std::string SymbolicDimMgr::GetNextName() {
 }
 
 SymbolicDimOp SymbolicDimMgr::NewSymbolicDim(const std::string& name) {
-  auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
-  IR_ENFORCE(func_op);
-  Builder builder = Builder(m_.ir_context(), func_op.block());
+  Builder builder = Builder(m_.ir_context(), nullptr, Block::Iterator{}, false);
   // default settting dim != 0
   SymbolicDimOp symbol =
       builder.Build<SymbolicDimOp>(name.empty() ? GetNextName() : name,
