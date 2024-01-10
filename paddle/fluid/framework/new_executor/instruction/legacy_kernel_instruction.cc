@@ -93,7 +93,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   VLOG(0) << "finish process dist attributes for " << op_name
           << " : [execution_stream, stream_priority, scheduling_priority] = ["
           << GetExecutionStream() << ", " << GetStreamPriority << ", "
-          << GetSchedulingPriority << "]";
+          << GetSchedulingPriority() << "]";
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
