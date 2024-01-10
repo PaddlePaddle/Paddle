@@ -729,7 +729,13 @@ class TestScatterAPI(unittest.TestCase):
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return gpu_value
 
-        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+        def test_pir_static_graph():
+            with paddle.pir_utils.IrGuard():
+                return test_static_graph()
+
+        dy_out = test_dygraph()
+        np.testing.assert_array_equal(dy_out, test_static_graph())
+        np.testing.assert_array_equal(dy_out, test_pir_static_graph())
 
 
 @unittest.skipIf(
