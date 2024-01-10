@@ -454,21 +454,47 @@ NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
 # TODO(GhostScreaming): Support aliquant condition.
 # Specialized Code, for example, reshape needs to calculate local_shape
 RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
+
+      // The dist_input_x is a dist tensor, the dims() func return the global dims.
+      auto x_shape = dist_input_x->dims();
+      auto x_numel = dist_input_x->numel();
+      bool visit_negative = false;
       std::vector<int64_t> local_shape;
       for (size_t i = 0; i < shape.GetData().size(); i++) {
         auto& out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
         if (out_dist_attr.dims_mapping()[i] >= 0) {
+          int64_t shape_i = shape.GetData()[i];
+          if (shape_i == 0) {
+            shape_i = x_shape[i];
+          } else if (shape_i == -1) {
+            PADDLE_ENFORCE(not visit_negative,
+                           phi::errors::InvalidArgument(
+                               "Reshape can only have one -1 in the shape."));
+            visit_negative = true;
+            int64_t non_negative_product = 1;
+            for (size_t j = 0; j < shape.GetData().size(); j++) {
+              if (i == j) {
+                continue;
+              }
+              int64_t tmp_j = shape.GetData()[j];
+              if (tmp_j == 0) {
+                tmp_j = x_shape[j];
+              }
+              non_negative_product *= tmp_j;
+            }
+            PADDLE_ENFORCE(x_numel % non_negative_product == 0,
+                           phi::errors::InvalidArgument("Cannot infer real shape for -1."));
+            shape_i = x_numel / non_negative_product;
+          }
           int64_t dim = out_dist_attr.dims_mapping()[i];
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE_EQ(shape.GetData()[i] % mesh_dim,
-                0,
+          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
                 phi::errors::InvalidArgument(
-                    "Reshape only support local shape dim is divisible"
-                    "by the mesh dim, however local_shape[%d] is %d",
-                    "and shard mesh dims is %d",
-                    i, shape.GetData()[i], mesh_dim));
-          local_shape.push_back(shape.GetData()[i] / mesh_dim);
+                    "Reshape only support local shape dim is divisible "
+                    "by the mesh dim, however local_shape[%lld] is %lld "
+                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
+          local_shape.push_back(shape_i / mesh_dim);
         } else {
           local_shape.push_back(shape.GetData()[i]);
         }
