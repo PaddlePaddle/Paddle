@@ -29,6 +29,8 @@
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
@@ -1095,6 +1097,46 @@ class GeneralFusionMergePassHelper {
 
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
+    DoGenerateShapeOpGroupFustion();
+  }
+
+  void DoGenerateShapeOpGroupFustion() {
+    VLOG(3) << "DoFuseGenerateShapeOp...!";
+    bool updated = false;
+    for (size_t idx = 0; idx < fusion_groups_.size(); ++idx) {
+      auto producer = fusion_groups_[idx];
+      VLOG(3) << "Fusion Producer idx " << idx << " Group -> "
+              << producer->group_id;
+      // Skip to next iterator if producer is sub group.
+      if (producer->belong_groups.size()) continue;
+
+      // generate-shape-op group has only one op.
+      if (producer->ops.size() != 1) continue;
+
+      // only generate-shape-op groups will be processed.
+      if (!producer->ops.at(0)->isa<cinn::dialect::GenerateShapeOp>()) continue;
+
+      // generate-shape-op groups have no inputs.
+      if (!producer->input_ops.empty()) continue;
+
+      // do generate-shape-op fusion.
+      updated |= FuseGenerateShapeOpGroupToConsumer(producer);
+    }
+    if (updated) {
+      UpdateFusionGroup();
+    }
+  }
+
+  bool FuseGenerateShapeOpGroupToConsumer(const GroupPtr& producer) {
+    VLOG(3) << "FuseGenerateShapeOpGroupToConsumer handling producer : "
+            << producer->group_id;
+    // copy is need.
+    auto consumer_groups = producer->consumer_groups();
+    if (consumer_groups.size() > 0) {
+      RecomputeFuse(producer, consumer_groups);
+      return true;
+    }
+    return false;
   }
 
   bool DoGeneralHorizontalFusion() {
