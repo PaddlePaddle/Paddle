@@ -17,7 +17,7 @@ import numpy
 import paddle
 from paddle import _C_ops, pir
 from paddle.base.layer_helper import LayerHelper
-from paddle.common_ops_import import Variable, default_main_program
+from paddle.common_ops_import import Variable
 from paddle.framework import (
     core,
     in_dynamic_mode,
@@ -1134,8 +1134,8 @@ def dropout(
         )  # semantic transfer
 
         if in_dynamic_or_pir_mode():
-            if default_main_program().random_seed != 0:
-                seed = default_main_program().random_seed
+            if paddle.static.default_main_program().random_seed != 0:
+                seed = paddle.static.default_main_program().random_seed
 
             out = _C_ops.dropout(
                 x,
@@ -1162,7 +1162,6 @@ def dropout(
             def get_attrs(prog, dropout_prob, is_test, seed):
                 if (seed is None or seed == 0) and prog.random_seed != 0:
                     seed = prog.random_seed
-
                 if isinstance(
                     dropout_prob, Variable
                 ) and not dropout_prob.shape != [1]:
@@ -2235,8 +2234,10 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         )
 
     seed = None
-    if (seed is None or seed == 0) and default_main_program().random_seed != 0:
-        seed = default_main_program().random_seed
+    if (
+        seed is None or seed == 0
+    ) and paddle.static.default_main_program().random_seed != 0:
+        seed = paddle.static.default_main_program().random_seed
 
     if in_dynamic_or_pir_mode():
         return _C_ops.class_center_sample(
