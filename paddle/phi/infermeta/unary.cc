@@ -358,6 +358,7 @@ void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
   const phi::DDim out_dims(in_dims.Get(), input_rank - 1);
   output->set_dims(out_dims);
   output->share_lod(input);
+  output->set_dtype(dtype::ToComplex(input.dtype()));
 }
 
 void BatchSizeLikeInferMeta(const MetaTensor& x,
