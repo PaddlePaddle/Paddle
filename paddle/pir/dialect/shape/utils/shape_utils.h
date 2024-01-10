@@ -92,6 +92,9 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   std::unordered_map<std::string, symbol::ShapeOrDataDimExprs>
       value_id_to_shapeordata_;
 
+  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_;
+
  private:
   // The operation this analysis runs on.
   ModuleOp m_;

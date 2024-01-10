@@ -16,6 +16,7 @@ import copy
 from collections import defaultdict
 
 import paddle
+import paddle.static.amp.fp16_utils as amp_utils
 from paddle.common_ops_import import check_type, check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
@@ -831,19 +832,12 @@ class FP16Pass(AMPPass):
         if self.use_optimizer_fp16 is None:
             self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
 
+        AMPList = amp_utils.AutoMixedPrecisionLists
         # swith enviroment for fp16 / bf16.
         if self.target_dtype == "float16":
-            import paddle.static.amp.fp16_utils as amp_utils
-
-            AMPList = amp_utils.AutoMixedPrecisionLists
             __target_dtype = core.VarDesc.VarType.FP16
-
         elif self.target_dtype == "bfloat16":
-            from paddle.static.amp.bf16 import amp_utils
-
-            AMPList = amp_utils.AutoMixedPrecisionListsBF16
             __target_dtype = core.VarDesc.VarType.BF16
-
         else:
             raise NotImplementedError(
                 f"target dtype [{self.target_dtype}] is for amp o2 not supported yet."
@@ -856,6 +850,7 @@ class FP16Pass(AMPPass):
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")),
             None,
+            dtype=self.target_dtype,
         )
 
         # NOTE don't not change input data dtype, since it is controled by dataloader

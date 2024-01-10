@@ -1668,6 +1668,7 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
 
   auto args_def = phi_kernel.args_def();
   auto output_defs = args_def.output_defs();
+
   if (!UnchangeOutputOps.count(op_item->name()) &&
       !IsLegacyOp(op_item->name())) {
     PADDLE_ENFORCE_EQ(
@@ -2077,36 +2078,37 @@ pir::Operation* BuildKernelOp(
   pir::Operation* op = nullptr;
 #ifdef PADDLE_WITH_DNNL
   if (op_item->HasTrait<OneDNNTrait>()) {
-    if (IsOneDNNLegacyOp(op_item->name())) {
+    auto op_info_parser = GetOpYamlInfoParser(op_item);
+    std::vector<pir::Attribute> extra_args;
+    for (auto& arg : op_info_parser->OpRuntimeInfo().extra_args) {
+      extra_args.push_back(pir::StrAttribute::get(ctx, arg));
+    }
+    op_attribute.emplace(
+        "extra_args",
+        pir::ArrayAttribute::get(pir::IrContext::Instance(), extra_args));
+    std::vector<pir::Attribute> data_format_tensors;
+    for (auto& input : op_info_parser->OpRuntimeInfo().data_format_tensors) {
+      data_format_tensors.push_back(pir::StrAttribute::get(ctx, input));
+    }
+    op_attribute.emplace("data_format_tensors",
+                         pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                                  data_format_tensors));
+    op_attribute.emplace(
+        "is_onednn_only",
+        pir::BoolAttribute::get(
+            ctx, op_info_parser->OpRuntimeInfo().is_onednn_only));
+    op_attribute.emplace(
+        "dynamic_fallback",
+        pir::BoolAttribute::get(
+            ctx, op_info_parser->OpRuntimeInfo().dynamic_fallback));
+
+    if (IsLegacyOp(op_item->name())) {
       VLOG(4) << "choose OneDNNLegacyKernelOp";
       pir::OpInfo legacy_kernel_op_info =
           ctx->GetRegisteredOpInfo(OneDNNLegacyKernelOp::name());
       op = pir::Operation::Create(
           vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
     } else {
-      auto op_info_parser = GetOpYamlInfoParser(op_item);
-      std::vector<pir::Attribute> extra_args;
-      for (auto& arg : op_info_parser->OpRuntimeInfo().extra_args) {
-        extra_args.push_back(pir::StrAttribute::get(ctx, arg));
-      }
-      op_attribute.emplace(
-          "extra_args",
-          pir::ArrayAttribute::get(pir::IrContext::Instance(), extra_args));
-      std::vector<pir::Attribute> data_format_tensors;
-      for (auto& input : op_info_parser->OpRuntimeInfo().data_format_tensors) {
-        data_format_tensors.push_back(pir::StrAttribute::get(ctx, input));
-      }
-      op_attribute.emplace("data_format_tensors",
-                           pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                                    data_format_tensors));
-      op_attribute.emplace(
-          "is_onednn_only",
-          pir::BoolAttribute::get(
-              ctx, op_info_parser->OpRuntimeInfo().is_onednn_only));
-      op_attribute.emplace(
-          "dynamic_fallback",
-          pir::BoolAttribute::get(
-              ctx, op_info_parser->OpRuntimeInfo().dynamic_fallback));
       if (op_item->HasTrait<OneDNNDynamicFallbackTrait>()) {
         VLOG(4) << "choose OneDNNMixedPhiKernelOp";
         pir::OpInfo phi_kernel_op_info =
