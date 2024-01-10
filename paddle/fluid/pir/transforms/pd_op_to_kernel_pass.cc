@@ -2219,7 +2219,7 @@ void ProcessBlock(
         }
       }
       std::string target_op_name = op_item->name();
-      target_op_name.replace(0, 12, "pd_op");
+      target_op_name.replace(0, 9, "pd_op");
       auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
       if (!op_info) {
         IR_THROW("Ctx should have corresponding OpInfo %s", target_op_name);
