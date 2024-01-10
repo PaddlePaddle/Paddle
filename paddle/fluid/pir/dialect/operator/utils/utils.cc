@@ -18,6 +18,7 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -287,6 +288,22 @@ std::string GetValueDataType(const pir::Value& value) {
   } else if (value.type().isa<DenseTensorArrayType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorArrayType>().dtype()));
+  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dtype()));
+  } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+            .dtype()));
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+            .dtype()));
   } else {
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "

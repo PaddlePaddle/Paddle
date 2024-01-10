@@ -154,9 +154,24 @@ def GenBuildOutputsPart2(
     CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
   paddle::dialect::IrMetaTensor meta_{name};
   paddle::dialect::IrTensor ir_tensor_{name};
+
+
   if ({name}_.impl() != nullptr) {{
-    {type} {name} = {name}_.type().dyn_cast<{type}>();
     VLOG(4) << "Builder construction  dense_{name}";
+    {type} {name};
+    if ({name}_.type().isa<{type}>()) {{
+      {name} = {name}_.type().dyn_cast<{type}>();
+    }} else if ({name}_.type().isa<{allocated_type}>()) {{
+      {allocated_type} allocated_{name} = {name}_.type().dyn_cast<{allocated_type}>();
+      {name} = {type}::get(pir::IrContext::Instance(),
+                            allocated_{name}.dtype(),
+                            allocated_{name}.dims(),
+                            allocated_{name}.data_layout(),
+                            allocated_{name}.lod(),
+                            allocated_{name}.offset());
+    }} else {{
+      PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
+    }}
     ir_tensor_{name} = paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
                                                         {name}.data_layout(),
@@ -391,10 +406,17 @@ def GenBuildOutputsPart2(
                         op_infer_meta_map['param'][idx]
                     )
                     if op_input_optional_list[input_index] == 'true':
+                        type = op_input_type_list[idx]
+                        allocated_type = type.replace(
+                            'DenseTensorType', 'AllocatedDenseTensorType'
+                        ).replace(
+                            "SelectedRowsType", "AllocatedSelectedRowsType"
+                        )
                         build_output_str += (
                             CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE.format(
                                 name=op_infer_meta_map['param'][idx],
                                 type=op_input_type_list[idx],
+                                allocated_type=allocated_type,
                             )
                         )
                     else:

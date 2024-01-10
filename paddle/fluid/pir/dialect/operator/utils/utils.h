@@ -163,5 +163,8 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
                           const pir::Value& value,
                           const std::string& value_name,
                           const std::string& op_name);
+
+std::string GetValueDataType(const pir::Value& value);
+
 }  // namespace dialect
 }  // namespace paddle

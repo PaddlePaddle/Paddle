@@ -1500,8 +1500,7 @@ void PushBackOutputTypes(pir::IrContext* ctx,
                          const pir::Type& origin_type,
                          const phi::Place& out_place,
                          const phi::KernelKey& kernel_key,
-                         std::vector<pir::Type>* op_output_types,
-                         size_t index) {
+                         std::vector<pir::Type>* op_output_types) {
   auto result_type = origin_type;
   if (!result_type) {
     op_output_types->push_back(result_type);
@@ -1590,8 +1589,7 @@ void HandleForCustomOp(
                         op_item->result(i).type(),
                         out_place,
                         kernel_key,
-                        &op_output_types,
-                        i);
+                        &op_output_types);
   }
 
   // Prepare input
@@ -1710,15 +1708,31 @@ std::vector<pir::Type> BuildOutputs(
       InferMetaByValue(op_item, input_values, attribute_map);
   std::cout << "==============1 done======" << std::endl;
 
-  bool is_ouput_changed = false;
-  for (size_t i = 0; i < op_item->num_results(); ++i) {
-    if (output_types[i] != op_item->result(i).type()) {
-      is_ouput_changed = true;
-      break;
+  bool no_infermeta = false;
+  if (output_types.size() == 0) {
+    no_infermeta = true;
+  } else {
+    PADDLE_ENFORCE_EQ(output_types.size(),
+                      op_item->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "output_types.size() is expected to be %d but got %d",
+                          op_item->num_results(),
+                          output_types.size()));
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      if (output_types[i] != op_item->result(i).type()) {
+        no_infermeta = true;
+        break;
+      }
     }
   }
-  if (output_types.size() == 0) is_ouput_changed = true;
-  if (is_ouput_changed) {
+
+  for (size_t i = 0; i < op_item->num_operands(); ++i) {
+    if (GetValueDataType(op_item->operand(i).source()) ==
+        GetValueDataType(new_vec_inputs[i])) {
+      no_infermeta = true;
+    }
+  }
+  if (no_infermeta) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
       if ((!UnchangeOutputOps.count(op_item->name())) &&
@@ -1730,28 +1744,25 @@ std::vector<pir::Type> BuildOutputs(
                           op_item->result(i).type(),
                           out_place,
                           kernel_key,
-                          &op_output_types,
-                          i);
+                          &op_output_types);
     }
   } else {
     auto base_types = InferMetaByValue(op_item, new_vec_inputs, attribute_map);
     std::cout << "==============2 done======" << std::endl;
-    if (base_types.size() != op_item->num_results()) {
-      std::cout << "wrong!!!!!!" << std::endl;
-    }
+    PADDLE_ENFORCE_EQ(base_types.size(),
+                      op_item->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "base_types.size() is expected to be %d but got %d",
+                          op_item->num_results(),
+                          base_types.size()));
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
       if ((!UnchangeOutputOps.count(op_item->name())) &&
           (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
         out_place = phi::TransToPhiPlace(output_defs[i].backend);
       }
-      PushBackOutputTypes(ctx,
-                          op_item,
-                          base_types[i],
-                          out_place,
-                          kernel_key,
-                          &op_output_types,
-                          i);
+      PushBackOutputTypes(
+          ctx, op_item, base_types[i], out_place, kernel_key, &op_output_types);
     }
   }
   return op_output_types;
