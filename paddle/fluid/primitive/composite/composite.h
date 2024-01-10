@@ -308,7 +308,7 @@ std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
   auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
   Tensor out = reshape<T>(x, out_shape);
-  Tensor xshape;
+  Tensor xshape = shape<T>(x);
   return std::make_tuple(out, xshape);
 }
 
