@@ -105,6 +105,17 @@ class ThreadDataRegistry {
 
     void UnregisterData(uint64_t tid) {
       std::lock_guard<LockType> guard(lock_);
+      // Add the data to another thread before erasing.
+      data_to_erased = tid_map_.at(tid)->GetData();
+      for (auto& kv : tid_map_) {
+        if (kv.first != tid) {
+          kv.second->GetData() += data_to_erased;
+          VLOG(2) << "Add data " << data_to_erased << " from thread " << tid
+                  << " to " << kv.first << " , after update, data is "
+                  << kv.second->GetData() << ".";
+          break;
+        }
+      }
       tid_map_.erase(tid);
     }
 
