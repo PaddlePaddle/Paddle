@@ -419,12 +419,11 @@ class ConstantFoldingPass : public pir::Pass {
   }
 
   void Run(pir::Operation* op) override {
-    size_t op_nums = op->GetParentProgram()->block()->size();
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
     pir::ApplyPatternsGreedily(op, patterns_, cfg);
-    PrintStatistics(counter_, op_nums);
+    PrintStatistics(counter_);
     // delete old parameter var
     scope_->EraseVars(deleted_vars_);
     if (place_.GetType() != phi::AllocationType::CPU) {

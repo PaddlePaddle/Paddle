@@ -42,7 +42,9 @@ void Pass::PrintStatistics(int64_t match_count) const {
 
 void Pass::PrintStatistics(int64_t match_count, int64_t all_count) const {
   IR_ENFORCE(match_count < all_count,
-             "match_count should smaller than all_count");
+             "match_count: %d should smaller than all_count: %d",
+             match_count,
+             all_count);
   if (match_count > 0) {
     LOG(INFO) << "--- detected [" << match_count << "/" << all_count
               << "] subgraphs!";
