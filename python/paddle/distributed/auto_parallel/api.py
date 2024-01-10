@@ -225,9 +225,11 @@ def shard_tensor(
 
             return dist_param
         else:
-            return paddle.Tensor(
+            dist_tensor = paddle.Tensor(
                 tensor, process_mesh=mesh, placements=placements, place=place
             )
+            dist_tensor.stop_gradient = tensor.stop_gradient
+            return dist_tensor
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
