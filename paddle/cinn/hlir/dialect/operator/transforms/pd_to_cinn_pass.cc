@@ -225,6 +225,52 @@ class ReshapeOpPattern
   }
 };
 
+class Pool2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Pool2dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Pool2dOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::Pool2dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto kernel_size_gen_op =
+        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+
+    if (auto full_op =
+            kernel_size_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>()) {
+      auto kernel_size_attr =
+          full_op.attribute("value").dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      // kernel_size is generator by full op
+      // get attribute value from full op
+      std::vector<pir::Attribute> kernel_size;
+      for (size_t i = 0; i < static_cast<size_t>(kernel_size_attr.size());
+           i++) {
+        pir::Attribute attr = pir::Int32Attribute::get(
+            pir::IrContext::Instance(),
+            kernel_size_attr[i].dyn_cast<::pir::Int64Attribute>().data());
+        kernel_size.push_back(attr);
+      }
+      auto attrs = op->attributes();
+      attrs["kernel_size"] =
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), kernel_size);
+      attrs["stride_size"] = attrs.at("strides");
+      attrs["padding_size"] = attrs.at("paddings");
+      attrs["pool_type"] = attrs.at("pooling_type");
+      attrs.erase("strides");
+      attrs.erase("paddings");
+      attrs.erase("pooling_type");
+
+      auto cinn_reshape = rewriter.Build<cinn::dialect::Pool2dOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(), attrs);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
 class IsCloseOpPattern
     : public pir::OpRewritePattern<paddle::dialect::IscloseOp> {
  public:
@@ -613,6 +659,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(MinOpPattern().Build(context));
   ps.Add(ProdOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
+  ps.Add<Pool2dOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
   ps.Add<PowOpPattern>(context);

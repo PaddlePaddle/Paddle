@@ -124,6 +124,8 @@ void CIdentityInferMeta(const MetaTensor& x,
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CreateArrayLikeInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void CropInferMeta(const MetaTensor& x,
                    const IntArray& shape,
                    const IntArray& offsets,
@@ -347,6 +349,17 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
+
+void MaxPoolV2InferMeta(const MetaTensor& x,
+                        const std::vector<int>& kernel_size,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& data_format,
+                        bool global_pooling,
+                        bool adaptive,
+                        MetaTensor* out,
+                        MetaTensor* saved_idx,
+                        MetaConfig config = MetaConfig());
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -795,5 +808,10 @@ void NumberCountInferMeta(const MetaTensor& x,
                           MetaTensor* out);
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void LrnInferMeta(const MetaTensor& x,
+                  int n,
+                  MetaTensor* out,
+                  MetaTensor* mid_out);
 
 }  // namespace phi

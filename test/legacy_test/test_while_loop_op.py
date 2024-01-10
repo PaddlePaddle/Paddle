@@ -353,7 +353,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             fetch_list = [out[1]]
             for p, g in grad_list:
                 fetch_list.append(g)
-
             res = exe.run(
                 main_program,
                 feed={'i': feed_i, 'x': feed_x},
@@ -389,6 +388,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 inner_sum_1 = paddle.add(x=x, y=inner_sum_0)
                 j = paddle.increment(x=j)
                 paddle.tensor.array_write(inner_sum_1, i=j, array=mem_array)
+
                 return [j, x, mem_array]
 
             outer_data = paddle.tensor.array_read(array=data_array, i=i)
@@ -409,14 +409,21 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
             d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
             x = paddle.static.data(name='x', shape=[10], dtype='float32')
+            d0.persistable = True
+            d0.stop_gradient = False
+            d1.persistable = True
+            d2.persistable = True
             x.stop_gradient = False
             x.persistable = True
             i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
+            i.persistable = True
             init = paddle.zeros(shape=[10], dtype='float32')
+            init.stop_gradient = False
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
             mem_array.stop_gradient = False
+            data_array.stop_gradient = False
             mem_array.persistable = True
             i = paddle.increment(i)
             paddle.tensor.array_write(d1, i, array=data_array)
@@ -470,6 +477,79 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 )
             np.testing.assert_allclose(res[0], data_sum, rtol=1e-05)
             np.testing.assert_allclose(res[1], x_grad, rtol=1e-05)
+
+    def _test_while_with_inplace(self):
+        with paddle.pir_utils.IrGuard():
+
+            def internal_cond(i, x, mem_array):
+                return paddle.less_than(i, array_len)
+
+            def internal_body(i, x, mem_array):
+                t0 = paddle.tensor.array_read(array=mem_array, i=i)
+                t1 = paddle.add(t0, x)
+                i = paddle.increment(i)
+                paddle.tensor.array_write(t1, i, array=mem_array)
+                return [i, x, mem_array]
+
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                i = paddle.zeros(shape=[1], dtype='int64')
+                x = paddle.static.data(name='x', shape=[10], dtype='float32')
+                x.stop_gradient = False
+                init = paddle.zeros(shape=[10], dtype='float32')
+                mem_array = paddle.tensor.array_write(init, i)
+                mem_array.stop_gradient = False
+                array_len = paddle.tensor.fill_constant(
+                    shape=[1], dtype='int64', value=3
+                )
+
+                i, x, mem_array = paddle.static.nn.while_loop(
+                    internal_cond, internal_body, [i, x, mem_array]
+                )
+
+                out = paddle.tensor.array_read(mem_array, i)
+                mean_out = paddle.mean(out)
+                dx, dmem_array = paddle.static.gradients(
+                    mean_out, [x, mem_array]
+                )
+
+                j = paddle.zeros(shape=[1], dtype='int64')
+                dmem0 = paddle.tensor.array_read(dmem_array, j)
+                j = paddle.increment(j)
+                dmem1 = paddle.tensor.array_read(dmem_array, j)
+                j = paddle.increment(j)
+                dmem2 = paddle.tensor.array_read(mem_array, j)
+                j = paddle.increment(j)
+                dmem3 = paddle.tensor.array_read(mem_array, j)
+                place = (
+                    base.CUDAPlace(0)
+                    if core.is_compiled_with_cuda()
+                    else base.CPUPlace()
+                )
+                exe = base.Executor(place)
+
+                feed_x = np.ones(10).astype('float32')
+
+                if paddle.framework.in_pir_mode():
+                    res = exe.run(
+                        main_program,
+                        feed={"x": feed_x},
+                        fetch_list=[out, dx],  # dmem0, dmem1, dmem2, dmem3],
+                    )
+                else:
+                    res = exe.run(
+                        main_program,
+                        feed={"x": feed_x},
+                        fetch_list=[out, dx],  # dmem0, dmem1, dmem2, dmem3],
+                    )
+
+                # print("out = ", res[0], [3] * 10)
+                # print("dx = ", res[1], [0.3] * 10)
+                # print("dmem0 = ", res[2], [0.0] * 10)
+                # print("dmem1 = ", res[3], [0.0] * 10)
+                # print("dmem2 = ", res[4], [0.0] * 10)
+                # print("dmem3 = ", res[5], [0.0] * 10)
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
