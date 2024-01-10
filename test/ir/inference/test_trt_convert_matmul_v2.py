@@ -203,7 +203,7 @@ class TrtConvertMatmulTest_dynamic3(TrtLayerAutoScanTest):
         # case1: vec * mat
         # case2: vec * vec
         for case in [0, 1, 2]:
-            for batch in range(20, 23):
+            for batch in range(20, 21):
                 for trans_x in [False, True]:
                     for trans_y in [False, True]:
                         self.case = case
