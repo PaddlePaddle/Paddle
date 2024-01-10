@@ -727,14 +727,25 @@ void BatchNormInferMeta(const MetaTensor& x,
                           C,
                           bias.dims()[0]));
   }
+
+  auto dtype = x.dtype();
+  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16 ||
+      dtype == phi::DataType::UINT16) {
+    dtype = phi::DataType::FLOAT32;
+  }
+
   y->set_dims(x_dims);
   mean_out->set_dims({C});
+  mean_out->set_dtype(mean.dtype());
   variance_out->set_dims({C});
+  variance_out->set_dtype(variance.dtype());
   if (saved_mean) {
     saved_mean->set_dims({C});
+    saved_mean->set_dtype(dtype);
   }
   if (saved_variance) {
     saved_variance->set_dims({C});
+    saved_variance->set_dtype(dtype);
   }
   if (reserve_space) {
     reserve_space->set_dims({-1});
