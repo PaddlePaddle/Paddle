@@ -52,6 +52,8 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
 
   tensor->global_dims_ = dims;
   tensor->dist_attr_ = dist_attr;
+  tensor->process_mesh_ = dist_attr.process_mesh();
+  tensor->placements_ = ToPlacements(dist_attr);
 }
 
 void ReshardFunction::SetDistProps(DistTensor* tensor,
@@ -64,6 +66,8 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                         str_join(vectorize(tensor->dims()))));
 
   tensor->dist_attr_ = dist_attr;
+  tensor->process_mesh_ = dist_attr.process_mesh();
+  tensor->placements_ = ToPlacements(dist_attr);
 }
 
 DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {

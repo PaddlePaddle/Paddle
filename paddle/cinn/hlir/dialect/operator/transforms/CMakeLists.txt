@@ -29,4 +29,22 @@ if(NOT CINN_ONLY)
     cinn_op_dialect
     op_dialect_vjp)
 
+  cinn_cc_library(
+    fully_insert_broadcast_pass
+    SRCS
+    fully_insert_broadcast_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
+  cinn_cc_library(
+    split_generate_shape_into_shape_ops_pass
+    SRCS
+    split_generate_shape_into_shape_ops_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    op_dialect_vjp)
+
 endif()

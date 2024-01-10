@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -554,6 +555,28 @@ class Increment_Op
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
+class IR_API ShapeBroadcastOp
+    : public pir::Op<ShapeBroadcastOp,
+                     paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.shape_broadcast"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::Value y_);
+
+  void VerifySig() {}
+
+  pir::Value x() { return operand_source(0); }
+  pir::Value y() { return operand_source(1); }
+  pir::OpResult out() { return result(0); }
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -577,3 +600,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)

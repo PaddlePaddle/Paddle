@@ -264,7 +264,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   for (int i = 0; i < loops_number; ++i) {
     fused_extent = fused_extent * for_nodes[i]->extent;
   }
-
+  fused_extent = cinn::common::AutoSimplify(fused_extent);
   if (!fused_body.As<ir::Block>()) fused_body = Block::Make({fused_body});
   Expr new_stmt = For::Make(fused_var,
                             Expr(0),

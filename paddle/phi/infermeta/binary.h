@@ -231,6 +231,11 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void BitwiseShiftInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           bool is_arithmetic,
+                           MetaTensor* out);
+
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
@@ -454,6 +459,15 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            int maxlen,
                            int out_dtype,
                            MetaTensor* y);
+
+void ShuffleBatchInferMeta(const MetaTensor& x,
+                           const MetaTensor& seed,
+                           int startup_seed,
+                           MetaTensor* out,
+                           MetaTensor* shuffle_idx,
+                           MetaTensor* seed_out
+
+);
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
