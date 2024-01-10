@@ -58,7 +58,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   std::vector<Expr> blocks = GetChildBlocks(rf_loop);
   if (blocks.size() != 1) {
     os << "The rf_loop is required to have only one child block, but got "
-       << blocks.size() << std::endl;
+       << blocks.size() << "!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), this->module_expr_);
   }
   Expr original_block = blocks.at(0);

@@ -43,7 +43,7 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
   std::ostringstream os;
 
   if (!block.As<ScheduleBlockRealize>()) {
-    os << "The block is not a ScheduleBlockRealize!\n";
+    os << "Expr param(block) is not a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 
@@ -85,7 +85,7 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
   std::ostringstream os;
 
   if (!block.As<ScheduleBlockRealize>()) {
-    os << "The block is not a ScheduleBlockRealize!\n";
+    os << "Expr param(block) is not a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 
@@ -160,7 +160,7 @@ void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
   std::ostringstream os;
 
   if (!(ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>())) {
-    os << "The ir_node should be a ScheduleBlockRealize or For!\n";
+    os << "Expr param(ir_node) should be a ScheduleBlockRealize or For!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 
@@ -179,7 +179,7 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
   std::string primitive = "SetBuffer";
   std::ostringstream os;
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "The block is not a ScheduleBlockRealize!\n";
+    os << "Expr param(block) is not a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 

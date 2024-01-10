@@ -42,15 +42,16 @@ void DyScheduleImpl::MergeExprs() {
   auto exprs = this->GetModule().GetExprs();
   if (exprs.size() == 1U) return;
   if (!exprs[0].As<ir::Block>()) {
-    os << "Expr[0] of MergeExprs should be a Block!\n";
+    os << "Expr[0] of module_expr should be a Block!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (exprs[0].As<ir::Block>()->stmts.size() != 1U) {
-    os << "Expr[0] of MergeExprs should have only one stmt!\n";
+    os << "Expr[0] of module_expr should have only one stmt!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>()) {
-    os << "Expr[0] of MergeExprs should be Block with only one stmt which is a "
+    os << "Expr[0] of module_expr should be Block with only one stmt which is "
+          "a "
           "ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
@@ -59,7 +60,8 @@ void DyScheduleImpl::MergeExprs() {
            ->stmts[0]
            .As<ir::ScheduleBlockRealize>()
            ->schedule_block.As<ir::ScheduleBlock>()) {
-    os << "Expr[0] of MergeExprs should be Block with only one stmt which is a "
+    os << "Expr[0] of module_expr should be Block with only one stmt which is "
+          "a "
           "ScheduleBlockRealize with a defined ScheduleBlock!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
@@ -183,12 +185,12 @@ void DyScheduleImpl::Annotate(const Expr& block,
   std::string primitive = "Annotate";
   std::ostringstream os;
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) of Annotate must be a ScheduleBlockRealize!\n";
+    os << "Expr param(block) must be a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!block.As<ir::ScheduleBlockRealize>()
            ->schedule_block.As<ScheduleBlock>()) {
-    os << "Expr param(block) of Annotate must be a ScheduleBlockRealize with a "
+    os << "Expr param(block) must be a ScheduleBlockRealize with a "
           "defined ScheduleBlock!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
@@ -207,12 +209,12 @@ void DyScheduleImpl::Unannotate(Expr& block,
   std::string primitive = "Unannotate";
   std::ostringstream os;
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) of Unannotate must be a ScheduleBlockRealize!\n";
+    os << "Expr param(block) must be a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!block.As<ir::ScheduleBlockRealize>()
            ->schedule_block.As<ScheduleBlock>()) {
-    os << "Expr param(block) of Unannotate must be a ScheduleBlockRealize with "
+    os << "Expr param(block) must be a ScheduleBlockRealize with "
           "a defined ScheduleBlock!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
@@ -235,12 +237,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   std::ostringstream os;
 
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) of CopyTransformAndLoopInfo must be a "
+    os << "Expr param(block) must be a "
           "ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!block_target.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block_target) of CopyTransformAndLoopInfo must be a "
+    os << "Expr param(block_target) must be a "
           "ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
@@ -356,7 +358,7 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         true);
     if (find_partial_loop.size() != 1U) {
       os << "Number of loop with iter_var which is " << old_var->name
-         << " should be 1!\n";
+         << " should be 1 in Exprs[0] of module_expr!\n";
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
     new_loop = ir::ir_utils::IRCopy(*find_partial_loop.begin());
@@ -447,7 +449,7 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
   std::string primitive = "SamplePerfectTile";
   std::ostringstream os;
   if (!loop.As<ir::For>()) {
-    os << "Expr param(loop) of SamplePerfectTile should be a For loop";
+    os << "Expr param(loop) should be a For loop";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 

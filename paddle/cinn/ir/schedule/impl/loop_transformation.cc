@@ -44,7 +44,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::ostringstream os;
 
   if (!loop.As<ir::For>()) {
-    os << "Expr param of Split must be For node! Please check!\n";
+    os << "Expr param(loop) must be For node! Please check!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   auto* for_node = loop.As<ir::For>();
@@ -173,7 +173,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::string primitive = "Split";
   std::ostringstream os;
   if (!loop.As<ir::For>()) {
-    os << "Expr param of Split must be For node! Please check!\n";
+    os << "Expr param(loop) must be For node! Please check!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 
@@ -257,7 +257,8 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
 
   for (const Expr& it_loop : loops) {
     if (!it_loop.As<ir::For>()) {
-      os << "Expr param of Fuse must be For node! Please check!\n";
+      os << "Loop in vector<Expr> param(loops) of Fuse must be For node! "
+            "Please check!\n";
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
 
@@ -342,7 +343,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
 
-    if (i <= 0) {
+    if (i < 0) {
       os << "The loop index in Fuse should be >= 0!\n";
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
@@ -423,7 +424,7 @@ Expr DyScheduleImpl::Reorder(const std::string& block_name,
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
 
-    if (i <= 0) {
+    if (i < 0) {
       os << "The loop index in Reorder should be >= 0!\n";
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
@@ -449,7 +450,7 @@ Expr DyScheduleImpl::Reorder(const Expr& block,
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }
 
-    if (i <= 0) {
+    if (i < 0) {
       os << "The loop index in Reorder should be >= 0!\n";
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
     }

@@ -77,12 +77,12 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   std::string primitive = "SimpleComputeAt";
   std::ostringstream os;
   if (!block.As<ScheduleBlockRealize>()) {
-    os << "Expr param(block) of SimpleComputeAt should be a "
+    os << "Expr param(block) should be a "
           "ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!loop.As<For>()) {
-    os << "Expr param(loop) of SimpleComputeAt should be a For node!\n";
+    os << "Expr param(loop) should be a For node!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 
@@ -237,7 +237,7 @@ void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
   std::string primitive = "ComputeInline";
   std::ostringstream os;
   if (!schedule_block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param of ComputeInline should be a ScheduleBlockRealize!\n";
+    os << "Expr param(schedule_block) should be a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
 
