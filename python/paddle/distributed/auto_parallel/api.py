@@ -228,6 +228,8 @@ def shard_tensor(
             dist_tensor = paddle.Tensor(
                 tensor, process_mesh=mesh, placements=placements, place=place
             )
+            # InitDistTensorWithTensor won't pass the stop gradient attribute,
+            # have to pass it manually.
             dist_tensor.stop_gradient = tensor.stop_gradient
             return dist_tensor
     else:
