@@ -23,9 +23,6 @@ if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_c_allreduce")
 endif()
 
-list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_bitwise_and")
-list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_bitwise_or")
-list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_bitwise_not")
 if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_convert_fused_token_prune")
