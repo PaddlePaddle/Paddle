@@ -7368,11 +7368,11 @@ def copysign_(x, y, name=None):
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
-        raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+    raise ValueError(
+        "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+            out_shape, x.shape
         )
+    )
     return _C_ops.copysign_(x, y)
 
 
