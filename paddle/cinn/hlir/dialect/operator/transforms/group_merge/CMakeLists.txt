@@ -5,7 +5,7 @@ if(NOT CINN_ONLY)
     group_with_group_merge_pass.cc
     op_with_group_merge_pass.cc
     cinn_group_lowering_pass.cc
-    rewrite_generate_shape_ops_to_run_first_pass.cc
+    move_generate_shape_ops_to_prologue_pass.cc
     generate_shape_util.cc
     tensor_node.cc
     DEPS

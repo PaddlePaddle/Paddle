@@ -34,7 +34,7 @@
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/generate_shape_util.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/rewrite_generate_shape_ops_to_run_first_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
@@ -66,10 +66,10 @@ class GroupOpGenerateShapeOpsPattern : public pir::OpRewritePattern<cinn::dialec
 
 };
 
-class RewriteGenerateShapeOpsToRunFirstPass : public pir::PatternRewritePass {
+class MoveGenerateShapeOpsToProloguePass : public pir::PatternRewritePass {
  public:
-  RewriteGenerateShapeOpsToRunFirstPass()
-      : pir::PatternRewritePass("generate_shape_ops_to_run_first", 1) {}
+  MoveGenerateShapeOpsToProloguePass()
+      : pir::PatternRewritePass("move_generate_shape_ops_to_prologue", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -80,7 +80,7 @@ class RewriteGenerateShapeOpsToRunFirstPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation* op) const override {
     if (!(op->isa<pir::ModuleOp>() && op->num_regions() > 0)) return false;
     auto* program = op->GetParentProgram();
-    VLOG(4) << "Before RewriteGenerateShapeOpsToRunFirstPass: " << *program;
+    VLOG(4) << "Before MoveGenerateShapeOpsToProloguePass: " << *program;
     return true;
   }
 
@@ -90,8 +90,8 @@ class RewriteGenerateShapeOpsToRunFirstPass : public pir::PatternRewritePass {
 
 namespace ir {
 
-std::unique_ptr<::pir::Pass> CreateRewriteGenerateShapeOpsToRunFirstPass() {
-  return std::make_unique<RewriteGenerateShapeOpsToRunFirstPass>();
+std::unique_ptr<::pir::Pass> CreateMoveGenerateShapeOpsToProloguePass() {
+  return std::make_unique<MoveGenerateShapeOpsToProloguePass>();
 }
 
 }  // namespace ir

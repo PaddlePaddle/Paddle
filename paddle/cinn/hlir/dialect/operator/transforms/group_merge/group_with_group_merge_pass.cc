@@ -1097,11 +1097,11 @@ class GeneralFusionMergePassHelper {
 
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
-    DoGenerateShapeOpGroupFustion();
+    DoPrologueGenerateShapeOpGroupFustion();
   }
 
-  void DoGenerateShapeOpGroupFustion() {
-    VLOG(3) << "DoFuseGenerateShapeOp...!";
+  void DoPrologueGenerateShapeOpGroupFustion() {
+    VLOG(3) << "DoPrologueGenerateShapeOpGroupFustion...!";
     bool updated = false;
     for (size_t idx = 0; idx < fusion_groups_.size(); ++idx) {
       auto producer = fusion_groups_[idx];
@@ -1110,25 +1110,25 @@ class GeneralFusionMergePassHelper {
       // Skip to next iterator if producer is sub group.
       if (producer->belong_groups.size()) continue;
 
-      // generate-shape-op group has only one op.
+      // a prologue generate-shape-op group has only one op.
       if (producer->ops.size() != 1) continue;
 
-      // only generate-shape-op groups will be processed.
+      // only prologue generate-shape-op groups will be processed.
       if (!producer->ops.at(0)->isa<cinn::dialect::GenerateShapeOp>()) continue;
 
-      // generate-shape-op groups have no inputs.
+      // prologue generate-shape-op groups have no inputs.
       if (!producer->input_ops.empty()) continue;
 
       // do generate-shape-op fusion.
-      updated |= FuseGenerateShapeOpGroupToConsumer(producer);
+      updated |= FusePrologueGenerateShapeOpGroupToConsumer(producer);
     }
     if (updated) {
       UpdateFusionGroup();
     }
   }
 
-  bool FuseGenerateShapeOpGroupToConsumer(const GroupPtr& producer) {
-    VLOG(3) << "FuseGenerateShapeOpGroupToConsumer handling producer : "
+  bool FusePrologueGenerateShapeOpGroupToConsumer(const GroupPtr& producer) {
+    VLOG(3) << "FusePrologueGenerateShapeOpGroupToConsumer handling producer : "
             << producer->group_id;
     // copy is need.
     auto consumer_groups = producer->consumer_groups();
