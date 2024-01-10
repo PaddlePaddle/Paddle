@@ -19,6 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
+#include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/interface_value.h"
@@ -395,9 +396,25 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
           output_name, "paddle::dialect::DenseTensorType", is_optional, false});
     }
 
+    auto& inplace_maps = OpMetaInfoHelper::GetInplaceReverseMap(op_meta);
+
+    if (!inplace_maps.empty()) {
+      VLOG(3) << "Register Custom Operator: op inplace_map: "
+              << string::join_strings(inplace_maps, ',', [](auto& pair) {
+                   return pair.first + ": " + pair.second;
+                 });
+    }
+
+    std::vector<std::pair<std::string, std::string>> vec_inplace;
+    for (auto inplace_map : inplace_maps) {
+      vec_inplace.push_back(inplace_map);
+    }
+
     // we only need kernel params name in run_time_info
     paddle::dialect::OpRunTimeInfo run_time_info =
-        paddle::dialect::OpRunTimeInfo("", {}, "", param_names, {}, {}, {}, {});
+        paddle::dialect::OpRunTimeInfo(
+            "", {}, "", param_names, {}, {}, vec_inplace, {});
+
     return std::make_tuple(
         inputs_info, attributes_info, outputs_info, run_time_info, "");
   }
@@ -426,6 +443,13 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
   pir::TypeId id = IdManager::Instance().CreateId();
   std::string op_name = paddle::framework::kCustomDialectPrefix +
                         OpMetaInfoHelper::GetOpName(op_meta);
+  std::vector<pir::TypeId> traits;
+
+  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(op_meta);
+  if (!inplace_map.empty()) {
+    op_name += "_";
+    traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
+  }
   op_names_.push_back(op_name);
 
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
@@ -439,7 +463,6 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
       AttributeManager::Instance().ToCharPointers(attr_names);
   uint32_t attr_num = attr_names.size();
 
-  std::vector<pir::TypeId> traits;
   std::set<pir::InterfaceValue> interface_values;
   pir::InterfaceValue op_info_interface =
       pir::InterfaceValue::Get<OpYamlInfoInterface,

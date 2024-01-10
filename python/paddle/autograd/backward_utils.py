@@ -111,6 +111,10 @@ class ValueDict:
     def __contains__(self, key):
         return ValueWrapper(key) in self._items
 
+    def __repr__(self) -> str:
+        items_str = ", ".join(f"{key}: {val}" for key, val in self.items())
+        return f'ValueDict({items_str})'
+
 
 class ValueSet:
     def __init__(
@@ -152,6 +156,10 @@ class ValueSet:
 
     def __contains__(self, val):
         return ValueWrapper(val) in self._set
+
+    def __repr__(self) -> str:
+        items_str = ", ".join(repr(item) for item in self)
+        return f'ValueSet({items_str})'
 
 
 class State:
