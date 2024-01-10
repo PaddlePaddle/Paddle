@@ -358,8 +358,10 @@ class ConcatOpPattern
       int axis = static_cast<int>(
           full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
 
-      auto input_ops =
-          op->operand(0).owner()->dyn_cast<pir::CombineOp>().inputs();
+      auto input_ops = op->operand_source(0)
+                           .defining_op()
+                           ->dyn_cast<pir::CombineOp>()
+                           .inputs();
 
       auto cinn_concat =
           rewriter.Build<cinn::dialect::ConcatOp>(input_ops, axis);
