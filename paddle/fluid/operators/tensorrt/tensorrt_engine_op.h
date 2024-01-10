@@ -733,7 +733,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
               nb_dims == origin_output_rank[output_index])
             break;
         }
-        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+        for (int i = 0; i < nb_dims; i++) {
+          ddim.push_back(dims.d[i]);
+        }
 #else
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
@@ -743,7 +745,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
               nb_dims == origin_output_rank[output_index])
             break;
         }
-        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+        for (int i = 0; i < nb_dims; i++) {
+          ddim.push_back(dims.d[i]);
+        }
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
