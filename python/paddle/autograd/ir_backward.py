@@ -599,7 +599,8 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 if (
-                    input.get_defining_op() is not None
+                    op.name() != "cf.tuple_push"
+                    and input.get_defining_op() is not None
                     and input.get_defining_op().name() == "builtin.combine"
                 ):
                     tmp_input = []
@@ -621,7 +622,8 @@ def append_backward_ops(
                 continue
 
             if (
-                input.get_defining_op() is not None
+                op.name() != "cf.tuple_push"
+                and input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
             ):
                 (
@@ -652,7 +654,8 @@ def append_backward_ops(
                 continue
 
             if (
-                input.get_defining_op() is not None
+                op.name() != "cf.tuple_push"
+                and input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
             ):
                 update_input_grad_map(

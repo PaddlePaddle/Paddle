@@ -138,7 +138,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TensorToArrayKernel(const Context& dev_ctx,
                          const TensorArray& x,
-                         const DenseTensor* out_grad,
+                         const DenseTensor& out_grad,
                          int axis,
                          bool use_stack,
                          TensorArray* x_grad) {
@@ -322,6 +322,34 @@ PD_REGISTER_KERNEL(array_to_tensor,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
+
+PD_REGISTER_KERNEL(tensor_to_array,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TensorToArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(tensor_to_array,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TensorToArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif

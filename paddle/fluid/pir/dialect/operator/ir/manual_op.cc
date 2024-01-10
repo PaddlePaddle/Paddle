@@ -1085,6 +1085,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       dense_x_grad.offset());
   argument_outputs.push_back(x_grad_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::Build(pir::Builder &builder,
@@ -1142,6 +1143,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       dense_x_grad.offset());
   argument_outputs.push_back(x_grad_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::VerifySig() {
@@ -1250,6 +1252,7 @@ void CreateArrayOp::Build(pir::Builder &builder,
       dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void CreateArrayOp::VerifySig() {
@@ -1885,6 +1888,7 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
       dense_out_index.offset());
   argument_outputs.push_back(out_index_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayToTensorOp::VerifySig() {
@@ -2029,6 +2033,7 @@ void TensorToArrayOp::Build(pir::Builder &builder,             // NOLINT
           dense_x_grad.layout());
   argument_outputs.push_back(out_dense_tensor_array_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void TensorToArrayOp::VerifySig() {
@@ -2307,6 +2312,7 @@ void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
