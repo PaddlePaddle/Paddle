@@ -596,6 +596,5 @@ class TestDy2StIfElseBackward(Dy2StTestBase):
             (b + net.param).numpy(), out.numpy(), rtol=1e-05
         )
 
-
 if __name__ == '__main__':
     unittest.main()
