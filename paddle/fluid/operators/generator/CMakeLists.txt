@@ -280,8 +280,7 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} generate_sparse_op.py --ops_yaml_path
     ./parsed_ops/sparse_ops.parsed.yaml --backward_ops_yaml_path
-    ./parsed_ops/sparse_backward.parsed.yaml --op_compat_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml --output_op_path
+    ./parsed_ops/sparse_backward.parsed.yaml --output_op_path
     "${generated_sparse_ops_path}.tmp" --output_arg_map_path
     "${generated_sparse_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
