@@ -20,7 +20,7 @@ import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestCPartialSendTranslator(test_op_translator.TestOpTranslator):
+class TestPartialSendTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
         self.op_type = "partial_send"
         x = paddle.ones(shape=(100, 2, 3), dtype='float32')
