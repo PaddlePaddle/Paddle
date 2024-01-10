@@ -1564,8 +1564,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
-
+  pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -1583,8 +1582,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 }
 
 void InferSymbolicShapePass(
-    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-    Program &program) {                          // NOLINT
+    std::shared_ptr<PassManager> &pass_manager) {  // NOLINT
   if (FLAGS_pir_apply_shape_optimization_pass) {
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
