@@ -218,31 +218,23 @@ void DealWithIndices(const Context& dev_ctx,
     res_dim_v->insert(res_dim_v->end(),
                       tmp_x_dims.begin() + int_indices_v.size(),
                       tmp_x_dims.end());
-
-    std::vector<DenseTensor> reshaped_indices_v;
-    for (size_t i = 0; i < int_indices_v.size(); ++i) {
-      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        reshaped_indices_v.emplace_back(phi::Cast<int, Context>(
-            dev_ctx, *int_indices_v[i], phi::DataType::INT64));
-      } else {
-        reshaped_indices_v.emplace_back(*int_indices_v[i]);
-      }
-    }
-    reshaped_indices_v.insert(
-        reshaped_indices_v.end(), range_tensor_v.begin(), range_tensor_v.end());
-
     phi::DDim res_dim = common::make_ddim(*res_dim_v);
-
-    for (size_t i = 0; i < reshaped_indices_v.size(); ++i) {
+    for (size_t i = 0; i < int_indices_v.size(); ++i) {
+      phi::DenseTensor index_tensor;
+      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
+        index_tensor = phi::Cast<int, Context>(
+            dev_ctx, *int_indices_v[i], phi::DataType::INT64);
+      } else {
+        index_tensor = *int_indices_v[i];
+      }
       tmp_res_indices_v->emplace_back(
           GetReshapeAndExpandTensor<int64_t, Context>(
-              dev_ctx,
-              reshaped_indices_v[i],
-              res_dim,
-              bd_dim,
-              ((i < int_indices_v.size())
-                   ? 0
-                   : i - int_indices_v.size() + len_bd_dim)));
+              dev_ctx, index_tensor, res_dim, bd_dim, 0));
+    }
+    for (size_t i = 0; i < range_tensor_v.size(); ++i) {
+      tmp_res_indices_v->emplace_back(
+          GetReshapeAndExpandTensor<int64_t, Context>(
+              dev_ctx, range_tensor_v[i], res_dim, bd_dim, i + len_bd_dim));
     }
     for (size_t i = 0; i < res_indices_v->size(); ++i) {
       (*res_indices_v)[i] = &(*tmp_res_indices_v)[i];
