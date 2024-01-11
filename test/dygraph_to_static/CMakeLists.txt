@@ -29,6 +29,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_resnet)
   list(REMOVE_ITEM TEST_OPS test_build_strategy)
   list(REMOVE_ITEM TEST_OPS test_bert)
+  list(REMOVE_ITEM TEST_OPS test_transformerx)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
