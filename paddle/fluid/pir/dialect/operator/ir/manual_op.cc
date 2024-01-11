@@ -4789,6 +4789,57 @@ void MemcpyD2hMultiIoOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
+             input_values.size());
+
+  pir::Value x_ = input_values[0];
+  (void)x_;
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType x_type;
+  if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+    (void)x_type;
+  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
+        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
+    x_type = paddle::dialect::DenseTensorArrayType::get(
+        pir::IrContext::Instance(),
+        allocated_input.dtype(),
+        allocated_input.data_layout());
+    (void)x_type;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorArrayType or "
+        "paddle::dialect::AllocatedDenseTensorArrayType"));
+  }
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
+      {},
+      x_type.data_layout(),
+      {});
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::UnchangedArrayInferMeta(meta_input, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  return argument_outputs;
+}
+
 phi::DataType MemcpyD2hMultiIoOp::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DataType &tensor_dtype,
