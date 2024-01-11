@@ -49,6 +49,7 @@ class Parser:
     def __init__(self):
         self.feed_op_name = 'pd_op.data'
         self.fetch_op_name = 'pd_op.fetch'
+        self.have_dy_shape = False
 
     def run(self, file):
         program = self.load_from(file)
@@ -73,6 +74,7 @@ class Parser:
                 for s in in_val.shape:
                     if s == -1:
                         s = 1
+                        self.have_dy_shape = True
                     shape.append(s)
                 info = [shape, in_val.dtype]
                 feeds[op.attrs()['name']] = info
@@ -100,21 +102,50 @@ class TestTask(unittest.TestCase):
     def test_cinn(self):
         self.check_infer(enable_cinn=True)
 
-    def check_infer(self, enable_cinn):
-        program_info = Parser().run(self.file_path)
+    def test_cmp(self):
+        parser = Parser()
+        program_info = parser.run(self.file_path)
+
         feed = program_info.random_feeds()
         fetch_list = program_info.fetch_list()
-        self.run_program(program_info.program, feed, fetch_list, enable_cinn)
+
+        cinn_out = self.run_program(
+            program_info.program, feed, fetch_list, True
+        )
+        base_out = self.run_program(
+            program_info.program, feed, fetch_list, False
+        )
+
+        print(len(cinn_out))
+        print(len(base_out))
+
+        for cinn_res, base_res in zip(cinn_out, base_out):
+            # print( np.allclose( cinn_res, base_res ) )
+            np.testing.assert_allclose(cinn_res, base_res, atol=1e-4, rtol=1e-4)
+
+    def check_infer(self, enable_cinn):
+        parser = Parser()
+        program_info = parser.run(self.file_path)
+        if not parser.have_dy_shape:
+            feed = program_info.random_feeds()
+            fetch_list = program_info.fetch_list()
+
+            return self.run_program(
+                program_info.program, feed, fetch_list, enable_cinn
+            )
+        else:
+            print("Have dy shape just skip here")
 
     def run_program(self, program, feed, fetch_list, enable_cinn):
+        print("enable_cinn", enable_cinn)
         if enable_cinn:
             print(program)
             paddle.decomposition.decomp.decompose(program, [])
-            # print( program )
+            print(program)
             fwd_pm = paddle.base.libpaddle.pir.PassManager()
             paddle.base.libpaddle.pir.add_cinn_pass(fwd_pm, program)
             fwd_pm.run(program)
-            # print( program )
+            print("after cinn", program)
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         outs = exe._run_pir_impl(

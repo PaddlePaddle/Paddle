@@ -65,6 +65,13 @@ NodeAttr CollectAttrs(const ::pir::Operation& op) {
 
 }  // namespace details
 
+int64_t Next2Power(int64_t n) {
+  if (n == 1) {
+    return 1;
+  }
+  return int64_t(std::pow(2.0, std::ceil(std::log2(n))));
+}
+
 Expr BuildOuputExpr(cinn::ir::Tensor tensor) {
   auto axis = tensor->axis();
   int rank = axis.size();
@@ -211,59 +218,85 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
   }
 
-  int64_t reduce_block = reduce_numel;
-
-  if (reduce_numel >= 2048) {
-    reduce_block = 2048;
+  if (reduce_numel < 0 || flatten_numel < 0) {
+    std::cerr << "reduce numel " << reduce_numel << "\t" << flatten_numel
+              << std::endl;
+    throw std::runtime_error("negative reduce numel or flaten numel");
   }
 
+  int64_t reduce_block = 1;
   int64_t flatten_block = 1;
 
   // std::cerr << "reduce numel " << reduce_numel << "\t" << flatten_numel
   //           << std::endl;
-  if (reduce_numel == 1) {
-    flatten_block = 1024;
-  } else if (reduce_numel <= 256) {
-    flatten_block = 2 * (128 / reduce_numel);
-  } else if (reduce_numel > 256) {
-    flatten_block = 1;
-  }
-  flatten_block = std::min(flatten_block, flatten_numel);
-  reduce_block = std::min(reduce_block, reduce_numel);
+  int64_t reduce_inner_num = 1;
+  int64_t flatten_inner_num = 1;
+  int warp_num = 1;
 
-  int warp_num = (flatten_block * reduce_block) / 128;
-  if ((flatten_block * reduce_block) % 128 != 0) {
-    std::cerr << "flatten block reduce block " << flatten_block << "\t"
-              << reduce_block << std::endl;
-    throw std::runtime_error("flatten block reduce block not divice by 128");
+  if (reduce_numel == 1) {
+    // warp_num * 32 * flattern_inner = flatten_block
+    reduce_block = 1;
+    flatten_block = Next2Power(flatten_numel);
+    if (flatten_block > 1024) {
+      flatten_block = 1024;
+    }
+    reduce_inner_num = 1;
+    warp_num = flatten_block / 128;
+    if (warp_num == 0) {
+      warp_num = 1;
+    }
+    flatten_inner_num = flatten_block / (warp_num * 32);
+    if (flatten_inner_num == 0) {
+      flatten_inner_num = 1;
+    }
+
+    int64_t block_num = int64_t(std::ceil(flatten_numel * 1.0 / flatten_block));
+    group_tile_info->block_num = block_num;
+  } else if (reduce_numel <= 256) {
+    // warp reduce
+    reduce_block = Next2Power(reduce_numel);
+    flatten_block = 256 / reduce_block;
+    flatten_inner_num = flatten_block;
+    reduce_inner_num = reduce_block / 32;
+    warp_num = 8;
+  } else if (reduce_numel > 256 < reduce_numel <= 2048) {
+    flatten_block = 1;
+    reduce_block = int64_t(std::ceil(reduce_numel * 1.0 / 256.0)) * 256;
+    warp_num = reduce_block / 256;
+    flatten_inner_num = 1;
+    reduce_inner_num = 8;
+  } else if (reduce_numel > 2048) {
+    flatten_block = 1;
+    reduce_block = 2048;
+    warp_num = 8;
+    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 256.0)) / 256;
+    flatten_inner_num = 1;
   }
+
+  group_tile_info->reduce_block = reduce_block;
+  // flatten_block = std::min(flatten_block, flatten_numel);
+  // reduce_block = std::min(reduce_block, reduce_numel);
+
+  // int warp_num = (flatten_block * reduce_block) / 128;
+  // if ((flatten_block * reduce_block) % 128 != 0) {
+  //   std::cerr << "flatten block reduce block " << flatten_block << "\t"
+  //             << reduce_block << std::endl;
+  //   throw std::runtime_error("flatten block reduce block not divice by 128");
+  // }
   // warp_num = next_power_of_2(min(max(warp_num, 2), 8))
 
-  int64_t reduce_inner_num = 1;
-  if (flatten_block == 1) {
-    reduce_inner_num = (reduce_numel + warp_num * 32 - 1) / (warp_num * 32);
-  } else {
-    reduce_inner_num = (reduce_numel + 32 - 1) / 32;
-  }
-
-  int64_t flatten_inner_num = 1;
-  if (reduce_numel == 1) {
-    flatten_inner_num = flatten_block / (warp_num * 32);
-  } else {
-    flatten_inner_num = flatten_block;
-  }
-
-  // std::cerr << "num warp " << warp_num << std::endl;
-  // std::cerr << "flatten block " << flatten_block << std::endl;
-  // std::cerr << "reduce block  " << reduce_block << std::endl;
-  // std::cerr << "flatten inner num " << flatten_inner_num << std::endl;
-  // std::cerr << "reduce inner num " << reduce_inner_num << std::endl;
+  std::cerr << "block num " << group_tile_info->block_num << std::endl;
+  std::cerr << "num warp " << warp_num << std::endl;
+  std::cerr << "flatten block " << flatten_block << std::endl;
+  std::cerr << "reduce block  " << reduce_block << std::endl;
+  std::cerr << "flatten inner num " << flatten_inner_num << std::endl;
+  std::cerr << "reduce inner num " << reduce_inner_num << std::endl;
 
   group_tile_info->warp_num = warp_num;
   group_tile_info->flatten_inner_num = flatten_inner_num;
   group_tile_info->reduce_inner_num = reduce_inner_num;
 
-  if (reduce_block > 1 && flatten_block > 1) {
+  if (reduce_block > 1 && reduce_block <= 256) {
     group_tile_info->reduce_type = 0;
   }
 

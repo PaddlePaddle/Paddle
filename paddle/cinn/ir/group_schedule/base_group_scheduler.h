@@ -36,10 +36,11 @@ struct GroupTileInfo {
   std::vector<int64_t> reduce_axis_;
   int64_t data_rank;
 
-  int64_t block_num;
+  int64_t block_num{-1};
   int64_t warp_num;
   int64_t flatten_inner_num;
   int64_t reduce_inner_num;
+  int64_t reduce_block;
 
   std::set<std::string> reduce_var_names;
   std::set<std::string> temp_var_names;

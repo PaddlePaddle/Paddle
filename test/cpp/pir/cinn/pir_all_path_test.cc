@@ -1398,12 +1398,13 @@ std::shared_ptr<::pir::Program> BuildSharedBuffer1Program() {
   // full -> softmax(max -> subtract -> exp -> sum -> divide)
   const float value_one = 1.0;
   const std::vector<int64_t> shape = {256, 512};
-  auto x = builder
-               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({256, 128}),
-                                               1.0,
-                                               phi::DataType::FLOAT32,
-                                               phi::GPUPlace())
-               .result(0);
+  auto x =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16, 49, 49}),
+                                          1.0,
+                                          phi::DataType::FLOAT32,
+                                          phi::GPUPlace())
+          .result(0);
 
   // auto y = builder
   //              .Build<paddle::dialect::UniformOp>(
@@ -1431,16 +1432,14 @@ std::shared_ptr<::pir::Program> BuildSharedBuffer1Program() {
   //                                                phi::DataType::FLOAT32,
   //                                                phi::CPUPlace())
   //                .result(0);
-  auto sum = builder
-                 .Build<paddle::dialect::SumOp>(
-                     x, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
-                 .result(0);
+  auto sin = builder.Build<paddle::dialect::SinOp>(x).result(0);
 
-  auto out =
-      builder.Build<paddle::dialect::ReshapeOp>(sum, std::vector<int64_t>({-1}))
-          .result(0);
+  //   auto out =
+  //       builder.Build<paddle::dialect::ReshapeOp>(sum,
+  //       std::vector<int64_t>({-1}))
+  //           .result(0);
 
-  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(sin, "out", 0);
 
   return program;
 }

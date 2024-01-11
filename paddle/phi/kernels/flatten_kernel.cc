@@ -102,7 +102,9 @@ PD_REGISTER_KERNEL(flatten,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetBackend(phi::Backend::CPU);
+}
 #endif
 
 #ifdef PADDLE_WITH_XPU

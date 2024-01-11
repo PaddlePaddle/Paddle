@@ -434,9 +434,13 @@ void StaticShapeGroupScheduler::Tiling() {
       if (split_expr->extent.as_int32() == 1) {
         continue;
       }
-      auto split_loops = ir_sch_->Split(
-          loops[reduce_current_axis],
-          std::vector<int>({-1, group_tile_info_->reduce_inner_num}));
+
+      std::vector<int> split_factors{
+          group_tile_info_->reduce_block / group_tile_info_->reduce_inner_num,
+          group_tile_info_->reduce_inner_num};
+
+      auto split_loops =
+          ir_sch_->Split(loops[reduce_current_axis], split_factors);
 
       if (group_tile_info_->reduce_var_names.count(name)) {
         ir_sch_->FactorizeReduction(split_loops[0], 0);
@@ -444,9 +448,8 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  // std::cerr << "after split reduce: " <<
-  // ir_sch_->GetModule().GetExprs().front()
-  //           << std::endl;
+  std::cerr << "after split reduce: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 
   // re-order flatten inner num with last dim
   if (group_tile_info_->flatten_inner_num > 1 &&
@@ -485,7 +488,8 @@ void StaticShapeGroupScheduler::Tiling() {
         auto loops = ir_sch_->GetLoops(name);
 
         ir_sch_->Split(loops[0],
-                       std::vector<int>({-1, group_tile_info_->warp_num * 32}));
+                       std::vector<int>({group_tile_info_->block_num,
+                                         group_tile_info_->warp_num * 32}));
       }
     } else if (group_tile_info_->flatten_inner_num > 1) {
       // get num warp from flatten num
@@ -530,6 +534,11 @@ void StaticShapeGroupScheduler::Tiling() {
       continue;
     }
     auto loops = ir_sch_->GetLoops(name);
+    if (loops.size() == 1) {
+      ir_sch_->Split(loops[0], std::vector<int>({1, -1}));
+    }
+
+    loops = ir_sch_->GetLoops(name);
 
     ir_sch_->Bind(loops[0], "blockIdx.x");
 
@@ -621,6 +630,7 @@ void StaticShapeGroupScheduler::Tiling() {
       // std::cerr << "block type " << block->reduce_type << std::endl;
     }
   }
+
   schedule_block_graph_->Update(*ir_sch_);
 }
 

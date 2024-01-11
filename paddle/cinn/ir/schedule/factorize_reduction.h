@@ -90,6 +90,7 @@ class ReduceBlockCreater {
         is_rf_block_
             ? rf_tensor_
             : original_update_stmt_.As<ir::Store>()->tensor.as_tensor_ref();
+
     Expr init_value = real_tensor->GetReduceInitVal();
     const std::vector<Expr>& domain = real_tensor->domain_without_reduce_axis();
     ir::Tensor init_tensor = lang::Compute(
@@ -97,8 +98,21 @@ class ReduceBlockCreater {
         [=](const std::vector<Expr>& axis) { return init_value; },
         new_init_block_name);
     init_tensor->Bind(real_tensor->buffer);
-    Expr init_stmt = ir::Store::Make(
-        init_tensor, init_value, new_update_stmt_.As<ir::Store>()->indices);
+    std::vector<Expr> new_indices;
+    if (new_update_stmt_.As<ir::Store>()) {
+      new_indices = new_update_stmt_.As<ir::Store>()->indices;
+    } else if (new_update_stmt_.As<ir::IfThenElse>()) {
+      new_indices = new_update_stmt_.As<ir::IfThenElse>()
+                        ->true_case.As<ir::Block>()
+                        ->stmts[0]
+                        .As<ir::Store>()
+                        ->indices;
+    } else {
+      throw std::runtime_error("only support store and ifthenelse");
+    }
+
+    Expr init_stmt = ir::Store::Make(init_tensor, init_value, new_indices);
+
     new_init_sch_block_ = ScheduleBlock::Make(
         new_init_iter_vars_, {}, {}, new_init_block_name, init_stmt);
     new_init_block_realize_ =
@@ -191,6 +205,7 @@ class RFBlockCreater : public ReduceBlockCreater {
                  const Expr& original_update_stmt,
                  const ir::Tensor& rf_tensor,
                  const std::map<Var, Expr, CompVar>& var2loops,
+                 const Expr& bound_check,
                  int rf_axis)
       : ReduceBlockCreater(original_block,
                            original_loops,
@@ -199,7 +214,8 @@ class RFBlockCreater : public ReduceBlockCreater {
                            rf_tensor,
                            true),
         var2loops_(var2loops),
-        rf_axis_(rf_axis) {}
+        rf_axis_(rf_axis),
+        bound_check_(ir_utils::IRCopy(bound_check)) {}
 
  private:
   void CreateRFIter() override {
@@ -215,6 +231,11 @@ class RFBlockCreater : public ReduceBlockCreater {
     new_init_iter_vars_.push_back(rf_var_);
     new_init_iter_values_.push_back(rf_loop_.As<ir::For>()->loop_var);
     new_spatial_loop_var_names_.insert(rf_loop_.As<ir::For>()->loop_var->name);
+
+    std::vector<Expr> new_iter_exprs{Expr(rf_var_)};
+    ReplaceExpr(
+        &bound_check_, {rf_loop_.As<ir::For>()->loop_var}, new_iter_exprs);
+
     VLOG(4) << "create new_rf_var = " << rf_var_
             << ", with iter value = " << new_iter_values_.back();
   }
@@ -313,6 +334,10 @@ class RFBlockCreater : public ReduceBlockCreater {
 
     new_update_stmt_ =
         ir::Store::Make(rf_tensor_, new_store_body, rf_tensor_access_indices_);
+
+    if (!bound_check_.is_constant()) {
+      new_update_stmt_ = ir::IfThenElse::Make(bound_check_, new_update_stmt_);
+    }
     ReplaceExpr(&new_update_stmt_, original_indice2new_expr_);
     VLOG(4) << "new_update_stmt of rf block: \n" << new_update_stmt_;
   }
@@ -322,6 +347,8 @@ class RFBlockCreater : public ReduceBlockCreater {
   int rf_axis_;
 
   std::map<Var, Expr, CompVar> loop_var2block_iters_;
+
+  Expr bound_check_;
 };
 
 // Implement class for building Writing-Back block,

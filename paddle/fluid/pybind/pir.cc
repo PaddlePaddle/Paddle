@@ -1646,7 +1646,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
 
-  // pass_manager->EnableIRPrinting();
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(&program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << program;
 #else

@@ -49,6 +49,10 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
+  if (x.dims().size() > 0 && x.numel() == 0) {
+    out->Resize(x.dims());
+    return;
+  }
   switch (dst_place_type) {
     case 0:
       Copy(dev_ctx, x, CPUPlace(), false, out);
