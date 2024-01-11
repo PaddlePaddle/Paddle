@@ -29,14 +29,14 @@ function collect_failed_tests() {
 
 # disable test: 
 
-serial_list="^test_conv2d_op$|\
+serial_list="^test_dygraph_sharding_stage1_bf16$|\
+^test_dygraph_sharding_stage3_bf16$|\
+^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
 ^test_dist_fuse_resunit_pass$|\
 ^test_dygraph_dataparallel_bf16$|\
 ^test_dygraph_sharding_stage1_fp16$|\
-^test_dygraph_sharding_stage1_bf16$|\
 ^test_dygraph_sharding_stage2_bf16$|\
-^test_dygraph_sharding_stage3_bf16$|\
 ^test_conv3d_op$"
 
 parallel_list="^init_phi_test$|\
@@ -122,12 +122,17 @@ tmp_dir=`mktemp -d`
 tmpfile_rand=`date +%s%N`
 tmpfile=$tmp_dir/$tmpfile_rand"_"$i
 set +e
-#ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
-#EXIT_CODE_1=$?
 
 NUM_PROC=4
 for (( i = 0; i < $NUM_PROC; i++ )); do
-    cuda_list="$((i*2)) $((i*2+1))"
+    cuda_list="$((i*2)),$((i*2+1))"
+    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($parallel_list)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+done
+wait;
+EXIT_CODE_1=$?
+
+for (( i = 0; i < $NUM_PROC; i++ )); do
+    cuda_list="$((i*2)),$((i*2+1))"
     (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" --timeout 180 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
 done
 wait;
