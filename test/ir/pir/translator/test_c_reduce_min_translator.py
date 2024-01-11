@@ -34,6 +34,9 @@ class TestCReduceMinOpTranslator(test_op_translator.TestOpTranslator):
             attrs=attrs,
         )
 
+    def test_translator(self):
+        self.check()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -48,9 +48,6 @@ class TestOpTranslator(unittest.TestCase):
             + '!'
         )
 
-    def test_translator(self):
-        self.check()
-
 
 class TestOpWithBackWardTranslator(unittest.TestCase):
     def setUp(self):
@@ -76,7 +73,7 @@ class TestOpWithBackWardTranslator(unittest.TestCase):
         ), "forward_op_type should be specified!"
         assert hasattr(
             self, "backward_op_type"
-        ), "backward_op_type should be specified!"
+        ), "forward_op_type should be specified!"
         serialized_pir_program = str(pir_program)
         assert self.forward_op_type in serialized_pir_program, (
             self.forward_op_type
@@ -90,6 +87,3 @@ class TestOpWithBackWardTranslator(unittest.TestCase):
             + self.backward_op_type
             + '!'
         )
-
-    def test_translator(self):
-        self.check()
