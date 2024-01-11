@@ -75,7 +75,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMinOp::name(),
     PushSparseV2Op::name()};
 
-
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
