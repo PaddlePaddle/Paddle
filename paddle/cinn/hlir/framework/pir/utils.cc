@@ -179,9 +179,8 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
   CASE_SINGLE_ATTR(DoubleAttribute, data)
   CASE_SINGLE_ATTR(Int32Attribute, data)
   CASE_SINGLE_ATTR(Int64Attribute, data)
-  CASE_SINGLE_ATTR(SymbolAttribute, data)
   CASE_SINGLE_ATTR(StrAttribute, AsString)
-  else dst_attr = ConvertArrayAttribute();  // NOLINT
+  else dst_attr = ConvertArrayAttribute(src_attr);  // NOLINT
   return dst_attr;
 }
 #undef CASE_SINGLE_ATTR
