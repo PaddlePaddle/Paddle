@@ -460,14 +460,15 @@ def append_backward_ops(
         # value is input of more than one fwd_op,
         # so more than one bwd_op create input_grad,
         # need add sum op to accumulate gradient
+        add_n_list = []
+        for item in state.value_to_valuegrad[value]:
+            add_n_list.append(
+                return_map_value(item[0], bwd_value_to_block_argument_map)
+            )
         if value.is_tensorarray():
-            add_n_value = paddle._pir_ops.add_n_array(
-                [item[0] for item in state.value_to_valuegrad[value]]
-            )
+            add_n_value = paddle._pir_ops.add_n_array(add_n_list)
         else:
-            add_n_value = paddle.add_n(
-                [item[0] for item in state.value_to_valuegrad[value]]
-            )
+            add_n_value = paddle.add_n(add_n_list)
 
         add_n_op = add_n_value.get_defining_op()
         combine_op = add_n_op.operand_source(0).get_defining_op()
@@ -581,8 +582,6 @@ def append_backward_ops(
             "pd_op.if",
             "pd_op.while",
             "cf.tuple_push",
-            "pd_op.increment_",
-            "pd_op.increment",
         ]:
             grad_semantic_info = [
                 True for _ in range(len(get_real_op_inputs(op)))
@@ -599,7 +598,8 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 if (
-                    input.get_defining_op() is not None
+                    op.name() != "cf.tuple_push"
+                    and input.get_defining_op() is not None
                     and input.get_defining_op().name() == "builtin.combine"
                 ):
                     tmp_input = []
@@ -621,7 +621,8 @@ def append_backward_ops(
                 continue
 
             if (
-                input.get_defining_op() is not None
+                op.name() != "cf.tuple_push"
+                and input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
             ):
                 (
@@ -652,7 +653,8 @@ def append_backward_ops(
                 continue
 
             if (
-                input.get_defining_op() is not None
+                op.name() != "cf.tuple_push"
+                and input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
             ):
                 update_input_grad_map(
@@ -785,7 +787,7 @@ def append_backward_ops(
                     input_grad_stopgradients,
                 ) = make_input_with_input_stopgradient(op)
 
-                if op.name() in ["cf.tuple_push", "pd_op.increment_"]:
+                if op.name() == "cf.tuple_push":
                     with dynamic_shape_prim_vjp_guard(op, inputs):
                         copy_out = paddle.framework.core.call_vjp(
                             op,
@@ -797,17 +799,7 @@ def append_backward_ops(
 
                     pop_op = bwd_block.ops[-1]
                     bwd_ops = [pop_op]
-                    tmp_inputs = (
-                        inputs
-                        if op.name() == "pd_op.increment_"
-                        else inputs[1:]
-                    )
-                    tmp_copy_out = (
-                        copy_out
-                        if op.name() == "pd_op.increment_"
-                        else copy_out[1:]
-                    )
-                    for output, copy_output in zip(tmp_inputs, tmp_copy_out):
+                    for output, copy_output in zip(inputs[1:], copy_out[1:]):
                         control_flow_value_to_copyvalue_map[
                             output[0]
                         ] = copy_output[0]
@@ -819,7 +811,7 @@ def append_backward_ops(
                     # should be delete (prune sub_graph)
                     if (
                         len(output_grads) == 0 or all(zero_flag)
-                    ) and op.name() != "pd_op.while":
+                    ) and op.name() not in ["pd_op.while", "pd_op.increment_"]:
                         continue
 
                     if op.name() == "pd_op.if":
@@ -902,6 +894,9 @@ def append_backward_ops(
                             _,
                             sub_bwd_value_to_block_argument_map,
                         ) = argument_to_value(grad_op)
+                        sub_bwd_value_to_block_argument_map.update(
+                            bwd_value_to_block_argument_map
+                        )
                         while_grad_block = grad_op.as_while_op().body()
                         sub_backward_ops = []
                         append_backward_ops(

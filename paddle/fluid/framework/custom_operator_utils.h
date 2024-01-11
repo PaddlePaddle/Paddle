@@ -86,6 +86,13 @@ inline static const OpMetaInfo& GetOpInfoByPirName(
     const std::string& pir_op_name) {
   auto custom_name = pir_op_name.substr(strlen(kCustomDialectPrefix));
   int pos = custom_name.length();
+
+  if (custom_name[pos - 1] == '_') {
+    // deal with inplace name
+    custom_name = custom_name.substr(0, pos - 1);
+  }
+
+  pos = custom_name.length();
   if (custom_name.find("_grad_grad") != custom_name.npos) {
     pos = custom_name.find("_grad_grad") + 1;
   } else if (custom_name.find("_grad") != custom_name.npos) {
