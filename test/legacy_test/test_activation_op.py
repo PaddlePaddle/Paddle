@@ -4055,7 +4055,7 @@ class TestSTanhAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, paddle.stanh, x_int32)
                 # support the input dtype is float16
-                if core.is_compiled_with_rocm():
+                if core.is_compiled_with_cuda():
                     x_fp16 = paddle.static.data(
                         name='x_fp16', shape=[12, 10], dtype='float16'
                     )
