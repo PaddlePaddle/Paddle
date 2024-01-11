@@ -52,8 +52,8 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   pir::Value y = op->operand_source(1);
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-  const auto& x_shape = shape_analysis.GetShapeOrDataForValue(&x);
-  const auto& y_shape = shape_analysis.GetShapeOrDataForValue(&y);
+  const auto& x_shape = shape_analysis.GetShapeOrDataForValue(x);
+  const auto& y_shape = shape_analysis.GetShapeOrDataForValue(y);
   if (x_shape.shape() == y_shape.shape() && x_shape.data() == y_shape.data()) {
     return false;
   }
