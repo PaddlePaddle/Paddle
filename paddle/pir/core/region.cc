@@ -47,7 +47,6 @@ void Region::CloneInto(Region &other, IrMapping &ir_mapping) const {
     return;
   }
   other.clear();
-  auto clone_options = CloneOptions();
   // clone blocks, block arguments and sub operations
   for (const auto &block : *this) {
     auto new_block = new Block;
@@ -56,9 +55,17 @@ void Region::CloneInto(Region &other, IrMapping &ir_mapping) const {
       ir_mapping.Add(arg, new_block->AddArgument(arg.type()));
     }
     other.push_back(new_block);
-    // clone sub operations, but not map operands nor clone regions
-    for (auto op_iter = block.begin(); op_iter != block.end(); ++op_iter) {
-      new_block->push_back(op_iter->Clone(ir_mapping, clone_options));
+  }
+  // clone sub operations, but not map operands nor clone regions
+  {
+    auto clone_options = CloneOptions(false, false, true);
+    auto iter = begin();
+    auto new_iter = other.begin();
+    for (; iter != end(); ++iter, ++new_iter) {
+      const Block &block = *iter;
+      Block &new_block = *new_iter;
+      for (const auto &op : block)
+        new_block.push_back(op.Clone(ir_mapping, clone_options));
     }
   }
   // after all operation results are mapped, map operands and clone regions.
