@@ -868,7 +868,6 @@ def case(pred_fn_pairs, default=None, name=None):
             ...     print(res_1, res_2)
             [[1. 1.]] [3 3 3]
     '''
-    helper = LayerHelper('case', **locals())
 
     def _case_check_args(pred_fn_pairs, default):
         '''
@@ -899,16 +898,9 @@ def case(pred_fn_pairs, default=None, name=None):
                 )
             pred, fn = pred_fn
 
-            if not isinstance(pred, Variable):
-                raise TypeError(
-                    _error_message(
-                        "The pred's type",
-                        "pred_fn_pairs",
-                        "case",
-                        "boolean Variable",
-                        type(pred),
-                    )
-                )
+            check_variable_and_dtype(
+                pred, 'pred', ['bool'], 'paddle.static.nn.case'
+            )
 
             if not callable(fn):
                 raise TypeError(
