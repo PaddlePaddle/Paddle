@@ -1493,6 +1493,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1509,10 +1510,11 @@ class TestSoftshrinkAPI(unittest.TestCase):
                 )
                 self.assertRaises(ValueError, F.softshrink, x_fp32, -1.0)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.softshrink(x_fp16)
+                if core.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.softshrink(x_fp16)
 
 
 class TestSqrt(TestActivation, TestParameter):
@@ -4312,6 +4314,7 @@ class TestSoftsignAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4323,10 +4326,11 @@ class TestSoftsignAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.softsign, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.softsign(x_fp16)
+                if core.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.softsign(x_fp16)
 
 
 def ref_thresholded_relu(x, threshold=1.0):
