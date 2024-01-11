@@ -128,6 +128,23 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     SelectInputOp::name(),
     "cinn_runtime.jit_kernel"};
 
+const std::unordered_map<std::string, uint32_t> XShapeRelatedOps = {
+    {paddle::dialect::ReshapeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::SqueezeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::FlattenOp::name(), /*xshape_idx*/ 1U},
+};
+
+static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
+  bool need_skip = false;
+  if (op->isa<paddle::dialect::FetchOp>()) {
+    auto define_op_name = op->operand_source(0).defining_op()->name();
+    uint32_t index = op->operand_source(0).dyn_cast<pir::OpResult>().index();
+    need_skip = XShapeRelatedOps.count(define_op_name) > 0 &&
+                (XShapeRelatedOps.at(define_op_name) == index);
+  }
+  return need_skip;
+}
+
 static bool NeedFallBackCpu(const pir::Operation* op,
                             const std::string& kernel,
                             const phi::KernelKey& kernel_key) {
@@ -1760,6 +1777,11 @@ std::vector<pir::Value> BuildInputs(
     bool check_place_transfer =
         (op_item->isa<::pir::SetParameterOp>()) ||
         (kernel.IsValid() && (!UnchangeOutputOps.count(op_item->name())));
+
+    // NOTE(Aurelius84): In case of Reshape/Squeeze/Flatten.XShape,
+    // Skip insert memcpyd2h for fetch op
+    check_place_transfer =
+        check_place_transfer && !NeedSkipPlaceTransfer(op_item);
 
     if (check_place_transfer) {
       if (new_in_type.isa<AllocatedDenseTensorType>()) {
