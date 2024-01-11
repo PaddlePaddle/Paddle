@@ -124,10 +124,14 @@ const std::vector<std::string> kTRTSubgraphPasses({
 #endif
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
+#if IS_TRT_VERSION_LT(9205)
       "trt_skip_layernorm_fuse_pass",          //
+#endif
       "preln_skip_layernorm_fuse_pass",        //
 #endif
-      "preln_residual_bias_fuse_pass",   //
+#if IS_TRT_VERSION_LT(9205)
+      "preln_residual_bias_fuse_pass",  //
+#endif
       "preln_layernorm_x_fuse_pass",     //
       "reverse_roll_fuse_pass",          //
       "conv_bn_fuse_pass",               //

@@ -20,6 +20,7 @@ import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
+import paddle
 import paddle.inference as paddle_infer
 
 
@@ -146,7 +147,9 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape:
+            trt_compile_version = paddle.inference.get_trt_compile_version()
+            valid_version = (9, 2, 0)
+            if trt_compile_version >= valid_version or dynamic_shape:
                 return 1, 4
             else:
                 return 0, 5

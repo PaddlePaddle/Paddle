@@ -663,6 +663,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     self.dynamic_shape.opt_input_shape,
                     self.dynamic_shape.disable_trt_plugin_fp16,
                 )
+            if self.optimization_level is not None:
+                config.set_trt_optimization_level(self.optimization_level)
         return config
 
     def assert_tensors_near(
