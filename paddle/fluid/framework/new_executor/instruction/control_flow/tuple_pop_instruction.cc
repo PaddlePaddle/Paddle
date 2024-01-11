@@ -120,13 +120,6 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
   }
 }
 
-void ShareVarData(const VariableRefArray* src_var, VariableRefArray* dst_var) {
-  for (size_t i = 0; i < src_var->size(); ++i) {
-    Variable* copy_var = const_cast<Variable*>(dst_var->at(i));
-    ShareVarData(src_var->at(i), copy_var);
-  }
-}
-
 void TuplePopInstruction::Run() {
   VLOG(6) << "run tuple_pop instruction";
   if (tuple_pop_op_.tuple_size() == 0) {

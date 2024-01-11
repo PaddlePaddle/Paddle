@@ -20,20 +20,27 @@
 
 namespace paddle {
 namespace framework {
-static std::vector<phi::Place> ParsePlace(pir::Type type) {
-  std::vector<phi::Place> rtn;
+void ParsePlace(pir::Type type, OpFuncType type_) {
   if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    rtn.push_back(
-        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place());
+    auto place =
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place();
+    place == phi::CPUPlace();
+    if (place == phi::GPUPlace()) {
+      type_ = OpFuncType::kGpuAsync;
+      return;
+    }
   } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-    rtn.push_back(
-        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place());
+    auto place =
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>().place();
+    if (place == phi::GPUPlace()) {
+      type_ = OpFuncType::kGpuAsync;
+      return;
+    }
   } else if (type.isa<pir::VectorType>()) {
     pir::VectorType inlet_element_type = type.dyn_cast<pir::VectorType>();
     for (size_t i = 0; i < static_cast<size_t>(inlet_element_type.size());
          i++) {
-      auto out = ParsePlace(inlet_element_type[i]);
-      rtn.insert(rtn.end(), out.begin(), out.end());
+      ParsePlace(inlet_element_type[i], type_);
     }
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -41,7 +48,7 @@ static std::vector<phi::Place> ParsePlace(pir::Type type) {
         "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
         type));
   }
-  return rtn;
+  return;
 }
 
 TuplePushInstruction::TuplePushInstruction(size_t id,
@@ -75,13 +82,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
 
   for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
-    auto all_place = ParsePlace(inlet_element_value.type());
-    for (auto place : all_place) {
-      if (place == phi::GPUPlace()) {
-        type_ = OpFuncType::kGpuAsync;
-        break;
-      }
-    }
+    ParsePlace(inlet_element_value.type(), type_);
   }
 }
 
