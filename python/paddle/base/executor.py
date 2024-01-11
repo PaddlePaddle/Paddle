@@ -29,6 +29,7 @@ from ..pir import (
     translate_to_pir,
     translate_to_pir_with_param_map,
 )
+from ..static.amp.fp16_utils import _dtype_to_str
 from . import compiler, core, framework, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -44,7 +45,6 @@ from .framework import (
     set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
-from .static.amp.fp16_utils import _dtype_to_str
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
 from .wrapped_decorator import signature_safe_contextmanager
 
