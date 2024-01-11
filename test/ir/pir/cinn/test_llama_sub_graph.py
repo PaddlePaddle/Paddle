@@ -56,11 +56,11 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         net.eval()
         out = net(self.hidden_states)
 
-        loss = out.sum()
-        loss.backward()
+        # loss = out.sum()
+        # loss.backward()
 
-        print(self.hidden_states.gradient())
-        print("=========")
+        # print(self.hidden_states.gradient())
+        # print("=========")
         return out
 
     def test_eval(self):
@@ -92,91 +92,92 @@ class RotaryPosEmb(nn.Layer):
         return paddle.concat([-x2, x1], axis=-1)  # shape is the same as x
 
 
-# class TestRotaryPosEmb(TestCinnSubGraphBase):
-#     def prepare_data(self):
-#         self.q = paddle.randn([1, 2048, 8, 96], dtype="float32")
-#         self.q.stop_gradient = False
+class TestRotaryPosEmb(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.q = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.q.stop_gradient = False
 
-#         self.k = paddle.randn([1, 2048, 8, 96], dtype="float32")
-#         self.k.stop_gradient = False
+        self.k = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.k.stop_gradient = False
 
-#         self.cos = paddle.randn([1, 2048, 1, 96], dtype="float32")
-#         self.cos.stop_gradient = False
+        self.cos = paddle.randn([1, 2048, 1, 96], dtype="float32")
+        self.cos.stop_gradient = False
 
-#         self.sin = paddle.randn([1, 2048, 1, 96], dtype="float32")
-#         self.sin.stop_gradient = False
+        self.sin = paddle.randn([1, 2048, 1, 96], dtype="float32")
+        self.sin.stop_gradient = False
 
-#         self.position_ids = paddle.arange(end=2048, dtype="int64").unsqueeze(0)
-#         self.position_ids.stop_gradient = False
+        self.position_ids = paddle.arange(end=2048, dtype="int64").unsqueeze(0)
+        self.position_ids.stop_gradient = False
 
-#     def eval(self, use_cinn):
-#         paddle.seed(2022)
-#         self.prepare_data()
-#         net = RotaryPosEmb()
-#         # net.eval()
-#         if use_cinn:
-#             net = apply_to_static(net, use_cinn)
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        self.prepare_data()
+        net = RotaryPosEmb()
+        net.eval()
+        if use_cinn:
+            net = apply_to_static(net, use_cinn)
 
-#         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
-#         loss = out.sum()
-#         loss.backward()
+        out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+        # loss = out.sum()
+        # loss.backward()
 
-#         print(self.q.gradient())
-#         return out
+        # print(self.q.gradient())
+        return out
 
-#     def test_eval(self):
-#         cinn_outs = self.eval(use_cinn=True)
-#         dy_outs = self.eval(use_cinn=False)
+    def test_eval(self):
+        cinn_outs = self.eval(use_cinn=True)
+        dy_outs = self.eval(use_cinn=False)
 
-#         # TODO(phlrain): Need to check result
-#         for cinn_out, dy_out in zip(cinn_outs, dy_outs):
-#             np.testing.assert_allclose(
-#                 cinn_out.numpy(), dy_out.numpy(), atol=1e-8
-#             )
-
-
-# class RepeatKV(nn.Layer):
-#     def __init__(self):
-#         super().__init__()
-
-#     def forward(self, hidden_states, n_rep):
-#         (
-#             batch,
-#             slen,
-#             num_key_value_heads,
-#             head_dim,
-#         ) = hidden_states.shape
-
-#         hidden_states = hidden_states.unsqueeze(-2).tile([1, 1, 1, n_rep, 1])
-#         return hidden_states.reshape(
-#             [batch, slen, num_key_value_heads * n_rep, head_dim]
-#         )
+        # TODO(phlrain): Need to check result
+        for cinn_out, dy_out in zip(cinn_outs, dy_outs):
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-8
+            )
 
 
-# class TestRepeatKV(TestCinnSubGraphBase):
-#     def prepare_data(self):
-#         self.shape = [1, 2048, 8, 96]
-#         self.hidden_states = paddle.randn(self.shape, dtype="float32")
-#         self.hidden_states.stop_gradient = False
+class RepeatKV(nn.Layer):
+    def __init__(self):
+        super().__init__()
 
-#         self.n_rep = 4
+    def forward(self, hidden_states, n_rep):
+        (
+            batch,
+            slen,
+            num_key_value_heads,
+            head_dim,
+        ) = hidden_states.shape
 
-#     def eval(self, use_cinn):
-#         paddle.seed(2022)
-#         net = RepeatKV()
-#         # TODO(Aurelius84): Need to remove it after verify CINN
-#         if use_cinn:
-#             net = apply_to_static(net, False)
-#         net.eval()
-#         out = net(self.hidden_states, self.n_rep)
-#         return out
+        hidden_states = hidden_states.unsqueeze(-2).tile([1, 1, 1, n_rep, 1])
+        return hidden_states.reshape(
+            [batch, slen, num_key_value_heads * n_rep, head_dim]
+        )
 
-#     def test_eval(self):
-#         cinn_out = self.eval(use_cinn=True)
-#         dy_out = self.eval(use_cinn=False)
-#         np.testing.assert_allclose(
-#             cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-#         )
+
+class TestRepeatKV(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.shape = [1, 2048, 8, 96]
+        self.hidden_states = paddle.randn(self.shape, dtype="float32")
+        self.hidden_states.stop_gradient = False
+
+        self.n_rep = 4
+
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        self.prepare_data()
+        net = RepeatKV()
+        # TODO(Aurelius84): Need to remove it after verify CINN
+        if use_cinn:
+            net = apply_to_static(net, True)
+        net.eval()
+        out = net(self.hidden_states, self.n_rep)
+        return out
+
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':
