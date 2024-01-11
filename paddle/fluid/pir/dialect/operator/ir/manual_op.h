@@ -353,8 +353,10 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
-class ArrayToTensorOp
-    : public pir::Op<ArrayToTensorOp, OpYamlInfoInterface, InferMetaInterface> {
+class ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
+                                       OpYamlInfoInterface,
+                                       paddle::dialect::VjpInterface,
+                                       InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_to_tensor"; }
@@ -369,7 +371,37 @@ class ArrayToTensorOp
   void VerifySig();
   pir::Value x() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
-  pir::OpResult out_index() { return result(2); }
+  pir::OpResult out_index() { return result(1); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+};
+
+class TensorToArrayOp
+    : public pir::Op<TensorToArrayOp, OpYamlInfoInterface, InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.tensor_to_array"; }
+  static constexpr uint32_t attributes_num = 2;
+  static const char *attributes_name[attributes_num];
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x,
+                    pir::Value out_grad,
+                    int axis,
+                    bool use_stack);
+  void VerifySig();
+  pir::Value x() { return operand_source(0); }
+  pir::Value out_grad() { return operand_source(1); }
+  pir::OpResult x_grad() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
@@ -697,6 +729,7 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::TensorToArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)

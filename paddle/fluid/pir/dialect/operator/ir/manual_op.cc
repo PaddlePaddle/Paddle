@@ -22,9 +22,9 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::ArrayReadOp, paddle::dialect::ArrayWrite_Op,
     paddle::dialect::SliceArrayOp, paddle::dialect::SliceArrayDenseOp,
     paddle::dialect::AssignArray_Op, paddle::dialect::ArrayToTensorOp,
-    paddle::dialect::SelectInputOp, paddle::dialect::IncrementOp,
-    paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
-    paddle::dialect::MemcpyD2hMultiIoOp
+    paddle::dialect::TensorToArrayOp, paddle::dialect::SelectInputOp,
+    paddle::dialect::IncrementOp, paddle::dialect::Increment_Op,
+    paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -1760,6 +1760,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       dense_x_grad.offset());
   argument_outputs.push_back(x_grad_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::Build(pir::Builder &builder,
@@ -1817,6 +1818,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       dense_x_grad.offset());
   argument_outputs.push_back(x_grad_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::VerifySig() {
@@ -1982,6 +1984,7 @@ void CreateArrayOp::Build(pir::Builder &builder,
       dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void CreateArrayOp::VerifySig() {
@@ -2902,6 +2905,7 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
       dense_out_index.offset());
   argument_outputs.push_back(out_index_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayToTensorOp::VerifySig() {
@@ -3031,6 +3035,243 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
       dense_out_index.lod(),
       dense_out_index.offset());
   argument_outputs.push_back(out_index_dense_tensor_type);
+  return argument_outputs;
+}
+
+const char *TensorToArrayOp::attributes_name[2] = {"axis", "use_stack"};
+
+OpInfoTuple TensorToArrayOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("x",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   true),
+      paddle::dialect::OpInputInfo("out_grad",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   true)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("axis", "pir::Int32Attribute", ""),
+      paddle::dialect::OpAttributeInfo("use_stack", "pir::BoolAttribute", "")};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("TensorToArrayInferMeta",
+                                     {"x", "axis", "use_stack"},
+                                     "tensor_to_array",
+                                     {"x", "axis", "use_stack"},
+                                     {"x"},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "tensor_to_array");
+}
+
+void TensorToArrayOp::Build(pir::Builder &builder,             // NOLINT
+                            pir::OperationArgument &argument,  // NOLINT
+                            pir::Value x_,
+                            pir::Value out_grad_,
+                            int axis,
+                            bool use_stack) {
+  VLOG(4) << "Start build TensorToArrayOp";
+  VLOG(4) << "Builder construction inputs";
+  argument.AddInputs({x_, out_grad_});
+
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_axis =
+      pir::Int32Attribute::get(pir::IrContext::Instance(), axis);
+  argument.AddAttribute("axis", attr_axis);
+  pir::Attribute attr_use_stack =
+      pir::BoolAttribute::get(pir::IrContext::Instance(), use_stack);
+  argument.AddAttribute("use_stack", attr_use_stack);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrTensor dense_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()), {}, x.data_layout(), {});
+
+  paddle::dialect::DenseTensorType out_grad =
+      out_grad_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  paddle::dialect::IrTensor dense_out_grad(
+      paddle::dialect::TransToPhiDataType(out_grad.dtype()),
+      out_grad.dims(),
+      out_grad.data_layout(),
+      out_grad.lod(),
+      out_grad.offset());
+
+  VLOG(4) << "Builder construction  meta_x, meta_out_grad";
+  paddle::dialect::IrMetaTensor meta_out_grad(&dense_out_grad);
+  paddle::dialect::IrMetaTensor meta_x(&dense_x);
+
+  paddle::dialect::IrTensor dense_x_grad;
+  paddle::dialect::IrMetaTensor meta_x_grad(&dense_x_grad);
+
+  phi::TensorToArrayInferMeta(
+      meta_x, meta_out_grad, axis, use_stack, &meta_x_grad);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_array_type =
+      paddle::dialect::DenseTensorArrayType::get(
+          pir::IrContext::Instance(),
+          paddle::dialect::TransToIrDataType(dense_x_grad.dtype()),
+          dense_x_grad.layout());
+  argument_outputs.push_back(out_dense_tensor_array_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void TensorToArrayOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "TensorToArrayOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 2.", input_size));
+
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorArrayType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 1th input."));
+  }
+
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    PADDLE_ENFORCE(attributes.count("axis") > 0, "axis does not exist.");
+    PADDLE_ENFORCE(attributes.count("use_stack") > 0,
+                   "use_stack does not exist.");
+  }
+
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: TensorToArrayOp.";
+}
+
+void TensorToArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::TensorToArrayInferMeta);
+  fn(infer_meta);
+}
+
+std::vector<pir::Type> TensorToArrayOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta TensorToArrayOp";
+  IR_ENFORCE(input_values.size() == 2,
+             "Num of inputs is expected to be 2 but got %d.",
+             input_values.size());
+  pir::Value x_ = input_values[0];
+  pir::Value out_grad_ = input_values[1];
+
+  VLOG(4) << "Builder construction attributes";
+
+  IR_ENFORCE(attributes.find("axis") != attributes.end(),
+             "'value' Attribute is expected for IncrementOp. ");
+  int32_t axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+
+  IR_ENFORCE(attributes.find("use_stack") != attributes.end(),
+             "'value' Attribute is expected for IncrementOp. ");
+  bool use_stack =
+      attributes.at("use_stack").dyn_cast<pir::BoolAttribute>().data();
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType x;
+
+  if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    x = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+    (void)x;
+  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
+        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
+    x = paddle::dialect::DenseTensorArrayType::get(
+        pir::IrContext::Instance(),
+        allocated_input.dtype(),
+        allocated_input.data_layout());
+    (void)x;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorArrayType or "
+        "paddle::dialect::AllocatedDenseTensorArrayType"));
+  }
+
+  paddle::dialect::IrTensor dense_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()), {}, x.data_layout(), {});
+
+  paddle::dialect::DenseTensorType out_grad;
+  if (out_grad_.type().isa<paddle::dialect::DenseTensorType>()) {
+    out_grad = out_grad_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    (void)out_grad;
+  } else if (out_grad_.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    paddle::dialect::AllocatedDenseTensorType allocated_input =
+        out_grad_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    out_grad =
+        paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
+                                              allocated_input.dtype(),
+                                              allocated_input.data_layout());
+    (void)out_grad;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorType or "
+        "paddle::dialect::AllocatedDenseTensorType"));
+  }
+
+  paddle::dialect::IrTensor dense_out_grad(
+      paddle::dialect::TransToPhiDataType(out_grad.dtype()),
+      out_grad.dims(),
+      out_grad.data_layout(),
+      out_grad.lod(),
+      out_grad.offset());
+
+  VLOG(4) << "Builder construction  meta_x, meta_out_grad";
+  paddle::dialect::IrMetaTensor meta_out_grad(&dense_out_grad);
+  paddle::dialect::IrMetaTensor meta_x(&dense_x);
+
+  paddle::dialect::IrTensor dense_x_grad;
+  paddle::dialect::IrMetaTensor meta_x_grad(&dense_x_grad);
+
+  phi::TensorToArrayInferMeta(
+      meta_x, meta_out_grad, axis, use_stack, &meta_x_grad);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_array_type =
+      paddle::dialect::DenseTensorArrayType::get(
+          pir::IrContext::Instance(),
+          paddle::dialect::TransToIrDataType(dense_x_grad.dtype()),
+          dense_x_grad.layout());
+  argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
 }
 
@@ -3330,6 +3571,7 @@ void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -4829,6 +5071,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::TensorToArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
