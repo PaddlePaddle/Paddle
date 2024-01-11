@@ -940,6 +940,7 @@ class TestCondWithError(unittest.TestCase):
 
 
 class TestCondWithDict(unittest.TestCase):
+    @test_with_pir_api
     @compare_legacy_with_pt
     def test_input_with_dict(self):
         paddle.enable_static()
@@ -965,16 +966,29 @@ class TestCondWithDict(unittest.TestCase):
             y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
             pred = paddle.less_than(x=x, y=y, name=None)
             ret = paddle.static.nn.cond(pred, true_func, false_func)
-            self.assertEqual(
-                ret['1'].shape,
-                (3, -1),
-                f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
-            )
-            self.assertEqual(
-                ret['2'].shape,
-                (-1, -1),
-                f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
-            )
+
+            if paddle.framework.in_pir_mode():
+                self.assertEqual(
+                    ret['1'].shape,
+                    [3, -1],
+                    f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
+                )
+                self.assertEqual(
+                    ret['2'].shape,
+                    [-1, -1],
+                    f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
+                )
+            else:
+                self.assertEqual(
+                    ret['1'].shape,
+                    (3, -1),
+                    f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
+                )
+                self.assertEqual(
+                    ret['2'].shape,
+                    (-1, -1),
+                    f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
+                )
 
 
 if __name__ == '__main__':
