@@ -20,6 +20,30 @@
 
 namespace paddle {
 namespace framework {
+static std::vector<phi::Place> ParsePlace(pir::Type type) {
+  std::vector<phi::Place> rtn;
+  if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    rtn.push_back(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place());
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    rtn.push_back(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place());
+  } else if (type.isa<pir::VectorType>()) {
+    pir::VectorType inlet_element_type = type.dyn_cast<pir::VectorType>();
+    for (size_t i = 0; i < static_cast<size_t>(inlet_element_type.size());
+         i++) {
+      auto out = ParsePlace(inlet_element_type[i]);
+      rtn.insert(rtn.end(), out.begin(), out.end());
+    }
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Only support AllocatedDenseTensorType and "
+        "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
+        type));
+  }
+  return rtn;
+}
+
 TuplePushInstruction::TuplePushInstruction(size_t id,
                                            const platform::Place& place,
                                            ::pir::Operation* op,
@@ -48,65 +72,15 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
   SetOutputs(outputs);
 
   type_ = OpFuncType::kCpuSync;
+
   for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
-
-    if (inlet_element_value.type()
-            .isa<paddle::dialect::AllocatedDenseTensorType>()) {
-      auto place = inlet_element_value.type()
-                       .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                       .place();
+    auto all_place = ParsePlace(inlet_element_value.type());
+    for (auto place : all_place) {
       if (place == phi::GPUPlace()) {
         type_ = OpFuncType::kGpuAsync;
         break;
       }
-    } else if (inlet_element_value.type()
-                   .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-      auto place =
-          inlet_element_value.type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
-              .place();
-      if (place == phi::GPUPlace()) {
-        type_ = OpFuncType::kGpuAsync;
-        break;
-      }
-    } else if (inlet_element_value.type().isa<pir::VectorType>()) {
-      pir::VectorType inlet_element_type =
-          inlet_element_value.type().dyn_cast<pir::VectorType>();
-      for (size_t i = 0; i < static_cast<size_t>(inlet_element_type.size());
-           i++) {
-        if (inlet_element_type[i]
-                .isa<paddle::dialect::AllocatedDenseTensorType>()) {
-          auto place =
-              inlet_element_type[i]
-                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                  .place();
-          if (place == phi::GPUPlace()) {
-            type_ = OpFuncType::kGpuAsync;
-            break;
-          }
-        } else if (inlet_element_type[i]
-                       .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-          auto place =
-              inlet_element_value.type()
-                  .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
-                  .place();
-          if (place == phi::GPUPlace()) {
-            type_ = OpFuncType::kGpuAsync;
-            break;
-          }
-        } else {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "Only support AllocatedDenseTensorType and "
-              "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
-              inlet_element_type[i]));
-        }
-      }
-    } else {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Only support AllocatedDenseTensorType and "
-          "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
-          inlet_element_value.type()));
     }
   }
 }
