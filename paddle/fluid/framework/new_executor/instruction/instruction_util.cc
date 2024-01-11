@@ -114,7 +114,8 @@ platform::DeviceContext* ParseDeviceContext(
     // DeviceContext passed from executor (see CAllReduceOpCUDAKernel in
     // c_allreduce_op.h). Now it is just a temporary solution for ONLY
     // c_allreduce_sum which is used in ResNet50 distributed training.
-    if (op_name.compare(paddle::dialect::CAllreduceSumOp::name()) == 0 &&
+    if ((op_name.compare(paddle::dialect::CAllreduceSumOp::name()) == 0 ||
+         op_name.compare(paddle::dialect::CAllreduceSum_Op::name()) == 0) &&
         op_attributes.at("use_calc_stream")
                 .dyn_cast<pir::BoolAttribute>()
                 .data() == false) {
