@@ -10,6 +10,19 @@
   layout_transform :
     arg_name: data_format
     tensors: input, out_grad
+
+- op : lrn
+  extra_args : bool is_test=false
+  layout_transform :
+    arg_name: data_format
+    tensors: x
+
+- op : lrn_grad
+  extra_args : bool is_test=false
+  layout_transform :
+    arg_name: data_format
+    tensors: x, out, mid_out, out_grad
+
 # - op : matmul
 #   extra_args : str mkldnn_data_type="float32"
 #   layout_transform :

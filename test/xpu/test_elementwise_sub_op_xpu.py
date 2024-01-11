@@ -66,7 +66,8 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
             if self.dtype == np.uint16:
                 tmp_x = self.reshape_data(self.x, self.y)
                 tmp_y = self.reshape_data(self.y, self.x)
-                self.outputs = {'Out': tmp_x - tmp_y}
+                tmp_out = tmp_x - tmp_y
+                self.outputs = {'Out': convert_float_to_uint16(tmp_out)}
                 self.x = convert_float_to_uint16(self.x)
                 self.y = convert_float_to_uint16(self.y)
             else:
@@ -74,8 +75,8 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                 tmp_y = self.reshape_data(self.y, self.x).astype(self.dtype)
                 self.outputs = {'Out': tmp_x - tmp_y}
             self.inputs = {
-                'X': self.x,
-                'Y': self.y,
+                'X': self.x.astype(self.dtype),
+                'Y': self.y.astype(self.dtype),
             }
 
         def init_shape(self):

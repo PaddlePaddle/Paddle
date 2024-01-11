@@ -1627,7 +1627,7 @@ class TestReduceSumOpError(unittest.TestCase):
                 x1 = base.create_lod_tensor(
                     np.array([[-1]]), [[1]], base.CPUPlace()
                 )
-                self.assertRaises(ValueError, paddle.sum, x1)
+                self.assertRaises(TypeError, paddle.sum, x1)
 
 
 class API_TestSumOp(unittest.TestCase):
