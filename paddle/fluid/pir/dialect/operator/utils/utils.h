@@ -138,10 +138,6 @@ VariantType GetAttributeData(const pir::Attribute& attr);
 
 bool IsLegacyOp(const std::string& name);
 
-#ifdef PADDLE_WITH_DNNL
-bool IsOneDNNLegacyOp(const std::string& name);
-#endif
-
 bool IsEmptyValue(const pir::Value& value);
 
 std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);

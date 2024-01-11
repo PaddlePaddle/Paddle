@@ -83,6 +83,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'generate_sequence_xpu',
     'layer_norm_act_xpu',
     'memcpy',
+    'memcpy_d2h_multi_io',
     'batch_norm_',
     'multi_encoder_xpu',
     'multihead_matmul',
@@ -104,6 +105,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'assign_value',
     'share_data',
     'onednn_to_paddle_layout',
+    'lrn',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

@@ -1678,8 +1678,8 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
   argument_->SetUseCustomDevice(config_.use_custom_device());
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (config_.use_custom_device()) {
     LOG(INFO) << "CustomDevice is enabled";
     argument_->SetCustomDeviceType(config_.custom_device_type());

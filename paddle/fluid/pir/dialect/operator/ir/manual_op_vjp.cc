@@ -185,10 +185,9 @@ std::vector<std::vector<pir::OpResult>> Increment_Op::Vjp(
 
   VLOG(6) << "Vjp prepare call increment_'s vjp inteface";
 
-  pir::OpResult tensor_res = paddle::dialect::increment_(inputs_[0][0], -value);
+  paddle::dialect::increment_(inputs_[0][0], -value);
 
-  std::vector<std::vector<pir::OpResult>> res{{tensor_res}};
-
+  std::vector<std::vector<pir::OpResult>> res;
   return res;
 }
 

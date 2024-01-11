@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -34,8 +32,10 @@
 
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
@@ -43,8 +43,8 @@
 namespace paddle {
 namespace framework {
 
-static RuntimeAttribute ConvertPirAttribute2RuntimeAttribute(
-    PIRAttribute attr,
+static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
+    pir::Attribute attr,
     const std::string& attr_name,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   auto& attr_type_name = op_yaml_info.AttrTypeName(attr_name);
@@ -217,7 +217,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
-      paddle::dialect::IsOneDNNLegacyOp(op_name));
+      paddle::dialect::IsLegacyOp(op_name));
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
@@ -276,25 +276,27 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   VLOG(6) << "finish process no need buffer";
 
   // Step2: build layout_transform information
-  if (op_attributes.count("layout_transform_arg")) {
-    auto layout_transform_arg = op_attributes.at("layout_transform_arg")
-                                    .dyn_cast<pir::StrAttribute>()
-                                    .AsString();
-    auto data_layout = op_attributes.at(layout_transform_arg)
-                           .dyn_cast<pir::StrAttribute>()
-                           .AsString();
-    input_layout_ = common::StringToDataLayout(data_layout);
-    std::vector<pir::Attribute> layout_transform_inputs_attr =
+  if (op_attributes.count("data_format_tensors")) {
+    if (op_attributes.count("data_format")) {
+      auto data_layout = op_attributes.at("data_format")
+                             .dyn_cast<pir::StrAttribute>()
+                             .AsString();
+      input_layout_ = common::StringToDataLayout(data_layout);
+    } else {
+      input_layout_ = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+    }
+
+    std::vector<pir::Attribute> data_format_tensors_attr =
         op->attributes()
-            .at("layout_transform_inputs")
+            .at("data_format_tensors")
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
-    std::vector<std::string> layout_transform_inputs;
-    for (auto& attr : layout_transform_inputs_attr) {
+
+    for (auto& attr : data_format_tensors_attr) {
       auto pair = kernel_context_.InputRangeAt(value_exec_info_->GetIdByName(
           attr.dyn_cast<pir::StrAttribute>().AsString()));
       for (int i = pair.first; i < pair.second; ++i) {
-        layout_transform_inputs_.insert(i);
+        data_format_tensors_.insert(i);
       }
     }
   }
@@ -333,7 +335,7 @@ void OneDNNPhiKernelInstruction::Run() {
 
       //  Handle 'layout_transform' in
       //  ops_onednn_extra.yaml(GetKernelTypeForVar)
-      if (layout_transform_inputs_.count(i) &&
+      if (data_format_tensors_.count(i) &&
           input_layout_ != phi::DataLayout::kAnyLayout) {
         from_layout = input_layout_;
       }

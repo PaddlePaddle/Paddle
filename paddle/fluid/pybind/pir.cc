@@ -1030,7 +1030,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
   pir::IrMapping mapper;
   auto cloned_program = program.Clone(mapper);
   std::vector<pir::OpResult> associated_array_key, associated_array_value;
-  for (auto &pair : mapper.Map<pir::Value>()) {
+  for (auto &pair : mapper.GetMap<pir::Value>()) {
     associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
     associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
@@ -1119,12 +1119,12 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
       });
-  auto &forward_value_map = forward_mapper.MutableMap<pir::Value>();
+  auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
-  auto &backward_value_map = backward_mapper.MutableMap<pir::Value>();
+  auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
   auto create_data_fn = [&backward_builder,
                          &backward_inputs,
@@ -1538,11 +1538,12 @@ static bool HasDynamicShape(const Program &program) {
       continue;
     }
     for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i)
-                              .type()
-                              .dyn_cast<pir::ShapedTypeInterface>()
-                              .IsDynamicShape()) {
-        return true;
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          return true;
+        }
       }
     }
   }
@@ -1563,8 +1564,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
-
+  pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -1582,8 +1582,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 }
 
 void InferSymbolicShapePass(
-    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-    Program &program) {                          // NOLINT
+    std::shared_ptr<PassManager> &pass_manager) {  // NOLINT
   if (FLAGS_pir_apply_shape_optimization_pass) {
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
