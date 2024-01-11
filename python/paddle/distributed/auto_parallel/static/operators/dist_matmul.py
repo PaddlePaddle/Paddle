@@ -522,12 +522,12 @@ def update_dims_mapping_matmul(dist_op):
 
     # step2: infer spmd
     rule = get_phi_spmd_rule("matmul")
-    # tensor order following order in PHI defition
+    # tensor order following order in PHI definition
     fw_results = rule.infer_forward(x_spec, y_spec, trans_x, trans_y)
     bw_results = rule.infer_backward(x_spec, y_spec, out_spec, trans_x, trans_y)
 
     # step3: update dist_attr
-    # tensor order following order in PHI defition
+    # tensor order following order in PHI definition
     input_arg_names = [x_name, y_name]
     output_arg_names = [out_name]
     changed = update_op_dims_mapping(
