@@ -480,7 +480,45 @@ void concat_grad(const std::vector<Tensor>& x,
   std::vector<Tensor> x_grad_tmp =
       split<T>(out_grad, phi::IntArray(sections), axis_value);
   for (int i = 0; i < x_num; ++i) {
-    set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
+    if (x_grad[i]) {
+      set_output<T>(x_grad_tmp[i], x_grad[i]);
+    }
+  }
+}
+
+template <typename T>
+void stack_grad(const std::vector<Tensor>& x,
+                const Tensor& out_grad,
+                const Scalar& axis,
+                std::vector<Tensor*> x_grad) {
+  int axis_value = axis.to<int>();
+  int rank = x[0].dims().size();  // len(x[0].shape)
+
+  // ensure axis_value >= 0
+  if (axis_value < 0) {
+    axis_value = ((axis_value % rank) + rank) % rank;
+  }
+
+  // split out_grad to grads for each input tensor
+  int x_num = x.size();
+  std::vector<int> sections(x_num, 1);
+  std::vector<Tensor> x_grad_tmp =
+      split<T>(out_grad, phi::IntArray(sections), axis_value);
+
+  // compose shape for each input tensor
+  std::vector<int64_t> grad_shape;
+  auto out_dim = out_grad.dims().size();
+  for (int i = 0; i < out_dim; ++i) {
+    if (i != axis_value) {
+      grad_shape.push_back(out_grad.dims()[i]);
+    }
+  }
+
+  // assign to each input tensor if need grad(stop_gradient=False)
+  for (int i = 0; i < x_num; ++i) {
+    if (x_grad[i]) {
+      set_output<T>(reshape<T>(x_grad_tmp[i], grad_shape), x_grad[i]);
+    }
   }
 }
 
