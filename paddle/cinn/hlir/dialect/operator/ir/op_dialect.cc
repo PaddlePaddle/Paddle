@@ -55,6 +55,7 @@ void OperatorDialect::initialize() {
   RegisterOp<GroupOp>();
   RegisterOp<ConcatOp>();
   RegisterOp<SplitOp>();
+  RegisterOp<GenerateShapeOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CINNKernelInfoAttribute>();
 }

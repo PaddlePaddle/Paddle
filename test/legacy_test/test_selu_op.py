@@ -158,6 +158,7 @@ class TestSeluAPI(unittest.TestCase):
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
@@ -175,10 +176,11 @@ class TestSeluAPI(unittest.TestCase):
             # The alpha must be no less than 0
             self.assertRaises(ValueError, F.selu, x_fp32, 1.6, -1.0)
             # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[12, 10], dtype='float16'
-            )
-            F.selu(x_fp16)
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
+                )
+                F.selu(x_fp16)
 
 
 if __name__ == "__main__":

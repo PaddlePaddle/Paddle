@@ -32,6 +32,8 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
+namespace {
+
 pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
                               pir::Value x,
                               pir::Value y) {
@@ -42,6 +44,10 @@ pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
 }
 
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
+  if (op->operand_source(0).defining_op()->isa<paddle::dialect::ExpandOp>() &&
+      op->operand_source(1).defining_op()->isa<paddle::dialect::ExpandOp>()) {
+    return false;
+  }
   pir::Value x = op->operand_source(0);
   pir::Value y = op->operand_source(1);
   pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
@@ -57,6 +63,8 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   }
   return true;
 }
+
+}  // namespace
 
 template <typename OPTYPE>
 class FullyInsertBroadcastPattern : public pir::OpRewritePattern<OPTYPE> {

@@ -34,9 +34,9 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_phi_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_instruction.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -731,7 +731,7 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(PhiKernelInstruction);
       }
 #ifdef PADDLE_WITH_DNNL
-    } else if (op.dialect()->name() == "pd_onednn_kernel") {
+    } else if (op.dialect()->name() == "onednn_kernel") {
       auto op_name = op.attributes()
                          .at("op_name")
                          .dyn_cast<::pir::StrAttribute>()

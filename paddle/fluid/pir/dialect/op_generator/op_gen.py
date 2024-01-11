@@ -30,7 +30,7 @@ from op_interface_gen import (
 from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
-from ops_onednn_extra_parser import parse_extra_args, parse_layout_transform
+from ops_onednn_extra_parser import parse_data_format_tensors, parse_extra_args
 from parse_kernel_key_gen import gen_parse_kernel_key_str
 from vjp_interface_black_list import vjp_interface_black_list
 
@@ -233,7 +233,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, "{kernel_func}", {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{kernel_key_backend}}}, {{{inplace}}}, {{{view}}}, {{{extra_args}}}, "{layout_transform_arg}", {{{layout_transform_inputs}}}, {is_onednn_only}, {dynamic_fallback});
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, "{kernel_func}", {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{kernel_key_backend}}}, {{{inplace}}}, {{{view}}}, {{{extra_args}}}, {{{data_format_tensors}}}, {is_onednn_only}, {dynamic_fallback});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
 }}
 """
@@ -490,12 +490,14 @@ class OpInfoParser:
         # OneDNN info
         if "extra_args" in self.op_yaml_item:
             self.onednn_extra_args = self.op_yaml_item["extra_args"]
-            self.onednn_layout_transform = self.op_yaml_item["layout_transform"]
+            self.onednn_data_format_tensors = self.op_yaml_item[
+                "data_format_tensors"
+            ]
             self.is_onednn_only = self.op_yaml_item["is_onednn_only"]
             self.dynamic_fallback = self.op_yaml_item["dynamic_fallback"]
         else:
             self.onednn_extra_args = []
-            self.onednn_layout_transform = None
+            self.onednn_data_format_tensors = None
             self.is_onednn_only = False
             self.dynamic_fallback = False
 
@@ -1149,20 +1151,20 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
         if (
             op_info.backward_name
             and op_info.op_phi_name[0] not in vjp_interface_black_list
-            and dialect_name != "pd_onednn_op"
+            and dialect_name != "onednn_op"
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
 
-        if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+        if dialect_name == "pd_op" or dialect_name == "onednn_op":
             op_interfaces += ["paddle::dialect::GetKernelTypeForVarInterface"]
 
         # if op has custom vjp rule, then append a CustomVjpTrait to it
         if (
             op_info.op_phi_name[0] in custom_vjp_op_name_list
-            and dialect_name != "pd_onednn_op"
+            and dialect_name != "onednn_op"
         ):
             op_traits += ["paddle::dialect::CustomVjpTrait"]
 
@@ -1186,7 +1188,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
             if op_name[-1] == "_":
                 op_traits += ["paddle::dialect::InplaceTrait"]
 
-            if dialect_name == "pd_onednn_op":
+            if dialect_name == "onednn_op":
                 op_traits += ["paddle::dialect::OneDNNTrait"]
 
             if op_info.is_onednn_only:
@@ -1210,7 +1212,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 if (
                     op_name in decomp_interface_declare_gen_op_list
                     and kernel_func_name in decomp_interface_declare_gen_op_list
-                    and dialect_name != "pd_onednn_op"
+                    and dialect_name != "onednn_op"
                 ):
                     if decomp_interface_str not in op_interfaces:
                         op_interfaces = op_interfaces + [decomp_interface_str]
@@ -1277,7 +1279,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 build_func_with_muta_attr_is_input = ""
 
                 get_kernel_type_for_var_declare_str = ""
-                if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+                if dialect_name == "pd_op" or dialect_name == "onednn_op":
                     get_kernel_type_for_var_declare_str = (
                         get_kernel_type_for_var_declare_template
                     )
@@ -1612,7 +1614,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     origin_op_name=op_info.op_yaml_item['name'],
                 )
 
-                if dialect_name == "pd_onednn_op":
+                if dialect_name == "onednn_op":
                     if len(op_info.onednn_extra_args) > 0:
                         args_name = []
                         for arg in op_info.onednn_extra_args:
@@ -1621,18 +1623,12 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         extra_args = '"' + '", "'.join(args_name) + '"'
                     else:
                         extra_args = ""
-                    if op_info.onednn_layout_transform is None:
-                        layout_transform_arg, layout_transform_inputs = (
-                            "",
-                            "",
-                        )
+                    if op_info.onednn_data_format_tensors is None:
+                        data_format_tensors = ""
                     else:
-                        (
-                            layout_transform_arg,
-                            layout_transform_inputs,
-                        ) = op_info.onednn_layout_transform
-                        layout_transform_inputs = (
-                            '"' + '", "'.join(layout_transform_inputs) + '"'
+                        data_format_tensors = op_info.onednn_data_format_tensors
+                        data_format_tensors = (
+                            '"' + '", "'.join(data_format_tensors) + '"'
                         )
 
                     op_info_func_str = OP_INFO_ONEDNN_TEMPLATE.format(
@@ -1650,8 +1646,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         view=view_str,
                         origin_op_name=op_info.op_yaml_item['name'],
                         extra_args=extra_args,
-                        layout_transform_arg=layout_transform_arg,
-                        layout_transform_inputs=layout_transform_inputs,
+                        data_format_tensors=data_format_tensors,
                         is_onednn_only="true"
                         if op_info.is_onednn_only
                         else "false",
@@ -1703,7 +1698,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
 
                 # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
-                if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+                if dialect_name == "pd_op" or dialect_name == "onednn_op":
                     op_get_kernel_type_for_var_str = (
                         gen_kernel_type_for_var_str(
                             op_class_name,
@@ -1732,7 +1727,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         op_info.backward_name
                         and op_info.op_phi_name[0]
                         not in vjp_interface_black_list
-                        and dialect_name != "pd_onednn_op"
+                        and dialect_name != "onednn_op"
                     ):
                         op_vjp_str = gen_op_vjp_str(
                             op_class_name,
@@ -1763,7 +1758,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     ops_defined_list.append(infer_symbolic_shape_define_str)
 
                     # NOTE(chenxi67)skip if dialect_name==cinn
-                    if dialect_name == "cinn" or dialect_name == "pd_onednn_op":
+                    if dialect_name == "cinn" or dialect_name == "onednn_op":
                         pass
                     else:
                         ops_vjp_defined_list.append(op_vjp_str)
@@ -1860,7 +1855,7 @@ def OpGenerator(
     # (2) parse yaml files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
-    if dialect_name == "pd_onednn_op":
+    if dialect_name == "onednn_op":
         with open(ops_onednn_extra_yaml_file, "r") as f:
             ops_onednn_extra = yaml.safe_load(f)
             ops_onednn_extra_map = {}
@@ -1869,12 +1864,12 @@ def OpGenerator(
                 item = {}
                 item["is_onednn_only"] = False
                 item["extra_args"] = parse_extra_args(op_name, op['extra_args'])
-                if 'layout_transform' in op:
-                    item["layout_transform"] = parse_layout_transform(
-                        op_name, op['layout_transform']
+                if 'data_format_tensors' in op:
+                    item["data_format_tensors"] = parse_data_format_tensors(
+                        op_name, op['data_format_tensors']
                     )
                 else:
-                    item["layout_transform"] = None
+                    item["data_format_tensors"] = None
                 if 'dynamic_fallback' in op:
                     item["dynamic_fallback"] = op['dynamic_fallback']
                 else:
@@ -1895,7 +1890,7 @@ def OpGenerator(
         op_info_items = {}
         for op in op_yaml_items:
             op_compat_item = None
-            if dialect_name == "pd_op" or dialect_name == "pd_onednn_op":
+            if dialect_name == "pd_op" or dialect_name == "onednn_op":
                 op_compat_item = op_compat_parser.get_compat(op['name'])
 
             if (
@@ -1921,7 +1916,7 @@ def OpGenerator(
                 ) = op_compat_parser.parse_support_tensor(op)
                 op_compat_item['scalar'] = scalar_item
                 op_compat_item['int_array'] = int_array_item
-            if dialect_name == "pd_onednn_op":
+            if dialect_name == "onednn_op":
                 if first_file:
                     first_file = False
                     op["is_onednn_only"] = True
@@ -1929,7 +1924,9 @@ def OpGenerator(
                     onednn_item = ops_onednn_extra_map[op['name']]
                     op["is_onednn_only"] = onednn_item["is_onednn_only"]
                     op["extra_args"] = onednn_item["extra_args"]
-                    op["layout_transform"] = onednn_item["layout_transform"]
+                    op["data_format_tensors"] = onednn_item[
+                        "data_format_tensors"
+                    ]
                     op["dynamic_fallback"] = onednn_item["dynamic_fallback"]
                     op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 else:
@@ -1939,7 +1936,7 @@ def OpGenerator(
             all_op_info_items[op['name']] = item
 
         op_infos.append(op_info_items)
-    if dialect_name == "pd_onednn_op":
+    if dialect_name == "onednn_op":
         op_infos = [all_op_info_items]
 
     # (3) auto code gen
@@ -2052,7 +2049,7 @@ def OpGenerator(
                 namespace=name, input=source_file_str
             )  # Add namespaces
 
-        if dialect_name == "pd_onednn_op":
+        if dialect_name == "onednn_op":
             op_def_h_file_tmp = (
                 "paddle/fluid/pir/dialect/operator/ir/pd_op.h\"\n#include \""
                 + op_def_h_file
@@ -2075,7 +2072,7 @@ def OpGenerator(
     vjp_source_file_str = VJP_CC_FILE_TEMPLATE.format(input=vjp_source_file_str)
     if (
         dialect_name != 'cinn'
-        and dialect_name != 'pd_onednn_op'
+        and dialect_name != 'onednn_op'
         and op_vjp_cc_file
     ):
         with open(op_vjp_cc_file, 'w') as f:
