@@ -7101,6 +7101,192 @@ def ldexp_(x, y, name=None):
     return paddle.multiply_(x, paddle.pow(two, y))
 
 
+def _bitwise_op(op_name, x, y, is_arithmetic, out=None, name=None):
+    check_variable_and_dtype(
+        x,
+        "x",
+        ["uint8", "int8", "int16", "int32", "int64"],
+        op_name,
+    )
+    if y is not None:
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["uint8", "int8", "int16", "int32", "int64"],
+            op_name,
+        )
+
+    helper = LayerHelper(op_name, **locals())
+    assert x.dtype == y.dtype
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type=op_name,
+        inputs={"x": x, "y": y},
+        outputs={"out": out},
+        attrs={'is_arithmetic': is_arithmetic},
+    )
+
+    return out
+
+
+def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Apply ``bitwise_left_shift`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+
+        Out = X \ll Y
+
+    .. note::
+
+        ``paddle.bitwise_left_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        out (Tensor, optional): Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+            :name: bitwise_left_shift_example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=True)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[2  , 8  , 32 , 128],
+                    [64 , 136, 128, 130]])
+
+        .. code-block:: python
+            :name: bitwise_left_shift_example2
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=False)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[2  , 8  , 32 , 128],
+                    [64 , 136, 128, 130]])
+    """
+    if in_dynamic_mode() and out is None:
+        return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
+    return _bitwise_op(
+        op_name="bitwise_left_shift",
+        x=x,
+        y=y,
+        is_arithmetic=is_arithmetic,
+        name=name,
+        out=out,
+    )
+
+
+@inplace_apis_in_dygraph_only
+def bitwise_left_shift_(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Inplace version of ``bitwise_left_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_left_shift`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_or_pir_mode():
+        return _C_ops.bitwise_left_shift_(x, y, is_arithmetic)
+
+
+def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Apply ``bitwise_right_shift`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+
+        Out = X \gg Y
+
+    .. note::
+
+        ``paddle.bitwise_right_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        out (Tensor, optional): Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+            :name: bitwise_right_shift_example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=True)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[5 , 5 , 5 , 5 ],
+                    [4 , 2 , 8 , 32]])
+
+        .. code-block:: python
+            :name: bitwise_right_shift_example2
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[-10,-20,-40,-80],[-16,-17,-32,-65]], dtype=paddle.int8)
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]], dtype=paddle.int8)
+            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=False)  # logic shift
+            Tensor(shape=[2, 4], dtype=int8, place=Place(gpu:0), stop_gradient=True,
+                [[123, 59 , 27 , 11 ],
+                    [60 , 29 , 56 , 95 ]])
+    """
+    if in_dynamic_mode() and out is None:
+        return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
+
+    return _bitwise_op(
+        op_name="bitwise_right_shift",
+        x=x,
+        y=y,
+        is_arithmetic=is_arithmetic,
+        name=name,
+        out=out,
+    )
+
+
+@inplace_apis_in_dygraph_only
+def bitwise_right_shift_(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Inplace version of ``bitwise_right_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_left_shift`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.bitwise_right_shift_(x, y, is_arithmetic)
+
+
 def hypot(x, y, name=None):
     """
     Calculate the length of the hypotenuse of a right-angle triangle. The equation is:
