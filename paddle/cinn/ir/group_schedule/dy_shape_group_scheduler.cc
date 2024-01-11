@@ -17,6 +17,7 @@
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
@@ -27,8 +28,9 @@ namespace ir {
 void DynamicShapeGroupScheduler::Init() {
   InitBuckets();
   tactics_.emplace_back(new AlignIterSpaceTactic());
-  tactics_.emplace_back(new TileTactic());
   tactics_.emplace_back(new ComputeInlineTactic());
+  tactics_.emplace_back(new TileTactic());
+  tactics_.emplace_back(new OptimizeReductionTactic());
   tactics_.emplace_back(new BindCudaTactic());
   tactics_.emplace_back(new ArrangeStorageTactic());
 }

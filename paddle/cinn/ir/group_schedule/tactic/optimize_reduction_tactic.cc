@@ -1,0 +1,126 @@
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
+
+namespace cinn {
+namespace ir {
+
+void OptimizeReductionTactic::Init(ScheduleContext* context) {
+  context_ = context;
+}
+
+bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
+  ir::Expr block_expr = sch->GetBlock(block_name);
+  ir::ScheduleBlockRealize* block_realize =
+      block_expr.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  ir::ScheduleBlock* sch_block =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(sch_block);
+  analyzer::AnalyzeScheduleBlockReadWriteBuffer(sch_block);
+
+  // 1. The block must have write buffer
+  if (sch_block->write_buffers.empty()) {
+    return false;
+  }
+
+  // 2. The block must have at least one reduce axis
+  const std::vector<ir::Var>& iter_vars = sch_block->iter_vars;
+  bool find_reduce_axis = false;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      find_reduce_axis = true;
+      break;
+    }
+  }
+  if (!find_reduce_axis) {
+    return false;
+  }
+
+  // 3. Each loop's body only contains one sub loop or block, except reduce_init
+  // block
+  std::vector<ir::Expr> loops = sch->GetLoops(block_name);
+  for (const ir::Expr& loop : loops) {
+    const ir::Expr& body = loop.As<ir::For>()->body;
+    if (body.As<ir::Block>()) {
+      if (body.As<ir::Block>()->stmts.size() == 1) {
+        if (body.As<ir::Block>()->stmts[0].As<ir::For>() == nullptr &&
+            body.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>() ==
+                nullptr) {
+          return false;
+        }
+      } else if (body.As<ir::Block>()->stmts.size() == 2) {
+        if (body.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>() ==
+                nullptr ||
+            !ir::IsReduceInitTensorName(
+                analyzer::GetBlockName(body.As<ir::Block>()->stmts[0]))) {
+          return false;
+        }
+        if (body.As<ir::Block>()->stmts[1].As<ir::For>() == nullptr &&
+            body.As<ir::Block>()->stmts[1].As<ir::ScheduleBlockRealize>() ==
+                nullptr) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    } else if (body.As<ir::For>() || body.As<ir::ScheduleBlockRealize>()) {
+      continue;
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
+                                    const std::string& block_id) {
+  if (!CanApply(block_id, sch)) return;
+
+  std::vector<ir::Expr> loops = sch->GetLoops(block_id);
+  int first_reduce_loop_idx = context_->iter_space_info.sp_space.size();
+  CHECK_LT(first_reduce_loop_idx, loops.size())
+      << "first_reduce_loop_idx shoud be less than number of loop.";
+  // Apply FactorizeReduction
+  VLOG(6) << "before FactorizeReduction: " << sch->GetModule().GetExprs()[0];
+  sch->FactorizeReduction(loops[first_reduce_loop_idx], first_reduce_loop_idx);
+  VLOG(6) << "after FactorizeReduction: " << sch->GetModule().GetExprs()[0];
+
+  // Loop fusion and cross thread reduction
+  std::vector<ir::Expr> rb_loops = sch->GetLoops(block_id);
+  std::string rf_block_id = block_id + "_rf";
+  ir::Expr rf_block = sch->GetBlock(rf_block_id);
+  sch->SimpleComputeAt(rf_block, rb_loops.back());
+
+  rb_loops = sch->GetLoops(block_id);
+  ir::Expr rf_init_block =
+      sch->GetBlock(ir::GenReduceInitTensorNameOf(rf_block_id));
+  sch->SimpleComputeAt(rf_init_block, rb_loops.back());
+
+  if (context_->target == cinn::common::DefaultNVGPUTarget()) {
+    rb_loops = sch->GetLoops(block_id);
+    rf_block = sch->GetBlock(rf_block_id);
+    sch->Bind(rb_loops.back(), "threadIdx.x");
+    sch->SetBuffer(rf_block, "shared");
+  }
+  VLOG(6) << "Loop fusion and cross thread reduction: "
+          << sch->GetModule().GetExprs()[0];
+}
+
+}  // namespace ir
+}  // namespace cinn

@@ -613,6 +613,40 @@ class Increment_Op
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
+class MemcpyD2hMultiIoOp
+    : public pir::Op<MemcpyD2hMultiIoOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.memcpy_d2h_multi_io"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    int dst_place_type);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::AttributeMap attributes);
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class IR_API ShapeBroadcastOp
     : public pir::Op<ShapeBroadcastOp,
                      paddle::dialect::InferSymbolicShapeInterface,
@@ -665,3 +699,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)

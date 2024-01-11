@@ -53,8 +53,8 @@ using phi::distributed::auto_parallel::str_join;
             << "src_dist_attr: [" << name##_dist_attr_dst.to_string() << "]"; \
   } while (0)
 
-#define LOG_SPMD_OUTPUT(name)                                 \
-  do {                                                        \
-    VLOG(4) << #name;                                         \
-    VLOG(4) << "src_dist_attr: [" << name.to_string() << "]"; \
+#define LOG_SPMD_OUTPUT(name)                             \
+  do {                                                    \
+    VLOG(4) << #name;                                     \
+    VLOG(4) << "dist_attr: [" << name.to_string() << "]"; \
   } while (0)

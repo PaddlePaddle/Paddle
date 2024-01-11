@@ -23,7 +23,8 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::SliceArrayOp, paddle::dialect::SliceArrayDenseOp,
     paddle::dialect::AssignArray_Op, paddle::dialect::ArrayToTensorOp,
     paddle::dialect::SelectInputOp, paddle::dialect::IncrementOp,
-    paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp
+    paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
+    paddle::dialect::MemcpyD2hMultiIoOp
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -2595,7 +2596,7 @@ OpInfoTuple ArrayWrite_Op::GetOpInfo() {
                     "array_write",
                     {"array", "x", "i"},
                     {"array"},
-                    {},
+                    {"array"},
                     {{"out", "array"}},
                     {});
 
@@ -4715,6 +4716,88 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   return true;
 }
 
+const char *MemcpyD2hMultiIoOp::attributes_name[1] = {"dst_place_type"};
+
+OpInfoTuple MemcpyD2hMultiIoOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("x",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo(
+          "dst_place_type", "pir::Int32Attribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("UnchangedInferMeta",
+                                     {"x"},
+                                     "memcpy_d2h_multi_io",
+                                     {"x", "dst_place_type"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "memcpy_d2h_multi_io");
+}
+
+void MemcpyD2hMultiIoOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "MemcpyD2hMultiIoOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("dst_place_type") > 0,
+               "dst_place_type does not exist.");
+    IR_ENFORCE(attributes.at("dst_place_type").isa<pir::Int32Attribute>(),
+               "Type of attribute: dst_place_type is not pir::Int32Attribute.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    auto output_0_type = (*this)->result(0).type();
+
+    IR_ENFORCE(output_0_type.isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: MemcpyD2hMultiIoOp.";
+}
+
+void MemcpyD2hMultiIoOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::UnchangedArrayInferMeta);
+  fn(infer_meta);
+}
+
+phi::DataType MemcpyD2hMultiIoOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: MemcpyD2hMultiIoOp";
+
+  return expected_kernel_dtype;
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -4738,5 +4821,6 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 #endif
