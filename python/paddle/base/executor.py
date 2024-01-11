@@ -29,7 +29,6 @@ from ..pir import (
     translate_to_pir,
     translate_to_pir_with_param_map,
 )
-from ..static.amp.fp16_utils import _dtype_to_str
 from . import compiler, core, framework, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -1615,6 +1614,16 @@ class Executor:
             self._default_executor.release_trainer(trainer_instance)
             del trainer_instance
         self.trainer_caches.clear()
+
+    def _dtype_to_str(in_dtype):
+        if in_dtype == core.VarDesc.VarType.FP16:
+            return "fp16"
+        elif in_dtype == core.VarDesc.VarType.BF16:
+            return "bf16"
+        elif in_dtype == core.VarDesc.VarType.FP32:
+            return "fp32"
+        elif in_dtype == core.VarDesc.VarType.FP64:
+            return "fp64"
 
     def _add_cast_for_type_promotion(self, op, block, idx, var_name, out_dtype):
         op_device = op.attr('op_device')
