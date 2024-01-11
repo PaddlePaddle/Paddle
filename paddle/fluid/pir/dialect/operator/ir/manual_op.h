@@ -645,6 +645,9 @@ class MemcpyD2hMultiIoOp
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class IR_API ShapeBroadcastOp
