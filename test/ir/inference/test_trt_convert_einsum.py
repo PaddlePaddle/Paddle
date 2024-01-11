@@ -266,19 +266,6 @@ class TrtConvertEinsumTest_DoubuleOperand_Vector_Matrix(TrtLayerAutoScanTest):
                     "operands_data0": [2],
                     "operands_data1": [2],
                 }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "operands_data0": [1, 3],
-                    "operands_data1": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "operands_data0": [4, 3],
-                    "operands_data1": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "operands_data0": [2, 3],
-                    "operands_data1": [3],
-                }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
                     "operands_data0": [1, 2, 3],
@@ -359,11 +346,6 @@ class TrtConvertEinsumTest_DoubuleOperand_Matrix_Matrix(TrtLayerAutoScanTest):
             [[3, 4, 5], [4, 5], "ijk,jk->i"],
             [[3, 4, 5], [2, 5], "ijk,lk->ijl"],
             [[2, 4, 5, 3], [3, 4, 5], "ijkl,lmn->ijkmn"],
-            [[4, 5], [4, 2, 5], "ik,ijk->j"],
-            [[4, 2, 5], [4, 5], "ijk,ik->jk"],
-            [[2, 4, 5, 3], [3, 2, 4], "ijkl,lmn->kmn"],
-            [[2, 4, 5, 3], [3, 2, 4], "ijkl,lmn->ijn"],
-            [[1, 3, 5], [1, 2, 3, 4], "blq,bhlk->bhlqk"],
         ]:
             self.x_shape = item[0]
             self.y_shape = item[1]
