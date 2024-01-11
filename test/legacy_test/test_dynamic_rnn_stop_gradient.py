@@ -45,7 +45,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     scores.stop_gradient = False
     with while_op.block():
         bs = paddle.cast(paddle.shape(x)[0], "int64")
-        for _ in range(2):
+        for _ in range(20):
             bs = paddle.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
         batch_pos = paddle.expand(
@@ -74,8 +74,8 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
 
 class TestDynRNNStopGradient(unittest.TestCase):
     def setUp(self):
-        self.batch_size = 2
-        self.beam_size = 2
+        self.batch_size = 20
+        self.beam_size = 64
 
     # @test_with_pir_api
     def run_main(self, place):

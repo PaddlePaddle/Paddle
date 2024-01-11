@@ -284,7 +284,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                 out = paddle.static.nn.while_loop(cond, body, [i, x])
                 mean = paddle.mean(out[1])
                 grad_list = append_backward(mean)
-                print(main_program)
 
             place = (
                 base.CUDAPlace(0)
