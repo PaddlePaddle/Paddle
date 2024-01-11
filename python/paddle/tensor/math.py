@@ -1980,7 +1980,7 @@ def add_n(inputs, name=None):
              [14., 16., 18.]])
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(inputs, (Variable, paddle.pir.OpResult)):
+        if isinstance(inputs, (Variable, paddle.pir.Value)):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:
@@ -4726,7 +4726,8 @@ def increment(x, value=1.0, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
     )
     if in_pir_mode():
-        return _C_ops.increment_(x, value)
+        _C_ops.increment_(x, value)
+        return x
     else:
         helper = LayerHelper("increment", **locals())
         helper.append_op(
