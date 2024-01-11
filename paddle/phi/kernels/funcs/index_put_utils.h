@@ -73,67 +73,73 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
     const Context& dev_ctx,
     const std::vector<const phi::DenseTensor*>& indices_v,
     std::vector<phi::DenseTensor>* tmp_indices_v) {
-  std::vector<const phi::DenseTensor*> res(indices_v.begin(), indices_v.end());
-  bool contains_bool_tensor = false;
+  std::vector<const phi::DenseTensor*> res;
 
+  bool contains_bool_tensor = false;
   for (size_t i = 0; i < indices_v.size(); ++i) {
     if (indices_v[i]->dtype() == phi::DataType::BOOL) {
       contains_bool_tensor = true;
-      int rank = indices_v[i]->dims().size();
-      PADDLE_ENFORCE_GE(
-          rank,
-          1UL,
-          phi::errors::InvalidArgument("the only bool tensor in indices should "
-                                       "have number of dimension at least 1"));
-      phi::DenseTensor nonzero_indices(phi::DataType::INT64);
-      nonzero_indices.Resize(common::make_ddim({-1, rank}));
-      NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
+      break;
+    }
+  }
 
-      if (nonzero_indices.numel() == 0) {
-        std::vector<const phi::DenseTensor*> empty_indices;
-        return empty_indices;
-      }
+  if (contains_bool_tensor) {
+    for (size_t i = 0; i < indices_v.size(); ++i) {
+      if (indices_v[i]->dtype() == phi::DataType::BOOL) {
+        int rank = indices_v[i]->dims().size();
+        PADDLE_ENFORCE_GE(rank,
+                          1UL,
+                          phi::errors::InvalidArgument(
+                              "the only bool tensor in indices should "
+                              "have number of dimension at least 1"));
+        phi::DenseTensor nonzero_indices(phi::DataType::INT64);
+        nonzero_indices.Resize(common::make_ddim({-1, rank}));
+        NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
-      std::vector<phi::DenseTensor*> integer_indices(rank, nullptr);
-      const int tmp_ix = tmp_indices_v->size();
-      for (int i = 0; i < rank; ++i) {
-        tmp_indices_v->emplace_back(
-            DenseTensor(phi::DataType::INT64)
-                .Resize(common::make_ddim({nonzero_indices.dims()[0]})));
-      }
-      for (int i = 0; i < rank; ++i) {
-        integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
-      }
-      SplitWithNumKernel<int64_t, Context>(
-          dev_ctx, nonzero_indices, rank, 1, integer_indices);
-#ifdef PADDLE_WITH_XPU
-      auto place = dev_ctx.GetPlace();
-      if (place.GetType() == phi::AllocationType::XPU) {
-        auto& pool = phi::DeviceContextPool::Instance();
-        auto* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
-        if (xpu_ctx->x_context()->xpu_stream) {
-          dev_ctx.Wait();
+        if (nonzero_indices.numel() == 0) {
+          std::vector<const phi::DenseTensor*> empty_indices;
+          return empty_indices;
         }
-      }
+
+        std::vector<phi::DenseTensor*> integer_indices(rank, nullptr);
+        const int tmp_ix = tmp_indices_v->size();
+        for (int i = 0; i < rank; ++i) {
+          tmp_indices_v->emplace_back(
+              DenseTensor(phi::DataType::INT64)
+                  .Resize(common::make_ddim({nonzero_indices.dims()[0]})));
+        }
+        for (int i = 0; i < rank; ++i) {
+          integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
+        }
+        SplitWithNumKernel<int64_t, Context>(
+            dev_ctx, nonzero_indices, rank, 1, integer_indices);
+#ifdef PADDLE_WITH_XPU
+        auto place = dev_ctx.GetPlace();
+        if (place.GetType() == phi::AllocationType::XPU) {
+          auto& pool = phi::DeviceContextPool::Instance();
+          auto* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
+          if (xpu_ctx->x_context()->xpu_stream) {
+            dev_ctx.Wait();
+          }
+        }
 #endif
 
-    } else if ((indices_v[i]->dtype() == phi::DataType::INT64) ||
-               (indices_v[i]->dtype() == phi::DataType::INT32)) {
-      tmp_indices_v->emplace_back(*indices_v[i]);
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "data type of tensor in indices must be int32, int64 or bool"));
+      } else if ((indices_v[i]->dtype() == phi::DataType::INT64) ||
+                 (indices_v[i]->dtype() == phi::DataType::INT32)) {
+        tmp_indices_v->emplace_back(*indices_v[i]);
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "data type of tensor in indices must be int32, int64 or bool"));
+      }
     }
-  }
-  if (contains_bool_tensor) {
-    std::vector<const phi::DenseTensor*> res_tmp(tmp_indices_v->size(),
-                                                 nullptr);
-    for (size_t i = 0; i < res_tmp.size(); ++i) {
-      res_tmp[i] = &((*tmp_indices_v)[i]);
-    }
-    res.swap(res_tmp);
-  }
 
+    res.reserve(tmp_indices_v->size());
+    for (size_t i = 0; i < tmp_indices_v->size(); ++i) {
+      res.emplace_back(&((*tmp_indices_v)[i]));
+    }
+  } else {
+    res = indices_v;
+  }
   return res;
 }
 
