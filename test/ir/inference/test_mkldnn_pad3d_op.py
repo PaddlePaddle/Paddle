@@ -20,6 +20,7 @@ import numpy as np
 from auto_scan_test import MkldnnAutoScanTest
 from hypothesis import given
 from program_config import OpConfig, ProgramConfig, TensorConfig
+from utils import compare_legacy_with_pt
 
 
 class TestOneDNNPad3DOp(MkldnnAutoScanTest):
@@ -75,6 +76,10 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
         ),
     )
     def test(self, *args, **kwargs):
+        self.run_test(quant=False, *args, **kwargs)
+
+    @compare_legacy_with_pt
+    def test_pir(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 
 
