@@ -506,13 +506,13 @@ class TestFlashAttentionNoKVGrad(unittest.TestCase):
         key = np.random.random(self.shape)
         value = np.random.random(self.shape)
 
-        q = self._init_tensor_from_numpy(query, stop_gradient=True)
-        k = self._init_tensor_from_numpy(key, stop_gradient=False)
-        v = self._init_tensor_from_numpy(value, stop_gradient=False)
+        q = self._init_tensor_from_numpy(query, stop_gradient=False)
+        k = self._init_tensor_from_numpy(key, stop_gradient=True)
+        v = self._init_tensor_from_numpy(value, stop_gradient=True)
 
-        q_ = self._init_tensor_from_numpy(query, stop_gradient=True)
-        k_ = self._init_tensor_from_numpy(key, stop_gradient=False)
-        v_ = self._init_tensor_from_numpy(value, stop_gradient=False)
+        q_ = self._init_tensor_from_numpy(query, stop_gradient=False)
+        k_ = self._init_tensor_from_numpy(key, stop_gradient=True)
+        v_ = self._init_tensor_from_numpy(value, stop_gradient=True)
 
         with paddle.nn.functional.sdp_kernel(
             enable_math=self.enable_math,
