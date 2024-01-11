@@ -33,6 +33,7 @@ def np_sgn(x: np.ndarray):
 
 
 class TestSgnError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors_dynamic(self):
         # The input dtype of sgn must be float16, float32, float64,complex64,complex128.
         input2 = paddle.to_tensor(

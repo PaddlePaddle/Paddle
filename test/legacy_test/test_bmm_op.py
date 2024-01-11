@@ -138,6 +138,7 @@ class API_TestDygraphBmm(unittest.TestCase):
 
 
 class TestBmmAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_api_error(self):
         x_data = np.arange(24, dtype='float32').reshape((2, 3, 4))
         y_data = np.arange(16, dtype='float32').reshape((2, 4, 2))
