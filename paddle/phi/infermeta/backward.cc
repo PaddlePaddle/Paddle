@@ -674,13 +674,16 @@ void MatchMatrixTensorGradInferMeta(const MetaTensor& x,
   if (x_grad != nullptr) {
     x_grad->set_dims(x.dims());
     x_grad->share_lod(x);
+    x_grad->set_dtype(x.dtype());
   }
   if (y_grad != nullptr) {
     y_grad->set_dims(y.dims());
     y_grad->share_lod(y);
+    y_grad->set_dtype(y.dtype());
   }
   if (w_grad != nullptr) {
     w_grad->set_dims(w.dims());
+    w_grad->set_dtype(w.dtype());
   }
 }
 
