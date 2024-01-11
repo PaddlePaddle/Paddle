@@ -731,7 +731,11 @@ def launch():
 
             # in single dp estimation scene, just some nodes not all nodes run
             ctx = gen_new_ctx(ctx, cur_cfg, tuner_cfg)
-            actual_nnodes = int(ctx.args.nnodes.split(":")[0])
+            actual_nnodes = (
+                int(ctx.args.nnodes.split(":")[0])
+                if not isinstance(ctx.args.nnodes, int)
+                else ctx.args.nnodes
+            )
             if sorted_ips:
                 actual_exec_ips = sorted_ips[:actual_nnodes]
                 if ip not in actual_exec_ips:
