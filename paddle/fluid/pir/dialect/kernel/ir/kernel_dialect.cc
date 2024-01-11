@@ -136,9 +136,7 @@ CustomKernelDialect::CustomKernelDialect(pir::IrContext *context)
 }
 
 void CustomKernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
   RegisterOps<dialect::CustomKernelOp>();
-  RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
 void CustomKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
@@ -176,13 +174,9 @@ OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
 }
 
 void OneDNNKernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
-                paddle::dialect::AllocatedSelectedRowsType,
-                paddle::dialect::AllocatedDenseTensorArrayType>();
   RegisterOps<dialect::OneDNNPhiKernelOp,
               dialect::OneDNNMixedPhiKernelOp,
               dialect::OneDNNLegacyKernelOp>();
-  RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
 void OneDNNKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
