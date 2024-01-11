@@ -56,7 +56,7 @@ TEST(shapedtype_test, shapedtype_test) {
             std::numeric_limits<int64_t>::min());
   EXPECT_EQ(dense_tensor_type_interface.GetRank(), 2);
   EXPECT_EQ(dense_tensor_type_interface.IsDynamic(2), false);
-  EXPECT_EQ(dense_tensor_type_interface.IsDynamicShape(dims), false);
+  EXPECT_EQ(dense_tensor_type_interface.IsDynamicShape(), false);
   EXPECT_EQ(dense_tensor_type_interface.IsDynamicDim(1), false);
   EXPECT_EQ(dense_tensor_type_interface.GetNumDynamicDims(), 0);
   EXPECT_EQ(dense_tensor_type_interface.GetDimSize(0), 2);
