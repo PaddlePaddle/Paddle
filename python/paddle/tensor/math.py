@@ -16,6 +16,7 @@ math functions
 """
 
 import math
+import warnings
 
 import numpy as np
 
@@ -7286,6 +7287,107 @@ def bitwise_right_shift_(x, y, is_arithmetic=True, out=None, name=None):
 
     if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_right_shift_(x, y, is_arithmetic)
+
+
+def copysign(x, y, name=None):
+    r"""
+    Create a new floating-point tensor with the magnitude of input ``x`` and the sign of ``y``, elementwise.
+
+    Equation:
+        .. math::
+
+            copysign(x_{i},y_{i})=\left\{\begin{matrix}
+            & -|x_{i}| & if \space y_{i} <= -0.0\\
+            & |x_{i}| & if \space y_{i} >= 0.0
+            \end{matrix}\right.
+
+    Args:
+        x (Tensor): The input Tensor, magnitudes, the data type is bool, uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64.
+        y (Tensor, number): contains value(s) whose signbit(s) are applied to the magnitudes in input.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), the output tensor. The data type is the same as the input tensor.
+
+    Examples:
+        .. code-block:: python
+            :name: example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-1, 1, -1], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [-1.,  2., -3.])
+
+        .. code-block:: python
+            :name: example2
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-2], dtype='float64')
+            >>> res = paddle.copysign(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [-1.,  -2.,  -3.])
+
+        .. code-block:: python
+            :name: example_zero1
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([0.0], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                [1., 2., 3.])
+
+        .. code-block:: python
+            :name: example_zero2
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-0.0], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                [-1., -2., -3.])
+    """
+    if isinstance(y, (float, int)):
+        y = paddle.to_tensor(y, dtype=x.dtype)
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        warnings.warn(
+            "The shape of broadcast output {} is different from the input tensor x with shape: {}, please make sure you are using copysign api correctly.".format(
+                out_shape, x.shape
+            )
+        )
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.copysign(x, y)
+    else:
+        helper = LayerHelper("copysign", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='copysign', inputs={'x': x, 'y': y}, outputs={'out': out}
+        )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def copysign_(x, y, name=None):
+    r"""
+    Inplace version of ``copysign`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_copysign`.
+    """
+    if isinstance(y, (float, int)):
+        y = paddle.to_tensor(y, dtype=x.dtype)
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.copysign_(x, y)
 
 
 def hypot(x, y, name=None):
