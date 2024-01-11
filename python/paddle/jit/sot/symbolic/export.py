@@ -56,22 +56,8 @@ class PyFileGen:
         self.SIR_hash = self.hash_SIR(SIR)
 
     def hash_SIR(self, SIR):
-        hash_target = []
-
-        for stmt in SIR.statements:
-            hash_value = [stmt.type, stmt.name]
-            for inp in stmt.inputs:
-                if isinstance(inp, Symbol):
-                    meta = SIR.symbol_meta_map[inp]
-                    hash_value.append((meta.dtype, meta.stop_gradient))
-                elif inp.__hash__ is not None:
-                    hash_value.append(inp)
-                else:
-                    hash_value.append("Unhashable:" + str(inp.__class__))
-            # if input is specific, output is not important
-            hash_target.append(tuple(hash_value))
-
-        return hash(tuple(hash_target))
+        hash_target = tuple((stmt.type, stmt.name) for stmt in SIR.statements)
+        return hash(hash_target)
 
     def new_root(self, *args):
         stmt = PyStatement(*args)
