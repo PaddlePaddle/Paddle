@@ -31,6 +31,10 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
+    def test_luq_pir(self):
+        with paddle.pir_utils.IrGuard():
+            self.test_return_single_var()
+
     def test_return_single_var(self):
         """
         pseudocode:
@@ -41,11 +45,13 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         def forward_fn(x):
             return 3 * x
 
-        main_program = Program()
-        start_program = Program()
-        with program_guard(main_program, start_program):
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, start_program):
             data = paddle.static.data(name="X", shape=[1], dtype="float32")
             out = paddle.static.nn.static_pylayer(forward_fn, [data])
+
+        print(main_program)
 
         place = (
             base.CUDAPlace(0)
@@ -54,7 +60,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
         exe = base.Executor(place)
         x = np.array([2.0], dtype=np.float32)
-        (ret,) = exe.run(main_program, feed={"X": x}, fetch_list=[out.name])
+        (ret,) = exe.run(main_program, feed={"X": x}, fetch_list=[out])
         np.testing.assert_allclose(
             np.asarray(ret), np.array([6.0], np.float32), rtol=1e-05
         )
