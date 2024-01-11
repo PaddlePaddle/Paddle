@@ -93,7 +93,7 @@ class IR_API ShapedTypeInterface
   /// \brief Check whether the given shape has any size indicating a dynamic
   /// dimension.
   ///
-  bool IsDynamicShape() {
+  bool IsDynamicShape() const {
     auto size_vec = common::vectorize(impl_->get_shape(*this));
     return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_val) {
       return IsDynamic(size_val);
