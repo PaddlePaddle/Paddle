@@ -140,7 +140,7 @@ class PyFileGen:
 
         forward_fn.add_sub(
             "return {}".format(
-                ", ".join(self.true_name(out) for out in self.SIR.outputs)
+                ", ".join(self.get_true_string(out) for out in self.SIR.outputs)
             )
         )
 
@@ -213,12 +213,14 @@ class PyFileGen:
             "    unittest.main()",
         )
 
-    def true_name(self, var):
+    def get_true_string(self, var):
         if isinstance(var, Symbol):
             if var in self.SIR.param_symbol:
                 return "self." + var.name
             else:
                 return var.name
+        elif isinstance(var, str):
+            return f"'{str}'"
         else:
             return str(var)
 
@@ -230,8 +232,8 @@ class PyFileGen:
     def create_input_string(self, args, kwargs):
         return ", ".join(
             chain(
-                (self.true_name(arg) for arg in args),
-                (f"{k}={self.true_name(v)}" for k, v in kwargs.items()),
+                (self.get_true_string(arg) for arg in args),
+                (f"{k}={self.get_true_string(v)}" for k, v in kwargs.items()),
             )
         )
 
@@ -245,7 +247,9 @@ class PyFileGen:
             elif isinstance(outputs, dict):
                 search_dict(outputs, path, result)
             elif isinstance(outputs, Symbol):
-                result.append(self.true_name(outputs) + " = " + "".join(path))
+                result.append(
+                    self.get_true_string(outputs) + " = " + "".join(path)
+                )
 
         def search_sequnce(outputs, path, result):
             for idx, out in enumerate(outputs):
