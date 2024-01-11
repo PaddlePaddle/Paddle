@@ -622,22 +622,21 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
   std::vector<DenseTensor> out_batch_values_vec(batch_size);
   cudaDataType_t gpu_type = GetGpuDataType<T>();
 
+  const int32_t* a_batch_crows_data = a_crows_data;
+  const int32_t* a_batch_cols_data = a_cols_data;
+  const T* a_batch_values_data = a_values_data;
+
+  const int32_t* b_batch_crows_data = b_crows_data;
+  const int32_t* b_batch_cols_data = b_cols_data;
+  const T* b_batch_values_data = b_values_data;
+
+  const int32_t* out_batch_crows_data = out_crows_data;
+
   for (int i = 0; i < batch_size; ++i) {
     int32_t a_batch_nnz = a_batch_nnz_vec[i];
     int32_t b_batch_nnz = b_batch_nnz_vec[i];
 
-    const int32_t* a_batch_crows_data = a_crows_data + i * (a_rows + 1);
-    const int32_t* a_batch_cols_data = a_cols_data + i * a_batch_nnz;
-    const T* a_batch_values_data = a_values_data + i * a_batch_nnz;
-
-    const int32_t* b_batch_crows_data = b_crows_data + i * (b_rows + 1);
-    const int32_t* b_batch_cols_data = b_cols_data + i * b_batch_nnz;
-    const T* b_batch_values_data = b_values_data + i * b_batch_nnz;
-
-    const int32_t* out_batch_crows_data = out_crows_data + i * (a_rows + 1);
-
     cusparseSpMatDescr_t a_batch_desc, b_batch_desc, out_batch_desc;
-
     dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCreateCsr(&a_batch_desc,
                                       a_rows,
@@ -799,6 +798,16 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
     dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseSpGEMM_destroyDescr(spgemm_desc);
     });
+
+    a_batch_crows_data += a_rows + 1;
+    a_batch_cols_data += a_batch_nnz;
+    a_batch_values_data += a_batch_nnz;
+
+    b_batch_crows_data += b_rows + 1;
+    b_batch_cols_data += b_batch_nnz;
+    b_batch_values_data += b_batch_nnz;
+
+    out_batch_crows_data += a_rows + 1;
   }
 
   if (batch_size == 1) {
