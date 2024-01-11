@@ -77,9 +77,6 @@ select = [
 
     # Pygrep-hooks
     "PGH004",
-
-    # yeseq
-    "RUF100",
 ]
 unfixable = [
     "NPY001"
