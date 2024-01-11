@@ -498,7 +498,10 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
                                const std::vector<int64_t>& factors,
                                bool add_check) {
   std::vector<Expr> all_loops = this->GetLoops(block_name);
-
+  std::cerr << "broadcast axes " << axes[0] << std::endl;
+  if (axes[0] >= all_loops.size()) {
+    throw std::runtime_error("axes execeed loop size");
+  }
   auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
 
   Expr broadcast_body = ir::ir_utils::IRCopy(broadcast_loop->body);

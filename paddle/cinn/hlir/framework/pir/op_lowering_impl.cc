@@ -258,6 +258,9 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     flatten_block = 256 / reduce_block;
     flatten_inner_num = flatten_block;
     reduce_inner_num = reduce_block / 32;
+    if (reduce_inner_num == 0) {
+      reduce_inner_num = 2;
+    }
     warp_num = 8;
   } else if (reduce_numel > 256 < reduce_numel <= 2048) {
     flatten_block = 1;

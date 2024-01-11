@@ -213,8 +213,8 @@ ir::ScheduleBlockNode* StaticShapeGroupScheduler::FindGlobalMasterNode() const {
 }
 
 void StaticShapeGroupScheduler::LoopReorderAligment() {
-  // std::cerr << "loop reorder func body: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  std::cerr << "loop reorder func body: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
   std::vector<std::string> node_list;
 
   auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
