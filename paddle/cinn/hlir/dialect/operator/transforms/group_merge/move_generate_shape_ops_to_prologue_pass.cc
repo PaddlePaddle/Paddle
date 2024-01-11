@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 
 #include <unordered_map>
 
@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_pass.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
@@ -31,21 +32,19 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/generate_shape_util.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
 namespace dialect {
 
 namespace {
 
-class GroupOpGenerateShapeOpsPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
+class GroupOpGenerateShapeOpsPattern
+    : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
  public:
-  GroupOpGenerateShapeOpsPattern(
-      ::pir::IrContext* context)
+  explicit GroupOpGenerateShapeOpsPattern(::pir::IrContext* context)
       : pir::OpRewritePattern<cinn::dialect::GroupOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::GroupOp group_op,
@@ -54,16 +53,18 @@ class GroupOpGenerateShapeOpsPattern : public pir::OpRewritePattern<cinn::dialec
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
     ShapeOrDataDimExprsAccessor dim_exprs_accessor{
-      .GetShapeOrDataDimExprs=[&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
-        return shape_analysis.GetShapeOrDataForValue(&value);
-      },
-      .SetShapeOrDataDimExprs=[&](pir::Value value, const symbol::ShapeOrDataDimExprs& dim_exprs) {
-        shape_analysis.SetShapeOrDataForValue(&value, dim_exprs);
-      }
-    };
-    return RewriteGenerateShapeOpToRunFirst(ctx, group_op.block(), dim_exprs_accessor);
+        .GetShapeOrDataDimExprs =
+            [&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+          return shape_analysis.GetShapeOrDataForValue(value);
+        },
+        .SetShapeOrDataDimExprs =
+            [&](pir::Value value,
+                const symbol::ShapeOrDataDimExprs& dim_exprs) {
+              shape_analysis.SetShapeOrDataForValue(value, dim_exprs);
+            }};
+    return RewriteGenerateShapeOpToRunFirst(
+        ctx, group_op.block(), dim_exprs_accessor);
   }
-
 };
 
 class MoveGenerateShapeOpsToProloguePass : public pir::PatternRewritePass {
@@ -83,7 +84,6 @@ class MoveGenerateShapeOpsToProloguePass : public pir::PatternRewritePass {
     VLOG(4) << "Before MoveGenerateShapeOpsToProloguePass: " << *program;
     return true;
   }
-
 };
 
 }  // namespace

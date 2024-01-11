@@ -99,11 +99,10 @@ struct CachedDimExprToValueConverter {
       tensor2shape_;
 
   pir::Value ConvertToValueImpl(int64_t dim_expr) {
-    pir::Value ret = rewriter
-                         ->Build<paddle::dialect::FullIntArrayOp>(
-                             std::vector{dim_expr}, phi::DataType::INT64)
-                         .out();
-    return ret;
+    return rewriter
+        ->Build<paddle::dialect::FullIntArrayOp>(std::vector{dim_expr},
+                                                 phi::DataType::INT64)
+        .out();
   }
 
   pir::Value ConvertToValueImpl(const std::string& symbol_name) {
@@ -120,9 +119,8 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertTensorDimToValue(const TensorDimInShape& tensor_dim) {
     pir::Value input_shape = GetInputShapeByInputTensor(tensor_dim.value);
-    pir::Value ret = ConvertTensorDimToValue(
+    return ConvertTensorDimToValue(
         TensorDimInData{.value = input_shape, .axis = tensor_dim.axis});
-    return ret;
   }
 
   pir::Value ConvertTensorDimToValue(const TensorDimInData& tensor_dim) {
@@ -242,7 +240,7 @@ class SplitGenerateShapeIntoShapeOps
     std::optional<pir::Value> out_replacement =
         GetOutReplacement(op, &rewriter);
     if (!out_replacement.has_value()) return false;
-    rewriter.ReplaceOp(op, {out_replacement.value()});
+    rewriter.ReplaceAllUsesWith(op->result(0), out_replacement.value());
     return true;
   }
 

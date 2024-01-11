@@ -236,7 +236,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
   const auto& lhs_expr = broadcastable_condition->lhs;
   const auto& rhs_expr = broadcastable_condition->rhs;
   auto ShapeOrDataDimExprs4Value = [&shape_analysis](pir::Value value) {
-    return shape_analysis->GetShapeOrDataForValue(&value);
+    return shape_analysis->GetShapeOrDataForValue(value);
   };
 
   std::vector<pir::Value> lhs_minial_inputs;
@@ -303,11 +303,7 @@ void UpdateGroupShapeExprs(
     const pir::IrMapping& ir_mapping,
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx) {
-  for (const auto& [origin_val, new_val] : ir_mapping.value_map()) {
-    VLOG(1) << "#### UpdateGroupShapeExprs origin_val: "
-            << pir::GetValueId(&origin_val);
-    VLOG(1) << "#### UpdateGroupShapeExprs new_val: "
-            << pir::GetValueId(&new_val);
+  for (const auto& [origin_val, new_val] : ir_mapping.Map<pir::Value>()) {
     const auto& shape_dim_expr =
         value_dim_exprs_list->at(value_to_dim_expr_idx.at(origin_val));
     const auto& origin_shape_or_data =
@@ -354,10 +350,7 @@ void SetLeafBlockByGroupView(
   builder.SetInsertionPointToBlockEnd(block);
   for (auto output : origin_group->GetGroupOutputValues()) {
     outputs.push_back(ir_mapping.Lookup(output));
-    VLOG(1) << "##### output: " << pir::GetValueId(&output)
-            << " new output: " << pir::GetValueId(&outputs.back());
   }
-  VLOG(1) << "###### Insert YieldOp for outputs: " << outputs.size();
   builder.Build<pir::YieldOp>(outputs);
 
   UpdateGroupShapeExprs(new_group,
@@ -528,8 +521,6 @@ pir::Operation* ProcessGroup(
   for (auto value : value_view) {
     const auto& shape_dim_expr = group->GetShapeOrDataExprs(value);
     const auto& data_shape = shape_dim_expr.data();
-    VLOG(1) << "#### value : " << pir::GetValueId(&value) << " : "
-            << shape_dim_expr;
     if (data_shape) {
       all_value_dim_exprs->push_back(*data_shape);
     } else {
@@ -665,13 +656,13 @@ CreateGroupShapeOrDataExprs(
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
       value2shape.insert(
-          {operand, shape_analysis->GetShapeOrDataForValue(&operand)});
+          {operand, shape_analysis->GetShapeOrDataForValue(operand)});
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
       if (value2shape.find(result) == value2shape.end()) {
         value2shape.insert(
-            {result, shape_analysis->GetShapeOrDataForValue(&result)});
+            {result, shape_analysis->GetShapeOrDataForValue(result)});
       }
     }
   }
@@ -745,8 +736,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         }
         value_map[group_output_values[i]] = complied_op->result(i);
         shape_analysis_->SetShapeOrDataForValue(
-            &value_map[group_output_values[i]],
-            shape_analysis_->GetShapeOrDataForValue(&group_output_values[i]));
+            value_map[group_output_values[i]],
+            shape_analysis_->GetShapeOrDataForValue(group_output_values[i]));
       }
     }
     value_map.clear();
