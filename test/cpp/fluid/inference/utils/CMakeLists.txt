@@ -10,3 +10,5 @@ if(WITH_ONNXRUNTIME AND WIN32)
   # be build only in CI, so suppose the generator in Windows is Ninja.
   copy_onnx(infer_io_utils_tester)
 endif()
+paddle_test(test_benchmark SRCS benchmark_tester.cc DEPS benchmark)
+paddle_test(test_table_printer SRCS table_printer_tester.cc DEPS pir)
