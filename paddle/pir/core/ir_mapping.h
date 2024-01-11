@@ -22,45 +22,33 @@ class Operation;
 
 namespace detail {
 template <typename T, typename... OthersT>
-struct ExactlyOneConstIrType {
-  using type = void;
-};
-template <typename T, typename FirstT, typename... OthersT>
-struct ExactlyOneConstIrType<T, FirstT, OthersT...> {
-  using type =
-      std::conditional_t<std::is_convertible<T, FirstT>::value,
-                         FirstT,
-                         typename ExactlyOneConstIrType<T, OthersT...>::type>;
-};
-template <typename T>
-using ConstIrType = typename detail::
-    ExactlyOneConstIrType<T, Value, const Block*, const Operation*>::type;
-
-template <typename T, typename... OthersT>
 struct ExactlyOneIrType {
   using type = void;
 };
 template <typename T, typename FirstT, typename... OthersT>
 struct ExactlyOneIrType<T, FirstT, OthersT...> {
   using type =
-      std::conditional_t<std::is_convertible<FirstT, ConstIrType<T>>::value,
+      std::conditional_t<std::is_convertible<T, FirstT>::value,
                          FirstT,
                          typename ExactlyOneIrType<T, OthersT...>::type>;
 };
-template <typename T>
-using IrType =
-    typename detail::ExactlyOneIrType<T, Value, Block*, Operation*>::type;
 }  // namespace detail
 
 class IrMapping {
  public:
   template <typename T>
-  using ConstIrType = detail::ConstIrType<T>;
+  using remove_lowlevel_const_t = std::conditional_t<
+      std::is_pointer<T>::value,
+      std::add_pointer_t<std::remove_const_t<std::remove_pointer_t<T>>>,
+      T>;
   template <typename T>
-  using IrType = detail::IrType<T>;
+  using IrType = typename detail::ExactlyOneIrType<remove_lowlevel_const_t<T>,
+                                                   Value,
+                                                   Block*,
+                                                   Operation*>::type;
 
   template <typename T>
-  std::unordered_map<ConstIrType<T>, T>& GetMutableMap() {
+  auto& GetMutableMap() {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
     } else if constexpr (std::is_same<T, Block*>::value) {
@@ -73,7 +61,7 @@ class IrMapping {
   }
 
   template <typename T>
-  const std::unordered_map<ConstIrType<T>, T>& GetMap() const {
+  const auto& GetMap() const {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
     } else if constexpr (std::is_same<T, Block*>::value) {
