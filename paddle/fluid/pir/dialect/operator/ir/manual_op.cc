@@ -598,10 +598,36 @@ std::vector<pir::Type> AddNWithKernelOp::InferMeta(
           inputs[i]
               .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
               .offset()));
+    } else if (inputs[i].isa<paddle::dialect::SelectedRowsType>()) {
+      vec_dense_inputs.push_back(paddle::dialect::IrTensor(
+          paddle::dialect::TransToPhiDataType(
+              inputs[i].dyn_cast<paddle::dialect::SelectedRowsType>().dtype()),
+          inputs[i].dyn_cast<paddle::dialect::SelectedRowsType>().dims(),
+          inputs[i].dyn_cast<paddle::dialect::SelectedRowsType>().data_layout(),
+          inputs[i].dyn_cast<paddle::dialect::SelectedRowsType>().lod(),
+          inputs[i].dyn_cast<paddle::dialect::SelectedRowsType>().offset()));
+    } else if (inputs[i].isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      vec_dense_inputs.push_back(paddle::dialect::IrTensor(
+          TransToPhiDataType(
+              inputs[i]
+                  .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                  .dtype()),
+          inputs[i]
+              .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+              .dims(),
+          inputs[i]
+              .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+              .data_layout(),
+          inputs[i]
+              .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+              .lod(),
+          inputs[i]
+              .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+              .offset()));
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Only support paddle::dialect::DenseTensorType or "
-          "paddle::dialect::AllocatedDenseTensorType"));
+          "Only support DenseTensorType or AllocatedDenseTensorType or "
+          "SelectedRowsType or AllocatedSelectedRowsType"));
     }
   }
 
@@ -3092,12 +3118,20 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta SliceArrayOp";
-  IR_ENFORCE(input_values.size() == 3,
-             "Num of inputs is expected to be 3 but got %d.",
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
              input_values.size());
   pir::Value input = input_values[0];
-  pir::Value starts = input_values[1];
-  pir::Value ends = input_values[2];
+
+  IR_ENFORCE(attributes.count("starts") > 0, "starts does not exist.");
+  IR_ENFORCE(
+      attributes.at("starts").isa<paddle::dialect::IntArrayAttribute>(),
+      "Type of attribute: starts is not paddle::dialect::IntArrayAttribute.");
+
+  IR_ENFORCE(attributes.count("ends") > 0, "ends does not exist.");
+  IR_ENFORCE(
+      attributes.at("ends").isa<paddle::dialect::IntArrayAttribute>(),
+      "Type of attribute: ends is not paddle::dialect::IntArrayAttribute.");
 
   VLOG(4) << "Builder construction outputs";
   paddle::dialect::DenseTensorArrayType input_type;
@@ -3126,86 +3160,13 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
 
-  phi::IntArray starts_list;
-  if (starts.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
-    starts_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        starts.dyn_cast<pir::OpResult>()
-            .owner()
-            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-            .attribute("value"))));
-  } else if (starts.type().isa<pir::VectorType>()) {
-    size_t starts_size = starts.type().dyn_cast<pir::VectorType>().size();
-    starts_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
-    starts_list.SetFromTensor(true);
-  } else if (starts.type().isa<paddle::dialect::DenseTensorType>()) {
-    common::DDim starts_dim =
-        starts.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    size_t starts_size = common::product(starts_dim);
-    if (common::contain_unknown_dim(starts_dim)) {
-      starts_size = 1;
-    }
-    starts_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
-    starts_list.SetFromTensor(true);
-  } else if (starts.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    common::DDim starts_dim =
-        starts.type()
-            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-            .dims();
-    size_t starts_size = common::product(starts_dim);
-    if (common::contain_unknown_dim(starts_dim)) {
-      starts_size = 1;
-    }
-    starts_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
-    starts_list.SetFromTensor(true);
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
-                                   "or AllocatedDenseTensorType"));
-  }
-
-  phi::IntArray ends_list;
-  if (ends.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
-    ends_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        ends.dyn_cast<pir::OpResult>()
-            .owner()
-            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-            .attribute("value"))));
-  } else if (ends.type().isa<pir::VectorType>()) {
-    size_t ends_size = ends.type().dyn_cast<pir::VectorType>().size();
-    ends_list = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
-    ends_list.SetFromTensor(true);
-  } else if (ends.type().isa<paddle::dialect::DenseTensorType>()) {
-    common::DDim starts_dim =
-        ends.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    size_t ends_size = common::product(starts_dim);
-    if (common::contain_unknown_dim(starts_dim)) {
-      ends_size = 1;
-    }
-    ends_list = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
-    ends_list.SetFromTensor(true);
-  } else if (ends.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    common::DDim starts_dim =
-        ends.type()
-            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-            .dims();
-    size_t ends_size = common::product(starts_dim);
-    if (common::contain_unknown_dim(starts_dim)) {
-      ends_size = 1;
-    }
-    ends_list = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
-    ends_list.SetFromTensor(true);
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
-                                   "or AllocatedDenseTensorType"));
-  }
+  phi::IntArray starts_list =
+      attributes.at("starts")
+          .dyn_cast<paddle::dialect::IntArrayAttribute>()
+          .data();
+  phi::IntArray ends_list = attributes.at("ends")
+                                .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                                .data();
 
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
