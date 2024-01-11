@@ -117,6 +117,25 @@ class ReduceBlockCreater {
     Expr body = new_update_block_realize_;
     bool has_add_init_block = false;
     for (int i = num_loops - 1; i >= 0; --i) {
+      if (original_loops_[i].As<For>()->body.As<IfThenElse>()) {
+        IfThenElse* original_if =
+            original_loops_[i].As<For>()->body.As<IfThenElse>();
+        body = IfThenElse::Make(original_if->condition, body);
+      }
+      if (original_loops_[i].As<For>()->body.As<Block>() &&
+          original_loops_[i].As<For>()->body.As<Block>()->stmts.size() == 1 &&
+          original_loops_[i]
+              .As<For>()
+              ->body.As<Block>()
+              ->stmts[0]
+              .As<IfThenElse>()) {
+        IfThenElse* original_if = original_loops_[i]
+                                      .As<For>()
+                                      ->body.As<Block>()
+                                      ->stmts[0]
+                                      .As<IfThenElse>();
+        body = IfThenElse::Make(original_if->condition, body);
+      }
       bool is_spatial_loop =
           new_spatial_loop_var_names_.count(
               original_loops_[i].As<For>()->loop_var->name) > 0;
