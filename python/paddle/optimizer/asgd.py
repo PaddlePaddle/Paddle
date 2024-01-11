@@ -121,13 +121,7 @@ class ASGD(Optimizer):
         self._master_weights = {}
         self._n = [batch_num]
         self._n_tensor = None
-
-        self.param = {}
-        self.grad = {}
-        self.lr = {}
-        self.d = {}
-        self.y = {}
-        self.n = {}
+        self._sign = False
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -197,6 +191,16 @@ class ASGD(Optimizer):
                 assign_value
             )
 
+    def update_sign(self, value):
+        self._sign = value
+        if self._sign:
+            self.param = {}
+            self.grad = {}
+            self.lr = {}
+            self.d = {}
+            self.y = {}
+            self.n = {}
+
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):
@@ -240,12 +244,13 @@ class ASGD(Optimizer):
 
         param_name = param_and_grad[0].name
 
-        self.param[param_name] = param_and_grad[0]
-        self.grad[param_name] = param_and_grad[1]
-        self.lr[param_name] = lr
-        self.d[param_name] = d
-        self.y[param_name] = y
-        self.n[param_name] = paddle.fmin(m, self._n_tensor)
+        if self._sign:
+            self.param[param_name] = param_and_grad[0]
+            self.grad[param_name] = param_and_grad[1]
+            self.lr[param_name] = lr
+            self.d[param_name] = d
+            self.y[param_name] = y
+            self.n[param_name] = paddle.fmin(m, self._n_tensor)
 
         if in_dynamic_or_pir_mode():
             _C_ops.asgd_(
