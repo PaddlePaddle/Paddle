@@ -130,7 +130,8 @@ std::vector<::pir::Value> CompatibleInfo::RealOperandSources(
   }                                                             \
   dst_attr = res;
 
-static utils::Attribute ConvertArrayAttribute() {
+static utils::Attribute ConvertArrayAttribute(
+    const ::pir::Attribute& src_attr) {
   utils::Attribute dst_attr;
   if (src_attr.isa<paddle::dialect::IntArrayAttribute>()) {
     auto& arr = src_attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
