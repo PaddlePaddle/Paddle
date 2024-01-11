@@ -70,7 +70,7 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
             body.As<ir::Block>()->stmts[0].As<ir::IfThenElse>() == nullptr) {
           VLOG(6) << "the block: " << block_name
                   << " has a block stmt that is not any of "
-                     "schedule_block/for_loop, so can not apply "
+                     "schedule_block/for_loop/if, so can not apply "
                      "OptimizeReductionTactic";
           return false;
         }
@@ -87,7 +87,7 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
             body.As<ir::Block>()->stmts[0].As<ir::IfThenElse>() == nullptr) {
           VLOG(6) << "the block: " << block_name
                   << " has a block stmt that is not any of "
-                     "schedule_block/for_loop, so can not apply "
+                     "schedule_block/for_loop/if, so can not apply "
                      "OptimizeReductionTactic";
           return false;
         }
@@ -101,9 +101,10 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
                body.As<ir::IfThenElse>()) {
       continue;
     } else {
-      VLOG(6) << "the block: " << block_name
-              << " has a loop body that is not any of schedule_block/for_loop, "
-                 "so can not apply OptimizeReductionTactic";
+      VLOG(6)
+          << "the block: " << block_name
+          << " has a loop body that is not any of schedule_block/for_loop/if, "
+             "so can not apply OptimizeReductionTactic";
       return false;
     }
   }

@@ -118,7 +118,7 @@ class ReduceBlockCreater {
     bool has_add_init_block = false;
     for (int i = num_loops - 1; i >= 0; --i) {
       if (original_loops_[i].As<For>()->body.As<IfThenElse>()) {
-        IfThenElse* original_if =
+        const IfThenElse* original_if =
             original_loops_[i].As<For>()->body.As<IfThenElse>();
         body = IfThenElse::Make(original_if->condition, body);
       }
@@ -129,11 +129,11 @@ class ReduceBlockCreater {
               ->body.As<Block>()
               ->stmts[0]
               .As<IfThenElse>()) {
-        IfThenElse* original_if = original_loops_[i]
-                                      .As<For>()
-                                      ->body.As<Block>()
-                                      ->stmts[0]
-                                      .As<IfThenElse>();
+        const IfThenElse* original_if = original_loops_[i]
+                                            .As<For>()
+                                            ->body.As<Block>()
+                                            ->stmts[0]
+                                            .As<IfThenElse>();
         body = IfThenElse::Make(original_if->condition, body);
       }
       bool is_spatial_loop =
