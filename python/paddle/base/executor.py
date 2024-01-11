@@ -44,6 +44,7 @@ from .framework import (
     set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
+from .static.amp.fp16_utils import _dtype_to_str
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
 from .wrapped_decorator import signature_safe_contextmanager
 
@@ -55,8 +56,11 @@ InferAnalysisConfig = core.AnalysisConfig
 
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_add": ['X', 'Y'],
+    "elementwise_mul_add": ['X', 'Y'],
     "elementwise_sub": ['X', 'Y'],
+    "elementwise_sub_grad": ['X', 'Y'],
     "elementwise_mul": ['X', 'Y'],
+    "elementwise_mul_grad": ['X', 'Y'],
     "where": ['X', 'Y'],
 }
 
@@ -1614,7 +1618,7 @@ class Executor:
 
     def _add_cast_for_type_promotion(self, op, block, idx, var_name, out_dtype):
         op_device = op.attr('op_device')
-        cast_name = var_name.name + '.cast_'
+        cast_name = var_name.name + '.cast_' + _dtype_to_str(out_dtype)
         out_var = block.create_var(
             name=cast_name,
             dtype=out_dtype,
