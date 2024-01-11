@@ -389,5 +389,101 @@ class TestASGDSimple(unittest.TestCase):
         np.testing.assert_allclose(out1, out2)
 
 
+class TestASGDValidation(unittest.TestCase):
+    def setUp(self) -> None:
+        self.init_data(10)
+
+    def init_data(self, all_size):
+        self.data = np.random.random(size=(all_size, 2)).astype('float32')
+
+    def run_validation(self) -> None:
+        with dygraph_guard():
+            paddle.seed(10)
+            np.random.seed(10)
+
+            param_validation = {}
+            grad_validation = {}
+            lr_validation = {}
+            d_validation = {}
+            ys_validation = {}
+            y_validation = {}
+            n_validation = {}
+
+            all_size = 10
+            batch_size = 2
+            batch_num = (int)(all_size / batch_size)
+
+            model = paddle.nn.Linear(2, 2)
+            optimizer = paddle.optimizer.ASGD(
+                batch_num=batch_num, parameters=model.parameters()
+            )
+
+            for param in model.parameters():
+                d_validation[param.name] = np.zeros(param.shape)
+                ys_validation[param.name] = np.zeros([batch_num] + param.shape)
+
+            for i in range(5):
+                data_start = i * batch_size % all_size
+                data_end = data_start + batch_size
+                cur_data = self.data[data_start:data_end]
+                output = model(paddle.to_tensor(cur_data))
+                loss = paddle.mean(output)
+                loss = output
+                loss.backward()
+
+                for param in model.parameters():
+                    param_validation[param.name] = param.numpy()
+
+                optimizer.step()
+
+                for param in model.parameters():
+                    grad_validation[param.name] = optimizer.grad[
+                        param.name
+                    ].numpy()
+                    lr_validation[param.name] = optimizer.lr[param.name].numpy()
+                    y_validation[param.name] = ys_validation[param.name][
+                        i % batch_num
+                    ]
+                    d_validation[param.name] = (
+                        d_validation[param.name]
+                        - y_validation[param.name]
+                        + grad_validation[param.name]
+                    )
+                    ys_validation[param.name][i % batch_num] = grad_validation[
+                        param.name
+                    ]
+                    n_validation[param.name] = min(i + 1, batch_num)
+                    param_validation[param.name] = (
+                        param_validation[param.name]
+                        - lr_validation[param.name]
+                        * d_validation[param.name]
+                        / n_validation[param.name]
+                    )
+
+                    np.testing.assert_allclose(
+                        optimizer.param[param.name].numpy(),
+                        param_validation[param.name],
+                    )
+                    np.testing.assert_allclose(
+                        optimizer.y[param.name].numpy(),
+                        y_validation[param.name],
+                    )
+                    np.testing.assert_allclose(
+                        optimizer.d[param.name].numpy(),
+                        d_validation[param.name],
+                    )
+                    np.testing.assert_allclose(
+                        optimizer.n[param.name].numpy(),
+                        n_validation[param.name],
+                    )
+
+                optimizer.clear_grad()
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        self.run_validation()
+
+
 if __name__ == "__main__":
     unittest.main()

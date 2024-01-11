@@ -122,6 +122,13 @@ class ASGD(Optimizer):
         self._n = [batch_num]
         self._n_tensor = None
 
+        self.param = {}
+        self.grad = {}
+        self.lr = {}
+        self.d = {}
+        self.y = {}
+        self.n = {}
+
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
         if isinstance(parameters, dict):
@@ -166,6 +173,30 @@ class ASGD(Optimizer):
             )
             self._already_create_accumulater.add(p.name)
 
+    def _assign_accumulator_master(self, name, param, assign_value, index):
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param.dtype
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                f"Accumulator {name} does not exist for parameter {target_name}"
+            )
+        if index is None:
+            self._accumulators[name][target_name] = paddle.assign(assign_value)
+        else:
+            self._accumulators[name][target_name][index] = paddle.assign(
+                assign_value
+            )
+
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):
@@ -181,7 +212,8 @@ class ASGD(Optimizer):
         m = self._get_accumulator_master(self._m_acc_str, param_and_grad[0])
 
         ys = self._get_accumulator_master(self._y_acc_str, param_and_grad[0])
-        y = paddle.assign(ys[paddle.mod(m, self._n_tensor).item()])
+        index = paddle.mod(m, self._n_tensor).item()
+        y = paddle.assign(ys[index])
 
         m = paddle.assign(paddle.add(m, to_tensor([1], dtype=m.dtype)))
 
@@ -206,6 +238,15 @@ class ASGD(Optimizer):
 
         lr = self._create_param_lr(param_and_grad)
 
+        param_name = param_and_grad[0].name
+
+        self.param[param_name] = param_and_grad[0]
+        self.grad[param_name] = param_and_grad[1]
+        self.lr[param_name] = lr
+        self.d[param_name] = d
+        self.y[param_name] = y
+        self.n[param_name] = paddle.fmin(m, self._n_tensor)
+
         if in_dynamic_or_pir_mode():
             _C_ops.asgd_(
                 param_and_grad[0],
@@ -217,6 +258,14 @@ class ASGD(Optimizer):
                 master_weight,
                 find_master,
             )
+
+            self._assign_accumulator_master(
+                self._m_acc_str, param_and_grad[0], m, None
+            )
+            self._assign_accumulator_master(
+                self._y_acc_str, param_and_grad[0], y, index
+            )
+
             return None
         else:
             assert isinstance(block, framework.Block)
