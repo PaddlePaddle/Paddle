@@ -724,7 +724,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
         elif p == "nuc":
-            return nuclear_norm(x, dim=axis, keepdim=keepdim, name=name)
+            return nuclear_norm(x, axis=axis, keepdim=keepdim, name=name)
         elif p == np.inf or p == -np.inf:
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
