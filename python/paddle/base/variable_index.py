@@ -763,7 +763,7 @@ def get_tensor_with_basic_indexing(
                         if paddle.utils._contain_var(end):
                             end = paddle.utils.get_int_tensor_list(end)
                     if x.is_dense_tensor_array_type():
-                        return paddle._pir_ops.slice_array_dense(x, st)
+                        return paddle._pir_ops.slice_array_dense(x, st), False
                 out = paddle._C_ops.slice(
                     x,
                     axes,
