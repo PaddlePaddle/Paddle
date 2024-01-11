@@ -161,16 +161,16 @@ class TestMaxPoolWithIndex_Op(OpTest):
         }
 
         if self.is_bfloat16_op():
-            self.inputs = {'X': convert_float_to_uint16(input)}
+            self.inputs = {'x': convert_float_to_uint16(input)}
             self.outputs = {
-                'Out': convert_float_to_uint16(output),
-                "Mask": mask,
+                'out': convert_float_to_uint16(output),
+                'mask': mask,
             }
-            self.inputs_fp32 = {'X': input}
+            self.inputs_fp32 = {'x': input}
 
         else:
-            self.inputs = {'X': input}
-            self.outputs = {'Out': output, "Mask": mask}
+            self.inputs = {'x': input}
+            self.outputs = {'out': output, 'mask': mask}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -179,7 +179,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad({'X'}, ['Out'])
+        self.check_grad({'x'}, ['out'])
 
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
@@ -230,7 +230,7 @@ def create_test_fp16_class(parent):
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad_with_place(place, {'X'}, ['Out'])
+                self.check_grad_with_place(place, {'x'}, ['out'])
 
     cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestMaxPool2dFP16.__name__ = cls_name
@@ -261,7 +261,7 @@ def create_test_bf16_class(parent):
                 scope, self.op_type, self.inputs, self.outputs, self.attrs
             )
             return get_numeric_gradient(
-                place, scope, op, self.inputs_fp32, check_name, ['Out']
+                place, scope, op, self.inputs_fp32, check_name, ['out']
             )
 
         def test_check_output(self):
@@ -271,10 +271,10 @@ def create_test_bf16_class(parent):
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
-            numeric_grads = self.get_numeric_grad(place, 'X')
+            numeric_grads = self.get_numeric_grad(place, 'x')
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
-                    place, {'X'}, ['Out'], user_defined_grads=[numeric_grads]
+                    place, {'x'}, ['out'], user_defined_grads=[numeric_grads]
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")

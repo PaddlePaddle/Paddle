@@ -2586,21 +2586,21 @@ template class MaxPool3dWithIndexGradFunctor<phi::GPUContext,
                                              int>;
 // fractional max pool
 template <typename T1, typename T2>
-__global__ void FractionalKernelMaxPool2dWithIdx(const int ncd,
-                                                 const T1* input_data,
-                                                 const int channels,
-                                                 const int input_height,
-                                                 const int input_width,
-                                                 const int output_height,
-                                                 const int output_width,
-                                                 const int pool_height,
-                                                 const int pool_width,
-                                                 float random_u,
-                                                 uint64_t seed,
-                                                 uint64_t offset,
-                                                 T1* output_data,
-                                                 T2* mask_data,
-                                                 FastDivModForPooling divmods) {
+__global__ void FractionalKernelMaxPool2d(const int ncd,
+                                          const T1* input_data,
+                                          const int channels,
+                                          const int input_height,
+                                          const int input_width,
+                                          const int output_height,
+                                          const int output_width,
+                                          const int pool_height,
+                                          const int pool_width,
+                                          float random_u,
+                                          uint64_t seed,
+                                          uint64_t offset,
+                                          T1* output_data,
+                                          T2* mask_data,
+                                          FastDivModForPooling divmods) {
   float alpha_height = 0, alpha_width = 0;
   float u_height = 0, u_width = 0;
   float u = 0;
@@ -2679,22 +2679,21 @@ __global__ void FractionalKernelMaxPool2dWithIdx(const int ncd,
 }
 
 template <typename T1, typename T2>
-__global__ void FractionalKernelMaxPool2DWithIdxGrad(
-    const int ncd,
-    const T1* output_grad,
-    const T2* mask_data,
-    const int channels,
-    const int input_height,
-    const int input_width,
-    const int output_height,
-    const int output_width,
-    const int pool_height,
-    const int pool_width,
-    float random_u,
-    uint64_t seed,
-    uint64_t offset,
-    T1* input_grad,
-    FastDivModForPooling divmods) {
+__global__ void FractionalKernelMaxPool2dGrad(const int ncd,
+                                              const T1* output_grad,
+                                              const T2* mask_data,
+                                              const int channels,
+                                              const int input_height,
+                                              const int input_width,
+                                              const int output_height,
+                                              const int output_width,
+                                              const int pool_height,
+                                              const int pool_width,
+                                              float random_u,
+                                              uint64_t seed,
+                                              uint64_t offset,
+                                              T1* input_grad,
+                                              FastDivModForPooling divmods) {
   int w_offset, h_offset, nc_offset;
 
   w_offset = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2723,7 +2722,7 @@ __global__ void FractionalKernelMaxPool2DWithIdxGrad(
  * All tensors are in NCHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
  public:
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& input,
@@ -2788,7 +2787,7 @@ class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    FractionalKernelMaxPool2dWithIdx<T1, T2>
+    FractionalKernelMaxPool2d<T1, T2>
         <<<grid, threads, 0, context.stream()>>>(ncd,
                                                  input_data,
                                                  input_channels,
@@ -2811,7 +2810,7 @@ class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
  * All tensors are in NCHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
  public:
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& output_grad,
@@ -2860,7 +2859,7 @@ class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    FractionalKernelMaxPool2DWithIdxGrad<T1, T2>
+    FractionalKernelMaxPool2dGrad<T1, T2>
         <<<grid, threads, 0, context.stream()>>>(ncd,
                                                  output_grad_data,
                                                  mask_data,
@@ -2879,31 +2878,23 @@ class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, float, int>;
-template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
-                                                       float,
-                                                       int>;
-template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext,
-                                                   double,
-                                                   int>;
-template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
-                                                       double,
-                                                       int>;
-template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext,
-                                                   dtype::float16,
-                                                   int>;
-template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
-                                                       dtype::float16,
-                                                       int>;
-template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext,
-                                                   dtype::bfloat16,
-                                                   int>;
-template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
-                                                       dtype::bfloat16,
-                                                       int>;
+template class FractionalMaxPool2dFunctor<phi::GPUContext, float, int>;
+template class FractionalMaxPool2dGradFunctor<phi::GPUContext, float, int>;
+template class FractionalMaxPool2dFunctor<phi::GPUContext, double, int>;
+template class FractionalMaxPool2dGradFunctor<phi::GPUContext, double, int>;
+template class FractionalMaxPool2dFunctor<phi::GPUContext, dtype::float16, int>;
+template class FractionalMaxPool2dGradFunctor<phi::GPUContext,
+                                              dtype::float16,
+                                              int>;
+template class FractionalMaxPool2dFunctor<phi::GPUContext,
+                                          dtype::bfloat16,
+                                          int>;
+template class FractionalMaxPool2dGradFunctor<phi::GPUContext,
+                                              dtype::bfloat16,
+                                              int>;
 
 template <typename T1, typename T2>
-__global__ void FractionalKernelMaxPool3DWithIdx(
+__global__ void FractionalKernelMaxPool3d(
     const int ncd,
     const T1* input_data,
     const int channels,
@@ -3012,7 +3003,7 @@ __global__ void FractionalKernelMaxPool3DWithIdx(
 }
 
 template <typename T1, typename T2>
-__global__ void FractionalKernelMaxPool3DWithIdxGrad(
+__global__ void FractionalKernelMaxPool3dGrad(
     const int ncd,
     const T1* output_grad,
     const T2* mask,
@@ -3059,7 +3050,7 @@ __global__ void FractionalKernelMaxPool3DWithIdxGrad(
  * All tensors are in NCDHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
  public:
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& input,
@@ -3134,7 +3125,7 @@ class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    FractionalKernelMaxPool3DWithIdx<T1, T2>
+    FractionalKernelMaxPool3d<T1, T2>
         <<<grid, threads, 0, context.stream()>>>(ncd,
                                                  input_data,
                                                  input_channels,
@@ -3160,7 +3151,7 @@ class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
  * All tensors are in NCDHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
  public:
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& output_grad,
@@ -3203,7 +3194,7 @@ class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     auto pool_divmods_output = FastDivModForPooling3D(
         input_channels, output_width, output_height, output_depth);
 
-    FractionalKernelMaxPool3DWithIdxGrad<T1, T2>
+    FractionalKernelMaxPool3dGrad<T1, T2>
         <<<grid, threads, 0, context.stream()>>>(ncd,
                                                  output_grad_data,
                                                  mask_data,
@@ -3223,28 +3214,20 @@ class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, float, int>;
-template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
-                                                       float,
-                                                       int>;
-template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext,
-                                                   double,
-                                                   int>;
-template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
-                                                       double,
-                                                       int>;
-template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext,
-                                                   dtype::float16,
-                                                   int>;
-template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
-                                                       dtype::float16,
-                                                       int>;
-template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext,
-                                                   dtype::bfloat16,
-                                                   int>;
-template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
-                                                       dtype::bfloat16,
-                                                       int>;
+template class FractionalMaxPool3dFunctor<phi::GPUContext, float, int>;
+template class FractionalMaxPool3dGradFunctor<phi::GPUContext, float, int>;
+template class FractionalMaxPool3dFunctor<phi::GPUContext, double, int>;
+template class FractionalMaxPool3dGradFunctor<phi::GPUContext, double, int>;
+template class FractionalMaxPool3dFunctor<phi::GPUContext, dtype::float16, int>;
+template class FractionalMaxPool3dGradFunctor<phi::GPUContext,
+                                              dtype::float16,
+                                              int>;
+template class FractionalMaxPool3dFunctor<phi::GPUContext,
+                                          dtype::bfloat16,
+                                          int>;
+template class FractionalMaxPool3dGradFunctor<phi::GPUContext,
+                                              dtype::bfloat16,
+                                              int>;
 
 }  // namespace funcs
 }  // namespace phi

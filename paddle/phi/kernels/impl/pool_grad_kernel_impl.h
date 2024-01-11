@@ -331,16 +331,15 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
 }
 
 template <typename Context, typename T1, typename T2 = int>
-void FractionalMaxPoolWithIndexGradRawKernel(
-    const Context& ctx,
-    const DenseTensor& x UNUSED,
-    const DenseTensor& mask,
-    const DenseTensor& dout,
-    const std::vector<int>& output_size,
-    const std::vector<int>& kernel_size,
-    float random_u,
-    bool return_mask,
-    DenseTensor* dx) {
+void FractionalMaxPoolGradRawKernel(const Context& ctx,
+                                    const DenseTensor& x UNUSED,
+                                    const DenseTensor& mask,
+                                    const DenseTensor& dout,
+                                    const std::vector<int>& output_size,
+                                    const std::vector<int>& kernel_size,
+                                    float random_u,
+                                    bool return_mask,
+                                    DenseTensor* dx) {
   std::vector<int> output_size_ = output_size;
 
   if (dx) {
@@ -349,8 +348,7 @@ void FractionalMaxPoolWithIndexGradRawKernel(
 
     switch (output_size_.size()) {
       case 2: {
-        funcs::FractionalMaxPool2dWithIndexGradFunctor<Context, T1, T2>
-            pool2d_backward;
+        funcs::FractionalMaxPool2dGradFunctor<Context, T1, T2> pool2d_backward;
         pool2d_backward(ctx,
                         dout,
                         mask,
@@ -361,8 +359,7 @@ void FractionalMaxPoolWithIndexGradRawKernel(
                         dx);
       } break;
       case 3: {
-        funcs::FractionalMaxPool3dWithIndexGradFunctor<Context, T1, T2>
-            pool3d_backward;
+        funcs::FractionalMaxPool3dGradFunctor<Context, T1, T2> pool3d_backward;
         pool3d_backward(ctx,
                         dout,
                         mask,
@@ -381,30 +378,30 @@ void FractionalMaxPoolWithIndexGradRawKernel(
 }
 
 template <typename T, typename Context>
-void FractionalMaxPool2dWithIndexGradKernel(const Context& ctx,
-                                            const DenseTensor& x,
-                                            const DenseTensor& mask,
-                                            const DenseTensor& dout,
-                                            const std::vector<int>& output_size,
-                                            const std::vector<int>& kernel_size,
-                                            float random_u,
-                                            bool return_mask,
-                                            DenseTensor* dx) {
-  FractionalMaxPoolWithIndexGradRawKernel<Context, T>(
+void FractionalMaxPool2dGradKernel(const Context& ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& mask,
+                                   const DenseTensor& dout,
+                                   const std::vector<int>& output_size,
+                                   const std::vector<int>& kernel_size,
+                                   float random_u,
+                                   bool return_mask,
+                                   DenseTensor* dx) {
+  FractionalMaxPoolGradRawKernel<Context, T>(
       ctx, x, mask, dout, output_size, kernel_size, random_u, return_mask, dx);
 }
 
 template <typename T, typename Context>
-void FractionalMaxPool3dWithIndexGradKernel(const Context& ctx,
-                                            const DenseTensor& x,
-                                            const DenseTensor& mask,
-                                            const DenseTensor& dout,
-                                            const std::vector<int>& output_size,
-                                            const std::vector<int>& kernel_size,
-                                            float random_u,
-                                            bool return_mask,
-                                            DenseTensor* dx) {
-  FractionalMaxPoolWithIndexGradRawKernel<Context, T>(
+void FractionalMaxPool3dGradKernel(const Context& ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& mask,
+                                   const DenseTensor& dout,
+                                   const std::vector<int>& output_size,
+                                   const std::vector<int>& kernel_size,
+                                   float random_u,
+                                   bool return_mask,
+                                   DenseTensor* dx) {
+  FractionalMaxPoolGradRawKernel<Context, T>(
       ctx, x, mask, dout, output_size, kernel_size, random_u, return_mask, dx);
 }
 

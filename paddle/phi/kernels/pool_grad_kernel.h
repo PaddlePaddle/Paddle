@@ -145,25 +145,25 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   DenseTensor* dx);
 
 template <typename T, typename Context>
-void FractionalMaxPool2dWithIndexGradKernel(const Context& ctx,
-                                            const DenseTensor& x,
-                                            const DenseTensor& mask,
-                                            const DenseTensor& dout,
-                                            const std::vector<int>& output_size,
-                                            const std::vector<int>& kernel_size,
-                                            float random_u,
-                                            bool return_mask,
-                                            DenseTensor* dx);
+void FractionalMaxPool2dGradKernel(const Context& ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& mask,
+                                   const DenseTensor& dout,
+                                   const std::vector<int>& output_size,
+                                   const std::vector<int>& kernel_size,
+                                   float random_u,
+                                   bool return_mask,
+                                   DenseTensor* dx);
 
 template <typename T, typename Context>
-void FractionalMaxPool3dWithIndexGradKernel(const Context& ctx,
-                                            const DenseTensor& x,
-                                            const DenseTensor& mask,
-                                            const DenseTensor& dout,
-                                            const std::vector<int>& output_size,
-                                            const std::vector<int>& kernel_size,
-                                            float random_u,
-                                            bool return_mask,
-                                            DenseTensor* dx);
+void FractionalMaxPool3dGradKernel(const Context& ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& mask,
+                                   const DenseTensor& dout,
+                                   const std::vector<int>& output_size,
+                                   const std::vector<int>& kernel_size,
+                                   float random_u,
+                                   bool return_mask,
+                                   DenseTensor* dx);
 
 }  // namespace phi

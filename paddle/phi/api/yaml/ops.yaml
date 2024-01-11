@@ -1025,7 +1025,7 @@
   args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0}, float random_u = 0.0, bool return_mask = true)
   output : Tensor(out), Tensor(mask)
   infer_meta :
-    func : FractionalMaxPoolWithIndexInferMeta
+    func : FractionalMaxPoolInferMeta
   kernel :
     func : fractional_max_pool2d
   backward : fractional_max_pool2d_grad
@@ -1034,7 +1034,7 @@
   args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0, 0}, float random_u = 0.0, bool return_mask = true)
   output : Tensor(out), Tensor(mask)
   infer_meta :
-    func : FractionalMaxPoolWithIndexInferMeta
+    func : FractionalMaxPoolInferMeta
   kernel :
     func : fractional_max_pool3d
   backward : fractional_max_pool3d_grad

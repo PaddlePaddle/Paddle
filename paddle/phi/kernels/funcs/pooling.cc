@@ -1850,7 +1850,7 @@ template class MaxPool3dWithIndexGradFunctor<CPUContext, double, int>;
  * All tensors are in NCHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
+class FractionalMaxPool2dFunctor<CPUContext, T1, T2> {
  public:
   void operator()(const CPUContext& context,
                   const DenseTensor& input,
@@ -1955,7 +1955,7 @@ class FractionalMaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
  * All tensors are in NCHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
+class FractionalMaxPool2dGradFunctor<CPUContext, T1, T2> {
  public:
   void operator()(const CPUContext& context,
                   const DenseTensor& output_grad,
@@ -1996,22 +1996,18 @@ class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool2dWithIndexFunctor<CPUContext, float, int>;
-template class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, float, int>;
-template class FractionalMaxPool2dWithIndexFunctor<CPUContext, double, int>;
-template class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, double, int>;
-template class FractionalMaxPool2dWithIndexFunctor<CPUContext,
-                                                   dtype::float16,
-                                                   int>;
-template class FractionalMaxPool2dWithIndexGradFunctor<CPUContext,
-                                                       dtype::float16,
-                                                       int>;
+template class FractionalMaxPool2dFunctor<CPUContext, float, int>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, float, int>;
+template class FractionalMaxPool2dFunctor<CPUContext, double, int>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, double, int>;
+template class FractionalMaxPool2dFunctor<CPUContext, dtype::float16, int>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, dtype::float16, int>;
 
 /*
  * All tensors are in NCDHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
+class FractionalMaxPool3dFunctor<CPUContext, T1, T2> {
  public:
   void operator()(const CPUContext& context,
                   const DenseTensor& input,
@@ -2143,7 +2139,7 @@ class FractionalMaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
  * All tensors are in NCDHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
+class FractionalMaxPool3dGradFunctor<CPUContext, T1, T2> {
  public:
   void operator()(const CPUContext& context,
                   const DenseTensor& output_grad,
@@ -2189,16 +2185,12 @@ class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool3dWithIndexFunctor<CPUContext, float, int>;
-template class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, float, int>;
-template class FractionalMaxPool3dWithIndexFunctor<CPUContext, double, int>;
-template class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, double, int>;
-template class FractionalMaxPool3dWithIndexFunctor<CPUContext,
-                                                   dtype::float16,
-                                                   int>;
-template class FractionalMaxPool3dWithIndexGradFunctor<CPUContext,
-                                                       dtype::float16,
-                                                       int>;
+template class FractionalMaxPool3dFunctor<CPUContext, float, int>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, float, int>;
+template class FractionalMaxPool3dFunctor<CPUContext, double, int>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, double, int>;
+template class FractionalMaxPool3dFunctor<CPUContext, dtype::float16, int>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, dtype::float16, int>;
 
 }  // namespace funcs
 }  // namespace phi

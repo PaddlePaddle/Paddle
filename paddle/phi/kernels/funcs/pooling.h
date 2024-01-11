@@ -411,7 +411,7 @@ class MaxPool3dWithIndexGradFunctor {
  * tensors are in NCDHW format.
  */
 template <typename Context, typename T1, typename T2>
-class FractionalMaxPool2dWithIndexFunctor {
+class FractionalMaxPool2dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
@@ -424,7 +424,7 @@ class FractionalMaxPool2dWithIndexFunctor {
 };
 
 template <typename Context, typename T1, typename T2>
-class FractionalMaxPool2dWithIndexGradFunctor {
+class FractionalMaxPool2dGradFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
@@ -437,7 +437,7 @@ class FractionalMaxPool2dWithIndexGradFunctor {
 };
 
 template <typename Context, typename T1, typename T2>
-class FractionalMaxPool3dWithIndexFunctor {
+class FractionalMaxPool3dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
@@ -450,7 +450,7 @@ class FractionalMaxPool3dWithIndexFunctor {
 };
 
 template <typename Context, typename T1, typename T2>
-class FractionalMaxPool3dWithIndexGradFunctor {
+class FractionalMaxPool3dGradFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& output_grad,

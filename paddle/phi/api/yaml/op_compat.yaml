@@ -1161,18 +1161,6 @@
   outputs :
     out : Y
 
-- op : fractional_max_pool2d
-  inputs :
-    {x : X}
-  outputs :
-    {out : Out, mask : Mask}
-
-- op : fractional_max_pool3d
-  inputs :
-    {x : X}
-  outputs :
-    {out : Out, mask : Mask}
-
 - op : frame
   backward : frame_grad
   inputs :

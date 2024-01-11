@@ -2227,11 +2227,11 @@ def fractional_max_pool2d(
         pool_out = helper.create_variable_for_type_inference(dtype)
 
         mask = helper.create_variable_for_type_inference('int32')
-        outputs = {"Out": pool_out, "Mask": mask}
+        outputs = {"out": pool_out, "mask": mask}
 
         helper.append_op(
             type=l_type,
-            inputs={"X": x},
+            inputs={"x": x},
             outputs=outputs,
             attrs={
                 "output_size": output_size,
@@ -2388,11 +2388,11 @@ def fractional_max_pool3d(
         pool_out = helper.create_variable_for_type_inference(dtype)
 
         mask = helper.create_variable_for_type_inference('int32')
-        outputs = {"Out": pool_out, "Mask": mask}
+        outputs = {"out": pool_out, "mask": mask}
 
         helper.append_op(
             type=l_type,
-            inputs={"X": x},
+            inputs={"x": x},
             outputs=outputs,
             attrs={
                 "output_size": output_size,

@@ -105,23 +105,23 @@ void MaxPool3dWithIndexKernel(const Context& ctx,
                               DenseTensor* mask);
 
 template <typename T, typename Context>
-void FractionalMaxPool2dWithIndexKernel(const Context& ctx,
-                                        const DenseTensor& x,
-                                        const std::vector<int>& output_size,
-                                        const std::vector<int>& kernel_size,
-                                        float random_u,
-                                        bool return_mask,
-                                        DenseTensor* out,
-                                        DenseTensor* mask);
+void FractionalMaxPool2dKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const std::vector<int>& output_size,
+                               const std::vector<int>& kernel_size,
+                               float random_u,
+                               bool return_mask,
+                               DenseTensor* out,
+                               DenseTensor* mask);
 
 template <typename T, typename Context>
-void FractionalMaxPool3dWithIndexKernel(const Context& ctx,
-                                        const DenseTensor& x,
-                                        const std::vector<int>& output_size,
-                                        const std::vector<int>& kernel_size,
-                                        float random_u,
-                                        bool return_mask,
-                                        DenseTensor* out,
-                                        DenseTensor* mask);
+void FractionalMaxPool3dKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const std::vector<int>& output_size,
+                               const std::vector<int>& kernel_size,
+                               float random_u,
+                               bool return_mask,
+                               DenseTensor* out,
+                               DenseTensor* mask);
 
 }  // namespace phi
