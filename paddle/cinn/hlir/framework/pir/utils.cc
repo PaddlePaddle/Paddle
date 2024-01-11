@@ -25,6 +25,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
 namespace cinn {
 namespace hlir {
@@ -146,6 +147,8 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
   } else if (src_attr.isa<paddle::dialect::DataTypeAttribute>()) {
     auto dtype = src_attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     dst_attr = phi::DataTypeToString(dtype);
+  } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
+    auto dst_attr = src_attr.dyn_cast<::pir::shape::SymbolAttribute>().data();
   } else if (src_attr.isa<::pir::ArrayAttribute>()) {
     auto attr_vec = src_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
     if (attr_vec.size() > 0) {

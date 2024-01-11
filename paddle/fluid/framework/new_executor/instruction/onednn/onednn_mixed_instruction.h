@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
 
 namespace pir {
 class Operation;
@@ -24,9 +24,6 @@ namespace paddle {
 namespace framework {
 class Scope;
 class ValueExecutionInfo;
-
-using RuntimeAttribute = phi::Attribute;
-using PIRAttribute = pir::Attribute;
 
 class OneDNNMixedPhiKernelInstruction : public OneDNNPhiKernelInstruction {
  public:

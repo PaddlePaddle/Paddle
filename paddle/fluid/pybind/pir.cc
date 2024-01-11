@@ -71,6 +71,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -85,7 +86,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #endif
 
 namespace py = pybind11;
@@ -171,12 +171,22 @@ std::string GetValueInfo(Value v) {
   } else if (auto arg = v.dyn_cast<BlockArgument>()) {
     ss << "block_arg, index = " << arg.index();
   }
-  ss << ", dtype=" << v.type();
-  if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    ss << ", place="
-       << v.type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-              .place();
+  if (!v.type()) {
+    ss << ", dtype=<<NULL TYPE>>";
+  } else {
+    ss << ", dtype=" << v.type();
+    if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      ss << ", place="
+         << v.type()
+                .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                .place();
+    }
+  }
+  auto stop_gradient = v.attribute<BoolAttribute>(kAttrStopGradients);
+  if (stop_gradient && !stop_gradient.data()) {
+    ss << ", stop_gradient=False";
+  } else {
+    ss << ", stop_gradient=True";
   }
   return ss.str();
 }
@@ -527,13 +537,20 @@ void BindOperation(py::module *m) {
              return op_list;
            })
       .def("replace_all_uses_with",
-           [](Operation &self, const std::vector<OpResult> &op_results) {
-             self.ReplaceAllUsesWith(op_results);
+           [](Operation &self, const std::vector<Value> &values) {
+             self.ReplaceAllUsesWith(values);
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
       .def("as_while_op",
-           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); });
+           [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def("__repr__", [](Operation &self) {
+        std::ostringstream print_stream;
+        print_stream << "Operation(";
+        self.Print(print_stream);
+        print_stream << ")";
+        return print_stream.str();
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -555,6 +572,9 @@ py::str Value2String(Value self) {
 }
 
 phi::DataType GetValueDtype(Value value) {
+  if (!value.type()) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
   if (value.type().isa<DenseTensorType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorType>().dtype());
@@ -572,6 +592,9 @@ phi::DataType GetValueDtype(Value value) {
 }
 
 const phi::DDim &GetValueDims(Value value) {
+  if (!value.type()) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
   } else if (value.type().isa<SelectedRowsType>()) {
@@ -768,21 +791,6 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
-      .def("__str__",
-           [](Value self) -> py::str {
-             std::ostringstream print_stream;
-             print_stream << "Value(";
-             print_stream << GetValueInfo(self);
-             auto stop_gradient =
-                 self.attribute<BoolAttribute>(kAttrStopGradients);
-             if (stop_gradient && !stop_gradient.data()) {
-               print_stream << ", stop_gradient=False";
-             } else {
-               print_stream << ", stop_gradient=True";
-             }
-             print_stream << ")";
-             return print_stream.str();
-           })
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
@@ -898,47 +906,6 @@ void BindInsertionPoint(pybind11::module *m) {
     InsertionPoint class represents the insertion point in the Builder.)DOC");
 }
 
-Operation *BuildOpFrom(
-    Operation *to_copy_op,
-    std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
-  pir::OperationArgument to_create_argument(to_copy_op->info());
-  to_create_argument.attributes = to_copy_op->attributes();
-
-  VLOG(6) << "start copy op: " << to_copy_op->name();
-  auto origin_results = to_copy_op->results();
-  VLOG(6) << "start translate origin results into op type.";
-  std::transform(origin_results.begin(),
-                 origin_results.end(),
-                 std::back_inserter(to_create_argument.output_types),
-                 [](const pir::OpResult &r) {
-                   // OpResult -> OpType
-                   return r.type();
-                 });
-
-  // transform by value_map dict.
-  VLOG(6) << "start create op.";
-  auto origin_operands = to_copy_op->operands();
-  std::transform(origin_operands.begin(),
-                 origin_operands.end(),
-                 std::back_inserter(to_create_argument.inputs),
-                 [&value_map](const pir::OpOperand &operand) {
-                   // Operand -> OpResult
-                   return value_map[operand.source()];
-                 });
-  auto *cloned_op = Operation::Create(std::move(to_create_argument));
-
-  std::vector<int> tmp;
-  std::transform(origin_results.begin(),
-                 origin_results.end(),
-                 cloned_op->results().begin(),
-                 std::back_inserter(tmp),  // NOLINT, just a placeholder.
-                 [&value_map](const OpResult &a, const OpResult &b) {  // NOLINT
-                   value_map[a.Value::impl()] = b.Value::impl();
-                   return 1;
-                 });
-  return cloned_op;
-}
-
 std::list<Operation *>::const_iterator list_offset(const Block *block,
                                                    int start_idx) {
   auto it = block->begin();
@@ -1006,14 +973,14 @@ using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-pir::OpResult FakeOpResult() {
-  // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return pir::OpResult(nullptr);
+pir::Value FakeValue() {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return pir::Value(nullptr);
 }
 
-bool IsFakeOpResult(const pir::OpResult &result) {
-  // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return result.Value::impl() == nullptr || !result.Value::type();
+bool IsFakeValue(const pir::Value &value) {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return value.impl() == nullptr || !value.type();
 }
 
 static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
@@ -1057,19 +1024,13 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 using OpResultMap =
     std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    const Program &program) {
+    Program &program) {  // NOLINT
   // Limitation of this function:
   // 1. don't support Parameters.
-  // 2. don't support Regions in operator.
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  auto cloned_program = std::make_shared<Program>(ctx);
-  std::unordered_map<pir::Value, pir::Value> value_map;
-  for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(&op, value_map);
-    cloned_program->block()->push_back(cloned_op);
-  }
+  pir::IrMapping mapper;
+  auto cloned_program = program.Clone(mapper);
   std::vector<pir::OpResult> associated_array_key, associated_array_value;
-  for (auto &pair : value_map) {
+  for (auto &pair : mapper.GetMap<pir::Value>()) {
     associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
     associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
@@ -1079,7 +1040,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
 }
 
 void AppendShadowOutput(Program *forward_program,
-                        const pir::OpResult &result,
+                        const pir::Value &value,
                         const std::string &name,
                         size_t start_point) {
   pir::IrContext *ctx = pir::IrContext::Instance();
@@ -1088,7 +1049,7 @@ void AppendShadowOutput(Program *forward_program,
       {"output_name", pir::StrAttribute::get(ctx, name)},
   };
   pir::Operation *operation =
-      pir::Operation::Create({result}, attribute_map, {}, op_info);
+      pir::Operation::Create({value}, attribute_map, {}, op_info);
   auto position = forward_program->block()->begin();
   std::advance(position, start_point);
   if (position == forward_program->block()->end()) {
@@ -1099,19 +1060,19 @@ void AppendShadowOutput(Program *forward_program,
 }
 
 int AppendShadowOutputs(Program *forward_program,
-                        const std::vector<pir::OpResult> &outputs_op_result,
+                        const std::vector<pir::Value> &outputs,
                         int start_point,
                         std::string name_prefix) {
   int counter = 0;
-  std::unordered_set<pir::OpResult> added_op_result;
+  std::unordered_set<pir::Value> added_value;
 
-  for (const auto &result : outputs_op_result) {
-    if (!added_op_result.count(result) || IsFakeOpResult(result)) {
+  for (const auto &value : outputs) {
+    if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
       AppendShadowOutput(
-          forward_program, result, shadow_output_name, start_point + counter);
+          forward_program, value, shadow_output_name, start_point + counter);
       counter += 1;
-      added_op_result.insert(result);
+      added_value.insert(value);
     }
   }
   // return the inserted op.
@@ -1120,51 +1081,17 @@ int AppendShadowOutputs(Program *forward_program,
 
 SplitedResult SplitForwardBackward(
     const Program &program,
-    const std::vector<pir::OpResult> &op_result_forward_inputs,
-    const std::vector<pir::OpResult> &op_result_forward_params,
-    const std::vector<pir::OpResult> &op_result_forward_outputs,
-    const std::vector<pir::OpResult> &op_result_forward_inputs_grads,
-    const std::vector<pir::OpResult> &op_result_forward_params_grads,
-    const std::vector<pir::OpResult> &op_result_forward_outputs_grads,
+    const std::vector<pir::Value> &forward_inputs,
+    const std::vector<pir::Value> &forward_params,
+    const std::vector<pir::Value> &forward_outputs,
+    const std::vector<pir::Value> &forward_inputs_grads,
+    const std::vector<pir::Value> &forward_params_grads,
+    const std::vector<pir::Value> &forward_outputs_grads,
     const std::vector<int> &forward_range,
     const std::vector<int> &backward_range) {
-  // transform opresult -> value
-  std::vector<pir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
-      forward_outputs_grads, forward_params, forward_params_grads;
-
-  auto op_result_to_value = [](const pir::OpResult &r) {
-    if (r.impl() == nullptr) return Value(nullptr);
-    return Value(r.Value::impl());
-  };
-
-  std::transform(op_result_forward_inputs.begin(),
-                 op_result_forward_inputs.end(),
-                 std::back_inserter(forward_inputs),
-                 op_result_to_value);
-  std::transform(op_result_forward_outputs.begin(),
-                 op_result_forward_outputs.end(),
-                 std::back_inserter(forward_outputs),
-                 op_result_to_value);
-  std::transform(op_result_forward_inputs_grads.begin(),
-                 op_result_forward_inputs_grads.end(),
-                 std::back_inserter(forward_inputs_grads),
-                 op_result_to_value);
-  std::transform(op_result_forward_outputs_grads.begin(),
-                 op_result_forward_outputs_grads.end(),
-                 std::back_inserter(forward_outputs_grads),
-                 op_result_to_value);
-  std::transform(op_result_forward_params.begin(),
-                 op_result_forward_params.end(),
-                 std::back_inserter(forward_params),
-                 op_result_to_value);
-  std::transform(op_result_forward_params_grads.begin(),
-                 op_result_forward_params_grads.end(),
-                 std::back_inserter(forward_params_grads),
-                 op_result_to_value);
-
   std::vector<pir::Value> forward_in_out_values;
-  for (auto &v : std::vector<std::vector<pir::Value> *>(
-           {&forward_inputs, &forward_outputs, &forward_params})) {
+  for (auto &v :
+       std::vector({&forward_inputs, &forward_outputs, &forward_params})) {
     forward_in_out_values.insert(
         forward_in_out_values.end(), v->begin(), v->end());
   }
@@ -1178,21 +1105,26 @@ SplitedResult SplitForwardBackward(
   std::unordered_set<pir::Value> backward_inputs;
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
-  std::unordered_map<pir::Value, pir::Value> forward_value_map;
-  std::unordered_map<pir::Value, pir::Value> backward_value_map;
   pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
   bool has_backward = (backward_range[1] > backward_range[0]);
 
   // forward program construct.
   VLOG(4) << "start create forward program.";
-  range_block_do(program.block(),
-                 forward_range,
-                 [&forward_value_map, &forward_program](Operation *op) {
-                   auto *cloned_op = BuildOpFrom(op, forward_value_map);
-                   forward_program->block()->push_back(cloned_op);
-                 });
+  pir::IrMapping forward_mapper;
+  auto clone_options = pir::CloneOptions(true, true);
+  range_block_do(
+      program.block(),
+      forward_range,
+      [&forward_mapper, &forward_program, &clone_options](Operation *op) {
+        auto *cloned_op = op->Clone(forward_mapper, clone_options);
+        forward_program->block()->push_back(cloned_op);
+      });
+  auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
+
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
+  pir::IrMapping backward_mapper;
+  auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
   auto create_data_fn = [&backward_builder,
                          &backward_inputs,
@@ -1311,12 +1243,13 @@ SplitedResult SplitForwardBackward(
 
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
-  range_block_do(program.block(),
-                 backward_range,
-                 [&backward_value_map, &backward_program](Operation *op) {
-                   auto *cloned_op = BuildOpFrom(op, backward_value_map);
-                   backward_program->block()->push_back(cloned_op);
-                 });
+  range_block_do(
+      program.block(),
+      backward_range,
+      [&backward_mapper, &backward_program, &clone_options](Operation *op) {
+        auto *cloned_op = op->Clone(backward_mapper, clone_options);
+        backward_program->block()->push_back(cloned_op);
+      });
   // counter = 0;
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   if (has_backward) {
@@ -1434,8 +1367,8 @@ void BindUtils(pybind11::module *m) {
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
-  m->def("fake_op_result", FakeOpResult);
-  m->def("is_fake_op_result", IsFakeOpResult);
+  m->def("fake_value", FakeValue);
+  m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
   });
@@ -1605,11 +1538,12 @@ static bool HasDynamicShape(const Program &program) {
       continue;
     }
     for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i)
-                              .type()
-                              .dyn_cast<pir::ShapedTypeInterface>()
-                              .IsDynamicShape()) {
-        return true;
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          return true;
+        }
       }
     }
   }
@@ -1630,8 +1564,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
-
+  pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -1649,9 +1582,10 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 }
 
 void InferSymbolicShapePass(
-    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-    Program &program) {                          // NOLINT
+    std::shared_ptr<PassManager> &pass_manager) {  // NOLINT
   if (FLAGS_pir_apply_shape_optimization_pass) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
@@ -1702,7 +1636,8 @@ void BindPassManager(pybind11::module *m) {
              return pass_names;
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
-      .def("empty", &PassManager::Empty);
+      .def("empty", &PassManager::empty)
+      .def("clear", &PassManager::clear);
 }
 
 void BindPir(pybind11::module *module) {

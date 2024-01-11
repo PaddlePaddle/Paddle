@@ -14,24 +14,83 @@
 #pragma once
 #include <unordered_map>
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 
 namespace pir {
+class Block;
+class Operation;
 
+namespace detail {
+template <typename T, typename... OthersT>
+struct ExactlyOneIrType {
+  using type = void;
+};
+template <typename T, typename FirstT, typename... OthersT>
+struct ExactlyOneIrType<T, FirstT, OthersT...> {
+  using type =
+      std::conditional_t<std::is_convertible<T, FirstT>::value,
+                         FirstT,
+                         typename ExactlyOneIrType<T, OthersT...>::type>;
+};
+}  // namespace detail
 class IrMapping {
  public:
-  void Add(Value from, Value to) { value_map_[from] = to; }
-
-  Value Lookup(Value from) const {
-    IR_ENFORCE(value_map_.count(from) > 0, "Not Found Value in IRMapping.");
-    return value_map_.at(from);
+  template <typename T>
+  using IrType =
+      typename detail::ExactlyOneIrType<T, Value, Block*, Operation*>::type;
+  template <typename T>
+  std::unordered_map<T, T>& GetMutableMap() {
+    if constexpr (std::is_same<T, Value>::value) {
+      return value_map_;
+    } else if constexpr (std::is_same<T, Block*>::value) {
+      return block_map_;
+    } else if constexpr (std::is_same<T, Operation*>::value) {
+      return operation_map_;
+    } else {
+      IR_THROW("Not support type in IRMapping.");
+    }
   }
-  void Earse(Value from) { value_map_.erase(from); }
+  template <typename T>
+  const std::unordered_map<T, T>& GetMap() const {
+    if constexpr (std::is_same<T, Value>::value) {
+      return value_map_;
+    } else if constexpr (std::is_same<T, Block*>::value) {
+      return block_map_;
+    } else if constexpr (std::is_same<T, Operation*>::value) {
+      return operation_map_;
+    } else {
+      IR_THROW("Not support type in IRMapping.");
+    }
+  }
+  template <typename T, typename S>
+  void Add(T from, S to) {
+    if (!from) return;
+    GetMutableMap<IrType<T>>()[from] = to;
+  }
 
-  void Clear() { value_map_.clear(); }
+  template <typename T>
+  T Lookup(T from) const {
+    if (!from) return static_cast<T>(nullptr);
+    IR_ENFORCE(GetMap<IrType<T>>().count(from) > 0,
+               "Not found key in IRMapping.");
+    return GetMap<IrType<T>>().at(from);
+  }
+
+  template <typename T>
+  void Earse(T from) {
+    GetMutableMap<IrType<T>>().erase(from);
+  }
+
+  void Clear() {
+    value_map_.clear();
+    block_map_.clear();
+    operation_map_.clear();
+  }
 
  private:
   std::unordered_map<Value, Value> value_map_;
+  std::unordered_map<Block*, Block*> block_map_;
+  std::unordered_map<Operation*, Operation*> operation_map_;
 };
 
 }  // namespace pir

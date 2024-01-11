@@ -342,6 +342,8 @@
     saved_mean: SavedMean
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -364,6 +366,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -380,6 +384,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -424,6 +430,10 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : bn_act_xpu
+  attrs:
+    data_format: data_layout
 
 - op : box_coder
   inputs :
@@ -1534,6 +1544,8 @@
     y : Y
     mean : Mean
     variance : Variance
+  attrs:
+    data_format: data_layout
 
 - op : gru
   backward : gru_grad
@@ -1788,6 +1800,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1904,6 +1918,10 @@
 
 - op : lrn
   backward : lrn_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, mid_out : MidOut}
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
@@ -2220,6 +2238,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3089,6 +3109,8 @@
   outputs :
     {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -3195,6 +3217,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 

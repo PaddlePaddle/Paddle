@@ -78,9 +78,9 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
 
   auto name = op_info ? op_info.name() : "";
-  VLOG(6) << "Create Operation [" << name
-          << "]: {ptr = " << static_cast<void *>(base_ptr)
-          << ", size = " << base_size << "} done.";
+  VLOG(10) << "Create Operation [" << name
+           << "]: {ptr = " << static_cast<void *>(base_ptr)
+           << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -138,8 +138,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 }
 
 Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
-  IR_ENFORCE(!options.IsCloneRegions() || num_regions_ <= 0,
-             "Operation CloneRegions is unimplemented currently.");
   IR_ENFORCE(num_successors_ == 0,
              "Operation::Clone is not unimplemented for multiple successors.");
 
@@ -156,10 +154,20 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
     output_types.push_back(result.type());
   }
   auto *new_op = Create(inputs, attributes_, output_types, info_, num_regions_);
+  ir_mapping.Add(this, new_op);
+
   // record outputs mapping info
   for (uint32_t i = 0; i < num_results_; ++i) {
     ir_mapping.Add(result(i), new_op->result(i));
   }
+
+  if (options.IsCloneRegions()) {
+    // clone regions recursively
+    for (uint32_t i = 0; i < num_regions_; ++i) {
+      this->region(i).CloneInto(new_op->region(i), ir_mapping);
+    }
+  }
+
   return new_op;
 }
 
@@ -212,8 +220,8 @@ void Operation::Destroy() {
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
-  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
-          << ", size = " << result_mem_size << "} done.";
+  VLOG(10) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+           << ", size = " << result_mem_size << "} done.";
   aligned_free(aligned_ptr);
 }
 
