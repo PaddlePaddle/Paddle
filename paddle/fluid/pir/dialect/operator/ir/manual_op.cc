@@ -3240,7 +3240,10 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
     out_grad =
         paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
                                               allocated_input.dtype(),
-                                              allocated_input.data_layout());
+                                              allocated_input.dims(),
+                                              allocated_input.data_layout(),
+                                              allocated_input.lod(),
+                                              allocated_input.offset());
     (void)out_grad;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
