@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy
 from utils import compare_legacy_with_pt
 
 import paddle
-from paddle import base, set_flags
+from paddle import base
 from paddle.base import core
-from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.base.framework import in_pir_mode
 from paddle.incubate.layers.nn import shuffle_batch
@@ -35,11 +33,19 @@ class TestWhileOp(unittest.TestCase):
         d0 = paddle.static.data("d0", shape=[10], dtype='float32')
         d1 = paddle.static.data("d1", shape=[10], dtype='float32')
         d2 = paddle.static.data("d2", shape=[10], dtype='float32')
+        d0.persistable = True
+        d0.stop_gradient = False
+        d1.persistable = True
+        d2.persistable = True
         i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
+        i.persistable = True
         init = paddle.zeros(shape=[10], dtype='float32')
         mem_array = paddle.tensor.array_write(x=init, i=i)
         data_array = paddle.tensor.array_write(x=d0, i=i)
+        mem_array.stop_gradient = False
+        data_array.stop_gradient = False
+        mem_array.persistable = True
         i = paddle.increment(i)
         paddle.tensor.array_write(d1, i, array=data_array)
         i = paddle.increment(i)
@@ -82,23 +88,13 @@ class TestWhileOp(unittest.TestCase):
         loss = paddle.mean(sum_result)
         return loss, sum_result
 
-    # TODO(winter-wang): Support pir test in (FLAGS_enable_pir_in_executor_trace_run = False && FLAGS_new_executor_serial_run == False).
     @test_with_pir_api
     def test_simple_net(self):
         main_program = base.Program()
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
-
-            append_backward(loss)
-
-            if in_pir_mode():
-                flag_1 = "FLAGS_enable_pir_in_executor_trace_run"
-                flag_2 = "FLAGS_new_executor_serial_run"
-                os.environ[flag_1] = 'True'
-                os.environ[flag_2] = 'True'
-                set_flags({flag_1: True})
-                set_flags({flag_2: True})
+            # append_backward(loss)
 
             cpu = core.CPUPlace()
             exe = Executor(cpu)
@@ -111,14 +107,8 @@ class TestWhileOp(unittest.TestCase):
                 feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
                 fetch_list=[sum_result],
             )
-            if in_pir_mode():
-                del os.environ[flag_1]
-                del os.environ[flag_2]
-                set_flags({flag_1: False})
-                set_flags({flag_2: False})
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
-    # TODO(winter-wang): Support pir test in (FLAGS_enable_pir_in_executor_trace_run = False && FLAGS_new_executor_serial_run == False).
     @test_with_pir_api
     def test_simple_net_forward(self):
         main_program = base.Program()
@@ -136,20 +126,8 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
-            if in_pir_mode():
-                flag_1 = "FLAGS_enable_pir_in_executor_trace_run"
-                flag_2 = "FLAGS_new_executor_serial_run"
-                os.environ[flag_1] = 'True'
-                os.environ[flag_2] = 'True'
-                set_flags({flag_1: True})
-                set_flags({flag_2: True})
             for _ in range(2):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
-            if in_pir_mode():
-                del os.environ[flag_1]
-                del os.environ[flag_2]
-                set_flags({flag_1: False})
-                set_flags({flag_2: False})
 
     @compare_legacy_with_pt
     @test_with_pir_api

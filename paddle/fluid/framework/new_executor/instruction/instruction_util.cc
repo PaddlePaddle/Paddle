@@ -181,7 +181,9 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
       return OpFuncType::kGpuSync;
     }
 
-    if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
+    if (platform::is_gpu_place(place) &&
+        (op_name == "pd_op.memcpy_d2h" ||
+         op_name == "pd_op.memcpy_d2h_multi_io")) {
       return OpFuncType::kGpuSync;
     }
 
@@ -343,6 +345,55 @@ void InsertTuplePushContinerToOuts(
   for (pir::Value value : inner_stack_outputs) {
     outputs->emplace(value, GetValueIds(value, value_exec_info));
     VLOG(6) << "InsertTuplePushContinerToOuts of " << value.impl();
+  }
+}
+
+void InsertInplacedExternalInputsToOuts(
+    pir::Block* block,
+    const std::vector<pir::Value>& external_inputs,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs) {
+  for (auto& op : *block) {
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
+            .at("is_inplace")
+            .dyn_cast<pir::BoolAttribute>()
+            .data()) {
+      std::string op_name = op.name();
+      if (op.attributes().count("op_name")) {
+        op_name = op.attributes()
+                      .at("op_name")
+                      .dyn_cast<pir::StrAttribute>()
+                      .AsString();
+      }
+      pir::OpInfo op_info =
+          pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+      paddle::dialect::OpYamlInfoParser yaml_parser(
+          op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+              ->get_op_info_(op_name),
+          paddle::dialect::IsLegacyOp(op_name));
+
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        pir::Value value = op.result(i);
+        if (!IsInvalid(value)) {
+          VLOG(8) << "Number " << i << " result of " << op_name
+                  << " is not invalid, so skip build a variable.";
+          continue;
+        }
+        std::string value_name = yaml_parser.OutputNames()[i];
+        if (yaml_parser.HasInplace(value_name)) {
+          const std::string& inplace_name = yaml_parser.InplaceName(value_name);
+          pir::Value inplace_value =
+              op.operand_source(yaml_parser.InputName2Id().at(inplace_name));
+          if (std::find(external_inputs.begin(),
+                        external_inputs.end(),
+                        inplace_value) != external_inputs.end()) {
+            outputs->emplace(value,
+                             GetValueIds(inplace_value, value_exec_info));
+          }
+        }
+      }
+    }
   }
 }
 

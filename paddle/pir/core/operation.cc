@@ -78,9 +78,9 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
 
   auto name = op_info ? op_info.name() : "";
-  VLOG(6) << "Create Operation [" << name
-          << "]: {ptr = " << static_cast<void *>(base_ptr)
-          << ", size = " << base_size << "} done.";
+  VLOG(10) << "Create Operation [" << name
+           << "]: {ptr = " << static_cast<void *>(base_ptr)
+           << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -117,7 +117,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
       base_ptr += sizeof(detail::BlockOperandImpl);
     }
   }
-
   // 3.5. Construct Regions
   if (num_regions > 0) {
     op->regions_ = reinterpret_cast<Region *>(base_ptr);
@@ -126,7 +125,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
       base_ptr += sizeof(Region);
     }
   }
-
   // 0. Verify
   if (op_info) {
     try {
@@ -137,6 +135,40 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
     }
   }
   return op;
+}
+
+Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
+  IR_ENFORCE(num_successors_ == 0,
+             "Operation::Clone is not unimplemented for multiple successors.");
+
+  auto inputs = operands_source();
+  if (options.IsCloneOperands()) {
+    // replace value by IRMapping inplacely.
+    for (auto &value : inputs) {
+      value = ir_mapping.Lookup(value);
+    }
+  }
+
+  std::vector<Type> output_types;
+  for (auto &result : results()) {
+    output_types.push_back(result.type());
+  }
+  auto *new_op = Create(inputs, attributes_, output_types, info_, num_regions_);
+  ir_mapping.Add(this, new_op);
+
+  // record outputs mapping info
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    ir_mapping.Add(result(i), new_op->result(i));
+  }
+
+  if (options.IsCloneRegions()) {
+    // clone regions recursively
+    for (uint32_t i = 0; i < num_regions_; ++i) {
+      this->region(i).CloneInto(new_op->region(i), ir_mapping);
+    }
+  }
+
+  return new_op;
 }
 
 // Call destructors for Region , OpResults, Operation, and OpOperands in
@@ -188,8 +220,8 @@ void Operation::Destroy() {
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
-  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
-          << ", size = " << result_mem_size << "} done.";
+  VLOG(10) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+           << ", size = " << result_mem_size << "} done.";
   aligned_free(aligned_ptr);
 }
 

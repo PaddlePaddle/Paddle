@@ -23,7 +23,9 @@ from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
+from paddle.distribution.exponential import Exponential
 from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.gamma import Gamma
 from paddle.distribution.geometric import Geometric
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
@@ -269,6 +271,16 @@ def _kl_expfamily_expfamily(p, q):
         kl -= _sum_rightmost(term, len(q.event_shape))
 
     return kl
+
+
+@register_kl(Exponential, Exponential)
+def _kl_exponential_exponential(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(Gamma, Gamma)
+def _kl_gamma_gamma(p, q):
+    return p.kl_divergence(q)
 
 
 @register_kl(LogNormal, LogNormal)

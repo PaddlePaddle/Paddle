@@ -32,10 +32,10 @@
 namespace {
 
 class RemoveUselessScalePattern
-    : public pir::drr::DrrPatternBase<RemoveUselessScalePattern> {
+    : public paddle::drr::DrrPatternBase<RemoveUselessScalePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
                                   {"value", pat.Attr("value")},
@@ -47,21 +47,21 @@ class RemoveUselessScalePattern
                 {"bias_after_scale", pat.Attr("bias_after_scale")}});
     scale_op({&pat.Tensor("x"), &full_op()}, {&pat.Tensor("scale_out")});
 
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Attr<float>("value") == 1.0 &&
               match_ctx.Attr<float>("bias") == 0.0);
     });
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     res.Tensor("scale_out").Assign(res.Tensor("x"));
   }
 };
 
 class RemoveRedundentScalePattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentScalePattern> {
+    : public paddle::drr::DrrPatternBase<RemoveRedundentScalePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full_op_1 = pat.Op(paddle::dialect::FullOp::name(),
                                    {{"shape", pat.Attr("shape_1")},
                                     {"value", pat.Attr("value_1")},
@@ -84,10 +84,10 @@ class RemoveRedundentScalePattern
     scale_op_2({&pat.Tensor("scale_1_out"), &full_op_2()},
                {&pat.Tensor("scale_2_out")});
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &bais_res =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           float res_bias_1 = 0.f;
           float res_bias_2 = 0.f;
           if (match_ctx.Attr<bool>("bias_after_scale_1")) {
@@ -106,7 +106,7 @@ class RemoveRedundentScalePattern
           return res_bias_2;
         });
     const auto &res_scale_input =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("value_1") *
                  match_ctx.Attr<float>("value_2");
         });
@@ -116,22 +116,22 @@ class RemoveRedundentScalePattern
                                       {"value", res_scale_input},
                                       {"dtype", pat.Attr("dtype_1")},
                                       {"place", pat.Attr("place_1")}});
-    const auto &scale_op_res =
-        res.Op("pd_op.scale",
-               {{"bias", bais_res},
-                {"bias_after_scale",
-                 res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-                   return true;
-                 })}});
+    const auto &scale_op_res = res.Op(
+        "pd_op.scale",
+        {{"bias", bais_res},
+         {"bias_after_scale",
+          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+            return true;
+          })}});
     scale_op_res({&res.Tensor("x"), &full_op_res()},
                  {&res.Tensor("scale_2_out")});
   }
 };
 
 class RemoveUselessCastPattern
-    : public pir::drr::DrrPatternBase<RemoveUselessCastPattern> {
+    : public paddle::drr::DrrPatternBase<RemoveUselessCastPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("ret") = pat.Op("pd_op.cast")(pat.Tensor("arg0"));
     pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
@@ -141,16 +141,16 @@ class RemoveUselessCastPattern
 };
 
 class RemoveUselessConcatPattern
-    : public pir::drr::DrrPatternBase<RemoveUselessConcatPattern> {
+    : public paddle::drr::DrrPatternBase<RemoveUselessConcatPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     const auto &combine = pat.Op(pir::CombineOp::name());
     combine({&pat.Tensor("x")}, {&pat.Tensor("combine_out")});
     pat.Tensor("out") = pat.Op(paddle::dialect::ConcatOp::name())(
         pat.Tensor("combine_out"), pat.Tensor("axis"));
-    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-      auto combine_out = dynamic_cast<const pir::drr::IrValue &>(
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      auto combine_out = dynamic_cast<const paddle::drr::IrValue &>(
           match_ctx.Tensor("combine_out"));
       return combine_out.type_isa<pir::VectorType>() &&
              combine_out.type_dyn_cast<pir::VectorType>().size() == 1;
@@ -161,8 +161,8 @@ class RemoveUselessConcatPattern
 };
 
 class RemoveRedundentCastPattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    : public paddle::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") = pat.Op(
         "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
@@ -175,10 +175,10 @@ class RemoveRedundentCastPattern
 };
 
 class RemoveRedundentTransposePattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
+    : public paddle::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &transpose1 =
         pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm_1")}});
     const auto &transpose2 =
@@ -186,9 +186,9 @@ class RemoveRedundentTransposePattern
 
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &new_perm_attr = res.Attr(
-        [](const pir::drr::MatchContext &match_ctx) -> std::vector<int> {
+        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
           const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");
           std::vector<int> new_perm;

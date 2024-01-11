@@ -98,7 +98,11 @@ class TestScatterNdAddSimpleOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+            ['X', 'Updates'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -133,7 +137,12 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+                place,
+                ['X', 'Updates'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -176,7 +185,11 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+            ['X', 'Updates'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -211,7 +224,12 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+                place,
+                ['X', 'Updates'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -332,6 +350,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
     test scatter_nd_add api and scatter_nd api
     """
 
+    @test_with_pir_api
     def testcase1(self):
         with static_guard():
             ref1 = paddle.static.data(
@@ -351,6 +370,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
             output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
+    @test_with_pir_api
     def testcase2(self):
         with static_guard():
             ref2 = paddle.static.data(
@@ -372,6 +392,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
                 ref2, index2, updates2, name="scatter_nd_add"
             )
 
+    @test_with_pir_api
     def testcase3(self):
         with static_guard():
             shape3 = [10, 9, 8, 1, 3]
@@ -387,6 +408,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
             output3 = paddle.scatter_nd(index3, updates3, shape3)
 
+    @test_with_pir_api
     def testcase4(self):
         with static_guard():
             shape4 = [10, 9, 8, 1, 3]
@@ -468,6 +490,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
 # Test Raise Error
 class TestScatterNdOpRaise(unittest.TestCase):
+    @test_with_pir_api
     def test_check_raise(self):
         def check_raise_is_test():
             with static_guard():
@@ -509,6 +532,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 )
                 output6 = paddle.scatter_nd_add(ref6, index6, updates6)
 
+    @test_with_pir_api
     def test_check_raise3(self):
         def check_raise_is_test():
             with static_guard():
@@ -528,7 +552,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                     if t in str(e):
                         raise ValueError
 
-            self.assertRaises(ValueError, check_raise_is_test)
+        self.assertRaises(ValueError, check_raise_is_test)
 
 
 class TestDygraph(unittest.TestCase):

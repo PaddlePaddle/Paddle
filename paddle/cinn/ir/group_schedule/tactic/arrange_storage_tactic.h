@@ -23,10 +23,11 @@ namespace ir {
 
 class ArrangeStorageTactic final : public ScheduleTactic {
  public:
-  explicit ArrangeStorageTactic(
-      const std::unordered_set<std::string>& output_names);
+  void Init(ScheduleContext* context) override;
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "ArrangeStorageTactic"; }
 
  private:
   std::unordered_set<std::string> output_names_;

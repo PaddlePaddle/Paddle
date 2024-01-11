@@ -17,6 +17,7 @@ import pickle
 import sys
 
 import numpy as np
+from op_test import convert_float_to_uint16
 from test_collective_base_xpu import (
     DataTypeCast,
     TestCollectiveRunnerBase,
@@ -44,7 +45,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             logits = data(
                 name="Logits",
                 shape=[self.batch_size, self.local_elements],
-                dtype='float32',
+                dtype=self.dtype,
             )
             label = data(
                 name="Label", shape=[self.batch_size, 1], dtype='int32'
@@ -110,6 +111,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         self.initCommunicator(
             startup_prog, rank, self.nranks, True, current_endpoint, endpoints
         )
+        self.dtype = args["dtype"]
         np_dtype = DataTypeCast(args["dtype"])
         loss, softmax = self.get_model(train_prog, startup_prog, rank)
         device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
@@ -126,15 +128,23 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             dtype='int32',
         )
         # use FAKE loss_grad here, only to examine the correctness of grad func
-        loss_grad = np.random.uniform(
+        loss_grad_fp32 = np.random.uniform(
             low=-10.0, high=10.0, size=(self.batch_size, 1)
-        ).astype(np_dtype)
+        ).astype(np.float32)
+        if args["dtype"] == "bfloat16":
+            loss_grad = convert_float_to_uint16(loss_grad_fp32)
+        else:
+            loss_grad = loss_grad_fp32.astype(np_dtype)
 
         # each xpu uses own half of logits
         np.random.seed(os.getpid())
-        logits = np.random.uniform(
+        logits_fp32 = np.random.uniform(
             low=-40.0, high=40.0, size=(self.batch_size, self.local_elements)
-        ).astype(np_dtype)
+        ).astype(np.float32)
+        if args["dtype"] == "bfloat16":
+            logits = convert_float_to_uint16(logits_fp32)
+        else:
+            logits = logits_fp32.astype(np_dtype)
         out = exe.run(
             train_prog,
             feed={'Logits': logits, 'Label': label, 'Loss@GRAD': loss_grad},
