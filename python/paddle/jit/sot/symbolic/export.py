@@ -243,7 +243,7 @@ class PyFileGen:
             else:
                 return var.name
         elif isinstance(var, str):
-            return f"'{str}'"
+            return f"'{var}'"
         else:
             return str(var)
 
