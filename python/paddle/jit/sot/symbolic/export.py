@@ -63,7 +63,7 @@ class PyFileGen:
             for inp in stmt.inputs:
                 if isinstance(inp, Symbol):
                     meta = SIR.symbol_meta_map[inp]
-                    hash_value.append(meta)
+                    hash_value.append((meta.dtype, meta.stop_gradient))
                 elif inp.__hash__ is not None:
                     hash_value.append(inp)
                 else:
