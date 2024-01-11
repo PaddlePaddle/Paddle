@@ -42,17 +42,17 @@ Region::Iterator Region::erase(ConstIterator position) {
   return blocks_.erase(position);
 }
 
-void Region::CloneInto(Region &other, IrMapping &ir_mapping) {
+void Region::CloneInto(Region &other, IrMapping &ir_mapping) const {
   if (empty()) {
     return;
   }
   other.clear();
-  auto clone_options = CloneOptions(false, false);
+  auto clone_options = CloneOptions();
   // clone blocks, block arguments and sub operations
-  for (auto &block : *this) {
+  for (const auto &block : *this) {
     auto new_block = new Block;
     ir_mapping.Add(&block, new_block);
-    for (auto &arg : block.args()) {
+    for (const auto &arg : block.args()) {
       ir_mapping.Add(arg, new_block->AddArgument(arg.type()));
     }
     other.push_back(new_block);
@@ -69,7 +69,7 @@ void Region::CloneInto(Region &other, IrMapping &ir_mapping) {
       auto op_iter = iter->begin();
       auto new_op_iter = new_iter->begin();
       for (; op_iter != iter->end(); ++op_iter, ++new_op_iter) {
-        Operation &op = *op_iter;
+        const Operation &op = *op_iter;
         Operation &new_op = *new_op_iter;
         // operands of new_op are same as op, now map them.
         for (uint32_t i = 0; i < op.num_operands(); ++i)

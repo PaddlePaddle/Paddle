@@ -22,24 +22,45 @@ class Operation;
 
 namespace detail {
 template <typename T, typename... OthersT>
+struct ExactlyOneConstIrType {
+  using type = void;
+};
+template <typename T, typename FirstT, typename... OthersT>
+struct ExactlyOneConstIrType<T, FirstT, OthersT...> {
+  using type =
+      std::conditional_t<std::is_convertible<T, FirstT>::value,
+                         FirstT,
+                         typename ExactlyOneConstIrType<T, OthersT...>::type>;
+};
+template <typename T>
+using ConstIrType = typename detail::
+    ExactlyOneConstIrType<T, Value, const Block*, const Operation*>::type;
+
+template <typename T, typename... OthersT>
 struct ExactlyOneIrType {
   using type = void;
 };
 template <typename T, typename FirstT, typename... OthersT>
 struct ExactlyOneIrType<T, FirstT, OthersT...> {
   using type =
-      std::conditional_t<std::is_convertible<T, FirstT>::value,
+      std::conditional_t<std::is_convertible<FirstT, ConstIrType<T>>::value,
                          FirstT,
                          typename ExactlyOneIrType<T, OthersT...>::type>;
 };
+template <typename T>
+using IrType =
+    typename detail::ExactlyOneIrType<T, Value, Block*, Operation*>::type;
 }  // namespace detail
+
 class IrMapping {
  public:
   template <typename T>
-  using IrType =
-      typename detail::ExactlyOneIrType<T, Value, Block*, Operation*>::type;
+  using ConstIrType = detail::ConstIrType<T>;
   template <typename T>
-  std::unordered_map<T, T>& GetMutableMap() {
+  using IrType = detail::IrType<T>;
+
+  template <typename T>
+  std::unordered_map<ConstIrType<T>, T>& GetMutableMap() {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
     } else if constexpr (std::is_same<T, Block*>::value) {
@@ -50,8 +71,9 @@ class IrMapping {
       IR_THROW("Not support type in IRMapping.");
     }
   }
+
   template <typename T>
-  const std::unordered_map<T, T>& GetMap() const {
+  const std::unordered_map<ConstIrType<T>, T>& GetMap() const {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
     } else if constexpr (std::is_same<T, Block*>::value) {
@@ -62,6 +84,7 @@ class IrMapping {
       IR_THROW("Not support type in IRMapping.");
     }
   }
+
   template <typename T, typename S>
   void Add(T from, S to) {
     if (!from) return;
@@ -69,8 +92,8 @@ class IrMapping {
   }
 
   template <typename T>
-  T Lookup(T from) const {
-    if (!from) return static_cast<T>(nullptr);
+  IrType<T> Lookup(T from) const {
+    if (!from) return static_cast<IrType<T>>(nullptr);
     IR_ENFORCE(GetMap<IrType<T>>().count(from) > 0,
                "Not found key in IRMapping.");
     return GetMap<IrType<T>>().at(from);
@@ -89,8 +112,8 @@ class IrMapping {
 
  private:
   std::unordered_map<Value, Value> value_map_;
-  std::unordered_map<Block*, Block*> block_map_;
-  std::unordered_map<Operation*, Operation*> operation_map_;
+  std::unordered_map<const Block*, Block*> block_map_;
+  std::unordered_map<const Operation*, Operation*> operation_map_;
 };
 
 }  // namespace pir
