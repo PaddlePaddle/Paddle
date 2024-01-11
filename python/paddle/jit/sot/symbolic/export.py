@@ -51,7 +51,27 @@ class PyFileGen:
 
         self.layer_name_map = {}
         self.layer_name_generator = NameGenerator("_")
-        self.SIR_name = SIR.name.replace("_", "")
+        self.layer_name = SIR.name.replace("_", "")
+
+        self.SIR_hash = self.hash_SIR(SIR)
+
+    def hash_SIR(self, SIR):
+        hash_target = []
+
+        for stmt in SIR.statements:
+            hash_value = [stmt.type, stmt.name]
+            for inp in stmt.inputs:
+                if isinstance(inp, Symbol):
+                    meta = SIR.symbol_meta_map[inp]
+                    hash_value.append(meta)
+                elif inp.__hash__ is not None:
+                    hash_value.append(inp)
+                else:
+                    hash_value.append("Unhashable:" + str(inp.__class__))
+            # if input is specific, output is not important
+            hash_target.append(tuple(hash_value))
+
+        return hash(tuple(hash_target))
 
     def new_root(self, *args):
         stmt = PyStatement(*args)
@@ -94,13 +114,16 @@ class PyFileGen:
 
     def create_header(self):
         self.new_root(
+            f"# {self.SIR_hash}",
             "import paddle",
             "import unittest",
             "import numpy as np",
         )
 
     def create_layer(self):
-        layer_class = self.new_root(f"class {self.SIR_name}(paddle.nn.Layer):")
+        layer_class = self.new_root(
+            f"class {self.layer_name}(paddle.nn.Layer):"
+        )
 
         init_fn = layer_class.add_sub("def __init__(self):")
         init_fn.add_sub("super().__init__()")
@@ -146,7 +169,7 @@ class PyFileGen:
 
     def create_test(self):
         test_class = self.new_root(
-            f"class Test{self.SIR_name}(unittest.TestCase):"
+            f"class Test{self.layer_name}(unittest.TestCase):"
         )
 
         setup = test_class.add_sub("def setUp(self):")
@@ -172,7 +195,7 @@ class PyFileGen:
                     )
         test_inputs.append(")")
         setup.add_sub(*test_inputs)
-        setup.add_sub(f"self.net = {self.SIR_name}()")
+        setup.add_sub(f"self.net = {self.layer_name}()")
 
         train = test_class.add_sub(
             "def train(self, net, to_static, with_cinn=False):"
