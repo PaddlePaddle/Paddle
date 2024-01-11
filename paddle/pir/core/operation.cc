@@ -78,9 +78,9 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
 
   auto name = op_info ? op_info.name() : "";
-  VLOG(6) << "Create Operation [" << name
-          << "]: {ptr = " << static_cast<void *>(base_ptr)
-          << ", size = " << base_size << "} done.";
+  VLOG(10) << "Create Operation [" << name
+           << "]: {ptr = " << static_cast<void *>(base_ptr)
+           << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -158,8 +158,7 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) {
 
   // record outputs mapping info
   for (uint32_t i = 0; i < num_results_; ++i) {
-    ir_mapping.Add(static_cast<Value>(result(i)),
-                   static_cast<Value>(new_op->result(i)));
+    ir_mapping.Add(result(i), new_op->result(i));
   }
 
   if (options.IsCloneRegions()) {
@@ -221,8 +220,8 @@ void Operation::Destroy() {
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
-  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
-          << ", size = " << result_mem_size << "} done.";
+  VLOG(10) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+           << ", size = " << result_mem_size << "} done.";
   aligned_free(aligned_ptr);
 }
 

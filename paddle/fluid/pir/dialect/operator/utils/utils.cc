@@ -27,6 +27,10 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/utils/string/string_helper.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#endif
+
 namespace paddle {
 namespace dialect {
 
@@ -62,11 +66,16 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
-    CReduceMinOp::name(),
+    LrnOp::name(),
+    LrnGradOp::name(),
     BilateralSliceOp::name(),
-    BilateralSliceGradOp::name()};
+    BilateralSliceGradOp::name()
+#ifdef PADDLE_WITH_DNNL
+        paddle::onednn::dialect::LrnOp::name(),
+    paddle::onednn::dialect::LrnGradOp::name(),
+#endif
+    CReduceMinOp::name()};
 
-const std::unordered_set<std::string> OneDNNLegacyOpList = {};
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -226,12 +235,6 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 }
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
-
-#ifdef PADDLE_WITH_DNNL
-bool IsOneDNNLegacyOp(const std::string& name) {
-  return OneDNNLegacyOpList.count(name);
-}
-#endif
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();

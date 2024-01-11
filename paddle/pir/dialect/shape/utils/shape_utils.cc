@@ -46,24 +46,7 @@ bool ShapeAnalysis::IsProductEqual(
 }
 
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
-    : m_(m), mgr_(m) {
-  for (auto& op : m.block()) {
-    auto tie_shape_op = op.dyn_cast<shape::TieShapeOp>();
-    if (!tie_shape_op) continue;
-    Value result = tie_shape_op.input();
-    auto& symbols = value_to_sym_dims_[result];
-    auto attrs =
-        tie_shape_op
-            .attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName())
-            .AsVector();
-    for (const auto& attr : attrs) {
-      auto sym_op = mgr_.symbolTable().Lookup<SymbolicDimOp>(
-          attr.dyn_cast<StrAttribute>().AsString());
-      if (!sym_op) continue;
-      symbols.push_back(sym_op);
-    }
-  }
-}
+    : m_(m), mgr_(m) {}
 
 ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {}
 
