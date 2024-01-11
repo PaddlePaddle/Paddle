@@ -1175,6 +1175,8 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
         )
         op_interfaces_tmp = op_interfaces
         exclusive_interface_str_tmp = exclusive_interface_str
+        decomp_interface_str = "paddle::dialect::DecompInterface"
+        decomp_interface_declare_str = "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
@@ -1210,10 +1212,13 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     and kernel_func_name in decomp_interface_declare_gen_op_list
                     and dialect_name != "pd_onednn_op"
                 ):
-                    op_interfaces = op_interfaces + [
-                        "paddle::dialect::DecompInterface"
-                    ]
-                    exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
+                    if decomp_interface_str not in op_interfaces:
+                        op_interfaces = op_interfaces + [decomp_interface_str]
+                    if (
+                        decomp_interface_declare_str
+                        not in exclusive_interface_str
+                    ):
+                        exclusive_interface_str += decomp_interface_declare_str
                 else:
                     op_interfaces = op_interfaces_tmp
                     exclusive_interface_str = exclusive_interface_str_tmp

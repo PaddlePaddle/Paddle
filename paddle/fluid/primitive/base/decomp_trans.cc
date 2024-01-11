@@ -32,8 +32,11 @@ using Program = pir::Program;
 
 // some outputs like xshape will no longer used after decomp, and those outputs
 // will skip checking.
-std::unordered_set<std::string> decomp_op_contain_none = {
-    "pd_op.squeeze", "pd_op.unsqueeze", "pd_op.flatten", "pd_op.batch_norm"};
+std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
+                                                          "pd_op.unsqueeze",
+                                                          "pd_op.flatten",
+                                                          "pd_op.batch_norm",
+                                                          "pd_op.batch_norm_"};
 
 static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
