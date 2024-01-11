@@ -117,6 +117,21 @@ class ReduceBlockCreater {
     Expr body = new_update_block_realize_;
     bool has_add_init_block = false;
     for (int i = num_loops - 1; i >= 0; --i) {
+      bool is_spatial_loop =
+          new_spatial_loop_var_names_.count(
+              original_loops_[i].As<For>()->loop_var->name) > 0;
+      bool is_rf_loop = rf_loop_.As<For>()->loop_var->name ==
+                        original_loops_[i].As<For>()->loop_var->name;
+      // Skip non rf reduction loops of write back block.
+      if (!is_rf_block_ && !is_spatial_loop && !is_rf_loop) {
+        continue;
+      }
+      // Add reduce init block.
+      if (!has_add_init_block && is_spatial_loop) {
+        body = Block::Make({new_init_block_realize_, body});
+        has_add_init_block = true;
+      }
+      // Add If
       if (original_loops_[i].As<For>()->body.As<IfThenElse>()) {
         const IfThenElse* original_if =
             original_loops_[i].As<For>()->body.As<IfThenElse>();
@@ -135,20 +150,6 @@ class ReduceBlockCreater {
                                             ->stmts[0]
                                             .As<IfThenElse>();
         body = IfThenElse::Make(original_if->condition, body);
-      }
-      bool is_spatial_loop =
-          new_spatial_loop_var_names_.count(
-              original_loops_[i].As<For>()->loop_var->name) > 0;
-      bool is_rf_loop = rf_loop_.As<For>()->loop_var->name ==
-                        original_loops_[i].As<For>()->loop_var->name;
-      // Skip non rf reduction loops of write back block.
-      if (!is_rf_block_ && !is_spatial_loop && !is_rf_loop) {
-        continue;
-      }
-      // Add reduce init block.
-      if (!has_add_init_block && is_spatial_loop) {
-        body = Block::Make({new_init_block_realize_, body});
-        has_add_init_block = true;
       }
       // Add loops
       Var loop_var = ir_utils::IRCopy(original_loops_[i].As<For>()->loop_var);
