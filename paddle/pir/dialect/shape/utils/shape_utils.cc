@@ -150,7 +150,7 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
 
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
-  CHECK(value_to_shape_or_data_.find(value) != value_to_shape_or_data_.end());
+  CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end());
   return value_to_shape_or_data_[val];
 }
 
