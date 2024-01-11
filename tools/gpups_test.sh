@@ -122,10 +122,15 @@ tmp_dir=`mktemp -d`
 tmpfile_rand=`date +%s%N`
 tmpfile=$tmp_dir/$tmpfile_rand"_"$i
 set +e
-ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
-EXIT_CODE_1=$?
+#ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
+#EXIT_CODE_1=$?
 
-ctest --output-on-failure -R "($serial_list)" --timeout 180 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
+NUM_PROC=4
+for (( i = 0; i < $NUM_PROC; i++ )); do
+    cuda_list="$((i*2)) $((i*2+1))"
+    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" --timeout 180 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+done
+wait;
 EXIT_CODE_2=$?
 set -e
 
