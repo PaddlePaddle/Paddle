@@ -33,6 +33,7 @@ enum CCLDataType {
   CCL_DATA_TYPE_FP64 = 0,
   CCL_DATA_TYPE_FP32,
   CCL_DATA_TYPE_FP16,
+  CCL_DATA_TYPE_BF16,
   CCL_DATA_TYPE_INT64,
   CCL_DATA_TYPE_INT32,
   CCL_DATA_TYPE_INT16,
@@ -73,6 +74,8 @@ inline CCLDataType ToCCLDataType(phi::DataType type) {
     return CCL_DATA_TYPE_FP32;
   } else if (type == phi::DataType::FLOAT16) {
     return CCL_DATA_TYPE_FP16;
+  } else if (type == phi::DataType::BFLOAT16) {
+    return CCL_DATA_TYPE_BF16;
   } else if (type == phi::DataType::INT64) {
     return CCL_DATA_TYPE_INT64;
   } else if (type == phi::DataType::INT32) {
