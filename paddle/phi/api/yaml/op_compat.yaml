@@ -2668,6 +2668,8 @@
 - op : save_combine
   inputs :
     {x : X}
+  outputs :
+    {out : Y}
 
 - op : scale
   backward : scale_grad
