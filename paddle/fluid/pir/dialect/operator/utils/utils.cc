@@ -28,7 +28,7 @@
 #include "paddle/utils/string/string_helper.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
 namespace paddle {

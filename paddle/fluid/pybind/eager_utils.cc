@@ -2177,14 +2177,14 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       item = CastPyArg2ValuePreHook(item);
-      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
+      if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
       } else if (item == Py_None) {
         continue;
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
-            "vector<OpResult>, but got vector<%s>",
+            "vector<Value>, but got vector<%s>",
             op_type,
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)
@@ -2197,14 +2197,14 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       item = CastPyArg2ValuePreHook(item);
-      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
+      if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
       } else if (item == Py_None) {
         continue;
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
-            "vector<OpResult>, but got vector<%s>",
+            "vector<Value>, but got vector<%s>",
             op_type,
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)

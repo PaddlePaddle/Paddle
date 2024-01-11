@@ -673,6 +673,11 @@ void PdOp2CinnOpConverter(::pir::Program *program) {
 
   pm.Run(program);
 }
+
+std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass() {
+  return std::make_unique<PdOpToCinnOpPass>();
+}
+
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
