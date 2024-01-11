@@ -217,6 +217,36 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool SumOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  std::string operand_source_id = pir::GetValueId(&operand_source);
+  pir::OpResult res = op->result(0);
+  std::string res_id = pir::GetValueId(&res);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  std::vector<symbol::DimExpr> shapes;
+  VLOG(1) << "SumOpInferSymbolicShape begin";
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+    VLOG(1) << "SumOpInferSymbolicShape dim_expr = " << dim_expr;
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes};
+  shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+  return true;
+}
+
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source_shape = op->operand_source(1);
