@@ -1633,7 +1633,8 @@ void BindPassManager(pybind11::module *m) {
              return pass_names;
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
-      .def("empty", &PassManager::Empty);
+      .def("empty", &PassManager::empty)
+      .def("clear", &PassManager::clear);
 }
 
 void BindPir(pybind11::module *module) {

@@ -83,6 +83,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'generate_sequence_xpu',
     'layer_norm_act_xpu',
     'memcpy',
+    'memcpy_d2h_multi_io',
     'batch_norm_',
     'multi_encoder_xpu',
     'multihead_matmul',

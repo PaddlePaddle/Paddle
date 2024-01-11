@@ -380,6 +380,30 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
         self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
 
 
+class TestDygraphInplaceCopysign(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.randn(10, 20)
+        self.dtype = "float32"
+        self.y = -3.0
+
+    def inplace_api_processing(self, var):
+        return paddle.copysign_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.copysign(var, self.y)
+
+    def test_leaf_inplace_var_error(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var.stop_gradient = False
+            self.y = paddle.rand([2, 10, 20])
+
+            def leaf_inplace_error():
+                self.inplace_api_processing(var)
+
+            self.assertRaises(ValueError, leaf_inplace_error)
+
+
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.unsqueeze(var, -1)

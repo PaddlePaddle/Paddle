@@ -46,8 +46,8 @@
 #include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
 
@@ -127,6 +127,23 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     AssertOp::name(),
     SelectInputOp::name(),
     "cinn_runtime.jit_kernel"};
+
+const std::unordered_map<std::string, uint32_t> XShapeRelatedOps = {
+    {paddle::dialect::ReshapeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::SqueezeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::FlattenOp::name(), /*xshape_idx*/ 1U},
+};
+
+static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
+  bool need_skip = false;
+  if (op->isa<paddle::dialect::FetchOp>()) {
+    auto define_op_name = op->operand_source(0).defining_op()->name();
+    uint32_t index = op->operand_source(0).dyn_cast<pir::OpResult>().index();
+    need_skip = XShapeRelatedOps.count(define_op_name) > 0 &&
+                (XShapeRelatedOps.at(define_op_name) == index);
+  }
+  return need_skip;
+}
 
 static bool NeedFallBackCpu(const pir::Operation* op,
                             const std::string& kernel,
@@ -325,9 +342,13 @@ static pir::OpResult AddPlaceTransferOp(pir::Value in,
   } else if ((src_place.GetType() == phi::AllocationType::GPU) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
     copy_kernel_key.set_backend(phi::Backend::GPU);
+    std::string copy_kernel_name = "memcpy_d2h";
+    if (in.type().isa<AllocatedDenseTensorArrayType>()) {
+      copy_kernel_name = "memcpy_d2h_multi_io";
+    }
     op_attribute = {
-        {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_d2h")},
-        {"kernel_name", pir::StrAttribute::get(ctx, "memcpy_d2h")},
+        {"op_name", pir::StrAttribute::get(ctx, "pd_op." + copy_kernel_name)},
+        {"kernel_name", pir::StrAttribute::get(ctx, copy_kernel_name)},
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 0)}};
   } else {
@@ -1757,6 +1778,11 @@ std::vector<pir::Value> BuildInputs(
         (op_item->isa<::pir::SetParameterOp>()) ||
         (kernel.IsValid() && (!UnchangeOutputOps.count(op_item->name())));
 
+    // NOTE(Aurelius84): In case of Reshape/Squeeze/Flatten.XShape,
+    // Skip insert memcpyd2h for fetch op
+    check_place_transfer =
+        check_place_transfer && !NeedSkipPlaceTransfer(op_item);
+
     if (check_place_transfer) {
       if (new_in_type.isa<AllocatedDenseTensorType>()) {
         // allocated type
@@ -2086,18 +2112,13 @@ pir::Operation* BuildKernelOp(
     op_attribute.emplace(
         "extra_args",
         pir::ArrayAttribute::get(pir::IrContext::Instance(), extra_args));
-    op_attribute.emplace(
-        "layout_transform_arg",
-        pir::StrAttribute::get(
-            ctx, op_info_parser->OpRuntimeInfo().layout_transform_arg));
-    std::vector<pir::Attribute> layout_transform_inputs;
-    for (auto& input :
-         op_info_parser->OpRuntimeInfo().layout_transform_inputs) {
-      layout_transform_inputs.push_back(pir::StrAttribute::get(ctx, input));
+    std::vector<pir::Attribute> data_format_tensors;
+    for (auto& input : op_info_parser->OpRuntimeInfo().data_format_tensors) {
+      data_format_tensors.push_back(pir::StrAttribute::get(ctx, input));
     }
-    op_attribute.emplace("layout_transform_inputs",
+    op_attribute.emplace("data_format_tensors",
                          pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                                  layout_transform_inputs));
+                                                  data_format_tensors));
     op_attribute.emplace(
         "is_onednn_only",
         pir::BoolAttribute::get(
@@ -2219,7 +2240,7 @@ void ProcessBlock(
         }
       }
       std::string target_op_name = op_item->name();
-      target_op_name.replace(0, 12, "pd_op");
+      target_op_name.replace(0, 9, "pd_op");
       auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
       if (!op_info) {
         IR_THROW("Ctx should have corresponding OpInfo %s", target_op_name);
