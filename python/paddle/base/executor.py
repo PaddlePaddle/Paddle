@@ -1615,7 +1615,7 @@ class Executor:
             del trainer_instance
         self.trainer_caches.clear()
 
-    def _dtype_to_str(in_dtype):
+    def _dtype_to_str(self, in_dtype):
         if in_dtype == core.VarDesc.VarType.FP16:
             return "fp16"
         elif in_dtype == core.VarDesc.VarType.BF16:
@@ -1624,10 +1624,12 @@ class Executor:
             return "fp32"
         elif in_dtype == core.VarDesc.VarType.FP64:
             return "fp64"
+        else:
+            return None
 
     def _add_cast_for_type_promotion(self, op, block, idx, var_name, out_dtype):
         op_device = op.attr('op_device')
-        cast_name = var_name.name + '.cast_' + _dtype_to_str(out_dtype)
+        cast_name = var_name.name + '.cast_' + self._dtype_to_str(out_dtype)
         out_var = block.create_var(
             name=cast_name,
             dtype=out_dtype,
