@@ -123,11 +123,11 @@ std::vector<::pir::Value> CompatibleInfo::RealOperandSources(
   }
 }
 
-#define CASE_ATTRIBUTE(val_type, attr_type)                      \
-  std::vector<#val_type> res;                                    \
-  for (auto element : attr_vec) {                                \
-    res.push_back(element.dyn_cast<::pir::#attr_type>().data()); \
-  }                                                              \
+#define CASE_ATTRIBUTE(val_type, attr_type)                     \
+  std::vector<val_type> res;                                    \
+  for (auto element : attr_vec) {                               \
+    res.push_back(element.dyn_cast<::pir::attr_type>().data()); \
+  }                                                             \
   dst_attr = res;
 
 static utils::Attribute ConvertArrayAttribute() {
@@ -166,9 +166,9 @@ static utils::Attribute ConvertArrayAttribute() {
 }
 #undef CASE_ATTRIBUTE
 
-#define CASE_SINGLE_ATTR(attr_type, func)                \
-  else if (src_attr.isa<::pir::#attr_type>()) dst_attr = \
-      src_attr.dyn_cast<::pir::#attr_type>().#func();
+#define CASE_SINGLE_ATTR(attr_type, func)               \
+  else if (src_attr.isa<::pir::attr_type>()) dst_attr = \
+      src_attr.dyn_cast<::pir::attr_type>().func();
 
 utils::Attribute CompatibleInfo::ConvertAttribute(
     const ::pir::Attribute& src_attr) {
