@@ -3005,15 +3005,9 @@ bool ShapeBroadcastOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
-  std::string x_id = pir::GetValueId(&x);
-  std::string y_id = pir::GetValueId(&y);
 
-  IR_ENFORCE(shape_analysis->value_id_to_shapeordata_.count(x_id) > 0,
-             "x_id does not exist.");
-  IR_ENFORCE(shape_analysis->value_id_to_shapeordata_.count(y_id) > 0,
-             "y_id does not exist.");
-  const auto &x_data_shape = shape_analysis->value_id_to_shapeordata_.at(x_id);
-  const auto &y_data_shape = shape_analysis->value_id_to_shapeordata_.at(y_id);
+  const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
+  const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
   IR_ENFORCE(x_data_shape.data().has_value(),
              "Value x comes from ShapeOp, it must have data");
   IR_ENFORCE(y_data_shape.data().has_value(),
@@ -3028,10 +3022,9 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   }
 
   pir::OpResult res = result(0);
-  std::string res_id = pir::GetValueId(&res);
   symbol::ShapeOrDataDimExprs output_data_shape =
       symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(output_data);
-  shape_analysis->value_id_to_shapeordata_[res_id] = output_data_shape;
+  shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }
 
