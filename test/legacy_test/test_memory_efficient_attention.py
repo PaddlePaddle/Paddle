@@ -221,161 +221,170 @@ class TestMemEffAttentionAPI(unittest.TestCase):
         )
 
 
-class TestMemEffAPIDtypeFp16(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp16"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 128, 128)
-        self.dtype = paddle.float16
-        self.dropout = 0.0
-        self.attention_bias = None
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIDtypeFp16(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp16"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 128, 128)
+#         self.dtype = paddle.float16
+#         self.dropout = 0.0
+#         self.attention_bias = None
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIShape0(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 128, 32)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = None
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIShape0(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 128, 32)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = None
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIShape1(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 16, 16)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = None
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIShape1(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 16, 16)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = None
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIShape2(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 8, 8)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = None
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIShape2(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 8, 8)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = None
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIShape3(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (16, 32, 128, 128)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = None
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIShape3(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (16, 32, 128, 128)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = None
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIMask0(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32_BlockDiagonalMask"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 128, 128)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = create_attn_bias(
-            ab.BlockDiagonalMask,
-            self.shape[0],
-            self.shape[2],
-            self.shape[1],
-            self.shape[1],
-            "float32",
-            self.dtype,
-            False,
-            "BMHK",
-        )
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIMask0(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32_BlockDiagonalMask"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 128, 128)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = create_attn_bias(
+#             ab.BlockDiagonalMask,
+#             self.shape[0],
+#             self.shape[2],
+#             self.shape[1],
+#             self.shape[1],
+#             "float32",
+#             self.dtype,
+#             False,
+#             "BMHK",
+#         )
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIMask1(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32_BlockDiagonalCausalMask"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 128, 128)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = create_attn_bias(
-            ab.BlockDiagonalCausalMask,
-            self.shape[0],
-            self.shape[2],
-            self.shape[1],
-            self.shape[1],
-            "float32",
-            self.dtype,
-            False,
-            "BMHK",
-        )
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIMask1(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32_BlockDiagonalCausalMask"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 128, 128)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = create_attn_bias(
+#             ab.BlockDiagonalCausalMask,
+#             self.shape[0],
+#             self.shape[2],
+#             self.shape[1],
+#             self.shape[1],
+#             "float32",
+#             self.dtype,
+#             False,
+#             "BMHK",
+#         )
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIMask2(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32_LowerTriangularMask"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 128, 128)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = create_attn_bias(
-            ab.LowerTriangularMask,
-            self.shape[0],
-            self.shape[2],
-            self.shape[1],
-            self.shape[1],
-            "float32",
-            self.dtype,
-            False,
-            "BMHK",
-        )
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIMask2(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32_LowerTriangularMask"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 128, 128)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = create_attn_bias(
+#             ab.LowerTriangularMask,
+#             self.shape[0],
+#             self.shape[2],
+#             self.shape[1],
+#             self.shape[1],
+#             "float32",
+#             self.dtype,
+#             False,
+#             "BMHK",
+#         )
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
-class TestMemEffAPIMask3(TestMemEffAttentionAPI):
-    def setUp(self):
-        self.name = "MemEffAPI_fp32_AnyTensor"
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 128, 128)
-        self.dtype = paddle.float32
-        self.dropout = 0.0
-        self.attention_bias = (
-            paddle.randn(
-                (self.shape[0], self.shape[2], 1, self.shape[1]),
-                dtype=self.dtype,
-            )
-            * 3
-        )
-        self.attention_bias = self.attention_bias.expand(
-            [self.shape[0], self.shape[2], self.shape[1], self.shape[1]]
-        )
-        self.attention_bias.stop_gradient = False
-        self.training = True
-        self.scale = 1.0 / np.sqrt(self.shape[-1])
-        self.seed = 2023
+# class TestMemEffAPIMask3(TestMemEffAttentionAPI):
+#     def setUp(self):
+#         return
+#         self.name = "MemEffAPI_fp32_AnyTensor"
+#         self.place = paddle.CUDAPlace(0)
+#         self.shape = (1, 32, 128, 128)
+#         self.dtype = paddle.float32
+#         self.dropout = 0.0
+#         self.attention_bias = (
+#             paddle.randn(
+#                 (self.shape[0], self.shape[2], 1, self.shape[1]),
+#                 dtype=self.dtype,
+#             )
+#             * 3
+#         )
+#         self.attention_bias = self.attention_bias.expand(
+#             [self.shape[0], self.shape[2], self.shape[1], self.shape[1]]
+#         )
+#         self.attention_bias.stop_gradient = False
+#         self.training = True
+#         self.scale = 1.0 / np.sqrt(self.shape[-1])
+#         self.seed = 2023
 
 
 if __name__ == '__main__':

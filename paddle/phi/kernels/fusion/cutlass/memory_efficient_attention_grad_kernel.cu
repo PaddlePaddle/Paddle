@@ -404,9 +404,27 @@ void MemoryEfficientAttentionGradKernel(
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
     p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);
     p.grad_output_ptr = phi::SafeGetTensorPtr<scalar_t>(output_grad);
-    p.grad_query_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
-    p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
-    p.grad_value_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
+    VLOG(3) << "query_grad" << query_grad;
+    VLOG(3) << "key_grad" << key_grad;
+    VLOG(3) << "value_grad" << value_grad;
+
+    if (query_grad) {
+      p.grad_query_ptr =
+          phi::SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
+    } else {
+      p.grad_query_ptr = nullptr;
+    }
+    if (key_grad) {
+      p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
+    } else {
+      p.grad_key_ptr = nullptr;
+    }
+    if (value_grad) {
+      p.grad_value_ptr =
+          phi::SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
+    } else {
+      p.grad_value_ptr = nullptr;
+    }
     p.delta_ptr = phi::SafeGetTensorPtr<float>(delta);
     PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
     PD_MEA_CHECK_OVERFLOW(p.head_dim_value, v_dims[3]);
