@@ -496,7 +496,7 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
 
 /************* SPARSE*SPARSE->SPARSE MATMUL ************/
 template <typename T>
-__global__ void GetCsrBatchNNZ(const int32_t* crow_data,
+__global__ void GetCsrBatchNnz(const int32_t* crow_data,
                                int64_t rows,
                                int32_t* batch_nnz) {
   int64_t i = static_cast<int64_t>(threadIdx.x);
@@ -521,14 +521,6 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
   out_crows_meta.set_dims(mat_a.crows().dims());
   dev_ctx_.template Alloc<int32_t>(mat_out_crows);
 
-  MetaTensor out_cols_meta(mat_out_cols);
-  out_cols_meta.set_dtype(phi::DataType::INT32);
-  dev_ctx_.template Alloc<int32_t>(mat_out_cols);
-
-  MetaTensor out_values_meta(mat_out_values);
-  out_values_meta.set_dtype(mat_a.values().dtype());
-  dev_ctx_.template Alloc<T>(mat_out_values);
-
   std::vector<int64_t> a_dim_vec = common::vectorize(mat_a.dims());
   auto a_ndims = a_dim_vec.size();
   const int64_t a_rows = a_dim_vec[a_ndims - 2];
@@ -544,43 +536,49 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
   const int64_t b_cols = b_dim_vec[b_ndims - 1];
 
   // cusparseSpGEMM only support 32-bit indices.
-  DenseTensor a_crows_int, a_cols_int, b_crows_int, b_cols_int;
-  const int32_t *a_crows_data, *a_cols_data, *b_crows_data, *b_cols_data;
+  const int32_t *a_crows_data = nullptr, *a_cols_data = nullptr,
+                *b_crows_data = nullptr, *b_cols_data = nullptr;
+  std::shared_ptr<DenseTensor> a_crows_int = nullptr, a_cols_int = nullptr,
+                               b_crows_int = nullptr, b_cols_int = nullptr;
 
   if (mat_a.crows().dtype() == phi::DataType::INT32) {
     a_crows_data = mat_a.crows().data<int32_t>();
     a_cols_data = mat_a.cols().data<int32_t>();
   } else {
-    phi::MetaTensor crows_meta(&a_crows_int);
+    a_crows_int = std::make_shared<DenseTensor>();
+    a_cols_int = std::make_shared<DenseTensor>();
+    phi::MetaTensor crows_meta(a_crows_int.get());
     crows_meta.set_dims(mat_a.crows().dims());
-    phi::MetaTensor cols_meta(&a_cols_int);
+    phi::MetaTensor cols_meta(a_cols_int.get());
     cols_meta.set_dims(mat_a.cols().dims());
 
     phi::CastKernel<int64_t>(
-        dev_ctx_, mat_a.crows(), phi::DataType::INT32, &a_crows_int);
+        dev_ctx_, mat_a.crows(), phi::DataType::INT32, a_crows_int.get());
     phi::CastKernel<int64_t>(
-        dev_ctx_, mat_a.cols(), phi::DataType::INT32, &a_cols_int);
+        dev_ctx_, mat_a.cols(), phi::DataType::INT32, a_cols_int.get());
 
-    a_crows_data = a_crows_int.data<int32_t>();
-    a_cols_data = a_cols_int.data<int32_t>();
+    a_crows_data = a_crows_int->data<int32_t>();
+    a_cols_data = a_cols_int->data<int32_t>();
   }
 
   if (mat_b.crows().dtype() == phi::DataType::INT32) {
     b_crows_data = mat_b.crows().data<int32_t>();
     b_cols_data = mat_b.cols().data<int32_t>();
   } else {
-    phi::MetaTensor crows_meta(&b_crows_int);
+    b_crows_int = std::make_shared<DenseTensor>();
+    b_cols_int = std::make_shared<DenseTensor>();
+    phi::MetaTensor crows_meta(b_crows_int.get());
     crows_meta.set_dims(mat_b.crows().dims());
-    phi::MetaTensor cols_meta(&b_cols_int);
+    phi::MetaTensor cols_meta(b_cols_int.get());
     cols_meta.set_dims(mat_b.cols().dims());
 
     phi::CastKernel<int64_t>(
-        dev_ctx_, mat_b.crows(), phi::DataType::INT32, &b_crows_int);
+        dev_ctx_, mat_b.crows(), phi::DataType::INT32, b_crows_int.get());
     phi::CastKernel<int64_t>(
-        dev_ctx_, mat_b.cols(), phi::DataType::INT32, &b_cols_int);
+        dev_ctx_, mat_b.cols(), phi::DataType::INT32, b_cols_int.get());
 
-    b_crows_data = b_crows_int.data<int32_t>();
-    b_cols_data = b_cols_int.data<int32_t>();
+    b_crows_data = b_crows_int->data<int32_t>();
+    b_cols_data = b_cols_int->data<int32_t>();
   }
 
   const T* a_values_data = mat_a.values().data<T>();
@@ -601,7 +599,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
     void* tmp_buffer_ptr = tmp_buffer->ptr();
 
-    GetCsrBatchNNZ<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
+    GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         a_crows_data, a_rows, static_cast<int32_t*>(tmp_buffer_ptr));
     phi::backends::gpu::GpuMemcpyAsync(a_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,
@@ -609,7 +607,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx_.stream());
 
-    GetCsrBatchNNZ<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
+    GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         b_crows_data, b_rows, static_cast<int32_t*>(tmp_buffer_ptr));
     phi::backends::gpu::GpuMemcpyAsync(b_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,
@@ -815,8 +813,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
     *(mat_out->mutable_values()) = std::move(out_batch_values_vec[0]);
 
   } else {
-    std::vector<const DenseTensor*> cols_vec;
-    std::vector<const DenseTensor*> values_vec;
+    std::vector<const DenseTensor*> cols_vec, values_vec;
 
     for (int i = 0; i < batch_size; ++i) {
       cols_vec.push_back(&out_batch_cols_vec[i]);
