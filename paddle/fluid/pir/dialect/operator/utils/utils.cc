@@ -313,6 +313,9 @@ std::string GetValueDataType(const pir::Type& type) {
 }
 
 std::string GetValueDataType(const pir::Value& value) {
+  if (value.impl() == nullptr) {
+    return "";
+  }
   if (value.type().isa<pir::DenseTensorType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
