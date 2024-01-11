@@ -78,7 +78,7 @@ platform::DeviceContext* ParseDeviceContext(
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
   if (platform::is_gpu_place(place) || platform::is_custom_place(place)) {
-    VLOG(0) << "Parse DeviceContext for " << op_name
+    VLOG(6) << "Parse DeviceContext for " << op_name
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
       dev_ctx = ctx_manager

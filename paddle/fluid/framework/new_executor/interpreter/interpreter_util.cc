@@ -721,7 +721,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
     }
 
-    VLOG(0) << op_type
+    VLOG(6) << op_type
             << " : [execution_stream, stream_priority, scheduling_priority] = ["
             << op_func_node.execution_stream_ << ", "
             << op_func_node.stream_priority_ << ", "

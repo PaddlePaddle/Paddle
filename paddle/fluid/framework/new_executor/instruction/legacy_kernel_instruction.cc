@@ -90,7 +90,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
     }
     SetEventsToWaitInfo(events_to_wait);
   }
-  VLOG(0) << "finish process dist attributes for " << op_name
+  VLOG(6) << "finish process dist attributes for " << op_name
           << " : [execution_stream, stream_priority, scheduling_priority] = ["
           << GetExecutionStream() << ", " << GetStreamPriority() << ", "
           << GetSchedulingPriority() << "]";
