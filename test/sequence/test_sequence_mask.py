@@ -22,7 +22,7 @@ import paddle
 from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
 )
-from python.paddle.pir_utils import test_with_pir_api
+from paddle.pir_utils import test_with_pir_api
 
 
 def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
