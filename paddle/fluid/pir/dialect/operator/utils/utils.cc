@@ -69,9 +69,9 @@ const std::unordered_set<std::string> LegacyOpList = {
     LrnOp::name(),
     LrnGradOp::name(),
     BilateralSliceOp::name(),
-    BilateralSliceGradOp::name()
+    BilateralSliceGradOp::name(),
 #ifdef PADDLE_WITH_DNNL
-        paddle::onednn::dialect::LrnOp::name(),
+    paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
 #endif
     CReduceMinOp::name()};
