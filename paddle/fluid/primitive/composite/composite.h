@@ -637,6 +637,92 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
   return std::make_tuple(res, mean_out, variance_out);
 }
 
+template <typename T>
+std::tuple<Tensor, Tensor, Tensor>
+paddle::primitive::details::group_norm_decomp<primitive::LazyTensor>(
+    const Tensor& x,
+    const paddle::optional<Tensor>& scale,
+    const paddle::optional<Tensor>& bias,
+    const float epsilon,
+    const int groups,
+    const std::string& data_format) {
+  ASSERT_EQ(data_format, "NCHW");
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  auto x_dim = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> one_axis(1, 1);
+
+  std::vector<int64_t> x_shape{x_dim[0] * groups, -1};
+  x_cast = reshape<T>(x_cast, x_shape);
+  auto mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
+  auto var_tmp_ =
+      mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) - mean_ * mean_;
+  auto var_ =
+      maximum<T>(var_tmp_, full<T>(var_tmp_.dims(), 0, var_tmp_.dtype()));
+  auto var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
+  auto res = (x_cast - mean_) * var_inv;
+  auto out = reshape<T>(res, x_dim);
+
+  auto scale_ptr = scale.get_ptr();
+  auto bias_ptr = bias.get_ptr();
+
+  std::vector<int64_t> slice_bias_shape{-1, 1, 1};
+  Tensor scale_cast;
+  if (scale_ptr) {
+    if (slice_bias_shape != scale_ptr->shape()) {
+      scale_cast = reshape<T>(*scale_ptr, slice_bias_shape);
+    } else {
+      scale_cast = *scale_ptr;
+    }
+    if (need_cast) {
+      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+    }
+    out = out * scale_cast;
+  }
+  Tensor bias_cast;
+  if (bias_ptr) {
+    if (slice_bias_shape != bias_ptr->shape()) {
+      bias_cast = reshape<T>(*bias_ptr, slice_bias_shape);
+    } else {
+      bias_cast = *bias_ptr;
+    }
+    if (need_cast) {
+      bias_cast = cast<T>(bias_cast, phi::DataType::FLOAT32);
+    }
+    out = out + bias_cast;
+  }
+
+  std::vector<int64_t> res_shape{x_dim[0], groups};
+  auto mean_out = reshape<T>(mean_, res_shape);
+  auto var_out = reshape<T>(var_, res_shape);
+
+  if (need_cast) {
+    out = cast<T>(out, org_dtype);
+  }
+
+  return std::make_tuple(out, mean_out, var_out);
+}
+
+template <typename T>
+Tensor meshgrid_decomp(const std::vector<Tensor>& input) {
+  int size = input.size();
+
+  std::vector<int64_t> shape;
+  for (int i = 0; i < size; ++i) {
+    shape.push_back(1);
+  }
+
+  for (int i = 0; i < size; ++i) {
+    auto dim = input[i].dims();
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
