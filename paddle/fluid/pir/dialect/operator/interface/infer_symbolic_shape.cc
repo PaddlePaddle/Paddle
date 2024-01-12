@@ -36,9 +36,9 @@ bool SameOperandsAndResultShape(
   symbol::ShapeOrDataDimExprs operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
-  op->set_attribute("symbolic_shape",
-                    pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
-                                                     operand_shape_or_data));
+  // op->set_attribute("symbolic_shape",
+  //                   pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //                                                    operand_shape_or_data));
   pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, operand_shape_or_data);
   return true;
@@ -76,9 +76,10 @@ bool InferSymbolicShapeElementWiseBinary(
   pir::OpResult res = op->result(0);
   symbol::ShapeOrDataDimExprs shape_data{shapes, data};
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  // op->set_attribute(
+  //     "symbolic_shape",
+  //     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //     shape_data));
   return true;
 }
 
@@ -116,9 +117,10 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
   }
 
   symbol::ShapeOrDataDimExprs shape_data{sym_dims};
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  // op->set_attribute(
+  //     "symbolic_shape",
+  //     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //     shape_data));
 
   pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
@@ -179,9 +181,9 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
           operand_shape_or_data);
 
   shape_analysis->SetShapeOrDataForValue(res, extend_shape_or_data);
-  op->set_attribute("symbolic_shape",
-                    pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
-                                                     extend_shape_or_data));
+  // op->set_attribute("symbolic_shape",
+  //                   pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //                                                    extend_shape_or_data));
   return true;
 }
 
@@ -210,9 +212,10 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
         symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
   }
 
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  // op->set_attribute(
+  //     "symbolic_shape",
+  //     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //     shape_data));
   pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
@@ -231,9 +234,10 @@ bool ReshapeOpInferSymbolicShape(
   }
 
   symbol::ShapeOrDataDimExprs shape_data{out_dims};
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  // op->set_attribute(
+  //     "symbolic_shape",
+  //     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //     shape_data));
 
   pir::OpResult res0 = op->result(0);
   pir::OpResult res1 = op->result(1);
@@ -263,9 +267,10 @@ bool FullIntArrayOpInferSymbolicShape(
   symbol::ShapeOrDataDimExprs shape_data =
       symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(data);
 
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  // op->set_attribute(
+  //     "symbolic_shape",
+  //     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //     shape_data));
 
   pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
@@ -275,6 +280,51 @@ bool FullIntArrayOpInferSymbolicShape(
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // TODO(zhangbopd): Not implemented yet.
+  auto operand_source = op->operand_source(0);
+  auto operand_source_1 = op->operand_source(1);
+  auto operand_source_2 = op->operand_source(2);
+
+  pir::OpResult res = op->result(0);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  // TODO(zhangbopd): check whether it's right for other cases
+  std::vector<symbol::DimExpr> shapes;
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+  }
+
+  auto starts_array =
+      shape_analysis->GetShapeOrDataForValue(operand_source_1).data();
+  auto start = starts_array->at(0).Get<int64_t>();
+
+  auto ends_array =
+      shape_analysis->GetShapeOrDataForValue(operand_source_2).data();
+  auto end = ends_array->at(0).Get<int64_t>();
+
+  std::vector<symbol::DimExpr> data;
+  auto source_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source).data();
+
+  for (int i = start; i < end; i++) {
+    data.emplace_back(source_data->at(i));
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  op->set_attribute(
+      "symbolic_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+
   return true;
 }
 
@@ -305,9 +355,10 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     shape_data =
         symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
   }
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  // op->set_attribute(
+  //     "symbolic_shape",
+  //     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
+  //     shape_data));
 
   pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
