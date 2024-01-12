@@ -79,9 +79,9 @@ struct CombineOpInferSymbolicShapeInterfaceModel
           symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
     }
 
-    // op->set_attribute("symbolic_shape",
-    //                   pir::shape::SymbolAttribute::get(
-    //                       pir::IrContext::Instance(), shape_data));
+    op->set_attribute("symbolic_shape",
+                      pir::shape::SymbolAttribute::get(
+                          pir::IrContext::Instance(), shape_data));
     auto res = op->result(0);
     shape_analysis->SetShapeOrDataForValue(res, shape_data);
     return true;

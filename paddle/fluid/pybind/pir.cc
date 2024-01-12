@@ -71,6 +71,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -460,6 +461,8 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
              for (auto &pair : self.attributes()) {
+               // SymbolAttribute is only used in PIR, no need to pass to Python
+               if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
                attrs_dict[pair.first.c_str()] =
                    paddle::dialect::GetAttributeData(pair.second);
              }
