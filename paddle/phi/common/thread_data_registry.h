@@ -24,6 +24,15 @@
 
 namespace phi {
 
+template <typename T, typename = void>
+struct IsAccumulatable : std::false_type {};
+
+template <typename T>
+struct IsAccumulatable<
+    T,
+    std::void_t<decltype(std::declval<T>() += std::declval<T>())>>
+    : std::true_type {};
+
 template <typename T>
 class ThreadDataRegistry {
  public:
@@ -103,19 +112,28 @@ class ThreadDataRegistry {
       tid_map_[tid] = tls_obj;
     }
 
-    void UnregisterData(uint64_t tid) {
-      std::lock_guard<LockType> guard(lock_);
-      // Add the data to another thread before erasing.
-      data_to_erased = tid_map_.at(tid)->GetData();
+    template <typename Alias = T>
+    void AccumulateToAnotherThread(...) {}
+
+    template <typename Alias = T,
+              typename = std::enable_if_t<IsAccumulatable<Alias>::value>>
+    void AccumulateToAnotherThread(uint64_t tid) {
+      auto& data = tid_map_.at(tid)->GetData();
       for (auto& kv : tid_map_) {
         if (kv.first != tid) {
-          kv.second->GetData() += data_to_erased;
-          VLOG(2) << "Add data " << data_to_erased << " from thread " << tid
-                  << " to " << kv.first << " , after update, data is "
-                  << kv.second->GetData() << ".";
+          auto& data_in_another_thread = kv.second->GetData();
+          data_in_another_thread += data;
+          VLOG(2) << "Add data " << data << " from thread " << tid << " to "
+                  << kv.first << " , after update, data is "
+                  << data_in_another_thread << ".";
           break;
         }
       }
+    }
+
+    void UnregisterData(uint64_t tid) {
+      std::lock_guard<LockType> guard(lock_);
+      AccumulateToAnotherThread(tid);
       tid_map_.erase(tid);
     }
 
