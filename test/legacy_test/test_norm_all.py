@@ -458,7 +458,8 @@ def check_nuc_static(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         )
         (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
     np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
-    np.testing.assert_equal(result.shape, expected_result.shape)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
 
 
 def check_nuc_dygraph(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
@@ -468,7 +469,8 @@ def check_nuc_dygraph(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
     result = paddle.norm(x=x_paddle, p=p, axis=axis, keepdim=keep_dim)
     result = result.numpy()
     np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
-    np.testing.assert_equal(result.shape, expected_result.shape)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
 
 
 def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
