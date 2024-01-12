@@ -83,7 +83,9 @@ def group_norm_wrapper(
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.prim_op_type = "prim"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.float64
@@ -168,14 +170,24 @@ class TestGroupNormOp(OpTest):
             self.do_compare_between_place()
             return
 
+        self.rev_comp_atol = 1e-12
+        self.rev_comp_rtol = 1e-12
         place = core.CPUPlace()
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=True,
         )
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+                place,
+                ['X', 'Scale', 'Bias'],
+                'Y',
+                check_pir=True,
+                check_prim_pir=True,
             )
 
     def init_test_case(self):
@@ -207,9 +219,15 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         if self.compare_between_place:
             return
 
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_test_case(self):
@@ -224,7 +242,9 @@ class TestGroupNormFP16OP(TestGroupNormOp):
 class TestGroupNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.prim_op_type = "prim"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.uint16
@@ -274,9 +294,15 @@ class TestGroupNormBF16Op(OpTest):
         if self.compare_between_place:
             return
 
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_test_case(self):
@@ -348,11 +374,35 @@ class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
         self.attrs['groups'] = 1
         self.data_format = "NHWC"
 
+    def test_check_grad(self):
+        if self.compare_between_place:
+            self.do_compare_between_place()
+            return
+
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+        )
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+            )
+
 
 class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.data_format = "NHWC"
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            return
+
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+        )
 
 
 class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
@@ -375,6 +425,15 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
             atol=atol,
             inplace_atol=inplace_atol,
             check_pir=True,
+        )
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            return
+
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
         )
 
 
@@ -435,6 +494,21 @@ class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
 
+    def test_check_grad(self):
+        if self.compare_between_place:
+            self.do_compare_between_place()
+            return
+
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+        )
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+            )
+
 
 class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
@@ -442,11 +516,41 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
 
+    def test_check_grad(self):
+        if self.compare_between_place:
+            self.do_compare_between_place()
+            return
+
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+        )
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+            )
+
 
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            self.do_compare_between_place()
+            return
+
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+        )
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+            )
 
 
 @skip_check_grad_ci(
@@ -459,6 +563,21 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
         self.attrs['groups'] = 8
         self.data_format = "NHWC"
         self.compare_between_place = True
+
+    def test_check_grad(self):
+        if self.compare_between_place:
+            self.do_compare_between_place()
+            return
+
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+        )
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Scale', 'Bias'], 'Y', check_pir=True
+            )
 
 
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
