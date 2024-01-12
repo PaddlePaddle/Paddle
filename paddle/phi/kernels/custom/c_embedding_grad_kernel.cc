@@ -22,6 +22,7 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T, typename Context>
 void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& w,
@@ -29,7 +30,6 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int64_t start_index,
                           DenseTensor* w_grad) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
   w_grad->Resize(w.dims());
   dev_ctx.template Alloc(w_grad, w.dtype());
   const auto& index_type = ids.dtype();
@@ -78,14 +78,11 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
     PADDLE_THROW(phi::errors::Unavailable(
         "Custom Device c_embedding_grad ids only support int32 or int64."));
   }
-#else
-  PADDLE_THROW(
-      phi::errors::Unavailable("This kernel can only be functional when paddle "
-                               "is compiled with custom device."));
-#endif
 }
+#endif
 }  // namespace phi
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL(c_embedding_grad,
                    Custom,
                    ALL_LAYOUT,
@@ -93,3 +90,4 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+#endif

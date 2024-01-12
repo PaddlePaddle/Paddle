@@ -22,6 +22,7 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T, typename Context>
 void CEmbeddingKernel(const Context& dev_ctx,
                       const DenseTensor& w,
@@ -29,7 +30,6 @@ void CEmbeddingKernel(const Context& dev_ctx,
                       int64_t start_index,
                       int64_t vocab_size,
                       DenseTensor* out) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32 ||
       index_type == phi::DataType::INT64) {
@@ -69,14 +69,11 @@ void CEmbeddingKernel(const Context& dev_ctx,
     PADDLE_THROW(phi::errors::Unavailable(
         "Custom Device c_embedding ids only support int32 or int64."));
   }
-#else
-  PADDLE_THROW(
-      phi::errors::Unavailable("This kernel can only be functional when paddle "
-                               "is compiled with custom device."));
-#endif
 }
+#endif
 }  // namespace phi
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL(c_embedding,
                    Custom,
                    ALL_LAYOUT,
@@ -84,3 +81,4 @@ PD_REGISTER_KERNEL(c_embedding,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+#endif
