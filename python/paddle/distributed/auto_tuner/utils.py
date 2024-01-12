@@ -1373,6 +1373,38 @@ def read_step_time_log(
     return res
 
 
+def read_allocated_memory_log(
+    path, file="workerlog.0", target_metric='max_memory_allocated'
+):
+    target_file = path + "/" + file
+    if not os.path.exists(target_file):
+        return None
+    with open(target_file, "r") as f:
+        # read file
+        re_metric_pattern = (
+            target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
+        )
+        metric_list = []
+        lines = f.readlines()
+        for line in lines:
+            metric = re.findall(re_metric_pattern, line)
+            if metric:
+                value = None
+                for item in metric[0]:
+                    try:
+                        value = float(item)
+                        metric_list.append(value)
+                        break
+                    except:
+                        continue
+                assert value is not None
+        if not metric_list:
+            return None
+        else:
+            metric_list.sort()
+            return metric_list[-1]
+
+
 def read_memory_log(path, file) -> Tuple[float, bool]:
     log_path = os.path.join(path, file)
     if not os.path.exists(log_path):

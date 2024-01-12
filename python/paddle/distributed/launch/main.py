@@ -945,6 +945,25 @@ def launch():
             if tuner_cfg['metric_cfg']['name'] not in cur_cfg:
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
 
+            # if need accurate peak memory
+            if os.environ.get("FLAGS_log_memory_stats", False):
+                max_peak_memory = None
+                from ..auto_tuner.utils import read_allocated_memory_log
+
+                for root, dirs, files in os.walk(ctx.args.log_dir):
+                    for file in files:
+                        if not file.startswith("workerlog"):
+                            continue
+                        peak_memory = read_allocated_memory_log(
+                            ctx.args.log_dir, file
+                        )
+                        if peak_memory is not None and max_peak_memory is None:
+                            max_peak_memory = peak_memory
+                        elif peak_memory and max_peak_memory:
+                            if peak_memory > max_peak_memory:
+                                max_peak_memory = peak_memory
+                cur_cfg["max_peak_memory"] = max_peak_memory
+
             cur_cfg['job_id'] = job_id
 
             # multi dp conversion
