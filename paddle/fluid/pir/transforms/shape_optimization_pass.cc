@@ -51,7 +51,7 @@ void DebugPrintOpInfo(
                  << "ShapeOrData: ";
 
     if (shape_analysis != nullptr) {
-      auto shape_data = shape_analysis->value_to_shape_or_data_[res];
+      auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
       print_stream << "shape: [";
 
       for (size_t i = 0; i < shape_data.shape().size(); ++i) {
@@ -83,9 +83,8 @@ void DebugPrintOpInfo(
 }
 
 void InferSymExprForAllValues(ModuleOp module_op) {
-  auto shape_analysis_mgr = ShapeAnalysisManager::Instance();
   ShapeConstraintIRAnalysis& shape_analysis =
-      shape_analysis_mgr.Get(module_op.program());
+      ShapeAnalysisManager::Instance().Get(module_op.program());
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
@@ -94,7 +93,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
         if (infer_symbolic_shape_interface) {
           VLOG(3) << op.name() << " has InferSymbolicShapeInterface.";
           PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
-              &shape_analysis));
+                             &shape_analysis),
+                         "InferSymbolicShape for %s failed.",
+                         op.name());
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }
