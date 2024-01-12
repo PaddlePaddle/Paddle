@@ -61,7 +61,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluOp::name(),
     SoftReluGradOp::name(),
     MatchMatrixTensorOp::name(),
-    MatchMatrixTensorGradOp::name()};
+    MatchMatrixTensorGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
     CReduceMinOp::name()};
