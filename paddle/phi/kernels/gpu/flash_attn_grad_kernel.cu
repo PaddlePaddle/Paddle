@@ -59,7 +59,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   const int64_t num_heads = dims[1];
   const int64_t head_size_og = dout.dims()[2];
   const int64_t head_size = dims[2];
-  const int64_t total_k = k.dims[0];
+  const int64_t total_k = k.dims()[0];
   const int64_t num_heads_k = k.dims()[1];
 
   bool is_mha = (num_heads == num_heads_k);
@@ -80,7 +80,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       total_k, num_heads_k, num_heads / num_heads_k, head_size};
 
   DenseTensor dk_tmp;
-  if (dk) {
+  if (dk && is_mha) {
     ctx.template Alloc<T>(dk);
     dk_ptr = dk->data();
   } else {
@@ -89,7 +89,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   }
 
   DenseTensor dv_tmp;
-  if (dv) {
+  if (dv && is_mha) {
     ctx.template Alloc<T>(dv);
     dv_ptr = dv->data();
   } else {
@@ -219,7 +219,7 @@ void FlashAttnGradKernel(const Context& ctx,
   DenseTensor dk_tmp;
   std::initializer_list<int64_t> dk_dv_shape = {
       batch_size, seqlen_k, num_heads_k, num_heads / num_heads_k, head_size};
-  if (dk) {
+  if (dk && is_mha) {
     ctx.template Alloc<T>(dk);
     dk_ptr = dk->data();
   } else {
@@ -228,7 +228,7 @@ void FlashAttnGradKernel(const Context& ctx,
   }
 
   DenseTensor dv_tmp;
-  if (dv) {
+  if (dv && is_mha) {
     ctx.template Alloc<T>(dv);
     dv_ptr = dv->data();
   } else {
