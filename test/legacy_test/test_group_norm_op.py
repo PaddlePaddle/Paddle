@@ -209,10 +209,7 @@ class TestGroupNormFP16OP(TestGroupNormOp):
 
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place,
-            ['X', 'Scale', 'Bias'],
-            'Y',
-            check_pir=True,
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
         )
 
     def init_test_case(self):
@@ -279,10 +276,7 @@ class TestGroupNormBF16Op(OpTest):
 
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place,
-            ['X', 'Scale', 'Bias'],
-            'Y',
-            check_pir=True,
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
         )
 
     def init_test_case(self):
