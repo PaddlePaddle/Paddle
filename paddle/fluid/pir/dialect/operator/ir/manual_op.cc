@@ -3158,6 +3158,10 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
 
+  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(x) > 0,
+             "Value x does not exist.");
+  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(y) > 0,
+             "Value y does not exist.");
   const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
   const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
   IR_ENFORCE(x_data_shape.data().has_value(),

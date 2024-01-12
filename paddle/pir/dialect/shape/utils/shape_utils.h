@@ -80,7 +80,9 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
     return "S" + std::to_string(next_sym_idx_++);
   }
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+  bool HasShapeOrDataForValue(Value val) const;
+
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
