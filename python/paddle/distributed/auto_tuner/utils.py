@@ -1392,7 +1392,7 @@ def read_allocated_memory_log(
                 value = None
                 for item in metric[0]:
                     try:
-                        value = float(item)
+                        value = int(float(item))
                         metric_list.append(value)
                         break
                     except:
