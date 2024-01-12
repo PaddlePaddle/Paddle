@@ -90,7 +90,7 @@ class ApplyPerChannelScaleTest(unittest.TestCase):
         paddle.disable_static()
         return out
 
-    def test_pre_quant_scale(self):
+    def test_apply_per_channel_scale(self):
         if self.static:
             self.out_real = self.get_out_static()
         else:
