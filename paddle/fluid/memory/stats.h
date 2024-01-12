@@ -36,7 +36,7 @@ struct ThreadLocalStatBase {
 
   ThreadLocalStatBase operator+=(const ThreadLocalStatBase& other) {
     current += other.current;
-    peak = std::max(peak, other.peak);
+    peak = std::max({current, peak, other.peak});
     return *this;
   }
 
