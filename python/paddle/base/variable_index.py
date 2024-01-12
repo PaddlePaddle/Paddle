@@ -632,7 +632,7 @@ def _setitem_static(x, indices, values):
         if values.dtype != transed_sub_tensor.dtype:
             values = values.astype(transed_sub_tensor.dtype)
 
-        if in_dynamic_or_pir_mode():
+        if paddle.in_dynamic_mode():
             # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
             transed_sub_tensor = transed_sub_tensor.index_put_(
                 adjusted_advanced_index, values
