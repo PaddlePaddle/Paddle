@@ -47,9 +47,6 @@ if TYPE_CHECKING:
     ]
 
 
-ConstTypes = (int, float, str, bool, type(None))
-
-
 @event_register("find_traceable_vars")
 def find_traceable_vars(
     root_vars: list[VariableBase],

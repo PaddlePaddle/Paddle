@@ -9,3 +9,4 @@ test_randperm_op
 test_seed_op
 test_uniform_random_bf16_op
 test_uniform_random_inplace_op
+test_shuffle_batch_op

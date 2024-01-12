@@ -2345,7 +2345,7 @@ def assign(x, output=None):
             if output is None:
                 output = _C_ops.assign(input)
             else:
-                output = _C_ops.assign_out_(input, output)
+                _C_ops.assign_out_(input, output)
         else:
             check_dtype(
                 input.dtype,

@@ -169,15 +169,16 @@ def shard_tensor(
     place = paddle.framework._get_paddle_place(place)
 
     # 1. create dense tensor
-    # `paddle.to_tensor` supports both dynamic and static mode
     if stop_gradient is None:
         stop_gradient = getattr(data, "stop_gradient", True)
+
     if isinstance(data, EagerParamBase) and not data._is_initialized():
         assert (
             data._init_func is not None
         ), "Get an uninitialized param with an unregistered init_func."
         tensor = data
     else:
+        # `paddle.to_tensor` supports both dynamic and static mode
         tensor = paddle.to_tensor(
             data, dtype=dtype, place=place, stop_gradient=stop_gradient
         )
@@ -195,6 +196,9 @@ def shard_tensor(
 
                 # lazy init hook with randomness controlling
                 def _init_func(var, block):
+                    if dist.get_rank() not in param.process_mesh.process_ids:
+                        # None calc rank, just return no init.
+                        return
                     # get the unique rng name
                     rng_name = determinate_rng(
                         dist.get_rank(),
@@ -221,9 +225,13 @@ def shard_tensor(
 
             return dist_param
         else:
-            return paddle.Tensor(
+            dist_tensor = paddle.Tensor(
                 tensor, process_mesh=mesh, placements=placements, place=place
             )
+            # InitDistTensorWithTensor won't pass the stop gradient attribute,
+            # have to pass it manually.
+            dist_tensor.stop_gradient = tensor.stop_gradient
+            return dist_tensor
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
@@ -1015,6 +1023,12 @@ class DistModel:
     ):
         self._feed_name_list = []
         self._inner_strategy = self.__convert_strategy(strategy)
+        self._structured_to_parameter_name = {
+            k: v.name for k, v in layer.state_dict().items()
+        }
+        self._parameter_to_structured_name = {
+            v: k for k, v in self._structured_to_parameter_name.items()
+        }
         self._engine = Engine(
             layer, loss, optimizer, metrics, strategy=self._inner_strategy
         )
@@ -1257,6 +1271,15 @@ class DistModel:
             mode=self._engine._mode
         ).state_dict(mode)
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+        mapping_names = [
+            self._parameter_to_structured_name[k]
+            if k in self._parameter_to_structured_name
+            else k
+            for k in dist_state_dict.keys()
+        ]
+        dist_state_dict = dict(
+            zip(mapping_names, list(dist_state_dict.values()))
+        )
         return dist_state_dict
 
     def _build_distributed_state_dict(self, local_state_dict):
@@ -1331,7 +1354,12 @@ class DistModel:
                 ].process_mesh or check_placements_equal(
                     v.placements, cur_v.placements
                 ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} or placements:{v.placements} != {cur_v.placements} not match"
-            local_state_dict[k] = v._local_value()
+            param_name = (
+                self._structured_to_parameter_name[k]
+                if k in self._structured_to_parameter_name
+                else k
+            )
+            local_state_dict[param_name] = v._local_value()
         dist_main_program.set_state_dict(local_state_dict)
 
 

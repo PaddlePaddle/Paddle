@@ -138,8 +138,7 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
 
   bool MatchAndRewrite(paddle::dialect::ScaleOp op,
                        pir::PatternRewriter &rewriter) const override {
-    auto scale_factor_gen_op =
-        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+    auto scale_factor_gen_op = op->operand_source(1).defining_op();
 
     if (auto full_op =
             scale_factor_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
@@ -190,8 +189,7 @@ class ReshapeOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ReshapeOp op,
                        pir::PatternRewriter &rewriter) const override {
-    auto scale_factor_gen_op =
-        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+    auto scale_factor_gen_op = op->operand_source(1).defining_op();
 
     if (auto full_op =
             scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>()) {
@@ -225,6 +223,51 @@ class ReshapeOpPattern
   }
 };
 
+class Pool2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Pool2dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Pool2dOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::Pool2dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto kernel_size_gen_op = op->operand_source(1).defining_op();
+
+    if (auto full_op =
+            kernel_size_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>()) {
+      auto kernel_size_attr =
+          full_op.attribute("value").dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      // kernel_size is generator by full op
+      // get attribute value from full op
+      std::vector<pir::Attribute> kernel_size;
+      for (size_t i = 0; i < static_cast<size_t>(kernel_size_attr.size());
+           i++) {
+        pir::Attribute attr = pir::Int32Attribute::get(
+            pir::IrContext::Instance(),
+            kernel_size_attr[i].dyn_cast<::pir::Int64Attribute>().data());
+        kernel_size.push_back(attr);
+      }
+      auto attrs = op->attributes();
+      attrs["kernel_size"] =
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), kernel_size);
+      attrs["stride_size"] = attrs.at("strides");
+      attrs["padding_size"] = attrs.at("paddings");
+      attrs["pool_type"] = attrs.at("pooling_type");
+      attrs.erase("strides");
+      attrs.erase("paddings");
+      attrs.erase("pooling_type");
+
+      auto cinn_reshape = rewriter.Build<cinn::dialect::Pool2dOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(), attrs);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
 class IsCloseOpPattern
     : public pir::OpRewritePattern<paddle::dialect::IscloseOp> {
  public:
@@ -233,13 +276,11 @@ class IsCloseOpPattern
   bool MatchAndRewrite(paddle::dialect::IscloseOp op,
                        pir::PatternRewriter &rewriter) const override {
     auto rtol_op = op->operand_source(2)
-                       .dyn_cast<pir::OpResult>()
-                       .owner()
+                       .defining_op()
                        ->dyn_cast<paddle::dialect::FullOp>();
 
     auto atol_op = op->operand_source(3)
-                       .dyn_cast<pir::OpResult>()
-                       .owner()
+                       .defining_op()
                        ->dyn_cast<paddle::dialect::FullOp>();
 
     if (rtol_op && atol_op) {
@@ -272,13 +313,11 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
   bool MatchAndRewrite(paddle::dialect::SliceOp op,
                        pir::PatternRewriter &rewriter) const override {
     auto start_gen_op = op->operand_source(1)
-                            .dyn_cast<pir::OpResult>()
-                            .owner()
+                            .defining_op()
                             ->dyn_cast<paddle::dialect::FullIntArrayOp>();
 
     auto end_gen_op = op->operand_source(2)
-                          .dyn_cast<pir::OpResult>()
-                          .owner()
+                          .defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>();
 
     if (start_gen_op && end_gen_op) {
@@ -314,16 +353,13 @@ class ConcatOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ConcatOp op,
                        pir::PatternRewriter &rewriter) const override {
-    auto axis_gen_op = op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+    auto axis_gen_op = op->operand_source(1).defining_op();
     if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
-      int axis = phi::Scalar(full_op.attribute("value")
-                                 .dyn_cast<::pir::FloatAttribute>()
-                                 .data())
-                     .to<int>();
+      int axis = static_cast<int>(
+          full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
 
       auto input_ops = op->operand_source(0)
-                           .dyn_cast<pir::OpResult>()
-                           .owner()
+                           .defining_op()
                            ->dyn_cast<pir::CombineOp>()
                            .inputs();
 
@@ -367,12 +403,10 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
   bool MatchAndRewrite(paddle::dialect::SplitOp op,
                        pir::PatternRewriter &rewriter) const override {
     auto sections_gen_op = op->operand_source(1)
-                               .dyn_cast<pir::OpResult>()
-                               .owner()
+                               .defining_op()
                                ->dyn_cast<paddle::dialect::FullIntArrayOp>();
     auto axis_gen_op = op->operand_source(2)
-                           .dyn_cast<pir::OpResult>()
-                           .owner()
+                           .defining_op()
                            ->dyn_cast<paddle::dialect::FullOp>();
     if (sections_gen_op && axis_gen_op) {
       auto section_attr = sections_gen_op.attribute("value")
@@ -386,11 +420,9 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
               section_attr[i].dyn_cast<::pir::Int64Attribute>().data());
         }
       }
-
-      int axis = phi::Scalar(axis_gen_op.attribute("value")
-                                 .dyn_cast<::pir::FloatAttribute>()
-                                 .data())
-                     .to<int>();
+      int axis = static_cast<int>(axis_gen_op.attribute("value")
+                                      .dyn_cast<::pir::FloatAttribute>()
+                                      .data());
 
       auto input_ele = op->operand_source(0)
                            .type()
@@ -402,15 +434,77 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
           op->operand_source(0), vec_sections, axis);
 
-      auto build_split =
-          op->result(0).first_use().owner()->dyn_cast<::pir::SplitOp>();
+      auto orig_out = op.result(0);
+      for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
+        auto slice_op = (it++)->owner();
+        CHECK(slice_op->isa<::pir::SliceOp>())
+            << "Currently only support pir::slice as downstream op";
+        int index = slice_op->dyn_cast<::pir::SliceOp>()
+                        .attribute("index")
+                        .dyn_cast<::pir::Int32Attribute>()
+                        .data();
+        rewriter.ReplaceAllUsesWith(slice_op->result(0),
+                                    cinn_split.result(index));
+        rewriter.EraseOp(slice_op);
+      }
+      rewriter.EraseOp(op);
 
-      for (size_t i = 0; i < build_split->num_results(); ++i) {
-        rewriter.ReplaceAllUsesWith(build_split->result(i),
-                                    cinn_split.result(i));
+      return true;
+    }
+    return false;
+  }
+};
+
+class SplitWithNumOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::SplitWithNumOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::SplitWithNumOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto axis_gen_op = op->operand_source(1).defining_op();
+    if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
+      int axis = static_cast<int>(
+          full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
+
+      auto input_ele = op->operand_source(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>();
+      if (axis < 0) {
+        axis += input_ele.dims().size();
+      }
+      std::vector<int> sections;
+
+      auto split_dim = input_ele.dims()[axis];
+
+      auto split_num =
+          op->attribute("num").dyn_cast<::pir::Int32Attribute>().data();
+      auto part_ele = (split_dim + split_num - 1) / split_num;
+
+      int total_split_num = 0;
+      for (int i = 0; i < split_num - 1; ++i) {
+        sections.push_back(part_ele);
+        total_split_num += part_ele;
       }
 
-      rewriter.EraseOp(build_split);
+      sections.push_back(split_dim - total_split_num);
+
+      auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
+          op->operand_source(0), sections, axis);
+
+      auto orig_out = op.result(0);
+      for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
+        auto slice_op = (it++)->owner();
+        CHECK(slice_op->isa<::pir::SliceOp>());
+        int index = slice_op->dyn_cast<::pir::SliceOp>()
+                        .attribute("index")
+                        .dyn_cast<::pir::Int32Attribute>()
+                        .data();
+        rewriter.ReplaceAllUsesWith(slice_op->result(0),
+                                    cinn_split.result(index));
+        rewriter.EraseOp(slice_op);
+      }
 
       rewriter.EraseOp(op);
 
@@ -426,10 +520,8 @@ class AddNOpPattern : public pir::OpRewritePattern<paddle::dialect::AddNOp> {
 
   bool MatchAndRewrite(paddle::dialect::AddNOp op,
                        pir::PatternRewriter &rewriter) const override {
-    auto combine_op = op->operand_source(0)
-                          .dyn_cast<pir::OpResult>()
-                          .owner()
-                          ->dyn_cast<pir::CombineOp>();
+    auto combine_op =
+        op->operand_source(0).defining_op()->dyn_cast<pir::CombineOp>();
     auto input_ops = combine_op.inputs();
 
     auto tmp = input_ops[0];
@@ -455,8 +547,7 @@ class ExpandOpPattern
   bool MatchAndRewrite(paddle::dialect::ExpandOp op,
                        pir::PatternRewriter &rewriter) const override {
     auto out_shape_gen_op = op->operand_source(1)
-                                .dyn_cast<pir::OpResult>()
-                                .owner()
+                                .defining_op()
                                 ->dyn_cast<paddle::dialect::FullIntArrayOp>();
 
     if (out_shape_gen_op) {
@@ -491,63 +582,6 @@ class ExpandOpPattern
       return true;
     }
 
-    return false;
-  }
-};
-
-class SplitWithNumOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
- public:
-  using pir::OpRewritePattern<
-      paddle::dialect::SplitWithNumOp>::OpRewritePattern;
-
-  bool MatchAndRewrite(paddle::dialect::SplitWithNumOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    auto axis_gen_op = op->operand_source(1).dyn_cast<pir::OpResult>().owner();
-    if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
-      int axis = phi::Scalar(full_op.attribute("value")
-                                 .dyn_cast<::pir::FloatAttribute>()
-                                 .data())
-                     .to<int>();
-
-      auto input_ele = op->operand_source(0)
-                           .type()
-                           .dyn_cast<paddle::dialect::DenseTensorType>();
-      if (axis < 0) {
-        axis += input_ele.dims().size();
-      }
-      std::vector<int> sections;
-
-      auto split_dim = input_ele.dims()[axis];
-
-      auto split_num =
-          op->attribute("num").dyn_cast<::pir::Int32Attribute>().data();
-      auto part_ele = (split_dim + split_num - 1) / split_num;
-
-      int total_split_num = 0;
-      for (int i = 0; i < split_num - 1; ++i) {
-        sections.push_back(part_ele);
-        total_split_num += part_ele;
-      }
-
-      sections.push_back(split_dim - total_split_num);
-
-      auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
-          op->operand_source(0), sections, axis);
-
-      int index = 0;
-      auto orig_out = op.result(0);
-      for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
-        auto split_op = (it++)->owner();
-        rewriter.ReplaceAllUsesWith(split_op->result(0),
-                                    cinn_split.result(index++));
-        rewriter.EraseOp(split_op);
-      }
-
-      rewriter.EraseOp(op);
-
-      return true;
-    }
     return false;
   }
 };
@@ -613,6 +647,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(MinOpPattern().Build(context));
   ps.Add(ProdOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
+  ps.Add<Pool2dOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
   ps.Add<PowOpPattern>(context);
@@ -638,6 +673,11 @@ void PdOp2CinnOpConverter(::pir::Program *program) {
 
   pm.Run(program);
 }
+
+std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass() {
+  return std::make_unique<PdOpToCinnOpPass>();
+}
+
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
