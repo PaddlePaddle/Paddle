@@ -97,6 +97,23 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
            << ", offset: " << params.offset;
 
+  bool is_mha = (num_heads == num_heads_k);
+
+  void* dk_data = nullptr;
+  void* dv_data = nullptr;
+  phi::DenseTensor dk_expanded, dv_expanded;
+  if (is_mha) {
+    dk_data = ctx.template Alloc<T>(dk);
+    dv_data = ctx.template Alloc<T>(dv);
+  } else {
+    std::initializer_list<int64_t> dk_dv_shape = {
+        total_k, num_heads_k, num_heads / num_heads_k, head_size};
+    dk_expanded.Resize(dk_dv_shape);
+    dv_expanded.Resize(dk_dv_shape);
+    dk_data = ctx.template Alloc<T>(&dk_expanded);
+    dv_data = ctx.template Alloc<T>(&dv_expanded);
+  }
+
   bool succ = phi::dynload::flash_attn_varlen_bwd(
       dout.data(),
       q.data(),
@@ -109,8 +126,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       cu_seqlens_k.data<int32_t>(),
       params.rng_state.data(),
       dq->data(),
-      dk->data(),
-      dv->data(),
+      dk_data,
+      dv_data,
       params.dq_accum.data(),
       params.batch_size,
       params.max_seqlen_q,
@@ -133,6 +150,12 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.mask_dims.data());
   CheckFlashAttnStatus(succ);
+
+  if (!is_mha) {
+    phi::SumKernel<T, Context>(ctx, dk_expanded, {2}, dk->type(), false, dk);
+    phi::SumKernel<T, Context>(ctx, dv_expanded, {2}, dv->type(), false, dv);
+  }
+
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
       "FlashAttention is unsupported, please set use_flash_attn to false."));
