@@ -327,7 +327,7 @@ def apply_per_channel_scale(x, scales):
             >>> out = apply_per_channel_scale(x, scales)
     """
 
-    if in_dynamic_mode:
+    if in_dynamic_mode():
         return _C_ops.apply_per_channel_scale(x, scales)
     else:
         type = "apply_per_channel_scale"
@@ -336,7 +336,7 @@ def apply_per_channel_scale(x, scales):
 
         helper.append_op(
             type=type,
-            inputs={"x": x, "scales": scales},
+            inputs={"x": [x], "scales": [scales]},
             outputs={"out": out},
         )
         return out
