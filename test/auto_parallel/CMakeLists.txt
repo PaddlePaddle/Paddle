@@ -297,3 +297,5 @@ endif()
 
 py_test_modules(test_job_schedule_profiler_range MODULES
                 test_job_schedule_profiler_range)
+
+set_pit_tests_properties()

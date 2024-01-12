@@ -58,12 +58,12 @@ class DistributedDropout(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("dropout")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(x_spec)
         bw_results = rule.infer_backward(x_spec, output_spec)
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, [x_name], [out_name], fw_results, bw_results
         )

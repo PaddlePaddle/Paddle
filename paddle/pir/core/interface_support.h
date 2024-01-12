@@ -45,14 +45,14 @@ class ConstructInterfacesOrTraits {
     IR_ENFORCE(suceess,
                "Interface: id[%u] is already registered. inset failed",
                TypeId::get<T>());
-    VLOG(6) << "New a interface: id[" << TypeId::get<T>() << "].";
+    VLOG(10) << "New a interface: id[" << TypeId::get<T>() << "].";
   }
 
   /// Placement new trait.
   template <typename T>
   static void PlacementConstrctTrait(pir::TypeId *&p_trait) {  // NOLINT
     *p_trait = TypeId::get<T>();
-    VLOG(6) << "New a trait: id[" << *p_trait << "].";
+    VLOG(10) << "New a trait: id[" << *p_trait << "].";
     ++p_trait;
   }
 };

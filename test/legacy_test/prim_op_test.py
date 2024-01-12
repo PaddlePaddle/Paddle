@@ -1121,8 +1121,6 @@ class PrimGradChecker(PrimForwardChecker):
                     )
                 else:
                     ret = ir_grad(ys, xs, vs, no_grad_vars=no_grad_vars)
-
-                # breakpoint()
                 # check the backward operator not in program when check_prim is True
                 if not in_pir_mode():
                     ops = [op.type for op in main_program.blocks[0].ops]

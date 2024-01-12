@@ -80,19 +80,16 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
     return "S" + std::to_string(next_sym_idx_++);
   }
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value* val);
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
 
-  void SetShapeOrDataForValue(Value* val,
+  void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
-
-  // const symbol::ShapeOrData& GetShapeOrDataForValue() const;
 
   symbol::DimExprBuilder CreateDimExprBuilder() override;
 
-  std::unordered_map<std::string, symbol::ShapeOrDataDimExprs>
-      value_id_to_shapeordata_;
-
  private:
+  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_;
   // The operation this analysis runs on.
   ModuleOp m_;
   // The `SymbolicDimMgr` this analysis holds.

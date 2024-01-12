@@ -68,6 +68,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
 
+void TensorToArrayInferMeta(const MetaTensor& x,
+                            const MetaTensor& out_grad,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* x_grad);
+
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);
@@ -349,6 +355,17 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
+
+void MaxPoolV2InferMeta(const MetaTensor& x,
+                        const std::vector<int>& kernel_size,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& data_format,
+                        bool global_pooling,
+                        bool adaptive,
+                        MetaTensor* out,
+                        MetaTensor* saved_idx,
+                        MetaConfig config = MetaConfig());
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -797,5 +814,10 @@ void NumberCountInferMeta(const MetaTensor& x,
                           MetaTensor* out);
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void LrnInferMeta(const MetaTensor& x,
+                  int n,
+                  MetaTensor* out,
+                  MetaTensor* mid_out);
 
 }  // namespace phi

@@ -24,12 +24,11 @@ paddle.enable_static()
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
-    base.default_startup_program().random_seed = 1
-    base.default_main_program().random_seed = 1
+    paddle.seed(1)
     np.random.seed(2)
 
     x = paddle.assign(
-        np.random.rand(batch_size, beam_size, 32).astype("float32")
+        np.random.rand(batch_size, beam_size, 2).astype("float32")
     )
     indices = paddle.static.data(
         shape=[None, beam_size], dtype="int64", name="indices"
@@ -43,6 +42,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     cond = paddle.less_than(x=step_idx, y=max_len)
     while_op = paddle.static.nn.control_flow.While(cond)
     scores = paddle.tensor.array_write(x, step_idx)
+    scores.stop_gradient = False
     with while_op.block():
         bs = paddle.cast(paddle.shape(x)[0], "int64")
         for _ in range(20):
@@ -59,7 +59,6 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         paddle.tensor.array_write(score, i=step_idx, array=scores)
         length_cond = paddle.less_than(x=step_idx, y=max_len)
         paddle.assign(length_cond, cond)
-
     out = tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
     loss = paddle.mean(out)
     opt = paddle.optimizer.Adam(0.01)
@@ -78,8 +77,11 @@ class TestDynRNNStopGradient(unittest.TestCase):
         self.batch_size = 20
         self.beam_size = 64
 
+    # @test_with_pir_api
     def run_main(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             with base.scope_guard(base.Scope()):
                 value1 = build_and_run_program(
                     place, self.batch_size, self.beam_size, False
@@ -87,7 +89,6 @@ class TestDynRNNStopGradient(unittest.TestCase):
                 value2 = build_and_run_program(
                     place, self.batch_size, self.beam_size, True
                 )
-
                 np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):

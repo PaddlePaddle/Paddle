@@ -125,7 +125,9 @@ class TestBernoulliBF16Op(TestBernoulliOp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(self.verify_output, place)
+        self.check_output_with_place_customized(
+            self.verify_output, place, check_pir=True
+        )
 
     def init_test_case(self):
         self.x = convert_float_to_uint16(
