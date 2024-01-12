@@ -98,6 +98,8 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
     return phi::DataType::FLOAT32;
   } else if (type == CCLDataType::CCL_DATA_TYPE_FP16) {
     return phi::DataType::FLOAT16;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_BF16) {
+    return phi::DataType::BFLOAT16;
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT64) {
     return phi::DataType::INT64;
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT32) {
