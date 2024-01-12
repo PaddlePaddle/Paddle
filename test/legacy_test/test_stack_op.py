@@ -309,7 +309,7 @@ class API_test(unittest.TestCase):
     def test_pir_single_tensor_error(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.rand([2, 3])
-            self.assertRaises(ValueError, paddle.stack, x)
+            self.assertRaises(TypeError, paddle.stack, x)
 
 
 class API_DygraphTest(unittest.TestCase):
