@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
 
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -158,7 +159,8 @@ class MultiHeadMatmulFusePattern : public paddle::drr::DrrPatternBase {
     res.Tensor("concat_1_out") = concat_1(res.Tensor("combine_1_out"));
     const auto &reshape_5_shape = res.Attr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto matmul_1_in_2 = match_ctx.Tensor("matmul_1_in_2").Shape();
+          auto matmul_1_in_2 =
+              pir::GetShapeFromValue(match_ctx.Tensor("matmul_1_in_2"));
           return {-1, 3, matmul_1_in_2.at(1)};
         });
     const auto &reshape_5 =

@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -50,18 +51,22 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &x_trans = match_ctx.Attr<bool>("trans_x");
       const auto &y_trans = match_ctx.Attr<bool>("trans_y");
-      return (match_ctx.Tensor("weight_grad").Shape() ==
-                  match_ctx.Tensor("dweight").Shape() &&
-              match_ctx.Tensor("out").Shape() ==
-                  match_ctx.Tensor("fwd_add_out_grad").Shape() &&
-              x_trans == false && y_trans == false);
+      auto weight_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      auto out_dims = pir::GetShapeFromValue(match_ctx.Tensor("out"));
+      auto fwd_add_out_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("fwd_add_out_grad"));
+      return (weight_grad_dims == dweight_dims &&
+              out_dims == fwd_add_out_grad_dims && x_trans == false &&
+              y_trans == false);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return !(match_ctx.Tensor("dweight").Dtype() ==
-                   match_ctx.Tensor("weight_grad").Dtype());
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
 
     const auto &true_attr =
@@ -113,17 +118,19 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       const auto &x_trans = match_ctx.Attr<bool>("trans_x");
       const auto &y_trans = match_ctx.Attr<bool>("trans_y");
-      return (match_ctx.Tensor("weight_grad").Shape() ==
-                  match_ctx.Tensor("dweight").Shape() &&
-              x_trans == false && y_trans == false);
+      auto weight_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      return (weight_grad_dims == dweight_dims && x_trans == false &&
+              y_trans == false);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &muti_precision_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return !(match_ctx.Tensor("dweight").Dtype() ==
-                   match_ctx.Tensor("weight_grad").Dtype());
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
 
     const auto &true_attr =
@@ -173,15 +180,17 @@ class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("weight_grad").Shape() ==
-              match_ctx.Tensor("dweight").Shape());
+      auto weight_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      return (weight_grad_dims == dweight_dims);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return !(match_ctx.Tensor("dweight").Dtype() ==
-                   match_ctx.Tensor("weight_grad").Dtype());
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
 
     const auto &true_attr =
@@ -223,15 +232,17 @@ class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
         add_(pat.Tensor("weight_grad"), pat.Tensor("dweight"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("weight_grad").Shape() ==
-              match_ctx.Tensor("dweight").Shape());
+      auto weight_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      return (weight_grad_dims == dweight_dims);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return !(match_ctx.Tensor("dweight").Dtype() ==
-                   match_ctx.Tensor("weight_grad").Dtype());
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
 
     const auto &true_attr =
@@ -285,17 +296,19 @@ class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
         add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("weight_grad").Shape() ==
-                  match_ctx.Tensor("dweight").Shape() &&
-              match_ctx.Tensor("out").Shape() ==
-                  match_ctx.Tensor("dadd_out").Shape());
+      auto weight_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      auto out_dims = pir::GetShapeFromValue(match_ctx.Tensor("out"));
+      auto dadd_out_dims = pir::GetShapeFromValue(match_ctx.Tensor("dadd_out"));
+      return (weight_grad_dims == dweight_dims && out_dims == dadd_out_dims);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return !(match_ctx.Tensor("dweight").Dtype() ==
-                   match_ctx.Tensor("weight_grad").Dtype());
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
     const auto &true_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
@@ -345,17 +358,19 @@ class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
         add_(pat.Tensor("weight_grad"), pat.Tensor("dweight"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("weight_grad").Shape() ==
-                  match_ctx.Tensor("dweight").Shape() &&
-              match_ctx.Tensor("out").Shape() ==
-                  match_ctx.Tensor("dadd_out").Shape());
+      auto weight_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      auto out_dims = pir::GetShapeFromValue(match_ctx.Tensor("out"));
+      auto dadd_out_dims = pir::GetShapeFromValue(match_ctx.Tensor("dadd_out"));
+      return (weight_grad_dims == dweight_dims && out_dims == dadd_out_dims);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return !(match_ctx.Tensor("dweight").Dtype() ==
-                   match_ctx.Tensor("weight_grad").Dtype());
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
     const auto &true_attr =
         res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {

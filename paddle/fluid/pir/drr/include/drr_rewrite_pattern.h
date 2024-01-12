@@ -20,7 +20,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace pir {

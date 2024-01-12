@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pir/pass/pass.h"
@@ -62,21 +63,21 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
           bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
           if (matmul_trans_x || matmul_trans_y) return false;
 
-          if (!(match_ctx.Tensor("w").Shape().size() == 2 &&
-                match_ctx.Tensor("x").Shape().size() >= 2 &&
-                match_ctx.Tensor("bias").Shape().size() == 1)) {
+          auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+          auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+          if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
+                bias_dims.size() == 1)) {
             return false;
           }
 
-          auto w_dims = match_ctx.Tensor("w").Shape();
           if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
 
-          auto w_dtype = match_ctx.Tensor("w").Dtype().get();
+          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
           if (!w_dtype.isa<pir::Float16Type>() &&
               !w_dtype.isa<pir::BFloat16Type>())
             return false;
 
-          auto x_dims = match_ctx.Tensor("x").Shape();
           if (x_dims.at(x_dims.size() - 1) != w_dims.at(1)) return false;
 
           return true;

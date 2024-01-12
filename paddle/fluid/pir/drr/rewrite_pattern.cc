@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
-// #include "paddle/fluid/pir/drr/api/ir_operation.h"
-// #include "paddle/fluid/pir/drr/api/match_context.h"
-
-// #include "paddle/phi/core/enforce.h"
-// #include "paddle/pir/core/operation.h"
-// #include "paddle/pir/core/type_name.h"
-// #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
-
-#include "paddle/fluid/pir/drr/api/drr_rewrite_pattern.h"
-
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
 #include "paddle/fluid/pir/drr/pattern_graph.h"
+
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/operation.h"
 
 namespace paddle {
 namespace drr {
@@ -296,13 +289,11 @@ bool DrrRewritePattern::MatchFromOutputToInput(
               << ir_node->num_results() << ").";
       break;
     }
-    source_pattern_match_ctx->BindIrOperation(
-        drr_node, std::make_shared<IrOperation>(ir_node));
+    source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
     // binding input_tensor of current_op
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-      source_pattern_match_ctx->BindIrValue(
-          drr_input_tensors[i]->name(),
-          std::make_shared<IrValue>(ir_node->operand(i).source()));
+      source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
+                                            ir_node->operand(i).source());
       if (ir_node->operand_source(i).isa<pir::BlockArgument>()) {
         matched = false;
         VLOG(8) << drr_node->name()
@@ -348,9 +339,8 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     // binding output tensor of current_op
     auto drr_op_output_tensor = drr_node->outputs();
     for (size_t j = 0; j < drr_op_output_tensor.size(); j++) {
-      source_pattern_match_ctx->BindIrValue(
-          drr_op_output_tensor[j]->name(),
-          std::make_shared<IrValue>(ir_node->result(j)));
+      source_pattern_match_ctx->BindIrValue(drr_op_output_tensor[j]->name(),
+                                            ir_node->result(j));
     }
     ++step;
   }
@@ -415,9 +405,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
                               "pattern graph to be obtained.",
                               in_tensor));
     if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
-      res_match_ctx.BindIrValue(
-          in_tensor,
-          std::make_shared<IrValue>(src_match_ctx.GetIrValue(in_tensor)));
+      res_match_ctx.BindIrValue(in_tensor, src_match_ctx.GetIrValue(in_tensor));
     }
   }
 
@@ -467,9 +455,8 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
     if (max_input_op_index == 0UL) {
       VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
-      pir::Operation* source_patter_first_op =
-          src_match_ctx.Operation(source_pattern_graph.owned_op_call()[0].get())
-              .get();
+      pir::Operation* source_patter_first_op = src_match_ctx.IrOperation(
+          source_pattern_graph.owned_op_call()[0].get());
       max_input_op_index = op_2_temp_program_index[source_patter_first_op];
       rewriter.set_insertion_point(source_patter_first_op);
     } else {
@@ -495,9 +482,8 @@ void DrrRewritePattern::RebindIrTensorForAssignTensor(
   for (const auto& kv : tensor_assign_map) {
     const auto& src_tensor_name = kv.first;
     const auto& dst_tensor_name = kv.second;
-    res_match_ctx->BindIrValue(
-        src_tensor_name,
-        std::make_shared<IrValue>(res_match_ctx->GetIrValue(dst_tensor_name)));
+    res_match_ctx->BindIrValue(src_tensor_name,
+                               res_match_ctx->GetIrValue(dst_tensor_name));
   }
 }
 
@@ -509,7 +495,7 @@ void DrrRewritePattern::ReplaceOutputTensor(
     if (source_pattern_graph_->id2owend_tensor().count(output_name)) {
       const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
       const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
-      rewriter.ReplaceAllUsesWith(src_ir_tensor.get(), res_ir_tensor.get());
+      rewriter.ReplaceAllUsesWith(src_ir_tensor, res_ir_tensor);
     } else {
       LOG(WARNING) << "The output tensor (" << output_name
                    << ") in the result_pattern_graph is not the tensor"
@@ -527,7 +513,7 @@ void DrrRewritePattern::DeleteSourcePatternOp(
   std::unordered_set<pir::Operation*> delete_ops_set;
   GraphTopo graph_topo_visit(&source_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
-    pir::Operation* op = src_match_ctx.Operation(&op_call).get();
+    pir::Operation* op = src_match_ctx.IrOperation(&op_call);
     VLOG(5) << "DRR delete op: " << op->name() << " pointer: " << op;
     if (delete_ops_set.count(op) == 0 && op->use_empty()) {
       delete_ops_que.push(op);

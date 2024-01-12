@@ -23,7 +23,7 @@
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace {

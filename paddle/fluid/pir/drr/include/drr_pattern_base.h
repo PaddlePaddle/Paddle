@@ -17,25 +17,35 @@
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
+#include "paddle/fluid/pir/drr/include/drr_match_context.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
+
+namespace pir {
+class IrContext;
+}
 
 namespace paddle {
 namespace drr {
 
-class TensorInterface;
-class MatchContextImpl;
+class DrrRewritePattern;
+class DrrPatternContext;
 
-class MatchContext final {
+class DrrPatternBase {
  public:
-  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
+  virtual ~DrrPatternBase() = default;
 
-  const TensorInterface& Tensor(const std::string& tensor_name) const;
+  // Define the drr pattern.
+  virtual void operator()(drr::DrrPatternContext* ctx) const = 0;
 
-  template <typename T>
-  T Attr(const std::string& attr_name) const;
+  // Give the drr pattern name.
+  virtual std::string pattern_name() const = 0;
 
- private:
-  std::shared_ptr<const MatchContextImpl> impl_;
+  // Give the drr pattern benefit.
+  virtual uint32_t pattern_benefit() const { return 1; }
+
+  // Build the Drr Pattern.
+  std::unique_ptr<DrrRewritePattern> Build(pir::IrContext* ir_context) const;
 };
 
 }  // namespace drr

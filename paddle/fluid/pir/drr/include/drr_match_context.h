@@ -14,49 +14,30 @@
 
 #pragma once
 
-#include <cstdint>
+#include <memory>
+#include <string>
+
+namespace pir {
+class Value;
+}
 
 namespace paddle {
 namespace drr {
 
-class IrValue;
-class IrShape;
-class IrDtype;
+class TensorInterface;
+class MatchContextImpl;
 
-class ShapeInterface final {
+class MatchContext final {
  public:
-  bool operator==(const ShapeInterface& other) const;
+  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
 
-  int size() const;
+  const pir::Value& Tensor(const std::string& tensor_name) const;
 
-  int64_t at(int idx) const;
+  template <typename T>
+  T Attr(const std::string& attr_name) const;
 
  private:
-  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
-
-  friend class IrValue;
-
-  const IrShape* shape_;
-};
-
-class DtypeInterface final {
- public:
-  bool operator==(const DtypeInterface& other) const;
-
-  IrDtype get() const;
-
- private:
-  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
-
-  friend class IrValue;
-
-  const IrDtype* dtype_;
-};
-
-class TensorInterface {
- public:
-  virtual ShapeInterface Shape() const = 0;
-  virtual DtypeInterface Dtype() const = 0;
+  std::shared_ptr<const MatchContextImpl> impl_;
 };
 
 }  // namespace drr

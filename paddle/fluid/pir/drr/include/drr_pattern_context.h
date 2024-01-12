@@ -22,7 +22,7 @@
 #include <unordered_set>
 #include <variant>
 
-#include "paddle/fluid/pir/drr/api/match_context.h"
+#include "paddle/fluid/pir/drr/include/drr_match_context.h"
 
 namespace paddle {
 namespace drr {
@@ -189,8 +189,6 @@ class Op {
 class Tensor {
  public:
   static const char NONE_TENSOR_NAME[];
-
-  const std::string& DebugName() const;
 
   TensorShape shape() const { return TensorShape(name()); }
 

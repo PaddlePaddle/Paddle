@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -34,9 +36,11 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("w").Shape().size() == 2 &&
-              match_ctx.Tensor("x").Shape().size() >= 2 &&
-              match_ctx.Tensor("bias").Shape().size() == 1);
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      return (w_dims.size() == 2 && x_dims.size() >= 2 &&
+              bias_dims.size() == 1);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
@@ -57,7 +61,7 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
   std::string pattern_name() const override { return "FusedLinearPattern"; }
 };
 
-class FusedLinearGradPattern : public paddle::drr::DrrPatternBase < {
+class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -78,9 +82,11 @@ class FusedLinearGradPattern : public paddle::drr::DrrPatternBase < {
                 {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return (match_ctx.Tensor("w").Shape().size() == 2 &&
-              match_ctx.Tensor("x").Shape().size() >= 2 &&
-              match_ctx.Tensor("bias").Shape().size() == 1);
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      return (w_dims.size() == 2 && x_dims.size() >= 2 &&
+              bias_dims.size() == 1);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
@@ -152,6 +158,7 @@ class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
 
   std::string pattern_name() const override { return "FusedLinearGeluPattern"; }
 };
+
 class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
