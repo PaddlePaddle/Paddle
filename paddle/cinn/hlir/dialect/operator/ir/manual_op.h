@@ -48,6 +48,27 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
+// FusionOp represents a subgraphs that can be fused. Every GroupOp
+// can be lowered to at least one FusionOp
+class IR_API FusionOp : public pir::Op<FusionOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cinn_op.fusion"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types,
+                    const int op_pattern_kind);
+
+  pir::Block *block();
+  std::vector<pir::Operation *> ops();
+  int op_pattern_kind();
+
+  void VerifySig();
+  void Print(pir::IrPrinter &printer);  // NOLINT
+};
+
 class IR_API ConcatOp : public pir::Op<ConcatOp> {
  public:
   using Op::Op;
@@ -129,6 +150,7 @@ class IR_API GenerateShapeOp
 }  // namespace cinn
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

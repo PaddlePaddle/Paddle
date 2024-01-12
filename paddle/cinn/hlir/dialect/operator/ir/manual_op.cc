@@ -32,6 +32,8 @@ namespace cinn {
 namespace dialect {
 
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* FusionOp::attributes_name[FusionOp::attributes_num] = {
+    "op_pattern_kind"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
@@ -74,6 +76,59 @@ std::vector<pir::Operation*> GroupOp::ops() {
 void GroupOp::VerifySig() {}
 
 void GroupOp::Print(pir::IrPrinter& printer) {
+  auto& os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = " << name();
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << " {";
+  for (auto& sub_op : ops()) {
+    os << "\n";
+    printer.PrintOperation(sub_op);
+  }
+  os << " \n }";
+}
+
+void FusionOp::Build(pir::Builder& builder,
+                     pir::OperationArgument& argument,
+                     const std::vector<pir::Type>& output_types,
+                     const int op_pattern_kind) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+  argument.AddAttribute(
+      "op_pattern_kind",
+      pir::Int32Attribute::get(pir::IrContext::Instance(), op_pattern_kind));
+}
+
+pir::Block* FusionOp::block() {
+  pir::Region& region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+std::vector<pir::Operation*> FusionOp::ops() {
+  std::vector<pir::Operation*> rt_ops;
+  for (auto& op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
+}
+
+int FusionOp::op_pattern_kind() {
+  return attributes()
+      .at("op_pattern_kind")
+      .dyn_cast<pir::Int32Attribute>()
+      .data();
+}
+
+void FusionOp::VerifySig() {
+  IR_ENFORCE(attributes().at("op_pattern_kind").isa<pir::Int32Attribute>(),
+             "Type of op_pattern_kind must be Int32Attribute");
+}
+
+void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
@@ -409,6 +464,7 @@ bool GenerateShapeOp::InferSymbolicShape(
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

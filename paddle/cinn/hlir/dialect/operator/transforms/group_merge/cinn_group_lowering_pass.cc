@@ -41,6 +41,7 @@ PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace {
 
+/*
 using ShapeOrDataDimExprs4ValueT =
     std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
 
@@ -178,6 +179,31 @@ std::vector<pir::Value> GetBlockOutsideOutput(
   }
   return vec_res;
 }
+*/
+
+std::vector<pir::Value> GetBlockOutsideOutput(
+    const std::vector<pir::Operation*> op_list) {
+  std::vector<pir::Value> vec_res;
+
+  std::unordered_set<pir::Value> block_inner_inputs;
+  for (auto op : op_list) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      block_inner_inputs.insert(op->operand_source(i));
+    }
+  }
+
+  std::unordered_set<pir::Value> insert_value;
+  for (auto op : op_list) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      if (!block_inner_inputs.count(op->result(i)) &&
+          !insert_value.count(op->result(i))) {
+        vec_res.push_back(op->result(i));
+        insert_value.insert(op->result(i));
+      }
+    }
+  }
+  return vec_res;
+}
 
 std::vector<pir::Operation*> GetOpListNotIncludeYield(
     const std::vector<pir::Operation*>& op_list) {
@@ -239,24 +265,17 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
   bool MatchAndRewrite(cinn::dialect::GroupOp group_op,
                        pir::PatternRewriter& rewriter) const override {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-    auto target = cinn::common::DefaultNVGPUTarget();
     auto* program = group_op->GetParentProgram();
     VLOG(4) << "Before GroupOpPattern: " << *program;
-    // TODO(Aurelius84): Remove scope after cleaning PirCompiler usless Build
-    // Interface
-    auto scope = std::make_shared<cinn::hlir::framework::Scope>();
 
-    VLOG(4) << "start Lowering Group Op: " << group_op;
-    // using yield op to sort
     std::unordered_map<::pir::Value, size_t> value2id;
     auto yeild_op = group_op.ops().back();
     for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
       value2id[yeild_op->operand_source(i)] = i;
     }
-    std::unordered_map<pir::Value, pir::Value> value_map;
 
     // op fusion
-    auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
+    auto group_list = cinn::dialect::ir::OpFusionPassInternal(
         GetOpListNotIncludeYield(group_op.ops()),
         GetOutputOpList(group_op.ops()),
         shape_analysis_);
@@ -277,38 +296,38 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }
 
-      auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
-      std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-          {cinn::dialect::JitKernelOp::kAttrName,
-           cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
-      };
+    for (auto group : merged_group_list) {
+      auto vec_outs = GetBlockOutsideOutput(group->ops);
 
-      // Generate jit kernel op input and output
-      auto vec_ins = GetBlockOutsideInput(group->ops);
-      for (size_t i = 0; i < vec_ins.size(); ++i) {
-        if (value_map.find(vec_ins[i]) != value_map.end()) {
-          vec_ins[i] = value_map.at(vec_ins[i]);
-        }
+      std::vector<pir::Type> output_types;
+      for (auto& value : vec_outs) {
+        output_types.emplace_back(value.type());
       }
 
-      std::vector<pir::Type> vec_types;
-      for (size_t i = 0; i < group->output_values.size(); ++i) {
-        vec_types.push_back(group->output_values[i].type());
+      auto fusion_op = rewriter.Build<cinn::dialect::FusionOp>(
+          output_types, group->op_pattern_kind);
+      pir::Block* fusion_block = fusion_op.block();
+
+      for (auto op : group->ops) {
+        op->MoveTo(fusion_block, fusion_block->end());
       }
 
-      auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-          vec_ins, op_attrs, vec_types);
-      for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
-        auto find_it = value2id.find(group->output_values[i]);
+      for (size_t i = 0; i < fusion_op.num_results(); ++i) {
+        auto find_it = value2id.find(vec_outs[i]);
         if (find_it != value2id.end()) {
+          // If it's an output of group_op, YieldOp is needed to find the real
+          // user
           rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
-                                      jit_kernel_op.result(i));
+                                      fusion_op.result(i));
+        } else {
+          // If it is not an output of group_op, find the user directly
+          rewriter.ReplaceAllUsesWith(vec_outs[i], fusion_op.result(i));
         }
-        value_map[group->output_values[i]] = jit_kernel_op.result(i);
       }
+      rewriter.SetInsertionPointToBlockEnd(fusion_block);
+      rewriter.Build<::pir::YieldOp>(vec_outs);
+      rewriter.SetInsertionPointAfter(fusion_op);
     }
-    value_map.clear();
-    VLOG(4) << "Before GroupOpPattern.EraseOp: " << *program;
     rewriter.EraseOp(group_op);
     return true;
   }

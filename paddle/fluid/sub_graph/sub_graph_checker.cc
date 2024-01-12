@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_fusion_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -171,6 +172,7 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnFusionLoweringPass());
   pm.Run(prim_program_.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -268,6 +270,7 @@ double SubGraphChecker::RunCinnSpeed() {
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnFusionLoweringPass());
   pm.Run(prim_program_.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);

@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_fusion_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -209,6 +210,7 @@ TEST(GroupOp, CINNLowering) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::PassManager pass_manager(ctx);
   pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateCinnFusionLoweringPass());
   pass_manager.Run(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
