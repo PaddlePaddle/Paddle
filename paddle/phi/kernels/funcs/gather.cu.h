@@ -219,6 +219,82 @@ __global__ void GatherGradGPUKernel(const T* input,
 }
 
 template <typename T, typename U>
+bool TryDispatchVecSize(const phi::GPUContext& ctx,
+                        const void* input_data,
+                        const U* index_data,
+                        void* out_data,
+                        int64_t outer_dim_size,
+                        int64_t inner_dim_size,
+                        int64_t index_size,
+                        int64_t index_dim_size,
+                        int64_t out_size) {
+  if ((reinterpret_cast<uintptr_t>(input_data) % sizeof(T) == 0) &&
+      (reinterpret_cast<uintptr_t>(out_data) % sizeof(T) == 0) &&
+      (outer_dim_size % sizeof(T) == 0)) {
+    out_size = out_size / sizeof(T);
+    outer_dim_size = outer_dim_size / sizeof(T);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
+    auto stream = ctx.stream();
+    GatherGPUKernel<T, U>
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+            static_cast<const T*>(input_data),
+            index_data,
+            static_cast<T*>(out_data),
+            outer_dim_size,
+            inner_dim_size,
+            index_size,
+            index_dim_size,
+            out_size);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+template <typename U>
+void DispatchVecSize(const phi::GPUContext& ctx,
+                     const void* input_data,
+                     const U* index_data,
+                     void* out_data,
+                     int64_t outer_dim_size,
+                     int64_t inner_dim_size,
+                     int64_t index_size,
+                     int64_t index_dim_size,
+                     int64_t out_size) {
+  printf("===== Outer dimsize is: %ld \n =====", outer_dim_size);
+  using Func = bool (*)(const phi::GPUContext& ctx,
+                        const void* input_data,
+                        const U* index_data,
+                        void* out_data,
+                        int64_t outer_dim_size,
+                        int64_t inner_dim_size,
+                        int64_t index_size,
+                        int64_t index_dim_size,
+                        int64_t out_size);
+  Func funcs[] = {
+      TryDispatchVecSize<ulonglong2, U>,  // 16B
+      TryDispatchVecSize<uint64_t, U>,    // 8B
+      TryDispatchVecSize<uint32_t, U>,    // 4B
+      TryDispatchVecSize<uint16_t, U>,    // 2B
+      TryDispatchVecSize<uint8_t, U>,     // 1B
+  };
+
+  for (int i = 0; i < 5; i++) {
+    if (funcs[i](ctx,
+                 input_data,
+                 index_data,
+                 out_data,
+                 outer_dim_size,
+                 inner_dim_size,
+                 index_size,
+                 index_dim_size,
+                 out_size)) {
+      return;
+    }
+  }
+}
+
+template <typename T, typename U>
 void GatherV2CUDAFunction(const DenseTensor* input,
                           const DenseTensor* index,
                           const int axis,
@@ -257,18 +333,15 @@ void GatherV2CUDAFunction(const DenseTensor* input,
   int64_t out_size = out->numel();
   if (out_size == 0) return;
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
-  auto stream = ctx.stream();
-  GatherGPUKernel<T, U>
-      <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-          input_data,
-          index_data,
-          out_data,
-          outer_dim_size,
-          inner_dim_size,
-          index_size,
-          index_dim_size,
-          out_size);
+  DispatchVecSize<U>(ctx,
+                     input_data,
+                     index_data,
+                     out_data,
+                     outer_dim_size * sizeof(T),
+                     inner_dim_size,
+                     index_size,
+                     index_dim_size,
+                     out_size * sizeof(T));
 }
 
 template <typename T, typename U>
