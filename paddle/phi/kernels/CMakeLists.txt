@@ -242,7 +242,8 @@ set(cc_search_pattern
     "strings/cpu/*.cc"
     "fusion/*.cc"
     "stride/*.cc"
-    "fusion/cpu/*.cc")
+    "fusion/cpu/*.cc"
+    "custom/*.cc")
 
 if(WITH_MKLDNN)
   set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"

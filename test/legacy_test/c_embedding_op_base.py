@@ -87,18 +87,25 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
             self.check_output_with_place(core.CUDAPlace(0))
         elif core.is_compiled_with_xpu():
             self.check_output_with_place(core.XPUPlace(0))
+        elif core.is_compiled_with_custom_device():
+            self.check_output_with_place(core.CustomPlace(0))
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(core.CUDAPlace(0), ['W'], 'Out')
         elif core.is_compiled_with_xpu():
             self.check_grad_with_place(core.XPUPlace(0), ['W'], 'Out')
+        elif core.is_compiled_with_custom_device():
+            self.check_grad_with_place(core.CustomPlace(0), ['W'], 'Out')
 
     def init_dtype(self):
         if core.is_compiled_with_cuda():
             self.dtype = "float64"
             self.ids_dtype = "int64"
         elif core.is_compiled_with_xpu():
+            self.dtype = "float32"
+            self.ids_dtype = "int64"
+        elif core.is_compiled_with_custom_device():
             self.dtype = "float32"
             self.ids_dtype = "int64"
 
