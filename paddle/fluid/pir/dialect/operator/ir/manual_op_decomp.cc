@@ -60,7 +60,7 @@ std::vector<std::vector<pir::OpResult>> BatchNormOp::Decomp(
   float epsilon =
       op->attribute("epsilon").dyn_cast<pir::FloatAttribute>().data();
   const std::string& data_layout =
-      op->attribute("data_layout").dyn_cast<pir::StrAttribute>().AsString();
+      op->attribute("data_format").dyn_cast<pir::StrAttribute>().AsString();
   bool use_global_stats =
       op->attribute("use_global_stats").dyn_cast<pir::BoolAttribute>().data();
   bool trainable_statistics = op->attribute("trainable_statistics")
@@ -148,7 +148,7 @@ std::vector<std::vector<pir::OpResult>> BatchNorm_Op::Decomp(
   float epsilon =
       op->attribute("epsilon").dyn_cast<pir::FloatAttribute>().data();
   const std::string& data_layout =
-      op->attribute("data_layout").dyn_cast<pir::StrAttribute>().AsString();
+      op->attribute("data_format").dyn_cast<pir::StrAttribute>().AsString();
   bool use_global_stats =
       op->attribute("use_global_stats").dyn_cast<pir::BoolAttribute>().data();
   bool trainable_statistics = op->attribute("trainable_statistics")
