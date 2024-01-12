@@ -59,7 +59,7 @@ void GaussianKernel(const Context& dev_ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // use global Generator seed

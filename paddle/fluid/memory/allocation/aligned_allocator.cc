@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
+
+REGISTER_FILE_SYMBOLS(aligned_allocator);
 
 namespace paddle {
 namespace memory {

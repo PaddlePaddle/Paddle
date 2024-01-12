@@ -111,6 +111,8 @@
     {inputs : X}
   outputs:
     {out : Out}
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : addmm
   backward : addmm_grad
@@ -243,6 +245,14 @@
     out : Out
     indices : Indices
 
+- op : array_to_tensor(tensor_array_to_tensor)
+  backward : tanh_shrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_index : OutIndex
+
 - op : as_complex
   inputs :
     x : X
@@ -318,7 +328,7 @@
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
 - op : batch_norm
-  backward : batch_norm_grad
+  backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
     x : X
     mean : Mean
@@ -332,6 +342,8 @@
     saved_mean: SavedMean
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -354,6 +366,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -370,6 +384,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -415,6 +431,10 @@
   outputs :
     out : Out
 
+- op : bn_act_xpu
+  attrs:
+    data_format: data_layout
+
 - op : box_coder
   inputs :
     {prior_box : PriorBox , prior_box_var : PriorBoxVar, target_box: TargetBox}
@@ -442,11 +462,20 @@
   outputs :
     out : Out
 
+- op : c_softmax_with_cross_entropy
+  backward : c_softmax_with_cross_entropy_grad
+  inputs :
+    {logits : Logits, label : Label}
+  outputs :
+    {softmax : Softmax, loss : Loss}
+
 - op : cast
   inputs :
     x : X
   outputs :
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : ceil
   backward : ceil_grad
@@ -568,15 +597,6 @@
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
   get_expected_kernel_type :
     conv2d : GetConvExpectedKernelType
-
-- op : conv2d_fusion
-  extra :
-    attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
-             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
-             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
-             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
-             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_transpose
   backward : conv2d_transpose_grad, conv2d_transpose_double_grad (conv2d_transpose_grad_grad)
@@ -1033,6 +1053,16 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : fc
+  inputs :
+    input : Input
+    w : W
+    bias : Bias
+  outputs :
+    out : Out
+  extra :
+    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
+
 - op : feed
   outputs: {out: Out}
 
@@ -1082,6 +1112,7 @@
     {start_axis : start_axis, stop_axis : stop_axis}
   extra :
     outputs : [xshape]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   manual_signature : [flatten, flatten_grad]
 
 - op : flip
@@ -1233,6 +1264,21 @@
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
 
+- op : fused_bias_dropout_residual_layer_norm
+  backward : fused_bias_dropout_residual_layer_norm_grad
+  inputs :
+    x : X
+    residual : Residual
+    bias : Bias
+    ln_scale : LnScale
+    ln_bias : LnBias
+  outputs :
+    bias_dropout_residual_out : BiasDropoutResidualOut
+    dropout_mask_out : DropoutMaskOut
+    ln_mean : LnMean
+    ln_variance : LnVariance
+    y : Y
+
 - op : fused_bn_add_activation_ (fused_bn_add_activation)
   backward : fused_bn_add_activation_grad
   inputs:
@@ -1253,7 +1299,29 @@
 - op : fused_conv2d
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
-             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
+
+- op : fused_conv2d_add_act
+  inputs :
+    input : Input
+    filter : Filter
+    bias : Bias
+    residual_data : ResidualData
+  outputs :
+    output : Output
+    outputs : Outputs
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_beta = 0.0f, bool use_addto = false,
+             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
+             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false]
+  get_expected_kernel_type :
+    fused_conv2d_add_act : GetConvExpectedKernelType
+
+- op : fused_conv3d
+  extra :
+    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fused_embedding_eltwise_layernorm
   inputs :
@@ -1342,6 +1410,10 @@
     scale_data : Scale_data
     shift_data : Shift_data
     scale_weights : Scale_weights
+
+- op : fusion_lstm
+  extra :
+    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fusion_repeated_fc_relu
   inputs :
@@ -1472,6 +1544,8 @@
     y : Y
     mean : Mean
     variance : Variance
+  attrs:
+    data_format: data_layout
 
 - op : gru
   backward : gru_grad
@@ -1726,6 +1800,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1842,6 +1918,10 @@
 
 - op : lrn
   backward : lrn_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, mid_out : MidOut}
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
@@ -2158,6 +2238,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2379,6 +2461,14 @@
   outputs :
     out : Out
 
+- op : push_sparse_v2
+  inputs :
+    { x : Ids, W : w}
+  outputs :
+    out : Out
+  extra :
+    attrs : [int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, 'str[] inputnames = {}', bool is_distributed = true]
+
 - op : put_along_axis
   backward : put_along_axis_grad
   inputs :
@@ -2386,7 +2476,7 @@
   outputs :
     out : Result
   attrs :
-    {axis : Axis, reduce : Reduce}
+    {axis : Axis, reduce : Reduce, include_self: Include_self}
 
 - op : pylayer
   backward : pylayer_grad
@@ -2399,6 +2489,15 @@
     x : X
   outputs :
     {q : Q, r : R}
+
+- op : quantize
+  backward : quantize_grad
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
   extra :
@@ -2574,6 +2673,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : row_conv
+  backward : row_conv_grad
+  inputs :
+    {x : X, filter : Filter}
+  outputs :
+    {out : Out}
+
 - op : rsqrt
   backward : rsqrt_grad, rsqrt_double_grad (rsqrt_grad_grad)
   inputs :
@@ -2671,6 +2777,18 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_mask
+  inputs:
+    x : X
+  attrs:
+    max_len: maxlen
+  outputs:
+    y : Y
+  scalar :
+    max_len :
+      data_type : int
+      tensor_name : MaxLenTensor
+
 - op : sequence_softmax
   backward : sequence_softmax_grad
   extra :
@@ -2685,10 +2803,6 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
-
-- op : shadow_output
-  inputs: {x: x}
-  outputs: {out: out}
 
 - op : shape
   inputs :
@@ -2712,6 +2826,13 @@
   outputs :
     out : Out
     xout : XOut
+
+- op : shuffle_batch
+  backward: shuffle_batch_grad
+  inputs:
+    {x : X, seed : Seed}
+  outputs:
+    {out : Out, shuffle_idx : ShuffleIdx, seed_out : SeedOut}
 
 - op : shuffle_channel
   backward : shuffle_channel_grad
@@ -2786,6 +2907,13 @@
   outputs :
     out : Out
 
+- op : soft_relu
+  backward : soft_relu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
   inputs :
@@ -2852,6 +2980,8 @@
       axis :
         data_type : int
         support_tensor : true
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : split_with_num
   scalar :
@@ -2987,6 +3117,8 @@
   outputs :
     {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -3093,6 +3225,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3281,7 +3415,19 @@
   outputs :
     out: Out
 
+- op: c_reduce_min
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_reduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reducescatter
   inputs :
     x : X
   outputs :
@@ -3305,6 +3451,20 @@
   outputs:
     {out: Out}
 
+- op: decayed_adagrad
+  inputs:
+    {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
+  outputs:
+    {param_out : ParamOut, moment_out : MomentOut}
+
+- op: distribute_fpn_proposals
+  inputs :
+    {fpn_rois: FpnRois, rois_num: RoisNum}
+  outputs :
+    multi_fpn_rois : MultiFpnRois
+    multi_level_rois_num: MultiLevelRoIsNum
+    restore_index: RestoreIndex
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3315,11 +3475,24 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op: ftrl
+  inputs:
+    {param: Param, squared_accumulator: SquaredAccumulator, linear_accumulator: LinearAccumulator, grad: Grad, learning_rate: LearningRate}
+  outputs:
+    {param_out: ParamOut, squared_accum_out: SquaredAccumOut, linear_accum_out: LinearAccumOut}
+
 - op: full_batch_size_like (fill_constant_batch_size_like)
   inputs:
     {input: Input}
   outputs:
     {out: Out}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
 
 - op: fusion_squared_mat_sub
   inputs :
@@ -3334,6 +3507,24 @@
 - op: get_tensor_from_selected_rows
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: identity_loss
+  inputs :
+    x: X
+  outputs :
+    out : Out
+
+- op: lars_momentum
+  inputs:
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
+- op: lod_array_length
+  inputs :
+    {x: X}
   outputs :
     out : Out
 
@@ -3361,6 +3552,26 @@
 - op: memcpy_d2h
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: nce
+  backward: nce_grad
+  inputs:
+    {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
+  outputs:
+    {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
+
+- op: number_count
+  inputs :
+    {numbers: numbers}
+  outputs :
+    out : Out
+
+- op: read_from_array
+  inputs:
+    array : X
+    i : I
   outputs :
     out : Out
 
@@ -3431,6 +3642,12 @@
   outputs :
     out : Out
 
+- op: skip_layernorm
+  inputs :
+    {x: X, y: Y, scale: Scale, bias : Bias}
+  outputs :
+    out : Out
+
 - op: sparse_momentum
   inputs :
     {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
@@ -3454,6 +3671,12 @@
     x : X
   outputs :
     out : Out
+
+- op: uniform_random_batch_size_like
+  inputs:
+     input : Input
+  outputs:
+     out: Out
 
 - op: write_to_array
   inputs :

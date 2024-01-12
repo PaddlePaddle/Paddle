@@ -15,6 +15,7 @@
     data_type : x
   inplace: (x -> out)
   backward : abs_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
@@ -85,6 +86,7 @@
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamwInferMeta
+    spmd_rule : AdamwInferSpmdDynamic
   kernel :
     func : adamw
     data_type : param
@@ -278,7 +280,7 @@
     func : bernoulli
 
 - op : bicubic_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -301,7 +303,7 @@
   backward : bilinear_grad
 
 - op : bilinear_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -322,6 +324,14 @@
     func: bincount
   optional: weights
 
+- op : binomial
+  args : (Tensor count, Tensor prob)
+  output : Tensor(out)
+  infer_meta :
+    func : BinomialInferMeta
+  kernel :
+    func : binomial
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -330,6 +340,16 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_and
+    backend : x
+  inplace: (x -> out)
+
+- op : bitwise_left_shift
+  args : (Tensor x, Tensor y, bool is_arithmetic = true)
+  output : Tensor(out)
+  infer_meta :
+    func : BitwiseShiftInferMeta
+  kernel :
+    func : bitwise_left_shift
     backend : x
   inplace: (x -> out)
 
@@ -351,6 +371,16 @@
     func : ElementwiseInferMeta
   kernel :
     func : bitwise_or
+    backend : x
+  inplace: (x -> out)
+
+- op : bitwise_right_shift
+  args : (Tensor x, Tensor y, bool is_arithmetic = true)
+  output : Tensor(out)
+  infer_meta :
+    func : BitwiseShiftInferMeta
+  kernel :
+    func : bitwise_right_shift
     backend : x
   inplace: (x -> out)
 
@@ -548,6 +578,16 @@
     data_type : x
   backward : conv3d_transpose_grad
 
+- op : copysign
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : copysign
+  inplace: (x -> out)
+  backward : copysign_grad
+
 - op : cos
   args : (Tensor x)
   output : Tensor(out)
@@ -596,6 +636,7 @@
   inplace : (input -> softmax)
   infer_meta :
     func : CrossEntropyWithSoftmaxInferMeta
+    spmd_rule: CrossEntropyWithSoftmaxInferSpmd
   kernel :
     func : cross_entropy_with_softmax
     data_type : input
@@ -653,6 +694,7 @@
     param : [name, shape, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
@@ -830,6 +872,7 @@
     func : exp
   inplace : (x -> out)
   backward : exp_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expand
   args : (Tensor x, IntArray shape = {})
@@ -929,10 +972,10 @@
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttInferSpmd
   kernel :
     func : flash_attn
     data_type : q
-  intermediate : softmax_lse, seed_offset
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
@@ -1029,6 +1072,17 @@
     param : [value, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : gammaln
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : gammaln
+  inplace: (x -> out)
+  backward : gammaln_grad
 
 - op : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
@@ -1049,8 +1103,6 @@
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
-  data_transform :
-    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -1106,7 +1158,7 @@
   backward : grid_sample_grad
 
 - op : group_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW")
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta
@@ -1220,6 +1272,16 @@
     func : i1e
   backward : i1e_grad
 
+- op : identity_loss
+  args : (Tensor x, int reduction = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : IdentityLossInferMeta
+  kernel :
+    func : identity_loss
+  inplace: (x -> out)
+  backward : identity_loss_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)
@@ -1250,8 +1312,6 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
-  data_transform :
-    skip_transform : indices
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -1410,6 +1470,7 @@
   output : Tensor(out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : LayerNormInferMeta
+    spmd_rule : LayerNormInferSpmd
   kernel :
     func : layer_norm
     data_type : x
@@ -1449,7 +1510,7 @@
   backward : lgamma_grad
 
 - op : linear_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -1828,6 +1889,8 @@
     func : multiplex
     data_type : inputs
   backward : multiplex_grad
+  data_transform :
+    skip_transform : index
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -1849,7 +1912,7 @@
   backward : nanmedian_grad
 
 - op : nearest_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -1914,6 +1977,7 @@
   output : Tensor(size)
   infer_meta :
     func : NumelInferMeta
+    spmd_rule : NumelInferSpmd
   kernel :
     func : numel
     data_type : x
@@ -1993,6 +2057,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule: PowInferSpmd
   kernel :
     func : pow
     data_type : x
@@ -2030,7 +2095,7 @@
   backward : psroi_pool_grad
 
 - op : put_along_axis
-  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
+  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2186,6 +2251,19 @@
   inplace : (x -> out)
   backward : round_grad
 
+- op : rprop_
+  args : (Tensor param, Tensor grad, Tensor prev, Tensor learning_rate, Tensor master_param, Tensor learning_rate_range, Tensor etas, bool multi_precision=false)
+  output : Tensor(param_out), Tensor(prev_out), Tensor(learning_rate_out), Tensor(master_param_out)
+  infer_meta :
+    func : RpropInferMeta
+  kernel :
+    func : rprop
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (prev -> prev_out), (learning_rate -> learning_rate_out), (master_param -> master_param_out)
+
 - op : rsqrt
   args : (Tensor x)
   output : Tensor(out)
@@ -2203,6 +2281,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ScaleInferSpmd
   kernel :
     func : scale {dense -> dense},
            scale_sr {selected_rows -> selected_rows}
@@ -2298,6 +2377,7 @@
   output : Tensor(param_out), Tensor(master_param_out)
   infer_meta :
     func : SgdInferMeta
+    spmd_rule : SgdInferSpmd
   kernel :
     func : sgd {dense, dense, dense, dense -> dense, dense},
            sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
@@ -2308,17 +2388,6 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
 
-- op : shadow_output
-  args : (Tensor x, str name)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel:
-    func : shadow_output
-    param : [x]
-  traits : pir::SideEffectTrait
-
 - op : shape
   args : (Tensor input)
   output : Tensor(out)
@@ -2326,9 +2395,10 @@
     func : ShapeInferMeta
   kernel :
     func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
+           shape_sr {selected_rows -> dense}
   data_transform:
     skip_transform : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shard_index
   args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
@@ -2494,6 +2564,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : SqueezeWithXShapeInferMeta
+    spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
@@ -2507,9 +2578,19 @@
   output : Tensor (out)
   infer_meta :
     func : StackInferMeta
+    spmd_rule : StackInferSpmd
   kernel :
     func : stack
   backward : stack_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : standard_gamma
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : standard_gamma
 
 - op : stanh
   args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)
@@ -2642,7 +2723,7 @@
   backward : triangular_solve_grad
 
 - op : trilinear_interp
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
   infer_meta :
     func : InterpolateInferMeta
@@ -2718,6 +2799,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeWithXShapeInferMeta
+    spmd_rule : UnsqueezeInferSpmd
   kernel :
     func : unsqueeze
     data_type : x
@@ -2747,16 +2829,6 @@
   data_transform :
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
-
-- op : variable_length_memory_efficient_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal)
-  output : Tensor
-  infer_meta :
-    func : VariableLengthMemoryEfficientAttentionInferMeta
-  kernel :
-    func : variable_length_memory_efficient_attention
-    data_type : query
-  optional : mask
 
 - op : view_dtype
   args : (Tensor input, DataType dtype)
@@ -2814,7 +2886,7 @@
   backward : warprnnt_grad
 
 - op : weight_dequantize
-  args : (Tensor x, Tensor scale, str algo="weight_only_int8", DataType out_dtype=DataType::FLOAT16)
+  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", DataType out_dtype = DataType::FLOAT16, int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightDequantizeInferMeta
@@ -2823,7 +2895,7 @@
     data_type : out_dtype
 
 - op : weight_only_linear
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80, int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightOnlyLinearInferMeta
@@ -2834,7 +2906,7 @@
   backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo="weight_only_int8")
+  args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta
@@ -2856,6 +2928,7 @@
   output : Tensor(out)
   infer_meta :
     func : WhereInferMeta
+    spmd_rule: WhereInferSpmd
   kernel :
     func : where
   inplace: (x -> out)

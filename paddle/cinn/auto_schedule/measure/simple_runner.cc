@@ -45,31 +45,31 @@ static const std::unordered_map<std::string, std::vector<int>>
 };
 
 // Generate random value and populate them to the output address of memory
-static void PopulateRandomValue(const common::Type& type,
+static void PopulateRandomValue(const cinn::common::Type& type,
                                 const int numel,
                                 void* raw_ptr) {
   std::random_device seed;
   std::default_random_engine engine(seed());
 
-  if (type == common::Bool()) {
+  if (type == cinn::common::Bool()) {
     auto* fmt_ptr = reinterpret_cast<bool*>(raw_ptr);
     std::bernoulli_distribution dist(0.5);
     std::generate_n(
         fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
-  } else if (type == common::I32()) {
+  } else if (type == cinn::common::I32()) {
     auto* fmt_ptr = reinterpret_cast<int*>(raw_ptr);
     std::uniform_int_distribution<int> dist(std::numeric_limits<int>::min(),
                                             std::numeric_limits<int>::max());
     std::generate_n(
         fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
-  } else if (type == common::I64()) {
+  } else if (type == cinn::common::I64()) {
     auto* fmt_ptr = reinterpret_cast<int64_t*>(raw_ptr);
     std::uniform_int_distribution<int64_t> dist(
         std::numeric_limits<int64_t>::min(),
         std::numeric_limits<int64_t>::max());
     std::generate_n(
         fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
-  } else if (type == common::F32()) {
+  } else if (type == cinn::common::F32()) {
     auto* fmt_ptr = reinterpret_cast<float*>(raw_ptr);
     std::uniform_real_distribution<float> dist(
         std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
@@ -90,12 +90,12 @@ static void PopulateRandomValue(const common::Type& type,
 // Initialize a tensor with 0 if init_with_zero == true, otherwise initialize
 // the tensor with random value.
 static void InitTensorData(Tensor tensor,
-                           const common::Target& target,
+                           const cinn::common::Target& target,
                            bool init_with_zero) {
   int mem_size = tensor->shape().numel() * tensor->type().bytes();
   auto* tensor_data = tensor->mutable_data(target, tensor->type());
 #ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target == cinn::common::DefaultNVGPUTarget()) {
     if (init_with_zero) {
       cudaMemset(tensor_data, 0, mem_size);
     } else {
@@ -106,7 +106,7 @@ static void InitTensorData(Tensor tensor,
     }
   }
 #endif
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     if (init_with_zero) {
       memset(tensor_data, 0, mem_size);
     } else {
@@ -228,7 +228,7 @@ MeasureResult SimpleRunner::Run(const MeasureInput& input,
       instr->Run(&execution_args);
     }
 #ifdef CINN_WITH_CUDA
-    if (instr->target_ == common::DefaultNVGPUTarget()) {
+    if (instr->target_ == cinn::common::DefaultNVGPUTarget()) {
       CUDA_CALL(cudaDeviceSynchronize());
     }
 #endif

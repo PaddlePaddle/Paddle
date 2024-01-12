@@ -52,14 +52,13 @@ class IR_API VectorType
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-class DenseTensorType : public Type::TypeBase<DenseTensorType,
-                                              Type,
-                                              DenseTensorTypeStorage,
-                                              ShapedTypeInterface> {
+class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
+                                                     Type,
+                                                     DenseTensorTypeStorage,
+                                                     ShapedTypeInterface> {
  public:
   using Base::Base;
   using Dim = DenseTensorTypeStorage::Dim;
-  using DataLayout = DenseTensorTypeStorage::DataLayout;
   using LoD = DenseTensorTypeStorage::LoD;
 
   Type dtype() const;

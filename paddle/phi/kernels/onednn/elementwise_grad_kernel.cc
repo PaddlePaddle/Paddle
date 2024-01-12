@@ -25,8 +25,8 @@ namespace funcs {
 
 inline std::vector<int64_t> CalculateBroadcastedDims(
     const phi::DenseTensor* x, const phi::DenseTensor* y) {
-  const auto src_tz = phi::vectorize(x->dims());
-  const auto dst_tz = phi::vectorize(y->dims());
+  const auto src_tz = common::vectorize(x->dims());
+  const auto dst_tz = common::vectorize(y->dims());
 
   std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
 
@@ -103,7 +103,7 @@ inline void BroadcastReduction(const Place& place,
   astream.wait();
   auto grad_shape = grad_tensor->dims().size() == 0
                         ? std::vector<int64_t>{1}
-                        : phi::vectorize<int64_t>(grad_tensor->dims());
+                        : common::vectorize<int64_t>(grad_tensor->dims());
   grad_tensor->set_mem_desc(dst_memory->get_desc().reshape(grad_shape));
 }
 
@@ -135,7 +135,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
     scale = (BINARY_OP == dnnl::algorithm::binary_add) ? 1 : -1;
   }
 
-  auto tz = phi::vectorize<int64_t>(dout.dims());
+  auto tz = common::vectorize<int64_t>(dout.dims());
 
   funcs::ReorderOneDNNHandler reorder_handler(
       tz, dout.dtype(), funcs::ToOneDNNDataType(dout.dtype()), onednn_engine);

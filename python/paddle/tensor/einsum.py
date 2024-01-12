@@ -27,8 +27,10 @@ from ..base.framework import in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
-from .math import multiply
-from .math import sum as paddle_sum
+from .math import (
+    multiply,
+    sum as paddle_sum,
+)
 
 __all__ = []
 
@@ -670,7 +672,7 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     if any(ax != dim for ax, dim in enumerate(view[:nout])):
         perm = [dim for dim in view if dim >= 0]
         if sorted(perm) != perm:
-            varname = f'op{nop-1}'
+            varname = f'op{nop - 1}'
             step = transpose, [varname], varname, perm
             plan.add_step(step)
         dim = 0
@@ -682,14 +684,14 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
             if d == -1:
                 unsqueeze_dims.append(ax)
         if unsqueeze_dims:
-            varname = f'op{nop-1}'
+            varname = f'op{nop - 1}'
             step = unsqueeze, [varname], varname, unsqueeze_dims
             plan.add_step(step)
 
     squeeze_dims = [dim for dim in view[nout:] if dim != -1]
     if squeeze_dims:
         # plan_reduce(plan, nop-1, reduce_dims, keepdim=False)
-        varname = f'op{nop-1}'
+        varname = f'op{nop - 1}'
         step = squeeze, [varname], varname, squeeze_dims
         plan.add_step(step)
 

@@ -12,30 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import inspect
-import os
 import threading
 import warnings
 import weakref
+from typing import TYPE_CHECKING
 
 import paddle.pir.core as ir_static
-from paddle import decomposition
-from paddle.base import core, framework, in_pir_mode
+from paddle import decomposition, get_flags
+from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
     _to_static_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
+from paddle.pir import Value
+from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
-from .ast_transformer import DygraphToStaticAst
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -51,19 +52,24 @@ from .partial_program import PartialProgramLayerHook
 from .pir_partial_program import (
     PartialProgramLayerHook as PirPartialProgramLayerHook,
 )
+from .transformers import DygraphToStaticAst
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
     backend_guard,
+    cuda_pinned_tensors_move_to_excepted_place,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
     make_hashable,
+    prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
-    unwrap,
 )
+
+if TYPE_CHECKING:
+    from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
 
@@ -128,9 +134,7 @@ class FunctionCache:
         If the conversion of A.foo happens after B.foo, it will reuse the transformed ast node of B.foo
         to speed up the conversion.
         """
-        # Note: In Python2, it will raise OSError when inspect function
-        # with decorator directly and function.__wrapped__ holds the actual function.
-        func = unwrap(func)
+        func = inspect.unwrap(func)
         source_code = func_to_source_code(func)
 
         # TODO(liym27):
@@ -228,7 +232,14 @@ class CacheKey:
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
         )
-        self._pir_flags = os.environ.get('FLAGS_enable_pir_in_executor', None)
+        self._pir_flags = (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        )
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -338,14 +349,8 @@ class StaticFunction:
         else:
             self._dygraph_function = function
             self._class_instance = None
-
-        if (
-            input_spec is not None
-            and prim_or_cinn_is_enabled(
-                kwargs.get("build_strategy", None), kwargs.get("backend", None)
-            )
-            and not in_pir_mode()
-        ):
+        # TODO(chenzhuo): Remove this after lowering prim into C++
+        if input_spec is not None and prim_is_enabled():
             from paddle.static import InputSpec
 
             for spec in flatten(input_spec):
@@ -367,6 +372,16 @@ class StaticFunction:
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
+        self._get_debug_name()
+
+    def _get_debug_name(self):
+        try:
+            if self._class_instance:
+                self._debug_name = self._class_instance.__class__.__name__
+            else:
+                self._debug_name = self._dygraph_function.__name__
+        except Exception:
+            self._debug_name = "static_function"
 
     @property
     def is_property(self):
@@ -700,6 +715,8 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        cuda_pinned_tensors_move_to_excepted_place(args)
+
         (
             input_args_with_spec,
             input_kwargs_with_spec,
@@ -711,6 +728,7 @@ class SymbolicStaticFunction(StaticFunction):
         traced_fun = symbolic_translate(
             self._dygraph_function,
             build_strategy=build_strategy,
+            training=self._is_train_mode(),
             backend=backend,
         )
         if self._class_instance is not None:
@@ -769,7 +787,7 @@ class ASTStaticFunction(StaticFunction):
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
 
         try:
-            concrete_program, partial_program_layer = self.get_concrete_program(
+            _, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode()
             )
             # 2. synchronize self.training attribute.
@@ -854,6 +872,7 @@ class ASTStaticFunction(StaticFunction):
             concrete_program, partial_program_layer = self._program_cache[
                 cache_key
             ]
+        partial_program_layer._debug_name = self._debug_name
         return concrete_program, partial_program_layer
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -1012,7 +1031,7 @@ class ASTStaticFunction(StaticFunction):
         inputs = [
             var
             for var in flatten(concrete_program.inputs)
-            if isinstance(var, framework.Variable)
+            if isinstance(var, (framework.Variable, Value))
         ]
         return inputs
 
@@ -1026,7 +1045,7 @@ class ASTStaticFunction(StaticFunction):
         outputs = [
             var
             for var in flatten(concrete_program.outputs)
-            if isinstance(var, framework.Variable)
+            if isinstance(var, (framework.Variable, Value))
         ]
 
         return outputs
@@ -1127,7 +1146,6 @@ class ConcreteProgram:
         "startup_program",
         "parameters",
         "function",
-        "name_generator",
         'kwargs',
     ]
 
@@ -1137,7 +1155,6 @@ class ConcreteProgram:
         outputs,
         parameters,
         function,
-        name_generator,
         main_program,
         startup_program=None,
         **kwargs,
@@ -1148,7 +1165,6 @@ class ConcreteProgram:
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
-        self.name_generator = name_generator
         self.kwargs = kwargs
 
     @staticmethod
@@ -1187,7 +1203,9 @@ class ConcreteProgram:
         # framework.default_startup_program().random_seed
         # ) }}}
         with ir_static.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_to_static=True):
+            with _to_static_mode_guard_(
+                is_to_static=True
+            ), static_op_arg_cast_guard(_convert_into_value):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.pir_to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1202,8 +1220,8 @@ class ConcreteProgram:
 
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
-                    get_parameters(class_instance, False)
-                ), param_guard(get_buffers(class_instance, False)):
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
@@ -1239,12 +1257,10 @@ class ConcreteProgram:
         # TODO(@xiongkun): support op call stack in new ir?
         # main_program = update_op_callstack_with_origin_info(main_program)
 
-        new_name_generator = UniqueNameGenerator()
         return ConcreteProgram(
             inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
-            name_generator=new_name_generator,
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program,
@@ -1285,12 +1301,10 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        new_name_generator = UniqueNameGenerator()
+        ProgramTranslator.get_instance()._amp_records.clear()
 
         with framework.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
-                new_name_generator
-            ):
+            with _to_static_mode_guard_(is_to_static=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1305,8 +1319,8 @@ class ConcreteProgram:
 
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
-                    get_parameters(class_instance, False)
-                ), param_guard(get_buffers(class_instance, False)):
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
@@ -1345,7 +1359,6 @@ class ConcreteProgram:
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
-            name_generator=new_name_generator,
             main_program=main_program,
             startup_program=startup_program,
             **kwargs,
@@ -1432,6 +1445,7 @@ class FallbackProgramLayer:
         'training',
         '_cuda_graph_capture_mode',
         '_cuda_graph_pool_id',
+        '_debug_name',
     ]
 
     def __init__(self, instance, dy_func):
@@ -1763,6 +1777,7 @@ class ProgramTranslator:
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
         self._inplace_map = InplaceMap()
+        self._amp_records: dict[int, list[tuple[AmpOptions, int, int]]] = {}
         self.enable_to_static = True
 
     def enable(self, enable_to_static):

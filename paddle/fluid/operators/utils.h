@@ -30,7 +30,7 @@ inline std::vector<T> GetDataFromTensorList(
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(),
-                      phi::make_ddim({1}),
+                      common::make_ddim({1}),
                       platform::errors::InvalidArgument(
                           "The shape of Tensor in list must be [1]. "
                           "But received its shape "
@@ -71,19 +71,19 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("ShapeTensor")) {
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
     auto vec_shape = phi::GetVectorFromTensor<int>(shape_tensor);
-    return phi::make_ddim(vec_shape);
+    return common::make_ddim(vec_shape);
   }
 
   // 2. shape is a list/tuple containing Tensor
   auto shape_tensor_list = ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
   if (shape_tensor_list.size() > 0) {
     auto vec_shape = GetDataFromTensorList(shape_tensor_list);
-    return phi::make_ddim(vec_shape);
+    return common::make_ddim(vec_shape);
   }
 
   // 3. shape is a list/tuple without containing Tensor
   auto vec_shape = ctx.Attr<std::vector<int64_t>>("shape");
-  return phi::make_ddim(vec_shape);
+  return common::make_ddim(vec_shape);
 }
 
 template <typename T>

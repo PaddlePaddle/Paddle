@@ -136,7 +136,7 @@ static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
 
   int* mask_targets_data =
       mask_targets->mutable_data<int>({num_mask, mask_dim}, ctx.GetPlace());
-  phi::funcs::set_constant(ctx, mask_targets, -1);
+  phi::funcs::set_constant(ctx, mask_targets, static_cast<int>(-1));
   for (int64_t mask_id = 0; mask_id < num_mask; ++mask_id) {
     int cls = mask_class_labels_data[mask_id];
     int start = M * cls;
@@ -299,7 +299,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
     }
     masks.mutable_data<uint8_t>({bg_num, resolution * resolution},
                                 ctx.GetPlace());
-    phi::funcs::set_constant(ctx, &masks, -1);
+    phi::funcs::set_constant(ctx, &masks, static_cast<uint8_t>(-1));
     int* mask_class_labels_data =
         mask_class_labels.mutable_data<int>({bg_num, 1}, ctx.GetPlace());
     mask_class_labels_data[0] = 0;

@@ -22,10 +22,10 @@
 namespace {
 
 class FusedDropoutAddPattern
-    : public pir::drr::DrrPatternBase<FusedDropoutAddPattern> {
+    : public paddle::drr::DrrPatternBase<FusedDropoutAddPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &dropout = pat.Op(paddle::dialect::DropoutOp::name(),
                                  {{"p", pat.Attr("p")},
                                   {"is_test", pat.Attr("is_test")},
@@ -38,7 +38,7 @@ class FusedDropoutAddPattern
             {&pat.Tensor("dropout_out"), &pat.Tensor("mask")});
     pat.Tensor("add_out") = add(pat.Tensor("dropout_out"), pat.Tensor("y"));
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &fused_dropout_add =
         res.Op(paddle::dialect::FusedDropoutAddOp::name(),
                {{{"p", pat.Attr("p")},
@@ -53,10 +53,10 @@ class FusedDropoutAddPattern
 };
 
 class FusedDropoutGradAddGradPattern
-    : public pir::drr::DrrPatternBase<FusedDropoutAddPattern> {
+    : public paddle::drr::DrrPatternBase<FusedDropoutAddPattern> {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &dropout = pat.Op(paddle::dialect::DropoutOp::name(),
                                  {{"p", pat.Attr("p")},
                                   {"is_test", pat.Attr("is_test")},
@@ -81,7 +81,7 @@ class FusedDropoutGradAddGradPattern
     dropout_grad({&pat.Tensor("mask"), &pat.Tensor("dropout_out_grad")},
                  {&pat.Tensor("x_grad")});
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &fused_dropout_add =
         res.Op(paddle::dialect::FusedDropoutAddOp::name(),
                {{{"p", pat.Attr("p")},
@@ -105,32 +105,18 @@ class FusedDropoutGradAddGradPattern
   }
 };
 
-class FusedDropoutAddPass : public pir::Pass {
+class FusedDropoutAddPass : public pir::PatternRewritePass {
  public:
-  FusedDropoutAddPass() : pir::Pass("fused_dropout_add_pass", 1) {}
+  FusedDropoutAddPass()
+      : pir::PatternRewritePass("fused_dropout_add_pass", 1) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-
     ps.Add(FusedDropoutAddPattern().Build(context));
     ps.Add(FusedDropoutGradAddGradPattern().Build(context));
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
 
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    return ps;
   }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace

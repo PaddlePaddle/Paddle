@@ -26,6 +26,7 @@ from paddle.base.framework import (
     Variable,
     default_main_program,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     name_scope,
     program_guard,
     static_only,
@@ -206,7 +207,6 @@ def fc(
             param_shape = [
                 reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
             ] + [size]
-
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
@@ -227,7 +227,7 @@ def fc(
                 type="sum",
                 inputs={"X": mul_results},
                 outputs={"Out": pre_bias},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
         # add bias
         pre_activation = helper.append_bias_op(
@@ -860,7 +860,7 @@ def conv2d(
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`std` is :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -1055,7 +1055,6 @@ def conv2d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
@@ -1351,7 +1350,6 @@ def conv3d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
         },
@@ -1661,7 +1659,7 @@ def conv2d_transpose(
         )
 
     if filter_size is None:
-        if output_size is []:
+        if output_size == []:
             raise ValueError("output_size must be set when filter_size is None")
         if not in_dygraph_mode():
             if isinstance(output_size, Variable) or paddle.utils._contain_var(
@@ -2832,8 +2830,6 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
-                False,
                 'fuse_with_relu',
                 False,
                 'use_global_stats',
@@ -2847,8 +2843,6 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
-                False,
                 'fuse_with_relu',
                 False,
                 'use_global_stats',
@@ -2880,7 +2874,7 @@ def batch_norm(
             )
 
         return paddle.base.dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=act, use_mkldnn=False
+            batch_norm_out, act=act
         )
 
     saved_mean = helper.create_variable_for_type_inference(
@@ -2912,7 +2906,6 @@ def batch_norm(
         "epsilon": epsilon,
         "is_test": is_test,
         "data_layout": data_layout,
-        "use_mkldnn": False,
         "fuse_with_relu": False,
         "use_global_stats": use_global_stats,
     }
@@ -3489,7 +3482,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     )
     v.stop_gradient = True
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
 
     inputs = {'Weight': weight}

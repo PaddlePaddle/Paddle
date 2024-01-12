@@ -89,10 +89,10 @@ void TraceGradKernel(const Context& ctx,
                      int axis2,
                      DenseTensor* in_grad) {
   auto input_dims = in_grad->dims();
-  auto input_stride = phi::stride(input_dims);
+  auto input_stride = common::stride(input_dims);
   auto output_dims = out_grad.dims();
   auto output_stride = output_dims.size() == 0 ? phi::DDim(output_dims)
-                                               : phi::stride(output_dims);
+                                               : common::stride(output_dims);
 
   auto* out_data = out_grad.data<T>();
   T* x_data = ctx.template Alloc<T>(in_grad);
@@ -121,9 +121,9 @@ void TraceGradKernel(const Context& ctx,
   int64_t pos = std::abs(offset) * offset_stride;
   if (diag_size > 0) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    thrust::device_vector<int64_t> output_vec(vectorize(output_stride));
+    thrust::device_vector<int64_t> output_vec(common::vectorize(output_stride));
     const int64_t* output_arr = thrust::raw_pointer_cast(output_vec.data());
-    thrust::device_vector<int64_t> input_vec(vectorize(input_stride));
+    thrust::device_vector<int64_t> input_vec(common::vectorize(input_stride));
     const int64_t* input_arr = thrust::raw_pointer_cast(input_vec.data());
 
 #else

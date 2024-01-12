@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <ostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/block_operand_impl.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/op_result_impl.h"
 #include "paddle/pir/core/operation.h"
@@ -75,6 +76,11 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
                      region_mem_size + block_operand_size;
   // 2. Malloc memory.
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
+
+  auto name = op_info ? op_info.name() : "";
+  VLOG(10) << "Create Operation [" << name
+           << "]: {ptr = " << static_cast<void *>(base_ptr)
+           << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -111,7 +117,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
       base_ptr += sizeof(detail::BlockOperandImpl);
     }
   }
-
   // 3.5. Construct Regions
   if (num_regions > 0) {
     op->regions_ = reinterpret_cast<Region *>(base_ptr);
@@ -120,7 +125,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
       base_ptr += sizeof(Region);
     }
   }
-
   // 0. Verify
   if (op_info) {
     try {
@@ -131,6 +135,45 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
     }
   }
   return op;
+}
+
+Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
+  auto inputs = operands_source();
+  if (options.IsCloneOperands()) {
+    // replace value by IRMapping inplacely.
+    for (auto &value : inputs) {
+      value = ir_mapping.Lookup(value);
+    }
+  }
+
+  std::vector<Type> output_types;
+  for (auto &result : results()) {
+    output_types.push_back(result.type());
+  }
+
+  std::vector<Block *> successors = {};
+  if (options.IsCloneSuccessors()) {
+    for (uint32_t i = 0; i < num_successors_; ++i) {
+      successors.push_back(ir_mapping.Lookup(successor(i)));
+    }
+  }
+  auto *new_op = Create(
+      inputs, attributes_, output_types, info_, num_regions_, successors);
+  ir_mapping.Add(this, new_op);
+
+  // record outputs mapping info
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    ir_mapping.Add(result(i), new_op->result(i));
+  }
+
+  if (options.IsCloneRegions()) {
+    // clone regions recursively
+    for (uint32_t i = 0; i < num_regions_; ++i) {
+      this->region(i).CloneInto(new_op->region(i), ir_mapping);
+    }
+  }
+
+  return new_op;
 }
 
 // Call destructors for Region , OpResults, Operation, and OpOperands in
@@ -182,8 +225,8 @@ void Operation::Destroy() {
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
-  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
-          << ", size = " << result_mem_size << "} done.";
+  VLOG(10) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+           << ", size = " << result_mem_size << "} done.";
   aligned_free(aligned_ptr);
 }
 
@@ -202,12 +245,13 @@ Operation::Operation(const AttributeMap &attributes,
       num_results_(num_results),
       num_operands_(num_operands),
       num_regions_(num_regions),
-      num_successors_(num_successors) {}
+      num_successors_(num_successors),
+      id_(GenerateId()) {}
 
 ///
 /// \brief op ouput related public interfaces implementation
 ///
-std::vector<OpResult> Operation::results() {
+std::vector<OpResult> Operation::results() const {
   std::vector<OpResult> res;
   for (uint32_t i = 0; i < num_results(); ++i) {
     res.push_back(result(i));
@@ -354,17 +398,12 @@ int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
                               sizeof(Operation));
 }
 
-#define COMPONENT_IMPL(component_lower, componnent_upper)                     \
-  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) { \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<componnent_upper##Impl *>(                        \
-        reinterpret_cast<char *>(this) + offset);                             \
-  }                                                                           \
-  const componnent_upper##Impl *Operation::component_lower##_impl(            \
-      uint32_t index) const {                                                 \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<const componnent_upper##Impl *>(                  \
-        reinterpret_cast<const char *>(this) + offset);                       \
+#define COMPONENT_IMPL(component_lower, componnent_upper)                   \
+  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) \
+      const {                                                               \
+    int32_t offset = Compute##componnent_upper##Offset(index);              \
+    return reinterpret_cast<componnent_upper##Impl *>(                      \
+        reinterpret_cast<char *>(const_cast<Operation *>(this)) + offset);  \
   }
 
 COMPONENT_IMPL(op_result, OpResult)

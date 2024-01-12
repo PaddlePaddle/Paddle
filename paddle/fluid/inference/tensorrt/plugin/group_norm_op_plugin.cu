@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/group_norm_kernel.h"
 
 #include <cub/cub.cuh>
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -395,7 +395,7 @@ int GroupNormPlugin::enqueue(int batch_size,
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
-  const auto input_ddim = phi::make_ddim(input_shape);
+  const auto input_ddim = common::make_ddim(input_shape);
 
   int C = input_shape[1];
 
@@ -578,7 +578,7 @@ int GroupNormPluginDynamic::enqueue(
     input_shape.push_back(input_dims.d[i]);
   }
 
-  const auto input_ddim = phi::make_ddim(input_shape);
+  const auto input_ddim = common::make_ddim(input_shape);
 
   int C = input_shape[1];
   int image_size = input_shape[2] * input_shape[3];

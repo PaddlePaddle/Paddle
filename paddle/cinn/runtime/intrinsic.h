@@ -104,6 +104,11 @@ static const char* print_debug_args_repr = "cinn_print_debug_args";
 
 static const char* call_cuda_kernel = "cinn_call_cuda_kernel";
 
+static const char* get_value_in_cuda_kernel_args =
+    "cinn_get_value_in_cuda_kernel_args";
+
+static const char* infer_shape_set_value = "infer_shape_set_value";
+
 static const char* pod_values_to_array_repr = "pod_values_to_array";
 
 static const char* get_address_repr = "get_address";

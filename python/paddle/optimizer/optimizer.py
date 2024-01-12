@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -20,6 +21,7 @@ import numpy as np
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
+from paddle._pir_ops import parameter, set_parameter
 from paddle.base import core
 from paddle.base.framework import (
     Variable,
@@ -34,12 +36,20 @@ from paddle.base.framework import (
 from paddle.regularizer import L2Decay
 
 from ..base import framework, unique_name
-from ..base.backward import _get_no_grad_set_name, append_backward
+from ..base.backward import (
+    _get_no_grad_set_name,
+    _get_no_grad_set_value,
+    append_backward,
+)
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 __all__ = []
+
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
 
 
 @framework.static_only
@@ -276,6 +286,7 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        self._master_weights = {}
         # create master gradients' states
         self._create_master_grad_states()
 
@@ -323,6 +334,11 @@ class Optimizer:
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+                # save scale value for xpu
+                if core.is_compiled_with_xpu():
+                    state_dict[
+                        var_tmp.name + ".SCALE_VALUE"
+                    ] = var_tmp.get_tensor().get_xpu_scale_value()
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -382,36 +398,15 @@ class Optimizer:
                 assert (
                     var_tmp.name in state_dict
                 ), f"optimizer Tensor {var_tmp.name} not found"
+
                 var = var_tmp.value()
                 tensor = var.get_tensor()
-                model_np = np.array(tensor)
-
-                load_para = state_dict[var_tmp.name]
-
-                if isinstance(load_para, Variable):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, core.eager.Tensor):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, np.ndarray):
-                    load_para_np = load_para
-                else:
-                    raise RuntimeError(
-                        f"State dict type {str(type(load_para))} not supprt"
+                # load scale value for xpu
+                if core.is_compiled_with_xpu():
+                    tensor.set_xpu_scale_value(
+                        state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
                     )
-
-                assert (
-                    model_np.shape == load_para_np.shape
-                ), "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                    model_np.name, model_np.shape, load_para_np.shape
-                )
-
-                assert (
-                    model_np.dtype == load_para_np.dtype
-                ), "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    model_np.name, model_np.dtype, load_para_np.dtype
-                )
-
-                tensor.set(load_para_np, framework._current_expected_place())
+                var.set_value(state_dict[var_tmp.name])
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -441,29 +436,63 @@ class Optimizer:
             if isinstance(self._learning_rate, LRScheduler):
                 lr_var = self._global_learning_rate()
                 # only create global lr_var once
-                if not isinstance(lr_var, framework.Variable):
+                if in_pir_mode():
+                    startup_program = paddle.static.default_startup_program()
+                    main_program = paddle.static.default_main_program()
+
                     lr_name = unique_name.generate('learning_rate')
-                    self._learning_rate._var_name = lr_name
-                    lr_var = self.helper.create_global_variable(
-                        name=lr_name,
-                        shape=[],
-                        persistable=True,
-                        stop_gradient=True,
-                        dtype=_lr_dtype,
+                    # startup program  insert && set_parameter
+                    lr_value = float(self._learning_rate())
+                    with paddle.static.program_guard(startup_program):
+                        initializer = paddle.nn.initializer.Constant(
+                            value=lr_value
+                        )
+                        paramete_meta = paddle.pir.core.ParameterMeta(
+                            [], _lr_dtype
+                        )
+                        init_result = initializer(
+                            paramete_meta, startup_program.global_block()
+                        )
+                        init_result.persistable = True
+                        set_parameter(init_result, lr_name)
+                    main_program.move_parameters_from(startup_program)
+
+                    if not isinstance(lr_var, paddle.pir.OpResult):
+                        self._learning_rate._var_name = lr_name
+                        with paddle.static.program_guard(main_program):
+                            param = parameter(lr_name, _lr_dtype, [])
+                        param.stop_gradient = True
+                        param.persistable = True
+                        main_program.lr_scheduler = self._learning_rate
+                        main_program.lr_var = param
+                        self._learning_rate_map[main_program] = param
+
+                else:
+                    if not isinstance(lr_var, framework.Variable):
+                        lr_name = unique_name.generate('learning_rate')
+                        self._learning_rate._var_name = lr_name
+                        lr_var = self.helper.create_global_variable(
+                            name=lr_name,
+                            shape=[],
+                            persistable=True,
+                            stop_gradient=True,
+                            dtype=_lr_dtype,
+                        )
+                        main_prog = framework.default_main_program()
+                        main_prog.lr_scheduler = self._learning_rate
+                        main_prog.lr_var = lr_var
+
+                        self._learning_rate_map[
+                            framework.default_main_program()
+                        ] = lr_var
+
+                    lr_value = float(self._learning_rate())
+                    self.helper.set_variable_initializer(
+                        lr_var,
+                        initializer=paddle.nn.initializer.Constant(
+                            value=lr_value
+                        ),
                     )
-                    main_prog = framework.default_main_program()
-                    main_prog.lr_scheduler = self._learning_rate
-                    main_prog.lr_var = lr_var
-
-                    self._learning_rate_map[
-                        framework.default_main_program()
-                    ] = lr_var
-
-                lr_value = float(self._learning_rate())
-                self.helper.set_variable_initializer(
-                    lr_var,
-                    initializer=paddle.nn.initializer.Constant(value=lr_value),
-                )
             elif isinstance(self._learning_rate, float):
                 # only create global lr_var once
                 lr = self._global_learning_rate()
@@ -479,12 +508,15 @@ class Optimizer:
                                 )
                             )
                         self._learning_rate_map[
-                            framework.default_main_program()
-                        ] = paddle._pir_ops.full(
-                            [],
-                            self._learning_rate,
-                            _lr_dtype,
-                            place,
+                            paddle.static.default_main_program()
+                        ] = paddle.pir.core.create_parameter(
+                            dtype=_lr_dtype,
+                            shape=[],
+                            name=unique_name.generate("learning_rate"),
+                            trainable=False,
+                            initializer=paddle.nn.initializer.ConstantInitializer(
+                                value=float(self._learning_rate)
+                            ),
                         )
                 else:
                     if isinstance(lr, framework.Variable):
@@ -715,7 +747,10 @@ class Optimizer:
         :return:
         """
         if program is None:
-            program = framework.default_main_program()
+            if in_dygraph_mode():
+                program = framework.default_main_program()
+            else:
+                program = paddle.static.default_main_program()
         return self._learning_rate_map.get(program, None)
 
     def _append_optimize_op(self, block, param_and_grad):
@@ -729,15 +764,17 @@ class Optimizer:
         param = param_and_grad[0]
         if hasattr(param, 'optimize_attr'):
             param_lr = param.optimize_attr['learning_rate']
-            if type(param_lr) == Variable:
+            if isinstance(param_lr, (Variable, paddle.pir.OpResult)):
                 return param_lr
             else:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with default_main_program()._lr_schedule_guard(
+                    with paddle.static.default_main_program()._lr_schedule_guard(
                         is_with_opt=True
-                    ), framework.name_scope('scale_with_param_lr'):
+                    ), framework.name_scope(
+                        'scale_with_param_lr'
+                    ):
                         return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
@@ -746,12 +783,14 @@ class Optimizer:
         if param.name in self._master_weights:
             var = self._master_weights[param.name]
         else:
-            assert isinstance(self.helper, LayerHelper)
             var_name = self._gen_master_weight_var_name(param)
-            if framework.in_dygraph_mode():
+            if in_pir_mode():
+                var = paddle.cast(param, 'float32')
+            elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
             else:
+                assert isinstance(self.helper, LayerHelper)
                 var = paddle.static.create_global_var(
                     name=var_name,
                     shape=param.shape,
@@ -904,6 +943,14 @@ class Optimizer:
                         var_name in self._accumulators_holder
                     ), f"Optimizer set error, {var_name} should in state dict"
                     var.set_value(self._accumulators_holder.pop(var_name))
+
+                    # load scale value for xpu
+                    if core.is_compiled_with_xpu():
+                        var.get_tensor().set_xpu_scale_value(
+                            self._accumulators_holder.get(
+                                var_name + ".SCALE_VALUE", -1.0
+                            )
+                        )
 
         self._accumulators[name][param.name] = var
         return var
@@ -1122,7 +1169,13 @@ class Optimizer:
                         self._set_auxiliary_var('found_inf', False)
                     if isinstance(parameters_and_grads, list):
                         for param_and_grad in parameters_and_grads:
-                            if param_and_grad[1] is None:
+                            # Parameters can be uninitialized in pipeline parallel of semi-auto parallel.
+                            # Since gradient clip and parameters update mixed up in one interface, so we
+                            # need to filter again here.
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[0]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 self._append_optimize_op(
@@ -1130,7 +1183,10 @@ class Optimizer:
                                 )
                     else:
                         for param_and_grad in parameters_and_grads['params']:
-                            if param_and_grad[1] is None:
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[0]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 param_grad_dict = {}
@@ -1408,6 +1464,10 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
+
+        if framework.in_dygraph_mode() and g_shard_bypass_dygraph_optimizer:
+            return
+
         if in_dynamic_or_pir_mode():
             with paddle.static.program_guard(
                 paddle.static.default_main_program(),
@@ -1484,7 +1544,7 @@ class Optimizer:
 
         assert regularization_term is not None
 
-        if framework.in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.add_n([grad, regularization_term])
         else:
             new_grad = grad
@@ -1560,15 +1620,26 @@ class Optimizer:
         return params_and_grads
 
     def _get_no_grad_set(self, loss, no_grad_set=None):
-        no_grad_set = _get_no_grad_set_name(no_grad_set)
-        parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = {
-            param.name for param in parameters if param.stop_gradient is True
-        }
-        # If the parameter is no trainable, it should not have a gradient.
-        no_grad_set.update(param_no_trainable)
-
-        return no_grad_set
+        if in_pir_mode():
+            no_grad_set = _get_no_grad_set_value(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = [
+                param for param in parameters if param.stop_gradient is True
+            ]
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
+        else:
+            no_grad_set = _get_no_grad_set_name(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = {
+                param.name
+                for param in parameters
+                if param.stop_gradient is True
+            }
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
 
     @framework.non_static_only
     def clear_grad(self, set_to_zero=True):

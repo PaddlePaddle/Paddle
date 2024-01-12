@@ -51,11 +51,7 @@ class NaiveExecutor {
 
   // Create child scope.
   // Create variables.
-  // @with_feed_fetch_ops: whether to work with the feed and fetch operators.
-  void Prepare(Scope* scope,
-               const ProgramDesc& program_desc,
-               int block_id,
-               bool with_feed_fetch_ops);
+  void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id);
 
   void PrepareInterpreterCore(
       Scope* scope,
@@ -81,7 +77,8 @@ class NaiveExecutor {
   void Run();
 
   void RunInterpreterCore(const std::vector<std::string>& feed_names = {},
-                          bool need_fetch = false);
+                          bool need_fetch = false,
+                          bool switch_stream = false);
 
   // Get an tensor to operating directly, without the need for feed_ops.
   phi::DenseTensor* FindTensor(const std::string& name);
@@ -99,9 +96,7 @@ class NaiveExecutor {
   void RegisterInputHook(const HookFunc& hookfunc);
 
  private:
-  void CreateOps(const ProgramDesc& desc,
-                 int block_id,
-                 bool with_feed_fetch_ops);
+  void CreateOps(const ProgramDesc& desc, int block_id);
 
  private:
   const platform::Place place_;

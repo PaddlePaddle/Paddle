@@ -91,7 +91,7 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
     CHECK(value_tensor->shape == cinn::utils::ShapeType{1})
         << "The shape of [ValueTensor] should be [1], but here ["
         << cinn::utils::Join(value_tensor->shape, ", ") << "]";
-    if (common::Type2Str(value_tensor->type) != dtype) {
+    if (cinn::common::Type2Str(value_tensor->type) != dtype) {
       value_tensor = ctx.Builder()->Cast(value_tensor, dtype);
     }
     out = ctx.Builder()->BroadcastTo(value_tensor, shape);
@@ -131,7 +131,7 @@ void FillAnyLikeOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
   if (dtype.empty()) {
-    dtype = common::Type2Str(x->type);
+    dtype = cinn::common::Type2Str(x->type);
   }
 
   VLOG(4) << "FillAnyLikeOp: fill constant (" << value << ") with shape ("

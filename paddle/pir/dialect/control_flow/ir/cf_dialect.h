@@ -24,12 +24,12 @@ class ControlFlowDialect : public Dialect {
     initialize();
   }
   static const char *name() { return "cf"; }
-  void PrintType(pir::Type type, std::ostream &os) const override;
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override;  // NOLINT
+  void PrintType(Type type, std::ostream &os) const override;
+  void PrintOperation(Operation *op,
+                      IrPrinter &printer) const override;  // NOLINT
  private:
   void initialize();
 };
 
 }  // namespace pir
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)

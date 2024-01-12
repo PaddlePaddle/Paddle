@@ -23,12 +23,12 @@ Type GetElementTypeOrSelf(Type type) {
   return type;
 }
 
-bool VerifyCompatibleShape(const phi::DDim &lhs_shape,
-                           const phi::DDim &rhs_shape) {
+bool VerifyCompatibleShape(const pir::DDim &lhs_shape,
+                           const pir::DDim &rhs_shape) {
   if (lhs_shape.size() != rhs_shape.size()) return false;
 
-  for (auto dim1 : phi::vectorize(lhs_shape)) {
-    for (auto dim2 : phi::vectorize(rhs_shape)) {
+  for (auto dim1 : common::vectorize(lhs_shape)) {
+    for (auto dim2 : common::vectorize(rhs_shape)) {
       if (!ShapedTypeInterface::IsDynamic(dim1) &&
           !ShapedTypeInterface::IsDynamic(dim2) && dim1 != dim2)
         return false;

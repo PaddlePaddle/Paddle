@@ -291,5 +291,42 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             )
 
 
+class TestPirArrayOp(unittest.TestCase):
+    def test_array(self):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program):
+                x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
+                y = paddle.full(shape=[1, 3], fill_value=6, dtype="float32")
+                array = paddle.tensor.create_array(
+                    dtype="float32", initialized_list=[x, y]
+                )
+                (
+                    output,
+                    output_index,
+                ) = paddle.tensor.manipulation.tensor_array_to_tensor(
+                    input=array, axis=1, use_stack=False
+                )
+
+            place = (
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
+            )
+            exe = paddle.base.Executor(place)
+            [fetched_out0, fetched_out1] = exe.run(
+                main_program, feed={}, fetch_list=[output, output_index]
+            )
+
+        np.testing.assert_array_equal(
+            fetched_out0,
+            np.array([[5.0, 5.0, 5.0, 6.0, 6.0, 6.0]], dtype="float32"),
+        )
+        np.testing.assert_array_equal(
+            fetched_out1, np.array([3, 3], dtype="int32")
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

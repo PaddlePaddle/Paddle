@@ -27,6 +27,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -103,8 +104,8 @@ void TransposeNormal<DeviceContext, T>::operator()(
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
   const int rank = static_cast<const int>(axis.size());
-  auto in_stride = phi::stride(in.dims());
-  auto out_stride = phi::stride(out->dims());
+  auto in_stride = common::stride(in.dims());
+  auto out_stride = common::stride(out->dims());
   const T* in_ptr = in.data<T>();
   T* out_ptr = out->data<T>();
 
@@ -191,7 +192,7 @@ void set_constant_with_place<phi::CustomPlace>(
                                     phi::DenseTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(context,
-               phi::IntArray(phi::vectorize(tensor->dims())),
+               phi::IntArray(common::vectorize(tensor->dims())),
                phi::Scalar(value),
                tensor->dtype(),
                tensor);

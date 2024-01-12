@@ -102,6 +102,12 @@ void CustomOpKernelContext::EmplaceBackInput(Tensor&& input) {
   input_range_.emplace_back(index, index + 1);
 }
 
+void CustomOpKernelContext::EmplaceBackInput(const Tensor& input) {
+  size_t index = inputs_.size();
+  inputs_.emplace_back(input);
+  input_range_.emplace_back(index, index + 1);
+}
+
 void CustomOpKernelContext::EmplaceBackInputs(
     const std::vector<Tensor>& inputs) {
   size_t index = inputs_.size();
@@ -352,6 +358,23 @@ OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
   return *this;
 }
 
+OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
+  infer_spmd_fn_ = std::forward<InferSpmdFunc>(func);
+  return *this;
+}
+
+#ifdef PADDLE_WITH_TENSORRT
+OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func) {
+  trt_infer_shape_fn_ = std::forward<TrtGetOutputDimsFunc>(func);
+  return *this;
+}
+OpMetaInfo& OpMetaInfo::SetTrtSupportsFormatConfig(
+    std::vector<std::string>&& config) {
+  trt_supports_format_config_ = std::forward<std::vector<std::string>>(config);
+  return *this;
+}
+#endif
+
 //////////////// Op Meta Info Helper /////////////////
 const std::string& OpMetaInfoHelper::GetOpName(const paddle::OpMetaInfo& info) {
   return info.name_;
@@ -389,7 +412,28 @@ const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
   return info.infer_dtype_fn_;
 }
 
+const InferSpmdFunc& OpMetaInfoHelper::GetInferSpmdFn(
+    const paddle::OpMetaInfo& info) {
+  return info.infer_spmd_fn_;
+}
+
+#ifdef PADDLE_WITH_TENSORRT
+const TrtGetOutputDimsFunc& OpMetaInfoHelper::GetTrtInferShapeFn(
+    const paddle::OpMetaInfo& info) {
+  return info.trt_infer_shape_fn_;
+}
+const std::vector<std::string>& OpMetaInfoHelper::GetTrtSupportsFormatConfig(
+    const paddle::OpMetaInfo& info) {
+  return info.trt_supports_format_config_;
+}
+#endif
+
 //////////////// Op Meta Info Map /////////////////
+
+OpMetaInfoMap& OpMetaInfoMap::Instance() {
+  static OpMetaInfoMap g_custom_op_meta_info_map;
+  return g_custom_op_meta_info_map;
+}
 
 std::vector<OpMetaInfo>& OpMetaInfoMap::operator[](const std::string& name) {
   return map_[name];
@@ -524,6 +568,26 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
 }
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
+  info_ptr_->SetInferSpmdFn(std::forward<InferSpmdFunc>(func));
+  return *this;
+}
+
+#ifdef PADDLE_WITH_TENSORRT
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtInferShapeFn(
+    TrtGetOutputDimsFunc func) {
+  info_ptr_->SetTrtInferShapeFn(std::forward<TrtGetOutputDimsFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtSupportsFormatConfig(
+    std::vector<std::string>&& config) {
+  info_ptr_->SetTrtSupportsFormatConfig(
+      std::forward<std::vector<std::string>>(config));
+  return *this;
+}
+#endif
 }  // namespace paddle
 
 #ifdef __cplusplus

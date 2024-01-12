@@ -14,6 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#ifndef CUSTOM_OP_WITH_SPMD
+#define CUSTOM_OP_WITH_SPMD
+#endif
+
 // All paddle apis in C++ frontend
 #include "paddle/phi/api/all.h"
 #if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)

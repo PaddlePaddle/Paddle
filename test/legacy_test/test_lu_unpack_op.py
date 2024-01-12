@@ -24,6 +24,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def scipy_lu_unpack(A):
@@ -138,7 +139,9 @@ class TestLU_UnpackOp(OpTest):
             lu = lu.numpy()
             pivots = pivots.numpy()
         else:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 place = base.CPUPlace()
                 if core.is_compiled_with_cuda():
                     place = base.CUDAPlace(0)
@@ -148,7 +151,6 @@ class TestLU_UnpackOp(OpTest):
                 lu, p = paddle.linalg.lu(xv)
                 exe = base.Executor(place)
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={"input": x},
                     fetch_list=[lu, p],
                 )
@@ -168,10 +170,10 @@ class TestLU_UnpackOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['L', 'U'])
+        self.check_grad(['X'], ['L', 'U'], check_pir=True)
 
 
 # m = n
@@ -258,6 +260,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_unpack_dygraph(tensor_shape, dtype)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
 
@@ -275,7 +278,9 @@ class TestLU_UnpackAPI(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                with base.program_guard(base.Program(), base.Program()):
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
                     sP, sL, sU = scipy_lu_unpack(a)
 
                     x = paddle.static.data(
@@ -285,7 +290,6 @@ class TestLU_UnpackAPI(unittest.TestCase):
                     pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
                     exe = base.Executor(place)
                     fetches = exe.run(
-                        base.default_main_program(),
                         feed={"input": a},
                         fetch_list=[pP, pL, pU],
                     )

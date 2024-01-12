@@ -500,6 +500,26 @@ class TestLayerNormOpByOpTestFP32(TestLayerNormOpByOpTest):
         self.check_pir = True
 
 
+class TestLayerNormOpByOpTestFP32_case1(TestLayerNormOpByOpTest):
+    def initConfig(self):
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+
+        self.ori_atol = 1e-4
+        self.ori_rtol = 1e-4
+        self.max_relative_error = 1e-2
+
+        self.dtype = "float32"
+        self.x_shape = [2, 100]
+        self.epsilon = 0.00001
+        self.begin_norm_axis = 1
+        self.has_scale = True
+        self.has_bias = True
+        self.check_prim = True
+        self.check_prim_pir = True
+        self.check_pir = True
+
+
 class TestLayerNormOpByOpTestFP32_case2(TestLayerNormOpByOpTest):
     def initConfig(self):
         self.rev_comp_atol = 1e-5
@@ -842,7 +862,7 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
             layer_norm = paddle.nn.LayerNorm([32, 32])
             # the input of LayerNorm must be Variable.
             x1 = np.random.random((3, 32, 32)).astype('float32')
-            self.assertRaises(ValueError, layer_norm, x1)
+            self.assertRaises(TypeError, layer_norm, x1)
 
 
 @unittest.skipIf(

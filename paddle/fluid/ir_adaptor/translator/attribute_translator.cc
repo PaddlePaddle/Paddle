@@ -17,14 +17,14 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
+#include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/utils/variant.h"
 
 namespace paddle {
@@ -187,6 +187,21 @@ class Int64AttributeVisitor : public AttributeVisitor {
   }
 };
 
+class Int32ArrayAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+
+  pir::Attribute operator()(const std::vector<int64_t>& i64s) override {
+    VLOG(10) << "translating vector<int64> size: " << i64s.size();
+    std::vector<pir::Attribute> attrs;
+    attrs.reserve(i64s.size());
+    for (const auto& v : i64s) {
+      attrs.push_back(pir::Int32Attribute::get(ctx, v));
+    }
+    return pir::ArrayAttribute::get(ctx, attrs);
+  }
+};
+
 class IntArrayAttributeVisitor : public AttributeVisitor {
  public:
   using AttributeVisitor::AttributeVisitor;
@@ -240,6 +255,8 @@ AttributeTranslator::AttributeTranslator() {
       new PlaceAttributeVisitor();
   special_visitors["pir::ArrayAttribute<pir::Int64Attribute>"] =
       new Int64ArrayAttributeVisitor();
+  special_visitors["pir::ArrayAttribute<pir::Int32Attribute>"] =
+      new Int32ArrayAttributeVisitor();
   special_visitors["pir::Int64Attribute"] = new Int64AttributeVisitor();
 }
 

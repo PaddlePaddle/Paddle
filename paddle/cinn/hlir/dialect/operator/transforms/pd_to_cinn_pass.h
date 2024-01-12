@@ -22,21 +22,20 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class PdOpToCinnOpPass : public pir::Pass {
+class PdOpToCinnOpPass : public pir::PatternRewritePass {
  public:
   PdOpToCinnOpPass();
 
-  bool Initialize(pir::IrContext *context) override;
-
-  void Run(pir::Operation *op) override;
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 
   bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
+// TODO(lanxianghit): delete this and use CreatePdOpToCinnOpPass() in
+// corresponding unit tests.
 void PdOp2CinnOpConverter(::pir::Program *program);
+
+IR_API std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass();
 
 }  // namespace ir
 }  // namespace dialect

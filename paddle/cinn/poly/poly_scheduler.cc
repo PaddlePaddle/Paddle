@@ -33,11 +33,11 @@ namespace detail {
 //! Visit the nodes in topological order, if one node is valid to visit, visit
 //! it and check whether its out link children are ready to visit, merge them to
 //! the same group. NOTE this is discarded.
-std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph) {
+std::vector<Group> PartitionGraphByIterationDomain(cinn::common::Graph* graph) {
   VLOG(3) << "graph:\n" << graph->Visualize();
   // collect indegrees for naive topological traversal.
   std::map<DataFlowGraphNode*, uint16_t> indegree;
-  for (common::GraphNode* n : graph->nodes()) {
+  for (cinn::common::GraphNode* n : graph->nodes()) {
     auto* node = n->safe_as<DataFlowGraphNode>();
     indegree[node] = node->inlinks().size();
   }
@@ -145,10 +145,11 @@ bool CheckGroupValid(const std::vector<Group>& groups) {
 }
 
 //! Tell if \param a links to \param b.
-bool IsLinkTo(const common::GraphNode* a, const common::GraphNode* b) {
+bool IsLinkTo(const cinn::common::GraphNode* a,
+              const cinn::common::GraphNode* b) {
   // dfs
-  std::stack<const common::GraphNode*> stack({a});
-  std::unordered_set<const common::GraphNode*> visited;
+  std::stack<const cinn::common::GraphNode*> stack({a});
+  std::unordered_set<const cinn::common::GraphNode*> visited;
   while (!stack.empty()) {
     auto* top = stack.top();
     stack.pop();
@@ -169,9 +170,9 @@ bool IsLinkTo(const common::GraphNode* a, const common::GraphNode* b) {
   return false;
 }
 
-bool IsBetween(const common::GraphNode* x,
-               const common::GraphNode* a,
-               const common::GraphNode* b) {
+bool IsBetween(const cinn::common::GraphNode* x,
+               const cinn::common::GraphNode* a,
+               const cinn::common::GraphNode* b) {
   if (IsLinkTo(a, x) && IsLinkTo(x, b)) return true;
   if (IsLinkTo(x, a) && IsLinkTo(b, x)) return true;
   return false;
@@ -191,8 +192,8 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
       node2group[node->id()] = group;
       in_degree += node->inlinks().size();
       for (auto& node2 : group->nodes) {
-        if (node2->as<common::GraphNode>()->IsLinkedTo(
-                node->as<common::GraphNode>())) {
+        if (node2->as<cinn::common::GraphNode>()->IsLinkedTo(
+                node->as<cinn::common::GraphNode>())) {
           in_degree--;
         }
       }
@@ -240,7 +241,7 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
  * 2. If ComputeAt is set between two stages and their iteration domain matches,
  * the stages will be put in a group with relative order.
  */
-std::vector<Group> NaivePartitionGraph(common::Graph* graph) {
+std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
   std::map<DataFlowGraphNode*, std::vector<DataFlowGraphNode*>> node_groups;
   auto topo_order = graph->topological_order();
   auto& nodes_in_order = std::get<0>(topo_order);
@@ -252,7 +253,7 @@ std::vector<Group> NaivePartitionGraph(common::Graph* graph) {
   }
 
   // process compute_at
-  absl::flat_hash_map<const common::GraphNode*, uint32_t>
+  absl::flat_hash_map<const cinn::common::GraphNode*, uint32_t>
       node2score;  // record each node's score for sorting.
   int score = 0;
   for (auto* n : nodes_in_order) {

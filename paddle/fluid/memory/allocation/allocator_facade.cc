@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -25,7 +26,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
@@ -97,6 +97,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
 
 PHI_DECLARE_string(allocator_strategy);
 PHI_DECLARE_uint64(auto_growth_chunk_size_in_mb);
+PHI_DECLARE_bool(use_auto_growth_pinned_allocator);
 
 namespace paddle {
 namespace memory {
@@ -447,6 +448,17 @@ class AllocatorFacadePrivate {
     }
   }
 
+  void EraseStream(std::shared_ptr<phi::Allocation> allocation,
+                   gpuStream_t stream) {
+    std::shared_ptr<StreamSafeCUDAAllocation> stream_safe_cuda_allocation =
+        std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
+    if (stream_safe_cuda_allocation != nullptr) {
+      stream_safe_cuda_allocation->EraseStream(stream);
+    } else {
+      VLOG(6) << "EraseStream for a non-StreamSafeCUDAAllocation";
+    }
+  }
+
   gpuStream_t GetStream(
       const std::shared_ptr<phi::Allocation>& allocation) const {
     const std::shared_ptr<StreamSafeCUDAAllocation>
@@ -720,8 +732,21 @@ class AllocatorFacadePrivate {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void InitNaiveBestFitCUDAPinnedAllocator() {
-    allocators_[platform::CUDAPinnedPlace()] =
-        std::make_shared<NaiveBestFitAllocator>(platform::CUDAPinnedPlace());
+    if (FLAGS_use_auto_growth_pinned_allocator) {
+      auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
+      VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+              << FLAGS_auto_growth_chunk_size_in_mb;
+      auto pinned_allocator = std::make_shared<CPUPinnedAllocator>();
+      allocators_[platform::CUDAPinnedPlace()] =
+          std::make_shared<AutoGrowthBestFitAllocator>(
+              pinned_allocator,
+              phi::backends::cpu::CUDAPinnedMinChunkSize(),
+              chunk_size,
+              allow_free_idle_chunk_);
+    } else {
+      allocators_[platform::CUDAPinnedPlace()] =
+          std::make_shared<NaiveBestFitAllocator>(platform::CUDAPinnedPlace());
+    }
   }
 
   void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p) {
@@ -1517,6 +1542,11 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
 void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
                                    gpuStream_t stream) {
   GetPrivate()->RecordStream(allocation, stream);
+}
+
+void AllocatorFacade::EraseStream(std::shared_ptr<phi::Allocation> allocation,
+                                  gpuStream_t stream) {
+  GetPrivate()->EraseStream(allocation, stream);
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(

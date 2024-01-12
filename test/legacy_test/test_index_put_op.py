@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
@@ -143,7 +144,7 @@ class TestIndexPutAPIBase(unittest.TestCase):
             )
             np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_static_forward(self):
         paddle.enable_static()
         for place in self.place:
@@ -626,6 +627,7 @@ class TestIndexPutInplaceAPI(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 
+    @test_with_pir_api
     def test_dygraph_forward(self):
         paddle.disable_static()
         for place in self.place:
@@ -934,7 +936,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_backward_in_static(self):
         paddle.enable_static()
         exe = paddle.static.Executor()

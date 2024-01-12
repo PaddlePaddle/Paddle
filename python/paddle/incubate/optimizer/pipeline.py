@@ -1013,7 +1013,7 @@ class PipelineOptimizer:
             # append "MERGED" to the names of parameter gradients,
             # and mofify the op_role_var attribute (by rename_arg func).
             for name in in_out_names:
-                if not core.grad_var_suffix() in name:
+                if core.grad_var_suffix() not in name:
                     continue
                 param_name = name.strip(core.grad_var_suffix())
                 new_grad_name = name + "@MERGED"

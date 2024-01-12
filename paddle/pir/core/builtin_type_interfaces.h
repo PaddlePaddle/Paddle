@@ -17,16 +17,18 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/phi/core/tensor_base.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/cast_utils.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/type.h"
 
 namespace pir {
 
-class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
+class IR_API ShapedTypeInterface
+    : public TypeInterfaceBase<ShapedTypeInterface> {
  public:
-  using DDim = phi::DDim;
+  using DDim = pir::DDim;
   using DataType = Type;
   struct Concept {
     /// Defined these methods with the interface.
@@ -51,6 +53,11 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
     Model() : Concept(GetElementType, GetShape) {}
   };
 
+  ///
+  /// \brief kDynamic
+  ///
+  static constexpr int64_t kDynamic = std::int64_t(-1);
+
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
@@ -62,12 +69,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   /// \brief Get the shape of this type.
   ///
-  DDim GetShape() const;
-
-  ///
-  /// \brief kDynamic
-  ///
-  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
+  pir::DDim GetShape() const;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.
@@ -91,19 +93,17 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// \brief Check whether the given shape has any size indicating a dynamic
   /// dimension.
   ///
-  static bool IsDynamicShape(DDim sizes) {
-    auto size_vec = vectorize(sizes);
-    return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_vec) {
-      return IsDynamic(size_vec);
+  bool IsDynamicShape() const {
+    auto size_vec = common::vectorize(impl_->get_shape(*this));
+    return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_val) {
+      return IsDynamic(size_val);
     });
   }
 
   ///
   /// \brief Check whether shape has any size indicating a dynamic dimension.
   ///
-  bool HasStaticShape() const {
-    return (*this).HasRank() && !IsDynamicShape((*this).GetShape());
-  }
+  bool HasStaticShape() const { return (*this).HasRank() && !IsDynamicShape(); }
 
   ///
   /// \brief Check whether the given dimension has a dynamic size.Aborts for
@@ -139,4 +139,4 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
 
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)

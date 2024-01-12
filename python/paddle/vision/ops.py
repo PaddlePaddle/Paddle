@@ -14,13 +14,20 @@
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops
+import paddle
+from paddle import _C_ops
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode
+from ..base.framework import (
+    Variable,
+    convert_np_dtype_to_dtype_,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
@@ -188,7 +195,7 @@ def yolo_loss(
             ...                                    scale_x_y=1.)
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         loss = _C_ops.yolo_loss(
             x,
             gt_box,
@@ -365,7 +372,7 @@ def yolo_box(
             ...                                             clip_bbox=True,
             ...                                             scale_x_y=1.)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         boxes, scores = _C_ops.yolo_box(
             x,
             img_size,
@@ -510,7 +517,7 @@ def prior_box(
             max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         step_w, step_h = steps
         if max_sizes is None:
             max_sizes = []
@@ -674,8 +681,8 @@ def box_coder(
             ...     box_normalized=False)
             ...
     """
-    if in_dygraph_mode():
-        if isinstance(prior_box_var, core.eager.Tensor):
+    if in_dynamic_or_pir_mode():
+        if isinstance(prior_box_var, (core.eager.Tensor, paddle.pir.Value)):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
@@ -872,7 +879,7 @@ def deform_conv2d(
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.deformable_conv(
             x,
             offset,
@@ -1225,7 +1232,7 @@ def distribute_fpn_proposals(
         num_lvl < 100
     ), "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             rois_num is not None
         ), "rois_num should not be None in dygraph mode."
@@ -1318,8 +1325,9 @@ def read_file(filename, name=None):
             [142773]
     """
 
-    if in_dygraph_mode():
-        return _legacy_C_ops.read_file('filename', filename)
+    attr_dtype = convert_np_dtype_to_dtype_('uint8')
+    if in_dynamic_or_pir_mode():
+        return _C_ops.read_file(filename, attr_dtype, paddle.CPUPlace())
     else:
         inputs = {}
         attrs = {'filename': filename}
@@ -1367,7 +1375,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             >>> print(img.shape)
             [3, 400, 300]
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
     else:
         inputs = {'X': x}
@@ -1547,7 +1555,7 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
@@ -1707,7 +1715,7 @@ def roi_align(
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
@@ -1937,7 +1945,7 @@ def nms(
     """
 
     def _nms(boxes, iou_threshold):
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.nms(boxes, iou_threshold)
 
         else:
@@ -1971,10 +1979,12 @@ def nms(
         categories is not None
     ), "if category_idxs is given, categories which is a list of unique id of all categories is necessary"
 
-    mask = paddle.zeros_like(scores, dtype=paddle.int32)
+    mask = paddle.zeros_like(scores, dtype='int32')
 
     for category_id in categories:
-        cur_category_boxes_idxs = paddle.where(category_idxs == category_id)[0]
+        cur_category_boxes_idxs = paddle.where(
+            paddle.equal(category_idxs, paddle.to_tensor(category_id))
+        )[0]
         shape = cur_category_boxes_idxs.shape[0]
         cur_category_boxes_idxs = paddle.reshape(
             cur_category_boxes_idxs, [shape]
@@ -1999,7 +2009,7 @@ def nms(
 
         updates = paddle.ones_like(
             cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
-            dtype=paddle.int32,
+            dtype='int32',
         )
         mask = paddle.scatter(
             mask,
@@ -2135,6 +2145,27 @@ def generate_proposals(
             scores, bbox_deltas, img_size, anchors, variances, *attrs
         )
 
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif in_pir_mode():
+        assert (
+            return_rois_num
+        ), "return_rois_num should be True in PaddlePaddle inner op mode."
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
+            scores,
+            bbox_deltas,
+            img_size,
+            anchors,
+            variances,
+            pre_nms_top_n,
+            post_nms_top_n,
+            nms_thresh,
+            min_size,
+            eta,
+            pixel_offset,
+        )
+        rpn_rois.stop_gradient = True
+        rpn_roi_probs.stop_gradient = True
+        rpn_rois_num.stop_gradient = True
         return rpn_rois, rpn_roi_probs, rpn_rois_num
     else:
         helper = LayerHelper('generate_proposals_v2', **locals())
@@ -2284,7 +2315,7 @@ def matrix_nms(
             ...                         score_threshold=0.5, post_threshold=0.1,
             ...                         nms_top_k=400, keep_top_k=200, normalized=False)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out, index, rois_num = _C_ops.matrix_nms(
             bboxes,
             scores,

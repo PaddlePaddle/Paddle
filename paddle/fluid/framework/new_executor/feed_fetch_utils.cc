@@ -113,7 +113,12 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
     auto& src = var->Get<phi::DenseTensor>();
     auto* dst =
         &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
-    TensorCopy(src, platform::CPUPlace(), dst);
+    if (src.IsInitialized()) {
+      TensorCopy(src, platform::CPUPlace(), dst);
+    } else {
+      VLOG(6) << "Found " << var_name
+              << " is not initialized and skip TensorCopy.";
+    }
   }
 }
 
@@ -193,8 +198,8 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
           phi::errors::InvalidArgument(
               "phi::DenseTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
-              phi::DataLayoutToString(new_layout),
-              phi::DataLayoutToString(t->layout())));
+              common::DataLayoutToString(new_layout),
+              common::DataLayoutToString(t->layout())));
       if (rank > 0) {
         auto tensor_dims = t->dims();
         PADDLE_ENFORCE_EQ(tensor_dims.size(),

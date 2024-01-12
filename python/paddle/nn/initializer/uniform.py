@@ -73,6 +73,9 @@ class UniformInitializer(Initializer):
         Returns:
             The initialization op
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, uniform initializer not support lazy init for dist param."
         block = self._check_block(block)
 
         assert isinstance(block, (framework.Block, pir.Block))
@@ -119,6 +122,10 @@ class UniformInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
         elif in_pir_mode():
+            if var.dtype == core.DataType.FLOAT16:
+                out_dtype = core.DataType.FLOAT32
+            else:
+                out_dtype = var.dtype
             out_var = _C_ops.uniform(
                 var.shape,
                 out_dtype,
@@ -127,7 +134,10 @@ class UniformInitializer(Initializer):
                 self._seed,
                 _current_expected_place(),
             )
-            if var.dtype == core.DataType.FLOAT16:
+            if (
+                var.dtype == core.DataType.FLOAT16
+                and out_var.dtype != core.DataType.FLOAT16
+            ):
                 return _C_ops.cast(out_var, var.dtype)
             return out_var
         else:

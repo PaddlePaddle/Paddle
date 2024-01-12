@@ -91,7 +91,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
   int rank = is2D ? 4 : 5;
   std::vector<int> out_dims_vec(rank, 1);
-  DDim out_dims = make_ddim(out_dims_vec);
+  DDim out_dims = common::make_ddim(out_dims_vec);
 
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {

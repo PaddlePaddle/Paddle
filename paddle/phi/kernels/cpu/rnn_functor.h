@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -140,7 +139,7 @@ void DropoutCpuFunctionInplace(const CPUContext& dev_ctx,
   if (is_test) {
     return;
   }
-  size_t size = phi::product(x->dims());
+  size_t size = common::product(x->dims());
   auto* mask_data = mask->data<uint8_t>();
   if (!(*is_has_reset)) {
     // Special case when dropout_prob is 1.0
@@ -346,11 +345,9 @@ void RnnFunc(const Context& dev_ctx,
   std::vector<DenseTensor> init_c_unbind, last_c_unbind;
   if (is_lstm(cell_type)) {
     PADDLE_ENFORCE_NOT_NULL(
-        init_c,
-        paddle::platform::errors::InvalidArgument("init_c contains no data."));
+        init_c, phi::errors::InvalidArgument("init_c contains no data."));
     PADDLE_ENFORCE_NOT_NULL(
-        last_c,
-        paddle::platform::errors::InvalidArgument("last_c contains no data."));
+        last_c, phi::errors::InvalidArgument("last_c contains no data."));
     init_c_unbind = Unbind(*init_c);
     last_c_unbind = Unbind(*last_c);
   }

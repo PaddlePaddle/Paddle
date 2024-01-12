@@ -56,6 +56,8 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
@@ -105,7 +107,16 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/flags.h"
@@ -232,7 +243,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
 bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
                                const platform::Place &place) {
-  framework::DDim ddim = phi::make_ddim(pt.shape);
+  framework::DDim ddim = common::make_ddim(pt.shape);
   void *input_ptr = nullptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
@@ -250,7 +261,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
   }
   // NOTE(Aurelius84): Some kernels support zero shape input
   // without memory holder, we should skip enforce logic.
-  bool has_zero_dim = (phi::product(ddim) == 0);
+  bool has_zero_dim = (common::product(ddim) == 0);
   VLOG(3) << "Found zero dim: " << has_zero_dim
           << " from input with ddim: " << ddim;
   if (!has_zero_dim) {
@@ -345,6 +356,40 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
   return true;
 }
 }  // namespace
+
+AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
+    : config_(config) {
+  if (config_.shape_range_info_collected()) {
+    config_.SwitchIrOptim(false);
+  }
+  if (config_.new_executor_enabled()) {
+    config_.EnableMemoryOptim(false);
+    if (FLAGS_enable_pir_in_executor) {
+      config_.SwitchIrOptim(false);
+    }
+  }
+  int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+  if (trt_identifier > 0) {
+    // NOTE(liuyuanle): For convenience, we set the id of the predictor to
+    // negative sharing_identifier directly. In the future, this may affect
+    // the meaning of negative predictor id.
+    predictor_id_ = -trt_identifier;
+    LOG(WARNING)
+        << "Since the engine context memory of multiple predictors "
+           "is enabled in Paddle-TRT, we set the id of these predictors to "
+           "negative sharing_identifier you specified : "
+        << predictor_id_;
+    PADDLE_ENFORCE_EQ(
+        config_.new_executor_enabled(),
+        true,
+        platform::errors::InvalidArgument(
+            "Please call the config.enable_new_executor() in python or "
+            "config.EnableNewExecutor() in c++ when you want share the engine "
+            "context memory of multiple predictors."));
+  } else {
+    predictor_id_ = inference::GetUniqueId();
+  }
+}
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
@@ -711,6 +756,9 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::PreconditionNotMet(
+                              "The sub_scope should not be nullptr."));
   if (config_.dist_config().use_dist_model()) {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
@@ -723,8 +771,7 @@ bool AnalysisPredictor::PrepareExecutor() {
   }
   DisablePrepareDataOpt(inference_program_, 0, false);
 
-  executor_->Prepare(
-      sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
+  executor_->Prepare(sub_scope_, *inference_program_, 0);
 
   if (config_.new_executor_enabled()) {
     framework::interpreter::ExecutionConfig execution_config;
@@ -736,27 +783,76 @@ bool AnalysisPredictor::PrepareExecutor() {
     auto output_names = GetOutputNames();
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
-
     if (FLAGS_enable_pir_in_executor) {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
-      ::pir::PassManager pm(::pir::IrContext::Instance(), 2);
-      pm.AddPass(::pir::CreateConstantFoldingPass(place_, sub_scope_));
-      pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-      pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
+        VLOG(4) << "[Prim] Decomp program in predictor begin.";
+        DecompProgram decomp_object(pir_program_.get());
+        decomp_object.decomp_program();
+      }
 
-      // pm.EnableIRPrinting();
-      pm.Run(pir_program_.get());
+      if (config_.use_gpu()) {
+        ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
+        //----------------------------------------------------------------------------------------------//
+        // Operator fusion pass
+        gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
+        gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
+        gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateFcWithSpecialOpFusePass());
+        gpu_pm.AddPass(::pir::CreateFcFusePass());
+        gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
+        gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
+        //----------------------------------------------------------------------------------------------//
+
+        //----------------------------------------------------------------------------------------------//
+        // Functional pass
+        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
+        //----------------------------------------------------------------------------------------------//
+
+        //----------------------------------------------------------------------------------------------//
+        // Basic pass required by the framework
+        auto params_sync_among_devices_pass =
+            ::pir::CreateParamsSyncAmongDevicesPass();
+        params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
+                                                    sub_scope_);
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
+        gpu_pm.AddPass(std::move(constant_folding_pass));
+        gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        //----------------------------------------------------------------------------------------------//
+        if (!config_.glog_info_disabled()) {
+          gpu_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          gpu_pm.EnableIRPrinting();
+        }
+        gpu_pm.Run(pir_program_.get());
+      }
 
       pir_program_ = std::move(
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
 
+      ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {
-        ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-        pm.AddPass(::pir::CreateInplacePass());
-        pm.Run(pir_program_.get());
+        lowered_pm.AddPass(::pir::CreateInplacePass());
       }
+      if (!config_.glog_info_disabled()) {
+        lowered_pm.EnablePrintStatistics();
+      }
+      if (config_.ir_debug_) {
+        lowered_pm.EnableIRPrinting();
+      }
+      lowered_pm.Run(pir_program_.get());
+
+      LOG(INFO) << "======= pir optimization completed =======";
 
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
@@ -774,10 +870,6 @@ bool AnalysisPredictor::PrepareExecutor() {
             root_predictor_id_, "memory_optimize_pass");
     executor_->MakeReusePlan(reuse_table);
   }
-
-  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
-                          platform::errors::PreconditionNotMet(
-                              "The sub_scope should not be nullptr."));
 
   return true;
 }
@@ -872,7 +964,7 @@ bool AnalysisPredictor::CommInit() {
   }
   framework::NaiveExecutor e(place_);
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
-  e.Prepare(scope_.get(), *comm_init_program, 0, false);
+  e.Prepare(scope_.get(), *comm_init_program, 0);
   e.Run();
   VLOG(3) << "Comm init successful.";
   return true;
@@ -1084,7 +1176,7 @@ void AnalysisPredictor::MkldnnPreSet(
 #ifdef PADDLE_WITH_DNNL
   std::vector<std::vector<int>> inputs_shape;
   for (const auto &input : inputs) {
-    inputs_shape.emplace_back(phi::vectorize<int>(input.dims()));
+    inputs_shape.emplace_back(common::vectorize<int>(input.dims()));
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1308,7 +1400,9 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
-    framework::SetFeedVariable(scope, *input, framework::kFeedOpType, idx);
+    auto &t = framework::GetVariableTensor(*scope, idx2feeds_[idx]);
+    t.ShareDataWith(*input);
+    t.set_lod(input->lod());
   }
   return true;
 }
@@ -1341,12 +1435,16 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
       auto &t = framework::GetVariableTensor(*scope, input.name());
       t.ShareDataWith(
           *std::dynamic_pointer_cast<phi::DenseTensor>(input.impl()));
+      t.set_lod(
+          std::dynamic_pointer_cast<phi::DenseTensor>(input.impl())->lod());
     }
   } else {
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto &t = framework::GetVariableTensor(*scope, idx2feeds_[i]);
       t.ShareDataWith(
           *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+      t.set_lod(
+          std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl())->lod());
     }
   }
   return true;
@@ -1356,15 +1454,16 @@ template <typename T>
 void AnalysisPredictor::GetFetchOne(const phi::DenseTensor &fetch,
                                     PaddleTensor *output) {
   // set shape.
-  auto shape = phi::vectorize(fetch.dims());
+  auto shape = common::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
-  const T *data = fetch.data<T>();
   int num_elems = inference::VecReduceToInt(shape);
   output->data.Resize(num_elems * sizeof(T));
-  // The fetched tensor output by fetch op, should always in CPU memory, so just
-  // copy.
-  memcpy(output->data.data(), data, num_elems * sizeof(T));
+  paddle::memory::Copy(platform::CPUPlace(),
+                       output->data.data(),
+                       fetch.place(),
+                       fetch.data<T>(),
+                       num_elems * sizeof(T));
   // set lod
   output->lod.clear();
   for (auto &level : fetch.lod()) {
@@ -1385,26 +1484,24 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             "Fetch op's col attr(%d) should be equal to the index(%d)",
             idx,
             i));
-    framework::FetchType &fetch_var =
-        framework::GetFetchVariable(*scope, framework::kFetchOpType, idx);
-    auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
-    auto type = framework::TransToProtoVarType(fetch.dtype());
+    auto &t = framework::GetVariableTensor(*scope, idx2fetches_[idx]);
+    auto type = framework::TransToProtoVarType(t.dtype());
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
     if (type == framework::proto::VarType::FP32) {
-      GetFetchOne<float>(fetch, output);
+      GetFetchOne<float>(t, output);
       output->dtype = PaddleDType::FLOAT32;
     } else if (type == framework::proto::VarType::INT64) {
-      GetFetchOne<int64_t>(fetch, output);
+      GetFetchOne<int64_t>(t, output);
       output->dtype = PaddleDType::INT64;
     } else if (type == framework::proto::VarType::INT32) {
-      GetFetchOne<int32_t>(fetch, output);
+      GetFetchOne<int32_t>(t, output);
       output->dtype = PaddleDType::INT32;
     } else if (type == framework::proto::VarType::FP16) {
-      GetFetchOne<float16>(fetch, output);
+      GetFetchOne<float16>(t, output);
       output->dtype = PaddleDType::FLOAT16;
     } else if (type == framework::proto::VarType::BF16) {
-      GetFetchOne<bfloat16>(fetch, output);
+      GetFetchOne<bfloat16>(t, output);
       output->dtype = PaddleDType::BFLOAT16;
     } else {
       LOG(ERROR)
@@ -1547,7 +1644,7 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_IPU
-  argument_->SetUseIpu(config_.use_ipu_);
+  argument_->SetUseIpu(config_.use_ipu());
   argument_->SetIpuDeviceNum(config_.ipu_device_num());
   argument_->SetIpuMicroBatchSize(config_.ipu_micro_batch_size_);
   argument_->SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
@@ -1563,7 +1660,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
-  if (config_.use_mkldnn_) {
+  if (config_.mkldnn_enabled() && !config_.use_gpu()) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
@@ -1580,12 +1677,12 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
   }
-  if (config_.use_mkldnn_bfloat16_) {
+  if (config_.mkldnn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
 
-  if (config_.use_mkldnn_int8_) {
+  if (config_.mkldnn_int8_enabled()) {
     LOG(INFO) << "Int8 is enabled";
     argument_->SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_->SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
@@ -1593,8 +1690,8 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
   argument_->SetUseCustomDevice(config_.use_custom_device());
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (config_.use_custom_device()) {
     LOG(INFO) << "CustomDevice is enabled";
     argument_->SetCustomDeviceType(config_.custom_device_type());
@@ -1620,6 +1717,8 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.fc_autotune_file_writeback);
   argument_->SetXpuGemmComputePrecision(
       config_.xpu_config_.gemm_compute_precision);
+  argument_->SetXpuQuantPostDynamicWeightMethods(
+      config_.xpu_config_.quant_post_dynamic_weight_methods);
   argument_->SetXpuTransformerSoftmaxOptimizeLevel(
       config_.xpu_config_.transformer_softmax_optimize_level);
   argument_->SetXpuTransformerEncoderAdaptiveSeqlen(
@@ -1673,6 +1772,9 @@ void AnalysisPredictor::PrepareArgument() {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
+      if (!FLAGS_enable_pir_in_executor) {
+        pass_builder->AppendPass("inplace_op_var_pass");
+      }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
                    "optimization.";
     } else {
@@ -1691,7 +1793,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableCustomDeviceMixed(config_.enable_custom_device_mixed());
   if (config_.enable_custom_device_mixed_) {
     argument_->SetEnableIrOptim(true);
-    pass_builder->ClearPasses();
     pass_builder->AppendPass("auto_mixed_precision_pass");
     LOG(INFO) << "This model run in Custom Device mixed precision mode.";
   }
@@ -1774,7 +1875,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.reset(nullptr);
   }
 #endif
-  LOG(INFO) << "======= optimize end =======";
+  LOG(INFO) << "======= ir optimization completed =======";
 }
 
 template <>
@@ -1856,6 +1957,9 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
+        }
+        if (std::getenv("FLAGS_cache_inference_while_scope") == nullptr) {
+          SetGflag("cache_inference_while_scope", "1");
         }
       });
 
@@ -2157,7 +2261,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   return res;
 }
 
-bool AnalysisPredictor::ZeroCopyRun() {
+bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   inference::DisplayMemoryInfo(place_, "before run");
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
@@ -2220,7 +2324,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
 
   if (config_.new_executor_enabled()) {
-    executor_->RunInterpreterCore();
+    executor_->RunInterpreterCore({}, false, switch_stream);
   } else {
     executor_->Run();
   }
@@ -2261,7 +2365,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
         "Please use config.SetExecStream to init gpu resources, and then we "
         "will bind gpu resources to execution stream."));
   }
-
+  bool switch_stream = false;
   if (stream != predictor_stream_) {
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
@@ -2291,16 +2395,22 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
         }));
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
+    switch_stream = true;
   }
-
-  return ZeroCopyRun();
+  return ZeroCopyRun(switch_stream);
 }
 #endif
 
 void AnalysisPredictor::HookCollectShapeRangeInfo() {
+  if (config_.new_executor_enabled()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "When collecting shapes, it is recommended to run multiple loops to "
+           "obtain more accurate shape information.";
+  }
+
   auto hook = [&](const std::string &op_type,
                   const std::string &input_name,
-                  const paddle::Tensor &var) -> void {
+                  const paddle::Tensor &input_tensor) -> void {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     if (config_.use_gpu()) {
@@ -2315,26 +2425,22 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 #endif
     }
 
-    auto *new_var = sub_scope_->GetVar(input_name);
-    if (!new_var) return;
-    if (!new_var->IsType<phi::DenseTensor>()) {
-      return;
-    }
-    auto tensor = new_var->Get<phi::DenseTensor>();
-    if (!tensor.initialized()) return;
-    framework::DDim dim = tensor.dims();
+    if (!input_tensor.is_dense_tensor()) return;
+    auto tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_tensor.impl()).get();
+    framework::DDim dim = tensor->dims();
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
     if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
-    } else if (tensor.numel() > 0) {
+    } else if (tensor->numel() > 0) {
       // This must be a zero dimension tensor.
-      PADDLE_ENFORCE_EQ(tensor.numel(),
+      PADDLE_ENFORCE_EQ(tensor->numel(),
                         1UL,
                         platform::errors::PreconditionNotMet(
                             "This tensor must have one element, but got %ld.",
-                            tensor.numel()));
+                            tensor->numel()));
       std::vector<int32_t> zero_shape(1, 1);
       shape_info_[input_name].emplace_back(zero_shape);
     }
@@ -2344,19 +2450,19 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     // assumption that all shape tensors in the model have numbers <= 8.
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
-    auto is_shape_tensor = tensor.numel() <= 8 && tensor.numel() >= 1;
-    if ((tensor.dtype() == phi::DataType::INT32 ||
-         tensor.dtype() == phi::DataType::INT64) &&
+    auto is_shape_tensor = tensor->numel() <= 8 && tensor->numel() >= 1;
+    if ((tensor->dtype() == phi::DataType::INT32 ||
+         tensor->dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
-      std::vector<int> int32_host(tensor.numel());
+      std::vector<int> int32_host(tensor->numel());
 
-      if (platform::is_cpu_place(tensor.place())) {
-        auto &int32_tensor = tensor;
-        if (tensor.dtype() == phi::DataType::INT64) {
+      if (platform::is_cpu_place(tensor->place())) {
+        auto &int32_tensor = *tensor;
+        if (tensor->dtype() == phi::DataType::INT64) {
           auto *cpu_ctx = pool.Get(platform::CPUPlace());
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
-              tensor,
+              *tensor,
               DataType::INT32);
         }
         paddle::memory::Copy(platform::CPUPlace(),
@@ -2364,14 +2470,14 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
                              platform::CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
-      } else if (platform::is_gpu_place(tensor.place())) {
+      } else if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA)
-        auto *dev_ctx = pool.Get(tensor.place());
-        auto &int32_tensor = tensor;
-        if (tensor.dtype() == phi::DataType::INT64) {
+        auto *dev_ctx = pool.Get(tensor->place());
+        auto &int32_tensor = *tensor;
+        if (tensor->dtype() == phi::DataType::INT64) {
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
-              tensor,
+              *tensor,
               DataType::INT32);
         }
         paddle::memory::Copy(platform::CPUPlace(),
@@ -2580,7 +2686,7 @@ bool AnalysisPredictor::LoadParameters() {
 
   // Use NaiveExecutor to Load parameters.
   framework::NaiveExecutor e(place_);
-  e.Prepare(scope_.get(), *load_program, 0, false);
+  e.Prepare(scope_.get(), *load_program, 0);
   e.Run();
   VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
 
@@ -2893,6 +2999,9 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+USE_TRT_CONVERTER(bitwise_and);
+USE_TRT_CONVERTER(bitwise_or);
+USE_TRT_CONVERTER(size);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
 USE_TRT_CONVERTER(einsum)
@@ -3011,6 +3120,7 @@ USE_TRT_CONVERTER(trans_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
+USE_TRT_CONVERTER(custom_generic_plugin_creater)
 USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
@@ -3052,7 +3162,6 @@ USE_TRT_CONVERTER(dequantize_linear)
 namespace paddle_infer {
 
 Predictor::Predictor(const Config &config) {
-  const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
   // The second parameter indicates that the discard log is not printed
   if (config.use_onnxruntime()) {
 #ifdef PADDLE_WITH_ONNXRUNTIME

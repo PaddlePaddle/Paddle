@@ -30,6 +30,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/barrier.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -44,7 +45,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/backends/dynload/port.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -70,7 +70,8 @@ void PrintLodTensor(phi::DenseTensor* tensor,
                     int64_t end,
                     std::string& output_str,  // NOLINT
                     char separator = ',',
-                    bool need_leading_separator = false);
+                    bool need_leading_separator = false,
+                    int num_decimals = 9);
 std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
 bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
 
@@ -218,6 +219,7 @@ class DeviceWorker {
 
   virtual Scope* GetThreadScope() { return thread_scope_; }
   DataFeed* device_reader_ = nullptr;
+  virtual void Finalize() {}
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
@@ -243,6 +245,7 @@ class DeviceWorker {
 
   int dump_mode_ = 0;
   int dump_interval_ = 10000;
+  int dump_num_decimals_ = 9;
   ChannelWriter<std::string> writer_;
   const size_t tensor_iterator_thread_num = 16;
   platform::DeviceContext* dev_ctx_ = nullptr;
@@ -262,35 +265,47 @@ class CPUWorkerBase : public DeviceWorker {
  protected:
   int thread_id_;
 };
-
 class HogwildWorker : public CPUWorkerBase {
+  struct OffLoadVarInfo {
+    std::vector<std::string> copy_vars;
+    std::vector<std::string> backup_vars;
+    std::vector<std::pair<std::string, std::string>> cast_vars;
+    template <typename TCopyer>
+    void CopyInputs(const Scope* root,
+                    const platform::Place& place,
+                    Scope* scope,
+                    TCopyer* copyer);
+    template <typename TCopyer>
+    void BackUpInputs(Scope* root, Scope* scope, TCopyer* copyer);
+  };
+
  public:
   HogwildWorker() {}
-  virtual ~HogwildWorker() {
-    for (OperatorBase* op : ops_) {
-      delete op;
-    }
-    std::vector<OperatorBase*>().swap(ops_);
-  }
+  virtual ~HogwildWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
   virtual void PrintFetchVars();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
+  virtual void Finalize();
   template <typename T>
-  void SetZero(phi::DenseTensor* tensor,
-               phi::DenseTensor* root_tensor,
-               int tensor_dim);
+  void SetZero(phi::DenseTensor* tensor, const phi::DenseTensor& root_tensor);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
   // check batch num
   bool CheckBatchNum(int flag);
+  bool GetPassEnd(int flag);
+  // build thread sharding depends
+  void BuildShardingDepends(const ProgramDesc& program);
+  int IsParameter(const std::string& name, bool full_match);
+  bool IsNeedOffload(const std::string& name);
+  size_t AdjustOffloadOps(const ProgramDesc& program);
 
   std::vector<std::string> op_names_;
-  std::vector<OperatorBase*> ops_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
   bool thread_barrier_;
   // Scope* thread_scope_;
   HogwildWorkerParameter param_;
@@ -298,6 +313,34 @@ class HogwildWorker : public CPUWorkerBase {
   std::map<std::string, int> stat_var_name_map_;
   static std::atomic<bool> quit_flag_;
   phi::DenseTensor sync_stat_;
+  // skip vars
+  std::vector<std::string> skip_vars_;
+  std::unordered_map<const OperatorBase*, std::vector<std::string>>
+      unused_vars_;
+  int ring_id_ = 0;
+  int nccl_rank_id_ = 0;
+  std::unordered_map<std::string, int> params2rootid_;
+  std::multiset<std::string> remove_vars_;
+  std::multiset<std::string> unpersist_vars_;
+  std::multiset<std::string> persist_param_vars_;
+  std::multiset<OpDesc*> remove_ops_;
+  std::vector<std::string> need_copy_vars_;
+  std::vector<std::string> shard_dump_params_;
+  std::vector<std::string> shard_dump_fields_;
+  std::multiset<std::string> free_param_vars_;
+  bool is_multi_node_ = false;
+  bool sharding_mode_ = false;
+  bool enable_adjust_op_order_ = false;
+  // offload vars
+  bool is_offload_communication_ = false;
+  bool is_offload_param_ = false;
+  std::vector<std::string> offload_exts_;
+  std::multiset<std::string> offload_names_;
+  std::unordered_map<const OperatorBase*, OffLoadVarInfo> offload_vars_;
+  // enable MixedPrecision
+  std::unordered_map<std::string, std::string> cast_fp16_vars_;
+  std::unordered_map<std::string, std::string> param_cast_vars_;
+  std::unordered_map<std::string, std::string> need_cast_vars_;
 };
 
 class DownpourWorker : public HogwildWorker {

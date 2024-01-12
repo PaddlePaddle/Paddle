@@ -22,9 +22,9 @@ namespace cub = hipcub;
 
 #include "glog/logging.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -532,7 +532,7 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -845,6 +845,13 @@ void BatchNormKernel(const Context &ctx,
         }
       }
     } else {
+      int64_t reserve_space_size = 0;
+      if (reserve_space == nullptr) {
+        reserve_space = new DenseTensor();
+      }
+      reserve_space->Resize({reserve_space_size});
+      ctx.template Alloc<T>(reserve_space);
+
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnBatchNormalizationForwardInference(
               handle,
@@ -887,6 +894,12 @@ void BatchNormKernel(const Context &ctx,
     ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     if ((N * H * W * D) == 1) {
+      int64_t reserve_space_size = 0;
+      if (reserve_space == nullptr) {
+        reserve_space = new DenseTensor();
+      }
+      reserve_space->Resize({reserve_space_size});
+      ctx.template Alloc<T>(reserve_space);
       // Only 1 element in normalization dimension,
       // skip the batch norm calculation, let y = x.
       phi::Copy(ctx, x, ctx.GetPlace(), false, y);
@@ -1118,13 +1131,12 @@ void BatchNormKernel(const Context &ctx,
         void *reserve_space_ptr = nullptr;
         void *workspace_ptr = nullptr;
         DenseTensor workspace_tensor;
-        DenseTensor reserve_space_tensor;
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
         // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
-          reserve_space = &reserve_space_tensor;
+          reserve_space = new DenseTensor();
         }
         PADDLE_ENFORCE_NOT_NULL(
             reserve_space,

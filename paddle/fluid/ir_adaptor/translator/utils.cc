@@ -16,13 +16,16 @@
 
 #include <unordered_map>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/utils.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -94,6 +97,9 @@ std::vector<std::string> CheckUnregisteredOperationInBlock(
 std::vector<std::string> CheckUnregisteredOperation(
     pir::IrContext* ctx, const framework::ProgramDesc& legacy_program) {
   ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
+#ifdef PADDLE_WITH_DNNL
+  ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
+#endif
 
   std::vector<std::string> unregistered_ops;
   for (size_t block_idx = 0; block_idx < legacy_program.Size(); block_idx++) {

@@ -253,7 +253,11 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
             exe = base.Executor(place)
 
             exe.run(startup_program)
-            outs = exe.run(train_program, fetch_list=[out_1])
+            outs = exe.run(
+                train_program,
+                feed={"input": np.zeros((1, 3)).astype('uint16')},
+                fetch_list=[out_1],
+            )
 
 
 if __name__ == "__main__":

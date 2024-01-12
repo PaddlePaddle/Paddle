@@ -47,10 +47,6 @@ class TestReshardSameStatus:
         in_mesh = dist.ProcessMesh(in_mesh_list, dim_names=["x"])
         value = paddle.uniform(self._shape, self._dtype)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        in_shard_specs[0] = "x"
-        dist_attr = dist.DistAttr(mesh=in_mesh, sharding_specs=in_shard_specs)
-
         in_expected_local_tensor_list = paddle.split(
             value, num_or_sections=in_mesh.shape[0], axis=0
         )
@@ -59,7 +55,7 @@ class TestReshardSameStatus:
         elif dist.get_rank() in out_mesh_list:
             index = out_mesh_list.index(dist.get_rank()) % in_mesh.shape[0]
 
-        input_tensor = dist.shard_tensor(value, dist_attr=dist_attr)
+        input_tensor = dist.shard_tensor(value, in_mesh, [dist.Shard(0)])
 
         if dist.get_rank() in in_mesh_list:
             # check the value of input tensor
@@ -72,16 +68,7 @@ class TestReshardSameStatus:
             )
 
         out_mesh = dist.ProcessMesh(out_mesh_list, dim_names=["x"])
-        out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[0] = "x"
-        out_dist_attr = dist.DistAttr(
-            mesh=out_mesh, sharding_specs=out_shard_specs
-        )
-
-        reshard_func = core.SameStatusReshardFunction()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
+        out = dist.reshard(input_tensor, out_mesh, [dist.Shard(0)])
 
         if dist.get_rank() in out_mesh_list:
             np.testing.assert_equal(
@@ -97,12 +84,9 @@ class TestReshardSameStatus:
         in_mesh = dist.ProcessMesh(in_mesh_list, dim_names=["x", "y"])
         value = paddle.uniform(self._shape, self._dtype)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        in_shard_specs[0] = "x"
-        dist_attr = dist.DistAttr(mesh=in_mesh, sharding_specs=in_shard_specs)
-        dist_attr._set_partial_dims([1])
-
-        input_tensor = dist.shard_tensor(value, dist_attr=dist_attr)
+        input_tensor = dist.shard_tensor(
+            value, in_mesh, [dist.Shard(0), dist.Partial()]
+        )
 
         in_expected_local_tensor_list = paddle.split(
             value, num_or_sections=in_mesh.shape[0], axis=0
@@ -132,17 +116,9 @@ class TestReshardSameStatus:
                 )
 
         out_mesh = dist.ProcessMesh(out_mesh_list, dim_names=["x", "y"])
-        out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[0] = "x"
-        out_dist_attr = dist.DistAttr(
-            mesh=out_mesh, sharding_specs=out_shard_specs
+        out = dist.reshard(
+            input_tensor, out_mesh, [dist.Shard(0), dist.Partial()]
         )
-        out_dist_attr._set_partial_dims([1])
-
-        reshard_func = core.SameStatusReshardFunction()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
 
         if dist.get_rank() in out_flatten_list:
             if out_y == 0:

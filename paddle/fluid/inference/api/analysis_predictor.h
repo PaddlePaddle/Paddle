@@ -104,25 +104,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \param[in] AnalysisConfig config
   ///
-  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
-    if (config_.shape_range_info_collected()) {
-      config_.SwitchIrOptim(false);
-    }
-    int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
-    if (trt_identifier > 0) {
-      // NOTE(liuyuanle): For convenience, we set the id of the predictor to
-      // negative sharing_identifier directly. In the future, this may affect
-      // the meaning of negative predictor id.
-      predictor_id_ = -trt_identifier;
-      LOG(WARNING)
-          << "Since the engine context memory of multiple predictors "
-             "is enabled in Paddle-TRT, we set the id of these predictors to "
-             "negative sharing_identifier you specified : "
-          << predictor_id_;
-    } else {
-      predictor_id_ = inference::GetUniqueId();
-    }
-  }
+  explicit AnalysisPredictor(const AnalysisConfig &config);
   ///
   /// \brief Destroy the Analysis Predictor object
   ///
@@ -222,9 +204,10 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Run the prediction engine
   ///
+  /// \param switch_stream Whether the stream is switched
   /// \return Whether the function executed successfully
   ///
-  bool ZeroCopyRun() override;
+  bool ZeroCopyRun(bool switch_stream = false) override;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Note: Can only be used under thread_local semantics.

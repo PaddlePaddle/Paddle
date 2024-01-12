@@ -56,7 +56,7 @@ class TestElementwiseDivGradGradWithoutDout
   using TestElementwiseOpGradGrad<T>::expected_outs_;
   using TestElementwiseOpGradGrad<T>::dims_;
   void ComputeExpectedOuts() override {
-    size_t numel = static_cast<size_t>(phi::product(dims_));
+    size_t numel = static_cast<size_t>(common::product(dims_));
     std::vector<T> dy(numel);
     std::vector<T> ddout(numel);
     for (size_t i = 0; i < numel; ++i) {

@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flip_kernel.h"
+#include "paddle/common/array.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 
 namespace phi {
 
@@ -74,7 +74,7 @@ void FlipKernel(const Context& dev_ctx,
   const int64_t numel = x.numel();
 
   size_t flip_dims_size = axis.size();
-  auto x_stride = phi::stride(x_dims);
+  auto x_stride = common::stride(x_dims);
 
   phi::Array<int64_t, DDim::kMaxRank> stride_array;
   phi::Array<int64_t, DDim::kMaxRank> shape_array;

@@ -146,7 +146,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
 
     auto* wx_var = scope.FindVar(wx_var_names);
     auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
-    wx_tensor->Resize(phi::make_dim(wx.size(), wx[0].size()));
+    wx_tensor->Resize(common::make_dim(wx.size(), wx[0].size()));
     for (size_t i = 0; i < wx.size(); i++)
       std::copy(
           begin(wx[i]),
@@ -155,7 +155,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
 
     auto* wh_var = scope.FindVar(wh_var_names);
     auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
-    wh_tensor->Resize(phi::make_dim(wh.size(), wh[0].size()));
+    wh_tensor->Resize(common::make_dim(wh.size(), wh[0].size()));
     for (size_t i = 0; i < wh.size(); i++)
       std::copy(
           begin(wh[i]),
@@ -280,7 +280,7 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, get_scales_function) {
   float max_val = *std::max_element(values.begin(), values.end());
 
   phi::DenseTensor var_tensor;
-  var_tensor.Resize(phi::make_dim(values.size(), 1));
+  var_tensor.Resize(common::make_dim(values.size(), 1));
   std::copy(begin(values),
             end(values),
             var_tensor.mutable_data<float>(phi::CPUPlace()));
@@ -307,7 +307,7 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
 
   auto* var = scope.FindVar(weight_var_name);
   auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
-  weight_tensor->Resize(phi::make_dim(1, values.size()));
+  weight_tensor->Resize(common::make_dim(1, values.size()));
   std::copy(begin(values),
             end(values),
             weight_tensor->mutable_data<float>(phi::CPUPlace()));

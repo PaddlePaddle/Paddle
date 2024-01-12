@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -108,7 +108,7 @@ class GRUOneDNNHandler
 
       // Create memory descriptors
       auto input_md = OneDNNMemDesc(
-          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ntc);
+          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
       auto weight_x_md =
           OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto weight_h_md =
@@ -116,7 +116,7 @@ class GRUOneDNNHandler
       auto bias_md = OneDNNMemDesc(
           {L, D, G, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::ldgo);
       auto hidden_md = OneDNNMemDesc(
-          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::ntc);
+          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::any);
       auto h0_md = OneDNNMemDesc(
           {L, D, N, OC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ldnc);
 
@@ -451,12 +451,12 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
 
   auto x_dims = x.dims();
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? phi::flatten_to_2d(x_dims, 1)
+                        ? common::flatten_to_2d(x_dims, 1)
                         : x_dims;
 
   // Get tensor dimensions
-  const auto x_mat_dims_vec = phi::vectorize(x_mat_dims);
-  const auto weight_h_dims = phi::vectorize(weight_h.dims());
+  const auto x_mat_dims_vec = common::vectorize(x_mat_dims);
+  const auto weight_h_dims = common::vectorize(weight_h.dims());
   const auto& input_lod = x.lod()[0];
 
   // Calculate RNN dimensions
