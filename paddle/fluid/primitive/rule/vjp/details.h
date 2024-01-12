@@ -1303,6 +1303,7 @@ void group_norm_grad(const Tensor& x,
   // d_bias = sum(dy, axes=(0,2,3))
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
   if (data_layout_ != DataLayout::kNCHW) {
+    // TODO(chengyanfu): Subsequent support NHWC
     PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
                                               data_layout));
   }
