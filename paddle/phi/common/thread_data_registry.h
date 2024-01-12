@@ -24,13 +24,19 @@
 
 namespace phi {
 
+#ifdef __cpp_lib_void_t
+using std::void_t;
+#else
+template <typename...>
+using void_t = void;
+#endif
+
 template <typename T, typename = void>
 struct IsAccumulatable : std::false_type {};
 
 template <typename T>
-struct IsAccumulatable<
-    T,
-    std::void_t<decltype(std::declval<T>() += std::declval<T>())>>
+struct IsAccumulatable<T,
+                       void_t<decltype(std::declval<T>() += std::declval<T>())>>
     : std::true_type {};
 
 template <typename T>
