@@ -200,7 +200,7 @@ class ShardingPass(PassBase):
         )
 
         self.amp_dtype = self.get_attr("amp_dtype")
-        if self.amp_dtype == "float16":
+        if self.amp_dtype == "bfloat16":
             __amp_target_dtype__ = core.VarDesc.VarType.BF16
             __amp_target_dtype_name__ = "bfloat16"
 
