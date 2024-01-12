@@ -70,7 +70,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 
   DenseTensor dq_tmp;
   if (dq) {
-    dq_ptr = ctx.template Alloc<T>(&dq);
+    dq_ptr = ctx.template Alloc<T>(dq);
   } else {
     dq_tmp.Resize(dims);
     dq_ptr = ctx.template Alloc<T>(&dq_tmp);
@@ -210,7 +210,7 @@ void FlashAttnGradKernel(const Context& ctx,
 
   DenseTensor dq_tmp;
   if (dq) {
-    dq_ptr = ctx.template Alloc<T>(&dq);
+    dq_ptr = ctx.template Alloc<T>(dq);
   } else {
     dq_tmp.Resize(dims);
     dq_ptr = ctx.template Alloc<T>(&dq_tmp);
