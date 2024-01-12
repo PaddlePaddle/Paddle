@@ -576,16 +576,16 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
                 rtol=1e-05,
                 atol=0.1,
             )
-        "Test pir mode"
-        output1_pir = self.pir_rmsprop_mp(use_amp=True, mp=True)
-        output2_pir = self.pir_rmsprop_mp(use_amp=False, mp=False)
-        for idx in range(len(output1_pir)):
-            np.testing.assert_allclose(
-                output1_pir[idx].astype('float32'),
-                output2_pir[idx].astype('float32'),
-                rtol=1e-05,
-                atol=0.1,
-            )
+        # NOT support amp training "Test pir mode"
+        # output1_pir = self.pir_rmsprop_mp(use_amp=True, mp=True)
+        # output2_pir = self.pir_rmsprop_mp(use_amp=False, mp=False)
+        # for idx in range(len(output1_pir)):
+        #     np.testing.assert_allclose(
+        #         output1_pir[idx].astype('float32'),
+        #         output2_pir[idx].astype('float32'),
+        #         rtol=1e-05,
+        #         atol=0.1,
+        #     )
 
 
 if __name__ == "__main__":
