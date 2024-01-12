@@ -20,7 +20,6 @@
 - abs
 - assign
 - concat
-- stack
 - elementwise_pow
 - floor
 - gather
