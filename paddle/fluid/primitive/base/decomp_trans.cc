@@ -32,8 +32,11 @@ using Program = pir::Program;
 
 // some outputs like xshape will no longer used after decomp, and those outputs
 // will skip checking.
-std::unordered_set<std::string> decomp_op_contain_none = {
-    "pd_op.squeeze", "pd_op.unsqueeze", "pd_op.flatten", "pd_op.batch_norm"};
+std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
+                                                          "pd_op.unsqueeze",
+                                                          "pd_op.flatten",
+                                                          "pd_op.batch_norm",
+                                                          "pd_op.batch_norm_"};
 
 static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
@@ -275,14 +278,15 @@ std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
 }
 
 void DecompProgram::decomp_program() {
-  std::ostringstream orig_prog_stream;
   std::unordered_map<pir::OpResult, int> orig_vars_dict;
   for (size_t i = 0; i < src_vars_.size(); i++) {
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
+  std::ostringstream orig_prog_stream;
   program_->Print(orig_prog_stream);
-  VLOG(4) << "[Prim] Origin program bofore decomp :\n"
+  VLOG(4) << "[Prim] Origin program before decomp :\n"
           << orig_prog_stream.str();
+
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return;
   }
