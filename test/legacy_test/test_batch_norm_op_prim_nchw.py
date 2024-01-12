@@ -88,7 +88,6 @@ class TestBatchNormOp(OpTest):
             )
 
     def test_check_grad_x(self):
-        check_prim_pir_grad = True
         if self.dtype not in ("uint16", "float16"):
             self.check_grad_with_place(
                 core.CPUPlace(),
@@ -97,7 +96,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_prim_pir,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -107,11 +106,10 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_prim_pir,
             )
 
     def test_check_grad_scale_bias(self):
-        check_prim_pir_grad = True
         if self.data_format == "NCHW" and self.training is False:
             self.enable_cinn = False
         if self.dtype == "float32":
@@ -132,7 +130,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_prim_pir,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -142,7 +140,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_prim_pir,
             )
 
     def initConfig(self):
