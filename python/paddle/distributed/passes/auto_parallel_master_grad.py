@@ -113,9 +113,9 @@ class MasterGradPass(PassBase):
                 ref_dims_mapping = ref_output_dist_attr.dims_mapping
                 ref_chunk_id = producer_op_dist_attr.chunk_id
                 grad_half_precision_name = (
-                    grad_name + '@tmp_fp16'
+                    grad_name + '@master_grad_fp16'
                     if is_fp16
-                    else grad_name + '@tmp_bf16'
+                    else grad_name + '@master_grad_bf16'
                 )
                 grad_half_precision = cur_block.create_var(
                     name=grad_half_precision_name,

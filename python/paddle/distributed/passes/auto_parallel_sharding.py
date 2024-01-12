@@ -72,11 +72,28 @@ _supported_optimizer_type = [
 
 _logger = get_logger(logging.INFO)
 
+__amp_target_dtype__ = core.VarDesc.VarType.FP16
+__amp_target_dtype_name__ = "float16"
+
 
 def _is_reshard_op(op):
     return op.desc.has_attr(
         "op_namescope"
     ) and "/auto_parallel/reshard" in op.desc.attr('op_namescope')
+
+
+def _is_master_grad_cast_op(block, op, amp_dtype=__amp_target_dtype_name__):
+    if op.type != "cast":
+        return False
+    assert len(op.input_arg_names) == 1
+    assert len(op.output_arg_names) == 1
+    input_var_name = op.input_arg_names[0]
+    if amp_dtype == "float16":
+        return "@master_grad_fp16" in input_var_name
+    elif amp_dtype == "bfloat16":
+        return "@master_grad_bf16" in input_var_name
+    else:
+        return False
 
 
 # NOTE we add the "auto_parallel" prefix to the pass in order to
@@ -100,6 +117,7 @@ class ShardingPass(PassBase):
         self.set_attr("enable_hierarchical_comm", None)
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
+        self.set_attr("amp_dtype", "float16")
         self.dp_groups = set()
         self.sharding_infos = []
         self.varname_to_sharding_info = {}
@@ -180,6 +198,11 @@ class ShardingPass(PassBase):
             main_program.global_block(),
             startup_program.global_block(),
         )
+
+        self.amp_dtype = self.get_attr("amp_dtype")
+        if self.amp_dtype == "float16":
+            __amp_target_dtype__ = core.VarDesc.VarType.BF16
+            __amp_target_dtype_name__ = "bfloat16"
 
         # NOTE Multi / Sub-Block Support
         # we assume that only parameter are present and partitioned in main_block,
@@ -1508,8 +1531,10 @@ def _is_param_grad_fp32_cast_op(block, op):
     if not is_backward_op(op):
         return False
     if not _is_desired_cast_op(
-        block, op, core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
+        block, op, __amp_target_dtype__, core.VarDesc.VarType.FP32
     ):
+        return False
+    if _is_master_grad_cast_op(block, op):
         return False
     output_name = op.output_arg_names[0]
     base_name = output_name[: output_name.find("@")]
@@ -1533,7 +1558,7 @@ def _is_desired_cast_op(
     block,
     op,
     src_var_type=core.VarDesc.VarType.FP32,
-    dst_var_type=core.VarDesc.VarType.FP16,
+    dst_var_type=__amp_target_dtype__,
 ):
     if op.type != "cast":
         return False
@@ -1552,6 +1577,8 @@ def _get_base_name_from_grad_name(grad_name):
     base_name = None
     if ".cast_fp16@GRAD" in grad_name:
         base_name = grad_name[: grad_name.find(".cast_fp16@GRAD")]
+    elif ".cast_bf16@GRAD" in grad_name:
+        base_name = grad_name[: grad_name.find(".cast_bf16@GRAD")]
     elif "@GRAD" in grad_name:
         base_name = grad_name[: grad_name.find("@GRAD")]
     return base_name
