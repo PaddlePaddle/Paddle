@@ -28,8 +28,7 @@
 
 namespace {
 
-class Conv2dAddFusePattern
-    : public paddle::drr::DrrPatternBase<Conv2dAddFusePattern> {
+class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -83,6 +82,8 @@ class Conv2dAddFusePattern
                           &res.NoneTensor()},
                          {&res.Tensor("add_out")});
   }
+
+  std::string pattern_name() const override { return "Conv2dAddFusePattern"; }
 };
 
 class Conv2dAddFusePass : public pir::PatternRewritePass {

@@ -19,10 +19,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/api/ir_operation.h"
+#include "paddle/fluid/pir/drr/api/ir_value.h"
 #include "paddle/fluid/pir/drr/api/tensor_interface.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
-#include "paddle/fluid/pir/drr/ir_operation.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
 namespace paddle {

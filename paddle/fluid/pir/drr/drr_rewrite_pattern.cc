@@ -12,10 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/drr_rewrite_pattern.h"
+// #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+// #include "paddle/fluid/pir/drr/api/ir_operation.h"
+// #include "paddle/fluid/pir/drr/api/match_context.h"
+
+// #include "paddle/phi/core/enforce.h"
+// #include "paddle/pir/core/operation.h"
+// #include "paddle/pir/core/type_name.h"
+// #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+
+#include "paddle/fluid/pir/drr/api/drr_rewrite_pattern.h"
+
+#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/ir_operation_factory.h"
+#include "paddle/fluid/pir/drr/match_context_impl.h"
+#include "paddle/fluid/pir/drr/pattern_graph.h"
 
 namespace paddle {
 namespace drr {
+
+DrrRewritePattern::DrrRewritePattern(const std::string& pattern_name,
+                                     const DrrPatternContext& drr_context,
+                                     pir::IrContext* context,
+                                     pir::PatternBenefit benefit)
+    : pir::RewritePattern(
+          drr_context.source_pattern_graph()->AnchorNode()->name(),
+          benefit,
+          context,
+          {}),
+      pattern_name_(pattern_name),
+      source_pattern_graph_(drr_context.source_pattern_graph()),
+      constraints_(drr_context.constraints()),
+      result_pattern_graph_(drr_context.result_pattern_graph()) {
+  PADDLE_ENFORCE_NE(
+      source_pattern_graph_->owned_op_call().empty(),
+      true,
+      phi::errors::InvalidArgument("Source pattern graph is empty."
+                                   "Suggested fix: Please check the DRR "
+                                   "source pattern definition code."));
+}
 
 bool DrrRewritePattern::MatchAndRewrite(
     pir::Operation* op,
@@ -25,6 +60,7 @@ bool DrrRewritePattern::MatchAndRewrite(
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
     PatternGraphRewrite(*src_match_ctx, rewriter);
+    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewrited in program.";
     return true;
   }
   return false;
@@ -514,6 +550,14 @@ void DrrRewritePattern::DeleteSourcePatternOp(
       }
     }
   }
+}
+
+std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
+    pir::IrContext* ir_context) const {
+  DrrPatternContext drr_context;
+  this->operator()(&drr_context);
+  return std::make_unique<DrrRewritePattern>(
+      pattern_name(), drr_context, ir_context, pattern_benefit());
 }
 
 }  // namespace drr

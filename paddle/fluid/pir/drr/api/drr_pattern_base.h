@@ -14,28 +14,38 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/pir/drr/drr_rewrite_pattern.h"
+#include "paddle/fluid/pir/drr/api/drr_rewrite_pattern.h"
+#include "paddle/fluid/pir/drr/api/match_context.h"
+
+namespace pir {
+class IrContext;
+}
 
 namespace paddle {
 namespace drr {
 
-template <typename DrrPattern>
+class DrrRewritePattern;
+class DrrPatternContext;
+
 class DrrPatternBase {
  public:
   virtual ~DrrPatternBase() = default;
 
-  // Define the Drr Pattern.
-  virtual void operator()(paddle::drr::DrrPatternContext* ctx) const = 0;
+  // Define the drr pattern.
+  virtual void operator()(drr::DrrPatternContext* ctx) const = 0;
 
-  std::unique_ptr<DrrRewritePattern> Build(
-      pir::IrContext* ir_context, pir::PatternBenefit benefit = 1) const {
-    DrrPatternContext drr_context;
-    this->operator()(&drr_context);
-    std::string pattern_name = pir::get_type_name<DrrPattern>();
-    return std::make_unique<DrrRewritePattern>(
-        pattern_name, drr_context, ir_context, benefit);
-  }
+  // Give the drr pattern name.
+  virtual std::string pattern_name() const = 0;
+
+  // Give the drr pattern benefit.
+  virtual uint32_t pattern_benefit() const { return 1; }
+
+  // Build the Drr Pattern.
+  std::unique_ptr<DrrRewritePattern> Build(pir::IrContext* ir_context) const;
 };
 
 }  // namespace drr

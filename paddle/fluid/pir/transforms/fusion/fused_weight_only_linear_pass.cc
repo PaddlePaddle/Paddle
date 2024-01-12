@@ -35,8 +35,7 @@ int getSMVersion() {
   return sm_version;
 }
 
-class FusedWeightOnlyLinearPattern
-    : public paddle::drr::DrrPatternBase<FusedWeightOnlyLinearPattern> {
+class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
@@ -125,6 +124,10 @@ class FusedWeightOnlyLinearPattern
                         &res.Tensor("bias"),
                         &res.Tensor("weight_scale_tensor")},
                        {&res.Tensor("add_out")});
+  }
+
+  std::string pattern_name() const override {
+    return "FusedWeightOnlyLinearPattern";
   }
 };
 

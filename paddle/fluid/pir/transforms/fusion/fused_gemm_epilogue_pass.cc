@@ -21,8 +21,7 @@
 
 namespace {
 
-class FusedLinearPattern
-    : public paddle::drr::DrrPatternBase<FusedLinearPattern> {
+class FusedLinearPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -54,10 +53,11 @@ class FusedLinearPattern
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
   }
+
+  std::string pattern_name() const override { return "FusedLinearPattern"; }
 };
 
-class FusedLinearGradPattern
-    : public paddle::drr::DrrPatternBase<FusedLinearGradPattern> {
+class FusedLinearGradPattern : public paddle::drr::DrrPatternBase < {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -109,10 +109,11 @@ class FusedLinearGradPattern
                               &res.Tensor("w_grad"),
                               &res.Tensor("bias_grad")});
   }
+
+  std::string pattern_name() const override { return "FusedLinearGradPattern"; }
 };
 
-class FusedLinearGeluPattern
-    : public paddle::drr::DrrPatternBase<FusedLinearGeluPattern> {
+class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -148,9 +149,10 @@ class FusedLinearGeluPattern
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
+
+  std::string pattern_name() const override { return "FusedLinearGeluPattern"; }
 };
-class FusedLinearReluPattern
-    : public paddle::drr::DrrPatternBase<FusedLinearReluPattern> {
+class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -186,10 +188,11 @@ class FusedLinearReluPattern
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
+
+  std::string pattern_name() const override { return "FusedLinearReluPattern"; }
 };
 
-class FusedLinearGeluGradPattern
-    : public paddle::drr::DrrPatternBase<FusedLinearGeluGradPattern> {
+class FusedLinearGeluGradPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -254,10 +257,13 @@ class FusedLinearGeluGradPattern
                                   &res.Tensor("w1_grad"),
                                   &res.Tensor("bias1_grad")});
   }
+
+  std::string pattern_name() const override {
+    return "FusedLinearGeluGradPattern";
+  }
 };
 
-class FusedLinearReluGradPattern
-    : public paddle::drr::DrrPatternBase<FusedLinearReluGradPattern> {
+class FusedLinearReluGradPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -321,6 +327,10 @@ class FusedLinearReluGradPattern
                                   {&res.Tensor("relu_dx"),
                                    &res.Tensor("w1_grad"),
                                    &res.Tensor("bias1_grad")});
+  }
+
+  std::string pattern_name() const override {
+    return "FusedLinearReluGradPattern";
   }
 };
 

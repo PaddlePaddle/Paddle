@@ -16,7 +16,7 @@
 
 #include <cstdint>
 
-#include "paddle/fluid/pir/drr/ir_operation.h"
+#include "paddle/fluid/pir/drr/api/ir_operation.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
 
 namespace paddle {

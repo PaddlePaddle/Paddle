@@ -18,7 +18,6 @@
 #include <string>
 
 #include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_operation.h"
 
 namespace paddle {
 namespace drr {

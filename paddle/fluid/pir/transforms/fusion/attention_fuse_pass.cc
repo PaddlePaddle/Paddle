@@ -21,8 +21,7 @@
 
 namespace {
 
-class MultiHeadMatmulFusePattern
-    : public paddle::drr::DrrPatternBase<MultiHeadMatmulFusePattern> {
+class MultiHeadMatmulFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
@@ -215,6 +214,10 @@ class MultiHeadMatmulFusePattern
                       &res.Tensor("reshape_6_out"),
                       &res.Tensor("add_4_in_2")},
                      {&res.Tensor("reshape_4_out")});
+  }
+
+  std::string pattern_name() const override {
+    return "MultiHeadMatmulFusePattern";
   }
 };
 

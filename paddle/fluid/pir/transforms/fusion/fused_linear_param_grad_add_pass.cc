@@ -21,8 +21,7 @@
 namespace {
 
 // add_grad + matmul_grad + add_ -> matmul + fused_liner_param_gard_add
-class FusedMatmulAddGradAddPattern
-    : public paddle::drr::DrrPatternBase<FusedMatmulAddGradAddPattern> {
+class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -89,11 +88,14 @@ class FusedMatmulAddGradAddPattern
                                  &res.NoneTensor()},
                                 {&res.Tensor("add_out"), &res.Tensor("dbias")});
   }
+
+  std::string pattern_name() const override {
+    return "FusedMatmulAddGradAddPattern";
+  }
 };
 
 // matmul_grad + add_ -> matmul + fused_liner_param_gard_add
-class FusedMatmulGradAddPattern
-    : public paddle::drr::DrrPatternBase<FusedMatmulGradAddPattern> {
+class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -149,11 +151,14 @@ class FusedMatmulGradAddPattern
          &res.NoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
+
+  std::string pattern_name() const override {
+    return "FusedMatmulGradAddPattern";
+  }
 };
 
 // matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
-class FusedMatmulAddaPattern
-    : public paddle::drr::DrrPatternBase<FusedMatmulAddaPattern> {
+class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -198,11 +203,12 @@ class FusedMatmulAddaPattern
          &res.NoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
+
+  std::string pattern_name() const override { return "FusedMatmulAddaPattern"; }
 };
 
 // matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
-class FusedMatmulAddbPattern
-    : public paddle::drr::DrrPatternBase<FusedMatmulAddbPattern> {
+class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -247,11 +253,12 @@ class FusedMatmulAddbPattern
          &res.NoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
+
+  std::string pattern_name() const override { return "FusedMatmulAddbPattern"; }
 };
 
 // add_grad + matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
-class FusedMatmulAddGradAddaPattern
-    : public paddle::drr::DrrPatternBase<FusedMatmulAddGradAddaPattern> {
+class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -303,12 +310,15 @@ class FusedMatmulAddGradAddaPattern
          &res.Tensor("dweight"),
          &res.NoneTensor()},
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
+  }
+
+  std::string pattern_name() const override {
+    return "FusedMatmulAddGradAddaPattern";
   }
 };
 
 // add_grad + matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
-class FusedMatmulAddGradAddbPattern
-    : public paddle::drr::DrrPatternBase<FusedMatmulAddGradAddbPattern> {
+class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -360,13 +370,17 @@ class FusedMatmulAddGradAddbPattern
          &res.Tensor("dweight"),
          &res.NoneTensor()},
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
+  }
+
+  std::string pattern_name() const override {
+    return "FusedMatmulAddGradAddbPattern";
   }
 };
 
 class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
  public:
   FusedLinearParamGradAddPass()
-      : pir::PatternRewritePass("fused_linear_param_grad_add_pass", 1) {}
+      : pir::PatternRewritePass("fused_linear_param_grad_add_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

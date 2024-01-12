@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
+#include "paddle/fluid/pir/drr/api/ir_value.h"
 
 namespace paddle {
 namespace drr {

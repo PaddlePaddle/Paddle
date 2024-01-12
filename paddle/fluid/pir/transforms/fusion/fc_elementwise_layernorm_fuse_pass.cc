@@ -21,8 +21,7 @@
 
 namespace {
 
-class FcElementwiseLayerNormFusePattern
-    : public paddle::drr::DrrPatternBase<FcElementwiseLayerNormFusePattern> {
+class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -89,10 +88,13 @@ class FcElementwiseLayerNormFusePattern
                              &res.Tensor("layernorm_mean"),
                              &res.Tensor("layernorm_variance")});
   }
+
+  std::string pattern_name() const override {
+    return "FcElementwiseLayerNormFusePattern";
+  }
 };
 
-class FcElementwiseLayerNormFuse2Pattern
-    : public paddle::drr::DrrPatternBase<FcElementwiseLayerNormFuse2Pattern> {
+class FcElementwiseLayerNormFuse2Pattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -149,6 +151,10 @@ class FcElementwiseLayerNormFuse2Pattern
                             {&res.Tensor("layernorm_out"),
                              &res.Tensor("layernorm_mean"),
                              &res.Tensor("layernorm_variance")});
+  }
+
+  std::string pattern_name() const override {
+    return "FcElementwiseLayerNormFuse2Pattern";
   }
 };
 

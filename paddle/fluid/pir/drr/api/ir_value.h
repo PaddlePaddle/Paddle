@@ -35,7 +35,7 @@ class IrShape {
   int64_t at(int idx) const { return dims_.at(idx); }
 
  private:
-  const phi::DDim dims_;
+  const common::DDim dims_;
 };
 
 class IrDtype {
@@ -108,8 +108,6 @@ class IrValue : public TensorInterface {
   const IrShape shape_;
   const IrDtype dtype_;
 };
-
-class IrAttr;
 
 }  // namespace drr
 }  // namespace paddle

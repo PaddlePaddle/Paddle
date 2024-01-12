@@ -85,17 +85,17 @@ class TensorDataType {
   std::string tensor_name_;
 };
 
+using ConstraintFunction = std::function<bool(const MatchContext&)>;
 class Constraint {
  public:
-  explicit Constraint(
-      const std::function<bool(const MatchContext&)>& constrain_fn)
+  explicit Constraint(const ConstraintFunction& constrain_fn)
       : IsContextMatchConstraint_(constrain_fn) {}
   bool operator()(const MatchContext& match_context) const {
     return IsContextMatchConstraint_(match_context);
   }
 
  private:
-  std::function<bool(const MatchContext&)> IsContextMatchConstraint_;
+  ConstraintFunction IsContextMatchConstraint_;
 };
 
 class DrrPatternContext {
@@ -132,8 +132,7 @@ class DrrPatternContext {
   // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
   void RequireEqual(const TensorDataType& first, const TensorDataType& second);
-  void RequireNativeCall(
-      const std::function<bool(const MatchContext&)>& custom_fn);
+  void RequireNativeCall(const ConstraintFunction& custom_fn);
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   std::vector<Constraint> constraints_;
@@ -322,8 +321,7 @@ class SourcePattern {
     ctx_->RequireEqual(first, second);
   }
 
-  void RequireNativeCall(
-      const std::function<bool(const MatchContext&)>& custom_fn) {
+  void RequireNativeCall(const ConstraintFunction& custom_fn) {
     ctx_->RequireNativeCall(custom_fn);
   }
 

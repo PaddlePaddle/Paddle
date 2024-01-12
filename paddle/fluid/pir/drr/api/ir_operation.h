@@ -14,7 +14,9 @@
 
 #pragma once
 
-#include "paddle/pir/core/operation.h"
+namespace pir {
+class Operation;
+}
 
 namespace paddle {
 namespace drr {

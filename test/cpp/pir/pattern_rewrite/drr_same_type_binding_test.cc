@@ -49,11 +49,10 @@
     output0 output1 output2    output3  output4  output5             output6
 */
 
-class SameTypeBindingTestPattern
-    // This class is for test cases of the same type of OP.
-    // (without considering the computational logic between OPs,
-    // only focusing on the process of matching and replacing)
-    : public paddle::drr::DrrPatternBase<SameTypeBindingTestPattern> {
+// This class is for test cases of the same type of OP.
+// (without considering the computational logic between OPs,
+// only focusing on the process of matching and replacing)
+class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
@@ -178,6 +177,10 @@ class SameTypeBindingTestPattern
     res.Tensor("output4") = full_4();
     res.Tensor("output5") = full_5();
     res.Tensor("output6") = full_6();
+  }
+
+  std::string pattern_name() const override {
+    return "SameTypeBindingTestPattern";
   }
 };
 

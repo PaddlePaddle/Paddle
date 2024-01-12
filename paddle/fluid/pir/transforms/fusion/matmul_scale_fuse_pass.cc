@@ -27,8 +27,7 @@
 
 namespace {
 
-class MatmulScaleFusePattern
-    : public paddle::drr::DrrPatternBase<MatmulScaleFusePattern> {
+class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -76,6 +75,8 @@ class MatmulScaleFusePattern
     matmul_op_res({&res.Tensor("x"), &res.Tensor("scale_res_out")},
                   {&res.Tensor("scale_out")});
   }
+
+  std::string pattern_name() const override { return "MatmulScaleFusePattern"; }
 };
 
 class MatmulScaleFusePass : public pir::PatternRewritePass {
