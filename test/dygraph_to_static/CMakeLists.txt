@@ -20,18 +20,6 @@ if(WIN32 AND NOT WITH_GPU)
   )# disable on Windows CPU CI for timeout
 endif()
 
-if(NOT WITH_GPU)
-  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
-  # We should remove this after fix the performance issue.
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
-  # disable some model test on CPU to avoid timeout
-  list(REMOVE_ITEM TEST_OPS test_resnet)
-  list(REMOVE_ITEM TEST_OPS test_build_strategy)
-  list(REMOVE_ITEM TEST_OPS test_bert)
-  list(REMOVE_ITEM TEST_OPS test_transformerx)
-endif()
-
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS} ${SOT_ENVS})
 endforeach()
@@ -44,7 +32,7 @@ set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
-# set_tests_properties(test_transformerx PROPERTIES TIMEOUT 300)
+set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 
 if(NOT WIN32)
@@ -77,3 +65,15 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
       STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
   endif()
 endforeach()
+
+if(NOT WITH_GPU)
+  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
+  # We should remove this after fix the performance issue.
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
+  # disable some model test on CPU to avoid timeout
+  list(REMOVE_ITEM TEST_OPS test_resnet)
+  list(REMOVE_ITEM TEST_OPS test_build_strategy)
+  list(REMOVE_ITEM TEST_OPS test_bert)
+  list(REMOVE_ITEM TEST_OPS test_transformer)
+endif()
