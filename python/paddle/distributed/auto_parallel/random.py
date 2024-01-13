@@ -17,7 +17,7 @@ import logging
 import paddle
 
 from ..utils.log_utils import get_logger
-from .process_mesh import retrive_unique_id_for_process_mesh
+from .process_mesh import retrieve_unique_id_for_process_mesh
 from .static.utils import _get_idx_in_axis
 
 _logger = get_logger(logging.INFO)
@@ -57,7 +57,7 @@ def parallel_manual_seed(seed, name=""):
 
     This function should be called only once before auto parallel compiles the computation graph (e.g. auto_parallel.engine.prepare() or fit()).
 
-    This seed only affects how randomness-relative **operators** (dropout, fuse op with dropout inside, etc) are execute amonge mesh, and would NOT affect other process like Parameter initialization.
+    This seed only affects how randomness-relative **operators** (dropout, fuse op with dropout inside, etc) are execute among mesh, and would NOT affect other process like Parameter initialization.
 
     Examples:
         # seed relative to training step
@@ -102,7 +102,7 @@ def determinate_rng(
 
     # FIXME
     # unique_id = process_mesh.unique_id
-    unique_id = retrive_unique_id_for_process_mesh(
+    unique_id = retrieve_unique_id_for_process_mesh(
         process_mesh.shape, process_mesh.process_ids
     )
     sharding_expr = name_ + f'mesh:{unique_id}'

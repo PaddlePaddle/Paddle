@@ -161,7 +161,7 @@ class Partitioner:
             )
             target_block._sync_with_cpp()
 
-            # set distribute atrribute
+            # set distribute attribute
             new_op = target_block.ops[-1]
             assert new_op.type == new_op_desc.type()
             assert new_op.desc == new_op_desc

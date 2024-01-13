@@ -56,7 +56,7 @@ def get_unique_id_for_process_mesh(shape, process_ids):
     return unique_id
 
 
-def retrive_unique_id_for_process_mesh(shape, process_ids):
+def retrieve_unique_id_for_process_mesh(shape, process_ids):
     key = f"shape {shape}, process_ids {process_ids}"
     global _g_unique_process_mesh_map
     assert key in _g_unique_process_mesh_map
