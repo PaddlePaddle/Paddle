@@ -110,9 +110,12 @@ class TestLlamaAuto:
             self.config.recompute = True
         self.config.recompute_granularity = os.getenv("recompute_granularity")
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
-        self.schedule_mode = os.getenv("pp_schedule_mode")
-        self.vpp_seg_method = os.getenv("virtual_pipeline_seg_method")
         self.only_static = os.getenv("only_static")
+
+        if self.config.virtual_pp_degree == 1:
+            self.schedule_mode = "1F1B"
+        elif self.config.virtual_pp_degree > 1:
+            self.schedule_mode = "VPP"
 
         self.init_dist_env()
 
@@ -207,11 +210,9 @@ class TestLlamaAuto:
                     self.gradient_accumulation_steps
                 )
                 strategy.pipeline.micro_batch_size = micro_bsz
-                strategy.pipeline.schedule_mode = self.schedule_mode or "1F1B"
-                strategy.pipeline.vpp_degree = (
-                    self.config.virtual_pp_degree or 1
-                )
-                strategy.pipeline.vpp_seg_method = self.vpp_seg_method or ""
+                strategy.pipeline.schedule_mode = self.schedule_mode
+                strategy.pipeline.vpp_degree = self.config.virtual_pp_degree
+                strategy.pipeline.vpp_seg_method = "LlamaDecoderLayerAuto"
             elif self.gradient_accumulation_steps > 1:
                 strategy.gradient_merge.enable = True
                 strategy.gradient_merge.k_steps = (
@@ -262,10 +263,15 @@ class TestLlamaAuto:
                         input_ids, labels = micro_batch
                         tr_loss_step = dist_model(input_ids, labels)
 
-                        if self.gradient_accumulation_steps > 1:
+                        if (
+                            tr_loss_step is not None
+                            and self.gradient_accumulation_steps > 1
+                        ):
+                            tr_loss_step = np.sum(tr_loss_step)
                             tr_loss_step /= self.gradient_accumulation_steps
 
-                        tr_loss += tr_loss_step
+                        if tr_loss_step:
+                            tr_loss += tr_loss_step
 
                     print(f"step: {step}  loss: {np.array(tr_loss)}")
                     lr_scheduler.step()

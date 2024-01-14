@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../../")
 import collective.test_communication_api_base as test_base
 
 import paddle
@@ -213,9 +215,6 @@ class TestSemiAutoParallelLlama3DVPP(test_base.CommunicationTestDistBase):
             "mp": "2",
             "pp": "2",
             "acc_step": "2",
-            "pp_schedule_mode": "VPP",
-            "virtual_pp_degree": "2",
-            "virtual_pipeline_seg_method": "LlamaDecoderLayerAuto",
             "only_static": "true",
         }
         self._changeable_envs = {
@@ -224,6 +223,7 @@ class TestSemiAutoParallelLlama3DVPP(test_base.CommunicationTestDistBase):
             "use_param_group": ["true"],
             "recompute": ["true"],
             "recompute_granularity": ["full"],
+            "virtual_pp_degree": ["2"],
         }
 
     def test_simple_net_hybrid_strategy(self):
