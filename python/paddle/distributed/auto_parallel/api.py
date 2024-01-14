@@ -169,15 +169,16 @@ def shard_tensor(
     place = paddle.framework._get_paddle_place(place)
 
     # 1. create dense tensor
-    # `paddle.to_tensor` supports both dynamic and static mode
     if stop_gradient is None:
         stop_gradient = getattr(data, "stop_gradient", True)
+
     if isinstance(data, EagerParamBase) and not data._is_initialized():
         assert (
             data._init_func is not None
         ), "Get an uninitialized param with an unregistered init_func."
         tensor = data
     else:
+        # `paddle.to_tensor` supports both dynamic and static mode
         tensor = paddle.to_tensor(
             data, dtype=dtype, place=place, stop_gradient=stop_gradient
         )
@@ -195,6 +196,9 @@ def shard_tensor(
 
                 # lazy init hook with randomness controlling
                 def _init_func(var, block):
+                    if dist.get_rank() not in param.process_mesh.process_ids:
+                        # None calc rank, just return no init.
+                        return
                     # get the unique rng name
                     rng_name = determinate_rng(
                         dist.get_rank(),
@@ -221,9 +225,13 @@ def shard_tensor(
 
             return dist_param
         else:
-            return paddle.Tensor(
+            dist_tensor = paddle.Tensor(
                 tensor, process_mesh=mesh, placements=placements, place=place
             )
+            # InitDistTensorWithTensor won't pass the stop gradient attribute,
+            # have to pass it manually.
+            dist_tensor.stop_gradient = tensor.stop_gradient
+            return dist_tensor
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)

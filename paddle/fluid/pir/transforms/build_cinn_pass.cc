@@ -282,7 +282,7 @@ class BuildCinnPass : public pir::Pass {
 
     std::vector<GroupOpsVec> groups =
         ::pir::SubgraphDetector(&block, IsSupportCinn)();
-    PrintStatistics(groups.size());
+    AddStatistics(groups.size());
     for (auto& group_ops : groups) {
       if (group_ops.size() == 1 && group_ops[0]->name() == "pd_op.full") {
         continue;
