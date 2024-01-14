@@ -33,13 +33,22 @@ struct ExactlyOneIrType<T, FirstT, OthersT...> {
                          typename ExactlyOneIrType<T, OthersT...>::type>;
 };
 }  // namespace detail
+
 class IrMapping {
  public:
   template <typename T>
-  using IrType =
-      typename detail::ExactlyOneIrType<T, Value, Block *, Operation *>::type;
+  using remove_lowlevel_const_t = std::conditional_t<
+      std::is_pointer<T>::value,
+      std::add_pointer_t<std::remove_const_t<std::remove_pointer_t<T>>>,
+      T>;
   template <typename T>
-  std::unordered_map<T, T> &GetMutableMap() {
+  using IrType = typename detail::ExactlyOneIrType<remove_lowlevel_const_t<T>,
+                                                   Value,
+                                                   Block *,
+                                                   Operation *>::type;
+
+  template <typename T>
+  auto &GetMutableMap() {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
     } else if constexpr (std::is_same<T, Block *>::value) {
@@ -50,8 +59,9 @@ class IrMapping {
       IR_THROW("Not support type in IRMapping.");
     }
   }
+
   template <typename T>
-  const std::unordered_map<T, T> &GetMap() const {
+  const auto &GetMap() const {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
     } else if constexpr (std::is_same<T, Block *>::value) {
@@ -62,6 +72,7 @@ class IrMapping {
       IR_THROW("Not support type in IRMapping.");
     }
   }
+
   template <typename T, typename S>
   void Add(T from, S to) {
     if (!from) return;
@@ -69,8 +80,8 @@ class IrMapping {
   }
 
   template <typename T>
-  T Lookup(T from) const {
-    if (!from) return static_cast<T>(nullptr);
+  IrType<T> Lookup(T from) const {
+    if (!from) return static_cast<IrType<T>>(nullptr);
     IR_ENFORCE(GetMap<IrType<T>>().count(from) > 0,
                "Not found key in IRMapping.");
     return GetMap<IrType<T>>().at(from);
@@ -116,8 +127,8 @@ class IrMapping {
 
  private:
   std::unordered_map<Value, Value> value_map_;
-  std::unordered_map<Block *, Block *> block_map_;
-  std::unordered_map<Operation *, Operation *> operation_map_;
+  std::unordered_map<const Block *, Block *> block_map_;
+  std::unordered_map<const Operation *, Operation *> operation_map_;
 };
 
 }  // namespace pir

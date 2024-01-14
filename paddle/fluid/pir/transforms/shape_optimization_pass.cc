@@ -85,7 +85,7 @@ void DebugPrintOpInfo(
 void InferSymExprForAllValues(ModuleOp module_op) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
-  for (int i = 0; i < module_op->num_regions(); i++) {
+  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
         auto infer_symbolic_shape_interface =

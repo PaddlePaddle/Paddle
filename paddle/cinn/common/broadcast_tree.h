@@ -17,8 +17,6 @@
 #include "paddle/cinn/adt/tree.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-#include <ostream>
-
 namespace cinn::common {
 
 template <typename T>

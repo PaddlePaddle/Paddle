@@ -19,10 +19,10 @@ namespace detail {
 
 void PrintHeader(const std::string &header, std::ostream &os) {
   const size_t padding = 8;
-  size_t mid_len = header.size() + ((padding - 3) * 2);
-  os << "===" << std::string(mid_len, '-') << "===\n";
+  size_t line_len = header.size() + ((padding - 3) * 2);
+  os << "===" << std::string(line_len, '-') << "===\n";
   os << std::string(padding, ' ') << header << "\n";
-  os << "===" << std::string(mid_len, '-') << "===\n";
+  os << "===" << std::string(line_len, '-') << "===\n";
 }
 
 }  // namespace detail

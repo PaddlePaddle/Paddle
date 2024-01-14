@@ -67,7 +67,7 @@ struct Group {
     std::vector<::pir::Operation*> new_ops;
     // Mapper from original to new ops.
     std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
-    ::pir::CloneOptions clone_options(false, true);
+    auto clone_options = ::pir::CloneOptions(false, true, false);
     for (auto* op : ops) {
       VLOG(4) << "clone op :" << op->name();
       auto* new_op = op->Clone(ir_mapping, clone_options);
