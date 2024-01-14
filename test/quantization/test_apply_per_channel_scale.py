@@ -80,7 +80,6 @@ class ApplyPerChannelScaleTest(unittest.TestCase):
             )
             x.stop_gradient = True
             scales.stop_gradient = True
-            print(f"x: {x}. scales: {scales}")
             out = Q.apply_per_channel_scale(x, scales)
             feed_dict = {
                 'x': self.x.numpy(),
