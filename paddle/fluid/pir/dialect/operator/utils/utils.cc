@@ -72,7 +72,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
 #endif
-    CReduceMinOp::name()};
+    CReduceMinOp::name(),
+    PushSparseV2Op::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
