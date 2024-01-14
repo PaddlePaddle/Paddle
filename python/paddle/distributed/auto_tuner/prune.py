@@ -54,7 +54,10 @@ def same_cfgs_beside(attr, cur_cfg, history_cfgs=[]):
         for key in cur_cfg:
             if key == attr:
                 continue
-            if key not in cfg or cfg[key] != cur_cfg[key]:
+            if key not in cfg or (
+                cfg[key] != cur_cfg[key]
+                and key not in ["estimated_memory_usage"]
+            ):
                 same = False
                 break
         if same:
@@ -569,10 +572,10 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
     if result.returncode == 0:
         cur_memory_usage = int(round(float(result.stdout), 2))
         cur_cfg["estimated_memory_usage"] = cur_memory_usage
-        msg = f"estimated {cur_cfg} memory usage: {cur_memory_usage} MB"
+        msg = f"Estimated {cur_cfg} memory usage: {cur_memory_usage} MB"
         memory_exceeded = cur_memory_usage > (max_memory_usage * 1024)
         if memory_exceeded:
-            msg += f", {cur_cfg} will be pruned!"
+            msg += ", it will be pruned!"
         logger.info(msg)
         return memory_exceeded
     else:

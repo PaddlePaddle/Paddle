@@ -668,6 +668,13 @@ def launch():
                 cur_cfg['job_id'] = job_id
                 auto_tuner.history_cfgs.pop(-1)
                 auto_tuner.add_cfg(cur_cfg)
+                if (
+                    recorder.additional_metric_key is None
+                    and "additional_metric_key" in cur_cfg
+                ):
+                    recorder.additional_metric_key = cur_cfg[
+                        "additional_metric_key"
+                    ]
                 recorder.add_cfg(**cur_cfg)
                 cur_best_cfgs, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
@@ -759,6 +766,13 @@ def launch():
                     cur_cfg = json.loads(cur_cfg.decode())
                     auto_tuner.history_cfgs.pop(-1)
                     auto_tuner.add_cfg(cur_cfg)
+                    if (
+                        recorder.additional_metric_key is None
+                        and "additional_metric_key" in cur_cfg
+                    ):
+                        recorder.additional_metric_key = cur_cfg[
+                            "additional_metric_key"
+                        ]
                     recorder.add_cfg(**cur_cfg)
                     cur_best_cfgs, err = recorder.get_best(
                         metric=tuner_cfg['metric_cfg']['name'],
@@ -997,9 +1011,12 @@ def launch():
                     tuner_cfg["model_cfg"].get("max_seq_length", 2048)
                 )
                 cur_cfg[f"unified_{tuner_cfg['metric_cfg']['name']}"] = (
-                    round(single_dp_performance / num_gpus * seq_length, 2)
+                    round(single_dp_performance / num_gpus, 2)
                     if single_dp_performance
-                    else None
+                    and tuner_cfg["search_algo"]["conversion"].get(
+                        "need_unify", False
+                    )
+                    else single_dp_performance
                 )
                 for bw in comm_bw:
                     if amp:
@@ -1022,14 +1039,20 @@ def launch():
                     cur_cfg[
                         f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = (
-                        round(multi_dp_performace / num_gpus * seq_length, 2)
+                        round(multi_dp_performace / num_gpus, 2)
                         if multi_dp_performace
-                        else None
+                        and tuner_cfg["search_algo"]["conversion"].get(
+                            "need_unify", False
+                        )
+                        else multi_dp_performace
                     )
                     if recorder.additional_metric_key is None:
                         recorder.additional_metric_key = (
                             f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                         )
+                        cur_cfg[
+                            "additional_metric_key"
+                        ] = recorder.additional_metric_key
 
             error_info = None
             cur_cfg["has_error"] = has_error
