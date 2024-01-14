@@ -35,6 +35,21 @@
 
 namespace {
 
+std::unordered_set<pir::Value> GetInnerGeneValue( const std::vector<pir::Operation *>& op_list )
+{
+  std::unordered_set<pir::Value> inner_values;
+
+  for( auto op : op_list )
+  {
+    for( size_t i = 0; i < op->num_results(); ++i )
+    {
+      inner_values.insert( op->result(i));
+    }
+  }
+
+  return inner_values;
+}
+
 class GroupOpClusterPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
  public:
   GroupOpClusterPattern(
@@ -48,6 +63,32 @@ class GroupOpClusterPattern : public pir::OpRewritePattern<cinn::dialect::GroupO
     auto target = cinn::common::DefaultNVGPUTarget();
     auto* program = group_op->GetParentProgram();
     VLOG(4) << "Before GroupOpPattern: " << *program;
+    
+    auto inner_values = GetInnerGeneValue( group_op.ops() );
+
+    std::queue<::pir::Operation*> op_queue;
+    
+
+    for( auto op : group_op.ops() )
+    {
+      for( size_t i = 0; i < op->num_operands(); ++i )
+      {
+        if( ! inner_values.count( op->operand_source(i )) )
+        {
+            op_queue.push( op);
+            break;
+        }
+      }
+    }
+
+    while( ! op_queue.empty() )
+    {
+      auto cur_op = op_queue.front();
+      op_queue.pop();
+
+
+    }
+
     // TODO(Aurelius84): Remove scope after cleaning PirCompiler usless Build
     // Interface
     // auto scope = std::make_shared<cinn::hlir::framework::Scope>();
