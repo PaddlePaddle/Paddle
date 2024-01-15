@@ -90,7 +90,10 @@ LegacyKernelInstruction::LegacyKernelInstruction(
     }
     SetEventsToWaitInfo(events_to_wait);
   }
-  VLOG(6) << "finish process dist attributes";
+  VLOG(6) << "finish process dist attributes for " << op_name
+          << " : [execution_stream, stream_priority, scheduling_priority] = ["
+          << GetExecutionStream() << ", " << GetStreamPriority() << ", "
+          << GetSchedulingPriority() << "]";
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
@@ -137,20 +140,6 @@ LegacyKernelInstruction::LegacyKernelInstruction(
 
   operator_base_ = BuildOperatorBase(op, *value_exec_info_, yaml_info_parser);
 
-  paddle::framework::VariableValueMap in_map;
-  paddle::framework::VariableValueMap out_map;
-  auto dev_ctx = phi::DeviceContextPool::Instance().Get(
-      phi::TransToPhiPlace(kernel_key.backend()));
-
-  runtime_context_ = std::make_shared<paddle::framework::RuntimeContext>(
-      paddle::framework::RuntimeContext(in_map, out_map));
-  BuildRuntimeContext(
-      op, *value_exec_info, yaml_info_parser, runtime_context_.get());
-
-  kernel_context_ = new paddle::framework::ExecutionContext(
-      *operator_base_, *inner_scope, *dev_ctx, *(runtime_context_.get()));
-
-  VLOG(6) << "finish process kernel context";
   SetDeviceContext(
       ParseDeviceContext(op,
                          phi::DeviceContextPool::Instance().Get(
@@ -159,6 +148,21 @@ LegacyKernelInstruction::LegacyKernelInstruction(
                          GetExecutionStream(),
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
+
+  paddle::framework::VariableValueMap in_map;
+  paddle::framework::VariableValueMap out_map;
+  runtime_context_ = std::make_shared<paddle::framework::RuntimeContext>(
+      paddle::framework::RuntimeContext(in_map, out_map));
+  BuildRuntimeContext(
+      op, *value_exec_info, yaml_info_parser, runtime_context_.get());
+
+  kernel_context_ =
+      new paddle::framework::ExecutionContext(*operator_base_,
+                                              *inner_scope,
+                                              DeviceContext(),
+                                              *(runtime_context_.get()));
+
+  VLOG(6) << "finish process kernel context";
 
   InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
