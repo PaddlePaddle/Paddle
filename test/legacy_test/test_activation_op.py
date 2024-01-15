@@ -3429,12 +3429,17 @@ class TestReciprocal(TestActivation):
         if self.dtype == np.float16:
             return
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', max_relative_error=0.03, check_pir=True)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.03, check_pir=True
+            )
         else:
-            self.check_grad(['X'], 'Out', max_relative_error=0.01, check_pir=True)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.01, check_pir=True
+            )
 
     def test_check_output(self):
         self.check_output(check_pir=True)
+
 
 class TestReciprocal_Complex64(TestReciprocal):
     def init_dtype(self):
@@ -3444,6 +3449,7 @@ class TestReciprocal_Complex64(TestReciprocal):
 class TestReciprocal_Complex128(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex128
+
 
 class TestReciprocal_ZeroDim(TestReciprocal):
     def init_shape(self):
@@ -3834,6 +3840,7 @@ class TestSquare(TestActivation):
     def test_check_output(self):
         self.check_output(check_pir=True)
 
+
 class TestSquare_Complex64(TestSquare):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -3842,6 +3849,7 @@ class TestSquare_Complex64(TestSquare):
 class TestSquare_Complex128(TestSquare):
     def init_dtype(self):
         self.dtype = np.complex128
+
 
 class TestSquare_ZeroDim(TestSquare):
     def init_shape(self):

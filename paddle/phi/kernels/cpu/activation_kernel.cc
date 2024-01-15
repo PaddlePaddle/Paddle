@@ -228,8 +228,14 @@ PD_REGISTER_KERNEL(expm1,
                    phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
-PD_REGISTER_KERNEL(
-    square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t,
+PD_REGISTER_KERNEL(square,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SquareKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(softsign, SoftsignKernel)
