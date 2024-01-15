@@ -187,7 +187,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
   }
 }
 
-pir::Operation* ProgramTranslator::InsertDataOpOrCreateArrayToBlock(
+pir::Operation* ProgramTranslator::InsertInitOpOrCreateArrayToBlock(
     pir::Block* insert_block, pir::Type type) {
   pir::Builder builder(ctx_, insert_block, insert_block->begin());
   if (type.isa<paddle::dialect::DenseTensorType>()) {
@@ -207,13 +207,12 @@ pir::Operation* ProgramTranslator::InsertDataOpOrCreateArrayToBlock(
     VLOG(10) << "[translator][data insertion] after type: "
              << normalized_tensor_type;
 
-    auto data_op = builder.Build<paddle::dialect::DataOp>(
-        "data_" + nano_timestamp(),
+    auto init_op = builder.Build<paddle::dialect::FullOp>(
         shape,
+        0.0,
         paddle::dialect::TransToPhiDataType(normalized_tensor_type.dtype()),
         phi::CPUPlace());
-    data_op.out().set_type(normalized_tensor_type);
-    return data_op.operation();
+    return init_op.operation();
   } else if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
     auto array_type = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
     paddle::dialect::CreateArrayOp array_op =
@@ -296,7 +295,7 @@ void ProgramTranslator::TranslateIfOperation(
       if (false_block_context->count(cond_op_outputs[id]) == 0) {
         auto true_type = true_yeild_inputs[id].type();
         pir::Operation* init_op =
-            InsertDataOpOrCreateArrayToBlock(&false_region.front(), true_type);
+            InsertInitOpOrCreateArrayToBlock(&false_region.front(), true_type);
         PADDLE_ENFORCE_NOT_NULL(
             init_op,
             phi::errors::PreconditionNotMet(
