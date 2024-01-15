@@ -23,7 +23,6 @@
 #include "paddle/pir/pass/pass_adaptor.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
-#include "paddle/utils/string/pretty_log.h"
 
 namespace pir {
 
@@ -33,27 +32,6 @@ namespace pir {
 Pass::~Pass() = default;
 
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
-
-void Pass::PrintStatistics(int64_t match_count) const {
-  if (match_count > 0) {
-    LOG(INFO) << "--- detected [" << match_count << "] subgraphs!";
-  }
-}
-
-void Pass::PrintStatistics(int64_t match_count, int64_t all_count) const {
-  IR_ENFORCE(match_count < all_count,
-             "match_count should smaller than all_count");
-  if (match_count > 0) {
-    LOG(INFO) << "--- detected [" << match_count << "/" << all_count
-              << "] subgraphs!";
-  }
-}
-
-void Pass::PrintStatistics(const std::string& custom_log) const {
-  if (!custom_log.empty()) {
-    LOG(INFO) << custom_log;
-  }
-}
 
 detail::PassExecutionState& Pass::pass_state() {
   IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
@@ -81,7 +59,7 @@ void PatternRewritePass::Run(Operation* op) {
   cfg.use_top_down_traversal = true;
   cfg.max_iterations = 10;
   auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
-  PrintStatistics(num_rewrites);
+  AddStatistics(num_rewrites);
 }
 
 //----------------------------------------------------------------------------------------------//
@@ -154,8 +132,6 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
     adaptor->Run(op, opt_level, verify);
   } else {
     if (instrumentor) instrumentor->RunBeforePass(pass, op);
-    paddle::string::PrettyLogH1("--- Running PIR pass [%s]",
-                                pass->pass_info().name);
     pass->Run(op);
     if (instrumentor) instrumentor->RunAfterPass(pass, op);
   }

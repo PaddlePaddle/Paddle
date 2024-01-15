@@ -138,10 +138,6 @@ VariantType GetAttributeData(const pir::Attribute& attr);
 
 bool IsLegacyOp(const std::string& name);
 
-#ifdef PADDLE_WITH_DNNL
-bool IsOneDNNLegacyOp(const std::string& name);
-#endif
-
 bool IsEmptyValue(const pir::Value& value);
 
 std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);
@@ -163,5 +159,8 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
                           const pir::Value& value,
                           const std::string& value_name,
                           const std::string& op_name);
+
+std::string GetValueDataType(const pir::Value& value);
+
 }  // namespace dialect
 }  // namespace paddle
