@@ -492,7 +492,7 @@ class InplacePass : public pir::Pass {
         }
       }
     }
-    PrintStatistics(num_rewrites_);
+    AddStatistics(num_rewrites_);
   }
 };
 

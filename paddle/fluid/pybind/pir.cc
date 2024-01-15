@@ -49,7 +49,6 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
@@ -122,7 +121,6 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
-USE_PIR_PASS(fc_with_special_op_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
@@ -1024,7 +1022,7 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 using OpResultMap =
     std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    Program &program) {  // NOLINT
+    const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   pir::IrMapping mapper;
@@ -1111,7 +1109,7 @@ SplitedResult SplitForwardBackward(
   // forward program construct.
   VLOG(4) << "start create forward program.";
   pir::IrMapping forward_mapper;
-  auto clone_options = pir::CloneOptions(true, true);
+  auto clone_options = pir::CloneOptions::All();
   range_block_do(
       program.block(),
       forward_range,
@@ -1636,7 +1634,8 @@ void BindPassManager(pybind11::module *m) {
              return pass_names;
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
-      .def("empty", &PassManager::Empty);
+      .def("empty", &PassManager::empty)
+      .def("clear", &PassManager::clear);
 }
 
 void BindPir(pybind11::module *module) {

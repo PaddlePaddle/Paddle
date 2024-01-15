@@ -28,7 +28,7 @@
 #include "paddle/utils/string/string_helper.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
 namespace paddle {
@@ -72,7 +72,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
 #endif
-    CReduceMinOp::name()};
+    CReduceMinOp::name(),
+    PushSparseV2Op::name()};
 
 enum class AttrType {
   UNDEFINED = 0,

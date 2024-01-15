@@ -36,7 +36,7 @@ from .utils import get_logger, to_list
 class ProxyLayer(Layer):
     """
     ProxyLayer implements all logic for converting dygraph model into
-    static Program IR. Meanwhile, it provides conviential interfaces for
+    static Program IR. Meanwhile, it provides conventional interfaces for
     auto parallel to visit feed/fetch/loss/metric variables.
     """
 
