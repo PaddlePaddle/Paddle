@@ -616,7 +616,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
       }
 
       // if any of the op's input is not in low precision, insert cast op
-      // input_defs will always be the smaller one?
       for (size_t i = 0; i < input_defs.size(); i++) {
         auto operand = op->operand(i);
         auto in_phi_dtype = input_defs[i].dtype;
@@ -627,7 +626,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
           DoInsertCastOp(op, operand, in_phi_dtype, builder);
         }
       }
-    } else {  // current op doesn't support low precision, should cast to float
+    } else {
+      // current op doesn't support low precision
       // if the op's input is in low precision, insert cast op
       auto phi_dtype = phi::DataType::FLOAT32;
       for (size_t i = 0; i < op->num_operands(); i++) {
