@@ -489,27 +489,27 @@ void concat_grad(const std::vector<Tensor>& x,
 template <typename T>
 void stack_grad(const std::vector<Tensor>& x,
                 const Tensor& out_grad,
-                const Scalar& axis,
+                int axis,
                 std::vector<Tensor*> x_grad) {
-  int axis_value = axis.to<int>();
-  int rank = x[0].dims().size();  // len(x[0].shape)
+  // use rank of **stacked** tensor as len of axes
+  int out_rank = out_grad.dims().size();  // len(x[0].shape)
 
-  // ensure axis_value >= 0
-  if (axis_value < 0) {
-    axis_value = ((axis_value % rank) + rank) % rank;
+  // ensure axis >= 0
+  if (axis < 0) {
+    axis = ((axis % out_rank) + out_rank) % out_rank;
   }
 
   // split out_grad to grads for each input tensor
   int x_num = x.size();
   std::vector<int> sections(x_num, 1);
   std::vector<Tensor> x_grad_tmp =
-      split<T>(out_grad, phi::IntArray(sections), axis_value);
+      split<T>(out_grad, phi::IntArray(sections), axis);
 
   // compose shape for each input tensor
   std::vector<int64_t> grad_shape;
   auto out_dim = out_grad.dims().size();
   for (int i = 0; i < out_dim; ++i) {
-    if (i != axis_value) {
+    if (i != axis) {
       grad_shape.push_back(out_grad.dims()[i]);
     }
   }
