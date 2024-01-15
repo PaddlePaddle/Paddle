@@ -33,6 +33,18 @@ using phi::ThreadDataRegistry;
 struct ThreadLocalStatBase {
   int64_t current{0};
   int64_t peak{0};
+
+  ThreadLocalStatBase operator+=(const ThreadLocalStatBase& other) {
+    current += other.current;
+    peak = std::max({current, peak, other.peak});
+    return *this;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const ThreadLocalStatBase& stat) {
+    os << "{cuerrent : " << stat.current << ", peak : " << stat.peak << "}";
+    return os;
+  }
 };
 
 class StatBase {
@@ -77,8 +89,7 @@ class Stat : public StatBase {
     thread_local_stat->current += increment;
 
     VLOG(8) << string::split_string(
-                   phi::enforce::demangle(typeid(*thread_local_stat).name()),
-                   "::")
+                   common::demangle(typeid(*thread_local_stat).name()), "::")
                    .back()
             << ": Update current_value with " << increment
             << ", after update, current value = " << GetCurrentValue();
@@ -91,8 +102,7 @@ class Stat : public StatBase {
              !peak_value_.compare_exchange_weak(prev_value, current_value)) {
       }
       VLOG(8) << string::split_string(
-                     phi::enforce::demangle(typeid(*thread_local_stat).name()),
-                     "::")
+                     common::demangle(typeid(*thread_local_stat).name()), "::")
                      .back()
               << ": Update current_value with " << increment
               << ", after update, peak_value = " << peak_value_.load()

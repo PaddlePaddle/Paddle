@@ -19,6 +19,7 @@ import collective.test_communication_api_base as test_base
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.checkpoint.utils import (
     flatten_state_dict,
     unflatten_state_dict,
@@ -99,6 +100,62 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
                 raise ValueError(f"Invalid type of state_dict:{d1} != {d2}")
 
         check_state_dict(recover_state_dict, state_dict)
+
+    def test_get_rank_to_files(self):
+        process_group = None
+        use_dist = False
+        ckpt_dir_tmp = tempfile.TemporaryDirectory()
+        ckpt_dir = ckpt_dir_tmp.name
+        state_dict = {
+            "w1": paddle.to_tensor([1, 2]),
+            "w2": paddle.to_tensor([3, 4]),
+        }
+        dist.save_state_dict(state_dict, ckpt_dir)
+        new_state_dict = {
+            "w1": paddle.to_tensor([1, 2]),
+            "w2": paddle.to_tensor([3, 4]),
+        }
+        (
+            rank_to_files,
+            missing_keys,
+        ) = dist.checkpoint.load_state_dict.get_rank_to_files(
+            ckpt_dir, new_state_dict, process_group, use_dist
+        )
+        self.assertTrue(len(rank_to_files) == 1 and 0 in rank_to_files)
+        self.assertTrue(rank_to_files[0] == ["0_0.distcp"])
+        self.assertTrue(len(missing_keys) == 0)
+
+        new_state_dict = {
+            "w1": paddle.to_tensor([1, 2]),
+            "w3": paddle.to_tensor([3, 4]),
+        }
+        (
+            rank_to_files,
+            missing_keys,
+        ) = dist.checkpoint.load_state_dict.get_rank_to_files(
+            ckpt_dir, new_state_dict, process_group, use_dist
+        )
+        self.assertTrue(len(rank_to_files) == 1 and 0 in rank_to_files)
+        self.assertTrue(rank_to_files[0] == ["0_0.distcp"])
+        self.assertTrue(len(missing_keys) == 1)
+        self.assertTrue("w3" in missing_keys)
+
+        new_state_dict = {
+            "w3": paddle.to_tensor([3, 4]),
+            "w4": paddle.to_tensor([5, 6]),
+        }
+        (
+            rank_to_files,
+            missing_keys,
+        ) = dist.checkpoint.load_state_dict.get_rank_to_files(
+            ckpt_dir, new_state_dict, process_group, use_dist
+        )
+        self.assertTrue(len(rank_to_files) == 0)
+        self.assertTrue(len(missing_keys) == 2)
+        self.assertTrue("w3" in missing_keys)
+        self.assertTrue("w4" in missing_keys)
+
+        ckpt_dir_tmp.cleanup()
 
 
 if __name__ == "__main__":

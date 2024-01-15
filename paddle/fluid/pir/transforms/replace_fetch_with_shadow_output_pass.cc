@@ -56,7 +56,7 @@ class ReplaceFetchWithShadowOutputPass : public pir::Pass {
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
     auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
-    PrintStatistics(num_rewrites);
+    AddStatistics(num_rewrites);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

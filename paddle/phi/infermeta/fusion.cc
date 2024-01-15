@@ -3640,13 +3640,14 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               float alpha,
                               int head_num,
                               int head_dim,
+                              bool qkv_fc_fusion,
                               DataType out_dtype,
                               MetaTensor* qkv,
                               MetaTensor* qkv_max) {
   auto q_dims = q.dims();
   auto k_dims = k.dims();
   auto v_dims = v.dims();
-  // input shape : {B, L, 3*H*D}
+  // input shape : {B, L, 3*H*D} or  {B, L, H*D}
   PADDLE_ENFORCE_EQ(q_dims.size(),
                     3,
                     phi::errors::InvalidArgument("The dim of q should be 3! "
@@ -3671,13 +3672,16 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
         phi::errors::InvalidArgument("The shape of k , v should be the same! "
                                      "But received ."));
   }
+  int hidden_dim =
+      qkv_fc_fusion ? 3 * head_num * head_dim : head_num * head_dim;
   PADDLE_ENFORCE_EQ(
       q_dims[2],
-      3 * head_num * head_dim,
-      phi::errors::InvalidArgument("To support do_fc_qkv_fusion,"
-                                   "The shape of q should be [B, L, 3*H*D]! "
-                                   "But received q_dims[2]: [%d] != 3*H*D.",
-                                   q_dims[2]));
+      hidden_dim,
+      phi::errors::InvalidArgument(
+          "The shape of q should be [B, L, H*D] or [B, L, 3*H*D]! "
+          "But received q_dims[2]: [%d] != expected hidden_dim : [%d].",
+          q_dims[2],
+          hidden_dim));
 
   // output shape: {B, L, HD}
   qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));

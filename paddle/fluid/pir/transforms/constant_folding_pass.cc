@@ -40,6 +40,7 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/core/region.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
@@ -51,7 +52,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
  public:
   ConstantFoldingPattern(
       pir::IrContext* context,
-      size_t* counter,
+      size_t* suffix,
       const phi::Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config,
@@ -60,7 +61,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                        1 /*benefit*/,
                        context,
                        {} /*generated_names*/),
-        counter_(counter),
+        suffix_(suffix),
         place_(place),
         scope_(scope),
         exe_config_(exe_config),
@@ -298,7 +299,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                 .time_since_epoch()
                 .count();
       std::string output_var_name =
-          "constant_folding@_" + ss.str() + std::to_string((*counter_)++);
+          "constant_folding@_" + ss.str() + std::to_string((*suffix_)++);
 
       builder.Build<pir::ShadowOutputOp>(temp_op->result(i), output_var_name);
       output_var_names.push_back(output_var_name);
@@ -308,7 +309,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  protected:
-  size_t* counter_;
+  size_t* suffix_;
   phi::Place place_;
   paddle::framework::Scope* scope_;
   paddle::framework::interpreter::ExecutionConfig* exe_config_;
@@ -319,13 +320,13 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
  public:
   ConstantFoldingPatternForTrain(
       pir::IrContext* context,
-      size_t* counter,
+      size_t* suffix,
       const phi::Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config,
       std::vector<std::string>* deleted_vars)
       : ConstantFoldingPattern(
-            context, counter, place, scope, exe_config, deleted_vars) {}
+            context, suffix, place, scope, exe_config, deleted_vars) {}
 
   bool Match(pir::Operation* op) const override {
     VLOG(4) << "constant_folding_pass applys match on [" << op->name()
@@ -405,26 +406,32 @@ class ConstantFoldingPass : public pir::Pass {
 
     if (Has("train_mode") && Get<bool>("train_mode")) {
       ps.Add<ConstantFoldingPatternForTrain>(context,
-                                             &counter_,
+                                             &suffix_,
                                              phi::CPUPlace{},
                                              scope_,
                                              &exe_config_,
                                              &deleted_vars_);
     } else {
       ps.Add<ConstantFoldingPattern>(
-          context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
+          context, &suffix_, place_, scope_, &exe_config_, &deleted_vars_);
     }
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
 
   void Run(pir::Operation* op) override {
-    size_t op_nums = op->GetParentProgram()->block()->size();
+    int64_t num_ops{0};
+    for (uint32_t i = 0; i < op->num_regions(); ++i) {
+      auto& region = op->region(i);
+      for (auto& block : region) {
+        num_ops += block.size();
+      }
+    }
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op, patterns_, cfg);
-    PrintStatistics(counter_, op_nums);
+    auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
+    AddStatistics(num_rewrites, num_ops);
     // delete old parameter var
     scope_->EraseVars(deleted_vars_);
     if (place_.GetType() != phi::AllocationType::CPU) {
@@ -434,7 +441,7 @@ class ConstantFoldingPass : public pir::Pass {
   }
 
  private:
-  size_t counter_{0};
+  size_t suffix_{0};
   phi::Place place_;
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};

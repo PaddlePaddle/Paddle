@@ -18,7 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 
 TEST(interface_test, type) {
-  using phi::enforce::demangle;
+  using common::demangle;
 
   paddle::variant<bool, int, float> var;
 
