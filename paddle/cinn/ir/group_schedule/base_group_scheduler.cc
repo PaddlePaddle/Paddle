@@ -27,7 +27,7 @@ std::unique_ptr<GroupScheduler> GroupScheduler::Make(
     std::shared_ptr<GroupTileInfo> group_tile_info) {
   if (is_dy_shape) {
     return std::make_unique<DynamicShapeGroupScheduler>(
-        ir_sch, output_tensor_names, target);
+        ir_sch, output_tensor_names, target, group_tile_info);
   } else {
     return std::make_unique<StaticShapeGroupScheduler>(
         ir_sch, output_tensor_names, target, group_tile_info);

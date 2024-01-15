@@ -28,8 +28,10 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   DynamicShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const cinn::common::Target& target)
-      : GroupScheduler(ir_sch, output_tensor_names, target) {
+      const cinn::common::Target& target,
+      std::shared_ptr<GroupTileInfo> group_tile_info)
+      : GroupScheduler(ir_sch, output_tensor_names, target),
+        group_tile_info_(group_tile_info) {
     Init();
   }
 
@@ -49,6 +51,12 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
 
   void InitBuckets();
 
+  void LoopReorderAligment();
+
+  void Tiling();
+
+  bool NeedOrderLoops();
+
   void ApplyTactics(BucketContext* bucket_context);
 
   ir::ScheduleBlockNode* FindGlobalMasterNode(
@@ -59,6 +67,8 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
  private:
   std::vector<BucketContext> bucket_contexts_;
   std::vector<std::unique_ptr<ScheduleTactic>> tactics_;
+
+  std::shared_ptr<GroupTileInfo> group_tile_info_;
 };
 
 }  // namespace ir
