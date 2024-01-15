@@ -291,7 +291,7 @@ class Converter:
         )
         # merge the tensor with dist_attr
         partition_tensor_list = []
-        merged_partiton = []
+        merged_partition = []
         for process in process_group:
             partition_index = Resharder.compute_partition_index(
                 process,
@@ -301,8 +301,8 @@ class Converter:
                 process_group,
             )
             index = process_group.index(process)
-            if partition_index not in merged_partiton:
-                merged_partiton.append(partition_index)
+            if partition_index not in merged_partition:
+                merged_partition.append(partition_index)
                 Converter.merge(
                     partition_tensor_list,
                     tensor_list[index],
