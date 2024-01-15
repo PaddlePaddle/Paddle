@@ -19,7 +19,8 @@ from op_test import OpTest
 
 import paddle
 from paddle import _C_ops
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -260,9 +261,12 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         print("test_errors")
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             logits = paddle.static.data(
                 name='input', shape=[5, 16, 6], dtype='float32'
             )

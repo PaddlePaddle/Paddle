@@ -100,7 +100,7 @@ class TestUniqueConsecutiveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
@@ -204,9 +204,10 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
             input_x = paddle.static.data(
                 name="input_x",
@@ -223,6 +224,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
                 fetch_list=[result],
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -241,9 +243,10 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
             input_x = paddle.static.data(
                 name="input_x",
@@ -262,6 +265,7 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 fetch_list=[result],
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -282,9 +286,10 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
             input_x = paddle.static.data(
                 name="input_x",
@@ -303,6 +308,7 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
                 fetch_list=[result],
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
