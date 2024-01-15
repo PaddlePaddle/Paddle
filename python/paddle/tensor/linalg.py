@@ -1602,7 +1602,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
 
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(tol, (Variable, paddle.pir.OpResult)):
+        if isinstance(tol, (Variable, paddle.pir.Value)):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
             else:
@@ -4168,7 +4168,7 @@ def matrix_exp(x, name=None):
         (
             paddle.Tensor,
             paddle.base.framework.Variable,
-            paddle.base.libpaddle.pir.OpResult,
+            paddle.base.libpaddle.pir.Value,
         ),
     ):
         mat_a = paddle.to_tensor(x)

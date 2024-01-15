@@ -137,7 +137,7 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
         check_type(
             input,
             'input',
-            (list, paddle.pir.OpResult),
+            (list, paddle.pir.Value),
             'tensor_array_to_tensor',
         )
         if isinstance(input, list):
@@ -145,7 +145,7 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
                 check_type(
                     input_x,
                     'input[' + str(i) + ']',
-                    paddle.pir.OpResult,
+                    paddle.pir.Value,
                     'tensor_array_to_tensor',
                 )
                 if not input_x.is_dense_tensor_array_type():
@@ -378,34 +378,34 @@ def slice(input, axes, starts, ends):
 
         return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     elif in_pir_mode():
-        if not isinstance(starts, (list, tuple, paddle.pir.OpResult)):
+        if not isinstance(starts, (list, tuple, paddle.pir.Value)):
             raise ValueError(
-                "Input starts must be an OpResult, python list or tuple."
+                "Input starts must be an Value, python list or tuple."
             )
-        if not isinstance(ends, (list, tuple, paddle.pir.OpResult)):
+        if not isinstance(ends, (list, tuple, paddle.pir.Value)):
             raise ValueError(
-                "Input ends must be an OpResult, python list or tuple."
+                "Input ends must be an Value, python list or tuple."
             )
         infer_flags = [1 for i in range(len(axes))]
         # starts
-        if isinstance(starts, paddle.pir.OpResult):
+        if isinstance(starts, paddle.pir.Value):
             starts.stop_gradient = True
             infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(starts, (list, tuple)):
             if paddle.utils._contain_var(starts):
                 for i, dim in enumerate(starts):
-                    if isinstance(dim, paddle.pir.OpResult):
+                    if isinstance(dim, paddle.pir.Value):
                         infer_flags[i] = -1
                 starts = paddle.utils.get_int_tensor_list(starts)
 
         # ends
-        if isinstance(ends, paddle.pir.OpResult):
+        if isinstance(ends, paddle.pir.Value):
             ends.stop_gradient = True
             infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(ends, (list, tuple)):
             if paddle.utils._contain_var(ends):
                 for i, dim in enumerate(ends):
-                    if isinstance(dim, paddle.pir.OpResult):
+                    if isinstance(dim, paddle.pir.Value):
                         infer_flags[i] = -1
                 ends = paddle.utils.get_int_tensor_list(ends)
         return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
@@ -802,13 +802,13 @@ def crop(x, shape=None, offsets=None, name=None):
     check_type(
         shape,
         'shape',
-        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        (list, tuple, Variable, type(None), paddle.pir.Value),
         'crop_tensor',
     )
     check_type(
         offsets,
         'offsets',
-        (list, tuple, Variable, type(None), paddle.pir.OpResult),
+        (list, tuple, Variable, type(None), paddle.pir.Value),
         'crop_tensor',
     )
 
@@ -1698,7 +1698,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
             -1)
     """
-    if not (isinstance(x, (Variable, paddle.pir.OpResult))):
+    if not (isinstance(x, (Variable, paddle.pir.Value))):
         raise ValueError("The input x should be a Tensor")
 
     x_dim = len(x.shape)
@@ -2440,7 +2440,7 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     elif in_pir_mode():
-        if isinstance(dim, paddle.pir.OpResult):
+        if isinstance(dim, paddle.pir.Value):
             dim.stop_gradient = True
         if isinstance(dim, int):
             assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
@@ -2917,7 +2917,7 @@ def squeeze(x, axis=None, name=None):
     elif in_pir_mode():
         if isinstance(axes, int):
             axes = [axes]
-        if isinstance(axes, paddle.pir.OpResult):
+        if isinstance(axes, paddle.pir.Value):
             axes.stop_gradient = True
         elif isinstance(axes, (list, tuple)):
             if paddle.utils._contain_var(axes):
@@ -3360,7 +3360,7 @@ def unsqueeze(x, axis, name=None):
     elif in_pir_mode():
         if isinstance(axes, int):
             axes = [axes]
-        if isinstance(axes, paddle.pir.OpResult):
+        if isinstance(axes, paddle.pir.Value):
             axes.stop_gradient = True
         elif isinstance(axes, (list, tuple)):
             if paddle.utils._contain_var(axes):
@@ -3933,16 +3933,16 @@ def tile(x, repeat_times, name=None):
         check_type(
             repeat_times,
             'repeat_times',
-            (list, tuple, Variable, paddle.pir.OpResult),
+            (list, tuple, Variable, paddle.pir.Value),
             'tile',
         )
-        if isinstance(repeat_times, (Variable, paddle.pir.OpResult)):
+        if isinstance(repeat_times, (Variable, paddle.pir.Value)):
             assert (
                 len(repeat_times.shape) == 1
             ), 'repeat_times must be a Tensor with ndim == 1.'
         else:
             for elem in repeat_times:
-                if isinstance(elem, (Variable, paddle.pir.OpResult)):
+                if isinstance(elem, (Variable, paddle.pir.Value)):
                     assert (
                         elem.numel() == 1
                     ), 'Elements in repeat_times must be Tensor with one element or integers.'
@@ -4132,7 +4132,7 @@ def broadcast_to(x, shape, name=None):
         if isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils.get_int_tensor_list(shape, place)
-        elif isinstance(shape, paddle.pir.OpResult):
+        elif isinstance(shape, paddle.pir.Value):
             shape.stop_gradient = True
         else:
             TypeError("Shape only supports OpReslut, or list, or tuple.")
@@ -4249,7 +4249,7 @@ def expand(x, shape, name=None):
                 "some_var.stop_gradient = True, supporting "
                 "some_var as the input."
             )
-        if isinstance(shape, paddle.pir.OpResult):
+        if isinstance(shape, paddle.pir.Value):
             shape.stop_gradient = True
         elif isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
@@ -4395,7 +4395,7 @@ def reshape(x, shape, name=None):
         unk_dim_idx = -1
         attrs_shape = []
         for dim_idx, dim_size in enumerate(list_shape):
-            if isinstance(dim_size, (Variable, paddle.pir.OpResult)):
+            if isinstance(dim_size, (Variable, paddle.pir.Value)):
                 attrs_shape.append(-1)
             else:
                 attrs_shape.append(dim_size)
@@ -4469,21 +4469,19 @@ def reshape(x, shape, name=None):
             ],
             'reshape',
         )
-        check_type(
-            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'reshape'
-        )
+        check_type(shape, 'shape', (list, tuple, paddle.pir.Value), 'reshape')
         if isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
                 new_shape = paddle.utils.get_int_tensor_list(shape)
             else:
                 new_shape = get_attr_shape(shape)
             out = _C_ops.reshape(x, new_shape)
-        elif isinstance(shape, paddle.pir.OpResult):
+        elif isinstance(shape, paddle.pir.Value):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:
             raise ValueError(
-                "shape must be an instance of `list`, `tuple` `OpResult(in pir mode)`,"
+                "shape must be an instance of `list`, `tuple` `Value(in pir mode)`,"
                 f" got '{type(shape)}.'"
             )
 
@@ -4697,7 +4695,7 @@ def atleast_1d(*inputs, name=None):
             (
                 paddle.Tensor,
                 paddle.base.framework.Variable,
-                paddle.base.libpaddle.pir.OpResult,
+                paddle.base.libpaddle.pir.Value,
             ),
         ):
             tensor = paddle.to_tensor(input)
@@ -4765,7 +4763,7 @@ def atleast_2d(*inputs, name=None):
             (
                 paddle.Tensor,
                 paddle.base.framework.Variable,
-                paddle.base.libpaddle.pir.OpResult,
+                paddle.base.libpaddle.pir.Value,
             ),
         ):
             tensor = paddle.to_tensor(input)
@@ -4835,7 +4833,7 @@ def atleast_3d(*inputs, name=None):
             (
                 paddle.Tensor,
                 paddle.base.framework.Variable,
-                paddle.base.libpaddle.pir.OpResult,
+                paddle.base.libpaddle.pir.Value,
             ),
         ):
             tensor = paddle.to_tensor(input)
@@ -5969,14 +5967,14 @@ def put_along_axis(
         if in_dynamic_or_pir_mode():
             values = (
                 paddle.to_tensor(values)
-                if not isinstance(values, (paddle.Tensor, paddle.pir.OpResult))
+                if not isinstance(values, (paddle.Tensor, paddle.pir.Value))
                 else values
             )
         if broadcast_shape:
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
     else:
-        if isinstance(values, (paddle.Tensor, paddle.pir.OpResult)):
+        if isinstance(values, (paddle.Tensor, paddle.pir.Value)):
             if len(indices.shape) != len(values.shape):
                 raise ValueError(
                     "`indices` and `values` must have the same number of dimensions!"
@@ -5995,7 +5993,7 @@ def put_along_axis(
             elements = 1
             for num in values.shape:
                 elements *= num
-            if elements == 1:  # paddle.pir.OpResult has no attribute 'size'
+            if elements == 1:  # paddle.pir.Value has no attribute 'size'
                 values = paddle.broadcast_to(values, indices.shape)
         axis_max_size = arr.shape[axis]
         if not (indices < axis_max_size).all():

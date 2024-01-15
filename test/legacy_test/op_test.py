@@ -1405,9 +1405,7 @@ class OpTest(unittest.TestCase):
                             else:
                                 ret_to_check.append(var)
                                 fetch_list.append(var)
-                    elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.pir.OpResult
-                    ):
+                    elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
                         fetch_list.append(ret_tuple)
                         ret_to_check = ret_tuple
                     elif ret_tuple is None:
@@ -3819,7 +3817,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(
-                            cast_input, paddle.base.libpaddle.pir.OpResult
+                            cast_input, paddle.base.libpaddle.pir.Value
                         ):
                             cast_outputs.append(
                                 paddle.cast(

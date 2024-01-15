@@ -234,17 +234,11 @@ def slice_is_same_to_original(start, end, step):
         return True
 
     # If there is Variable, we cannot determine whether it is the same to original.
-    if isinstance(
-        start, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(start, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        end, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(end, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        step, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(step, (paddle.base.Variable, paddle.pir.Value)):
         return False
     return start == 0 and end == MAX_INTEGER and step == 1
 
@@ -594,9 +588,7 @@ def _setitem_static(x, indices, values):
         #   3. assign values to the sliced result by index_put OP;
         #   4. transpose back and assign the result to original tensor by set_value OP.
 
-        if not isinstance(
-            values, (Variable, paddle.pir.Value, paddle.pir.OpResult)
-        ):
+        if not isinstance(values, (Variable, paddle.pir.Value)):
             values = paddle.assign(values).astype(x.dtype)
 
         sub_tensor = get_tensor_with_basic_indexing(

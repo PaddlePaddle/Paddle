@@ -884,7 +884,7 @@ def _reset_prim_state(state):
 
 
 def _translate_gradvartovar_to_pir(param_mapping, grad_var_to_var):
-    '''translate grad_var_to_var (mapping VarDesc->VarDesc) to pir_grad_var_to_var (mapping OpResult->OpResult)'''
+    '''translate grad_var_to_var (mapping VarDesc->VarDesc) to pir_grad_var_to_var (mapping Value->Value)'''
     pir_grad_var_to_var = ValueDict()
     for grad_var, var in grad_var_to_var.items():
         if grad_var in param_mapping.keys() and var in param_mapping.keys():
