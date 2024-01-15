@@ -214,9 +214,9 @@ pir::OpResult assign(const pir::Value& x) {
             ->Build<paddle::dialect::AssignArrayOp>(x);
     return assign_array_op.result(0);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "The type of x in assign must be DenseTensorType or "
-        "DenseTensorArrayType"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently, assign only supports DenseTensorType and "
+        "DenseTensorArrayType."));
   }
 }
 
