@@ -280,6 +280,7 @@ class TestBatchNormOpNCHWFp64(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NCHW"
         self.use_global_stats = None
+        self.check_prim_pir = True
 
 
 class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):

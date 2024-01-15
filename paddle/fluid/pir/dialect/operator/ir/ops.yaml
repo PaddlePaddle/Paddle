@@ -395,6 +395,7 @@
     param : [x, equation]
   kernel :
     func : einsum
+  optional : inner_cache, xshape
   backward : einsum_grad
 
 - op : elementwise_pow

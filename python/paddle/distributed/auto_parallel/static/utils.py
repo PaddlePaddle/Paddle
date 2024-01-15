@@ -297,8 +297,8 @@ def _get_comm_group(processes, shape, axis, rank):
     assert (
         rank in processes
     ), f"rank [{rank}] is NOT in processes group {processes}"
-    rank_relatvie = processes.index(rank)
-    coordinate = _linear_idx2coordinate(shape, rank_relatvie)
+    rank_relative = processes.index(rank)
+    coordinate = _linear_idx2coordinate(shape, rank_relative)
     coordinates_in_group = [coordinate[:] for i in range(shape[axis])]
 
     # select comm group
@@ -328,8 +328,8 @@ def _get_idx_in_axis(processes, shape, axis, rank):
 
     # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
     #  tricks to support processes mesh when it is not start with 0 or continuous
-    rank_relatvie = processes.index(rank)
-    coordinate = _linear_idx2coordinate(shape, rank_relatvie)
+    rank_relative = processes.index(rank)
+    coordinate = _linear_idx2coordinate(shape, rank_relative)
     return coordinate[axis]
 
 
