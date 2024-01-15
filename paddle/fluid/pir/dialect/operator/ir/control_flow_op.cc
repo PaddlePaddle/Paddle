@@ -217,8 +217,14 @@ void IfOp::VerifyRegion() {
       1u,
       phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
                                       (*this)->region(0).size()));
-  if ((*this)->region(0).front().size() > 0) {
-    auto &true_last_op = (*this)->region(0).front().back();
+  if ((*this)->num_results() != 0) {
+    auto &true_block = (*this)->region(0).front();
+    PADDLE_ENFORCE_GT(
+        true_block.size(),
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The true block must have at least one op yield op."));
+    auto &true_last_op = true_block.back();
     PADDLE_ENFORCE_EQ(true,
                       true_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
@@ -228,15 +234,19 @@ void IfOp::VerifyRegion() {
                       phi::errors::PreconditionNotMet(
                           "The size of last of true block op's input must be "
                           "equal to IfOp's outputs num."));
-  }
-  VLOG(4) << "Start Verifying false branch.";
-  PADDLE_ENFORCE_EQ(
-      (*this)->region(1).size(),
-      1u,
-      phi::errors::PreconditionNotMet("The size %d of false_region must be 1.",
-                                      (*this)->region(0).size()));
-  if ((*this)->region(1).front().size() > 0) {
-    auto &false_last_op = (*this)->region(1).front().back();
+    VLOG(4) << "Start Verifying false branch.";
+    PADDLE_ENFORCE_EQ((*this)->region(1).size(),
+                      1u,
+                      phi::errors::PreconditionNotMet(
+                          "The size %d of false_region must be 1.",
+                          (*this)->region(0).size()));
+    auto &false_block = (*this)->region(1).front();
+    PADDLE_ENFORCE_GT(
+        false_block.size(),
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The false block must have at least one op yield op."));
+    auto &false_last_op = false_block.back();
     PADDLE_ENFORCE_EQ(true,
                       false_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(

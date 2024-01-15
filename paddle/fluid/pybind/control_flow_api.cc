@@ -44,6 +44,7 @@ using paddle::pybind::PyIfOp;
 using paddle::pybind::PyWhileOp;
 using pir::Block;
 using pir::Builder;
+using pir::CombineOp;
 using pir::Operation;
 using pir::Program;
 using pir::Region;
@@ -60,6 +61,11 @@ void BindIfOp(py::module* m) {
     return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
         cond, std::vector<Type>{}));
   });
+  m->def("build_if_op", [](const std::vector<Value>& cond) {
+    auto& builder = ApiBuilder::Instance().GetBuilder();
+    auto new_cond = builder->Build<CombineOp>(cond).out();
+    return PyIfOp(builder->Build<IfOp>(new_cond, std::vector<Type>{}));
+  });
   py::class_<PyIfOp> if_op(*m, "IfOp", R"DOC(
     The PyIfOp is a encapsulation of IfOp. Compared with ifOp, it provides an additional 'update_output' interface.
     The 'update_output' interface will construct a new IfOp operation to replace its underlying IfOp. In the process, the original
@@ -67,6 +73,7 @@ void BindIfOp(py::module* m) {
   )DOC");
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
       .def("false_block", &PyIfOp::false_block, return_value_policy::reference)
+      .def("cond", &PyIfOp::cond)
       .def("update_output", &PyIfOp::UpdateOutput)
       .def("as_operation", &PyIfOp::operation, return_value_policy::reference)
       .def("results", [](PyIfOp& self) -> py::list {

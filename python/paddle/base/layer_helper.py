@@ -22,6 +22,7 @@ from .framework import (
     Parameter,
     dtype_is_floating,
     in_dygraph_mode,
+    in_pir_mode,
 )
 from .layer_helper_base import LayerHelperBase
 from .param_attr import ParamAttr
@@ -132,6 +133,8 @@ class LayerHelper(LayerHelperBase):
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True
         )
+        if in_pir_mode():
+            return input_var + b
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',

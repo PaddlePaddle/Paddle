@@ -43,7 +43,7 @@ class ApiBuilder {
   void SetParameter(const std::string& name,
                     std::unique_ptr<pir::Parameter>&& parameter);
 
-  std::shared_ptr<pir::Builder> GetBuilder() { return builder_; }
+  const std::shared_ptr<pir::Builder>& GetBuilder() const { return builder_; }
 
   const pir::InsertionPoint& GetCurrentInsertionPoint() const {
     return builder_->insertion_point();

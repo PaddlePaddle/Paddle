@@ -1124,27 +1124,6 @@ void HandleForIfOp(
           "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
   auto new_cond = map_value_pair->at(old_cond);
 
-  // NOTE(zhangbo): IfOp's input cond should be a cpu type.
-  AllocatedDenseTensorType new_cond_type =
-      new_cond.type().dyn_cast<AllocatedDenseTensorType>();
-  if (new_cond_type) {
-    if (new_cond_type.place().GetType() == phi::AllocationType::GPU) {
-      auto out_type = AllocatedDenseTensorType::get(
-          ctx, phi::CPUPlace(), old_cond.type().dyn_cast<DenseTensorType>());
-      phi::KernelKey kernel_key(
-          phi::Backend::GPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::BOOL);
-      new_cond = AddPlaceTransferOp(new_cond,
-                                    out_type,
-                                    new_cond_type.place(),
-                                    phi::CPUPlace(),
-                                    kernel_key,
-                                    block);
-    }
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("IfOp onlu support DenseTensorType"));
-  }
-
   // Create IfOp and insert to kernel dialect program
   pir::Builder builder(ctx, block);
   auto old_ifop = op_item->dyn_cast<IfOp>();
