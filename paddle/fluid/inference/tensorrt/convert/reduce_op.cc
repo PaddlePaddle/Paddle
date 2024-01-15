@@ -30,7 +30,7 @@ class ReduceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
+    VLOG(4) << "Convert " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
     auto reduce_type = ops_.find(op_type);
     auto* x = engine_->GetITensor(op_desc.Input("X").front());
