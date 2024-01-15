@@ -130,7 +130,9 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     src_rank = hcg.get_model_parallel_group_src_rank()
     mp_rank = hcg.get_model_parallel_rank()
 
-    shape_gpu = shape._copy_to(data.place, False)
+    shape_gpu = shape._copy_to(
+        data.place, True
+    )  # use synchronized copy here to make the shape tensor valid
     paddle.distributed.broadcast(
         shape_gpu, src=src_rank, group=model_parallel_group, sync_op=True
     )
