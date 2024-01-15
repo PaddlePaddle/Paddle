@@ -378,10 +378,12 @@ void BindIrIr(py::module *m) {
       .def_static("make",
                   py::overload_cast<const std::string &, const Type &>(
                       &ir::_Var_::Make))
-      .def_static(
-          "make",
-          py::overload_cast<ir::Expr, ir::Expr, const std::string &, bool>(
-              &ir::_Var_::Make))
+      .def_static("make",
+                  py::overload_cast<ir::Expr,
+                                    ir::Expr,
+                                    const std::string &,
+                                    bool,
+                                    bool>(&ir::_Var_::Make))
       .def("copy", &ir::_Var_::Copy);
 
   // struct Select
