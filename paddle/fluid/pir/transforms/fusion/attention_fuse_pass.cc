@@ -18,7 +18,6 @@
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 

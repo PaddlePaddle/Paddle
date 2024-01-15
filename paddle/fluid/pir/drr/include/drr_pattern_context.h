@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
+#include <vector>
 
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
 
