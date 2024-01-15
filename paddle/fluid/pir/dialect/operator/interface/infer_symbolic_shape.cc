@@ -309,9 +309,10 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> data;
   auto source_data =
       shape_analysis->GetShapeOrDataForValue(operand_source).data();
-
-  for (int i = start; i < end; i++) {
-    data.emplace_back(source_data->at(i));
+  if (source_data != std::nullopt) {
+    for (int i = start; i < end; i++) {
+      data.emplace_back(source_data->at(i));
+    }
   }
 
   symbol::ShapeOrDataDimExprs shape_data{shapes, data};
