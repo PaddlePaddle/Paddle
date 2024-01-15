@@ -68,6 +68,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
 
+void TensorToArrayInferMeta(const MetaTensor& x,
+                            const MetaTensor& out_grad,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* x_grad);
+
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);
@@ -268,6 +274,15 @@ void FoldInferMeta(const MetaTensor& x,
                    const std::vector<int>& paddings,
                    const std::vector<int>& dilations,
                    MetaTensor* out);
+
+void FractionalMaxPoolInferMeta(const MetaTensor& x,
+                                const std::vector<int>& output_size,
+                                const std::vector<int>& kernel_size,
+                                float random_u,
+                                bool return_mask,
+                                MetaTensor* out,
+                                MetaTensor* mask,
+                                MetaConfig config = MetaConfig());
 
 void FrameInferMeta(const MetaTensor& x,
                     int frame_length,

@@ -66,9 +66,9 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             ctx.save_for_backward(context, context.args_static, y)
             return y.detach()
         else:
-            for x_staic, x in zip(context.args_static, args):
-                if isinstance(x_staic, paddle.Tensor):
-                    x_staic.copy_(x, True)
+            for x_static, x in zip(context.args_static, args):
+                if isinstance(x_static, paddle.Tensor):
+                    x_static.copy_(x, True)
 
             context.forward_graph.replay()
             y = context.y_static
