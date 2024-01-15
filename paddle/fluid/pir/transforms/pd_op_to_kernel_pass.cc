@@ -144,10 +144,16 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     SelectInputOp::name(),
     "cinn_runtime.jit_kernel"};
 
-const std::unordered_map<std::string, uint32_t> XShapeRelatedOps = {
+const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
     {paddle::dialect::ReshapeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Reshape_Op::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::SqueezeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Squeeze_Op::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::UnsqueezeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Unsqueeze_Op::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::FlattenOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::BatchNormOp::name(), /*reserve_space*/ 5U},
+    {paddle::dialect::BatchNorm_Op::name(), /*xshape_idx*/ 5U},
 };
 
 static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
@@ -155,8 +161,8 @@ static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
   if (op->isa<paddle::dialect::FetchOp>()) {
     auto define_op_name = op->operand_source(0).defining_op()->name();
     uint32_t index = op->operand_source(0).dyn_cast<pir::OpResult>().index();
-    need_skip = XShapeRelatedOps.count(define_op_name) > 0 &&
-                (XShapeRelatedOps.at(define_op_name) == index);
+    need_skip = NoBufferRelatedOps.count(define_op_name) > 0 &&
+                (NoBufferRelatedOps.at(define_op_name) == index);
   }
   return need_skip;
 }
