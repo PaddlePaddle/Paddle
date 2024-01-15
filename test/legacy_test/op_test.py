@@ -1412,7 +1412,7 @@ class OpTest(unittest.TestCase):
                         pass
                     else:
                         raise ValueError(
-                            "output of python api should be OpResult or list of OpResult or tuple of OpResult"
+                            "output of python api should be Value or list of Value or tuple of Value"
                         )
 
                 # executor run

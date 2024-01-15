@@ -992,7 +992,7 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     Decompose all PHI ops into prim ops in a pir program.
     Args:
         pir_program (Program): the program to be decomposed
-        param_mapping (dict): a map of program variables to pir program opresults
+        param_mapping (dict): a map of program variables to pir program values
         grad_var_to_var (dict): a dict obtained from distributed processing,
             which maps the backward grad variable to its corresponding forward variable.
     '''
