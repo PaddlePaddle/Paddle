@@ -151,8 +151,8 @@ const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
     {paddle::dialect::Squeeze_Op::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::UnsqueezeOp::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::Unsqueeze_Op::name(), /*xshape_idx*/ 1U},
-    {paddle::dialect::DropoutOp::name(), /*mask*/ 1U},
     {paddle::dialect::FlattenOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Flatten_Op::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::BatchNormOp::name(), /*reserve_space*/ 5U},
     {paddle::dialect::BatchNorm_Op::name(), /*reserve_space*/ 5U},
 };
