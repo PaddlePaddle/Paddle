@@ -579,7 +579,10 @@ class LlamaModelAuto(nn.Layer):
             use_cache if use_cache is not None else self.config.use_cache
         )
 
-        if not paddle.in_dynamic_mode() and self.config.virtual_pp_degree > 1:
+        if (
+            not paddle.in_dynamic_mode()
+            and getattr(self.config, "virtual_pp_degree", 1) > 1
+        ):
             # NOTE(zhaoyingli): temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
             full = dist.shard_op(paddle.full, get_mesh())
             full(shape=[1], fill_value=0)
@@ -607,7 +610,10 @@ class LlamaModelAuto(nn.Layer):
             cache_length = paddle.shape(past_key_values[0][0])[1]
             seq_length_with_past += cache_length
 
-        if not paddle.in_dynamic_mode() and self.config.virtual_pp_degree > 1:
+        if (
+            not paddle.in_dynamic_mode()
+            and getattr(self.config, "virtual_pp_degree", 1) > 1
+        ):
             # NOTE(zhaoyingli): temprorary method to guarantee the later ops are placed on pp stage 0 until meeting new annotaion.
             full = dist.shard_op(paddle.full, get_mesh(0))
             full(shape=[1], fill_value=0)
@@ -619,7 +625,10 @@ class LlamaModelAuto(nn.Layer):
             # [B, S, H] -> [S, B, H]
             inputs_embeds = paddle.transpose(inputs_embeds, [1, 0, 2])
 
-        if not paddle.in_dynamic_mode() and self.config.virtual_pp_degree > 1:
+        if (
+            not paddle.in_dynamic_mode()
+            and getattr(self.config, "virtual_pp_degree", 1) > 1
+        ):
             # NOTE(zhaoyingli): temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
             full = dist.shard_op(paddle.full, get_mesh())
             full(shape=[1], fill_value=0)
@@ -654,6 +663,7 @@ class LlamaModelAuto(nn.Layer):
             if is_casual:
                 attention_mask = None
         hidden_states = inputs_embeds
+        hidden_states = dist.reshard(hidden_states, mesh, self.placements)
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
@@ -674,7 +684,7 @@ class LlamaModelAuto(nn.Layer):
             if ipp is not None and pre_ipp != ipp:
                 if (
                     not paddle.in_dynamic_mode()
-                    and self.config.virtual_pp_degree > 1
+                    and getattr(self.config, "virtual_pp_degree", 1) > 1
                 ):
                     hidden_states = dist.reshard(
                         hidden_states,
