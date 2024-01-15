@@ -25,8 +25,7 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::ArrayToTensorOp, paddle::dialect::TensorToArrayOp,
     paddle::dialect::SelectInputOp, paddle::dialect::IncrementOp,
     paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
-    paddle::dialect::MemcpyD2hMultiIoOp,
-
+    paddle::dialect::MemcpyD2hMultiIoOp
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
