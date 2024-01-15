@@ -153,9 +153,8 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
 }
 
 const symbol::ShapeOrDataDimExprs&
-ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
-  CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end());
-  return value_to_shape_or_data_.at(val);
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
+  return value_to_shape_or_data_[val];
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
