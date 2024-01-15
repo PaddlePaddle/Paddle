@@ -33,6 +33,18 @@ using phi::ThreadDataRegistry;
 struct ThreadLocalStatBase {
   int64_t current{0};
   int64_t peak{0};
+
+  ThreadLocalStatBase operator+=(const ThreadLocalStatBase& other) {
+    current += other.current;
+    peak = std::max({current, peak, other.peak});
+    return *this;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const ThreadLocalStatBase& stat) {
+    os << "{cuerrent : " << stat.current << ", peak : " << stat.peak << "}";
+    return os;
+  }
 };
 
 class StatBase {
