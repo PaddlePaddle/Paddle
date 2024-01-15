@@ -153,7 +153,7 @@ const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
     {paddle::dialect::Unsqueeze_Op::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::FlattenOp::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::BatchNormOp::name(), /*reserve_space*/ 5U},
-    {paddle::dialect::BatchNorm_Op::name(), /*xshape_idx*/ 5U},
+    {paddle::dialect::BatchNorm_Op::name(), /*reserve_space*/ 5U},
 };
 
 static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
