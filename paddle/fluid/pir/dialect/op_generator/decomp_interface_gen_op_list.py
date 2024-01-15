@@ -21,6 +21,7 @@
 decomp_interface_declare_gen_op_list = [
     "add_n",
     "batch_norm",
+    "batch_norm_",
     "dropout",
     "full_like",
     "gelu",

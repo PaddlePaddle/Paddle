@@ -412,15 +412,15 @@ TEST(pattern_rewrite, Patterns) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  //   pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       true,
-  //       true));
+  // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     true,
+  //     true));
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 17u);

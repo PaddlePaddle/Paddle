@@ -60,9 +60,53 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
         type_ = OpFuncType::kGpuAsync;
         break;
       }
+    } else if (inlet_element_value.type()
+                   .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+      auto place =
+          inlet_element_value.type()
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+              .place();
+      if (place == phi::GPUPlace()) {
+        type_ = OpFuncType::kGpuAsync;
+        break;
+      }
+    } else if (inlet_element_value.type().isa<pir::VectorType>()) {
+      pir::VectorType inlet_element_type =
+          inlet_element_value.type().dyn_cast<pir::VectorType>();
+      for (size_t i = 0; i < static_cast<size_t>(inlet_element_type.size());
+           i++) {
+        if (inlet_element_type[i]
+                .isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          auto place =
+              inlet_element_type[i]
+                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                  .place();
+          if (place == phi::GPUPlace()) {
+            type_ = OpFuncType::kGpuAsync;
+            break;
+          }
+        } else if (inlet_element_type[i]
+                       .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+          auto place =
+              inlet_element_value.type()
+                  .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+                  .place();
+          if (place == phi::GPUPlace()) {
+            type_ = OpFuncType::kGpuAsync;
+            break;
+          }
+        } else {
+          PADDLE_THROW(phi::errors::PreconditionNotMet(
+              "Only support AllocatedDenseTensorType and "
+              "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
+              inlet_element_type[i]));
+        }
+      }
     } else {
       PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Only support AllocatedDenseTensorType now"));
+          "Only support AllocatedDenseTensorType and "
+          "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
+          inlet_element_value.type()));
     }
   }
 }

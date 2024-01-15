@@ -112,8 +112,8 @@ class DistributedTensor:
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
         local_offsets = []
-        rank_relatvie = processes.index(rank)
-        coordinate = _linear_idx2coordinate(topology, rank_relatvie)
+        rank_relative = processes.index(rank)
+        coordinate = _linear_idx2coordinate(topology, rank_relative)
 
         for i in range(len(global_sizes)):
             if dims_mapping[i] == -1:

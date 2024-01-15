@@ -14,22 +14,23 @@
 
 #pragma once
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace phi {
+namespace distributed {
 
-class FullyInsertBroadcastPass : public pir::PatternRewritePass {
+class RToXExpandReshardFunction final : public ReshardFunction {
  public:
-  FullyInsertBroadcastPass();
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
 
-  bool CanApplyOn(pir::Operation *op) const override;
+  std::string Name() override { return "RToXExpandReshard"; }
 };
 
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace distributed
+}  // namespace phi
