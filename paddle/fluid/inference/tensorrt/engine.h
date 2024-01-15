@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/backends/dynload/tensorrt_llm.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -201,6 +202,7 @@ class TensorRTEngine {
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
+    phi::dynload::initTrtLlmPlugins(&logger_, "");
     static std::once_flag trt_plugin_registered;
     std::call_once(trt_plugin_registered, []() {
       tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();

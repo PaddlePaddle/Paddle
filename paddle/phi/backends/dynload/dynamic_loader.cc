@@ -58,6 +58,18 @@ PHI_DEFINE_string(  // NOLINT
     "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
+PHI_DEFINE_string(  // NOLINT
+    tensorrt_llm_dir,
+    "",
+    "Specify path for loading tensorrt_llm library, such as "
+    "libtensorrt_llm.so.");
+
+PHI_DEFINE_string(  // NOLINT
+    tensorrt_llm_plugin_dir,
+    "",
+    "Specify path for loading tensorrt_llm plugin library, such as "
+    "libnvinfer_plugin_tensorrt_llm.so.");
+
 PHI_DEFINE_string(mklml_dir,
                   "",
                   "Specify path for loading libmklml_intel.so.");  // NOLINT
@@ -539,6 +551,28 @@ void* GetTensorRtDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "nvinfer.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
+#endif
+}
+
+void* GetTensorRtLLMDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return;
+#elif defined(_WIN32)
+  return;
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_llm_dir,
+                                    "libtensorrt_llm.so");
+#endif
+}
+
+void* GetTensorRtLLMPluginDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return;
+#elif defined(_WIN32)
+  return;
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_llm_plugin_dir,
+                                    "libnvinfer_plugin_tensorrt_llm.so");
 #endif
 }
 

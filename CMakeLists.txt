@@ -488,6 +488,7 @@ if(WITH_GPU)
   # so include(cudnn) needs to be in front of include(third_party/lite)
   include(cudnn) # set cudnn libraries, must before configure
   include(tensorrt)
+  include(tensorrt_llm)
   # there is no official support of nccl, cupti in windows
   if(NOT WIN32)
     include(cupti)
