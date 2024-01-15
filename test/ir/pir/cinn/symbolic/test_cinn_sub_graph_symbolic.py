@@ -132,8 +132,8 @@ class TestCinnDyShapeBase(TestCinnSubGraphBase):
         import os
 
         is_debug = os.getenv('IS_DEBUG_DY_SHAPE')
-        # if is_debug:
-        #    cinn_out = self.eval_symbolic(use_cinn=True)
+        if is_debug:
+            cinn_out = self.eval_symbolic(use_cinn=True)
 
         dy_out = self.eval_symbolic(use_cinn=False)
         # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
