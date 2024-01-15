@@ -26,8 +26,7 @@ DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 
 # Fix seed for test
-base.default_startup_program().random_seed = 1
-base.default_main_program().random_seed = 1
+paddle.seed(1)
 
 
 class TestDistMnist2x2(TestDistRunnerBase):

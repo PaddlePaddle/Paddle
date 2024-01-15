@@ -96,6 +96,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
                              &shape_analysis),
                          "InferSymbolicShape for %s failed.",
                          op.name());
+        } else {
+          VLOG(3) << op.name()
+                  << " DOES NOT have InferSymbolicShapeInterface!!!!";
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }

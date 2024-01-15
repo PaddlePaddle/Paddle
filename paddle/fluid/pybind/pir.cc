@@ -70,6 +70,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -128,7 +129,6 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
-PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -459,6 +459,8 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
              for (auto &pair : self.attributes()) {
+               // SymbolAttribute is only used in PIR, no need to pass to Python
+               if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
                attrs_dict[pair.first.c_str()] =
                    paddle::dialect::GetAttributeData(pair.second);
              }
@@ -1581,11 +1583,9 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
 void InferSymbolicShapePass(
     std::shared_ptr<PassManager> &pass_manager) {  // NOLINT
-  if (FLAGS_pir_apply_shape_optimization_pass) {
-    pir::IrContext *ctx = pir::IrContext::Instance();
-    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
 }
 
 void BindIrPass(pybind11::module *m) {
