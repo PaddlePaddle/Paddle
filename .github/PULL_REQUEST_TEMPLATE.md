@@ -1,7 +1,7 @@
 <!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->
 
 ### PR Category
-<!-- One of [ Python Frontend | Dygraph | PIR Infrastructure | Auto Parallel | Inference | Cinn | Phi | Cuda | Custom Device | Environment Adaptation | Others ] -->
+<!-- One of [ Python Frontend | Dygraph | PIR Infrastructure | Auto Parallel | Inference | CINN | PHI | CUDA | Custom Device | Environment Adaptation | Others ] -->
 
 
 ### PR Types

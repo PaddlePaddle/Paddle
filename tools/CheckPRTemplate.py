@@ -39,9 +39,9 @@ def parameter_accuracy(body):
         'PIR Infrastructure',
         'Auto Parallel',
         'Inference',
-        'Cinn',
-        'Phi',
-        'Cuda',
+        'CINN',
+        'PHI',
+        'CUDA',
         'Custom Device',
         'Environment Adaptation',
         'Others',
@@ -107,7 +107,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res: True or False
     """
     res = False
-    note = r'<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->\r\n|<!-- One of \[ Python Frontend \| Dygraph \| PIR Infrastructure \| Auto Parallel \| Inference \| Cinn \| Phi \| Cuda \| Custom Device \| Environment Adaptation \| Others \] -->|<!-- One of \[ New features \| Bug fixes \| Improvements \| Performance \| BC Breaking \| Deprecations \| Docs \| Devs \| Not User Facing \| Security \| Deprecations \| Others \] -->|<!-- Describe what you’ve done -->'
+    note = r'<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->\r\n|<!-- One of \[ Python Frontend \| Dygraph \| PIR Infrastructure \| Auto Parallel \| Inference \| CINN \| PHI \| CUDA \| Custom Device \| Environment Adaptation \| Others \] -->|<!-- One of \[ New features \| Bug fixes \| Improvements \| Performance \| BC Breaking \| Deprecations \| Docs \| Devs \| Not User Facing \| Security \| Deprecations \| Others \] -->|<!-- Describe what you’ve done -->'
     if body is None:
         body = ''
     body = re.sub(note, "", body)
