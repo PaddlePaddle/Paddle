@@ -34,6 +34,7 @@ void ShadowFeedKernel(const Context& ctx,
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {
+    ctx.template Alloc<T>(out);
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
   }
 }
