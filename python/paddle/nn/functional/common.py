@@ -1136,6 +1136,10 @@ def dropout(
         if in_dynamic_or_pir_mode():
             if paddle.static.default_main_program().random_seed != 0:
                 seed = paddle.static.default_main_program().random_seed
+            if paddle.common_ops_import.default_main_program().random_seed != 0:
+                seed = (
+                    paddle.common_ops_import.default_main_program().random_seed
+                )
 
             out = _C_ops.dropout(
                 x,

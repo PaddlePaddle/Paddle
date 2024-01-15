@@ -38,7 +38,6 @@ def monkey_patch_program():
     program_attrs = {
         "global_seed": global_seed,
         "_seed": global_prog_seed,
-        "random_seed": None,
         "_lr_schedule_guard": _lr_schedule_guard,
     }
 
