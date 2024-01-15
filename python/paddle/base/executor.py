@@ -55,7 +55,7 @@ InferAnalysisConfig = core.AnalysisConfig
 
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_add": ['X', 'Y'],
-    "elementwise_mul_add": ['X', 'Y'],
+    "elementwise_add_grad": ['X', 'Y'],
     "elementwise_sub": ['X', 'Y'],
     "elementwise_sub_grad": ['X', 'Y'],
     "elementwise_mul": ['X', 'Y'],
