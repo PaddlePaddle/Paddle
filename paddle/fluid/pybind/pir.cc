@@ -1571,6 +1571,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
                         : nullptr;
 
   if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(

@@ -59,6 +59,11 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // Auto-save updated shape constriant ir when destroying.
   ~ShapeConstraintIRAnalysis();
 
+  void Init() {
+    value_to_shape_or_data_.clear();
+    next_sym_idx_ = 0;
+  }
+
   // Returns the `SymbolicDimMgr` this object holds.
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }

@@ -326,10 +326,6 @@ void SetLeafBlockByGroupView(
     pir::Builder& builder,  // NOLINT
     pir::Block* block,
     std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr>* group_map) {
-  if (group_map->count(block)) {
-    return;
-  }
-
   pir::IrMapping ir_mapping;
   auto origin_group_inputs = GetBlockOutsideInput(origin_group->ops);
   for (auto input : origin_group_inputs) {
@@ -468,117 +464,33 @@ std::unordered_map<cinn::dialect::ir::GroupPtr,
                    std::unordered_map<std::string, pir::Attribute>>
 ComplieGroupAsOpAttribute(
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
-    const std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr>&
-        group_map) {
-  std::vector<cinn::dialect::ir::GroupPtr> group_list;
-  std::unordered_map<cinn::dialect::ir::GroupPtr, size_t> group_to_idx;
-  for (auto& [_, group] : group_map) {
-    group_list.push_back(group);
-    group_to_idx[group] = group_list.size() - 1;
-  }
-
+    const std::vector<cinn::dialect::ir::GroupPtr>& group_list) {
   auto fn_ptr_res = pir_compiler->BuildCUDAJITInfo(group_list);
 
   std::unordered_map<cinn::dialect::ir::GroupPtr,
                      std::unordered_map<std::string, pir::Attribute>>
       result;
-  for (auto& [__acosf64, group] : group_map) {
+  for (size_t i = 0; i < group_list.size(); ++i) {
     std::unordered_map<std::string, ::pir::Attribute> op_attrs{
         {cinn::dialect::JitKernelOp::kAttrName,
-         cinn::dialect::CINNKernelInfoAttribute::get(
-             pir::IrContext::Instance(), fn_ptr_res[group_to_idx.at(group)])},
+         cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
+                                                     fn_ptr_res[i])},
     };
-    result.insert({group, op_attrs});
+    result.insert({group_list[i], op_attrs});
   }
   return result;
 }
 
-pir::Operation* ProcessGroup(
-    const cinn::dialect::ir::GroupPtr& group,
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis,
-    const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
-    const std::unordered_map<pir::Value, pir::Value>& value_map,
-    pir::PatternRewriter& rewriter) {  // NOLINT
-  std::vector<pir::Operation*> group_ops_view;
-  std::unordered_set<pir::Value> value_view;
-
-  group->WalkOps([&group, &group_ops_view, &value_view](pir::Operation* op) {
-    group_ops_view.push_back(op);
-    VLOG(1) << "####### group@" << group.get() << " : " << op->name() << " @"
-            << op;
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      value_view.insert(op->operand_source(i));
-    }
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      value_view.insert(op->result(i));
-    }
-  });
-
-  // 1. construct broadcast tree
-  VLOG(1) << "construct broadcast tree";
-  cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
-  std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
-  for (auto value : value_view) {
-    const auto& shape_dim_expr = group->GetShapeOrDataExprs(value);
-    const auto& data_shape = shape_dim_expr.data();
-    if (data_shape) {
-      all_value_dim_exprs->push_back(*data_shape);
-    } else {
-      all_value_dim_exprs->push_back(shape_dim_expr.shape());
-    }
-    value_to_dim_expr_idx[value] = all_value_dim_exprs->size() - 1;
-  }
-  VLOG(4) << "before constructed. broadcast-leaf: \n"
-          << ToTxtString(cinn::common::BroadcastTree(all_value_dim_exprs));
-  cinn::common::BroadcastTree broadcast_tree =
-      cinn::common::ConstructBroadcastTree(
-          cinn::common::BroadcastLeaf(all_value_dim_exprs));
-  VLOG(4) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
-
-  // 2. broadcast tree to condition op
-  VLOG(1) << "broadcast tree to condition op";
-  auto group_inputs = GetBlockOutsideInput(group->ops);
-  for (size_t i = 0; i < group_inputs.size(); ++i) {
-    if (value_map.find(group_inputs[i]) != value_map.end()) {
-      group_inputs[i] = value_map.at(group_inputs[i]);
-    }
-  }
-
-  std::vector<pir::Type> output_types;
-  auto group_output_values = group->GetGroupOutputValues();
-  for (size_t i = 0; i < group_output_values.size(); ++i) {
-    output_types.push_back(group_output_values[i].type());
-  }
-
-  auto* origin_block = group->ops.front()->GetParent();
-
-  std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr> group_map{
-      {origin_block, group}};
-  pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
-                                                 group,
-                                                 shape_analysis,
-                                                 value_to_dim_expr_idx,
-                                                 group_inputs,
-                                                 output_types,
-                                                 rewriter,
-                                                 rewriter.block(),
-                                                 &group_map);
-
-  if (cond_op) {
-    group_map.erase(origin_block);
-  }
-  auto* program = origin_block->parent_program();
-  VLOG(4) << "Before simply condition block: " << *program;
-  shape_analysis->PrintAllShapeOrDataDimExprs();
-  // 3. simply every condition block
-  VLOG(1) << "simply condition block";
+void SimplyConditionBlock(
+    pir::PatternRewriter& rewriter,  // NOLINT
+    std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr>* group_map) {
+  VLOG(4) << "simply condition block";
   using DoEachMutBlockGroupT =
       std::function<void(pir::Block*, const cinn::dialect::ir::GroupPtr&)>;
   const auto& ForEachMutBlockGroup = [&](const DoEachMutBlockGroupT& DoEach) {
-    for (auto& [block, group] : group_map) {
+    for (auto& [block, group] : *group_map) {
       DoEach(block, group);
       DoEach(block, group);
-
       std::vector<pir::Operation*> group_new_ops;
       group_new_ops.reserve(block->size());
       std::unordered_set<pir::Operation*> group_ops_set;
@@ -599,50 +511,158 @@ pir::Operation* ProcessGroup(
     };
     EraseUneccessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
   });
-  VLOG(4) << "After EraseUneccessaryExpandsInBlock: " << *program;
   ForEachMutBlockGroup([&](auto* block, const auto& group) {
     ReplaceExpandWithBroadcast(rewriter.ir_context(), block, group);
   });
-  VLOG(1) << "After simply condition block: " << *program;
-  // 4. complie condition block to jit_kernel_op
-  VLOG(1) << "complie condition block to jit_kernel_op, group number: "
-          << group_map.size();
-  // prepare attribute for jit_kernel_op
-  auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, group_map);
-  // create jit_kernel_op
-  if (cond_op) {  // has condition block
-    VLOG(1) << "##### group_map : " << group_map.size();
-    for (auto& [block, group] : group_map) {
-      auto& yeild_op = block->back();
-      CHECK(yeild_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
-      rewriter.set_insertion_point(&yeild_op);
-      auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-          group_inputs, op_attr_map.at(group), output_types);
-      auto group_output_values = group->GetGroupOutputValues();
-      CHECK(jit_kernel_op.num_results() == group_output_values.size());
-      for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
-        rewriter.ReplaceAllUsesWith(group_output_values[i],
-                                    jit_kernel_op.result(i));
-      }
+}
 
-      // Delete origin group ops
-      std::vector<pir::Operation*> group_ops;
-      for (auto iter = block->rbegin(); iter != block->rend(); iter++) {
-        if (!iter->isa<pir::YieldOp>()) {
-          group_ops.push_back(&(*iter));
-        }
-      }
-      for (auto* op : group_ops) {
-        if (op->use_empty()) {
-          op->Erase();
-        }
+void CompileGroupToJitKernelOp(
+    const std::vector<pir::Value>& group_inputs,
+    const std::vector<pir::Type>& output_types,
+    const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
+    pir::PatternRewriter& rewriter,  // NOLINT
+    std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr>* group_map) {
+  // prepare attribute for jit_kernel_op
+  std::vector<cinn::dialect::ir::GroupPtr> group_list;
+  group_list.reserve(group_map->size());
+  for (const auto& [_, group] : *group_map) {
+    group_list.push_back(group);
+  }
+  auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, group_list);
+  VLOG(4) << "The size of group_map is : " << group_map->size();
+  for (auto& [block, group] : *group_map) {
+    auto& yeild_op = block->back();
+    CHECK(yeild_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
+    rewriter.set_insertion_point(&yeild_op);
+    auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
+        group_inputs, op_attr_map.at(group), output_types);
+    auto group_output_values = group->GetGroupOutputValues();
+    CHECK(jit_kernel_op.num_results() == group_output_values.size());
+    for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
+      rewriter.ReplaceAllUsesWith(group_output_values[i],
+                                  jit_kernel_op.result(i));
+    }
+
+    // Delete origin group ops
+    std::vector<pir::Operation*> group_ops;
+    for (auto iter = block->rbegin(); iter != block->rend(); iter++) {
+      if (!iter->isa<pir::YieldOp>()) {
+        group_ops.push_back(&(*iter));
       }
     }
-    return cond_op;
+    for (auto* op : group_ops) {
+      if (op->use_empty()) {
+        op->Erase();
+      }
+    }
+  }
+}
+
+pir::Operation* ComplieBroadcastTreeToConditionBlock(
+    const cinn::common::BroadcastTree& broadcast_tree,
+    const cinn::dialect::ir::GroupPtr& group,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis,
+    const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
+    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
+    const std::vector<pir::Value>& group_inputs,
+    const std::vector<pir::Type>& output_types,
+    pir::PatternRewriter& rewriter) {  // NOLINT
+  // 1. broadcast tree to condition op
+  VLOG(4) << "broadcast tree to condition op";
+  std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr> group_map;
+  pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
+                                                 group,
+                                                 shape_analysis,
+                                                 value_to_dim_expr_idx,
+                                                 group_inputs,
+                                                 output_types,
+                                                 rewriter,
+                                                 rewriter.block(),
+                                                 &group_map);
+  // 2. simply every condition block
+  auto* program = group->ops.front()->GetParentProgram();
+  VLOG(6) << "Before simply condition block: " << *program;
+  shape_analysis->PrintAllShapeOrDataDimExprs();
+
+  SimplyConditionBlock(rewriter, &group_map);
+  VLOG(6) << "After simply condition block: " << *program;
+
+  // 3. complie condition block to jit_kernel_op
+  CompileGroupToJitKernelOp(
+      group_inputs, output_types, pir_compiler, rewriter, &group_map);
+
+  return cond_op;
+}
+
+pir::Operation* ProcessGroup(
+    const cinn::dialect::ir::GroupPtr& group,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis,
+    const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
+    const std::unordered_map<pir::Value, pir::Value>& value_map,
+    pir::PatternRewriter& rewriter) {  // NOLINT
+  std::unordered_set<pir::Value> value_view;
+
+  group->WalkOps([&group, &value_view](pir::Operation* op) {
+    VLOG(1) << "####### group@" << group.get() << " : " << op->name() << " @"
+            << op;
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      value_view.insert(op->operand_source(i));
+    }
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      value_view.insert(op->result(i));
+    }
+  });
+
+  // construct broadcast tree
+  VLOG(1) << "construct broadcast tree";
+  cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
+  std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
+  for (auto value : value_view) {
+    const auto& shape_dim_expr = group->GetShapeOrDataExprs(value);
+    const auto& data_shape = shape_dim_expr.data();
+    if (data_shape) {
+      all_value_dim_exprs->push_back(*data_shape);
+    } else {
+      all_value_dim_exprs->push_back(shape_dim_expr.shape());
+    }
+    value_to_dim_expr_idx[value] = all_value_dim_exprs->size() - 1;
+  }
+  VLOG(6) << "before constructed. broadcast-leaf: \n"
+          << ToTxtString(cinn::common::BroadcastTree(all_value_dim_exprs));
+  cinn::common::BroadcastTree broadcast_tree =
+      cinn::common::ConstructBroadcastTree(
+          cinn::common::BroadcastLeaf(all_value_dim_exprs));
+  VLOG(6) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
+
+  auto group_inputs = GetBlockOutsideInput(group->ops);
+  for (size_t i = 0; i < group_inputs.size(); ++i) {
+    if (value_map.find(group_inputs[i]) != value_map.end()) {
+      group_inputs[i] = value_map.at(group_inputs[i]);
+    }
+  }
+
+  std::vector<pir::Type> output_types;
+  auto group_output_values = group->GetGroupOutputValues();
+  for (size_t i = 0; i < group_output_values.size(); ++i) {
+    output_types.push_back(group_output_values[i].type());
+  }
+
+  // has multiple branch
+  if (broadcast_tree
+          .Has<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>()) {
+    return ComplieBroadcastTreeToConditionBlock(broadcast_tree,
+                                                group,
+                                                shape_analysis,
+                                                pir_compiler,
+                                                value_to_dim_expr_idx,
+                                                group_inputs,
+                                                output_types,
+                                                rewriter);
   } else {  // no condition block
-    CHECK_EQ(group_map.size(), 1UL);
+    // complie group to jit_kernel_op
+    auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, {group});
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-        group_inputs, op_attr_map.at(group_map.begin()->second), output_types);
+        group_inputs, op_attr_map.at(group), output_types);
     return jit_kernel_op;
   }
 }

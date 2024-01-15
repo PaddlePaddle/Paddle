@@ -189,15 +189,23 @@ std::ostream& operator<<(std::ostream& stream,
                          const ShapeOrDataDimExprs& shape_or_data) {
   std::string result = "shape[";
   for (size_t i = 0; i < shape_or_data.shape().size(); ++i) {
-    result += ToString(shape_or_data.shape()[i]) + ",";
+    result += ToString(shape_or_data.shape()[i]);
+    if (i < shape_or_data.shape().size() - 1) {
+      result += ", ";
+    }
   }
   result += "]";
   if (shape_or_data.data()) {
     result += ", data[";
     for (size_t i = 0; i < shape_or_data.data()->size(); ++i) {
-      result += ToString(shape_or_data.data()->at(i)) + ",";
+      result += ToString(shape_or_data.data()->at(i));
+      if (i < shape_or_data.data()->size() - 1) {
+        result += ", ";
+      }
     }
     result += "]";
+  } else {
+    result += ", data[NULL]";
   }
   stream << result;
   return stream;
