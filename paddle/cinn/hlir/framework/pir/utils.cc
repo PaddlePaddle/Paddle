@@ -142,6 +142,8 @@ static utils::Attribute ConvertArrayAttribute(
   } else if (src_attr.isa<paddle::dialect::DataTypeAttribute>()) {
     auto dtype = src_attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     dst_attr = phi::DataTypeToString(dtype);
+  } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
+    auto dst_attr = src_attr.dyn_cast<::pir::shape::SymbolAttribute>().data();
   } else if (src_attr.isa<::pir::ArrayAttribute>()) {
     auto attr_vec = src_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
     if (attr_vec.size() > 0) {
