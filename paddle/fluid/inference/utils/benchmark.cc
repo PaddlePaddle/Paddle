@@ -16,8 +16,8 @@
 
 #include <fstream>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/init_phi.h"
 
 REGISTER_FILE_SYMBOLS(benchmark);
 
