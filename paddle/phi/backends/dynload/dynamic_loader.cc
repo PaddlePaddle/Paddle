@@ -556,9 +556,10 @@ void* GetTensorRtDsoHandle() {
 
 void* GetTensorRtLLMDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return;
+  return nullptr;
 #elif defined(_WIN32)
-  return;
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_llm_dir,
+                                    "libtensorrt_llm.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_llm_dir,
                                     "libtensorrt_llm.so");
@@ -567,9 +568,10 @@ void* GetTensorRtLLMDsoHandle() {
 
 void* GetTensorRtLLMPluginDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return;
+  return nullptr;
 #elif defined(_WIN32)
-  return;
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_llm_plugin_dir,
+                                    "libnvinfer_plugin_tensorrt_llm.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_llm_plugin_dir,
                                     "libnvinfer_plugin_tensorrt_llm.so");
