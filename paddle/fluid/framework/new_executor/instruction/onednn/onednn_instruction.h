@@ -25,9 +25,6 @@ namespace framework {
 class Scope;
 class ValueExecutionInfo;
 
-using RuntimeAttribute = phi::Attribute;
-using PIRAttribute = pir::Attribute;
-
 class OneDNNPhiKernelInstruction : public InstructionBase {
  public:
   OneDNNPhiKernelInstruction(size_t id,
@@ -71,12 +68,11 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
 
   const ValueExecutionInfo* value_exec_info_;  // not owned
 
-  std::set<int> layout_transform_inputs_{};
+  std::set<int> data_format_tensors_{};
   phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
-  std::map<std::string, RuntimeAttribute> extra_attr_{};
+  std::map<std::string, phi::Attribute> extra_attr_{};
   std::map<std::string, std::vector<std::string>> inputs_{};
   std::map<std::string, std::vector<std::string>> outputs_{};
 };
-
 }  // namespace framework
 }  // namespace paddle

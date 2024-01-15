@@ -162,8 +162,7 @@ class TestDygraphBasicApi(Dy2StTestBase):
         self.dygraph_func = dyfunc_pool2d
 
     def get_dygraph_output(self):
-        paddle.static.default_startup_program.random_seed = SEED
-        paddle.static.default_main_program.random_seed = SEED
+        paddle.seed(SEED)
         data = paddle.to_tensor(self.input)
         res = self.dygraph_func(data).numpy()
 
@@ -204,8 +203,7 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
         )
 
     def get_dygraph_output(self):
-        paddle.static.default_startup_program.random_seed = SEED
-        paddle.static.default_main_program.random_seed = SEED
+        paddle.seed(SEED)
         res = self.dygraph_func(self.input1, self.input2).numpy()
         return res
 
@@ -406,8 +404,7 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_exponential_decay
 
     def get_dygraph_output(self):
-        paddle.static.default_startup_program.random_seed = SEED
-        paddle.static.default_main_program.random_seed = SEED
+        paddle.seed(SEED)
         res = self.dygraph_func()
         return res
 
@@ -422,8 +419,7 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_inverse_time_decay
 
     def get_dygraph_output(self):
-        paddle.static.default_startup_program.random_seed = SEED
-        paddle.static.default_main_program.random_seed = SEED
+        paddle.seed(SEED)
         res = self.dygraph_func()
         return res
 
@@ -438,8 +434,7 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_natural_exp_decay
 
     def get_dygraph_output(self):
-        paddle.static.default_startup_program.random_seed = SEED
-        paddle.static.default_main_program.random_seed = SEED
+        paddle.seed(SEED)
         res = self.dygraph_func()
         return res
 
@@ -464,8 +459,7 @@ class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
         self.dygraph_func = dyfunc_polynomial_decay
 
     def get_dygraph_output(self):
-        paddle.static.default_startup_program.random_seed = SEED
-        paddle.static.default_main_program.random_seed = SEED
+        paddle.seed(SEED)
         res = self.dygraph_func()
         return res
 

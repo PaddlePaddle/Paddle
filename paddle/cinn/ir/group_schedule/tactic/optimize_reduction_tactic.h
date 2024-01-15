@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,23 @@
 
 #pragma once
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include <string>
+#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 
 namespace cinn {
-namespace dialect {
 namespace ir {
 
-class FullyInsertBroadcastPass : public pir::PatternRewritePass {
+class OptimizeReductionTactic final : public ScheduleTactic {
  public:
-  FullyInsertBroadcastPass();
+  void Init(ScheduleContext* context) override;
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
 
-  bool CanApplyOn(pir::Operation *op) const override;
+  std::string TacticName() const override { return "OptimizeReductionTactic"; }
+
+ private:
+  ScheduleContext* context_;
 };
 
 }  // namespace ir
-}  // namespace dialect
 }  // namespace cinn

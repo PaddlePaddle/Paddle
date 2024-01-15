@@ -309,7 +309,7 @@ class TestUnsqueezeAPI(unittest.TestCase):
                 x2 = paddle.static.data(name="x2", shape=[2, 25], dtype="int32")
                 self.unsqueeze(x2, axis=2.1)
 
-        self.assertRaises(ValueError, test_pir_axes_type)
+        self.assertRaises(TypeError, test_pir_axes_type)
 
 
 class TestUnsqueezeInplaceAPI(TestUnsqueezeAPI):

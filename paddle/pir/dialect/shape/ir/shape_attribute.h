@@ -14,13 +14,24 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute_storage.h"
 
-namespace pir {
+namespace pir::shape {
 
-class Pass;
+class IR_API SymbolAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
 
-IR_API std::unique_ptr<Pass> CreateFcWithSpecialOpFusePass();
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(SymbolAttribute, SymbolAttributeStorage);
 
-}  // namespace pir
+  symbol::ShapeOrDataDimExprs data() const;
+
+  static SymbolAttribute get(IrContext* ctx,
+                             const symbol::ShapeOrDataDimExprs& value);
+};
+
+}  // namespace pir::shape
+
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::SymbolAttribute)

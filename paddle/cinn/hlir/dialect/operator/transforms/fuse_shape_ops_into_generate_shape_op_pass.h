@@ -24,17 +24,11 @@ namespace ir {
 
 class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
  public:
-  using ShapeOrDataDimExprs4ValueT =
-      std::function<const symbol::ShapeOrDataDimExprs &(pir::Value)>;
-  explicit FuseShapeOpsIntoGenerateShapeOpPass(
-      const ShapeOrDataDimExprs4ValueT &ShapeOrDataDimExprs4Value);
+  FuseShapeOpsIntoGenerateShapeOpPass();
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 
   bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  ShapeOrDataDimExprs4ValueT ShapeOrDataDimExprs4Value_;
 };
 
 }  // namespace ir

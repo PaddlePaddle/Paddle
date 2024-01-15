@@ -56,7 +56,7 @@ class IR_API ShapedTypeInterface
   ///
   /// \brief kDynamic
   ///
-  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
+  static constexpr int64_t kDynamic = std::int64_t(-1);
 
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
@@ -69,7 +69,7 @@ class IR_API ShapedTypeInterface
   ///
   /// \brief Get the shape of this type.
   ///
-  std::vector<int64_t> GetDyShape() const;
+  pir::DDim GetShape() const;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.
@@ -81,7 +81,7 @@ class IR_API ShapedTypeInterface
   ///
   int64_t GetRank() const {
     IR_ENFORCE((*this).HasRank(), "Cannot query rank of unranked shaped type.");
-    return (*this).GetDyShape().size();
+    return (*this).GetShape().size();
   }
 
   ///
@@ -94,11 +94,10 @@ class IR_API ShapedTypeInterface
   /// dimension.
   ///
   bool IsDynamicShape() const {
-    auto size_vec = (*this).GetDyShape();
-    return std::any_of(
-        size_vec.begin(), size_vec.end(), [](int64_t size_value) {
-          return IsDynamic(size_value);
-        });
+    auto size_vec = common::vectorize(impl_->get_shape(*this));
+    return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_val) {
+      return IsDynamic(size_val);
+    });
   }
 
   ///
@@ -112,7 +111,7 @@ class IR_API ShapedTypeInterface
   ///
   bool IsDynamicDim(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return ShapedTypeInterface::IsDynamic((*this).GetDyShape()[idx]);
+    return ShapedTypeInterface::IsDynamic((*this).GetShape()[idx]);
   }
 
   ///
@@ -120,7 +119,7 @@ class IR_API ShapedTypeInterface
   /// Aborts for unranked types.
   ///
   int64_t GetNumDynamicDims() const {
-    auto shape_vec = (*this).GetDyShape();
+    auto shape_vec = vectorize((*this).GetShape());
     return std::count_if(
         shape_vec.begin(), shape_vec.end(), ShapedTypeInterface::IsDynamic);
   }
@@ -131,12 +130,11 @@ class IR_API ShapedTypeInterface
   ///
   int64_t GetDimSize(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return (*this).GetDyShape()[idx];
+    return (*this).GetShape()[idx];
   }
 
  private:
   Concept *impl_;
-  mutable std::vector<int64_t> dy_shape_;
 };
 
 }  // namespace pir
