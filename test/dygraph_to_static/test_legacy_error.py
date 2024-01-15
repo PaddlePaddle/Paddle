@@ -95,7 +95,7 @@ class LayerErrorInCompiletime2(paddle.nn.Layer):
         NOTE: The next line has a tab. And this test to check the IndentationError when spaces and tabs are mixed.
 	A tab here.
         """  # fmt: skip
-        return  # noqa: PLR1711
+        return
 
 
 @paddle.jit.to_static(full_graph=True)
