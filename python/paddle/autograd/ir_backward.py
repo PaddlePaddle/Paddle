@@ -1080,6 +1080,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
+
     if not inplace_net(backward_ops):
         _, remove_ops = prune_ops(
             backward_ops, inputs_set, outputs_set, no_gradvar_set
@@ -1291,10 +1292,27 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
             loss.get_defining_op().get_parent_block().all_parameters()
         )
 
-    inputs_grad = paddle.autograd.ir_backward.grad(loss, parameter_list)
+    if no_grad_set is None:
+        no_grad_set_ = ValueSet()
+    else:
+        no_grad_set_ = ValueSet(no_grad_set)
+
+    input_to_inputgrad_map = calc_gradient_helper(
+        _as_list(loss),
+        [],
+        grad_outputs=[],
+        no_grad_set=ValueSet(no_grad_set_),
+    )
 
     input_inputs_grad = []
-    for input, input_grad in zip(parameter_list, inputs_grad):
-        input_inputs_grad.append((input, input_grad))
+    for input in parameter_list:
+        input_inputs_grad.append(
+            (
+                input,
+                input_to_inputgrad_map[input][0][0]
+                if input_to_inputgrad_map[input] != []
+                else None,
+            )
+        )
 
     return input_inputs_grad
