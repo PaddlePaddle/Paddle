@@ -1450,7 +1450,18 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
     auto* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     auto dense_tensor = ReshardXToReplicated(dist_tensor);
-    ptr = static_cast<phi::DenseTensor*>(&dense_tensor);
+    phi::DenseTensor cpu_tensor;
+    platform::CPUPlace cpu_place;
+    cpu_tensor.set_meta(dense_tensor.meta());
+    auto tmp_allocation_ptr =
+        memory::Alloc(cpu_place, dense_tensor.Holder()->size());
+    cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+        tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+    paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
+                                    dense_tensor.Holder()->ptr(),
+                                    dense_tensor.Holder()->size(),
+                                    kind);
+    ptr = static_cast<phi::DenseTensor*>(&cpu_tensor);
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("The `item()` method of (Dist)Tensor "
