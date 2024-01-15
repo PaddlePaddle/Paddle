@@ -3736,7 +3736,7 @@ void AssignArrayOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction dense_tensor_array_x";
   paddle::dialect::IrTensor ir_tensor_x(
-      paddle::dialect::TransToPhiDataType(x_type),
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
       {},
       x_type.data_layout(),
       {});
