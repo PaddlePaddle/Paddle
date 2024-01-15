@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def reduce_lr_on_plateau(
@@ -688,6 +689,7 @@ def linear_lr(
 
 
 class TestLRScheduler(unittest.TestCase):
+    @test_with_pir_api
     def _test_static(self, python_func, paddle_api, kwarg, place):
         scheduler = paddle_api(**kwarg)
         adam = paddle.optimizer.Adam(learning_rate=scheduler)
