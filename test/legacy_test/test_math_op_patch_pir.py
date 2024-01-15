@@ -521,7 +521,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 # TODO(SigureMo): add op test for assign(tensor_array)
                 # paddle.assign(array)
                 array.append(x)
-                # array.pop()
+                array.pop()
 
     def test_neg(self):
         x_np = np.random.uniform(-1, 1, [10, 1024]).astype(np.float32)

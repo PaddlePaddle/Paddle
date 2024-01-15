@@ -189,6 +189,14 @@ pir::OpResult slice_array_dense(pir::Value input, pir::Value starts) {
   return op.result(0);
 }
 
+// pir::OpResult slice_array(pir::Value input, pir::Value starts, pir::Value
+// ends) {
+//   auto op = ApiBuilder::Instance()
+//                 .GetBuilder()
+//                 ->Build<paddle::dialect::SliceArrayOp>(input, starts, ends);
+//   return op.result(0);
+// }
+
 pir::OpResult assign(const pir::Value& x) {
   CheckValueDataType(x, "x", "assign");
   if (x.type().isa<paddle::dialect::DenseTensorType>()) {
