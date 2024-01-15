@@ -20,28 +20,27 @@
 
 namespace paddle {
 namespace framework {
-bool ParsePlace(const pir::Type& type, OpFuncType* func_type) {
-  if (type->isa<paddle::dialect::AllocatedDenseTensorType>()) {
+bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
+  if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
     auto place =
-        type->dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place();
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place();
     place == phi::CPUPlace();
     if (place == phi::GPUPlace()) {
-      func_type = OpFuncType::kGpuAsync;
+      *type_ = OpFuncType::kGpuAsync;
       return true;
     }
-  } else if (type->isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     auto place =
-        type->dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
-            .place();
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>().place();
     if (place == phi::GPUPlace()) {
-      func_type = OpFuncType::kGpuAsync;
+      *type_ = OpFuncType::kGpuAsync;
       return true;
     }
-  } else if (type->isa<pir::VectorType>()) {
-    pir::VectorType inlet_element_type = type->dyn_cast<pir::VectorType>();
+  } else if (type.isa<pir::VectorType>()) {
+    pir::VectorType inlet_element_type = type.dyn_cast<pir::VectorType>();
     for (size_t i = 0; i < static_cast<size_t>(inlet_element_type.size());
          i++) {
-      if (ParsePlace(inlet_element_type[i], func_type)) {
+      if (ParsePlace(inlet_element_type[i], type_)) {
         return true;
       }
     }
