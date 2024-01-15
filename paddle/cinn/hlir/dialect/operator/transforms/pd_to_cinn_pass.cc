@@ -337,6 +337,9 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
           end_vec,
           infer_flags,
           decrease_axis);
+      // NOTE(Aurelius84): In SliceRawInferMeta, it not always share_lod, so
+      // we need to update it maually.
+      cinn_slice.result(0).set_type(op.result(0).type());
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_slice.result(0));
       rewriter.EraseOp(op);
 
