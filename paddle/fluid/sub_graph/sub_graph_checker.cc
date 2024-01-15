@@ -165,9 +165,8 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(prim_program_.get());
-
   pir::PassManager pm(ctx);
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
@@ -263,9 +262,8 @@ double SubGraphChecker::RunCinnSpeed() {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(prim_program_.get());
-
   pir::PassManager pm(ctx);
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());

@@ -665,15 +665,6 @@ bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {
   return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
 }
 
-void PdOp2CinnOpConverter(::pir::Program *program) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-
-  pir::PassManager pm(ctx);
-  pm.AddPass(std::make_unique<PdOpToCinnOpPass>());
-
-  pm.Run(program);
-}
-
 std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass() {
   return std::make_unique<PdOpToCinnOpPass>();
 }
