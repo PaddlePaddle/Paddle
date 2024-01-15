@@ -2,9 +2,10 @@ if(WITH_TESTING)
   if(NOT APPLE)
     inference_base_test(infer_io_utils_tester SRCS io_utils_tester.cc DEPS
                         paddle_inference_shared common)
-    inference_base_test(test_benchmark SRCS benchmark_tester.cc DEPS benchmark)
+    inference_base_test(test_benchmark SRCS benchmark_tester.cc DEPS
+                        paddle_inference_shared benchmark)
     inference_base_test(test_table_printer SRCS table_printer_tester.cc DEPS
-                        pir)
+                        paddle_inference_shared pir)
   endif()
 endif()
 
