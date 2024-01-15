@@ -332,12 +332,6 @@ void SetLeafBlockByGroupView(
     ir_mapping.Add(input, input);
   }
 
-  VLOG(1) << "#### SetLeafBlockByGroupView origin_group->ops.size(): "
-          << origin_group->ops.size();
-  for (auto op : origin_group->ops) {
-    VLOG(1) << "##### op : " << op->name();
-  }
-
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
   CHECK_EQ(origin_group->ops.size(), new_group->ops.size());
 
@@ -603,8 +597,6 @@ pir::Operation* ProcessGroup(
   std::unordered_set<pir::Value> value_view;
 
   group->WalkOps([&group, &value_view](pir::Operation* op) {
-    VLOG(1) << "####### group@" << group.get() << " : " << op->name() << " @"
-            << op;
     for (size_t i = 0; i < op->num_operands(); ++i) {
       value_view.insert(op->operand_source(i));
     }
@@ -614,7 +606,7 @@ pir::Operation* ProcessGroup(
   });
 
   // construct broadcast tree
-  VLOG(1) << "construct broadcast tree";
+  VLOG(4) << "construct broadcast tree";
   cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
   for (auto value : value_view) {
@@ -719,9 +711,6 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
     auto shape_analysis_ =
         std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
-    VLOG(1) << "shape_analysis: " << &shape_analysis
-            << " program:" << group_op->GetParentProgram();
-    shape_analysis.PrintAllShapeOrDataDimExprs();
 
     // op fusion
     auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
@@ -732,8 +721,6 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     // fusion merge
     auto group_list = cinn::dialect::ir::GeneralFusionMergePassInternal(
         op_fusion, shape_analysis_);
-    VLOG(1) << "###### GeneralFusionMergePass op_fusion size: "
-            << op_fusion.size();
 
     std::unordered_map<pir::Value, pir::Value> value_map;
     for (auto group : group_list) {
@@ -763,7 +750,6 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     value_map.clear();
     VLOG(4) << "Before GroupOpPattern.EraseOp: " << *program;
     rewriter.EraseOp(group_op);
-    VLOG(1) << "After GroupOpPattern.EraseOp: " << *program;
     return true;
   }
 

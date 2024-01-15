@@ -85,8 +85,18 @@ struct Group {
     for (auto* op : this->output_ops) {
       new_group->output_ops.insert(ops_mapper.at(op));
     }
+    for (const auto& output_value : this->output_values) {
+      new_group->output_values.push_back(output_value);
+    }
 
     return new_group;
+  }
+
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
+      const ::pir::Value& value) {
+    CHECK(value_to_shape_or_data_exprs.count(value))
+        << "value not found in value_to_shape_or_data_exprs";
+    return value_to_shape_or_data_exprs.at(value);
   }
 
   // distance to last group.
@@ -118,6 +128,8 @@ struct Group {
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
   std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_exprs;
 
   // for op lowering.
   std::vector<std::string> input_names;
@@ -206,6 +218,32 @@ struct Group {
       }
     }
     return group_outputs;
+  }
+
+  std::vector<::pir::Value> GetGroupOutputValues() const {
+    std::unordered_set<::pir::Operation*> group_ops_set;
+    for (auto* op : this->ops) {
+      group_ops_set.insert(op);
+    }
+
+    std::vector<::pir::Value> output_values;
+    for (auto* op : this->ops) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        auto result = op->result(i);
+        if (!result) {
+          continue;
+        }
+        for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+             ++use_iter) {
+          auto* use_op = use_iter->owner();
+          if (group_ops_set.find(use_op) == group_ops_set.end()) {
+            output_values.push_back(result);
+            break;
+          }
+        }
+      }
+    }
+    return output_values;
   }
 
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
