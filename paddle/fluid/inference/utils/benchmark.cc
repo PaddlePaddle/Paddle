@@ -17,6 +17,9 @@
 #include <fstream>
 
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/init_phi.h"
+
+REGISTER_FILE_SYMBOLS(benchmark);
 
 namespace paddle {
 namespace inference {
