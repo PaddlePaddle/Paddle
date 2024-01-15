@@ -46,8 +46,11 @@ void BilateralSliceGradInferMeta(const MetaTensor& x,
                                  MetaTensor* grid_grad,
                                  MetaTensor* guide_grad) {
   x_grad->set_dims(x.dims());
+  x_grad->set_dtype(x.dtype());
   grid_grad->set_dims(grid.dims());
+  grid_grad->set_dtype(grid.dtype());
   guide_grad->set_dims(guide.dims());
+  guide_grad->set_dtype(guide.dtype());
 }
 
 void BilinearGradInferMeta(const MetaTensor& x,

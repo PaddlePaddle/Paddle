@@ -191,6 +191,7 @@ void BilateralSliceInferMeta(const MetaTensor& x,
   output_dims.push_back(w);
 
   out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(x.dtype());
 }
 
 void BoxCoderInferMeta(const MetaTensor& prior_box,
