@@ -59,10 +59,7 @@ class KGroup final {
 
  private:
   std::weak_ptr<hlir::framework::pir::Group> cinn_group_;
-  // NOTE: Use single igroup temporarily. Actually KGroup contains
-  // multiple IGroups
   std::vector<std::shared_ptr<IGroup>> igroups_;
-  // TODO(Hongyu Jia): Add equations here to link igroups
 };
 
 }  // namespace cinn::adt

@@ -14,7 +14,54 @@
 
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 
+#include "paddle/cinn/adt/print.h"
+#include "paddle/cinn/adt/union_find.h"
+
 namespace cinn::adt {
+namespace {
+bool IsZeroValue(const Value& value) {
+  return value.Has<DimExpr>() && value.Get<DimExpr>().Has<std::int64_t>() &&
+         value.Get<DimExpr>().Get<std::int64_t>() == 0;
+}
+}  // namespace
+
+void IndexExprInferContext::MatchZeroValueAndThenSet(const Variable& variable,
+                                                     const Value& value) {
+  if (!IsZeroValue(value)) {
+    return;
+  }
+  CHECK(variable.Has<Iterator>());
+  UnionFind<Iterator> uf;
+  for (const auto& [tmp_variable, tmp_value] : variable2value_) {
+    if (tmp_variable.Has<Iterator>() && tmp_value.Has<Iterator>()) {
+      uf.Union(tmp_variable.Get<Iterator>(), tmp_value.Get<Iterator>());
+    } else {
+      // Do nothing
+    }
+  }
+  const auto& zero_iterators = uf.NodeCluster(variable.Get<Iterator>());
+  for (const auto& iterator : zero_iterators) {
+    Variable zero_variable{iterator};
+    variable2value_.erase(zero_variable);
+    CHECK(variable2value_.emplace(zero_variable, DimExpr{0}).second);
+  }
+}
+
+bool IndexExprInferContext::SetValue(const Variable& variable,
+                                     const Value& value) {
+  if (value.Has<Undefined>()) {
+    return false;
+  }
+  MatchZeroValueAndThenSet(variable, value);
+  if (HasValue(variable)) {
+    const auto& old_value = GetValue(variable);
+    CHECK(old_value == value) << "old_value: " << ToTxtString(old_value)
+                              << ", new_value: " << ToTxtString(value);
+  } else {
+    CHECK(variable2value_.emplace(variable, value).second);
+  }
+  return true;
+}
 
 bool IndexExprInferContext::DimsEqual(const List<DimExpr>& lhs,
                                       const List<DimExpr>& rhs) const {

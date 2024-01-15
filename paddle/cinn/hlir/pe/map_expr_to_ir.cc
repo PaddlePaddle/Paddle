@@ -57,22 +57,16 @@ class MapExprToIrTranslator {
       const Node2LoweredFuncs& node2lowered_funcs,
       const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
           map_expr_symbolic2dialect_symbolic,
-      const cinn::common::Target& target)
+      const common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
         map_expr_symbolic2dialect_symbolic_(map_expr_symbolic2dialect_symbolic),
-        target_(target) {
-    const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
-    CHECK_EQ(anchored_map_stmts->size(), 1);
-    TensorIteratorExpr4Tensor = std::get<4>(anchored_map_stmts->at(0).tuple());
-    LoopDescriptor4LoopIterator =
-        std::get<5>(anchored_map_stmts->at(0).tuple());
-  }
+        target_(target) {}
 
   ir::Expr Translate() const {
     VLOG(1) << "Translate MapExpr: ";
     VLOG(1) << ToTxtString(map_expr_, "");
-    return ir::Block::Make({Translate(map_expr_)});
+    return Translate(map_expr_);
   }
 
  private:
@@ -178,15 +172,22 @@ class MapExprToIrTranslator {
 
   ir::Expr Translate(const MapExpr& map_expr) const {
     const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
-    CHECK_EQ(anchored_map_stmts->size(), 1);
-    return Translate(anchored_map_stmts->at(0));
+
+    std::vector<ir::Expr> exprs;
+    for (const auto& anchored_map_stmt : *anchored_map_stmts) {
+      exprs.emplace_back(Translate(anchored_map_stmt));
+    }
+    ir::Expr ret = ir::Block::Make(exprs);
+    ret = ir::ScheduleBlock::Make({}, {}, {}, "root", ret);
+    ret = ir::ScheduleBlockRealize::Make({}, ret);
+    return ir::Block::Make({ret});
   }
 
   ir::Expr Translate(const AnchoredMapStmt& anchored_map_stmt) const {
     const MapStmt<Stmt>& map_stmt = std::get<0>(anchored_map_stmt.tuple());
+    TensorIteratorExpr4Tensor = std::get<2>(anchored_map_stmt.tuple());
+    LoopDescriptor4LoopIterator = std::get<3>(anchored_map_stmt.tuple());
     ir::Expr ret = Translate(map_stmt);
-    ret = ir::ScheduleBlock::Make({}, {}, {}, "root", ret);
-    ret = ir::ScheduleBlockRealize::Make({}, ret);
     return ret;
   }
 
@@ -870,9 +871,9 @@ class MapExprToIrTranslator {
 
   MapExpr map_expr_;
   const Node2LoweredFuncs* node2lowered_funcs_;
-  const cinn::common::Target target_;
-  TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
-  LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
+  const common::Target target_;
+  mutable TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
+  mutable LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
   std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
       map_expr_symbolic2dialect_symbolic_;
 };

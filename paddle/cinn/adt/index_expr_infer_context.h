@@ -33,12 +33,11 @@ class IndexExprInferContext final {
       : variable2value_(init_variable2value) {}
 
   const Value& GetValue(const Variable& variable) const {
+    CHECK_GT(variable2value_.count(variable), 0);
     return variable2value_.at(variable);
   }
 
-  auto SetValue(const Variable& variable, const Value& value) {
-    return variable2value_.emplace(variable, value);
-  }
+  bool SetValue(const Variable& variable, const Value& value);
 
   bool HasValue(const Variable& variable) const {
     return variable2value_.count(variable) > 0;
@@ -51,6 +50,8 @@ class IndexExprInferContext final {
   }
 
  private:
+  void MatchZeroValueAndThenSet(const Variable& variable, const Value& value);
+
   std::unordered_map<Variable, const Value> variable2value_;
 };
 

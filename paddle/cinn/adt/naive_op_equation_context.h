@@ -279,6 +279,15 @@ class NaiveOpEquationContext final : public OpEquationContext {
     equations_->emplace_back(
         adt::IndexUnDot<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>>{
             dim_tuple, iterator_tuple, index});
+    for (std::size_t i = 0; i < dim_tuple->size(); ++i) {
+      const auto& dim = dim_tuple->at(i);
+      if (dim.Has<std::int64_t>() && dim.Get<std::int64_t>() == 1) {
+        const auto& const_iter = GetConstantIterator(index, 0);
+        Equal(iterator_tuple->at(i), const_iter);
+      } else {
+        // Do nothing
+      }
+    }
     return index;
   }
 

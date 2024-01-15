@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle import nn
 
 
 def apply_to_static(net, use_cinn):
@@ -70,6 +71,44 @@ class TestCinnSubGraphBase(unittest.TestCase):
         cinn_out = self.train(use_cinn=True)
         dy_out = self.train(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+class LlamaRMSNorm(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.hidden_size = 768
+        self.weight = paddle.create_parameter(
+            shape=[self.hidden_size],
+            dtype=paddle.get_default_dtype(),
+            default_initializer=nn.initializer.Constant(1.0),
+        )
+        self.variance_epsilon = 1e-6
+
+    def forward(self, hidden_states):
+        variance = hidden_states.sum(-1, keepdim=True)
+        return variance * hidden_states
+
+
+class TestLlamaRMSNorm(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.shape = [1, 2048, 768]
+        self.hidden_states = paddle.randn(self.shape, dtype="float32")
+        self.hidden_states.stop_gradient = False
+
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        net = LlamaRMSNorm()
+        net = apply_to_static(net, use_cinn)
+        net.eval()
+        out = net(self.hidden_states)
+        return out
+
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-4, rtol=1e-4
+        )
 
 
 if __name__ == '__main__':
