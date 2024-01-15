@@ -167,8 +167,8 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
           << (numeric_stable_mode ? "true" : "false") << "], use_softmax: ["
           << (use_softmax ? "true" : "false") << "], soft_label: ["
           << (soft_label ? "true" : "false") << "].";
-  VLOG(4) << "Einsum notation: [" << x_axes_src << "," << label_axes_src << " --> "
-          << softmax_out_axes_src << "," << loss_axes << "].\n"
+  VLOG(4) << "Einsum notation: [" << x_axes_src << "," << label_axes_src
+          << " --> " << softmax_out_axes_src << "," << loss_axes << "].\n"
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping_src: ["
           << str_join(x_dims_mapping_src) << "], x_dims_mapping_dst: ["
           << str_join(x_dist_attr_dst.dims_mapping()) << "]\n Label shape: ["
