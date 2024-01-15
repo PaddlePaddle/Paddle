@@ -3414,6 +3414,11 @@ class TestReciprocal(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(1, 2, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.reciprocal(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3423,11 +3428,22 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_pir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(['X'], 'Out', max_relative_error=0.03, check_pir=True)
+        else:
+            self.check_grad(['X'], 'Out', max_relative_error=0.01, check_pir=True)
 
     def test_check_output(self):
         self.check_output(check_pir=True)
 
+class TestReciprocal_Complex64(TestReciprocal):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestReciprocal_Complex128(TestReciprocal):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 class TestReciprocal_ZeroDim(TestReciprocal):
     def init_shape(self):
@@ -3799,6 +3815,11 @@ class TestSquare(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.square(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3813,6 +3834,14 @@ class TestSquare(TestActivation):
     def test_check_output(self):
         self.check_output(check_pir=True)
 
+class TestSquare_Complex64(TestSquare):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSquare_Complex128(TestSquare):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 class TestSquare_ZeroDim(TestSquare):
     def init_shape(self):
