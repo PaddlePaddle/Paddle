@@ -64,8 +64,7 @@ class TestBatchNormOp(OpTest):
         self.op_type = "batch_norm"
         self.prim_op_type = "comp"
         self.python_out_sig = ["Y"]
-        # (Todo: CZ) random error
-        self.check_prim_pir = False
+        self.check_prim_pir = True
         self.initConfig()
         self.initTestCase()
 
@@ -347,7 +346,7 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.data_format = "NCHW"
         self.use_global_stats = None
         # Todo(CZ): open this
-        self.check_prim_pir = False
+        self.check_prim_pir = True
 
 
 @unittest.skipIf(
