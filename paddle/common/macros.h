@@ -86,4 +86,11 @@ namespace common {
 #endif  // __FLT_MAX__
 #endif  // PADDLE_WITH_MUSL
 
+#define REGISTER_FILE_SYMBOLS(name) \
+  int RegisterSymbolsFor##name() { return 0; }
+
+#define DECLARE_FILE_SYMBOLS(name)       \
+  extern int RegisterSymbolsFor##name(); \
+  UNUSED static int use_file_##name = RegisterSymbolsFor##name()
+
 }  // namespace common

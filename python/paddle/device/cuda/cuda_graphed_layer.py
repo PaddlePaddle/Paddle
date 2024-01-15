@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,9 +66,9 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             ctx.save_for_backward(context, context.args_static, y)
             return y.detach()
         else:
-            for x_staic, x in zip(context.args_static, args):
-                if isinstance(x_staic, paddle.Tensor):
-                    x_staic.copy_(x, True)
+            for x_static, x in zip(context.args_static, args):
+                if isinstance(x_static, paddle.Tensor):
+                    x_static.copy_(x, True)
 
             context.forward_graph.replay()
             y = context.y_static

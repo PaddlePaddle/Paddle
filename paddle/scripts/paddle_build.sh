@@ -4202,6 +4202,7 @@ function main() {
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
+        export ON_INFER=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
         check_coverage_added_ut
@@ -4209,6 +4210,7 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
+        export ON_INFER=ON
         export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data 
         is_run_distribute_in_op_test
         parallel_test

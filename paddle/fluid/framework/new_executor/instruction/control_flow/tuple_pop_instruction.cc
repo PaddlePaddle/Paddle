@@ -95,7 +95,7 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
-    if (src_tensor_array.numel() == 0) return;
+    if (src_tensor_array.size() == 0) return;
     dst_tensor_array->clear();
     for (auto src_tensor : src_tensor_array) {
       phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
@@ -110,6 +110,13 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
         "or SelectedRowsType or TensorArrayType"));
+  }
+}
+
+void ShareVarData(const VariableRefArray* src_var, VariableRefArray* dst_var) {
+  for (size_t i = 0; i < src_var->size(); ++i) {
+    Variable* copy_var = const_cast<Variable*>(dst_var->at(i));
+    ShareVarData(src_var->at(i), copy_var);
   }
 }
 

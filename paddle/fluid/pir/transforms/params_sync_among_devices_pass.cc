@@ -92,7 +92,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         }
       }
     }
-    PrintStatistics(num_rewrites_);
+    AddStatistics(num_rewrites_);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
