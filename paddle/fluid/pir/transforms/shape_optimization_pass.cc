@@ -109,7 +109,7 @@ class ShapeOptimizationPass : public pir::Pass {
 
   void Run(pir::Operation* op) override {
     VLOG(3) << "===================== ShapeOptimizationPass Run start... "
-               "=============================";
+               "=====================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
     PrintProgram(module_op, "Origin Program");
@@ -117,10 +117,11 @@ class ShapeOptimizationPass : public pir::Pass {
     InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+      pm.EnableIRPrinting();
       return pm.Run(m.program());
     };
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
-               "=============================";
+               "=====================";
     PrintProgram(module_op, "ShapeOptimizationPass Program");
   }
 

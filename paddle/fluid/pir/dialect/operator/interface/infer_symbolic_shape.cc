@@ -279,6 +279,36 @@ bool FullIntArrayOpInferSymbolicShape(
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // TODO(zhangbopd): Not implemented yet.
+  pir::Value operand_source = op->operand_source(0);
+  pir::Value operand_starts = op->operand_source(1);
+  // pir::Value operand_ends = op->operand_source(2);
+
+  symbol::ShapeOrDataDimExprs operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  symbol::ShapeOrDataDimExprs starts_shape_data =
+      shape_analysis->GetShapeOrDataForValue(operand_starts);
+
+  int64_t start = 0;
+  if (starts_shape_data.data().has_value()) {
+    start = starts_shape_data.data()->at(0).Get<int64_t>();
+  }
+
+  std::vector<symbol::DimExpr> out_dims;
+  if (operand_shape_or_data.data().has_value()) {
+    out_dims.push_back(operand_shape_or_data.data().value()[start]);
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{out_dims};
+  if (operand_shape_or_data.data().has_value()) {
+    shape_data =
+        symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+  }
+  op->set_attribute(
+      "symbolic_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+
+  pir::OpResult res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
