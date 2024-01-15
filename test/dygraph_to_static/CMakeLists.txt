@@ -29,7 +29,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_resnet)
   list(REMOVE_ITEM TEST_OPS test_build_strategy)
   list(REMOVE_ITEM TEST_OPS test_bert)
-  list(REMOVE_ITEM TEST_OPS test_transformer)
+  list(REMOVE_ITEM TEST_OPS test_transformerx)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -59,6 +59,7 @@ if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
   set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_transformerx PROPERTIES TIMEOUT 240)
 endif()
 
 # Legacy IR only tests for dygraph_to_static
