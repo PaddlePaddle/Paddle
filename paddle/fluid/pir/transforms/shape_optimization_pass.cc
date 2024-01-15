@@ -96,6 +96,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
                              &shape_analysis),
                          "InferSymbolicShape for %s failed.",
                          op.name());
+        } else {
+          VLOG(3) << op.name()
+                  << " DOES NOT have InferSymbolicShapeInterface!!!!";
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }
@@ -119,9 +122,10 @@ class ShapeOptimizationPass : public pir::Pass {
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
       return pm.Run(m.program());
     };
+    PrintProgram(module_op, "After ShapeOptimizationPass Program");
+
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
                "=============================";
-    PrintProgram(module_op, "ShapeOptimizationPass Program");
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

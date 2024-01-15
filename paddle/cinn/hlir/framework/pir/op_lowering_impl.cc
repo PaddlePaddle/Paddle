@@ -544,8 +544,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr({func_body});
-  ir::IRSchedule ir_sch(mod_expr);
-  ir_sch.MergeExprs();
+  // ir::IRSchedule ir_sch(mod_expr);
+  ir::IRSchedule ir_sch(
+      mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true)
+      ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
