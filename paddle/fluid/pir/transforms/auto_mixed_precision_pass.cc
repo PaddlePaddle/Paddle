@@ -82,20 +82,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
       for (auto& block : region) {
-        VLOG(6) << "===========Get Op Precision============" << std::endl;
         GetOpPrecision(&block);
-        VLOG(6) << "===========Update Op Precision============" << std::endl;
         UpdateOpPrecision(&block);
-
-        VLOG(6) << "===========" << op_run_low_precision_.size() << " of "
-                << block.size() << " ops"
-                << " run low precision" << std::endl;
         pir::Builder builder = pir::Builder(context_, &block);
-        VLOG(6) << "===========Process Op Precision============" << std::endl;
-
         ProcessBlock(&block, builder);
-        VLOG(6) << "===========Insert Cast Op Num : " << insert_cast_op_num_
-                << "============" << std::endl;
       }
     }
   }
@@ -144,7 +134,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
   void GetOpPrecision(pir::Block* block) {
     for (auto& op_item : *block) {
       auto op = &op_item;
-      VLOG(6) << "op name " << op->name();
       auto op_name = op->name();
       bool support_low_precision = true;
       if (black_list_.count(op_name)) {
@@ -167,10 +156,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
       }
       if (support_low_precision) {
         op_run_low_precision_.insert(op);
-        VLOG(6) << "op " << op->name() << " support low precision" << std::endl;
-      } else {
-        VLOG(6) << "op " << op->name() << " doesn't support low precision"
-                << std::endl;
       }
     }
   }
@@ -235,8 +220,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
         }
         if (!OpRunLowPrecision(op)) continue;
         if (CheckOutputIsScalarAttribute(op)) {  // Output is ScalarAttribute
-          VLOG(6) << "op " << op->name() << " output is ScalarAttribute"
-                  << std::endl;
           op_run_low_precision_.erase(op);
           precision_updated = true;
         }
@@ -261,21 +244,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
         }
       }
     } while (precision_updated);
-    for (auto& op_item : *block) {
-      auto op = &op_item;
-      if (op_should_not_handle_.count(op)) {
-        VLOG(6) << "op " << op->name() << " should not be handled" << std::endl;
-      } else if (op_run_low_precision_.count(op)) {
-        VLOG(6) << "op " << op->name() << " run low precision" << std::endl;
-      } else {
-        VLOG(6) << "op " << op->name() << " run high precision" << std::endl;
-      }
-    }
   }
 
   void RewriteOp(pir::Operation* op,
                  pir::Builder& builder) {  // NOLINT
-    VLOG(6) << "Rewrite op " << op->name() << std::endl;
     if (IsBuiltinOp(op)) {
       RewriteBuiltinOp(op, builder);
       return;
@@ -318,7 +290,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
       phi::DataType precision,
       phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) const {
     auto& phi_op_type = op_type;
-    VLOG(6) << "phi_op_type = " << phi_op_type << std::endl;
 
     bool support =
         PhiKernelSupportPrecision(phi_op_type, backend, precision, layout);
@@ -419,8 +390,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
       auto new_vec_type = pir::VectorType::get(context, results_type);
       result.set_type(new_vec_type);
     } else {
-      VLOG(6) << "result type is not DenseTensorType or VectorType"
-              << std::endl;
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "result type is not DenseTensorType or VectorType"));
     }
   }
 
@@ -452,7 +423,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
                  IsVectorTypeFloat(result.type().dyn_cast<pir::VectorType>())) {
       }
     }
-    VLOG(6) << "op " << op->name() << " doesn't have float result" << std::endl;
     return false;
   }
 
@@ -517,10 +487,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
 
   void RewriteBuiltinOp(pir::Operation* op,
                         pir::Builder& builder) {  // NOLINT
-    VLOG(6) << "Rewrite builtin op " << op->name() << std::endl;
     // Rewrite CombineOp
     if (op->isa<pir::CombineOp>()) {
-      // auto vec_type = op->result(0).type().dyn_cast<pir::VectorType>();
       auto input_num = op->num_operands();
       if (OpRunLowPrecision(op)) {
         for (size_t i = 0; i < input_num; ++i) {
@@ -572,10 +540,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
 
   void RewritePdOp(pir::Operation* op,
                    pir::Builder& builder) {  // NOLINT
-    VLOG(6) << "Rewrite pd op " << op->name() << std::endl;
-    phi::Backend backend = ConvertPlaceToBackend(place_);
     std::string op_type = op->name().substr(op->name().find(".") + 1);
-
+    phi::Backend backend = ConvertPlaceToBackend(place_);
     // Rewrite FetchOp
     if (op->isa<paddle::dialect::FetchOp>()) {
       auto fetch_operand = op->operand(0);
@@ -587,7 +553,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
       auto result_dtype = paddle::dialect::TransToPhiDataType(
           pir::GetDataTypeFromValue(op->result(0)));
       if (fetch_operand_phi_dtype != result_dtype) {
-        VLOG(6) << "Insert CastOp for FetchOp" << std::endl;
         DoInsertCastOp(op, fetch_operand, result_dtype, builder);
       }
       return;
@@ -607,9 +572,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
     // Other pd ops
     if (OpRunLowPrecision(op)) {
       // change result's dtype to low precision
-      VLOG(6) << "Change result's dtype to low precision " << op->name()
-              << std::endl;
-
       if (op->HasAttribute("dtype") &&
           IsPhiDataTypeFloat(
               op->attribute<paddle::dialect::DataTypeAttribute>("dtype")
@@ -644,8 +606,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
         auto result = op->result(i);
         if (!result.type()) continue;
         phi::DataType out_phi_dtype = output_defs[i].dtype;
-        VLOG(6) << "result dtype = " << phi::DataTypeToString(out_phi_dtype)
-                << std::endl;
         if (out_phi_dtype == phi::DataType::UNDEFINED)
           out_phi_dtype = precision_mode_;
         if (!IsPhiDataTypeFloat(out_phi_dtype))
@@ -663,8 +623,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
         auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
         if (IsPhiDataTypeFloat(operand_phi_dtype) &&
             operand_phi_dtype != in_phi_dtype) {
-          VLOG(6) << "Support low precision, insert CastOp for " << op->name()
-                  << " operand " << i << std::endl;
           DoInsertCastOp(op, operand, in_phi_dtype, builder);
         }
       }
@@ -677,8 +635,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
         auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
         if (IsPhiDataTypeFloat(operand_phi_dtype) &&
             operand_phi_dtype == precision_mode_) {
-          VLOG(6) << "Not support low precision, insert CastOp for "
-                  << op->name() << " operand " << i << std::endl;
           DoInsertCastOp(op, operand, phi_dtype, builder);
         }
       }
