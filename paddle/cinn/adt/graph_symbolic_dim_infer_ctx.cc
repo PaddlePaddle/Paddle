@@ -305,8 +305,7 @@ std::vector<symbol::DimExpr> CreateSymbolicDimsFromValue(
     const ::pir::Value& tensor,
     const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   CHECK_NOTNULL(shape_analysis.get());
-  const auto& shape_or_data = shape_analysis->GetShapeOrDataForValue(
-      const_cast<::pir::Value*>(&tensor));
+  const auto& shape_or_data = shape_analysis->GetShapeOrDataForValue(tensor);
   const auto& dims = shape_or_data.data().has_value()
                          ? shape_or_data.data().value()
                          : shape_or_data.shape();
@@ -460,7 +459,7 @@ symbol::DimExpr GetSymbolicDimOp4TensorDim(
     const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   auto [tensor, axis] = tensor_dim;
   const auto& symbolic_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(&tensor);
+      shape_analysis->GetShapeOrDataForValue(tensor);
   const auto& dim_exprs = symbolic_shape_or_data.data().has_value()
                               ? symbolic_shape_or_data.data().value()
                               : symbolic_shape_or_data.shape();
