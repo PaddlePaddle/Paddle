@@ -126,7 +126,7 @@ set +e
 NUM_PROC=4
 for (( i = 0; i < $NUM_PROC; i++ )); do
     cuda_list="$((i*2)),$((i*2+1))"
-    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($parallel_list)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
 done
 wait;
 EXIT_CODE_1=$?
