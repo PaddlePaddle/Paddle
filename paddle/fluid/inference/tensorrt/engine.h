@@ -33,12 +33,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/phi/backends/dynload/tensorrt_llm.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/stream.h"
+
+#ifdef DPADDLE_WITH_TENSORRT_LLM
+#include "paddle/phi/backends/dynload/tensorrt_llm.h"
+#endif
 
 PHI_DECLARE_bool(trt_ibuilder_cache);
 
