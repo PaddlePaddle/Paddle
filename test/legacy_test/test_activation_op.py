@@ -1221,6 +1221,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1232,10 +1233,11 @@ class TestTanhshrinkAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.tanhshrink, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.tanhshrink(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.tanhshrink(x_fp16)
 
 
 def ref_hardshrink(x, threshold):
@@ -4411,6 +4413,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4422,10 +4425,11 @@ class TestThresholdedReluAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.thresholded_relu, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.thresholded_relu(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.thresholded_relu(x_fp16)
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
@@ -4642,6 +4646,7 @@ class TestSwishAPI(unittest.TestCase):
             out_ref = ref_swish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4653,10 +4658,11 @@ class TestSwishAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.swish, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.swish(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.swish(x_fp16)
 
 
 def ref_mish(x, threshold=20.0):
@@ -4943,7 +4949,7 @@ create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
 create_test_act_fp16_class(TestSoftplus, check_pir=True)
 create_test_act_fp16_class(TestSoftsign, check_pir=True)
-create_test_act_fp16_class(TestThresholdedRelu)
+create_test_act_fp16_class(TestThresholdedRelu, check_pir=True)
 create_test_act_fp16_class(TestHardSigmoid, check_pir=True)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish, check_prim=True, check_pir=True)
@@ -5112,7 +5118,7 @@ create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
 create_test_act_bf16_class(TestSoftplus, check_pir=True)
 create_test_act_bf16_class(TestSoftsign, check_pir=True)
-create_test_act_bf16_class(TestThresholdedRelu)
+create_test_act_bf16_class(TestThresholdedRelu, check_pir=True)
 create_test_act_bf16_class(TestHardSigmoid, check_pir=True)
 create_test_act_bf16_class(TestSwish)
 create_test_act_bf16_class(TestHardSwish, check_prim=True, check_pir=True)
