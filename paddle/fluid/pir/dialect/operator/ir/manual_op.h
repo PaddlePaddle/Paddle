@@ -545,17 +545,6 @@ class ExpandOp : public pir::Op<ExpandOp,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
-class SelectInputOp : public pir::Op<SelectInputOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.select_input"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  void VerifySig();
-  pir::Value mask() { return operand_source(0); }
-  pir::OpResult out() { return result(0); }
-};
-
 class IncrementOp
     : public pir::Op<IncrementOp,
                      paddle::dialect::OpYamlInfoInterface,
@@ -731,7 +720,6 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::TensorToArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)

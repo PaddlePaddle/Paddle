@@ -161,6 +161,17 @@ class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
   pir::Value data() { return operand_source(1); }
 };
 
+class SelectInputOp : public pir::Op<SelectInputOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.select_input"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  void VerifySig();
+  pir::Value mask() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -168,3 +179,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp);
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp);
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
