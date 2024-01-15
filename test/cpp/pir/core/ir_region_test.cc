@@ -80,7 +80,7 @@ TEST(region, clone_op_test) {
   pir::Operation &op = *program.module_op();
   pir::Block &block = op.region(0).front();
   pir::IrMapping mapper;
-  pir::Operation &new_op = *op.Clone(mapper, pir::CloneOptions(true, true));
+  pir::Operation &new_op = *op.Clone(mapper, pir::CloneOptions::All());
 
   // (8) Check the cloned op recursively
   EXPECT_EQ(mapper.Lookup(&op), &new_op);
@@ -103,8 +103,7 @@ TEST(region, clone_op_test) {
     }
     EXPECT_EQ(op.num_results(), new_op.num_results());
     for (uint32_t i = 0; i < op.num_results(); ++i) {
-      EXPECT_EQ(mapper.Lookup(static_cast<pir::Value>(op.result(i))),
-                static_cast<pir::Value>(new_op.result(i)));
+      EXPECT_EQ(mapper.Lookup(op.result(i)), new_op.result(i));
     }
     EXPECT_TRUE(std::equal(op.attributes().begin(),
                            op.attributes().end(),

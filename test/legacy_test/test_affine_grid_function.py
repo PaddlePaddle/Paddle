@@ -158,7 +158,7 @@ class AffineGridErrorTestCase(AffineGridTestCase):
     def runTest(self):
         place = base.CPUPlace()
         with dg.guard(place):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(TypeError):
                 self.paddle_dygraph_layer()
 
 
