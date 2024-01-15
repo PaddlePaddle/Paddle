@@ -42,6 +42,7 @@ from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
 
+from .auto_parallel_master_grad import _is_master_grad_cast_op
 from .pass_base import PassBase, register_pass
 from .pass_utils import AutoParallelStreamType
 
@@ -80,20 +81,6 @@ def _is_reshard_op(op):
     return op.desc.has_attr(
         "op_namescope"
     ) and "/auto_parallel/reshard" in op.desc.attr('op_namescope')
-
-
-def _is_master_grad_cast_op(block, op, amp_dtype=__amp_target_dtype_name__):
-    if op.type != "cast":
-        return False
-    assert len(op.input_arg_names) == 1
-    assert len(op.output_arg_names) == 1
-    input_var_name = op.input_arg_names[0]
-    if amp_dtype == "float16":
-        return "@master_grad_fp16" in input_var_name
-    elif amp_dtype == "bfloat16":
-        return "@master_grad_bf16" in input_var_name
-    else:
-        return False
 
 
 # NOTE we add the "auto_parallel" prefix to the pass in order to
@@ -1534,7 +1521,7 @@ def _is_param_grad_fp32_cast_op(block, op):
         block, op, __amp_target_dtype__, core.VarDesc.VarType.FP32
     ):
         return False
-    if _is_master_grad_cast_op(block, op):
+    if _is_master_grad_cast_op(block, op, __amp_target_dtype_name__):
         return False
     output_name = op.output_arg_names[0]
     base_name = output_name[: output_name.find("@")]
