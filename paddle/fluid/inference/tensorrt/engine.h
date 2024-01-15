@@ -205,7 +205,9 @@ class TensorRTEngine {
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
+#ifdef DPADDLE_WITH_TENSORRT_LLM
     phi::dynload::initTrtLlmPlugins(&logger_, "");
+#endif
     static std::once_flag trt_plugin_registered;
     std::call_once(trt_plugin_registered, []() {
       tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
