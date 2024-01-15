@@ -42,9 +42,6 @@ bool PhiKernelSupportPrecision(
     phi::DataType data_type,
     phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
   const auto& kernels = phi::KernelFactory::Instance().kernels();
-  // for (auto [k, v] : kernels) {
-  //   LOG(INFO) << "kernel name " << k << std::endl;
-  // }
   if (kernels.count(op_type) == 0) {
     return false;
   }
