@@ -30,7 +30,6 @@ from ..base.data_feeder import (
 from ..base.framework import Variable, default_main_program
 from ..framework import (
     LayerHelper,
-    _current_expected_place,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
@@ -4125,89 +4124,7 @@ def broadcast_to(x, shape, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_mode():
-        return _C_ops.expand(x, shape)
-    elif in_pir_mode():
-        place = _current_expected_place()
-        if isinstance(shape, (list, tuple)):
-            if paddle.utils._contain_var(shape):
-                shape = paddle.utils.get_int_tensor_list(shape, place)
-        elif isinstance(shape, paddle.pir.OpResult):
-            shape.stop_gradient = True
-        else:
-            TypeError("Shape only supports OpReslut, or list, or tuple.")
-        return _C_ops.expand(x, shape)
-    else:
-        if isinstance(shape, Variable):
-            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
-        else:
-            type_tuple = (int, np.int32, np.int64)
-            for elem in shape:
-                if isinstance(elem, Variable):
-                    assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
-                else:
-                    assert isinstance(
-                        elem, type_tuple
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
-
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'bool',
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-            ],
-            'broadcast_to',
-        )
-        check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')
-        if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
-            raise ValueError(
-                "When the data type of input 'x' for broadcast_to is bool, "
-                "you must set its stop_gradient to be False by "
-                "some_var.stop_gradient = True, supporting "
-                "some_var as the input."
-            )
-
-        inputs = {"X": [x]}
-        attrs = {}
-
-        helper = LayerHelper('expand', **locals())
-
-        def get_attr_expand_shape(list_expand_shape):
-            attrs_expand_shape = []
-            for idx, shape in enumerate(list_expand_shape):
-                if isinstance(shape, Variable):
-                    attrs_expand_shape.append(-1)
-                else:
-                    attrs_expand_shape.append(shape)
-                    assert (
-                        shape > 0 or shape == -1
-                    ), "All elements in shape of broadcast_to must be positive or -1."
-            return attrs_expand_shape
-
-        if isinstance(shape, Variable):
-            shape.stop_gradient = True
-            inputs['Shape'] = shape
-        elif isinstance(shape, (list, tuple)):
-            attrs['shape'] = get_attr_expand_shape(shape)
-            if paddle.utils._contain_var(shape):
-                inputs[
-                    'expand_shapes_tensor'
-                ] = paddle.utils._convert_to_tensor_list(shape)
-
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs
-        )
-        return out
+    return expand(x, shape, name)
 
 
 def expand(x, shape, name=None):
