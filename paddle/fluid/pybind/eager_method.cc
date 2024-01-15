@@ -1456,24 +1456,39 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
     auto* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     auto dense_tensor = ReshardXToReplicated(dist_tensor);
-    phi::DenseTensor cpu_tensor;
-    platform::CPUPlace cpu_place;
-    cpu_tensor.set_meta(dense_tensor.meta());
-    auto tmp_allocation_ptr =
-        memory::Alloc(cpu_place, dense_tensor.Holder()->size());
-    cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
-        tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+    if (self->tensor.is_gpu()) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::DenseTensor cpu_tensor;
+      platform::CPUPlace cpu_place;
+      cpu_tensor.set_meta(dense_tensor.meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor.Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
 #if defined(PADDLE_WITH_CUDA)
-    gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
+      gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
-    gpuMemcpyKind kind = hipMemcpyDeviceToHost;
-    phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
+      gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+      phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
 #endif
-    paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
-                                    dense_tensor.Holder()->ptr(),
-                                    dense_tensor.Holder()->size(),
-                                    kind);
-    ptr = static_cast<phi::DenseTensor*>(&cpu_tensor);
+      paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
+                                      dense_tensor.Holder()->ptr(),
+                                      dense_tensor.Holder()->size(),
+                                      kind);
+      ptr = static_cast<phi::DenseTensor*>(&cpu_tensor);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
+          "WITH_ROCM=ON."));
+#endif
+    } else if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
+      ptr = static_cast<phi::DenseTensor*>(&dense_tensor);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The `item()` method of (Dist)Tensor with other place is not "
+          "supported in the current PaddlePaddle."));
+    }
+
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("The `item()` method of (Dist)Tensor "
