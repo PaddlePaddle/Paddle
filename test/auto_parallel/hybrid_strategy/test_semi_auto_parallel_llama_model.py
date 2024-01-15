@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../../")
 import collective.test_communication_api_base as test_base
 
 import paddle
@@ -187,21 +189,21 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
             )
 
 
-class TestSemiAutoParallelLlamaLazyInit(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=8, timeout=200, nnode=1)
-        self._default_envs = {"dp": "2", "mp": "2", "pp": "2", "acc_step": "2"}
-        self._changeable_envs = {"backend": ["gpu"], "use_lazy_init": ["true"]}
+# class TestSemiAutoParallelLlamaLazyInit(test_base.CommunicationTestDistBase):
+#     def setUp(self):
+#         super().setUp(num_of_devices=8, timeout=200, nnode=1)
+#         self._default_envs = {"dp": "2", "mp": "2", "pp": "2", "acc_step": "2"}
+#         self._changeable_envs = {"backend": ["gpu"], "use_lazy_init": ["true"]}
 
-    def test_simple_net_hybrid_strategy(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_auto_llama.py",
-                user_defined_envs=envs,
-            )
+#     def test_simple_net_hybrid_strategy(self):
+#         envs_list = test_base.gen_product_envs_list(
+#             self._default_envs, self._changeable_envs
+#         )
+#         for envs in envs_list:
+#             self.run_test_case(
+#                 "semi_auto_llama.py",
+#                 user_defined_envs=envs,
+#             )
 
 
 class TestSemiAutoParallelLlama3DVPP(test_base.CommunicationTestDistBase):

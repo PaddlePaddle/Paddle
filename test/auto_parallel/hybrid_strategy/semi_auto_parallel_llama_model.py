@@ -663,7 +663,9 @@ class LlamaModelAuto(nn.Layer):
             if is_casual:
                 attention_mask = None
         hidden_states = inputs_embeds
-        hidden_states = dist.reshard(hidden_states, mesh, self.placements)
+        hidden_states = dist.reshard(
+            hidden_states, get_mesh(0), self.placements
+        )
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
