@@ -48,7 +48,7 @@ TEST(DimExprUtil, Convert) {
 
 TEST(DimExprUtil, Substitute) {
   DimExpr dim_expr = CreateExampleDimExpr();
-  const auto& opt_expr = SubstituteDimExpr(
+  const auto& substituted_expr = SubstituteDimExpr(
       dim_expr, [](const std::string& str) -> std::optional<DimExpr> {
         if (str == "S0") {
           return DimExpr("symbol0");
@@ -58,9 +58,8 @@ TEST(DimExprUtil, Substitute) {
           return std::nullopt;
         }
       });
-  ASSERT_TRUE(opt_expr.has_value());
   const auto& ret_expr = SubstituteDimExpr(
-      opt_expr.value(), [](const std::string& str) -> std::optional<DimExpr> {
+      substituted_expr, [](const std::string& str) -> std::optional<DimExpr> {
         if (str == "symbol0") {
           return DimExpr("S0");
         } else if (str == "symbol1") {
@@ -69,26 +68,19 @@ TEST(DimExprUtil, Substitute) {
           return std::nullopt;
         }
       });
-  ASSERT_TRUE(ret_expr.has_value());
-  ASSERT_EQ(ret_expr.value(), dim_expr);
+  ASSERT_EQ(ret_expr, dim_expr);
 }
 
 TEST(DimExprUtil, MakeGetterDimExpr4SymbolName) {
-  std::vector<std::tuple<std::string /*symbol_name*/,
-                         int /*in_tensor_idx*/,
-                         int /*in_tensor_dim_idx*/>>
-      symbol_bindings{};
-  symbol_bindings.push_back(std::make_tuple("Symbol", 0, 0));
+  cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings{};
+  using ShapeSymbolBinding = cinn::dialect::GenerateShapeOp::ShapeSymbolBinding;
+  symbol_bindings.emplace_back(ShapeSymbolBinding{"Symbol", 0, 0});
   const auto& dim_expr = CreateExampleDimExpr();
+  const auto& shape_or_data_dim_exprs = symbol::ShapeOrDataDimExprs({dim_expr});
   const auto& DimExpr4SymbolName = MakeGetterDimExpr4SymbolName(
       symbol_bindings,
-      [dim_expr](int in_tensor_idx,
-                 int in_tensor_dim_idx) -> std::optional<DimExpr> {
-        if (in_tensor_idx == 0 && in_tensor_dim_idx == 0) {
-          return dim_expr;
-        } else {
-          return std::nullopt;
-        }
+      [&](int in_tensor_idx) -> const symbol::ShapeOrDataDimExprs& {
+        return shape_or_data_dim_exprs;
       });
   const auto& opt_dim_expr = DimExpr4SymbolName("Symbol");
   ASSERT_TRUE(opt_dim_expr.has_value());

@@ -24,6 +24,7 @@ from semi_auto_parallel_llama_model import (
 
 import paddle
 import paddle.distributed as dist
+from paddle import LazyGuard
 from paddle.io import BatchSampler, DataLoader, Dataset
 
 
@@ -44,6 +45,7 @@ class Config:
     rope = True
     recompute = False
     recompute_granularity = None
+    use_lazy_init = False
 
 
 class RandomDataset(Dataset):
@@ -104,6 +106,8 @@ class TestLlamaAuto:
         if os.getenv("recompute") == "true":
             self.config.recompute = True
         self.config.recompute_granularity = os.getenv("recompute_granularity")
+        if os.getenv("use_lazy_init") == "true":
+            self.config.use_lazy_init = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
 
         self.init_dist_env()
@@ -126,7 +130,14 @@ class TestLlamaAuto:
         set_global_mesh(global_mesh)
 
     def run_llama(self, to_static=0):
-        model = LlamaForCausalLMAuto(self.config)
+        if self.config.use_lazy_init:
+            with LazyGuard():
+                model = LlamaForCausalLMAuto(self.config)
+            for param in model.parameters():
+                assert not param._is_initialized()
+                param.initialize()
+        else:
+            model = LlamaForCausalLMAuto(self.config)
         criterion = LlamaPretrainingCriterionAuto(self.config)
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(

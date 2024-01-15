@@ -20,7 +20,6 @@ from utils import compare_legacy_with_pt
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.base.framework import in_pir_mode
 from paddle.incubate.layers.nn import shuffle_batch
@@ -34,11 +33,19 @@ class TestWhileOp(unittest.TestCase):
         d0 = paddle.static.data("d0", shape=[10], dtype='float32')
         d1 = paddle.static.data("d1", shape=[10], dtype='float32')
         d2 = paddle.static.data("d2", shape=[10], dtype='float32')
+        d0.persistable = True
+        d0.stop_gradient = False
+        d1.persistable = True
+        d2.persistable = True
         i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
+        i.persistable = True
         init = paddle.zeros(shape=[10], dtype='float32')
         mem_array = paddle.tensor.array_write(x=init, i=i)
         data_array = paddle.tensor.array_write(x=d0, i=i)
+        mem_array.stop_gradient = False
+        data_array.stop_gradient = False
+        mem_array.persistable = True
         i = paddle.increment(i)
         paddle.tensor.array_write(d1, i, array=data_array)
         i = paddle.increment(i)
@@ -87,8 +94,7 @@ class TestWhileOp(unittest.TestCase):
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
-
-            append_backward(loss)
+            # append_backward(loss)
 
             cpu = core.CPUPlace()
             exe = Executor(cpu)

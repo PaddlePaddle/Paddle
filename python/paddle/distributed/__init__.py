@@ -92,7 +92,7 @@ from .auto_parallel.api import (
 
 from .fleet import BoxPSDataset  # noqa: F401
 
-from .entry_attr import (  # noqa: F401
+from .entry_attr import (
     ProbabilityEntry,
     CountFilterEntry,
     ShowClickEntry,

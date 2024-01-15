@@ -20,6 +20,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_x_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
@@ -67,6 +68,7 @@ REGISTER_RESHARD_FUNC(PToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(SToSReshardFunction);
 REGISTER_RESHARD_FUNC(SToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(XToRShrinkReshardFunction);
+REGISTER_RESHARD_FUNC(RToXExpandReshardFunction);
 REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
 REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
 REGISTER_RESHARD_FUNC(CrossNdMeshReshardFunction);

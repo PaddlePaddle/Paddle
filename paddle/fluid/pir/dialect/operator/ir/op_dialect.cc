@@ -19,6 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
+#include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/interface_value.h"
@@ -26,6 +27,7 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
 namespace paddle {
 namespace dialect {
@@ -44,25 +46,44 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    std::vector<symbol::DimExpr> shapes;
-    std::vector<symbol::DimExpr> data;
+    std::vector<symbol::DimExpr> out_dims;
 
-    for (auto operand_source : op->operands_source()) {
-      std::string operand_source_id = pir::GetValueId(&operand_source);
-      auto source_data_p =
-          shape_analysis->value_id_to_shapeordata_[operand_source_id].data();
-      auto source_shape_vec =
-          source_data_p.value_or(std::vector<symbol::DimExpr>{});
-      for (size_t i = 0; i < source_shape_vec.size(); i++) {
-        data.emplace_back(source_shape_vec.at(i));
+    // Currently for all operand : type.dims == 1u
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto type =
+          op->operand(i).type().dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(type, "Currently only support DenseTensorType.");
+      IR_ENFORCE(type.dims().size() == 0u,
+                 "Currently CombineOp only support 0-d DenseTensorType for "
+                 "InferSymbolicShape. But the dims of the %d-th "
+                 "DenseTensorType is %d.",
+                 i,
+                 type.dims().size());
+    }
+
+    auto operand_source_1st_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).data();
+    if (operand_source_1st_data.has_value()) {
+      for (auto operand_source : op->operands_source()) {
+        auto source_data =
+            shape_analysis->GetShapeOrDataForValue(operand_source)
+                .data()
+                .value();
+        out_dims.push_back(source_data[0]);
       }
     }
 
-    auto res = op->result(0);
-    auto res_id = pir::GetValueId(&res);
+    symbol::ShapeOrDataDimExprs shape_data{out_dims};
+    if (operand_source_1st_data.has_value()) {
+      shape_data =
+          symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+    }
 
-    symbol::ShapeOrDataDimExprs shape_data{shapes, data};
-    shape_analysis->value_id_to_shapeordata_[res_id] = shape_data;
+    op->set_attribute("symbolic_shape",
+                      pir::shape::SymbolAttribute::get(
+                          pir::IrContext::Instance(), shape_data));
+    auto res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
     return true;
   }
 
@@ -375,9 +396,25 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
           output_name, "paddle::dialect::DenseTensorType", is_optional, false});
     }
 
+    auto& inplace_maps = OpMetaInfoHelper::GetInplaceReverseMap(op_meta);
+
+    if (!inplace_maps.empty()) {
+      VLOG(3) << "Register Custom Operator: op inplace_map: "
+              << string::join_strings(inplace_maps, ',', [](auto& pair) {
+                   return pair.first + ": " + pair.second;
+                 });
+    }
+
+    std::vector<std::pair<std::string, std::string>> vec_inplace;
+    for (auto inplace_map : inplace_maps) {
+      vec_inplace.push_back(inplace_map);
+    }
+
     // we only need kernel params name in run_time_info
     paddle::dialect::OpRunTimeInfo run_time_info =
-        paddle::dialect::OpRunTimeInfo("", {}, "", param_names, {}, {}, {}, {});
+        paddle::dialect::OpRunTimeInfo(
+            "", {}, "", param_names, {}, {}, vec_inplace, {});
+
     return std::make_tuple(
         inputs_info, attributes_info, outputs_info, run_time_info, "");
   }
@@ -406,6 +443,13 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
   pir::TypeId id = IdManager::Instance().CreateId();
   std::string op_name = paddle::framework::kCustomDialectPrefix +
                         OpMetaInfoHelper::GetOpName(op_meta);
+  std::vector<pir::TypeId> traits;
+
+  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(op_meta);
+  if (!inplace_map.empty()) {
+    op_name += "_";
+    traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
+  }
   op_names_.push_back(op_name);
 
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
@@ -419,7 +463,6 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
       AttributeManager::Instance().ToCharPointers(attr_names);
   uint32_t attr_num = attr_names.size();
 
-  std::vector<pir::TypeId> traits;
   std::set<pir::InterfaceValue> interface_values;
   pir::InterfaceValue op_info_interface =
       pir::InterfaceValue::Get<OpYamlInfoInterface,
