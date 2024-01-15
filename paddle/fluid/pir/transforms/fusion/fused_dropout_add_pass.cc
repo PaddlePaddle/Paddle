@@ -51,7 +51,7 @@ class FusedDropoutAddPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("add_out"), &res.Tensor("mask")});
   }
 
-  std::string pattern_name() const override { return "FusedDropoutAddPattern"; }
+  std::string name() const override { return "FusedDropoutAddPattern"; }
 };
 
 class FusedDropoutGradAddGradPattern : public paddle::drr::DrrPatternBase {
@@ -105,9 +105,7 @@ class FusedDropoutGradAddGradPattern : public paddle::drr::DrrPatternBase {
                            {&res.Tensor("x_grad"), &res.Tensor("y_grad")});
   }
 
-  std::string pattern_name() const override {
-    return "FusedDropoutGradAddGradPattern";
-  }
+  std::string name() const override { return "FusedDropoutGradAddGradPattern"; }
 };
 
 class FusedDropoutAddPass : public pir::PatternRewritePass {

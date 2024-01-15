@@ -138,7 +138,7 @@ class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
                            &res.Tensor("rng_state")});
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "FusedDotProductAttentionPattern";
   }
 };
@@ -318,7 +318,7 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("q_grad"), &res.Tensor("k_grad"), &res.Tensor("v_grad")});
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "FusedDotProductAttentionGradPattern";
   }
 };
@@ -448,7 +448,7 @@ class FusedDotProductAttentionWithDropoutPattern
                            &res.Tensor("rng_state")});
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "FusedDotProductAttentionWithDropoutPattern";
   }
 };
@@ -639,7 +639,7 @@ class FusedDotProductAttentionGradWithDropoutPattern
         {&res.Tensor("q_grad"), &res.Tensor("k_grad"), &res.Tensor("v_grad")});
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "FusedDotProductAttentionGradWithDropoutPattern";
   }
 };

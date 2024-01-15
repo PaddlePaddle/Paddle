@@ -217,9 +217,7 @@ class MultiHeadMatmulFusePattern : public paddle::drr::DrrPatternBase {
                      {&res.Tensor("reshape_4_out")});
   }
 
-  std::string pattern_name() const override {
-    return "MultiHeadMatmulFusePattern";
-  }
+  std::string name() const override { return "MultiHeadMatmulFusePattern"; }
 };
 
 class AttentionFusePass : public pir::PatternRewritePass {

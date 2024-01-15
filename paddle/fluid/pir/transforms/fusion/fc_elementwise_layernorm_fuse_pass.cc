@@ -93,7 +93,7 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
                              &res.Tensor("layernorm_variance")});
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "FcElementwiseLayerNormFusePattern";
   }
 };
@@ -159,7 +159,7 @@ class FcElementwiseLayerNormFuse2Pattern : public paddle::drr::DrrPatternBase {
                              &res.Tensor("layernorm_variance")});
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "FcElementwiseLayerNormFuse2Pattern";
   }
 };

@@ -543,7 +543,7 @@ std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
   DrrPatternContext drr_context;
   this->operator()(&drr_context);
   return std::make_unique<DrrRewritePattern>(
-      pattern_name(), drr_context, ir_context, pattern_benefit());
+      name(), drr_context, ir_context, benefit());
 }
 
 }  // namespace drr

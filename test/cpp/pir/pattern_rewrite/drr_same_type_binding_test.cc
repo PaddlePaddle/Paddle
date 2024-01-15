@@ -179,9 +179,7 @@ class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("output6") = full_6();
   }
 
-  std::string pattern_name() const override {
-    return "SameTypeBindingTestPattern";
-  }
+  std::string name() const override { return "SameTypeBindingTestPattern"; }
 };
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT

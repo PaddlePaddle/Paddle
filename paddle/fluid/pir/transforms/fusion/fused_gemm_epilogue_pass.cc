@@ -58,7 +58,7 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("out")});
   }
 
-  std::string pattern_name() const override { return "FusedLinearPattern"; }
+  std::string name() const override { return "FusedLinearPattern"; }
 };
 
 class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
@@ -116,7 +116,7 @@ class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
                               &res.Tensor("bias_grad")});
   }
 
-  std::string pattern_name() const override { return "FusedLinearGradPattern"; }
+  std::string name() const override { return "FusedLinearGradPattern"; }
 };
 
 class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
@@ -156,7 +156,7 @@ class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
 
-  std::string pattern_name() const override { return "FusedLinearGeluPattern"; }
+  std::string name() const override { return "FusedLinearGeluPattern"; }
 };
 
 class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
@@ -196,7 +196,7 @@ class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
 
-  std::string pattern_name() const override { return "FusedLinearReluPattern"; }
+  std::string name() const override { return "FusedLinearReluPattern"; }
 };
 
 class FusedLinearGeluGradPattern : public paddle::drr::DrrPatternBase {
@@ -265,9 +265,7 @@ class FusedLinearGeluGradPattern : public paddle::drr::DrrPatternBase {
                                   &res.Tensor("bias1_grad")});
   }
 
-  std::string pattern_name() const override {
-    return "FusedLinearGeluGradPattern";
-  }
+  std::string name() const override { return "FusedLinearGeluGradPattern"; }
 };
 
 class FusedLinearReluGradPattern : public paddle::drr::DrrPatternBase {
@@ -336,9 +334,7 @@ class FusedLinearReluGradPattern : public paddle::drr::DrrPatternBase {
                                    &res.Tensor("bias1_grad")});
   }
 
-  std::string pattern_name() const override {
-    return "FusedLinearReluGradPattern";
-  }
+  std::string name() const override { return "FusedLinearReluGradPattern"; }
 };
 
 class FusedGemmEpiloguePass : public pir::PatternRewritePass {

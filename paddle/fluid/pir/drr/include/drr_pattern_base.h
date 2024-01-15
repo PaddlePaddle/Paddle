@@ -39,10 +39,10 @@ class DrrPatternBase {
   virtual void operator()(drr::DrrPatternContext* ctx) const = 0;
 
   // Give the drr pattern name.
-  virtual std::string pattern_name() const = 0;
+  virtual std::string name() const = 0;
 
   // Give the drr pattern benefit.
-  virtual uint32_t pattern_benefit() const { return 1; }
+  virtual uint32_t benefit() const { return 1; }
 
   // Build the Drr Pattern.
   std::unique_ptr<DrrRewritePattern> Build(pir::IrContext* ir_context) const;

@@ -128,9 +128,7 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
                        {&res.Tensor("add_out")});
   }
 
-  std::string pattern_name() const override {
-    return "FusedWeightOnlyLinearPattern";
-  }
+  std::string name() const override { return "FusedWeightOnlyLinearPattern"; }
 };
 
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {

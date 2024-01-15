@@ -72,7 +72,7 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
                   {&res.Tensor("scale_out")});
   }
 
-  std::string pattern_name() const override { return "MatmulScaleFusePattern"; }
+  std::string name() const override { return "MatmulScaleFusePattern"; }
 };
 
 class MatmulScaleFusePass : public pir::PatternRewritePass {

@@ -47,9 +47,7 @@ class RemoveUselessScalePattern : public paddle::drr::DrrPatternBase {
     res.Tensor("scale_out").Assign(res.Tensor("x"));
   }
 
-  std::string pattern_name() const override {
-    return "RemoveUselessScalePattern";
-  }
+  std::string name() const override { return "RemoveUselessScalePattern"; }
 };
 
 class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
@@ -121,9 +119,7 @@ class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
                  {&res.Tensor("scale_2_out")});
   }
 
-  std::string pattern_name() const override {
-    return "RemoveRedundentScalePattern";
-  }
+  std::string name() const override { return "RemoveRedundentScalePattern"; }
 };
 
 class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
@@ -136,9 +132,7 @@ class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("ret").Assign(res.Tensor("arg0"));
   }
 
-  std::string pattern_name() const override {
-    return "RemoveUselessCastPattern";
-  }
+  std::string name() const override { return "RemoveUselessCastPattern"; }
 };
 
 class RemoveUselessConcatPattern : public paddle::drr::DrrPatternBase {
@@ -158,9 +152,7 @@ class RemoveUselessConcatPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("out").Assign(res.Tensor("x"));
   }
 
-  std::string pattern_name() const override {
-    return "RemoveUselessConcatPattern";
-  }
+  std::string name() const override { return "RemoveUselessConcatPattern"; }
 };
 
 class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
@@ -175,9 +167,7 @@ class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
         "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
 
-  std::string pattern_name() const override {
-    return "RemoveRedundentCastPattern";
-  }
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 
 class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
@@ -208,7 +198,7 @@ class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
     res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "RemoveRedundentTransposePattern";
   }
 };

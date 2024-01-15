@@ -42,9 +42,7 @@ class RemoveRedundentReshapePattern : public paddle::drr::DrrPatternBase {
                             {&res.Tensor("ret"), &res.Tensor("xshape_1")});
   }
 
-  std::string pattern_name() const override {
-    return "RemoveRedundentReshapePattern";
-  }
+  std::string name() const override { return "RemoveRedundentReshapePattern"; }
 };
 
 class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
@@ -82,9 +80,7 @@ class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("ret") = full2();
   }
 
-  std::string pattern_name() const override {
-    return "FoldExpandToConstantPattern";
-  }
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 
 class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
@@ -115,7 +111,7 @@ class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
     res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
   }
 
-  std::string pattern_name() const override {
+  std::string name() const override {
     return "RemoveRedundentTransposePattern";
   }
 };
@@ -132,9 +128,7 @@ class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
         "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
 
-  std::string pattern_name() const override {
-    return "RemoveRedundentCastPattern";
-  }
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 
 class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
@@ -147,9 +141,7 @@ class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("ret").Assign(res.Tensor("arg0"));
   }
 
-  std::string pattern_name() const override {
-    return "RemoveUselessCastPattern";
-  }
+  std::string name() const override { return "RemoveUselessCastPattern"; }
 };
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT

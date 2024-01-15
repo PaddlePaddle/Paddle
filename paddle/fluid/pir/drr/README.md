@@ -32,9 +32,9 @@ class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
                {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
 
-	std::string pattern_name() const override {
-		return "RemoveRedundentCastPattern";
-	}
+  std::string pattern_name() const override {
+    return "RemoveRedundentCastPattern";
+  }
 };
 ~~~
 
@@ -197,9 +197,7 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("out")});
   }
 
-	std::string pattern_name() const override {
-		return "FusedLinearPattern";
-	}
+  std::string name() const override { return "FusedLinearPattern"; }
 };
 ~~~
 
@@ -233,8 +231,6 @@ class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("ret") = full2();
   }
 
-	std::string pattern_name() const override {
-    return "FoldExpandToConstantPattern";
-  }
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 ~~~

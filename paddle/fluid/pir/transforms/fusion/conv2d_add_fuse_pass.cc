@@ -77,7 +77,7 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
                          {&res.Tensor("add_out")});
   }
 
-  std::string pattern_name() const override { return "Conv2dAddFusePattern"; }
+  std::string name() const override { return "Conv2dAddFusePattern"; }
 };
 
 class Conv2dAddFusePass : public pir::PatternRewritePass {
