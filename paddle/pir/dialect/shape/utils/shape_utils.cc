@@ -148,22 +148,25 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   return it->second;
 }
 
+std::string GetValueId(const Value& val) {
+  auto op_id = val.defining_op()->id();
+  auto val_idx = val.dyn_cast<OpResult>().index();
+
+  return val.defining_op()->name() + "_" + std::to_string(op_id) + "_rst_" +
+         std::to_string(val_idx);
+}
+
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
-  CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end());
+  CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end())
+      << "Value(" << GetValueId(val)
+      << ") not found in value_to_shape_or_data_.";
   return value_to_shape_or_data_[val];
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   value_to_shape_or_data_[val] = shape_or_data;
-}
-
-std::string GetValueId(const Value& val) {
-  auto op_id = val.defining_op()->id();
-  auto val_idx = val.dyn_cast<OpResult>().index();
-
-  return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
