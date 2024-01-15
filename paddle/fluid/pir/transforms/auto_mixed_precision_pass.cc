@@ -205,13 +205,12 @@ class AutoMixedPrecisionPass : public pir::Pass {
           }
         }
         if (!OpRunLowPrecision(op)) continue;
-        if (op->isa<paddle::dialect::CastOp>()) {  // add for cast op, not cast
-                                                   // to float. i.e cast to bool
-                                                   // or int
-          // if datatype of cast op result is not float, then cast op should be
-          // not handled
-          auto result_dtype = paddle::dialect::TransToPhiDataType(
-              pir::GetDataTypeFromValue(op->result(0)));
+        // if datatype of cast op result is not float, then cast op should be
+        // not handled
+        if (op->isa<paddle::dialect::CastOp>()) {
+          t.i.e cast to bool auto result_dtype =
+              paddle::dialect::TransToPhiDataType(
+                  pir::GetDataTypeFromValue(op->result(0)));
           if (!IsPhiDataTypeFloat(result_dtype)) {
             op_run_low_precision_.erase(op);
             op_should_not_handle_.insert(op);
@@ -219,11 +218,15 @@ class AutoMixedPrecisionPass : public pir::Pass {
           }
         }
         if (!OpRunLowPrecision(op)) continue;
-        if (CheckOutputIsScalarAttribute(op)) {  // Output is ScalarAttribute
+        // if consumer's input is a ScalarAttribute, the producer should be in
+        // high precision
+        if (CheckOutputIsScalarAttribute(op)) {
           op_run_low_precision_.erase(op);
           precision_updated = true;
         }
         if (!OpRunLowPrecision(op)) continue;
+        // if the producer's output is in float VectorType, then the precsion
+        // between two op should be the same
         for (size_t idx = 0; idx < op->num_operands(); ++idx) {
           if (!op->operand_source(idx)) continue;
           auto operand = op->operand(idx);
@@ -232,7 +235,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
             auto vec_type = operand.type().dyn_cast<pir::VectorType>();
             if (IsVectorTypeFloat(vec_type)) {
               auto input_operation = GetDefiningOpForInput(op, idx);
-              // 如果有一个是高精的话，则必须都跑在高精上
               if (!op_run_low_precision_.count(op) ||
                   !op_run_low_precision_.count(input_operation)) {
                 op_run_low_precision_.erase(op);
