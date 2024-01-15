@@ -36,7 +36,7 @@ class TestSetStaticOpArgPreCastHook(Dy2StTestBase):
         with static_guard():
             with self.assertRaisesRegex(
                 TypeError,
-                r"abs\(\): argument \(position 1\) must be OpResult, but got Tensor",
+                r"abs\(\): argument \(position 1\) must be Value, but got Tensor",
             ):
                 paddle.abs(eager_tensor)
 
