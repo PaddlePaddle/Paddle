@@ -828,6 +828,18 @@ void BindValue(py::module *m) {
            })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
+      .def("replace_grad_users_with",
+           [](Value self,
+              Value value,
+              std::unordered_set<Operation *> &grad_ops) {
+             for (auto it = self.use_begin(); it != self.use_end(); it++) {
+               auto use_op = it.owner();
+               std::cout << use_op->name() << std::endl;
+               if (grad_ops.find(use_op) != grad_ops.end()) {
+                 it->set_source(value);
+               }
+             }
+           })
       .def("set_type", [](Value self, Type type) { self.set_type(type); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
