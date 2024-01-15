@@ -20,27 +20,30 @@
 
 namespace paddle {
 namespace framework {
-void ParsePlace(pir::Type type, OpFuncType type_) {
-  if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+bool ParsePlace(const pir::Type& type, OpFuncType* func_type) {
+  if (type->isa<paddle::dialect::AllocatedDenseTensorType>()) {
     auto place =
-        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place();
+        type->dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place();
     place == phi::CPUPlace();
     if (place == phi::GPUPlace()) {
-      type_ = OpFuncType::kGpuAsync;
-      return;
+      func_type = OpFuncType::kGpuAsync;
+      return true;
     }
-  } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+  } else if (type->isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     auto place =
-        type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>().place();
+        type->dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+            .place();
     if (place == phi::GPUPlace()) {
-      type_ = OpFuncType::kGpuAsync;
-      return;
+      func_type = OpFuncType::kGpuAsync;
+      return true;
     }
-  } else if (type.isa<pir::VectorType>()) {
-    pir::VectorType inlet_element_type = type.dyn_cast<pir::VectorType>();
+  } else if (type->isa<pir::VectorType>()) {
+    pir::VectorType inlet_element_type = type->dyn_cast<pir::VectorType>();
     for (size_t i = 0; i < static_cast<size_t>(inlet_element_type.size());
          i++) {
-      ParsePlace(inlet_element_type[i], type_);
+      if (ParsePlace(inlet_element_type[i], func_type)) {
+        return true;
+      }
     }
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -48,7 +51,7 @@ void ParsePlace(pir::Type type, OpFuncType type_) {
         "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
         type));
   }
-  return;
+  return false;
 }
 
 TuplePushInstruction::TuplePushInstruction(size_t id,
@@ -79,10 +82,11 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
   SetOutputs(outputs);
 
   type_ = OpFuncType::kCpuSync;
-
   for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
-    ParsePlace(inlet_element_value.type(), type_);
+    if (ParsePlace(inlet_element_value.type(), &type_)) {
+      break;
+    }
   }
 }
 
@@ -94,6 +98,7 @@ void TuplePushInstruction::Run() {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
     // TODO(zhangbo): Performance optimization: static acquisition of TuplePush
     // input variables and name.
+    std::map<Variable*, Variable*> src_to_dst;
     for (size_t i = 0; i < tuple_push_op_.tuple_size(); i++) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
       Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
@@ -105,7 +110,8 @@ void TuplePushInstruction::Run() {
       auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
       bool is_optional = (inlet_element_value.impl() == nullptr ||
                           !inlet_element_value.type());
-      DeepCopyVariable(var, copy_var, value_exe_info_, stack_size, is_optional);
+      DeepCopyVariable(
+          var, copy_var, value_exe_info_, stack_size, is_optional, src_to_dst);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
       VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]"

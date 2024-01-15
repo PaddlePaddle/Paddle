@@ -137,7 +137,9 @@ void TuplePopInstruction::Run() {
       auto grad_var = value_exe_info_->GetVarByValue(outlet_element_value);
       ShareVarData(front_var, grad_var);
       Variable* gc_front_var = const_cast<Variable*>(front_var);
-      AddEagerGCVar(gc_front_var);
+      if (!gc_front_var->IsType<VariableRefArray>()) {
+        AddEagerGCVar(gc_front_var);
+      }
     }
   }
 }
