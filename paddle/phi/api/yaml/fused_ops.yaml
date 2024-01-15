@@ -45,7 +45,7 @@
   support_dygraph_mode : true
 
 - op : bn_act_xpu
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_layout, int act_type)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_format, int act_type)
   output : Tensor(out)
   infer_meta :
     func : BNActXPUInferMeta
@@ -122,7 +122,7 @@
     data_type : x
 
 - op : fc
-  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool use_mkldnn = false, bool padding_weights = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float scale_in = 1.0f, float[] scale_weights = {1.0f}, float scale_out = 1.0f, bool force_fp32_output = false)
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false)
   output : Tensor(out)
   infer_meta :
     func : FCInferMeta
@@ -383,6 +383,21 @@
     func : layer_norm_act_xpu
     data_type : x
 
+# This op is implemented using CUDNN Frontend API, which serves as a supplement to
+# legacy max pooling implementation. It shows better performance with NHWC layout and
+# half precision.
+- op : max_pool2d_v2
+  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, str data_format = "NCHW", bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(saved_idx)
+  infer_meta :
+    func : MaxPoolV2InferMeta
+    param : [x, kernel_size, strides, paddings, data_format, global_pooling, adaptive]
+  kernel :
+    func : max_pool2d_v2
+    param : [x, kernel_size, strides, paddings, data_format, global_pooling, adaptive]
+  intermediate: saved_idx
+  backward : max_pool2d_v2_grad
+
 - op : multi_encoder_xpu
   args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
   output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
@@ -404,7 +419,7 @@
   optional : bias_qk
 
 - op : qkv_attention_xpu
-  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, DataType out_dtype)
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
   output : Tensor(qkv), Tensor(qkv_max)
   infer_meta :
     func : QKVAttentionXPUInferMeta
@@ -429,6 +444,15 @@
     func : SelfDPAttenInferMeta
   kernel :
     func : self_dp_attention
+    data_type : x
+
+- op : sine_pos_xpu
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : SinePosXPUInferMeta
+  kernel :
+    func : sine_pos_xpu
     data_type : x
 
 - op : skip_layernorm

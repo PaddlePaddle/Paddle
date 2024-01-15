@@ -27,7 +27,6 @@ import types
 import warnings
 from importlib.machinery import SourceFileLoader
 
-import astor
 import numpy as np
 
 import paddle
@@ -36,14 +35,14 @@ from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.utils import gast
+from paddle.framework import CUDAPinnedPlace
+from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
 from .utils_helper import (  # noqa: F401
     DYGRAPH_MODULE_PREFIX,
     DYGRAPH_TO_STATIC_MODULE_PREFIX,
     PADDLE_MODULE_PREFIX,
-    NodeVarType,
     _is_api_in_module_helper,
     index_in_list,
     is_api_in_module,
@@ -320,7 +319,7 @@ def is_paddle_func(func, ignore_white_list=True):
 
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
-    func_src = astor.to_source(gast.gast_to_ast(node.func))
+    func_src = ast_to_source_code(node.func)
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -398,7 +397,7 @@ def update_args_of_func(node, dygraph_node, method_name):
             "The method name of class to update args should be '__init__' or 'forward'"
         )
 
-    class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
+    class_src = ast_to_source_code(dygraph_node.func)
 
     if method_name == "__init__" or eval(
         f"issubclass({class_src}, paddle.nn.Layer)"
@@ -454,7 +453,7 @@ def get_attribute_full_name(node):
     assert isinstance(
         node, gast.Attribute
     ), "Input non-Attribute node to get attribute full name"
-    return astor.to_source(gast.gast_to_ast(node)).strip()
+    return ast_to_source_code(node).strip()
 
 
 def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
@@ -1281,3 +1280,19 @@ def tensor_name_guard(tensors, names):
     finally:
         for t, name in zip(tensors, origin_names):
             t.name = name
+
+
+def cuda_pinned_tensors_move_to_excepted_place(inputs):
+    if paddle.is_compiled_with_cuda():
+        expected_place = framework._current_expected_place()
+        cuda_pinned_place = CUDAPinnedPlace()
+
+        for value in flatten(inputs):
+            if (
+                isinstance(value, core.eager.Tensor)
+                and value.stop_gradient
+                and value.place._equals(cuda_pinned_place)
+            ):
+                var = value._copy_to(expected_place, True)
+                var.stop_gradient = True
+                var._share_buffer_to(value)

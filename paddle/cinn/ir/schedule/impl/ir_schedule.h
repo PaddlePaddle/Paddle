@@ -49,6 +49,7 @@ class DyScheduleImpl : public ScheduleBase {
   std::vector<Expr> GetChildBlocks(const Expr& expr) const;
   Expr GetBlock(const std::string& block_name) const;
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
+  std::vector<Expr> Split(const Expr& loop, const std::vector<Expr>& factors);
   std::vector<Expr> SamplePerfectTile(
       utils::LinearRandomEngine::StateType* rand_seed,
       const Expr& loop,
@@ -122,6 +123,7 @@ class StScheduleImpl : public ScheduleBase {
   std::vector<Expr> GetChildBlocks(const Expr& expr) const;
   Expr GetBlock(const std::string& block_name) const;
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
+  std::vector<Expr> Split(const Expr& loop, const std::vector<Expr>& factors);
   std::vector<Expr> SamplePerfectTile(
       utils::LinearRandomEngine::StateType* rand_seed,
       const Expr& loop,

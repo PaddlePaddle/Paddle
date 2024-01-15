@@ -22,7 +22,7 @@
 namespace symbol::test {
 
 // Construct DimExpr by overloaded operator(+, - , *, /)
-TEST(DimExpr, dim_expr_naive) {
+TEST(DimExpr, DimExprNaive) {
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
@@ -30,7 +30,7 @@ TEST(DimExpr, dim_expr_naive) {
 }
 
 // Construct DimExpr by DimExprBuilder
-TEST(DimExpr, dim_expr_builder) {
+TEST(DimExpr, DimExprBuilder) {
   DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
@@ -40,7 +40,7 @@ TEST(DimExpr, dim_expr_builder) {
 }
 
 // Add constraints by DimExprBuilder
-TEST(DimExpr, constraint) {
+TEST(DimExpr, Constraint) {
   std::vector<DimExprConstraint> constraints{};
   DimExprBuilder builder(&constraints);
   DimExpr sym0 = DimExpr("S0");
@@ -55,7 +55,7 @@ TEST(DimExpr, constraint) {
     extend_x = x.shape
     out = pd.reshape(y, extend_x)
 */
-TEST(DimExpr, data_shape_expr) {
+TEST(DimExpr, DataShapeExpr) {
   // Show ideal ShapeOrDataDimExprs of each pir::Value
   std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
   std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
@@ -80,7 +80,7 @@ TEST(Simplify, NumberArithmetic) {
   ASSERT_EQ((mul_div.Get<std::int64_t>()), 1);
 }
 
-TEST(DimExpr, equal) {
+TEST(DimExpr, Equal) {
   DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
@@ -109,6 +109,41 @@ TEST(DimExpr, equal) {
   ASSERT_NE(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
   ASSERT_EQ(builder.Broadcast(sym0, constant1),
             builder.Broadcast(DimExpr("S0"), constant1));
+}
+
+TEST(DimExpr, Print) {
+  DimExprBuilder builder{nullptr};
+  DimExpr sym0 = DimExpr("S0");
+  DimExpr sym1 = DimExpr("S1");
+  ASSERT_EQ((ToString(sym0 + sym1)), "Add(S0, S1)");
+  ASSERT_EQ((ToString(sym0 - sym1)), "Add(S0, -S1)");
+  ASSERT_EQ((ToString(sym0 * sym1)), "Mul(S0, S1)");
+  ASSERT_EQ((ToString(sym0 / sym1)), "Mul(S0, 1 / (S1))");
+  ASSERT_EQ((ToString(builder.Max(sym0, sym1))), "Max(S0, S1)");
+  ASSERT_EQ((ToString(builder.Min(sym0, sym1))), "Min(S0, S1)");
+  ASSERT_EQ((ToString(builder.Broadcast(sym0, sym1))), "Broadcast(S0, S1)");
+}
+
+TEST(DimExpr, Hash) {
+  DimExprBuilder builder{nullptr};
+  DimExpr sym0 = DimExpr("S0");
+  DimExpr sym1 = DimExpr("S1");
+  ASSERT_EQ((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 + sym1)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym1 + sym0)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 - sym1)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 * sym1)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 / sym1)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(builder.Max(sym0, sym1))));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(builder.Min(sym0, sym1))));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(builder.Broadcast(sym0, sym1))));
 }
 
 }  // namespace symbol::test

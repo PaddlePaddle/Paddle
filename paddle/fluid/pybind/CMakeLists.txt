@@ -44,15 +44,14 @@ set(PYBIND_DEPS
     new_profiler
     fluid_jit
     prim_utils
-    gather_op_handle
+    detail_op_handle
     static_tensor_operants
     type_info
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
-      add_broadcast_to_elementwise_pass pd_to_cinn_pass sub_graph_checker)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
+                  sub_graph_checker)
 endif()
 
 if(WITH_PSCORE)

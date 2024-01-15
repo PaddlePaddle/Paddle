@@ -51,9 +51,8 @@ TEST(shapedtype_test, shapedtype_test) {
   EXPECT_EQ(
       dense_tensor_type_interface.GetElementType().isa<pir::Float32Type>(),
       true);
-  EXPECT_EQ(dense_tensor_type_interface.GetDyShape(), common::vectorize(dims));
-  EXPECT_EQ(dense_tensor_type_interface.kDynamic,
-            std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(dense_tensor_type_interface.GetShape(), dims);
+  EXPECT_EQ(dense_tensor_type_interface.kDynamic, std::int64_t(-1));
   EXPECT_EQ(dense_tensor_type_interface.GetRank(), 2);
   EXPECT_EQ(dense_tensor_type_interface.IsDynamic(2), false);
   EXPECT_EQ(dense_tensor_type_interface.IsDynamicShape(), false);

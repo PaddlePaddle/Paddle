@@ -25,9 +25,10 @@
 namespace cinn {
 namespace ir {
 
-ComputeInlineTactic::ComputeInlineTactic(
-    const std::unordered_set<std::string>& output_names, const Target& target)
-    : output_names_(output_names), target_(target) {}
+void ComputeInlineTactic::Init(ScheduleContext* context) {
+  output_names_ = context->output_names;
+  target_ = context->target;
+}
 
 void ComputeInlineTactic::Apply(ir::IRSchedule* sch,
                                 const std::string& block_id) {

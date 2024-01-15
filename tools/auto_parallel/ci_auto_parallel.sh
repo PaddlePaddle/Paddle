@@ -47,6 +47,7 @@ for element in "${target_lists_for_dygraph_ci[@]}";do
   fi
   count=$((count+1))
 done
+case_list[${#case_list[*]}]=test_semi_auto_parallel_hybrid_strategy
 for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{print $NF}'`;do
     arr_file_name=(${file_name//// })
     dir1=${arr_file_name[0]}
@@ -127,7 +128,11 @@ if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_
     echo ${case_list[*]}
 fi
 ####################
-
+if [[ "${case_list[*]}" == *"auto_unit_test"* ]]; then
+    echo "命中auto_unit_test, 不再单独执行test_semi_auto_parallel_hybrid_strategy"
+    case_list=("${case_list[@]/*test_semi_auto_parallel_hybrid_strategy*/}")
+    echo ${case_list[*]}
+fi
 case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"
@@ -160,11 +165,13 @@ if [[ ${#case_list[*]} -ne 0 ]];then
         elif [[ ${case} == "gpt-3_dygraph" ]];then
             bash /workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "llm_gpt" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_install_deps=1
-            export FLAGS_download_data="llm_gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "dygraph_unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
+            print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
+            let case_num++
+        elif [[ ${case} == "test_semi_auto_parallel_hybrid_strategy" ]];then
+            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh test_semi_auto_parallel_hybrid_strategy
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         else

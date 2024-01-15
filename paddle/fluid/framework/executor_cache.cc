@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/executor_cache.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -24,6 +25,8 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+
+DECLARE_FILE_SYMBOLS(print_statistics);
 
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 PHI_DECLARE_bool(print_ir);
@@ -326,7 +329,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
       place, program_desc.Block(0), scope, execution_config));
 
   auto &cached_value = interpretercore_info_cache.GetMutable(
-      program_id, scope, place_hash_key, is_grad);
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/false);
   cached_value.core_ = core;
   return core;
 }
@@ -355,7 +358,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
       place, {}, ir_program->block(), scope, execution_config));
 
   auto &cached_value = interpretercore_info_cache.GetMutable(
-      program_id, scope, place_hash_key, is_grad);
+      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/true);
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;
@@ -562,6 +565,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     pm.AddPass(::pir::CreateInplacePass());
     if (VLOG_IS_ON(6)) {
       pm.EnableIRPrinting();
+      pm.EnablePrintStatistics();
     }
     pm.Run(res.get());
     if (FLAGS_print_ir) {
