@@ -73,7 +73,7 @@ class TestOpWithBackwardTranslator(unittest.TestCase):
         ), "forward_op_type should be specified!"
         assert hasattr(
             self, "backward_op_type"
-        ), "forward_op_type should be specified!"
+        ), "backward_op_type should be specified!"
         serialized_pir_program = str(pir_program)
         assert self.forward_op_type in serialized_pir_program, (
             self.forward_op_type
