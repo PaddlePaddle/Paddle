@@ -469,6 +469,7 @@ class PassAutoScanTest(AutoScanTest):
                 self.num_invalid_programs += 1
                 continue
             self.num_ran_programs += 1
+            # print("zyt==========prog_config=",prog_config)
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)

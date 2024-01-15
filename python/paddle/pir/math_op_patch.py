@@ -15,7 +15,7 @@
 
 import warnings
 
-from paddle import _C_ops
+from paddle import _C_ops, base
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
 
@@ -655,3 +655,14 @@ def monkey_patch_value():
         Value.__setitem__ = _setitem_static
 
         _already_patch_value = True
+
+    def scalar_deepcopy(self, memo):
+        # By calling Scalar's constructor and using self. value() to return a new Scalar object
+        return base.core.Scalar(self.value())
+
+    def scalar_to_float(self):
+        # get the value from value() and cast to float
+        return float(self.value())
+
+    base.core.Scalar.__deepcopy__ = scalar_deepcopy
+    base.core.Scalar.__float__ = scalar_to_float

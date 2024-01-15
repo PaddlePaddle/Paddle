@@ -49,16 +49,6 @@ std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
       VLOG(6) << "get_op_version_map:" << pair.first << " "
               << pair.second.version_id();
     }
-    // hard_code
-    /*
-      当进行测试program_translator_test的时候, 检测不到是legacy_program的程序，
-      因为current_op_version和program_op_version的版本是一致的，
-      当program_op_version < current_op_version是，证明加载的program 是
-     legacy_program的程序
-     **/
-    if (current_op_versions.count("fill_constant")) {
-      current_op_versions["fill_constant"]++;
-    }
     const auto* _op_version_map = program->OpVersionMap();
     for (int i = 0; i < _op_version_map->pair_size(); ++i) {
       auto pair =

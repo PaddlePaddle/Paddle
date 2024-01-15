@@ -203,6 +203,8 @@ class BlockConfig:
             else:
                 canonicalized_attrs = op_config.attrs
             for name, values in canonicalized_attrs.items():
+                # print("zyt======name=",name)
+                # print("zyt======values=",values)
                 op_desc._set_attr(name, values)
             for name, values in op_config.outputs.items():
                 op_desc.set_output(name, values)
@@ -357,6 +359,8 @@ def create_fake_model(program_config):
 
     index = 0
     for name, tensor_config in program_config.inputs.items():
+        # print("zyt===name:",name)
+        # print("zyt===tensor_config:",tensor_config)
         var_desc = main_block_desc.var(name.encode())
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
@@ -406,12 +410,20 @@ def create_fake_model(program_config):
         # canonicalize scalar attrs
         if OpProtoHolder.instance().has_op_proto(op_config.type):
             proto = OpProtoHolder.instance().get_op_proto(op_config.type)
+            if op_config.type == "fill_constant":
+                print(
+                    "=======================================,{},{}".format(
+                        op_config.attrs, proto
+                    )
+                )
+
             canonicalized_attrs = framework.canonicalize_attrs(
                 op_config.attrs, proto
             )
         else:
             canonicalized_attrs = op_config.attrs
-
+        if op_config.type == "fill_constant":
+            print(f"zyt=======fill_constant={canonicalized_attrs}")
         for name, values in op_config.inputs.items():
             op_desc.set_input(name, values)
         for name, values in canonicalized_attrs.items():
@@ -419,7 +431,18 @@ def create_fake_model(program_config):
                 sub_block_desc = main_program_desc.append_block(main_block_desc)
                 values.fill_block_desc(sub_block_desc)
                 op_desc._set_attr(name, sub_block_desc)
+            # elif name == "value":
+            #     if isinstance(values, paddle.base.libpaddle.Scalar):
+            #         values = float(str(values))# 转换为之前的
+            #         print("zyt==============op_config.type={},_set_attr=name={},values={},type={}".format(op_config.type, name, values, type(values)))
+            #         op_desc._set_attr(name, float(str(values)))
             else:
+                if op_config.type == "fill_constant":
+                    print(
+                        "zyt==============op_config.type={},_set_attr=name={},values={},type={}".format(
+                            op_config.type, name, values, type(values)
+                        )
+                    )
                 op_desc._set_attr(name, values)
         for name, values in op_config.outputs.items():
             op_desc.set_output(name, values)
@@ -450,7 +473,9 @@ def create_fake_model(program_config):
                     )
         if op_config.type not in _OP_WITHOUT_KERNEL_SET:
             op_desc.infer_var_type(main_block_desc)
-            op_desc.infer_shape(main_block_desc)
+            print(op_desc)
+            op_desc.infer_shape(main_block_desc)  # here
+            print("ZZZZZZZZZZZZZZZZZZZZZZz--end")
         op_desc.check_attrs()
 
     for index, name in enumerate(program_config.outputs):
@@ -464,7 +489,6 @@ def create_fake_model(program_config):
         op_desc._set_attr("col", index)
 
     model = main_program_desc.serialize_to_string()
-
     util_program._sync_with_cpp()
     place = base.CPUPlace()
     executor = base.Executor(place)

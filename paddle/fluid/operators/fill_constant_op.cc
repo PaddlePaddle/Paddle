@@ -201,4 +201,10 @@ REGISTER_OP_VERSION(fill_constant)
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "place_type",
             "In order to support tensor in CUDAPinnedPlace and XPUPlace",
-            -1));
+            -1))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant, change the type of attribute [value] to Scalar
+      to support generic type)ROC",
+        paddle::framework::compatible::OpVersionDesc().ModifyAttr(
+            "value", "generic value", 0.0));
