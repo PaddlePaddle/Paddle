@@ -971,12 +971,12 @@ class TestCondWithDict(unittest.TestCase):
                 self.assertEqual(
                     ret['1'].shape,
                     [3, -1],
-                    f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
+                    f"The shape is not correct, expects [3, -1] but gets {ret['1'].shape}.",
                 )
                 self.assertEqual(
                     ret['2'].shape,
                     [-1, -1],
-                    f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
+                    f"The shape is not correct, expects [-1, -1] but gets {ret['2'].shape}.",
                 )
             else:
                 self.assertEqual(

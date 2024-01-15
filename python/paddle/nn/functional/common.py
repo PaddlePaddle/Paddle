@@ -17,7 +17,7 @@ import numpy
 import paddle
 from paddle import _C_ops, pir
 from paddle.base.layer_helper import LayerHelper
-from paddle.common_ops_import import Variable
+from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import (
     core,
     in_dynamic_mode,
@@ -109,9 +109,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     helper = LayerHelper("unfold", **locals())
 
-    check_variable_and_dtype(
-        x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'unfold'
-    )
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
 
     assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
 
@@ -157,7 +155,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -412,7 +410,7 @@ def interpolate(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
 
-    if isinstance(size, (Variable, paddle.pir.Value)):
+    if isinstance(size, (Variable, paddle.pir.OpResult)):
         size = size.cast("int32")  # static mode only support int32
         if size.ndim != 1:
             raise ValueError(
@@ -434,7 +432,7 @@ def interpolate(
         )
 
     if resample == 'AREA':
-        if isinstance(size, (list, tuple, Variable, paddle.pir.Value)):
+        if isinstance(size, (list, tuple, Variable, paddle.pir.OpResult)):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if size is None:
@@ -494,7 +492,7 @@ def interpolate(
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
         if (
-            isinstance(out_shape, (Variable, paddle.pir.Value))
+            isinstance(out_shape, (Variable, paddle.pir.OpResult))
             and not in_dynamic_mode()
         ):
             out_shape.stop_gradient = True
@@ -514,7 +512,7 @@ def interpolate(
             # Validate the shape
             contain_var = False
             for dim_idx, dim_size in enumerate(out_shape):
-                if isinstance(dim_size, (Variable, paddle.pir.Value)):
+                if isinstance(dim_size, (Variable, paddle.pir.OpResult)):
                     contain_var = True
                     continue
                 assert (
@@ -525,7 +523,7 @@ def interpolate(
                 new_size_tensor = []
                 size_list = []
                 for dim in out_shape:
-                    if isinstance(dim, (Variable, paddle.pir.Value)):
+                    if isinstance(dim, (Variable, paddle.pir.OpResult)):
                         dim.stop_gradient = True
                         new_size_tensor.append(dim)
                         size_list.append(-1)
@@ -591,7 +589,7 @@ def interpolate(
                 scale = float(scale)
             else:
                 scale = list(scale.numpy())
-        if isinstance(scale, (Variable, paddle.pir.Value)):
+        if isinstance(scale, (Variable, paddle.pir.OpResult)):
             scale.stop_gradient = True
             inputs["Scale"] = scale
         elif isinstance(scale, (float, int, numpy.ndarray)):
@@ -1111,7 +1109,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable, pir.Value)):
+    if not isinstance(p, (float, int, Variable, pir.OpResult)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1134,14 +1132,10 @@ def dropout(
         )  # semantic transfer
 
         if in_dynamic_or_pir_mode():
-            if paddle.static.default_main_program().random_seed != 0:
-                seed = paddle.static.default_main_program().random_seed
-            if paddle.common_ops_import.default_main_program().random_seed != 0:
-                seed = (
-                    paddle.common_ops_import.default_main_program().random_seed
-                )
+            if default_main_program().random_seed != 0:
+                seed = default_main_program().random_seed
 
-            out = _C_ops.dropout(
+            out, mask = _C_ops.dropout(
                 x,
                 None,
                 p,
@@ -1166,6 +1160,7 @@ def dropout(
             def get_attrs(prog, dropout_prob, is_test, seed):
                 if (seed is None or seed == 0) and prog.random_seed != 0:
                     seed = prog.random_seed
+
                 if isinstance(
                     dropout_prob, Variable
                 ) and not dropout_prob.shape != [1]:
@@ -1543,7 +1538,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        x (Tensor): The input tensor with data type float32/double/int32/int64_t/complex64/complex128.
+        x (Tensor): The input tensor with data type float32/double/int32/int64_t.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
             If mode is ``'constant'`` and length of pad is twice as length of x dimension, then x will
             be padded from the first  dimension to the last dimension.
@@ -1676,7 +1671,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
             return out
 
         if in_pir_mode():
-            if isinstance(pad_value, paddle.pir.Value):
+            if isinstance(pad_value, paddle.pir.OpResult):
                 return _C_ops.pad(x, paddings, pad_value)
             else:
                 return _C_ops.pad(x, paddings, float(pad_value))
@@ -1731,7 +1726,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     unsqueezed_dim = []
 
-    if isinstance(pad, (Variable, pir.Value)):
+    if isinstance(pad, (Variable, pir.OpResult)):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1963,9 +1958,9 @@ def linear(x, weight, bias=None, name=None):
         return _C_ops.linear(x, weight, bias)
 
     elif in_pir_mode():
-        out = _C_ops.matmul(x, weight, False, False)
+        out = paddle._pir_ops.matmul(x, weight, False, False)
         if bias is not None:
-            return _C_ops.add(out, bias)
+            return paddle._pir_ops.add(out, bias)
         else:
             return out
     else:
@@ -2238,10 +2233,8 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         )
 
     seed = None
-    if (
-        seed is None or seed == 0
-    ) and paddle.static.default_main_program().random_seed != 0:
-        seed = paddle.static.default_main_program().random_seed
+    if (seed is None or seed == 0) and default_main_program().random_seed != 0:
+        seed = default_main_program().random_seed
 
     if in_dynamic_or_pir_mode():
         return _C_ops.class_center_sample(
@@ -2406,7 +2399,7 @@ def fold(
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         out = _C_ops.fold(
             x, output_sizes, kernel_sizes, strides, paddings, dilations
         )
