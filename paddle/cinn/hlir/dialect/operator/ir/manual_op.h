@@ -14,6 +14,7 @@
 
 #pragma once
 #include <variant>
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/dll_decl.h"
@@ -22,7 +23,6 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 
 namespace cinn {
 namespace dialect {
@@ -85,8 +85,9 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
   void VerifySig() const {}
 };
 
-class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp,
-                                              paddle::dialect::InferSymbolicShapeInterface> {
+class IR_API GenerateShapeOp
+    : public pir::Op<GenerateShapeOp,
+                     paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.generate_shape"; }
