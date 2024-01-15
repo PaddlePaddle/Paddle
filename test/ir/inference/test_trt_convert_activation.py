@@ -32,88 +32,104 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 3, 32, 32]).astype(np.float32)
+        def generate_input(attrs: List[Dict[str, Any]]):
+            if self.dims == 0:
+                return np.random.random([]).astype(np.float32)
+            else:
+                return np.random.random([1, 3, 32, 32]).astype(np.float32)
 
-        for op_type in [
-            "relu",
-            "sigmoid",
-            "relu6",
-            "elu",
-            "selu",
-            "silu",
-            "softsign",
-            "stanh",
-            "thresholded_relu",
-            "celu",
-            "logsigmoid",
-            "tanh_shrink",
-            "softplus",
-            "hard_swish",
-            "hard_sigmoid",
-            "leaky_relu",
-        ]:
-            # few samples to reduce time
-            # for beta in [-0.2, 0.5, 0.67, 3]:
-            #    for alpha in [-0.2, 0.5, 0.67, 3]:
-            for beta in [0.67]:
-                for alpha in [0.67]:
-                    dics = [{}]
-                    if op_type == "celu":
-                        dics = [{"alpha": 1.0}]
-                    if op_type == "elu":
-                        dics = [{"alpha": alpha}]
-                    if op_type == "selu":
-                        dics = [{"alpha": beta, "scale": alpha}]
-                    if op_type == "stanh":
-                        dics = [{"scale_a": beta, "scale_b": alpha}]
-                    if op_type == "thresholded_relu":
-                        dics = [{"threshold": alpha}]
-                    if op_type == "softplus":
-                        dics = [{"beta": beta}]
-                    if op_type == "hard_swish":
-                        dics = [
+        for dims in [0, 4]:
+            self.dims = dims
+            for op_type in [
+                "relu",
+                "sigmoid",
+                "relu6",
+                "elu",
+                "selu",
+                "silu",
+                "softsign",
+                "stanh",
+                "thresholded_relu",
+                "celu",
+                "logsigmoid",
+                "tanh_shrink",
+                "softplus",
+                "hard_swish",
+                "hard_sigmoid",
+                "leaky_relu",
+            ]:
+                # few samples to reduce time
+                # for beta in [-0.2, 0.5, 0.67, 3]:
+                #    for alpha in [-0.2, 0.5, 0.67, 3]:
+                for beta in [0.67]:
+                    for alpha in [0.67]:
+                        dics = [{}]
+                        if op_type == "celu":
+                            dics = [{"alpha": 1.0}]
+                        if op_type == "elu":
+                            dics = [{"alpha": alpha}]
+                        if op_type == "selu":
+                            dics = [{"alpha": beta, "scale": alpha}]
+                        if op_type == "stanh":
+                            dics = [{"scale_a": beta, "scale_b": alpha}]
+                        if op_type == "thresholded_relu":
+                            dics = [{"threshold": alpha}]
+                        if op_type == "softplus":
+                            dics = [{"beta": beta}]
+                        if op_type == "hard_swish":
+                            dics = [
+                                {
+                                    "threshold": 6.0,
+                                    "scale": 6.0,
+                                    "offset": 3.0,
+                                }
+                            ]
+                        if op_type == "hard_sigmoid":
+                            dics = [{"slope": beta, "offset": alpha}]
+                        if op_type == "leaky_relu":
+                            dics = [{"alpha": alpha}]
+
+                        ops_config = [
                             {
-                                "threshold": 6.0,
-                                "scale": 6.0,
-                                "offset": 3.0,
+                                "op_type": op_type,
+                                "op_inputs": {"X": ["input_data"]},
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[0],
                             }
                         ]
-                    if op_type == "hard_sigmoid":
-                        dics = [{"slope": beta, "offset": alpha}]
-                    if op_type == "leaky_relu":
-                        dics = [{"alpha": alpha}]
+                        ops = self.generate_op_config(ops_config)
 
-                    ops_config = [
-                        {
-                            "op_type": op_type,
-                            "op_inputs": {"X": ["input_data"]},
-                            "op_outputs": {"Out": ["output_data"]},
-                            "op_attrs": dics[0],
-                        }
-                    ]
-                    ops = self.generate_op_config(ops_config)
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "input_data": TensorConfig(
+                                    data_gen=partial(generate_input, dics)
+                                )
+                            },
+                            outputs=["output_data"],
+                        )
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input1, dics)
-                            )
-                        },
-                        outputs=["output_data"],
-                    )
-
-                    yield program_config
+                        yield program_config
 
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 16, 16]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 32, 32]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 32, 32]}
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 16, 16]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 3, 32, 32]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 32, 32]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -121,6 +137,21 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape and self.dims == 0:
+                return 0, 3
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            if (
+                runtime_version[0] * 1000
+                + runtime_version[1] * 100
+                + runtime_version[2] * 10
+                < 8600
+                and self.dims == 0
+            ) and program_config.ops[0].type in [
+                "celu",
+                "logsigmoid",
+                "tanh_shrink",
+            ]:
+                return 0, 3
             return 1, 2
 
         attrs = [
