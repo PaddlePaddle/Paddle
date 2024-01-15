@@ -364,6 +364,15 @@
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
 
+- op : distributed_push_sparse
+  args : (Tensor[] ids, Tensor[] shows, Tensor[] clicks, int table_id = 0, int size = 8, bool is_distributed = false, string push_sparse_version = "push_sparse", int64_t padding_idx = -1, DataType dtype=DataType::FLOAT32, bool is_test = false, bool use_cvm_op = false)
+  output : Tensor[](output){ids.size()}
+  infer_meta :
+    func : DistributedPushSparseInferMeta
+  kernel :
+    func: distributed_push_sparse
+    data_type : ids
+
 - op : divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
