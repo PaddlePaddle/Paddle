@@ -530,6 +530,7 @@ set(NAIVE_EXECUTOR_DEPS
     lod_rank_table
     feed_fetch_method
     graph_to_program_pass
+    standalone_executor
     variable_helper)
 
 if(TENSORRT_FOUND)

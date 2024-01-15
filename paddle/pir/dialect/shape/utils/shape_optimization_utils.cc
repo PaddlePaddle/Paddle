@@ -48,17 +48,7 @@ bool CompareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
   return false;
 }
 
-SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
-  for (auto& op : m.block()) {
-    if (op.isa<shape::FuncOp>()) {
-      symbol_table_ = SymbolTable(&op);
-      return;
-    }
-  }
-  Builder builder = Builder(m_.ir_context(), &m_.block(), m_.block().begin());
-  shape::FuncOp func = builder.Build<shape::FuncOp>();
-  symbol_table_ = SymbolTable(func);
-}
+SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {}
 
 bool SymbolicDimMgr::MapSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
                                                 const SymbolicDimProduct& rhs) {
@@ -176,9 +166,7 @@ const std::string SymbolicDimMgr::GetNextName() {
 }
 
 SymbolicDimOp SymbolicDimMgr::NewSymbolicDim(const std::string& name) {
-  auto func_op = symbol_table_.getOp()->dyn_cast<shape::FuncOp>();
-  IR_ENFORCE(func_op);
-  Builder builder = Builder(m_.ir_context(), func_op.block());
+  Builder builder = Builder(m_.ir_context(), nullptr, Block::Iterator{}, false);
   // default settting dim != 0
   SymbolicDimOp symbol =
       builder.Build<SymbolicDimOp>(name.empty() ? GetNextName() : name,
@@ -213,10 +201,9 @@ std::vector<SymbolicDimOp> SymbolicDimMgr::CreateSymbolicDimsForRankedValue(
   std::vector<SymbolicDimOp> symbols;
   auto dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
   for (int idx = 0; idx < dims.size(); ++idx) {
-    symbols.push_back(
-        (dims[idx] == ShapedTypeInterface::kDynamic || dims[idx] == -1)
-            ? NewSymbolicDim()
-            : NewConstantSymbolicDim(dims[idx]));
+    symbols.push_back(dims[idx] == ShapedTypeInterface::kDynamic
+                          ? NewSymbolicDim()
+                          : NewConstantSymbolicDim(dims[idx]));
   }
   return symbols;
 }

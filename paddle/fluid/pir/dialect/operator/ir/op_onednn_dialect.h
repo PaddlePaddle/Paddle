@@ -23,7 +23,7 @@ class OneDNNOperatorDialect : public pir::Dialect {
  public:
   explicit OneDNNOperatorDialect(pir::IrContext* context);
 
-  static const char* name() { return "pd_onednn_op"; }
+  static const char* name() { return "onednn_op"; }
 
   pir::Type ParseType(pir::IrParser& parser) override;            // NOLINT
   pir::Attribute ParseAttribute(pir::IrParser& parser) override;  // NOLINT
