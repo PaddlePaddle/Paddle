@@ -142,6 +142,7 @@ static utils::Attribute ConvertArrayAttribute(
   } else if (src_attr.isa<paddle::dialect::DataTypeAttribute>()) {
     auto dtype = src_attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     dst_attr = phi::DataTypeToString(dtype);
+  } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
   } else if (src_attr.isa<::pir::ArrayAttribute>()) {
     auto attr_vec = src_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
     if (attr_vec.size() > 0) {
@@ -181,7 +182,6 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
   CASE_SINGLE_ATTR(Int32Attribute, data)
   CASE_SINGLE_ATTR(Int64Attribute, data)
   CASE_SINGLE_ATTR(StrAttribute, AsString)
-  CASE_SINGLE_ATTR(shape::SymbolAttribute, data)
   else dst_attr = ConvertArrayAttribute(src_attr);  // NOLINT
   return dst_attr;
 }
