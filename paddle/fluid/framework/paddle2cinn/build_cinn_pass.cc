@@ -50,9 +50,9 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-static int64_t cinn_cluster_index = 0
+static int64_t cinn_cluster_index = 0;
 
-    using framework::ir::Graph;
+using framework::ir::Graph;
 using framework::ir::Node;
 
 using GraphNodeVec = std::vector<Node*>;
