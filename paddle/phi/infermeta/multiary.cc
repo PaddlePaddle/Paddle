@@ -727,7 +727,6 @@ void BatchNormInferMeta(const MetaTensor& x,
                           C,
                           bias.dims()[0]));
   }
-
   auto dtype = x.dtype();
   if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16 ||
       dtype == phi::DataType::UINT16) {
