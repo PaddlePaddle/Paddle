@@ -38,19 +38,16 @@ std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
     ProgramDesc* program) {
   bool is_legacy_program = false;
   std::unordered_multimap<std::string, OpDesc*> legacy_op_map;
-  std::unordered_map<std::string, uint32_t> current_op_versions;
   std::unordered_map<std::string, uint32_t> program_op_versions;
+  std::unordered_map<std::string, uint32_t> legacy_op_versions;
 
   // get *all kinds* of formats of op versions and op version map to a unified
   // representation before comparison can be done in a neat way
   if (!program->HasOpVersionMap()) {
     is_legacy_program = true;
   } else {
-    for (const auto& pair :
-         paddle::framework::compatible::get_op_version_map()) {
-      current_op_versions.insert(
-          std::make_pair(pair.first, pair.second.version_id()));
-    }
+    legacy_op_versions =
+        paddle::framework::compatible::pb::GetLegacyOpVersions();
 
     const auto* _op_version_map = program->OpVersionMap();
     for (int i = 0; i < _op_version_map->pair_size(); ++i) {
@@ -61,28 +58,26 @@ std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
       program_op_versions.insert(pair);
     }
 
-    if (program->Version() <= paddle::framework::kLegacyProgramVersion) {
-      const size_t num_blocks = program->Size();
-      for (size_t i = 0; i < num_blocks; i++) {
-        BlockDesc* block = program->MutableBlock(i);
-        const size_t num_ops = block->OpSize();
-        for (size_t j = 0; j < num_ops; j++) {
-          OpDesc* op = block->Op(static_cast<int>(j));
-          const std::string& op_type = op->Type();
-          if (needConvertedOperators.find(op_type) !=
-              needConvertedOperators.end()) {
-            // If an operator (program_op) is in the needConvertedOperators set,
-            // it indicates that the operator may need to be converted.
-            // Further judgement: if the operator does not exist in the
-            // program_op_version_map, the operator needs to be converted.
-            // Moreover, if the operator does exist and its program_op_version_
-            // is less than current_op_version, the operator also needs to be
-            // converted.
-            if (!program_op_versions.count(op_type) ||
-                program_op_versions[op_type] < current_op_versions[op_type]) {
-              is_legacy_program = true;
-              legacy_op_map.insert(std::make_pair(op_type, op));
-            }
+    const size_t num_blocks = program->Size();
+    for (size_t i = 0; i < num_blocks; i++) {
+      BlockDesc* block = program->MutableBlock(i);
+      const size_t num_ops = block->OpSize();
+      for (size_t j = 0; j < num_ops; j++) {
+        OpDesc* op = block->Op(static_cast<int>(j));
+        const std::string& op_type = op->Type();
+        if (needConvertedOperators.find(op_type) !=
+            needConvertedOperators.end()) {
+          // If an operator (program_op) is in the needConvertedOperators set,
+          // it indicates that the operator may need to be converted.
+          // Further judgement: if the operator does not exist in the
+          // program_op_version_map, the operator needs to be converted.
+          // Moreover, if the operator does exist and its program_op_version_
+          // is less than or equal legacy_op_version, the operator also needs to
+          // be converted.
+          if (!program_op_versions.count(op_type) ||
+              program_op_versions[op_type] <= legacy_op_versions[op_type]) {
+            is_legacy_program = true;
+            legacy_op_map.insert(std::make_pair(op_type, op));
           }
         }
       }
