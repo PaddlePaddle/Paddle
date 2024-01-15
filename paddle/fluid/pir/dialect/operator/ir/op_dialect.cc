@@ -53,12 +53,12 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       auto type =
           op->operand(i).type().dyn_cast<paddle::dialect::DenseTensorType>();
       IR_ENFORCE(type, "Currently only support DenseTensorType.");
-      IR_ENFORCE(type.dims().size() == 0u,
-                 "Currently CombineOp only support 0-d DenseTensorType for "
-                 "InferSymbolicShape. But the dims of the %d-th "
-                 "DenseTensorType is %d.",
-                 i,
-                 type.dims().size());
+      // IR_ENFORCE(type.dims().size() == 0u,
+      //            "Currently CombineOp only support 0-d DenseTensorType for "
+      //            "InferSymbolicShape. But the dims of the %d-th "
+      //            "DenseTensorType is %d.",
+      //            i,
+      //            type.dims().size());
     }
 
     auto operand_source_1st_data =

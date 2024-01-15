@@ -158,6 +158,8 @@ static utils::Attribute ConvertArrayAttribute(
                       "ArrayAttribute";
       }
     }
+  } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
+    // do nothing for now
   } else {
     LOG(FATAL) << "unknown Attribute: " << src_attr;
   }
