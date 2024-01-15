@@ -16,10 +16,7 @@
 
 #include <fstream>
 
-#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
-
-REGISTER_FILE_SYMBOLS(benchmark);
 
 namespace paddle {
 namespace inference {

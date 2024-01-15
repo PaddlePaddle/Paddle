@@ -229,7 +229,6 @@ DECLARE_FILE_SYMBOLS(aligned_allocator);
 DECLARE_FILE_SYMBOLS(pass_timing);
 DECLARE_FILE_SYMBOLS(op_compatible_info);
 DECLARE_FILE_SYMBOLS(gather_op_handle);
-DECLARE_FILE_SYMBOLS(benchmark);
 
 namespace paddle {
 namespace pybind {
