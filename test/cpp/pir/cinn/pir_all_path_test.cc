@@ -58,9 +58,8 @@ static void RunAndCheckResult(::pir::Program* program,
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(program);
-
   pir::PassManager pm(ctx);
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
 
