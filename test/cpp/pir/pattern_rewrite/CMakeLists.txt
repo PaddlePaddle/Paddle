@@ -3,10 +3,14 @@ cc_test(
   SRCS pattern_rewrite_test.cc
   DEPS gtest op_dialect_vjp pir pir_transforms)
 
-cc_test(
+paddle_test(
   auto_mixed_precision_test
-  SRCS auto_mixed_precision_test.cc
-  DEPS gtest pir pir_transforms)
+  SRCS
+  auto_mixed_precision_test.cc
+  DEPS
+  gtest
+  pir
+  pir_transforms)
 
 cc_test(
   drr_test
