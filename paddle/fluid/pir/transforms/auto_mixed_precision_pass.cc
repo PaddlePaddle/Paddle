@@ -208,9 +208,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
         // if datatype of cast op result is not float, then cast op should be
         // not handled
         if (op->isa<paddle::dialect::CastOp>()) {
-          t.i.e cast to bool auto result_dtype =
-              paddle::dialect::TransToPhiDataType(
-                  pir::GetDataTypeFromValue(op->result(0)));
+          auto result_dtype = paddle::dialect::TransToPhiDataType(
+              pir::GetDataTypeFromValue(op->result(0)));
           if (!IsPhiDataTypeFloat(result_dtype)) {
             op_run_low_precision_.erase(op);
             op_should_not_handle_.insert(op);
