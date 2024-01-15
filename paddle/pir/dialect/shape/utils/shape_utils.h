@@ -20,8 +20,6 @@
 
 namespace pir {
 
-std::string GetValueId(Value* val);
-
 // Helper class to query and manipulate shape constraint IR on buffer level.
 class IR_API ShapeAnalysis {
  public:
@@ -86,6 +84,9 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
   symbol::DimExprBuilder CreateDimExprBuilder() override;
+
+  // Used to debug
+  void PrintShapeOrDatas() const;
 
  private:
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
