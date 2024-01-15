@@ -71,8 +71,8 @@ from .framework.dtype import (
 Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
-import paddle.distributed.fleet  # noqa: F401
-import paddle.text  # noqa: F401
+import paddle.distributed.fleet
+import paddle.text
 import paddle.vision  # noqa: F401
 from paddle import (  # noqa: F401
     amp,
@@ -130,7 +130,7 @@ from .device import (  # noqa: F401
     set_device,
 )
 from .distributed import DataParallel
-from .framework import (  # noqa: F401  # noqa: F401
+from .framework import (  # noqa: F401
     CPUPlace,
     CUDAPinnedPlace,
     CUDAPlace,
@@ -157,7 +157,7 @@ from .hapi import (
     flops,
     summary,
 )
-from .nn.functional.distance import (  # noqa: F401
+from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
@@ -222,7 +222,7 @@ from .tensor.linalg import (  # noqa: F401
     transpose,
     transpose_,
 )
-from .tensor.logic import (  # noqa: F401
+from .tensor.logic import (
     allclose,
     bitwise_and,
     bitwise_and_,
@@ -253,11 +253,11 @@ from .tensor.logic import (  # noqa: F401
     logical_or,
     logical_or_,
     logical_xor,
-    logical_xor_,
+    logical_xor_,  # noqa: F401
     not_equal,
-    not_equal_,
+    not_equal_,  # noqa: F401
 )
-from .tensor.manipulation import (  # noqa: F401
+from .tensor.manipulation import (
     as_complex,
     as_real,
     as_strided,
@@ -367,6 +367,8 @@ from .tensor.math import (  # noqa: F401
     clip,
     combinations,
     conj,
+    copysign,
+    copysign_,
     cos,
     cos_,
     cosh,
@@ -948,6 +950,8 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'copysign',
+    'copysign_',
     'bitwise_left_shift',
     'bitwise_left_shift_',
     'bitwise_right_shift',

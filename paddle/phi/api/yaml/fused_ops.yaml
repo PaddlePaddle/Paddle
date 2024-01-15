@@ -45,7 +45,7 @@
   support_dygraph_mode : true
 
 - op : bn_act_xpu
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_layout, int act_type)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_format, int act_type)
   output : Tensor(out)
   infer_meta :
     func : BNActXPUInferMeta

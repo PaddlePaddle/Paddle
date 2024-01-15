@@ -242,19 +242,20 @@ void LinkXPUOpMaxPass::LinkFcMax(ir::Graph* graph) const {
 
     if (IsQuant(w)) return;
     auto* fusion_op_desc = fusion_op->Op();
-    auto* x_pre_op = x->inputs[0]->Op();
-    if (x->inputs.size() > 0 && x->inputs[0]->IsOp() &&
-        x_pre_op->HasOutput("out_max")) {
-      auto preop_max_var_name = x_pre_op->Output("out_max");
-      for (auto max_node : x->inputs[0]->outputs) {
-        if (preop_max_var_name[0] == max_node->Name()) {
-          if (fusion_op_desc->HasInput("x_max")) {
-            auto x_max_old_name = fusion_op_desc->Input("x_max")[0];
-            fusion_op_desc->RenameInput(x_max_old_name, max_node->Name());
-          } else {
-            fusion_op_desc->SetInput("x_max", {max_node->Name()});
+    if (x->inputs.size() > 0) {
+      auto* x_pre_op = x->inputs[0]->Op();
+      if (x->inputs[0]->IsOp() && x_pre_op->HasOutput("out_max")) {
+        auto preop_max_var_name = x_pre_op->Output("out_max");
+        for (auto max_node : x->inputs[0]->outputs) {
+          if (preop_max_var_name[0] == max_node->Name()) {
+            if (fusion_op_desc->HasInput("x_max")) {
+              auto x_max_old_name = fusion_op_desc->Input("x_max")[0];
+              fusion_op_desc->RenameInput(x_max_old_name, max_node->Name());
+            } else {
+              fusion_op_desc->SetInput("x_max", {max_node->Name()});
+            }
+            IR_NODE_LINK_TO(max_node, fusion_op);
           }
-          IR_NODE_LINK_TO(max_node, fusion_op);
         }
       }
     }

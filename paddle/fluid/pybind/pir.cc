@@ -49,7 +49,6 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
@@ -71,6 +70,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -122,7 +122,6 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
-USE_PIR_PASS(fc_with_special_op_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
@@ -130,7 +129,6 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
-PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -461,6 +459,8 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
              for (auto &pair : self.attributes()) {
+               // SymbolAttribute is only used in PIR, no need to pass to Python
+               if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
                attrs_dict[pair.first.c_str()] =
                    paddle::dialect::GetAttributeData(pair.second);
              }
@@ -1024,13 +1024,13 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 using OpResultMap =
     std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    Program &program) {  // NOLINT
+    const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   pir::IrMapping mapper;
   auto cloned_program = program.Clone(mapper);
   std::vector<pir::OpResult> associated_array_key, associated_array_value;
-  for (auto &pair : mapper.Map<pir::Value>()) {
+  for (auto &pair : mapper.GetMap<pir::Value>()) {
     associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
     associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
@@ -1111,7 +1111,7 @@ SplitedResult SplitForwardBackward(
   // forward program construct.
   VLOG(4) << "start create forward program.";
   pir::IrMapping forward_mapper;
-  auto clone_options = pir::CloneOptions(true, true);
+  auto clone_options = pir::CloneOptions::All();
   range_block_do(
       program.block(),
       forward_range,
@@ -1119,12 +1119,12 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
       });
-  auto &forward_value_map = forward_mapper.MutableMap<pir::Value>();
+  auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
-  auto &backward_value_map = backward_mapper.MutableMap<pir::Value>();
+  auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
   auto create_data_fn = [&backward_builder,
                          &backward_inputs,
@@ -1564,8 +1564,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
-
+  pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -1583,13 +1582,10 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 }
 
 void InferSymbolicShapePass(
-    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-    Program &program) {                          // NOLINT
-  if (FLAGS_pir_apply_shape_optimization_pass) {
-    pir::IrContext *ctx = pir::IrContext::Instance();
-    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  }
+    std::shared_ptr<PassManager> &pass_manager) {  // NOLINT
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
 }
 
 void BindIrPass(pybind11::module *m) {
@@ -1638,7 +1634,8 @@ void BindPassManager(pybind11::module *m) {
              return pass_names;
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
-      .def("empty", &PassManager::Empty);
+      .def("empty", &PassManager::empty)
+      .def("clear", &PassManager::clear);
 }
 
 void BindPir(pybind11::module *module) {

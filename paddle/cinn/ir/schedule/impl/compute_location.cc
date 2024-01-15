@@ -38,8 +38,17 @@ namespace ir {
 void DyScheduleImpl::ComputeAt(const Expr& block,
                                const Expr& loop,
                                bool keep_unit_loops) {
-  CHECK(block.As<ir::ScheduleBlockRealize>());
-  CHECK(loop.As<ir::For>());
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "ComputeAt";
+  std::ostringstream os;
+  if (!block.As<ir::ScheduleBlockRealize>()) {
+    os << "Expr prama(block) should be a ScheduleBlockRealize!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+  if (!loop.As<ir::For>()) {
+    os << "Expr prama(loop) should be a For node!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
   Expr root = this->GetRootBlock(block);
 
   VLOG(3) << "Begin ComputeAt of loop:\n" << loop << "\nat block:\n" << root;
@@ -61,11 +70,23 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   this->Replace(reconstructor.loop_, reconstructor.new_loop_);
 
   VLOG(3) << "After ComputeAt, ir is:\n" << reconstructor.new_loop_;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
-  CHECK(block.As<ir::ScheduleBlockRealize>());
-  CHECK(loop.As<ir::For>());
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "SimpleComputeAt";
+  std::ostringstream os;
+  if (!block.As<ScheduleBlockRealize>()) {
+    os << "Expr param(block) should be a "
+          "ScheduleBlockRealize!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+  if (!loop.As<For>()) {
+    os << "Expr param(loop) should be a For node!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
   std::vector<Expr> block_loops = this->GetLoops(block);
   Expr root = this->GetRootBlock(block);
   auto loops = GetLoopsOfExpr(loop, root);
@@ -107,6 +128,11 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
     std::optional<bool> prove_eq = analyzer.ProveEQ(
         loops[i].As<ir::For>()->extent, block_loops[i].As<ir::For>()->extent);
     CHECK(prove_eq.has_value() && prove_eq.value());
+    if (!prove_eq.has_value() || prove_eq.value() == false) {
+      os << "Extent of loop in Expr Param(loop) and extent of loop in Expr "
+            "Param(block) should be equal correspondingly!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {
       loops[i].As<ir::For>()->set_bind_info(
@@ -185,11 +211,15 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   this->Replace(this_loop, new_loop);
 
   VLOG(3) << "After SimpleComputeAt, ir is:\n" << new_loop;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::ReverseComputeAt(const Expr& block,
                                       const Expr& loop,
                                       bool keep_unit_loops) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "ReverseComputeAt";
+  std::ostringstream os;
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(loop.As<ir::For>());
   Expr root = this->GetRootBlock(block);
@@ -210,23 +240,40 @@ void DyScheduleImpl::ReverseComputeAt(const Expr& block,
   this->Replace(reconstructor.source_expr, reconstructor.target_expr);
   this->Replace(reconstructor.loop_, reconstructor.new_loop_);
   return;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::ComputeInline(const Expr& schedule_block) {
-  CHECK(schedule_block.As<ir::ScheduleBlockRealize>());
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "ComputeInline";
+  std::ostringstream os;
+  if (!schedule_block.As<ir::ScheduleBlockRealize>()) {
+    os << "Expr param(schedule_block) should be a ScheduleBlockRealize!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
   Expr root = this->GetRootBlock(schedule_block);
   Expr store = CheckComputeInlineValidationAndGetStore(schedule_block, root);
   ComputeInliner inliner(store.As<ir::Store>()->tensor.as_tensor_ref(), store);
-  CHECK(inliner.BodyPatternAllowInline());
+
+  if (!inliner.BodyPatternAllowInline()) {
+    os << "Current IR can't meets the requirements of ComputeInline!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
   // Create a plan that removes the block to be inlined
   LeafBlockRemovalPlan remove_plan(
       schedule_block, &inliner.src_stmt, &inliner.tgt_stmt);
   remove_plan(&root);
   inliner(&root);
   return;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "ReverseComputeInline";
+  std::ostringstream os;
   Expr root = this->GetRootBlock(schedule_block);
   auto exprs =
       CheckReverseComputeInlineValidationAndGetExprs(schedule_block, root);
@@ -238,13 +285,17 @@ void DyScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
       inlined_store,
       inlined_load,
       target_store);
-  CHECK(inliner.BodyPatternAllowInline());
+  if (!inliner.BodyPatternAllowInline()) {
+    os << "Current IR can't meets the requirements of ReverseComputeInline!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
   // Create a plan that removes the block to be inlined
   LeafBlockRemovalPlan remove_plan(
       schedule_block, &inliner.src_stmt, &inliner.tgt_stmt);
   remove_plan(&root);
   inliner(&root);
   inliner(&root);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 }  // namespace ir

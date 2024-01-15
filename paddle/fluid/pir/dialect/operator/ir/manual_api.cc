@@ -173,6 +173,17 @@ std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
   return std::make_tuple(array_to_tensor.result(0), array_to_tensor.result(1));
 }
 
+pir::OpResult tensor_to_array(pir::Value x,
+                              pir::Value out_grad,
+                              int axis,
+                              bool use_stack) {
+  auto tensor_to_array = ApiBuilder::Instance()
+                             .GetBuilder()
+                             ->Build<paddle::dialect::TensorToArrayOp>(
+                                 x, out_grad, axis, use_stack);
+  return tensor_to_array.result(0);
+}
+
 pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
   auto inputs_combine_op =
       ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs);
