@@ -753,9 +753,14 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
           subgraph->GetOrInit<std::unordered_set<std::string>>(kSkipGcVarNames);
       sub_skip_gc_vars = all_skip_gc_vars;
     }
+    auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
+    VLOG(4) << "Compilation Key:\n"
+            << cinn_compiler->ReadableKey(compilation_key);
+
     if (FLAGS_save_static_runtime_data) {
       paddle::framework::save_runtime_cinn_graph(
-          *subgraph,
+          cinn_compiler->FindGraph(compilation_key),
+          compilation_key,
           cluster_debug_info(cluster_set),
           cluster_debug_info(cluster_inputs),
           cluster_debug_info(cluster_outputs),
@@ -763,10 +768,6 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
           FLAGS_static_runtime_data_save_path + "/cluster_" +
               std::to_string(++i));
     }
-    auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
-    VLOG(4) << "Compilation Key:\n"
-            << cinn_compiler->ReadableKey(compilation_key);
-
     // Replace the found cluster to a new cinn op node
     ReplaceSubGraphWithCinnOpNode(cluster_set,
                                   cluster_inputs,
