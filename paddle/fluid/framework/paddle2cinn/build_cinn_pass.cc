@@ -50,7 +50,9 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-using framework::ir::Graph;
+static int64_t cinn_cluster_index = 0
+
+    using framework::ir::Graph;
 using framework::ir::Node;
 
 using GraphNodeVec = std::vector<Node*>;
@@ -724,7 +726,7 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
       << "All deny var names are: " << GetDebugInfo(deny_var_set);
 
   auto* cinn_compiler = CinnCompiler::GetInstance();
-  int i = 0;
+
   for (const auto& node_vec : clusters) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
@@ -761,7 +763,7 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
           cluster_debug_info(cluster_outputs),
           cluster_debug_info(cluster_internals),
           FLAGS_static_runtime_data_save_path + "/cluster_" +
-              std::to_string(++i));
+              std::to_string(cinn_cluster_index++));
     }
     auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
     VLOG(4) << "Compilation Key:\n"
