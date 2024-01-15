@@ -173,8 +173,6 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     return cuda_graph_.Launch(stream);
   }
 
-
-
   bool ret;
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
