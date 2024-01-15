@@ -32,9 +32,7 @@ class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
                {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
 
-  std::string pattern_name() const override {
-    return "RemoveRedundentCastPattern";
-  }
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 ~~~
 
