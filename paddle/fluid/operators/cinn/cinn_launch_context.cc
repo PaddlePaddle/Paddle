@@ -77,6 +77,15 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       [](const auto& name_view) { return std::string(name_view.data()); });
   // build name map between the original variables and compiled ones
   BuildVarNameMap(compiled_obj.paddle2cinn_varmap, cinn_argument_names_);
+  if (FLAGS_save_static_runtime_data) {
+    auto graph_compilation_key =
+        std::hash<const framework::ir::Graph*>()((&graph));
+    paddle::framework::save_paddle2cinn_varmap(
+        paddle2cinn_varmap_,
+        graph_compilation_key,
+        FLAGS_static_runtime_data_save_path +
+            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
+  }
 
   const auto& input_var_names =
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kInputVars);
@@ -193,12 +202,6 @@ void CinnLaunchContext::BuildVarNameMap(
           "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
-  if (FLAGS_save_static_runtime_data) {
-    paddle::framework::save_paddle2cinn_varmap(
-        paddle2cinn_varmap_,
-        FLAGS_static_runtime_data_save_path +
-            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
-  }
 }
 
 std::unordered_set<std::string> CinnLaunchContext::GetVisibleVarNames() const {

@@ -1269,6 +1269,13 @@ void ElementwiseInferMeta(const MetaTensor& x,
   return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
+void BitwiseShiftInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           bool is_arithmetic,
+                           MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, out);
+}
+
 void ElementwiseRawInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              int axis,

@@ -202,25 +202,27 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
   VLOG(6) << "finish process no need buffer";
 
   // Step2: build layout_transform information
-  if (op_attributes.count("layout_transform_arg")) {
-    auto layout_transform_arg = op_attributes.at("layout_transform_arg")
-                                    .dyn_cast<pir::StrAttribute>()
-                                    .AsString();
-    auto data_layout = op_attributes.at(layout_transform_arg)
-                           .dyn_cast<pir::StrAttribute>()
-                           .AsString();
-    input_layout_ = common::StringToDataLayout(data_layout);
-    std::vector<pir::Attribute> layout_transform_inputs_attr =
+  if (op_attributes.count("data_format_tensors")) {
+    if (op_attributes.count("data_format")) {
+      auto data_layout = op_attributes.at("data_format")
+                             .dyn_cast<pir::StrAttribute>()
+                             .AsString();
+      input_layout_ = common::StringToDataLayout(data_layout);
+    } else {
+      input_layout_ = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+    }
+
+    std::vector<pir::Attribute> data_format_tensors_attr =
         op->attributes()
-            .at("layout_transform_inputs")
+            .at("data_format_tensors")
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
     std::vector<std::string> layout_transform_inputs;
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
     std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
-    for (auto& attr : layout_transform_inputs_attr) {
+    for (auto& attr : data_format_tensors_attr) {
       auto input_name = attr.dyn_cast<pir::StrAttribute>().AsString();
-      layout_transform_inputs_.insert(
+      data_format_tensors_.insert(
           op_normalizer.GetLegacyArgName(fluid_op_name, input_name));
     }
   }
@@ -249,7 +251,7 @@ void OneDNNLegacyKernelInstruction::Run() {
 
           //  Handle 'layout_transform' in
           //  ops_onednn_extra.yaml(GetKernelTypeForVar)
-          if (layout_transform_inputs_.count(*input_name) &&
+          if (data_format_tensors_.count(*input_name) &&
               input_layout_ != phi::DataLayout::kAnyLayout) {
             from_layout = input_layout_;
           }

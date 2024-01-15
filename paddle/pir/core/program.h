@@ -55,7 +55,7 @@ class IR_API Program {
 
   static std::unique_ptr<Program> Parse(std::istream& is, IrContext* ctx);
 
-  std::shared_ptr<Program> Clone(IrMapping& ir_mapping);  // NOLINT
+  std::shared_ptr<Program> Clone(IrMapping& ir_mapping) const;  // NOLINT
 
   Block* block() { return &module_.block(); }
   const Block* block() const { return &module_op().block(); }

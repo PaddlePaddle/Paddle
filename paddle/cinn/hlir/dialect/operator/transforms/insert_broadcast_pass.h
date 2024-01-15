@@ -14,13 +14,14 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/pass/pass.h"
 
-namespace pir {
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-class Pass;
+IR_API std::unique_ptr<pir::Pass> CreateInsertBroadcastPass();
 
-IR_API std::unique_ptr<Pass> CreateFcWithSpecialOpFusePass();
-
-}  // namespace pir
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

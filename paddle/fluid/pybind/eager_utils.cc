@@ -2177,14 +2177,14 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       item = CastPyArg2ValuePreHook(item);
-      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
+      if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
       } else if (item == Py_None) {
         continue;
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
-            "vector<OpResult>, but got vector<%s>",
+            "vector<Value>, but got vector<%s>",
             op_type,
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)
@@ -2197,14 +2197,14 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       item = CastPyArg2ValuePreHook(item);
-      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
+      if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
       } else if (item == Py_None) {
         continue;
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "%s(): argument (position %d) must be "
-            "vector<OpResult>, but got vector<%s>",
+            "vector<Value>, but got vector<%s>",
             op_type,
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)
@@ -2464,7 +2464,10 @@ paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
 
   PyObject* res = nullptr;
   try {
-    bool return_py_none_if_not_initialize = var.is_dist_tensor() ? false : true;
+    bool return_py_none_if_not_initialize = true;
+    if (var.defined() && !var.initialized()) {
+      return_py_none_if_not_initialize = !var.is_dist_tensor();
+    }
     PyObject* p_tmp_var = ToPyObject(var, return_py_none_if_not_initialize);
     res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
     Py_DECREF(p_tmp_var);
