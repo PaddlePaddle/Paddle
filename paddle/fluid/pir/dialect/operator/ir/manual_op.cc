@@ -3275,7 +3275,7 @@ OpInfoTuple AssignArrayOp::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorArrayType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "UnchangedInferMeta", {"x"}, "assign_array", {"x"}, {}, {}, {}, {});
+      "UnchangedArrayInferMeta", {"x"}, "assign_array", {"x"}, {}, {}, {}, {});
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "assign_array");
 }
@@ -3303,7 +3303,7 @@ void AssignArrayOp::Build(pir::Builder &builder,
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::UnchangedInferMeta(meta_x, &meta_out);
+  phi::UnchangedArrayInferMeta(meta_x, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_array_type =
@@ -3350,7 +3350,7 @@ void AssignArrayOp::VerifySig() {
 }
 
 void AssignArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::UnchangedInferMeta);
+  auto fn = PD_INFER_META(phi::UnchangedArrayInferMeta);
   fn(infer_meta);
 }
 

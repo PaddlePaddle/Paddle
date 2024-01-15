@@ -24,6 +24,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
+from paddle.framework import use_pir_api
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -128,6 +129,8 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
             z = paddle.add(x=x, y=y)
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
+            # TODO(xiaoguoguo626807): Remove this stop_gradient=False.
+            init_array.stop_gradient = False
             array = paddle.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
@@ -142,11 +145,25 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
         feed_add = feed_x + ones
-        res = exe.run(
-            main_program,
-            feed={'x': feed_x},
-            fetch_list=[sums.name, x.grad_name],
-        )
+        if use_pir_api():
+            x_grad = None
+            for op in main_program.global_block().ops:
+                if "grad" not in op.name():
+                    continue
+                if op.operands()[0].source().is_same(x):
+                    x_grad = op.results()[0]
+            assert x_grad is not None, "Can not find x_grad in main_program"
+            res = exe.run(
+                main_program,
+                feed={'x': feed_x},
+                fetch_list=[sums, x_grad],
+            )
+        else:
+            res = exe.run(
+                main_program,
+                feed={'x': feed_x},
+                fetch_list=[sums.name, x.grad_name],
+            )
         np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
         np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
         paddle.disable_static()

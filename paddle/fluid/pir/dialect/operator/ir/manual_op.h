@@ -644,7 +644,6 @@ class AssignArrayOp
     : public pir::Op<AssignArrayOp,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
-                     paddle::dialect::VjpInterface,
                      paddle::dialect::GetKernelTypeForVarInterface> {
  public:
   using Op::Op;
@@ -667,12 +666,6 @@ class AssignArrayOp
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
-      pir::Operation *op,
-      const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::Value>> &outputs,
-      const std::vector<std::vector<pir::Value>> &out_grads,
-      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 }  // namespace dialect
