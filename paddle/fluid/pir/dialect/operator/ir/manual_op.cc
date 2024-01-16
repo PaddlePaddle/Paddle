@@ -4909,8 +4909,9 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   }
 
   pir::OpResult res = result(0);
-  symbol::ShapeOrDataDimExprs output_data_shape =
-      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(output_data);
+  // TODO(HongyuJia): use op->result(0) to infer the shape
+  std::vector<symbol::DimExpr> shape(std::int64_t(output_data.size()));
+  symbol::ShapeOrDataDimExprs output_data_shape{shape, output_data};
   shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }

@@ -401,9 +401,13 @@ bool GenerateShapeOp::InferSymbolicShape(
     }
     return dim_exprs;
   }();
-  const auto shape_or_data_dim_exprs =
-      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(
-          substituted_dim_exprs);
+
+  // TODO(HongyuJia): use op->result(0) to infer the shape
+  std::vector<symbol::DimExpr> shape(
+      std::int64_t(substituted_dim_exprs.size()));
+  symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{shape,
+                                                      substituted_dim_exprs};
+
   SetShapeOrDataDimExprs(this->out(), shape_or_data_dim_exprs);
   return true;
 }

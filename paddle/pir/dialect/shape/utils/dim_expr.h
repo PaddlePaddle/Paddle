@@ -231,19 +231,6 @@ class ShapeOrData {
   ShapeOrData& operator=(const ShapeOrData&) = default;
   ShapeOrData& operator=(ShapeOrData&&) = default;
 
-  static ShapeOrData MakeConsistentShapeOrData(const std::vector<T>& data) {
-    T shape(std::int64_t(data.size()));
-    return ShapeOrData(std::vector<T>{shape}, data);
-  }
-
-  static ShapeOrData MakeConsistentShapeOrData(
-      const ShapeOrData<T>& shape_or_data) {
-    IR_ENFORCE(shape_or_data.data() == std::nullopt,
-               "Data of ShapeOrData should be nullopt");
-    T shape(std::int64_t(shape_or_data.shape().size()));
-    return ShapeOrData(std::vector<T>{shape}, shape_or_data.shape());
-  }
-
   int64_t size() const {
     if (data_.has_value()) {
       return data_.value().size();
