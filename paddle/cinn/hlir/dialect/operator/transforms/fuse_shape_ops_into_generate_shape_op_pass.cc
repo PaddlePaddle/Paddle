@@ -140,6 +140,7 @@ bool ProcessOp(paddle::dialect::ExpandOp op, pir::PatternRewriter* rewriter) {
         pir::ShapeAnalysisManager::Instance().Get(
             op.x().defining_op()->GetParentProgram());
 
+    CHECK(shape_analysis.HasShapeOrDataForValue(value));
     return shape_analysis.GetShapeOrDataForValue(value);
   };
   std::optional<pir::Value> opt_generated_shape =
