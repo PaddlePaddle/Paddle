@@ -22,6 +22,7 @@
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
 namespace pir {
 class Operation;
@@ -54,7 +55,7 @@ class GraphSymbolicDimInferCtx {
     return iter->second;
   }
 
-  const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
+  const std::unordered_map<SymbolicDim, ::symbol::DimExpr>&
   map_expr_symbolic2dialect_symbolic() const {
     return map_expr_symbolic2dialect_symbolic_;
   }
@@ -65,7 +66,7 @@ class GraphSymbolicDimInferCtx {
   const cinn::hlir::framework::pir::Group* group_;
   std::unordered_map<::pir::Value, std::vector<std::optional<DimExpr>>>
       tensor2dim_exprs_;
-  std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
+  std::unordered_map<SymbolicDim, ::symbol::DimExpr>
       map_expr_symbolic2dialect_symbolic_;
 };
 

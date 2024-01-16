@@ -13,26 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
-#include <memory>
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
-#include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class RemoveUselessScalePattern
-    : public paddle::drr::DrrPatternBase<RemoveUselessScalePattern> {
+class RemoveUselessScalePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -55,10 +46,11 @@ class RemoveUselessScalePattern
     paddle::drr::ResultPattern res = pat.ResultPattern();
     res.Tensor("scale_out").Assign(res.Tensor("x"));
   }
+
+  std::string name() const override { return "RemoveUselessScalePattern"; }
 };
 
-class RemoveRedundentScalePattern
-    : public paddle::drr::DrrPatternBase<RemoveRedundentScalePattern> {
+class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -126,10 +118,11 @@ class RemoveRedundentScalePattern
     scale_op_res({&res.Tensor("x"), &full_op_res()},
                  {&res.Tensor("scale_2_out")});
   }
+
+  std::string name() const override { return "RemoveRedundentScalePattern"; }
 };
 
-class RemoveUselessCastPattern
-    : public paddle::drr::DrrPatternBase<RemoveUselessCastPattern> {
+class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
@@ -138,10 +131,11 @@ class RemoveUselessCastPattern
     auto res = pat.ResultPattern();
     res.Tensor("ret").Assign(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "RemoveUselessCastPattern"; }
 };
 
-class RemoveUselessConcatPattern
-    : public paddle::drr::DrrPatternBase<RemoveUselessConcatPattern> {
+class RemoveUselessConcatPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
@@ -150,18 +144,18 @@ class RemoveUselessConcatPattern
     pat.Tensor("out") = pat.Op(paddle::dialect::ConcatOp::name())(
         pat.Tensor("combine_out"), pat.Tensor("axis"));
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      auto combine_out = dynamic_cast<const paddle::drr::IrValue &>(
-          match_ctx.Tensor("combine_out"));
-      return combine_out.type_isa<pir::VectorType>() &&
-             combine_out.type_dyn_cast<pir::VectorType>().size() == 1;
+      auto combine_out = match_ctx.Tensor("combine_out");
+      return combine_out.type().isa<pir::VectorType>() &&
+             combine_out.type().dyn_cast<pir::VectorType>().size() == 1;
     });
     auto res = pat.ResultPattern();
     res.Tensor("out").Assign(res.Tensor("x"));
   }
+
+  std::string name() const override { return "RemoveUselessConcatPattern"; }
 };
 
-class RemoveRedundentCastPattern
-    : public paddle::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") = pat.Op(
@@ -172,10 +166,11 @@ class RemoveRedundentCastPattern
     res.Tensor("ret") = res.Op(
         "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 
-class RemoveRedundentTransposePattern
-    : public paddle::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
+class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -201,6 +196,10 @@ class RemoveRedundentTransposePattern
         res.Op("pd_op.transpose", {{"perm", new_perm_attr}});
 
     res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
+  }
+
+  std::string name() const override {
+    return "RemoveRedundentTransposePattern";
   }
 };
 
