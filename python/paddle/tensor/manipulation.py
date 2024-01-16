@@ -3062,7 +3062,13 @@ def unique_consecutive(
         axis = []
     else:
         axis = [axis]
-    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    attr_dtype = dtype
+    if not isinstance(
+        attr_dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)
+    ):
+        attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
     if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype

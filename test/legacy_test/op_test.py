@@ -1391,9 +1391,11 @@ class OpTest(unittest.TestCase):
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
-                args = paddle.utils.map_structure(
-                    convert_vartype_to_datatype, args
-                )
+                # TODO(SigureMo): remove this in #60423
+                if self.python_api.__name__ != "sequence_mask_wraper":
+                    args = paddle.utils.map_structure(
+                        convert_vartype_to_datatype, args
+                    )
                 ret_tuple = self.python_api(*args)
                 fetch_list = getattr(self, "fetch_list", [])
                 # if the fetch_list is customized by user, we use it directly.
@@ -3785,9 +3787,11 @@ class OpTest(unittest.TestCase):
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
-                args = paddle.utils.map_structure(
-                    convert_vartype_to_datatype, args
-                )
+                # TODO(SigureMo): remove this in #60423
+                if self.python_api.__name__ != "sequence_mask_wraper":
+                    args = paddle.utils.map_structure(
+                        convert_vartype_to_datatype, args
+                    )
                 grad_outputs = []
                 if user_defined_grad_outputs is not None:
                     # user_defined_grad_outputs here are numpy arrays

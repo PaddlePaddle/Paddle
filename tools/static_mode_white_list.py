@@ -524,7 +524,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_sequence_expand_as',
     'test_sequence_first_step',
     'test_sequence_last_step',
-    'test_sequence_mask',
     'test_sequence_pad_op',
     'test_sequence_pool',
     'test_sequence_reshape',
