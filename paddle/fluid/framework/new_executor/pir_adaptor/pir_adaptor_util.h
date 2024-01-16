@@ -138,7 +138,7 @@ void DeepCopyVariable(const Variable* src_var,
                       ValueExecutionInfo* value_exe_info,
                       uint32_t stack_size,
                       bool is_optional,
-                      std::map<Variable*, Variable*> src_to_dst_map);
+                      std::map<Variable*, Variable*>* src_to_dst_map);
 
 void BuildRuntimeContext(pir::Operation* op,
                          const ValueExecutionInfo& value_exec_info,

@@ -110,7 +110,7 @@ void TuplePushInstruction::Run() {
       bool is_optional = (inlet_element_value.impl() == nullptr ||
                           !inlet_element_value.type());
       DeepCopyVariable(
-          var, copy_var, value_exe_info_, stack_size, is_optional, src_to_dst);
+          var, copy_var, value_exe_info_, stack_size, is_optional, &src_to_dst);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
       VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]"
