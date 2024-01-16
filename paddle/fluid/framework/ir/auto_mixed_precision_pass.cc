@@ -26,8 +26,6 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -272,9 +270,6 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
 }
 
 void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
-  if (FLAGS_enable_pir_in_executor) {
-    return;
-  }
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::PreconditionNotMet(
                               "During the auto_mixed_precision_pass, the graph "
