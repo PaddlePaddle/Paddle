@@ -182,10 +182,10 @@ class PyFileGen:
         setup.add_sub(f"self.net = {self.layer_name}()")
 
         train = test_class.add_sub(
-            "def train(self, net, to_static, with_cinn=False):"
+            "def train(self, net, to_static, with_prim=False, with_cinn=False):"
         )
         train.add_sub(
-            "if to_static:",
+            "paddle.set_flags('FLAGS_prim_all': with_prim})" "if to_static:",
             "    if with_cinn:",
             "        build_strategy = paddle.static.BuildStrategy()",
             "        build_strategy.build_cinn_pass = True",
@@ -196,22 +196,14 @@ class PyFileGen:
             "return outs",
         )
 
-        test_ast_static = test_class.add_sub("def test_ast_static(self):")
-        test_ast_static.add_sub(
-            "dy_out = self.train(self.net, to_static=False)",
-            "st_out = self.train(self.net, to_static=True, with_cinn=False)",
-            "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
-            "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
-        )
-
         test_ast_cinn_static = test_class.add_sub(
-            "def test_ast_cinn_static(self):"
+            "def test_ast_prim_cinn(self):"
         )
         test_ast_cinn_static.add_sub(
-            "dy_out = self.train(self.net, to_static=False)",
-            "st_out = self.train(self.net, to_static=True, with_cinn=True)",
-            "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
-            "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
+            "st_out = self.train(self.net, to_static=True)",
+            "cinn_out = self.train(self.net, to_static=True, with_prim=True, with_cinn=True)",
+            "for st, cinn in zip(paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)):",
+            "    np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)",
         )
 
     def create_tail(self):
