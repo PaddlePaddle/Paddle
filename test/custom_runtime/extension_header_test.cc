@@ -19,10 +19,6 @@
 // !!! do not fix this ut by adding other header files (PR#60842) !!!
 #include "paddle/phi/extension.h"
 
-namespace phi {
-
 TEST(CustomDevce, extension_header) {
   VLOG(1) << "check extension header support compile only";
 }
-
-}  // namespace phi

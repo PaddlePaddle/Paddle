@@ -65,8 +65,4 @@ if(WITH_CUSTOM_DEVICE)
     capi_test
     SRCS custom/capi_test.cc
     DEPS phi common)
-  cc_test(
-    header_test
-    SRCS custom/header_test.cc
-    DEPS phi common)
 endif()
