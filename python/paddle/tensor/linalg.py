@@ -27,7 +27,12 @@ from ..base.data_feeder import (
     convert_dtype,
 )
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from ..framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
@@ -2830,26 +2835,30 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.eigh(x, UPLO)
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        return _C_ops.eigh(x, UPLO)
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigh', **locals())
@@ -3342,27 +3351,32 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigvalsh', **locals())
