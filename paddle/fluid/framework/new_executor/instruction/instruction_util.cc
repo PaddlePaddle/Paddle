@@ -91,13 +91,13 @@ platform::DeviceContext* ParseDeviceContext(
       return dev_ctx;
     }
 
-    if (op_name == interpreter::kMemcpyD2H) {
+    if (op_name.compare(paddle::dialect::MemcpyD2hOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kD2HStream), place, stream_priority)
                     .get()
                     .get();
       interpreter::SetDeviceCommContext(op, dev_ctx);
       return dev_ctx;
-    } else if (op_name == interpreter::kMemcpyH2D) {
+    } else if (op_name.compare(paddle::dialect::MemcpyH2dOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kH2DStream), place, stream_priority)
                     .get()
                     .get();
@@ -114,9 +114,11 @@ platform::DeviceContext* ParseDeviceContext(
     // DeviceContext passed from executor (see CAllReduceOpCUDAKernel in
     // c_allreduce_op.h). Now it is just a temporary solution for ONLY
     // c_allreduce_sum which is used in ResNet50 distributed training.
-    if (op_name == "c_allreduce_sum" && op_attributes.at("use_calc_stream")
-                                                .dyn_cast<pir::BoolAttribute>()
-                                                .data() == false) {
+    if ((op_name.compare(paddle::dialect::CAllreduceSumOp::name()) == 0 ||
+         op_name.compare(paddle::dialect::CAllreduceSum_Op::name()) == 0) &&
+        op_attributes.at("use_calc_stream")
+                .dyn_cast<pir::BoolAttribute>()
+                .data() == false) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
       if (FLAGS_dynamic_static_unified_comm) {
