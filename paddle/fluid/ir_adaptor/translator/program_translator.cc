@@ -229,7 +229,8 @@ pir::Operation* ProgramTranslator::InsertInitOpOrCreateArrayToBlock(
 void ProgramTranslator::TranslateIfOperation(
     const OpDesc* op,
     TranslationContext* translation_ctx,
-    pir::Block* dst_block) {
+    pir::Block* dst_block,
+    bool for_bwd) {
   VLOG(8) << "=============>Start to translate if op:" << op;
   auto& type_translator = TypeTranslator::instance();
 
@@ -239,7 +240,22 @@ void ProgramTranslator::TranslateIfOperation(
     VLOG(6) << "[general op][conditional_block][inputs: " << input_name << "]";
     GetValueOrCreateInTop(input_name, translation_ctx);
   }
-  auto& cond_op_outputs = op->Output("Out");
+  if (for_bwd) {
+    auto& cond_op_outs = op->Input("Out");
+    for (auto out_name : cond_op_outs) {
+      VLOG(6) << "[general op][conditional_block][outs: " << out_name << "]";
+      GetValueOrCreateInTop(out_name, translation_ctx);
+    }
+    auto& cond_op_out_grads = op->Input("Out@GRAD");
+    for (auto out_grad_name : cond_op_out_grads) {
+      VLOG(6) << "[general op][conditional_block][out_grad: " << out_grad_name
+              << "]";
+      GetValueOrCreateInTop(out_grad_name, translation_ctx);
+    }
+  }
+
+  std::vector<std::string> cond_op_outputs =
+      for_bwd ? op->Output("Input@GRAD") : op->Output("Out");
   std::vector<::paddle::framework::VarDesc*> cond_op_output_vars;
   for (auto out_name : cond_op_outputs) {
     cond_op_output_vars.emplace_back(op->Block()->FindVarRecursive(out_name));
@@ -277,6 +293,10 @@ void ProgramTranslator::TranslateIfOperation(
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
     std::vector<pir::Value> true_yeild_inputs;
     for (auto& out_name : cond_op_outputs) {
+      // Note(zhangbo):
+      if (for_bwd && out_name.find("@RENAME@block") != std::string::npos) {
+        out_name = out_name.substr(0, out_name.find("@RENAME@block"));
+      }
       true_yeild_inputs.push_back(true_block_context->at(out_name).value);
     }
     true_region.front().push_back(

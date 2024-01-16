@@ -138,7 +138,8 @@ class ProgramTranslator {
 
   void TranslateIfOperation(const OpDesc* op,
                             TranslationContext* translation_ctx,
-                            pir::Block* dst_block);
+                            pir::Block* dst_block,
+                            bool for_bwd = false);
 
   void TranslateWhileOperation(const OpDesc* op,
                                TranslationContext* translation_ctx,
