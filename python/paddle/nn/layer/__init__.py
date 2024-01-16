@@ -100,6 +100,8 @@ from .pooling import (  # noqa: F401
     AvgPool1D,
     AvgPool2D,
     AvgPool3D,
+    FractionalMaxPool2D,
+    FractionalMaxPool3D,
     MaxPool1D,
     MaxPool2D,
     MaxPool3D,
