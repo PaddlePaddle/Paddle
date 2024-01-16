@@ -12,24 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
-
-#include "paddle/common/ddim.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_registry.h"
 
 namespace {
 
-class Conv2dAddFusePattern
-    : public paddle::drr::DrrPatternBase<Conv2dAddFusePattern> {
+class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -83,6 +76,8 @@ class Conv2dAddFusePattern
                           &res.NoneTensor()},
                          {&res.Tensor("add_out")});
   }
+
+  std::string name() const override { return "Conv2dAddFusePattern"; }
 };
 
 class Conv2dAddFusePass : public pir::PatternRewritePass {
