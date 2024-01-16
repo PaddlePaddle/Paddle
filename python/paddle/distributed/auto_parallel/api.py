@@ -271,7 +271,7 @@ def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
         *args (tuple): A tuple of arguments to be passed to the ``fn`` function.
         **kwargs (dict): A dict of arguments to be passed to the ``fn`` function.
 
-    Retruns:
+    Returns:
         Tensor: A Tensor constructed from ``fn`` with distributed attributes.
 
     Examples:
@@ -304,7 +304,7 @@ def reshard(dist_tensor, mesh, placements):
             be Shard, Replicate and Partial.
 
     Returns:
-        Tensor: A Distributed Tensor reshared with distributed attributes.
+        Tensor: A Distributed Tensor resharded with distributed attributes.
 
     Examples:
         .. code-block:: python
@@ -465,7 +465,7 @@ def shard_layer(
             >>> layer = dist.shard_layer(layer, mesh, shard_fn)
             >>> print(layer)
 
-            >>> # This case need to be excuted in multi-card environment
+            >>> # This case need to be executed in multi-card environment
             >>> # export CUDA_VISIBLE_DEVICES=0,1
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
@@ -642,7 +642,7 @@ class _ShardOptimizer:
 
     def state_dict(self):
         """
-        Create and shard the optimizer states e.g., acumulators and master_weights before load_state_dict.
+        Create and shard the optimizer states e.g., accumulators and master_weights before load_state_dict.
         If training has already started or the optimizer states are already created and sharded, do nothing.
         """
         state_dict = self._inner_opt.state_dict()
@@ -1087,6 +1087,7 @@ class DistModel:
         """
         if not self._engine._has_prepared["predict"]:
             self._engine._prepare_program(mode="predict", init_parameters=False)
+
         self._mode = "predict"
         self._engine.to_mode("predict")
 
@@ -1534,7 +1535,7 @@ def unshard_dtensor(dist_tensor):
             dist_tensor
         )
         # in static mode, 'distributed tensor' and 'dense tensor' are all
-        # Varialble type, the distributed attribute is a property of the Varibale.
+        # Variable type, the distributed attribute is a property of the Variable.
         # So, it's no need to convert the distributed tensor to a dense tensor.
         # We only need to modify its distributed attribute.
         empty_dist_attr = (

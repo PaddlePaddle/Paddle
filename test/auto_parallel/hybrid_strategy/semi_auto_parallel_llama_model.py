@@ -583,7 +583,7 @@ class LlamaModelAuto(nn.Layer):
             not paddle.in_dynamic_mode()
             and getattr(self.config, "virtual_pp_degree", 1) > 1
         ):
-            # NOTE(zhaoyingli): temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
+            # NOTE: temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
             full = dist.shard_op(paddle.full, get_mesh())
             full(shape=[1], fill_value=0)
 
@@ -614,7 +614,7 @@ class LlamaModelAuto(nn.Layer):
             not paddle.in_dynamic_mode()
             and getattr(self.config, "virtual_pp_degree", 1) > 1
         ):
-            # NOTE(zhaoyingli): temprorary method to guarantee the later ops are placed on pp stage 0 until meeting new annotaion.
+            # NOTE: temprorary method to guarantee the later ops are placed on pp stage 0 until meeting new annotaion.
             full = dist.shard_op(paddle.full, get_mesh(0))
             full(shape=[1], fill_value=0)
 
@@ -629,7 +629,7 @@ class LlamaModelAuto(nn.Layer):
             not paddle.in_dynamic_mode()
             and getattr(self.config, "virtual_pp_degree", 1) > 1
         ):
-            # NOTE(zhaoyingli): temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
+            # NOTE: temprorary method to guarantee the later ops are placed on all ranks until meeting new annotaion.
             full = dist.shard_op(paddle.full, get_mesh())
             full(shape=[1], fill_value=0)
             mesh = get_mesh()
