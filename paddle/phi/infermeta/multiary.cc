@@ -4187,7 +4187,7 @@ void XFTWeightOnlyLinearInferMeta(const MetaTensor& x,
                                   MetaTensor* out) {
   auto x_dims = x.dims();
   auto w_dims = weight.dims();
-  auto n = w_dims[1];
+  auto n = weight_scale.dims()[0];
   PADDLE_ENFORCE(
       weight_dtype == "int8" || weight_dtype == "int4" || weight_dtype == "nf4",
       errors::InvalidArgument(

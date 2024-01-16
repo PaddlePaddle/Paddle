@@ -43,10 +43,10 @@ void FusedWeightOnlyLinearKernel(const Context& dev_ctx,
   // int n = weight_scale.dims()[0];
   // int k = w_dims[1];
   // int m = x.numel() / k;
-  int m = x_dims[0] * x_dims[1];
-  int n = w_dims[1];
-  int k = x_dims[2];
-
+  int m = x_dims[0] * x_dims[1];  // bs*seq
+  int n = w_dims[1];              // hidden_size
+  int k = x_dims[2];              // hidden_size
+  int l = w_dims[0];              // 3*hidden_size
   if (weight_dtype == "int8") {
     const int8_t* weight_data = weight.data<int8_t>();
     if (bias_data) {
@@ -68,7 +68,7 @@ void FusedWeightOnlyLinearKernel(const Context& dev_ctx,
     } else {
       MMHelper::compute<float, int8_t, float>(false,
                                               m,
-                                              n,
+                                              l,
                                               k,
                                               1.0f,
                                               x_data,
@@ -78,7 +78,7 @@ void FusedWeightOnlyLinearKernel(const Context& dev_ctx,
                                               zero_point_data,
                                               0.0,
                                               out_data,
-                                              n);
+                                              l);
     }
   } else if (weight_dtype == "int4") {
     const uint4x2_t* weight_data =

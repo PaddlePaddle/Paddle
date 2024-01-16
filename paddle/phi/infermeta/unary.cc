@@ -5356,7 +5356,6 @@ void XFTWeightQuantizeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* scale,
                                 MetaTensor* zero_point) {
-  LOG(INFO) << "can go infermeta!";
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),

@@ -55,7 +55,6 @@ void FusedXFTWeightQuantizeKernel(const Context& dev_ctx,
       hpj::Matrix<int8_t> quantizedWeight;
       hpj::Matrix<int8_t> qkvWeight;
       quantizedWeight.data.buf = tmp_tensor.mutable_data<int8_t>(cpu_place);
-      // qkvWeight.Resize(weight_dims[0], weight_dims[1]);
       qkvWeight.data.buf = out->mutable_data<int8_t>(cpu_place);
       qkvWeight.rows = weight_dims[0];
       qkvWeight.cols = weight_dims[1];
@@ -67,7 +66,7 @@ void FusedXFTWeightQuantizeKernel(const Context& dev_ctx,
                                       quantizedWeight,
                                       scaleWeight,
                                       zeroWeight);
-      MMHelper::packWeight(trans, quantizedWeight, qkvWeight);
+      MMHelper::packWeight<int8_t>(trans, quantizedWeight, qkvWeight);
     } else if (algo == "weight_only_int4") {
       hpj::Matrix<uint4x2_t> quantizedWeight;
       hpj::Matrix<uint4x2_t> qkvWeight;
