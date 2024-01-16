@@ -4176,7 +4176,7 @@ def expand(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape()) == 1, 'shape must be a 1-D Tensor.'
+            assert len(shape.shape) == 1, 'shape must be a 1-D Tensor.'
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
