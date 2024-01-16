@@ -9,7 +9,6 @@ endif()
 collect_srcs(
   core_srcs
   SRCS
-  flags.cc
   enforce.cc
   storage_properties.cc
   os_info.cc

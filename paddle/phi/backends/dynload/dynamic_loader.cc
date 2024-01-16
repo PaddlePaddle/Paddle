@@ -28,7 +28,7 @@ limitations under the License. */
 // TODO(wilber): The phi computing library requires a component to manage flags
 // (maybe not use gflags).
 #include "glog/logging.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 PHI_DEFINE_string(cudnn_dir,  // NOLINT
                   "",

@@ -29,6 +29,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
@@ -40,7 +41,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"

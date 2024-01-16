@@ -25,7 +25,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
 PHI_DECLARE_bool(gpugraph_enable_gpu_direct_access);

@@ -17,7 +17,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "glog/logging.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define USE_DEVICE

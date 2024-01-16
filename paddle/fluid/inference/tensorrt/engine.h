@@ -27,6 +27,7 @@ limitations under the License. */
 #include <NvInfer.h>
 #include "NvInferRuntimeCommon.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
@@ -36,7 +37,6 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/stream.h"
 
 PHI_DECLARE_bool(trt_ibuilder_cache);

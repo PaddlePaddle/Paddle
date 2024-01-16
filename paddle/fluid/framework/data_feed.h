@@ -48,7 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/cuda_stream.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 PHI_DECLARE_int32(record_pool_max_size);
 PHI_DECLARE_int32(slotpool_thread_num);

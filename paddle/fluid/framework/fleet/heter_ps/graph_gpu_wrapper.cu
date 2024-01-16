@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include <sstream>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
-#include "paddle/phi/core/flags.h"
 PHI_DECLARE_int32(gpugraph_storage_mode);
 PHI_DECLARE_bool(graph_metapath_split_opt);
 PHI_DECLARE_string(graph_edges_split_mode);

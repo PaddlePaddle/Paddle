@@ -28,9 +28,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
-#include "paddle/phi/core/flags.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif

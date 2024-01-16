@@ -22,6 +22,7 @@
 #include <sstream>
 #include <tuple>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
@@ -31,7 +32,6 @@
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
 PHI_DECLARE_bool(graph_load_in_parallel);

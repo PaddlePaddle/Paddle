@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <array>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
