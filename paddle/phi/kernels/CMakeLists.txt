@@ -242,12 +242,15 @@ set(cc_search_pattern
     "strings/cpu/*.cc"
     "fusion/*.cc"
     "stride/*.cc"
-    "fusion/cpu/*.cc"
-    "custom/*.cc")
+    "fusion/cpu/*.cc")
 
 if(WITH_MKLDNN)
   set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"
                         "fusion/onednn/*.cc")
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  set(cc_search_pattern ${cc_search_pattern} "custom/*.cc")
 endif()
 
 file(
