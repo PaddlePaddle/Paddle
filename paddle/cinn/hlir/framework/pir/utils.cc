@@ -45,9 +45,12 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.maximum", "max"},
     {"pd_op.minimum", "min"},
     {"pd_op.split_with_num", "split"},
+    {"pd_op.reshape", "reshape"},
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"},
+    {"pd_op.expand", "broadcast_to"},
+    {"cinn_op.generate_shape", "generate_shape"},
     // The following should implement OpPattern in pd_to_cinn_pass,
     // otherwise, it will be block in BuildCinnPass.
     {"cinn_op.squeeze", ""},
@@ -239,6 +242,9 @@ int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
 OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
+  if (op_name == "generate_shape") {
+    return hlir::framework::kNonFusible;
+  }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
   CHECK(op_pattern_dict.Find(cinn_op));
   auto kind = op_pattern_dict[cinn_op];
