@@ -76,7 +76,7 @@ enum class Backend : uint8_t {
   ALL_BACKEND = UNDEFINED,
 };
 
-inline std::ostream& operator<<(std::ostream& os, Backend backend) {
+TEST_API std::ostream& operator<<(std::ostream& os, Backend backend) {
   switch (backend) {
     case Backend::UNDEFINED:
       os << "Undefined";

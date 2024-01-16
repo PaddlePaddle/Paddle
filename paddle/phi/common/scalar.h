@@ -180,7 +180,7 @@ class ScalarBase {
   DataType dtype() const { return dtype_; }
 
   template <typename T2>
-  bool operator==(const ScalarBase<T2>& other) const {
+  TEST_API bool operator==(const ScalarBase<T2>& other) const {
     DataType data_type = this->dtype();
     if (data_type != other.dtype()) {
       return false;

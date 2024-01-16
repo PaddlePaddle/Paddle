@@ -1,27 +1,9 @@
-cc_test(
-  phi_test_backend
-  SRCS test_backend.cc
-  DEPS gtest)
-cc_test(
-  phi_test_data_layout
-  SRCS test_data_layout.cc
-  DEPS gtest)
-cc_test(
-  phi_test_data_type
-  SRCS test_data_type.cc
-  DEPS gtest)
-cc_test(
-  phi_test_place
-  SRCS test_place.cc
-  DEPS phi common)
-cc_test(
-  phi_test_int_array
-  SRCS test_int_array.cc
-  DEPS phi common)
-cc_test(
-  phi_test_scalar_cpu
-  SRCS test_scalar.cc
-  DEPS phi common)
+paddle_test(phi_test_backend SRCS test_backend.cc)
+paddle_test(phi_test_data_layout SRCS test_data_layout.cc)
+paddle_test(phi_test_data_type SRCS test_data_type.cc)
+paddle_test(phi_test_place SRCS test_place.cc)
+paddle_test(phi_test_int_array SRCS test_int_array.cc)
+paddle_test(phi_test_scalar_cpu SRCS test_scalar.cc)
 if(WITH_GPU)
   nv_test(
     phi_test_scalar
