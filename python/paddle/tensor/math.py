@@ -5220,7 +5220,7 @@ def neg(x, name=None):
             [ 0.40000001,  0.20000000, -0.10000000, -0.30000001])
     """
 
-    neg_zero_x = float(np.copysign(1, -x.numpy())[0])
+    neg_zero_x = float(np.copysign([1], -x.numpy())[0])
     return scale(
         x,
         scale=-1.0,

@@ -384,7 +384,7 @@ def monkey_patch_variable():
         return out
 
     def _neg_(var):
-        neg_zero_x = float(np.copysign(1, -var.numpy())[0])
+        neg_zero_x = float(np.copysign([1], -var.numpy())[0])
         return _scalar_op_(var, -1.0, neg_zero_x * 0.0)
 
     @property

@@ -284,7 +284,7 @@ def monkey_patch_value():
         return paddle.scale(var, 1.0 / value, 0.0)
 
     def _scalar_neg_(var):
-        neg_zero_x = float(np.copysign(1, -var.numpy())[0])
+        neg_zero_x = float(np.copysign([1], -var.numpy())[0])
         return paddle.scale(var, -1.0, neg_zero_x * 0.0)
 
     def _binary_creator_(

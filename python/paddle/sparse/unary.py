@@ -635,9 +635,7 @@ def neg(x, name=None):
                 indices=[[0, 2]],
                 values=[ 2., -3.])
     """
-    neg_zero_x = paddle.to_tensor(
-        np.copysign([1], -x.numpy()), dtype=x.dtype
-    ).tolist()[0]
+    neg_zero_x = float(np.copysign([1], -x.numpy())[0])
     return _C_ops.sparse_scale(x, -1.0, neg_zero_x * 0.0, True)
 
 
