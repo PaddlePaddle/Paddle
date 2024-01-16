@@ -109,6 +109,13 @@ void LayerNormInferMeta(const MetaTensor& x,
                         MetaTensor* variance,
                         MetaConfig config = MetaConfig());
 
+void FusedRmsNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* out,
+                           MetaTensor* invvar,
+                           MetaConfig config = MetaConfig());
+
 void LayerNormGradInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             const MetaTensor& z,

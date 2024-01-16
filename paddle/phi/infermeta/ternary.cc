@@ -656,6 +656,24 @@ void LayerNormInferMeta(const MetaTensor& x,
   }
 }
 
+void FusedRmsNormInferMeta(const MetaTensor& x,
+                           const MetaTensor& scale,
+                           float epsilon,
+                           MetaTensor* out,
+                           MetaTensor* invvar,
+                           MetaConfig config) {
+  auto x_dims = x.dims();
+  LayerNormInferMeta(x,
+                     scale,
+                     MetaTensor(),
+                     epsilon,
+                     x_dims.size() - 1,
+                     out,
+                     nullptr,
+                     invvar,
+                     config);
+}
+
 void LayerNormGradInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             const MetaTensor& z,

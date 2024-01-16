@@ -271,6 +271,18 @@
     data_type : x
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
+- op : fused_rms_norm
+  args : (Tensor x, Tensor scale, float epsilon = 1e-5)
+  output : Tensor(out), Tensor(invvar)
+  infer_meta :
+    func : FusedRmsNormInferMeta
+    spmd_rule : RmsNormInferSpmd
+  kernel :
+    func : fused_rms_norm
+    data_type : x
+  intermediate : invvar
+  support_dygraph_mode : true
+
 - op : fused_rotary_position_embedding
   args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
