@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cudnn.h"
 
-#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {

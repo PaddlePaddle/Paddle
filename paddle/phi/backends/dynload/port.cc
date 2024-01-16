@@ -31,9 +31,8 @@
 
 void *dlsym(void *handle, const char *symbol_name) {
   FARPROC found_symbol;
-  VLOG(1) << "-----:";
   found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
-  VLOG(1) << "found_symbol:" << found_symbol;
+
   if (found_symbol == NULL) {
     LOG(ERROR) << "Load symbol " << symbol_name << " failed.";
     throw std::runtime_error(std::string(symbol_name) + " not found.");
