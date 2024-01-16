@@ -635,7 +635,10 @@ def neg(x, name=None):
                 indices=[[0, 2]],
                 values=[ 2., -3.])
     """
-    return _C_ops.sparse_scale(x, -1.0, 0.0, True)
+    neg_zero_x = paddle.to_tensor(
+        np.copysign([1], -x.numpy()), dtype=x.dtype
+    ).tolist()[0]
+    return _C_ops.sparse_scale(x, -1.0, neg_zero_x * 0.0, True)
 
 
 @dygraph_only

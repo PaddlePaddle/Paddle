@@ -5220,8 +5220,14 @@ def neg(x, name=None):
             [ 0.40000001,  0.20000000, -0.10000000, -0.30000001])
     """
 
+    neg_zero_x = float(np.copysign(1, -x.numpy())[0])
     return scale(
-        x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name
+        x,
+        scale=-1.0,
+        bias=neg_zero_x * 0.0,
+        bias_after_scale=True,
+        act=None,
+        name=name,
     )
 
 
@@ -5231,8 +5237,13 @@ def neg_(x, name=None):
     Inplace version of ``neg`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_neg`.
     """
+    neg_zero_x = float(np.copysign(1, -x.numpy())[0])
     return x.scale_(
-        scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name
+        scale=-1.0,
+        bias=neg_zero_x * 0.0,
+        bias_after_scale=True,
+        act=None,
+        name=name,
     )
 
 

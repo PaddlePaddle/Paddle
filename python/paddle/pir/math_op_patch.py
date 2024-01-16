@@ -15,6 +15,8 @@
 
 import warnings
 
+import numpy as np
+
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
@@ -282,7 +284,8 @@ def monkey_patch_value():
         return paddle.scale(var, 1.0 / value, 0.0)
 
     def _scalar_neg_(var):
-        return paddle.scale(var, -1.0, 0.0)
+        neg_zero_x = float(np.copysign(1, -var.numpy())[0])
+        return paddle.scale(var, -1.0, neg_zero_x * 0.0)
 
     def _binary_creator_(
         method_name,
