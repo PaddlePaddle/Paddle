@@ -3404,5 +3404,11 @@ void InternalUtils::SyncStream(cudaStream_t stream) {
 #endif
 }
 
+void InternalUtils::EnableTensorRtLLM(paddle_infer::Config *c) {
+#ifdef PADDLE_WITH_CUDA
+  c->use_tensorrt_llm_ = true;
+#endif
+}
+
 }  // namespace experimental
 }  // namespace paddle_infer

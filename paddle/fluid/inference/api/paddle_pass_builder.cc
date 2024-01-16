@@ -88,20 +88,23 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "set_subgraph_edge_pass",                                       //
-      "trt_remove_amp_strategy_op_pass",                          //
-      "trt_support_nhwc_pass",                                    //
-      "adaptive_pool2d_convert_global_pass",                      //
-      "trt_map_ops_to_matrix_multiply_pass",                      //
-      "shuffle_channel_detect_pass",                              //
-      "quant_conv2d_dequant_fuse_pass",                           //
-      "delete_quant_dequant_op_pass",                             //
-      "delete_quant_dequant_filter_op_pass",                      //
-      "trt_delete_weight_dequant_linear_op_pass",                 //
-      "delete_quant_dequant_linear_op_pass",                      //
-      "identity_op_clean_pass",                                   //
-      "add_support_int8_pass",                                    //
-      "simplify_with_basic_ops_pass",                             //
+  "set_subgraph_edge_pass",                        //
+      "trt_remove_amp_strategy_op_pass",           //
+      "trt_support_nhwc_pass",                     //
+      "adaptive_pool2d_convert_global_pass",       //
+      "trt_map_ops_to_matrix_multiply_pass",       //
+      "shuffle_channel_detect_pass",               //
+      "quant_conv2d_dequant_fuse_pass",            //
+      "delete_quant_dequant_op_pass",              //
+      "delete_quant_dequant_filter_op_pass",       //
+      "trt_delete_weight_dequant_linear_op_pass",  //
+      "delete_quant_dequant_linear_op_pass",       //
+      "identity_op_clean_pass",                    //
+      "add_support_int8_pass",                     //
+      "simplify_with_basic_ops_pass",              //
+#ifdef PADDLE_WITH_TENSORRT_LLM
+      "trt_llm_rotary_attention_pass",  //
+#else
       "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",  //
       "trt_embedding_eltwise_layernorm_fuse_pass",                //
       "preln_embedding_eltwise_layernorm_fuse_pass",              //
@@ -111,42 +114,44 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "constant_folding_pass",                                    //
 #ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
-      "trt_flash_multihead_matmul_fuse_pass",  //
-      "trt_cross_multihead_matmul_fuse_pass",  //
+      "trt_flash_multihead_matmul_fuse_pass",                     //
+      "trt_cross_multihead_matmul_fuse_pass",                     //
 #endif
 #endif
-      "vit_attention_fuse_pass",              //
-      "trt_qk_multihead_matmul_fuse_pass",    //
-      "layernorm_shift_partition_fuse_pass",  //
-      "merge_layernorm_fuse_pass",            //
+      "vit_attention_fuse_pass",                                  //
+      "trt_qk_multihead_matmul_fuse_pass",                        //
+      "layernorm_shift_partition_fuse_pass",                      //
+      "merge_layernorm_fuse_pass",                                //
 #if !defined _WIN32
-      "split_layernorm_to_math_ops_pass",  //
+      "split_layernorm_to_math_ops_pass",                         //
 #endif
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "trt_skip_layernorm_fuse_pass",          //
-      "preln_skip_layernorm_fuse_pass",        //
+      "trt_skip_layernorm_fuse_pass",    //
+      "preln_skip_layernorm_fuse_pass",  //
 #endif
-      "preln_residual_bias_fuse_pass",   //
-      "preln_layernorm_x_fuse_pass",     //
-      "reverse_roll_fuse_pass",          //
-      "conv_bn_fuse_pass",               //
-      "conv_elementwise_add_fuse_pass",  //
+      "preln_residual_bias_fuse_pass",                            //
+      "preln_layernorm_x_fuse_pass",                              //
+      "reverse_roll_fuse_pass",                                   //
+      "conv_bn_fuse_pass",                                        //
+      "conv_elementwise_add_fuse_pass",                           //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "trans_layernorm_fuse_pass",             //
+      "trans_layernorm_fuse_pass",       //
 #endif
-      "remove_padding_recover_padding_pass",         //
-      "delete_remove_padding_recover_padding_pass",  //
+      "remove_padding_recover_padding_pass",                      //
+      "delete_remove_padding_recover_padding_pass",               //
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
+#endif
+
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "elementwise_groupnorm_act_pass",        //
-      "preln_elementwise_groupnorm_act_pass",  //
-      "groupnorm_act_pass",                    //
-      "elementwiseadd_transpose_pass",         //
+      "elementwise_groupnorm_act_pass",         //
+      "preln_elementwise_groupnorm_act_pass",   //
+      "groupnorm_act_pass",                     //
+      "elementwiseadd_transpose_pass",          //
 #endif
       "tensorrt_subgraph_pass",  //
       "conv_bn_fuse_pass",       //

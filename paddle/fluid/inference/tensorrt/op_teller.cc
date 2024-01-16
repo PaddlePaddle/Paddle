@@ -1398,8 +1398,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
         VLOG(3) << "The Slice has StartsTensorList input.";
       }
-      if (slice_inputs.find("EndsTensorList") != slice_inputs.end()) {
+      if (slice_inputs.find("EndsTensorList") != slice_inputs.end() &&
+          (slice_inputs.find("EndsTensorList")->second.size() > 0)) {
         VLOG(3) << "The Slice has EndsTensorList input.";
+        return false;
       }
     }
 

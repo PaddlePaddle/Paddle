@@ -40,6 +40,7 @@ namespace paddle {
 struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
+extern const std::vector<std::string> kTRTLLMSubgraphPasses;
 extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
@@ -483,6 +484,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   CP_MEMBER(trt_optimization_level_);
   CP_MEMBER(trt_ops_run_float_);
+
+  // TensorRT-LLM related.
+  CP_MEMBER(use_tensorrt_llm_);
+
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -1115,6 +1120,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_min_subgraph_size_;
   ss << trt_mark_output_;
 
+  ss << use_tensorrt_llm_;
+
   ss << use_dlnne_;
   ss << dlnne_min_subgraph_size_;
 
@@ -1343,6 +1350,8 @@ std::string AnalysisConfig::Summary() {
         {"thread_local_stream", thread_local_stream_ ? "true" : "false"});
 
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
+
+    os.InsertRow({"use_tensorrt_llm", use_tensorrt_llm_ ? "true" : "false"});
     if (use_tensorrt_) {
 #ifdef PADDLE_WITH_TENSORRT
       auto version2string =

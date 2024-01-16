@@ -1286,6 +1286,9 @@ struct PD_INFER_DECL AnalysisConfig {
   bool collect_shape_range_info_{false};
   std::string shape_range_info_path_;
 
+  // TensorRT-LLM related.
+  bool use_tensorrt_llm_{false};
+
   // dlnne related.
   bool use_dlnne_{false};
   int dlnne_min_subgraph_size_{3};

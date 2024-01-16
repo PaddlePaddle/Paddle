@@ -170,6 +170,10 @@ if(WITH_TENSORRT)
   pass_library(set_subgraph_edge_pass inference)
 endif()
 
+if(PADDLE_WITH_TENSORRT_LLM)
+  pass_library(trt_llm_rotary_attention_pass inference)
+endif()
+
 if(WITH_GPU OR WITH_ROCM)
   pass_library(cudnn_placement_pass base DEPS placement_pass_base)
   pass_library(embedding_eltwise_layernorm_fuse_pass inference)

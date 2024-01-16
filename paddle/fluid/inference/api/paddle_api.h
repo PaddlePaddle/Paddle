@@ -531,6 +531,7 @@ class PD_INFER_DECL InternalUtils {
   static void CopyToCpuWithIoStream(paddle_infer::Tensor* t,
                                     T* data,
                                     cudaStream_t stream);
+  static void EnableTensorRtLLM(paddle_infer::Config* c);
 };
 }  // namespace experimental
 }  // namespace paddle_infer
