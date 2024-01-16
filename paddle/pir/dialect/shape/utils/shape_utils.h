@@ -85,7 +85,7 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
 
   bool HasShapeOrDataForValue(Value val) const;
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(const Value& val);
 
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);

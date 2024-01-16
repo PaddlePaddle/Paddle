@@ -723,7 +723,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
     const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
     std::vector<ir::Dim> sym_shape;
     for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(ir::Dim(input_id, sym));
+      sym_shape.emplace_back(input_id, sym);
     }
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
@@ -802,7 +802,7 @@ void OpLowererImpl::CollectOutputInfo(
       auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
       std::vector<ir::Dim> sym_shape;
       for (auto& sym : sym_vec) {
-        sym_shape.emplace_back(ir::Dim(output_id, sym));
+        sym_shape.emplace_back(output_id, sym);
       }
       out_shapes->push_back(std::move(sym_shape));
     }
