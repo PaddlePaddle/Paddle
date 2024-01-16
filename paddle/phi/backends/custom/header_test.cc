@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
+#include "glog/logging.h"
+#include "gtest/gtest.h"
+
+// Note(qili93): ensure compile with one header file 'extension.h' only,
+// !!! do not fix this ut by adding other header files (PR#60842) !!!
 #include "paddle/phi/extension.h"
+namespace phi {
 
 TEST(CustomDevce, extension_header) {
-  std::cout << "Support extension header compile only" << std::endl;
+  VLOG(1) << "check extension header support compile only";
 }
+
+}  // namespace phi
