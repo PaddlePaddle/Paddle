@@ -24,7 +24,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
-from paddle.framework import use_pir_api
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -145,7 +145,7 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
         feed_add = feed_x + ones
-        if use_pir_api():
+        if in_pir_mode():
             x_grad = None
             for op in main_program.global_block().ops:
                 if "grad" not in op.name():
