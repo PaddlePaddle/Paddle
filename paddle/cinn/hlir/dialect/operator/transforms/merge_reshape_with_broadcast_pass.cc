@@ -33,13 +33,12 @@ namespace dialect {
 namespace ir {
 
 bool CanMerge(pir::Operation* op) {
-  auto in_dims = op->operand_source(0)
-                     .type()
-                     .dyn_cast<paddle::dialect::DenseTensorType>()
-                     .dims();
-  auto out_dims =
+  auto& in_dims = op->operand_source(0)
+                      .type()
+                      .dyn_cast<paddle::dialect::DenseTensorType>()
+                      .dims();
+  auto& out_dims =
       op->result(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-  // remove all 1 element
   std::vector<int64_t> vec_in_dim;
   std::vector<int64_t> vec_out_dim;
 
@@ -55,7 +54,6 @@ bool CanMerge(pir::Operation* op) {
     }
   }
 
-  // no dim split
   return vec_in_dim == vec_out_dim;
 }
 
@@ -76,8 +74,6 @@ std::vector<int64_t> GetBroadcastAxis(pir::Operation* reshape_op,
       cinn::dialect::ir::GetVectorAttr(broadcast_op, "broadcast_axes");
 
   std::vector<int64_t> new_broadcast_axes(in_dims.size(), 0);
-  // two step alignment
-  // 1 step
   std::reverse(in_dims.begin(), in_dims.end());
   std::reverse(out_dims.begin(), out_dims.end());
 
@@ -93,10 +89,6 @@ std::vector<int64_t> GetBroadcastAxis(pir::Operation* reshape_op,
 
     new_broadcast_axes[in_shape_size - 1 - i] =
         op_broadcast_axes[forward_out_index];
-  }
-
-  for (auto dim : new_broadcast_axes) {
-    std::cerr << "dim  " << dim << std::endl;
   }
 
   return new_broadcast_axes;
@@ -140,7 +132,8 @@ MergeReshapeWithBroadcastPass::MergeReshapeWithBroadcastPass()
 pir::RewritePatternSet MergeReshapeWithBroadcastPass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
-  // elementwise ops
+
+  // merge reshape with broadcast op
   ps.Add<MergeReshapeWithBroadcastPattern>(context);
 
   return ps;
