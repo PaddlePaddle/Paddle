@@ -15,6 +15,7 @@
 import os
 import struct
 from collections import defaultdict
+from functools import partial
 
 import config
 import numpy as np
@@ -36,6 +37,7 @@ from paddle.base.framework import (
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
+from paddle.pir.core import datatype_to_vartype, vartype_to_datatype
 
 
 def flatten(nest_list):
@@ -96,11 +98,7 @@ class OpTestUtils:
 
     @classmethod
     def prepare_python_api_arguments(
-        cls,
-        api,
-        op_proto_ins,
-        op_proto_attrs,
-        kernel_sig,
+        cls, api, op_proto_ins, op_proto_attrs, kernel_sig, target_dtype=None
     ):
         """map from `op proto inputs and attrs` to `api input list and api attrs dict`
 
@@ -145,6 +143,21 @@ class OpTestUtils:
                     return op_inputs[name]
             else:
                 return Empty()
+
+        def convert_dtype(dtype, target_dtype):
+            if target_dtype is None:
+                return dtype
+            if (
+                isinstance(dtype, core.VarDesc.VarType)
+                and target_dtype is paddle.pir.core.DataType
+            ):
+                return vartype_to_datatype[dtype]
+            if (
+                isinstance(dtype, paddle.pir.core.DataType)
+                and target_dtype is core.VarDesc.VarType
+            ):
+                return datatype_to_vartype[dtype]
+            return dtype
 
         # NOTE(xiongkun): the logic of constructing parameters:
         # for example:
@@ -208,6 +221,11 @@ class OpTestUtils:
                 else:
                     results.append(tmp)
         assert len(results) == len(api_params)
+        # TODO(SigureMo): remove this in #60423
+        if api.__name__ != "sequence_mask_wraper":
+            results = paddle.utils.map_structure(
+                partial(convert_dtype, target_dtype=target_dtype), results
+            )
         return results
 
     @classmethod
@@ -466,6 +484,7 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -613,6 +632,9 @@ class PrimForwardChecker:
                     static_inputs,
                     attrs,
                     self.kernel_sig,
+                    target_dtype=paddle.pir.core.DataType
+                    if in_pir_mode()
+                    else paddle.core.VarDesc.VarType,
                 )
                 inputs_sig, _, _ = self.kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
@@ -707,6 +729,9 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -801,6 +826,9 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -981,6 +1009,7 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             if hasattr(self.op_test, "python_out_sig"):
@@ -1088,6 +1117,9 @@ class PrimGradChecker(PrimForwardChecker):
                     static_inputs,
                     attrs,
                     self.kernel_sig,
+                    target_dtype=paddle.pir.core.DataType
+                    if in_pir_mode()
+                    else paddle.core.VarDesc.VarType,
                 )
                 inputs_sig, _, outputs_sig = self.kernel_sig
                 if hasattr(self.op_test, "python_out_sig"):
@@ -1217,6 +1249,9 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -1346,6 +1381,9 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(

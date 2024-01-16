@@ -87,7 +87,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_bpr_loss_op',
     'test_calc_gradient',
     'test_case',
-    'test_cast_op',
     'test_center_loss',
     'test_channel_shuffle',
     'test_cholesky_op',

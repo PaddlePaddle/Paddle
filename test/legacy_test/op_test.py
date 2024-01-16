@@ -70,7 +70,6 @@ from paddle.base.framework import (
     set_flags,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.pir.core import vartype_to_datatype
 
 
 @signature_safe_contextmanager
@@ -390,12 +389,6 @@ def convert_uint16_to_float(in_list):
         otypes=[np.float32],
     )(in_list.flat)
     return np.reshape(out, in_list.shape)
-
-
-def convert_vartype_to_datatype(dtype):
-    if isinstance(dtype, core.VarDesc.VarType):
-        dtype = vartype_to_datatype[dtype]
-    return dtype
 
 
 @contextmanager
@@ -1200,6 +1193,7 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_inputs,
                 attrs_outputs,
                 kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1384,6 +1378,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 if hasattr(self, "python_out_sig"):
@@ -1391,11 +1386,6 @@ class OpTest(unittest.TestCase):
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
-                # TODO(SigureMo): remove this in #60423
-                if self.python_api.__name__ != "sequence_mask_wraper":
-                    args = paddle.utils.map_structure(
-                        convert_vartype_to_datatype, args
-                    )
                 ret_tuple = self.python_api(*args)
                 fetch_list = getattr(self, "fetch_list", [])
                 # if the fetch_list is customized by user, we use it directly.
@@ -3782,16 +3772,12 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
-                # TODO(SigureMo): remove this in #60423
-                if self.python_api.__name__ != "sequence_mask_wraper":
-                    args = paddle.utils.map_structure(
-                        convert_vartype_to_datatype, args
-                    )
                 grad_outputs = []
                 if user_defined_grad_outputs is not None:
                     # user_defined_grad_outputs here are numpy arrays
