@@ -42,7 +42,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 PHI_DECLARE_int32(gpugraph_dedup_pull_push_mode);
 PHI_DECLARE_int32(gpugraph_storage_mode);

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "glog/logging.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 
 PHI_DECLARE_bool(use_fast_math);

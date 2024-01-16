@@ -31,7 +31,7 @@
 #include "hash_functions.cuh"
 #include "managed.cuh"
 #include "managed_allocator.cuh"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 // TODO: replace this with CUDA_TRY and propagate the error
 #ifndef CUDA_RT_CALL

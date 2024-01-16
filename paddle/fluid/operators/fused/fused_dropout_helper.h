@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"

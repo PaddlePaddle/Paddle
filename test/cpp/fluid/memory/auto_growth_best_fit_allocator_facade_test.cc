@@ -19,9 +19,9 @@
 #include <random>
 #include <thread>  // NOLINT
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);

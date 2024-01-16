@@ -101,7 +101,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 PHI_DECLARE_int32(call_stack_level);
 

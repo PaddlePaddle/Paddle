@@ -25,8 +25,8 @@
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/phi/backends/custom/custom_device_op_list.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,

@@ -24,6 +24,7 @@ limitations under the License. */
 
 #include <cub/cub.cuh>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
@@ -34,7 +35,6 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"

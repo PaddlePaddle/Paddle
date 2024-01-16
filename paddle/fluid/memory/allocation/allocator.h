@@ -19,12 +19,12 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>

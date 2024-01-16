@@ -16,9 +16,9 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_double(eager_delete_tensor_gb);

@@ -16,6 +16,18 @@ limitations under the License. */
 
 namespace common {
 
+#if defined(_WIN32) && !defined(STATIC_PADDLE)
+#ifndef PADDLE_API
+#ifdef PADDLE_DLL_EXPORT
+#define PADDLE_API __declspec(dllexport)
+#else
+#define PADDLE_API __declspec(dllimport)
+#endif  // PADDLE_DLL_EXPORT
+#endif  // PADDLE_API
+#else
+#define PADDLE_API
+#endif  // _WIN32
+
 // Disable the copy and assignment operator for a class.
 #ifndef DISABLE_COPY_AND_ASSIGN
 #define DISABLE_COPY_AND_ASSIGN(classname)         \

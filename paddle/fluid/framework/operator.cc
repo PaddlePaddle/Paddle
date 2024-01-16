@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -39,7 +40,6 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flags.h"

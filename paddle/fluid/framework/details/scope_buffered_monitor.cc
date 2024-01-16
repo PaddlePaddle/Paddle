@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/details/scope_buffered_monitor.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/flags.h"
 
 namespace paddle {
 namespace framework {

@@ -33,7 +33,7 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 PD_DECLARE_double(fraction_of_cpu_memory_to_use);
 PD_DECLARE_uint64(initial_cpu_memory_in_mb);
