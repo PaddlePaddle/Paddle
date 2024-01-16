@@ -62,7 +62,8 @@ pir::Type GetDataTypeFromValue(pir::Value value);
  *
  * @return Operation*
  */
-Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
+
+TEST_API Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
 
 /**
  * @brief Get operations and the index of designative op operand (op result)
