@@ -345,7 +345,7 @@ class TestPirConcatDygraph(unittest.TestCase):
         np.testing.assert_array_equal(z.numpy(), gold_res)
 
 
-# TODO(phlrain): open this after fix pr(55509) confict
+# TODO(phlrain): open this after fix pr(55509) conflict
 # class TestPirLogicalDygraph(unittest.TestCase):
 #     def test_with_pir(self):
 #         paddle.disable_static()
