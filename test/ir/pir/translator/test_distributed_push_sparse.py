@@ -25,14 +25,25 @@ class TestDistributedPushSparseOpTranslator(
 ):
     def append_op(self):
         self.op_type = "distributed_push_sparse"
-        x = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        y = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        attrs = {'ring_id': 0, 'root_id': 0, 'use_calc_stream': False}
+        ids = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        shows = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        clicks = paddle.one(shape=(100, 2, 3), dtype='float32')
+        out = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        attrs = {
+            'table_id': 0,
+            'size': 0,
+            'is_distributed': False,
+            'push_sparse_version': "push_sparse",
+            'padding_idx': -1,
+            'dtype': "float32",
+            'is_test': False,
+            'use_cvm_op': False,
+        }
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
-            inputs={"X": x},
-            outputs={"Out": y},
+            inputs={"Ids": ids, "Shows": shows, "Clicks": clicks},
+            outputs={"Outputs": out},
             attrs=attrs,
         )
 
