@@ -86,6 +86,45 @@ std::vector<ir::Argument> GetArgs(
   return res;
 }
 
+// Collect the temporary tensors from a computational graph.
+std::vector<ir::Buffer> GetTempBuffers(
+    const std::vector<cinn::ir::Tensor>& tensor_args, Expr body) {
+  std::unordered_set<std::string> tensor_arg_names;
+  std::unordered_set<std::string> buffer_arg_names;
+  for (auto& tensor : tensor_args) {
+    tensor_arg_names.insert(tensor->name);
+    if (tensor->buffer.defined()) {
+      buffer_arg_names.insert(tensor->buffer->name);
+    }
+  }
+  std::map<std::string, ir::Buffer>
+      name_to_buffer;  // used to avoid duplication.
+
+  auto all_temp_tensors =
+      ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
+        return x->as_tensor() && x->as_tensor()->buffer.defined() &&
+               ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
+                 !tensor_arg_names.count(x->as_tensor()->name)) ||
+                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+      });
+  for (auto& e : all_temp_tensors) {
+    auto buffer_name = e.as_tensor()->buffer->name;
+    if (!name_to_buffer.count(buffer_name)) {
+      name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+    } else {
+      // TODO(phlrain): why update
+      if (e.as_tensor()->buffer->numel() <
+          name_to_buffer[buffer_name]->numel()) {
+        name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+      }
+    }
+  }
+
+  std::vector<ir::Buffer> temp_buffers;
+  for (auto& i : name_to_buffer) temp_buffers.push_back(i.second);
+  return temp_buffers;
+}
+
 //! Collect the temporary tensors from a computational graph.
 std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
                                        const TensorGroup& tensor_group,
