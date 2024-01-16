@@ -67,6 +67,8 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
     tmp_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
   }
 
+  VLOG(4) << "src_layout: " << src_layout << ", tmp_layout: " << tmp_layout;
+
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
   if (!x.IsInitialized() && src_layout == DataLayout::ONEDNN &&

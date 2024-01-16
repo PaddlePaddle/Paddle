@@ -50,6 +50,7 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
                 "mode": "constant",
                 "data_format": kwargs['data_format'],
                 "paddings": kwargs['paddings'],
+                "use_mkldnn": True,
             },
         )
 
