@@ -891,6 +891,8 @@
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
   inplace : (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : multiply_grad
 
 - op : norm
