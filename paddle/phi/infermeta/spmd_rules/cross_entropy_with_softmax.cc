@@ -288,7 +288,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
   // Step2.2 infer inputs' dims mappings from merged dims mapping
   std::vector<int64_t> x_dims_mapping, label_dims_mapping;
   // infer and X's dims mapping
-  x_dims_mapping = GetDimsMappingForAxes(x_axes, axis_to_dim_map);
+  x_dims_mapping = GetDimsMappingForAxes(x_axes_dst, axis_to_dim_map);
   // infer and label's dims mapping
   label_dims_mapping = GetDimsMappingForAxes(label_axes_dst, axis_to_dim_map);
 
