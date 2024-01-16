@@ -54,11 +54,8 @@ if(CMAKE_COMPILER_IS_GNUCC)
   list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
   set(GCC_VERSION "${GCC_MAJOR}.${GCC_MINOR}")
   if(GCC_VERSION GREATER_EQUAL 12.0)
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
-         complex_header)
-    set(EIGEN_PATCH_COMMAND
-        ${EIGEN_PATCH_COMMAND} && patch -d
-        ${SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-Wno-error=maybe-uninitialized")
+    set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-Wno-error=maybe-uninitialized")
   endif()
 endif()
 
@@ -70,8 +67,8 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${EIGEN_PREFIX_DIR}
-  CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}" -Wno-maybe-uninitialized"
-             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}" -Wno-maybe-uninitialized"
+  CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   UPDATE_COMMAND ""
   PATCH_COMMAND ${EIGEN_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
