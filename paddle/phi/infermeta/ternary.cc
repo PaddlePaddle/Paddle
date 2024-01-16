@@ -273,7 +273,6 @@ void DistributedPushSparseInferMeta(
                     2,
                     phi::errors::InvalidArgument(
                         "The dimension of the 'Ids' tensor must be 2."));
-  auto push_sparse_version = push_sparse_version;
   for (auto& out : output) {
     if (out == nullptr) {
       continue;
