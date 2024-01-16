@@ -2009,7 +2009,6 @@ struct SelectInputOpTranscriber : public OpTranscriber {
     VarDesc* var = op_desc.Block()->FindVarRecursive(Out_name);
     arg_to_idx[var->Name()] = {0, 0};
 
-    // NOTE(zhangbo): Only support
     auto input1 = op_inputs[1].type();
     auto input2 = op_inputs[2].type();
     if (input1 == input2) {
@@ -2089,6 +2088,52 @@ struct SelectInputOpTranscriber : public OpTranscriber {
           "different dim, now is %s != %s.",
           input1,
           input2);
+    }
+
+    pir::Operation* operation = pir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    block->push_back(operation);
+    RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
+
+    VLOG(10) << "[op assign_value] translation finished";
+    return operation;
+  }
+};
+
+struct SelectOutputOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    VLOG(10) << "[op select_output] start transcribing";
+    auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+
+    std::vector<pir::Value> op_inputs = {};
+    auto Mask_name = op_desc.Input("Mask")[0];
+    auto& Input_name = op_desc.Input("X")[0];
+    IR_ENFORCE(param_map->count(Mask_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               Mask_name);
+    op_inputs.push_back(param_map->at(Mask_name).value);
+    IR_ENFORCE(param_map->count(Input_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               Input_name);
+    op_inputs.push_back(param_map->at(Input_name).value);
+
+    pir::AttributeMap attribute_map;
+    TranslateOpDistAttribute(op_desc, &attribute_map);
+
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types;
+    auto Out_names = op_desc.Output("Out");
+    IR_ENFORCE(Out_names.size() == 2,
+               "Expected SelectOutput's output size is 2.");
+    for (size_t idx = 0; idx < Out_names.size(); idx++) {
+      VarDesc* var = op_desc.Block()->FindVarRecursive(Out_names[idx]);
+      arg_to_idx[var->Name()] = {idx, 0};
+      op_output_types.push_back(op_inputs[1].type());
     }
 
     pir::Operation* operation = pir::Operation::Create(
@@ -3074,6 +3119,7 @@ OpTranslator::OpTranslator() {
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
   special_handlers["select_input"] = SelectInputOpTranscriber();
+  special_handlers["select_output"] = SelectOutputOpTranscriber();
 
   // To adapt LodTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();

@@ -57,7 +57,6 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
 };
 
 const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
-    "conditional_block_grad",
     "while_grad",
 };
 
@@ -179,6 +178,8 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
 
     if (op->Type() == "conditional_block") {
       TranslateIfOperation(op, translation_ctx, dst_block);
+    } else if (op->Type() == "conditional_block_grad") {
+      TranslateIfOperation(op, translation_ctx, dst_block, true);
     } else if (op->Type() == "while") {
       TranslateWhileOperation(op, translation_ctx, dst_block);
     } else {
@@ -256,6 +257,9 @@ void ProgramTranslator::TranslateIfOperation(
 
   std::vector<std::string> cond_op_outputs =
       for_bwd ? op->Output("Input@GRAD") : op->Output("Out");
+  cond_op_outputs.erase(
+      std::remove(cond_op_outputs.begin(), cond_op_outputs.end(), "@EMPTY@"),
+      cond_op_outputs.end());
   std::vector<::paddle::framework::VarDesc*> cond_op_output_vars;
   for (auto out_name : cond_op_outputs) {
     cond_op_output_vars.emplace_back(op->Block()->FindVarRecursive(out_name));
@@ -293,7 +297,6 @@ void ProgramTranslator::TranslateIfOperation(
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
     std::vector<pir::Value> true_yeild_inputs;
     for (auto& out_name : cond_op_outputs) {
-      // Note(zhangbo):
       if (for_bwd && out_name.find("@RENAME@block") != std::string::npos) {
         out_name = out_name.substr(0, out_name.find("@RENAME@block"));
       }

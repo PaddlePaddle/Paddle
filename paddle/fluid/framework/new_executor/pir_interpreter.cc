@@ -53,6 +53,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/if_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/select_input_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/select_output_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
@@ -710,6 +711,8 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(AssertInstruction);
       } else if (op.isa<paddle::dialect::SelectInputOp>()) {
         CREATE_INSTR(SelectInputInstruction);
+      } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
+        CREATE_INSTR(SelectOutputInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
