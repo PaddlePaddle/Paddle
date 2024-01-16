@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/stream.h"
 
-#ifdef DPADDLE_WITH_TENSORRT_LLM
+#ifdef PADDLE_WITH_TENSORRT_LLM
 #include "paddle/phi/backends/dynload/tensorrt_llm.h"
 #endif
 
@@ -205,7 +205,7 @@ class TensorRTEngine {
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
-#ifdef DPADDLE_WITH_TENSORRT_LLM
+#ifdef PADDLE_WITH_TENSORRT_LLM
     phi::dynload::initTrtLlmPlugins(&logger_, "");
 #endif
     static std::once_flag trt_plugin_registered;
