@@ -143,6 +143,8 @@ class _Buffer_ : public ExprNode<_Buffer_> {
 
   int numel() const;
 
+  ir::Expr SymbolicNumel() const;
+
   static const IrNodeTy _node_type_ = IrNodeTy::_Buffer_;
 
   // Copy the meta infos to other.

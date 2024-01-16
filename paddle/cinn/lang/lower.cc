@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/lang/lower_impl.h"
@@ -84,6 +85,14 @@ std::vector<ir::Argument> GetArgs(
     for (auto& i : res) VLOG(3) << "In res, arg has : " << i.name();
   }
   return res;
+}
+
+bool CanProveBufferNumelLT(const ir::Buffer& lhs, const ir::Buffer& rhs) {
+  common::cas_intervals_t var_intervals;
+  common::SymbolicExprAnalyzer analyzer(var_intervals);
+  std::optional<bool> prove_lt =
+      analyzer.ProveLT(lhs->SymbolicNumel(), rhs->SymbolicNumel());
+  return prove_lt.value_or(false);
 }
 
 //! Collect the temporary tensors from a computational graph.
@@ -158,8 +167,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
     if (!name_to_buffer.count(buffer_name)) {
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {
-      if (e.as_tensor()->buffer->numel() <
-          name_to_buffer[buffer_name]->numel()) {
+      if (CanProveBufferNumelLT(e.as_tensor()->buffer,
+                                name_to_buffer[buffer_name])) {
         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
       }
     }
@@ -170,8 +179,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
         if (x->as_tensor() && x->as_tensor()->buffer.defined()) {
           auto buffer_name = x->as_tensor()->buffer->name;
           if (name_to_buffer.count(buffer_name) &&
-              x->as_tensor()->buffer->numel() <
-                  name_to_buffer[buffer_name]->numel()) {
+              CanProveBufferNumelLT(x->as_tensor()->buffer,
+                                    name_to_buffer[buffer_name])) {
             name_to_buffer[buffer_name] = x->as_tensor()->buffer;
           }
         }

@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/ir/buffer.h"
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -110,6 +111,14 @@ int _Buffer_::numel() const {
     res *= i.as_int32();
   }
   return res;
+}
+
+ir::Expr _Buffer_::SymbolicNumel() const {
+  ir::Expr res{1};
+  for (auto &i : shape) {
+    res = res * i;
+  }
+  return common::AutoSimplify(res);
 }
 
 void _Buffer_::Verify() const {
