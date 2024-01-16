@@ -51,7 +51,7 @@ void GetCrossEntropyNotations(int x_ndim,
 
   *label_axes_src = *x_axes_src;
   *label_axes_dst = *x_axes_dst;
-  if(!soft_label){
+  if (!soft_label) {
     (*label_axes_src)[axis] = '1';
     (*label_axes_dst)[axis] = '1';
   }
@@ -70,13 +70,13 @@ void GetCrossEntropyNotations(int x_ndim,
 }
 
 SpmdInfo CrossEntropyWithSoftmaxInferSpmdBase(const DistMetaTensor& x,
-                                          const DistMetaTensor& label,
-                                          bool soft_label,
-                                          bool use_softmax,
-                                          bool numeric_stable_mode,
-                                          int ignore_index,
-                                          int axis,
-                                          bool support_shard_softmax_dim){
+                                              const DistMetaTensor& label,
+                                              bool soft_label,
+                                              bool use_softmax,
+                                              bool numeric_stable_mode,
+                                              int ignore_index,
+                                              int axis,
+                                              bool support_shard_softmax_dim) {
   // Step0: Verify input args based on cross_entropy_with_softmax logic
 
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
@@ -195,7 +195,6 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdBase(const DistMetaTensor& x,
           {softmax_out_dist_attr_dst, loss_dist_attr_dst}};
 }
 
-
 SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
                                           const DistMetaTensor& label,
                                           bool soft_label,
@@ -203,20 +202,32 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
                                           bool numeric_stable_mode,
                                           int ignore_index,
                                           int axis) {
-    return  CrossEntropyWithSoftmaxInferSpmdBase(x, label, soft_label, use_softmax, 
-    numeric_stable_mode, ignore_index, axis, false);                                    
-  }
+  return CrossEntropyWithSoftmaxInferSpmdBase(x,
+                                              label,
+                                              soft_label,
+                                              use_softmax,
+                                              numeric_stable_mode,
+                                              ignore_index,
+                                              axis,
+                                              false);
+}
 
 SpmdInfo CrossEntropyWithSoftmaxInferSpmdStatic(const DistMetaTensor& x,
-                                          const DistMetaTensor& label,
-                                          bool soft_label,
-                                          bool use_softmax,
-                                          bool numeric_stable_mode,
-                                          int ignore_index,
-                                          int axis) {
-    return  CrossEntropyWithSoftmaxInferSpmdBase(x, label, soft_label, use_softmax, 
-    numeric_stable_mode, ignore_index, axis, true);                                    
-  }  
+                                                const DistMetaTensor& label,
+                                                bool soft_label,
+                                                bool use_softmax,
+                                                bool numeric_stable_mode,
+                                                int ignore_index,
+                                                int axis) {
+  return CrossEntropyWithSoftmaxInferSpmdBase(x,
+                                              label,
+                                              soft_label,
+                                              use_softmax,
+                                              numeric_stable_mode,
+                                              ignore_index,
+                                              axis,
+                                              true);
+}
 
 SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
     const DistMetaTensor& x,
@@ -378,7 +389,7 @@ void GetCrossEntropyGradNotations(int loss_ndim,
   }
   *label_axes_src = x_axes_src;
   *label_axes_dst = x_axes_dst;
-  if(!soft_label){
+  if (!soft_label) {
     (*label_axes_src)[axis] = '1';
     (*label_axes_dst)[axis] = '1';
   }
@@ -389,7 +400,7 @@ void GetCrossEntropyGradNotations(int loss_ndim,
   if (use_softmax) {
     *softmax_axes_src = x_axes_src;
     *softmax_axes_dst = x_axes_dst;
-     if(!soft_label){
+    if (!soft_label) {
       (*softmax_axes_dst)[axis] = '1';
     }
   } else {
