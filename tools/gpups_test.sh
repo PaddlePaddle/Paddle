@@ -27,6 +27,20 @@ function collect_failed_tests() {
     done
 }
 
+function get_quickly_disable_ut() {
+    python -m pip install httpx
+    if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
+        echo "========================================="
+        echo "The following unittests have been disabled:"
+        echo ${disable_ut_quickly}
+        echo "========================================="
+    else
+
+        exit 102
+        disable_ut_quickly='disable_ut'
+    fi
+}
+
 # disable test: 
 
 serial_list="^test_dygraph_sharding_stage1_bf16$|\
@@ -123,23 +137,43 @@ tmpfile_rand=`date +%s%N`
 tmpfile=$tmp_dir/$tmpfile_rand"_"$i
 set +e
 
-NUM_PROC=4
-for (( i = 0; i < $NUM_PROC; i++ )); do
-    cuda_list="$((i*2)),$((i*2+1))"
-    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
-done
-wait;
-EXIT_CODE_1=$?
+get_quickly_disable_ut||disable_ut_quickly='disable_ut'
 
+NUM_PROC=4
+EXIT_CODE=0
+pids=()
 for (( i = 0; i < $NUM_PROC; i++ )); do
     cuda_list="$((i*2)),$((i*2+1))"
-    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" --timeout 180 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($parallel_list)" -E "($disable_ut_quickly)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+    pids+=($!)
 done
-wait;
-EXIT_CODE_2=$?
+
+for pid in "${pids[@]}"; do
+    wait $pid
+    status=$?
+    if [ $status -ne 0 ]; then
+        EXIT_CODE=8
+    fi
+done
+
+pids=()
+for (( i = 0; i < $NUM_PROC; i++ )); do
+    cuda_list="$((i*2)),$((i*2+1))"
+    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" -E "($disable_ut_quickly)" --timeout 180 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+    pids+=($!)
+done
+
+for pid in "${pids[@]}"; do
+    wait $pid
+    status=$?
+    if [ $status -ne 0 ]; then
+        EXIT_CODE=8
+    fi
+done
+
 set -e
 
-if [ "${EXIT_CODE_1}" != "0" ] || [ "${EXIT_CODE_2}" != "0" ];then
+if [ "${EXIT_CODE}" != "0" ];then
   echo "Sorry, some tests failed."
   collect_failed_tests
   rm -f $tmp_dir/*

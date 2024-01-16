@@ -3314,6 +3314,20 @@ EOF
     fi
 }
 
+function distribute_test() {
+    parallel_test_base_gpups
+    bash tools/auto_parallel/ci_auto_parallel.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+      exit 8;
+    fi
+    cd ${work_dir}
+    git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci
+    cd PaddleNLP/csrc && python  setup_cuda.py install && cd ..;
+    python -m pip install pytest-timeout;
+    python -m pytest -s -v tests/llm --timeout=3600
+}
+
 function test_fluid_lib_train() {
     cat <<EOF
     ========================================
@@ -4165,6 +4179,9 @@ function main() {
       bind_test)
         bind_test
         ;;
+      distribute_test)
+	distribute_test
+	;;
       gen_doc_lib)
         gen_doc_lib $2
         ;;
