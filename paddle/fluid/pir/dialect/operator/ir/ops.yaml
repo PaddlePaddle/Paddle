@@ -1503,7 +1503,7 @@
   backward: fused_feedforward_grad
 
 - op: lars_momentum
-  args: (Tensor[] param,  Tensor[] velocity, Tensor[] grad, Tensor[] learning_rate, Tensor[] master_param, float mu, float lars_coeff=0.001f, float[] lars_weight_decay={0.0005}, float epsilon=0, bool multi_precision=false, float rescale_grad=1.0f)
+  args: (Tensor[] param,  Tensor[] velocity, Tensor[] grad, Tensor[] learning_rate, Tensor[] master_param, float mu, float lars_coeff=0.001f, float[] lars_weight_decay={0.0005}, float epsilon=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
   output: Tensor[](param_out){param.size()}, Tensor[](velocity_out){velocity.size()}, Tensor[](master_param_out){master_param.size()}
   infer_meta:
     func: LarsMomentumInferMeta
