@@ -14,7 +14,8 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
-    paddle::dialect::AssertOp, paddle::dialect::SelectInputOp
+    paddle::dialect::AssertOp, paddle::dialect::SelectInputOp,
+    paddle::dialect::SelectOutputOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
@@ -676,13 +677,13 @@ void SelectInputOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto in_size = num_operands();
-    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be >= 3.", in_size);
+    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be 3.", in_size);
     auto input1 = (*this)->operand_source(1).type();
     auto input2 = (*this)->operand_source(2).type();
     if (input1.isa<paddle::dialect::DenseTensorType>() &&
         input2.isa<paddle::dialect::DenseTensorType>()) {
       auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
-      auto tensor2 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
       IR_ENFORCE(
           tensor1.dtype() == tensor2.dtype(),
           "The 1st input dtype %s should be equal to 2ed input dtype %s.",
@@ -748,6 +749,82 @@ void SelectInputOp::VerifySig() {
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
 
+void SelectOutputOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SelectOutputOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto in_size = num_operands();
+    IR_ENFORCE(in_size == 2u, "Size %d of inputs must be 2.", in_size);
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto out_size = num_results();
+    IR_ENFORCE(
+        out_size == 2u, "Size %d of outputs must be equal to 2.", out_size);
+
+    auto out1 = (*this)->result(0).type();
+    auto out2 = (*this)->result(1).type();
+    if (out1.isa<paddle::dialect::DenseTensorType>() &&
+        out2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = out1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = out2.dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+    } else if (out1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
+               out2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto tensor1 = out1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      auto tensor2 = out2.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+      IR_ENFORCE(
+          tensor1.place() == tensor2.place(),
+          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor1.place(),
+          tensor2.place());
+    } else {
+      IR_ENFORCE(out1 == out2,
+                 "The 1st input type %s should be equal to 2ed input type %s.",
+                 out1,
+                 out2);
+    }
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -756,5 +833,6 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectOutputOp)
 
 #endif
