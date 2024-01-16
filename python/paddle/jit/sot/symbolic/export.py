@@ -53,11 +53,9 @@ class PyFileGen:
         self.layer_name_generator = NameGenerator("_")
         self.layer_name = SIR.name.replace("_", "")
 
-        self.SIR_hash = self.hash_SIR(SIR)
-
-    def hash_SIR(self, SIR):
-        hash_target = tuple((stmt.type, stmt.name) for stmt in SIR.statements)
-        return hash(hash_target)
+        self.SIR_sig = ",".join(
+            f"{stmt.type}||{stmt.name}" for stmt in SIR.statements
+        )
 
     def new_root(self, *args):
         stmt = PyStatement(*args)
@@ -100,7 +98,7 @@ class PyFileGen:
 
     def create_header(self):
         self.new_root(
-            f"# {self.SIR_hash}",
+            f"# {self.SIR_sig}",
             "import paddle",
             "import unittest",
             "import numpy as np",
