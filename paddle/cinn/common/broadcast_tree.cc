@@ -341,8 +341,4 @@ std::string ToTxtString(const BroadcastTree& tree) {
                     tree.variant());
 }
 
-std::ostream& operator<<(std::ostream& os, const BroadcastTree& tree) {
-  os << ToTxtString(tree);
-}
-
 }  // namespace cinn::common

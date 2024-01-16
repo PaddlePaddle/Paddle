@@ -303,7 +303,7 @@ void UpdateGroupShapeExprs(
     const pir::IrMapping& ir_mapping,
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx) {
-  for (const auto& [origin_val, new_val] : ir_mapping.Map<pir::Value>()) {
+  for (const auto& [origin_val, new_val] : ir_mapping.GetMap<pir::Value>()) {
     const auto& shape_dim_expr =
         value_dim_exprs_list->at(value_to_dim_expr_idx.at(origin_val));
     const auto& origin_shape_or_data =
@@ -576,7 +576,6 @@ pir::Operation* ComplieBroadcastTreeToConditionBlock(
   // 2. simply every condition block
   auto* program = group->ops.front()->GetParentProgram();
   VLOG(6) << "Before simply condition block: " << *program;
-  shape_analysis->PrintAllShapeOrDataDimExprs();
 
   SimplyConditionBlock(rewriter, &group_map);
   VLOG(6) << "After simply condition block: " << *program;
