@@ -588,6 +588,19 @@ void PirInterpreter::UpdateNcclOpNum() {
   VLOG(4) << "Update nccl op num, nccl op num is: " << nccl_op_num;
 }
 
+void PirInterpreter::UpdateOneDNNOpNum() {
+  int64_t onednn_op_num = 0;
+  for (auto& ins : vec_instruction_base_) {
+    if (static_cast<OneDNNPhiKernelInstruction*>(ins.get()) != nullptr ||
+        static_cast<OneDNNLegacyKernelInstruction*>(ins.get()) != nullptr ||
+        static_cast<OneDNNMixedPhiKernelInstruction*>(ins.get()) != nullptr) {
+      onednn_op_num = onednn_op_num + 1;
+    }
+  }
+  onednn_op_num_ = onednn_op_num;
+  VLOG(4) << "Update onednn op num, onednn op num is: " << onednn_op_num;
+}
+
 // Note(zhangbo):
 // When there is a KQueueSync type OP in the model, breadth traversal is better
 // than depth traversal. For example: OP(O) ->(direct_run)-> OP(A)
@@ -1305,7 +1318,7 @@ paddle::framework::FetchList PirInterpreter::Run(
 
     // Run
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        execution_config_.used_for_inference ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
@@ -1326,7 +1339,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     }
 #endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        execution_config_.used_for_inference ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1395,7 +1408,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
 
     // Run
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        execution_config_.used_for_inference ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
@@ -1416,7 +1429,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     }
 #endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        execution_config_.used_for_inference ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
