@@ -188,6 +188,7 @@ class TestNumelAPI(unittest.TestCase):
         np.testing.assert_array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
