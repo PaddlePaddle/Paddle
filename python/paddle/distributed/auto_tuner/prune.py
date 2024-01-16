@@ -43,7 +43,7 @@ def log_pruned_info(cur_cfg, pruned_reason):
     )
 
 
-def same_cfgs_beside(attr, cur_cfg, history_cfgs=[]):
+def same_cfgs_beside(attrs, cur_cfg, history_cfgs=[]):
     """
     Compare the current configuration with the history configuration,
     and obtain the same configurations as the current configuration except for the given attr.
@@ -52,7 +52,7 @@ def same_cfgs_beside(attr, cur_cfg, history_cfgs=[]):
     same = True
     for cfg in history_cfgs:
         for key in cur_cfg:
-            if key == attr:
+            if key in attrs:
                 continue
             if key not in cfg or (
                 cfg[key] != cur_cfg[key]
@@ -443,15 +443,31 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
 
 @register_prune_history
 def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    recompute_granularity_level = {"full": 3, "full_attn": 2, "core_attn": 1}
+
     use_recompute = cur_cfg.get("use_recompute", None)
+    recompute_granularity = cur_cfg.get("recompute_granularity", None)
+
     if use_recompute is None:
         return False
+
+    if not use_recompute:
+        recompute_level = 0
+    else:
+        recompute_level = recompute_granularity_level[recompute_granularity]
+
     cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
+            if not cfg["use_recompute"]:
+                cfg["recompute_level"] = 0
+            else:
+                cfg["recompute_level"] = recompute_granularity_level[
+                    cfg["recompute_granularity"]
+                ]
+
             if (
-                not cfg["use_recompute"]
-                and use_recompute
+                cfg["recompute_level"] < recompute_level
                 and cfg.get("time", -1) > 0
             ):
                 pruned_reason = f"use_recompute {use_recompute} may be slower because {cfg['use_recompute']} has been already runnable."
@@ -459,14 +475,12 @@ def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
                 return True
 
             if (
-                cfg["use_recompute"]
-                and not use_recompute
+                cfg["recompute_level"] > recompute_level
                 and cfg.get("max_mem_usage") == "OOM"
             ):
                 pruned_reason = f"use_recompute {use_recompute} may cause oom because {cfg['use_recompute']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 return True
-
     if not use_recompute:
         cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
         if cfgs:
