@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/fully_insert_broadcast_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
@@ -21,7 +21,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
@@ -50,6 +49,14 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   }
   pir::Value x = op->operand_source(0);
   pir::Value y = op->operand_source(1);
+  pir::ShapeConstraintIRAnalysis& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+  const auto& x_shape = shape_analysis.GetShapeOrDataForValue(x);
+  const auto& y_shape = shape_analysis.GetShapeOrDataForValue(y);
+  if (x_shape.shape() == y_shape.shape() && x_shape.data() == y_shape.data()) {
+    return false;
+  }
+
   pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
   {
     pir::Value broadcasted_x =
@@ -67,7 +74,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 }  // namespace
 
 template <typename OPTYPE>
-class FullyInsertBroadcastPattern : public pir::OpRewritePattern<OPTYPE> {
+class InsertBroadcastPattern : public pir::OpRewritePattern<OPTYPE> {
  public:
   using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
@@ -77,42 +84,46 @@ class FullyInsertBroadcastPattern : public pir::OpRewritePattern<OPTYPE> {
   }
 };
 
-FullyInsertBroadcastPass::FullyInsertBroadcastPass()
-    : pir::PatternRewritePass("fully_insert_broadcast_pass", 1) {}
+class InsertBroadcastPass : public pir::PatternRewritePass {
+ public:
+  InsertBroadcastPass() : pir::PatternRewritePass("insert_broadcast_pass", 1) {}
 
-pir::RewritePatternSet FullyInsertBroadcastPass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  // elementwise ops
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::AddOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::SubtractOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::MultiplyOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::DivideOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::ElementwisePowOp>>(
-      context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::RemainderOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::FloorDivideOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::MaximumOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::MinimumOp>>(context);
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    // elementwise ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::AddOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::SubtractOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::MultiplyOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::DivideOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::ElementwisePowOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::RemainderOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::FloorDivideOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::MaximumOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::MinimumOp>>(context);
 
-  // compare ops
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::LessThanOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::LessEqualOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::EqualOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::NotEqualOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::GreaterThanOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::GreaterEqualOp>>(context);
+    // compare ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LessThanOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LessEqualOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::EqualOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::NotEqualOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterThanOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterEqualOp>>(context);
 
-  // bitwise ops
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseOrOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseXorOp>>(context);
-  ps.Add<FullyInsertBroadcastPattern<paddle::dialect::BitwiseNotOp>>(context);
+    // bitwise ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseOrOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseXorOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseNotOp>>(context);
 
-  return ps;
-}
+    return ps;
+  }
 
-bool FullyInsertBroadcastPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateInsertBroadcastPass() {
+  return std::make_unique<InsertBroadcastPass>();
 }
 
 }  // namespace ir

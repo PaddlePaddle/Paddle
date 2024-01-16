@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include <memory>
 
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/pattern_graph.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -60,21 +62,13 @@ std::vector<Constraint> DrrPatternContext::constraints() const {
   return constraints_;
 }
 
-// void DrrPatternContext::RequireEqual(const Attribute& first, const Attribute&
-// second) {
-//   auto constrain_fn = [&](const MatchContext& match_context) {
-//     return match_context.Attr(first.id()) == match_context.Attr(second.id());
-//   };
-//   constraints_.emplace_back(constrain_fn);
-// }
-
 void DrrPatternContext::RequireEqual(const TensorShape& first,
                                      const TensorShape& second) {
   // Note: we capture the datas by value for constrain_fn
   // because the datas are destructed before running constrain_fn.
   auto constrain_fn = [=](const MatchContext& match_context) {
-    return match_context.Tensor(first.tensor_name()).Shape() ==
-           match_context.Tensor(second.tensor_name()).Shape();
+    return pir::GetShapeFromValue(match_context.Tensor(first.tensor_name())) ==
+           pir::GetShapeFromValue(match_context.Tensor(second.tensor_name()));
   };
   constraints_.emplace_back(constrain_fn);
 }
@@ -84,14 +78,15 @@ void DrrPatternContext::RequireEqual(const TensorDataType& first,
   // Note: we capture the datas by value for constrain_fn
   // because the datas are destructed before running constrain_fn.
   auto constrain_fn = [=](const MatchContext& match_context) {
-    return match_context.Tensor(first.tensor_name()).Dtype() ==
-           match_context.Tensor(second.tensor_name()).Dtype();
+    return pir::GetDataTypeFromValue(
+               match_context.Tensor(first.tensor_name())) ==
+           pir::GetDataTypeFromValue(
+               match_context.Tensor(second.tensor_name()));
   };
   constraints_.emplace_back(constrain_fn);
 }
 
-void DrrPatternContext::RequireNativeCall(
-    const std::function<bool(const MatchContext&)>& custom_fn) {
+void DrrPatternContext::RequireNativeCall(const ConstraintFunction& custom_fn) {
   constraints_.emplace_back(custom_fn);
 }
 

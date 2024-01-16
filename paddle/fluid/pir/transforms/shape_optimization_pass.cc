@@ -51,7 +51,7 @@ void DebugPrintOpInfo(
                  << "ShapeOrData: ";
 
     if (shape_analysis != nullptr) {
-      auto shape_data = shape_analysis->value_to_shape_or_data_[res];
+      auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
       print_stream << "shape: [";
 
       for (size_t i = 0; i < shape_data.shape().size(); ++i) {
@@ -83,9 +83,8 @@ void DebugPrintOpInfo(
 }
 
 void InferSymExprForAllValues(ModuleOp module_op) {
-  auto shape_analysis_mgr = ShapeAnalysisManager::Instance();
   ShapeConstraintIRAnalysis& shape_analysis =
-      shape_analysis_mgr.Get(module_op.program());
+      ShapeAnalysisManager::Instance().Get(module_op.program());
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
@@ -94,7 +93,12 @@ void InferSymExprForAllValues(ModuleOp module_op) {
         if (infer_symbolic_shape_interface) {
           VLOG(3) << op.name() << " has InferSymbolicShapeInterface.";
           PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
-              &shape_analysis));
+                             &shape_analysis),
+                         "InferSymbolicShape for %s failed.",
+                         op.name());
+        } else {
+          VLOG(3) << op.name()
+                  << " DOES NOT have InferSymbolicShapeInterface!!!!";
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }
@@ -118,9 +122,10 @@ class ShapeOptimizationPass : public pir::Pass {
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
       return pm.Run(m.program());
     };
+    PrintProgram(module_op, "After ShapeOptimizationPass Program");
+
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
                "=============================";
-    PrintProgram(module_op, "ShapeOptimizationPass Program");
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

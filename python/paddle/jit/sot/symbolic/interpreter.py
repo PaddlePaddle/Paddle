@@ -188,7 +188,7 @@ def prepare_state(SIR, inputs):
     state = {}
 
     # update free vars if exsits
-    if SIRRuntimeCache().has_key(SIR.name):  # noqa: W601
+    if SIRRuntimeCache().has_key(SIR.name):
         free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
         if free_var_seeker:
             state = free_var_seeker()

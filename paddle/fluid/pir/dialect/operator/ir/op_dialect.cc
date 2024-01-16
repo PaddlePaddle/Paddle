@@ -62,11 +62,11 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     }
 
     auto operand_source_1st_data =
-        shape_analysis->value_to_shape_or_data_[op->operand_source(0)].data();
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).data();
     if (operand_source_1st_data.has_value()) {
       for (auto operand_source : op->operands_source()) {
         auto source_data =
-            shape_analysis->value_to_shape_or_data_[operand_source]
+            shape_analysis->GetShapeOrDataForValue(operand_source)
                 .data()
                 .value();
         out_dims.push_back(source_data[0]);
@@ -83,7 +83,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
                       pir::shape::SymbolAttribute::get(
                           pir::IrContext::Instance(), shape_data));
     auto res = op->result(0);
-    shape_analysis->value_to_shape_or_data_[res] = shape_data;
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
     return true;
   }
 
