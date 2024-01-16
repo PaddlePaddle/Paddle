@@ -78,9 +78,9 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
 
   auto name = op_info ? op_info.name() : "";
-  VLOG(6) << "Create Operation [" << name
-          << "]: {ptr = " << static_cast<void *>(base_ptr)
-          << ", size = " << base_size << "} done.";
+  VLOG(10) << "Create Operation [" << name
+           << "]: {ptr = " << static_cast<void *>(base_ptr)
+           << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -137,6 +137,45 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   return op;
 }
 
+Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
+  auto inputs = operands_source();
+  if (options.IsCloneOperands()) {
+    // replace value by IRMapping inplacely.
+    for (auto &value : inputs) {
+      value = ir_mapping.Lookup(value);
+    }
+  }
+
+  std::vector<Type> output_types;
+  for (auto &result : results()) {
+    output_types.push_back(result.type());
+  }
+
+  std::vector<Block *> successors = {};
+  if (options.IsCloneSuccessors()) {
+    for (uint32_t i = 0; i < num_successors_; ++i) {
+      successors.push_back(ir_mapping.Lookup(successor(i)));
+    }
+  }
+  auto *new_op = Create(
+      inputs, attributes_, output_types, info_, num_regions_, successors);
+  ir_mapping.Add(this, new_op);
+
+  // record outputs mapping info
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    ir_mapping.Add(result(i), new_op->result(i));
+  }
+
+  if (options.IsCloneRegions()) {
+    // clone regions recursively
+    for (uint32_t i = 0; i < num_regions_; ++i) {
+      this->region(i).CloneInto(new_op->region(i), ir_mapping);
+    }
+  }
+
+  return new_op;
+}
+
 // Call destructors for Region , OpResults, Operation, and OpOperands in
 // sequence, and finally free memory.
 void Operation::Destroy() {
@@ -186,8 +225,8 @@ void Operation::Destroy() {
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
-  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
-          << ", size = " << result_mem_size << "} done.";
+  VLOG(10) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+           << ", size = " << result_mem_size << "} done.";
   aligned_free(aligned_ptr);
 }
 
@@ -212,7 +251,7 @@ Operation::Operation(const AttributeMap &attributes,
 ///
 /// \brief op ouput related public interfaces implementation
 ///
-std::vector<OpResult> Operation::results() {
+std::vector<OpResult> Operation::results() const {
   std::vector<OpResult> res;
   for (uint32_t i = 0; i < num_results(); ++i) {
     res.push_back(result(i));

@@ -47,37 +47,44 @@ WhileInstruction::WhileInstruction(
     ValueExecutionInfo* parent_exe_info,
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place) {
+  PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
+                 phi::errors::PreconditionNotMet(
+                     "While instruction only support While op"));
   op_ = op;
-  VLOG(6) << "finish process dist attributes";
+  auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
+  body_block_ = &while_op.body();
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  VLOG(6) << "finish process inputs outputs index";
-
-  PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
-                 phi::errors::PreconditionNotMet(
-                     "While instruction only support While op"));
-
-  auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
-
   cond_var_ = parent_exe_info->GetVarByValue(while_op.operand_source(0));
-
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
     inputs_.push_back(
         parent_exe_info->GetVarByValue(while_op.operand_source(i)));
   }
-
   for (size_t i = 0; i < while_op.num_results(); ++i) {
     outputs_.push_back(parent_exe_info->GetVarByValue(while_op.result(i)));
   }
-
-  body_block_ = &while_op.body();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
   auto body_outside_inputs =
       GetExternalInputs(body_block_, *parent_exe_info, &inputs);
+  // NOTE(chenxi67): the variable corresponding to container value if a
+  // <VariableRefArray> Type. It will recursively get the ID of internal
+  // variables when use GetValueId() method. However, the copy_var pushed into
+  // the tuple does not have a corresponding ID, and will insert a -1. Here we
+  // remove the value of -1.
+  for (auto& item : inputs) {
+    auto& var_vec = item.second;
+    for (auto it = var_vec.begin(); it != var_vec.end();) {
+      if (*it == -1) {
+        it = var_vec.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -94,8 +101,10 @@ WhileInstruction::WhileInstruction(
       std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
-    InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
   }
+  InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
+  InsertInplacedExternalInputsToOuts(
+      body_block_, body_outside_inputs, *parent_exe_info, &outputs);
   SetOutputs(outputs);
 
   Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());
@@ -123,8 +132,10 @@ WhileInstruction::WhileInstruction(
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
   }
   for (auto value : body_outside_inputs) {
-    body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
-    body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
+    auto name = body_inter_->GetNameByValue(value);
+    external_input_names_.insert(name);
+    body_skip_gc_names_.push_back(name);
+    body_skip_gc_names_set.insert(name);
   }
   for (const auto& var_name : skip_gc_vars) {
     body_skip_gc_names_.push_back(var_name);
@@ -163,37 +174,26 @@ void WhileInstruction::ShareInputsToOutputs() {
   }
 }
 
-void WhileInstruction::CopyOutputsToBlockArgs() {
+void WhileInstruction::ShareOutputsToBlockArgs() {
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
     auto block_arg = body_block_->arg(i);
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
 
     if (outputs_[i]->IsType<phi::DenseTensor>()) {
-      auto& src_tensor = outputs_[i]->Get<phi::DenseTensor>();
-      auto* dst_tensor = inner_var->GetMutable<phi::DenseTensor>();
-      dst_tensor->set_meta(src_tensor.meta());
-      framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
+      inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          outputs_[i]->Get<phi::DenseTensor>());
     } else if (outputs_[i]->IsType<phi::TensorArray>()) {
-      auto src_tensor_array = outputs_[i]->Get<phi::TensorArray>();
-      auto* dst_tensor_array = inner_var->GetMutable<phi::TensorArray>();
-      dst_tensor_array->set_type(src_tensor_array.dtype());
-      dst_tensor_array->set_layout(src_tensor_array.layout());
-      while (dst_tensor_array->size() < src_tensor_array.size()) {
-        dst_tensor_array->emplace_back();
-      }
-      for (size_t id = 0; id < dst_tensor_array->size(); id++) {
-        auto& src_tensor = src_tensor_array[id];
-        phi::DenseTensor* tmp_dst_tensor = &dst_tensor_array->at(id);
-        tmp_dst_tensor->set_meta(src_tensor.meta());
-        framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-      }
+      const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
+      auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
+      *inner_array = outer_array;
+      VLOG(10) << inner_var
+               << " should be created: " << inner_var->IsInitialized();
     } else {
       PADDLE_THROW(
           phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
     }
   }
-  DeviceContext().Wait();
 }
 
 void WhileInstruction::ShareDatasToOutputs() {
@@ -211,6 +211,14 @@ void WhileInstruction::ShareDatasToOutputs() {
           out_var->Get<phi::DenseTensor>());
       VLOG(6) << "share data from " << out_var_name << "[" << out_var << "]"
               << " -> " << i << " output[" << outputs_[i] << "]";
+
+      // NOTE(zhangbo): Delete the input of the yield operator, except for the
+      // external vars of the block.
+      if (external_input_names_.count(out_var_name) == 0) {
+        VLOG(6) << "clear internel input " << out_var_name;
+        out_var->GetMutable<phi::DenseTensor>()->clear();
+      }
+
     } else if (out_var->IsType<phi::TensorArray>()) {
       const auto& inner_array = out_var->Get<phi::TensorArray>();
       auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
@@ -229,7 +237,7 @@ void WhileInstruction::Run() {
   VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     VLOG(6) << "while instruction pass args to body block";
-    CopyOutputsToBlockArgs();
+    ShareOutputsToBlockArgs();
     VLOG(6) << "while instruction interpretercore run";
     body_inter_->Run({}, false);
     VLOG(6) << "while instruction get value form body block";

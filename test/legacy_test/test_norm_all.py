@@ -476,7 +476,7 @@ def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         )
 
 
-def run_nuc(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
+def check_nuc_static(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
     with base.program_guard(base.Program()):
         data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
@@ -487,15 +487,20 @@ def run_nuc(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
             np_input, axis=axis, keepdims=keep_dim
         )
         (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
-    self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
     if keep_dim and check_dim:
-        self.assertEqual(
-            (
-                np.abs(np.array(result.shape) - np.array(expected_result.shape))
-                < 1e-6
-            ).all(),
-            True,
-        )
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
+def check_nuc_dygraph(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
+    x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+    expected_result = numpy_nuclear_norm(x_numpy, axis, keep_dim)
+    x_paddle = paddle.to_tensor(x_numpy)
+    result = paddle.norm(x=x_paddle, p=p, axis=axis, keepdim=keep_dim)
+    result = result.numpy()
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
 
 
 def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
@@ -575,7 +580,7 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
-            run_nuc(
+            check_nuc_static(
                 self,
                 p='nuc',
                 axis=[0, 1],
@@ -584,7 +589,6 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
-
             run_pnorm(
                 self,
                 p=2,
@@ -712,6 +716,29 @@ class API_NormTest(unittest.TestCase):
 
     def test_dygraph(self):
         run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
+
+        paddle.disable_static()
+        keep_dims = {False, True}
+        for keep in keep_dims:
+            check_nuc_dygraph(
+                self,
+                p='nuc',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype='float64',
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_nuc_dygraph(
+                self,
+                p='nuc',
+                axis=[1, 2],
+                shape_x=[2, 3, 4, 5],
+                dtype='float64',
+                keep_dim=keep,
+                check_dim=True,
+            )
+        paddle.enable_static()
 
     def test_name(self):
         paddle.enable_static()

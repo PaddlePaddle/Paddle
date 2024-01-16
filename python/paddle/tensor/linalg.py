@@ -295,8 +295,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
-        p (float|string, optional): Order of the norm. Supported values are `fro`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0 and nuclear norm.
+        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
+            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0.
             Default value is `fro`.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
@@ -453,8 +453,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 )
             return result
 
-            # return _C_ops.nuclear_norm(input, axis, keepdim, False)
-
         attrs = {'axis': axis, 'keepdim': keepdim}
 
         check_variable_and_dtype(
@@ -522,19 +520,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
 
         return out
-        # helper = LayerHelper('nuclear_norm', **locals())
-
-        # out = helper.create_variable_for_type_inference(
-        #     dtype=helper.input_dtype()
-        # )
-
-        # helper.append_op(
-        #     type='nuclear_norm',
-        #     inputs={'x': input},
-        #     outputs={'out': out},
-        #     attrs=attrs,
-        # )
-        # return out
 
     def vector_norm(
         input, porder=None, axis=None, keepdim=False, asvector=False, name=None
@@ -3459,9 +3444,9 @@ def triangular_solve(
 
     Args:
         x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
-            zero or more batch dimensions. Its data type should be float32 or float64.
+            zero or more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular
             system of equations. Default: True.
         transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
@@ -3500,10 +3485,16 @@ def triangular_solve(
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("triangular_solve", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'triangular_solve'
+            x,
+            'x',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64'], 'triangular_solve'
+            y,
+            'y',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 

@@ -103,6 +103,7 @@ void IRPassManager::CreatePasses(Argument *argument,
         "mixed_white_list",
         new std::unordered_set<std::string>(argument->mixed_white_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
+    pass->Set("use_custom_device", new bool(argument->use_custom_device()));
     pass->Set("enable_custom_device_mixed",
               new bool(argument->enable_custom_device_mixed()));
     pass->Set("mixed_precision_mode",
@@ -113,6 +114,9 @@ void IRPassManager::CreatePasses(Argument *argument,
 
     // "use_xpu" is used for passes in subgraphs.
     pass->Set("use_xpu", new bool(argument->use_xpu()));
+
+    // "use_tensorrt" is used for passes in subgraphs.
+    pass->Set("use_tensorrt", new bool(argument->use_tensorrt()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();

@@ -23,7 +23,8 @@ namespace ir {
 void SiluFusePass::ApplyImpl(ir::Graph* graph) const {
   // This pass is used for cutlass, because cutlass can fuse conv + bias + silu
   bool cutlass_enable = Get<bool>("use_cutlass");
-  if (!cutlass_enable) {
+  bool use_custom_device = Get<bool>("use_custom_device");
+  if (!cutlass_enable && !use_custom_device) {
     return;
   }
 
