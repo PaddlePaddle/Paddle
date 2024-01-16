@@ -39,8 +39,12 @@ paddle_test(add_dialect_parser_test SRCS add_dialect_parser_test.cc DEPS gtest)
 
 paddle_test(
   ir_parser_test
-  SRCS ir_parser_test.cc
-  DEPS gtest op_dialect_vjp pir)
+  SRCS
+  ir_parser_test.cc
+  DEPS
+  gtest
+  op_dialect_vjp
+  pir)
 
 paddle_test(ir_op_info_test SRCS op_info_test.cc)
 paddle_test(ir_op_yaml_info_parser_test SRCS op_yaml_info_parser_test.cc)
