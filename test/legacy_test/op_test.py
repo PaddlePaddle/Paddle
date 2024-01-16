@@ -70,6 +70,7 @@ from paddle.base.framework import (
     set_flags,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.pir.core import vartype_to_datatype
 
 
 @signature_safe_contextmanager
@@ -389,6 +390,12 @@ def convert_uint16_to_float(in_list):
         otypes=[np.float32],
     )(in_list.flat)
     return np.reshape(out, in_list.shape)
+
+
+def convert_vartype_to_datatype(dtype):
+    if isinstance(dtype, core.VarDesc.VarType):
+        dtype = vartype_to_datatype[dtype]
+    return dtype
 
 
 @contextmanager
@@ -1383,6 +1390,9 @@ class OpTest(unittest.TestCase):
                     outputs_sig = self.python_out_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
+                )
+                args = paddle.utils.map_structure(
+                    convert_vartype_to_datatype, args
                 )
                 ret_tuple = self.python_api(*args)
                 fetch_list = getattr(self, "fetch_list", [])
@@ -3774,6 +3784,9 @@ class OpTest(unittest.TestCase):
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
+                )
+                args = paddle.utils.map_structure(
+                    convert_vartype_to_datatype, args
                 )
                 grad_outputs = []
                 if user_defined_grad_outputs is not None:

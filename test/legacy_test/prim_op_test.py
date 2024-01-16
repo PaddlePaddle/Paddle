@@ -185,7 +185,12 @@ class OpTestUtils:
         idx_of_op_proto_arguments = 0
         for idx, arg_name in enumerate(api_params):
             if arg_name in api_ignore_param_list:
-                results.append(get_default(idx, api_defaults))
+                to_append = (
+                    get_default(idx, api_defaults)
+                    if arg_name not in op_proto_attrs
+                    else op_proto_attrs[arg_name]
+                )
+                results.append(to_append)
                 if idx_of_op_proto_arguments < len(input_arguments):
                     idx_of_op_proto_arguments += 1
             else:
