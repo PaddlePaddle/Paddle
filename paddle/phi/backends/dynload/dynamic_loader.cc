@@ -121,6 +121,26 @@ static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;  // NOLINT
 static constexpr char cuda_lib_path[] = CUDA_TOOLKIT_ROOT_DIR "/bin";
 #else
 static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";  // NOLINT
+std::string python_version = PYTHON_VERSION;                      // NOLINT
+static std::string cudnn_lib_path =                               // NOLINT
+    "/usr/local/lib/python" + python_version +
+    "/dist-packages/nvidia/cudnn/lib";  // NOLINT
+static std::string cublas_lib_path =    // NOLINT
+    "/usr/local/lib/python" + python_version +
+    "/dist-packages/nvidia/cublas/lib";   // NOLINT
+static std::string cuda_cupti_lib_path =  // NOLINT
+    "/usr/local/lib/python" + python_version +
+    "/dist-packages/nvidia/cuda_cupti/lib";  // NOLINT
+static std::string cusolver_lib_path =       // NOLINT
+    "/usr/local/lib/python" + python_version +
+    "/dist-packages/nvidia/cusolver/lib";  // NOLINT
+static std::string curand_lib_path =       // NOLINT
+    "/usr/local/lib/python" + python_version +
+    "/dist-packages/nvidia/curand/lib";  // NOLINT
+static std::string cusparse_lib_path =   // NOLINT
+    "/usr/local/lib/python" + python_version +
+    "/dist-packages/nvidia/cusparse/lib";  // NOLINT
+
 #endif
 
 static PathNode s_py_site_pkg_path;
@@ -224,7 +244,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
-  VLOG(3) << "Try to find library: " << dso_path
+  VLOG(1) << "Try to find library: " << dso_path
           << " from default system path.";
 
 // TODO(chenweihang): This path is used to search which libs?
@@ -266,6 +286,7 @@ static inline void* GetDsoHandleFromSearchPath(
   for (auto const& dso : dso_names) {
     // 1. search in user config path by FLAGS
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
+    VLOG(1) << "dso:" << dso << "dyload_flags:" << dynload_flags;
     // 2. search in system default path
     if (nullptr == dso_handle) {
       dso_handle = GetDsoHandleFromDefaultPath(dso, dynload_flags);
@@ -327,14 +348,17 @@ void* GetCublasDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir,
+                                    "libcublas.so.11",
+                                    true,
+                                    {cublas_lib_path, cudnn_lib_path});
 #endif
 }
 
 void* GetCublasLtDsoHandle() {
 // APIs available after CUDA 10.1
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so.11");
 #else
   std::string warning_msg(
       "Your CUDA_VERSION less 10.1, not support CublasLt. "
@@ -369,7 +393,7 @@ void* GetCUDNNDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
   return GetDsoHandleFromSearchPath(
-      FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
+      FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path, cudnn_lib_path});
 #endif
 }
 
@@ -378,8 +402,10 @@ void* GetCUPTIDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cupti_dir, "libcupti.dylib", false, {cupti_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(
-      FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
+  return GetDsoHandleFromSearchPath(FLAGS_cupti_dir,
+                                    "libcupti.so.11.7",
+                                    false,
+                                    {cupti_lib_path, cuda_cupti_lib_path});
 #endif
 }
 
@@ -392,7 +418,8 @@ void* GetCurandDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
+  return GetDsoHandleFromSearchPath(
+      FLAGS_cuda_dir, "libcurand.so.10", false, {curand_lib_path});
 #endif
 }
 
@@ -424,7 +451,8 @@ void* GetCusolverDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
+  return GetDsoHandleFromSearchPath(
+      FLAGS_cuda_dir, "libcusolver.so.11", false, {cusolver_lib_path});
 #endif
 }
 
@@ -437,7 +465,8 @@ void* GetCusparseDsoHandle() {
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsparse.so");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
+  return GetDsoHandleFromSearchPath(
+      FLAGS_cuda_dir, "libcusparse.so.11", false, {cusparse_lib_path});
 #endif
 }
 

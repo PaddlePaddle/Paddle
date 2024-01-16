@@ -146,6 +146,7 @@ void InitGpuProperties(Place place,
   }
 #else
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
+  LOG_FIRST_N(WARNING, 1) << "debug info:-----------2";
   auto get_cudnn_major = [](auto version) {
     if (version < 9000) {
       return version / 1000;

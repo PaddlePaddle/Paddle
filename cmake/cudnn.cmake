@@ -12,8 +12,12 @@ endif()
 
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
-  PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include $ENV{CUDNN_ROOT}
-        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+  PATHS
+    ${CUDNN_ROOT}/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/include/
+    ${CUDNN_ROOT}/include
+    $ENV{CUDNN_ROOT}
+    $ENV{CUDNN_ROOT}/include
+    ${CUDA_TOOLKIT_INCLUDE}
   NO_DEFAULT_PATH)
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
@@ -28,6 +32,7 @@ list(
   CUDNN_CHECK_LIBRARY_DIRS
   ${CUDNN_ROOT}
   ${CUDNN_ROOT}/lib64
+  ${CUDNN_ROOT}/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/lib/
   ${CUDNN_ROOT}/lib
   ${CUDNN_ROOT}/lib/x64
   ${CUDNN_ROOT}/lib/${TARGET_ARCH}-linux-gnu
@@ -42,7 +47,7 @@ list(
 set(CUDNN_LIB_NAME "")
 
 if(LINUX)
-  set(CUDNN_LIB_NAME "libcudnn.so")
+  set(CUDNN_LIB_NAME "libcudnn.so.8")
 endif()
 
 if(WIN32)

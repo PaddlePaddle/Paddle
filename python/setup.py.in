@@ -783,20 +783,20 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
-        else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
-            commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
-            if('${WITH_SHARED_PHI}' == 'ON'):
-                # change rpath of phi.ext for loading 3rd party lib
-                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
-            if('${WITH_SHARED_IR}' == 'ON'):
-                # change rpath of pir.ext for loading 3rd party lib
-                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
+        #else:
+            #commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            #commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
+            #if('${WITH_SHARED_PHI}' == 'ON'):
+            #    # change rpath of phi.ext for loading 3rd party lib
+            #    commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+            #if('${WITH_SHARED_IR}' == 'ON'):
+            #    # change rpath of pir.ext for loading 3rd party lib
+            #    commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
-        if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
-            for command in commands:
-                if os.system(command) != 0:
-                    raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
+        #if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
+        #    for command in commands:
+        #        if os.system(command) != 0:
+        #            raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':

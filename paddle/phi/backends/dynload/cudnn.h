@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "glog/logging.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 
@@ -37,8 +38,11 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
       std::call_once(cudnn_dso_flag, []() {                          \
         cudnn_dso_handle = phi::dynload::GetCUDNNDsoHandle();        \
       });                                                            \
+      LOG_FIRST_N(WARNING, 1) << "debug info:" << cudnn_dso_handle;  \
       EnforceCUDNNLoaded(#__name);                                   \
+      VLOG(1) << "CUDNN Function: " #__name;                         \
       static void* p_##__name = dlsym(cudnn_dso_handle, #__name);    \
+      VLOG(1) << "------: ";                                         \
       return reinterpret_cast<cudnn_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

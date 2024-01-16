@@ -133,6 +133,14 @@ if(WITH_GPU)
     phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
+  set_target_properties(
+    phi
+    PROPERTIES
+      BUILD_WITH_INSTALL_RPATH TRUE
+      INSTALL_RPATH
+      "/usr/local/cuda/targets/x86_64-linux/lib;/usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cuda_runtime/lib;${CMAKE_BINARY_DIR}/python/paddle/libs;$ORIGIN"
+  )
+
 elseif(WITH_ROCM)
   hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
   target_link_libraries(phi ${PHI_DEPS})

@@ -41,6 +41,7 @@ PD_DECLARE_bool(enable_cudnn_frontend);
   __macro(cudnnSetFilterNdDescriptor);
 
 namespace cudnn_frontend {
+VLOG(1) << "222222222";
 CUDNN_FRONTEND_APPLY_EACH(CUDNN_FRONTEND_OVERRIDE_SYMBOL);
 }  // namespace cudnn_frontend
 

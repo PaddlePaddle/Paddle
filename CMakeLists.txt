@@ -96,6 +96,11 @@ if(WITH_GPU AND WITH_ROCM)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  #(Note risemeup1): The cudart dynamic library is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
+  set(CUDA_USE_STATIC_CUDA_RUNTIME
+      OFF
+      CACHE BOOL "" FORCE)
+  set(CMAKE_CUDA_FLAGS "--cudart shared")
   enable_language(CUDA)
   message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
@@ -344,8 +349,11 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 # PY_VERSION
 if(NOT PY_VERSION)
   set(PY_VERSION 3.8)
+  add_definitions(-DPYTHON_VERSION="3.8")
 elseif(${PY_VERSION} VERSION_LESS 3.8)
   message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
+else()
+  add_definitions(-DPYTHON_VERSION="${PY_VERSION}")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
