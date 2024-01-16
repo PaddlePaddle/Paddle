@@ -251,7 +251,7 @@ class TestDeleteDropoutOpPatternPattern(PassTest):
     def sample_program(self):
         for perm1_shape in [[1, 2, 0]]:
             for perm2_shape in [[0, 2, 1]]:
-                for drop_mode in ['upscale_in_train', 'downgrade_in_infer']:
+                for drop_mode in ['upscale_in_train', 'downscale_in_infer']:
                     with paddle.pir_utils.IrGuard():
                         main_prog = paddle.static.Program()
                         start_prog = paddle.static.Program()
@@ -277,7 +277,7 @@ class TestDeleteDropoutOpPatternPattern(PassTest):
                                 )
                             }
                             self.fetch_list = [out]
-                            if drop_mode == 'downgrade_in_infer':
+                            if drop_mode == 'downscale_in_infer':
                                 self.valid_op_map = {
                                     "pd_op.dropout": 0,
                                     "pd_op.scale": 1,

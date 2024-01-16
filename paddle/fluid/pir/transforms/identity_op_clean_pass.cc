@@ -211,7 +211,7 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto is_test = match_ctx.Attr<bool>("is_test");
       auto mode = match_ctx.Attr<std::string>("mode");
-      return is_test && mode == "downgrade_in_infer";
+      return is_test && mode != "upscale_in_train";
     });
 
     auto res = pat.ResultPattern();
