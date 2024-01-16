@@ -964,7 +964,9 @@ def launch():
             # if need accurate peak memory
             if os.environ.get("FLAGS_log_memory_stats", False):
                 max_peak_memory = None
-                from paddle.distributed.auto_tuner.utils import read_allocated_memory_log
+                from paddle.distributed.auto_tuner.utils import (
+                    read_allocated_memory_log,
+                )
 
                 for root, dirs, files in os.walk(ctx.args.log_dir):
                     for file in files:
