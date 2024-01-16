@@ -28,6 +28,7 @@ void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
   if (!x.initialized()) {
+    ctx.template Alloc<T>(out);
     return;
   }
   if (x.place() == ctx.GetPlace()) {
