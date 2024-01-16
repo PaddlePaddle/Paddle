@@ -487,6 +487,44 @@ def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
     return False
 
 
+@register_prune_history
+def prune_by_mp_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    recompute_level = get_config_recompute_level(cur_cfg)
+    micro_batch_size = cur_cfg.get("micro_batch_size", None)
+
+    if recompute_level is None or micro_batch_size is None:
+        return False
+
+    cfgs = same_cfgs_beside(
+        ["micro_batch_size", "use_recompute", "recompute_granularity"],
+        cur_cfg,
+        history_cfgs,
+    )
+    if cfgs:
+        for cfg in cfgs:
+            cfg["recompute_level"] = get_config_recompute_level(cfg)
+
+            if (
+                cfg["micro_batch_size"] > micro_batch_size
+                and cfg["recompute_level"] <= recompute_level
+                and cfg.get("time", -1) > 0
+            ):
+                pruned_reason = f"use_recompute may be slower because {cfg['micro_batch_size']}  and {cfg['use_recompute']} has been already runnable."
+                log_pruned_info(cur_cfg, pruned_reason)
+                return True
+
+            if (
+                cfg["micro_batch_size"] < micro_batch_size
+                and cfg["recompute_level"] >= recompute_level
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                pruned_reason = f"use_recompute may be slower because {cfg['micro_batch_size']}  and {cfg['use_recompute']} has been already runnable."
+                log_pruned_info(cur_cfg, pruned_reason)
+                return True
+
+    return False
+
+
 @register_prune
 def prune_by_num_gpus(tuner_cfg, cur_cfg, history_cfgs=[]):
     num_gpus = (
