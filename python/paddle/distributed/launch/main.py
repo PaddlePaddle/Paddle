@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .context import Context
+from paddle.distributed.launch.context import Context
 
 ctx = None
 
@@ -303,9 +303,9 @@ def launch():
         import sys
         import time
 
-        from ..auto_tuner.recorder import HistoryRecorder
-        from ..auto_tuner.tuner import AutoTuner
-        from ..auto_tuner.utils import (
+        from paddle.distributed.auto_tuner.recorder import HistoryRecorder
+        from paddle.distributed.auto_tuner.tuner import AutoTuner
+        from paddle.distributed.auto_tuner.utils import (
             add_overlap_performance,
             find_error_from_log,
             gen_new_args,
@@ -313,7 +313,7 @@ def launch():
             read_log,
             read_step_time_log,
         )
-        from . import controllers
+        from paddle.distributed.launch import controllers
 
         start_time = time.time()
         # read user defined tuner config json
@@ -354,6 +354,8 @@ def launch():
                 ]
             else:
                 entrypoint = [sys.executable, "-u", ctx.args.training_script]
+        elif ctx.args.training_script.endswith('.pyxes'):
+            entrypoint = [sys.executable, ctx.args.training_script]
         else:
             entrypoint = [ctx.args.training_script]
         entrypoint.extend(ctx.args.training_script_args)
@@ -383,7 +385,7 @@ def launch():
         sorted_ips = []
         ip = None
         if nnodes > 1:
-            from .utils.etcd_client import ETCDClient
+            from paddle.distributed.launch.utils.etcd_client import ETCDClient
 
             assert "etcd://" in ctx.args.master
             master_ip, port = ctx.args.master.strip("etcd://").split(':')
@@ -962,7 +964,7 @@ def launch():
             # if need accurate peak memory
             if os.environ.get("FLAGS_log_memory_stats", False):
                 max_peak_memory = None
-                from ..auto_tuner.utils import read_allocated_memory_log
+                from paddle.distributed.auto_tuner.utils import read_allocated_memory_log
 
                 for root, dirs, files in os.walk(ctx.args.log_dir):
                     for file in files:
@@ -1258,7 +1260,7 @@ def launch():
         c.finalize(exit=True)
 
     else:
-        from . import controllers
+        from paddle.distributed.launch import controllers
 
         # initialize the selected controller
         c = controllers.init(ctx)

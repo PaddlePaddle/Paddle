@@ -16,7 +16,6 @@ import logging
 import os
 import subprocess
 
-from paddle.distributed.launch.main import ctx
 
 logger = logging.getLogger('auto_tuner')
 _PRUNE_FUNC = []
@@ -35,9 +34,13 @@ def log_pruned_info(cur_cfg, pruned_reason):
         cur_cfg["use_recompute"],
         cur_cfg["recompute_granularity"],
     )
-    ctx.logger.info(
-        f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
-    )
+    try:
+        from paddle.distributed.launch.main import ctx
+        ctx.logger.info(
+            f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
+        )
+    except:
+        pass
     logger.info(
         f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
     )
