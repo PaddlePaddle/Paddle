@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -231,7 +232,7 @@ struct ArgumentMappingFnRegistrar {
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
       PD_DECLARE_ai_name_ns_check_##base_kernel_name,                          \
       "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace.");      \
-  extern int TouchBaseKernelNameSymbol_##base_kernel_name();                   \
+  TEST_API extern int TouchBaseKernelNameSymbol_##base_kernel_name();          \
   UNUSED static int __declare_base_kernel_name_symbol_for_##base_kernel_name = \
       TouchBaseKernelNameSymbol_##base_kernel_name()
 
@@ -247,7 +248,7 @@ struct ArgumentMappingFnRegistrar {
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
       PD_DECLARE_arg_map_fn_ns_check_##op_type,                         \
       "PD_DECLARE_ARG_MAPPING_FN must be called in global namespace."); \
-  extern int TouchArgumentMappingFnSymbol_##op_type();                  \
+  TEST_API extern int TouchArgumentMappingFnSymbol_##op_type();         \
   UNUSED static int __declare_arg_map_fn_symbol_for_##op_type =         \
       TouchArgumentMappingFnSymbol_##op_type()
 
