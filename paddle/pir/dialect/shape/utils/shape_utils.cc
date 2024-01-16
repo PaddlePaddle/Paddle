@@ -139,6 +139,14 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
   return value_to_shape_or_data_.count(val) > 0;
 }
 
+static std::string GetValueId(const Value& val) {
+  auto op_id = val.defining_op()->id();
+  auto val_idx = val.dyn_cast<OpResult>().index();
+
+  return val.defining_op()->name() + "_" + std::to_string(op_id) + "_rst_" +
+         std::to_string(val_idx);
+}
+
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
   return value_to_shape_or_data_[val];
@@ -149,14 +157,11 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
   value_to_shape_or_data_[val] = shape_or_data;
 }
 
-std::string GetValueId(const Value& val) {
-  auto op_id = val.defining_op()->id();
-  auto val_idx = val.dyn_cast<OpResult>().index();
-
-  return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
-}
-
-void ShapeConstraintIRAnalysis::PrintAllShapeOrDataDimExprs() const {
+void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
+  LOG(INFO) << "shape analysis : @" << this
+            << " value_to_shape_or_data_ size : "
+            << value_to_shape_or_data_.size();
+  LOG(INFO) << "----------- ShapeOrData for Values ------------";
   for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
     LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
   }

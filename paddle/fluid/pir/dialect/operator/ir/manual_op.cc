@@ -4018,9 +4018,8 @@ bool ExpandOp::InferSymbolicShape(
              "Value shape comes from ShapeOp, it must have data");
   const auto &data = data_shape.data().value();
 
-  symbol::ShapeOrDataDimExprs output_data_shape =
-      symbol::ShapeOrDataDimExprs(data);
-  shape_analysis->SetShapeOrDataForValue(out(), output_data_shape);
+  shape_analysis->SetShapeOrDataForValue(out(),
+                                         symbol::ShapeOrDataDimExprs(data));
   return true;
 }
 

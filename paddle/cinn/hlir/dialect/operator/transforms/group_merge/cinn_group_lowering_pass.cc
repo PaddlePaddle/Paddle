@@ -582,7 +582,7 @@ pir::Operation* ComplieBroadcastTreeToConditionBlock(
   // 2. simply every condition block
   auto* program = group->ops.front()->GetParentProgram();
   VLOG(6) << "Before simply condition block: " << *program;
-  shape_analysis->PrintAllShapeOrDataDimExprs();
+  shape_analysis->PrintShapeOrDatas();
 
   SimplyConditionBlock(rewriter, &group_map);
   VLOG(6) << "After simply condition block: " << *program;
@@ -721,7 +721,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         std::make_shared<pir::ShapeConstraintIRAnalysis>(shape_analysis);
     VLOG(1) << "shape_analysis: " << &shape_analysis
             << " program:" << group_op->GetParentProgram();
-    shape_analysis.PrintAllShapeOrDataDimExprs();
+    shape_analysis.PrintShapeOrDatas();
 
     // op fusion
     auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(

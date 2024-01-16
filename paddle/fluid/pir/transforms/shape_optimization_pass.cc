@@ -107,7 +107,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   }
   VLOG(1) << "##### shape_analysis: " << &shape_analysis
           << " program: " << module_op.program();
-  shape_analysis.PrintAllShapeOrDataDimExprs();
+  shape_analysis.PrintShapeOrDatas();
 }
 
 class ShapeOptimizationPass : public pir::Pass {

@@ -90,9 +90,10 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
-  void PrintAllShapeOrDataDimExprs() const;
-
   symbol::DimExprBuilder CreateDimExprBuilder() override;
+
+  // Used to debug
+  void PrintShapeOrDatas() const;
 
  private:
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
