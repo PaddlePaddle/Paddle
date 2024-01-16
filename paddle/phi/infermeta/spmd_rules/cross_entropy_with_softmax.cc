@@ -45,16 +45,20 @@ void GetCrossEntropyNotations(int x_ndim,
   *x_axes_src = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   (*x_axes_src)[axis] = 'k';
   *x_axes_dst = *x_axes_src;
-  if (!soft_label || !support_shard_softmax_dim) {
+  if (!support_shard_softmax_dim) {
     (*x_axes_dst)[axis] = '1';
   }
-  if (!soft_label) {
-    *label_axes_src = *x_axes_dst;
-  } else {
-    *label_axes_src = *x_axes_src;
-  }
+
+  *label_axes_src = *x_axes_src;
   *label_axes_dst = *x_axes_dst;
-  *loss_axes = *x_axes_dst;
+  if(!soft_label){
+    (*label_axes_src)[axis] = '1';
+    (*label_axes_dst)[axis] = '1';
+  }
+
+  *loss_axes = *x_axes_src;
+  (*loss_axes)[axis] = '1';
+
   // optional output
   if (use_softmax) {
     *softmax_out_axes_src = *x_axes_src;
@@ -65,13 +69,14 @@ void GetCrossEntropyNotations(int x_ndim,
   }
 }
 
-SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
+SpmdInfo CrossEntropyWithSoftmaxInferSpmdBase(const DistMetaTensor& x,
                                           const DistMetaTensor& label,
                                           bool soft_label,
                                           bool use_softmax,
                                           bool numeric_stable_mode,
                                           int ignore_index,
-                                          int axis) {
+                                          int axis,
+                                          bool support_shard_softmax_dim){
   // Step0: Verify input args based on cross_entropy_with_softmax logic
 
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
@@ -134,7 +139,8 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
                            &label_axes_dst,
                            &loss_axes,
                            &softmax_out_axes_src,
-                           &softmax_out_axes_dst);
+                           &softmax_out_axes_dst,
+                           support_shard_softmax_dim);
 
   // Step2: Sharding Propogation
   // Step2.1: merge input shardings
@@ -188,6 +194,29 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
   return {{x_dist_attr_dst, label_dist_attr_dst},
           {softmax_out_dist_attr_dst, loss_dist_attr_dst}};
 }
+
+
+SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
+                                          const DistMetaTensor& label,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis) {
+    return  CrossEntropyWithSoftmaxInferSpmdBase(x, label, soft_label, use_softmax, 
+    numeric_stable_mode, ignore_index, axis, false);                                    
+  }
+
+SpmdInfo CrossEntropyWithSoftmaxInferSpmdStatic(const DistMetaTensor& x,
+                                          const DistMetaTensor& label,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis) {
+    return  CrossEntropyWithSoftmaxInferSpmdBase(x, label, soft_label, use_softmax, 
+    numeric_stable_mode, ignore_index, axis, true);                                    
+  }  
 
 SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
     const DistMetaTensor& x,
@@ -247,7 +276,8 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
                            &label_axes_dst,
                            &loss_axes,
                            &softmax_out_axes_src,
-                           &softmax_out_axes_dst);
+                           &softmax_out_axes_dst,
+                           true);
 
   // Step2: Sharding Propogation
   // Step2.1 merge output dims mappings
@@ -258,7 +288,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
   // Step2.2 infer inputs' dims mappings from merged dims mapping
   std::vector<int64_t> x_dims_mapping, label_dims_mapping;
   // infer and X's dims mapping
-  x_dims_mapping = GetDimsMappingForAxes(x_axes_dst, axis_to_dim_map);
+  x_dims_mapping = GetDimsMappingForAxes(x_axes, axis_to_dim_map);
   // infer and label's dims mapping
   label_dims_mapping = GetDimsMappingForAxes(label_axes_dst, axis_to_dim_map);
 
@@ -343,11 +373,15 @@ void GetCrossEntropyGradNotations(int loss_ndim,
   auto x_axes_src = alphabet.substr(0, loss_ndim);
   x_axes_src[axis] = 'k';
   auto x_axes_dst = x_axes_src;
-  *label_axes_src = x_axes_src;
-  if (!soft_label || !support_shard_softmax_dim) {
+  if (!support_shard_softmax_dim) {
     x_axes_dst[axis] = '1';
   }
+  *label_axes_src = x_axes_src;
   *label_axes_dst = x_axes_dst;
+  if(!soft_label){
+    (*label_axes_src)[axis] = '1';
+    (*label_axes_dst)[axis] = '1';
+  }
 
   *loss_grad_axes = x_axes_src;
   (*loss_grad_axes)[axis] = '1';
@@ -355,6 +389,9 @@ void GetCrossEntropyGradNotations(int loss_ndim,
   if (use_softmax) {
     *softmax_axes_src = x_axes_src;
     *softmax_axes_dst = x_axes_dst;
+     if(!soft_label){
+      (*softmax_axes_dst)[axis] = '1';
+    }
   } else {
     *softmax_axes_src = "";
     *softmax_axes_dst = "";
