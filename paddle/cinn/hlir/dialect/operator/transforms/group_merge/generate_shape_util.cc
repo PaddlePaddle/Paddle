@@ -123,7 +123,7 @@ bool RewriteOneGenerateShapeOpToRunFirst(
 
 }  // namespace
 
-bool RewriteGenerateShapeOpToRunFirst(
+bool MoveGenerateShapeOpsToPrologue(
     pir::IrContext* ir_context,
     pir::Block* block,
     const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
