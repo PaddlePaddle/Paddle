@@ -18,6 +18,7 @@
 // Note(qili93): ensure compile with one header file 'extension.h' only,
 // !!! do not fix this ut by adding other header files (PR#60842) !!!
 #include "paddle/phi/extension.h"
+
 namespace phi {
 
 TEST(CustomDevce, extension_header) {
