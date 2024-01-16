@@ -15,8 +15,8 @@
 #include "paddle/phi/kernels/copysign_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 namespace phi {
 template <typename T, typename Context>
 void CopySignKernel(const Context& dev_ctx,
