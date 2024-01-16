@@ -36,7 +36,7 @@ class TestCastOpFp32ToFp64(OpTest):
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
-            'in_dtype': int(paddle.float32),
+            'in_dtype': paddle.float32,
             'out_dtype': paddle.float64,
         }
         self.op_type = 'cast'
@@ -71,7 +71,7 @@ class TestCastOpFp16ToFp32(OpTest):
         self.inputs = {'X': ipt.astype('float16')}
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP16),
+            'in_dtype': paddle.float16,
             'out_dtype': paddle.float32,
         }
         self.op_type = 'cast'
@@ -98,7 +98,7 @@ class TestCastOpFp32ToFp16(OpTest):
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float16')}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'in_dtype': paddle.float32,
             'out_dtype': paddle.float16,
         }
         self.op_type = 'cast'
@@ -129,7 +129,7 @@ class TestCastOpBf16ToFp32(OpTest):
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_uint16_to_float(ipt)}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.BF16),
+            'in_dtype': paddle.bfloat16,
             'out_dtype': paddle.float32,
         }
         self.op_type = 'cast'
@@ -164,7 +164,7 @@ class TestCastOpFp32ToBf16(OpTest):
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_float_to_uint16(ipt)}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'in_dtype': paddle.float32,
             'out_dtype': paddle.bfloat16,
         }
         self.op_type = 'cast'
