@@ -15,7 +15,8 @@ if(NOT WITH_ROCM)
     SRCS
     while_op_test.cc
     DEPS
-    pir op_dialect_vjp
+    pir
+    op_dialect_vjp
     pir_transforms
     op_dialect
     gtest
