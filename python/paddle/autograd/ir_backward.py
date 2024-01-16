@@ -1081,7 +1081,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
 
-    if not inplace_net(backward_ops):
+    if not inplace_net(backward_ops) and inputs:
         _, remove_ops = prune_ops(
             backward_ops, inputs_set, outputs_set, no_gradvar_set
         )
