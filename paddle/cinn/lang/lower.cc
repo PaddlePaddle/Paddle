@@ -121,7 +121,10 @@ std::vector<ir::Buffer> GetTempBuffers(
   }
 
   std::vector<ir::Buffer> temp_buffers;
-  for (auto& i : name_to_buffer) temp_buffers.push_back(i.second);
+  for (auto& i : name_to_buffer) {
+    temp_buffers.push_back(i.second);
+  }
+
   return temp_buffers;
 }
 
