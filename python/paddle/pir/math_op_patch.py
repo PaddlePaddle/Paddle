@@ -434,6 +434,27 @@ def monkey_patch_value():
 
         return _C_ops.transpose(self, perm)
 
+    def _int_(self):
+        raise TypeError(
+            "int(Variable) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Variable, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Variable.astype(paddle.int32), and do not use int(Variable)."
+        )
+
+    def _float_(self):
+        raise TypeError(
+            "float(Variable) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Variable, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Variable directly, and do not use float(Variable)."
+        )
+
+    def _bool_(self):
+        raise TypeError(
+            "bool(Variable) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Variable, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Variable.astype(paddle.bool), and do not use bool(Variable)."
+        )
+
     def clone(self):
         """
         Returns a new static Value, which is the clone of the original static
@@ -653,6 +674,9 @@ def monkey_patch_value():
                 '__ge__', paddle.tensor.greater_equal, False, None
             ),
         ),
+        ('__float__', _float_),
+        ('__int__', _int_),
+        ('__bool__', _bool_),
     ]
 
     global _already_patch_value
