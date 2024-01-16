@@ -158,10 +158,21 @@ std::string GetValueId(const Value& val) {
 
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
-  CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end())
-      << "Value(" << GetValueId(val)
-      << ") not found in value_to_shape_or_data_.";
+  // TODO(lanxianghit): check this when all the Ops support InferSymbolicShape
+  // CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end());
   return value_to_shape_or_data_[val];
+  // skip static shape temporarily
+  // const auto& shape = val.type().dyn_cast<ShapedTypeInterface>();
+  // CHECK(shape && !shape.IsDynamicShape())
+  //     << "Value(" << GetValueId(val)
+  //     << ") is not found in value_to_shape_or_data and also not static.";
+  // const pir::DDim& val_dims = shape.GetShape();
+  // std::vector<symbol::DimExpr> static_shape;
+  // static_shape.reserve(val_dims.size());
+  // for (int i = 0; i < val_dims.size(); ++i) {
+  //   static_shape.emplace_back(val_dims.at(i));
+  // }
+  // return symbol::ShapeOrDataDimExprs(static_shape);
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
