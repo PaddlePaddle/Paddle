@@ -65,7 +65,9 @@ TEST(DrrTest, reduce_sum) {
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
+  pir::PassManager pm(ctx);
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pm.Run(&program);
 
   auto it = program.block()->begin();
 
@@ -87,7 +89,9 @@ TEST(DrrTest, reduce_max) {
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgramMax(builder);
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
+  pir::PassManager pm(ctx);
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pm.Run(&program);
 
   auto it = program.block()->begin();
 

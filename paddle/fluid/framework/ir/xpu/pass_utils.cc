@@ -64,7 +64,7 @@ int ConvertActivationType(std::string act_type) {
 
 Node* FindNodeWithName(Graph* graph, std::string name) {
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() && node->Var()->Name() == name) {
+    if (node->IsVar() && node->Var() && node->Var()->Name() == name) {
       return node;
     }
   }

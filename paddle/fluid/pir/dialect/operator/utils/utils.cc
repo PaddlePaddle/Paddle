@@ -18,6 +18,7 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -26,6 +27,10 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/utils/string/string_helper.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -36,6 +41,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
+    FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
     FusedGemmEpilogueOp::name(),
@@ -59,9 +65,17 @@ const std::unordered_set<std::string> LegacyOpList = {
     RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    CReduceMinOp::name()};
+    NceOp::name(),
+    NceGradOp::name(),
+    LrnOp::name(),
+    LrnGradOp::name(),
+#ifdef PADDLE_WITH_DNNL
+    paddle::onednn::dialect::LrnOp::name(),
+    paddle::onednn::dialect::LrnGradOp::name(),
+#endif
+    CReduceMinOp::name(),
+    PushSparseV2Op::name()};
 
-const std::unordered_set<std::string> OneDNNLegacyOpList = {};
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -222,12 +236,6 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
-#ifdef PADDLE_WITH_DNNL
-bool IsOneDNNLegacyOp(const std::string& name) {
-  return OneDNNLegacyOpList.count(name);
-}
-#endif
-
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
 }
@@ -274,7 +282,44 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   return data_type;
 }
 
+std::string GetValueDataType(const pir::Type& type) {
+  if (type.isa<pir::DenseTensorType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<pir::DenseTensorType>().dtype()));
+  } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
+  } else if (type.isa<DenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<DenseTensorArrayType>().dtype()));
+  } else if (type.isa<pir::VectorType>()) {
+    auto vec_value = type.dyn_cast<pir::VectorType>();
+    if (vec_value.size() > 0) {
+      return GetValueDataType(vec_value[0]);
+    } else {
+      return "";
+    }
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dtype()));
+  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>().dtype()));
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+            .dtype()));
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidType("Currently, we can only get dtype for "
+                                 "DenseTensorType and SelectedRowsType."));
+  }
+}
+
 std::string GetValueDataType(const pir::Value& value) {
+  if (value.impl() == nullptr) {
+    return "";
+  }
   if (value.type().isa<pir::DenseTensorType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
@@ -284,6 +329,29 @@ std::string GetValueDataType(const pir::Value& value) {
   } else if (value.type().isa<DenseTensorArrayType>()) {
     return phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorArrayType>().dtype()));
+  } else if (value.type().isa<pir::VectorType>()) {
+    auto vec_value = value.type().dyn_cast<pir::VectorType>();
+    if (vec_value.size() > 0) {
+      return GetValueDataType(vec_value[0]);
+    } else {
+      return "";
+    }
+  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dtype()));
+  } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+            .dtype()));
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+            .dtype()));
   } else {
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "
