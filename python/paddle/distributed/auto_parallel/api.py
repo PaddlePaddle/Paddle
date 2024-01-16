@@ -271,7 +271,7 @@ def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
         *args (tuple): A tuple of arguments to be passed to the ``fn`` function.
         **kwargs (dict): A dict of arguments to be passed to the ``fn`` function.
 
-    Returns:
+    Retruns:
         Tensor: A Tensor constructed from ``fn`` with distributed attributes.
 
     Examples:
@@ -304,7 +304,7 @@ def reshard(dist_tensor, mesh, placements):
             be Shard, Replicate and Partial.
 
     Returns:
-        Tensor: A Distributed Tensor resharded with distributed attributes.
+        Tensor: A Distributed Tensor reshared with distributed attributes.
 
     Examples:
         .. code-block:: python
@@ -465,7 +465,7 @@ def shard_layer(
             >>> layer = dist.shard_layer(layer, mesh, shard_fn)
             >>> print(layer)
 
-            >>> # This case need to be executed in multi-card environment
+            >>> # This case need to be excuted in multi-card environment
             >>> # export CUDA_VISIBLE_DEVICES=0,1
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
@@ -642,7 +642,7 @@ class _ShardOptimizer:
 
     def state_dict(self):
         """
-        Create and shard the optimizer states e.g., accumulators and master_weights before load_state_dict.
+        Create and shard the optimizer states e.g., acumulators and master_weights before load_state_dict.
         If training has already started or the optimizer states are already created and sharded, do nothing.
         """
         state_dict = self._inner_opt.state_dict()
@@ -1037,24 +1037,10 @@ class DistModel:
 
         # convert dygraph model to static model
         batch_size = loader.batch_sampler.batch_size
-        inputs_spec, labels_spec = self._engine._prepare_data_spec(
-            loader.dataset, None, batch_size
-        )
-
-        if optimizer is not None and loss is not None:
-            # get the static graph in train mode
-            self._engine.prepare(
-                inputs_spec, labels_spec, mode="train", init_parameters=False
-            )
-        if loss is not None:
-            # get the static graph in eval mode
-            self._engine.prepare(
-                inputs_spec, labels_spec, mode="eval", init_parameters=False
-            )
-        # get the static graph in predict mode
-        self._engine.prepare(
-            inputs_spec, None, mode="predict", init_parameters=False
-        )
+        (
+            self._engine._inputs_spec,
+            self._engine._labels_spec,
+        ) = self._engine._prepare_data_spec(loader.dataset, None, batch_size)
 
         # set the default mode
         if optimizer is not None and loss is not None:
@@ -1077,9 +1063,8 @@ class DistModel:
         parameters of the model and return the loss.
         """
         if not self._engine._has_prepared["train"]:
-            raise RuntimeError(
-                "The model for training has not been prepared, please set 'loss' and 'optimizer' when constructing DistModel."
-            )
+            self._engine._prepare_program(mode="train", init_parameters=False)
+
         self._mode = "train"
         self._engine.to_mode("train")
 
@@ -1089,9 +1074,8 @@ class DistModel:
         executing ``__call__`` will return the loss.
         """
         if not self._engine._has_prepared["eval"]:
-            raise RuntimeError(
-                "The model for evaluation has not been prepared, please set 'loss' when constructing DistModel."
-            )
+            self._engine._prepare_program(mode="eval", init_parameters=False)
+
         self._mode = "eval"
         self._engine.to_mode("eval")
 
@@ -1102,9 +1086,7 @@ class DistModel:
         outputs of the model.
         """
         if not self._engine._has_prepared["predict"]:
-            raise RuntimeError(
-                "The model for prediction has not been prepared."
-            )
+            self._engine._prepare_program(mode="predict", init_parameters=False)
         self._mode = "predict"
         self._engine.to_mode("predict")
 
@@ -1552,7 +1534,7 @@ def unshard_dtensor(dist_tensor):
             dist_tensor
         )
         # in static mode, 'distributed tensor' and 'dense tensor' are all
-        # Variable type, the distributed attribute is a property of the Variable.
+        # Varialble type, the distributed attribute is a property of the Varibale.
         # So, it's no need to convert the distributed tensor to a dense tensor.
         # We only need to modify its distributed attribute.
         empty_dist_attr = (
