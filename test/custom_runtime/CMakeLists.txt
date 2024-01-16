@@ -35,8 +35,6 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   set_tests_properties(test_custom_op_setup PROPERTIES TIMEOUT 120)
 
   # cpp testing
-  cc_test(
-    extension_header_test
-    SRCS extension_header_test.cc
-    DEPS phi common)
+  paddle_test(extension_header_test SRCS extension_header_test.cc DEPS phi
+              common)
 endif()
