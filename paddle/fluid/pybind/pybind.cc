@@ -193,6 +193,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -207,7 +208,6 @@ limitations under the License. */
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/common/type_promotion.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/pir/core/program.h"

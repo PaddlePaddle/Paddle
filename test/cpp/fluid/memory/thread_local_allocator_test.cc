@@ -18,8 +18,8 @@
 #include <thread>              // NOLINT
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_string(allocator_strategy);

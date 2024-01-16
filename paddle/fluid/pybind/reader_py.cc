@@ -24,6 +24,7 @@
 #include "Python.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -31,7 +32,6 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 

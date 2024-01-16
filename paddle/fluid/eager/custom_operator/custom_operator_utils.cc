@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
@@ -22,7 +23,6 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"

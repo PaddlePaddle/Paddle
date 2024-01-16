@@ -28,11 +28,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 

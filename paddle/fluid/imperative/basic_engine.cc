@@ -24,13 +24,13 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

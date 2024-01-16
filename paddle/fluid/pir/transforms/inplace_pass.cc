@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -29,7 +30,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"

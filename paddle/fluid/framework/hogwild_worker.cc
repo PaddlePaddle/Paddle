@@ -15,6 +15,7 @@ limitations under the License. */
 #include <array>
 #include <ctime>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/barrier.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -25,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

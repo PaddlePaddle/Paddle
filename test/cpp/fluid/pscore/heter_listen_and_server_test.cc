@@ -21,13 +21,13 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/flags.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

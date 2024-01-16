@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
@@ -33,7 +34,6 @@
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_string(tracer_mkldnn_ops_on);
