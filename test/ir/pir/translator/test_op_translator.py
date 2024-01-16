@@ -17,6 +17,7 @@ import unittest
 import paddle
 from paddle import pir
 from paddle.base import core
+from paddle.base.backward import append_backward
 
 paddle.enable_static()
 
@@ -29,7 +30,7 @@ class TestOpTranslator(unittest.TestCase):
         self.main_program = paddle.static.Program()
 
     def append_op(self):
-        raise Exception("Define the op to be tested here!")
+        raise NotImplementedError("Define the op to be tested here!")
 
     def build_model(self):
         with paddle.static.scope_guard(self.new_scope):
@@ -38,11 +39,51 @@ class TestOpTranslator(unittest.TestCase):
 
     def check(self):
         self.build_model()
-        l = pir.translate_to_pir(self.main_program.desc)
+        pir_program = pir.translate_to_pir(self.main_program.desc)
         assert hasattr(self, "op_type"), "Op_type should be specified!"
-        assert self.op_type in str(l), (
+        assert self.op_type in str(pir_program), (
             self.op_type
             + " should be translated to pd_op."
             + self.op_type
+            + '!'
+        )
+
+
+class TestOpWithBackwardTranslator(unittest.TestCase):
+    def setUp(self):
+        self.place = core.Place()
+        self.place.set_place(paddle.CPUPlace())
+        self.new_scope = paddle.static.Scope()
+        self.main_program = paddle.static.Program()
+
+    def append_op(self):
+        raise NotImplementedError("Define the op to be tested here!")
+
+    def build_model(self):
+        with paddle.static.scope_guard(self.new_scope):
+            with paddle.static.program_guard(self.main_program):
+                out = self.append_op()
+                append_backward(out)
+
+    def check(self):
+        self.build_model()
+        pir_program = pir.translate_to_pir(self.main_program.desc)
+        assert hasattr(
+            self, "forward_op_type"
+        ), "forward_op_type should be specified!"
+        assert hasattr(
+            self, "backward_op_type"
+        ), "backward_op_type should be specified!"
+        serialized_pir_program = str(pir_program)
+        assert self.forward_op_type in serialized_pir_program, (
+            self.forward_op_type
+            + " should be translated to pd_op."
+            + self.forward_op_type
+            + '!'
+        )
+        assert self.backward_op_type in serialized_pir_program, (
+            self.backward_op_type
+            + " should be translated to pd_op."
+            + self.backward_op_type
             + '!'
         )

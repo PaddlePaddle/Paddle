@@ -144,6 +144,7 @@ using experimental::split;
 using experimental::sqrt;
 using experimental::square;
 using experimental::stack;
+using experimental::standard_gamma;
 using experimental::strided_slice;
 using experimental::subtract;
 using experimental::swish;

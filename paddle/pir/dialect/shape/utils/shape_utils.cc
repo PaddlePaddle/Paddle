@@ -46,29 +46,9 @@ bool ShapeAnalysis::IsProductEqual(
 }
 
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
-    : m_(m), mgr_(m) {
-  mgr_.Load();
-  for (auto& op : m.block()) {
-    auto tie_shape_op = op.dyn_cast<shape::TieShapeOp>();
-    if (!tie_shape_op) continue;
-    Value result = tie_shape_op.input();
-    auto& symbols = value_to_sym_dims_[result];
-    auto attrs =
-        tie_shape_op
-            .attribute<ArrayAttribute>(SymbolicDimOp::GetSymbolicDimAttrName())
-            .AsVector();
-    for (const auto& attr : attrs) {
-      auto sym_op = mgr_.symbolTable().Lookup<SymbolicDimOp>(
-          attr.dyn_cast<StrAttribute>().AsString());
-      if (!sym_op) continue;
-      symbols.push_back(sym_op);
-    }
-  }
-}
+    : m_(m), mgr_(m) {}
 
-ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {
-  // mgr_.Save();
-}
+ShapeConstraintIRAnalysis::~ShapeConstraintIRAnalysis() {}
 
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
@@ -80,7 +60,7 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
     return false;
 
   if (lhs_type.HasStaticShape() && rhs_type.HasStaticShape()) {
-    return lhs_type.GetDyShape() == rhs_type.GetDyShape();
+    return vectorize(lhs_type.GetShape()) == vectorize(rhs_type.GetShape());
   }
 
   auto lhs_it = value_to_sym_dims_.find(lhs);
@@ -115,13 +95,13 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
         auto it = value_to_sym_dims_.find(value);
         if (!type || !type.HasRank()) return false;
         for (int idx : dim_idxs) {
-          if (type.GetDyShape()[idx] == ShapedTypeInterface::kDynamic) {
+          if (type.GetShape()[idx] == ShapedTypeInterface::kDynamic) {
             if (it == value_to_sym_dims_.end() ||
                 static_cast<int>(it->second.size()) <= idx)
               return false;
             prod.symbols.push_back(it->second[idx]);
           } else {
-            prod.factor *= type.GetDyShape()[idx];
+            prod.factor *= type.GetShape()[idx];
           }
         }
         return true;
@@ -168,23 +148,16 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   return it->second;
 }
 
-std::string GetValueId(Value* val) {
-  auto op_id = val->defining_op()->id();
-  auto val_idx = val->dyn_cast<OpResult>().index();
-
-  return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
-}
-
 const symbol::ShapeOrDataDimExprs&
-ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value* val) {
-  auto val_id = GetValueId(val);
-  return value_id_to_shapeordata[val_id];
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
+  // TODO(lanxianghit): check this when all the Ops support InferSymbolicShape
+  // CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end());
+  return value_to_shape_or_data_[val];
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
-    Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  auto val_id = GetValueId(val);
-  value_id_to_shapeordata[val_id] = shape_or_data;
+    Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  value_to_shape_or_data_[val] = shape_or_data;
 }
 
 }  // namespace pir
