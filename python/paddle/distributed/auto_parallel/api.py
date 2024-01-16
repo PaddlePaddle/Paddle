@@ -1777,8 +1777,8 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh is False:
                 assert len(self._input_keys) == len(self._meshes)
             dist_batch_data = {}
-            for ind in range(len(self._input_keys)):
-                key = self._input_keys[ind]
+            for i in range(len(self._input_keys)):
+                key = self._input_keys[i]
                 mesh, placements = self._get_mesh_and_placement(i)
                 dist_batch_data[key] = dtensor_from_local(
                     batch_data[key], mesh, placements
