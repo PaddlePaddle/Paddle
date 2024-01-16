@@ -198,10 +198,10 @@ def GenBuildInserFullForMutableAttribute(
 
 
 def GenBuildInputs(op_input_name_list, op_mutable_attribute_name_list):
-    BUILD_INPUT_TEMPLATE = """  std::vector<pir::Value> argument_inputs = {{{inputs_args}}};
+    BUILD_INPUT_TEMPLATE = """  argument_inputs = {{{inputs_args}}};
   argument.AddInputs(argument_inputs);
 """
-    build_input_str = '  VLOG(4) << "Builder construction inputs";\n'
+    build_input_str = '  VLOG(4) << "Builder construction inputs";\n  std::vector<pir::Value> argument_inputs;\n'
     input_name_list = op_input_name_list + op_mutable_attribute_name_list
     if len(input_name_list) > 0:
         inputs_args_str = ""
@@ -229,6 +229,7 @@ def GenBuildAttributes(
   pir::Attribute attr_{attr_name} = pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_{attr_name});
 """
     attr_str = '  VLOG(4) << "Builder construction attributes";\n'
+    attr_str += '  pir::AttributeMap argument_attributes;\n'
     array_attr_type = "pir::ArrayAttribute<"
     for idx in range(len(op_non_mutable_attribute_name_list)):
         if array_attr_type in op_non_mutable_attribute_type_list[idx]:
@@ -291,7 +292,7 @@ def GenBuildAttributes(
                 op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
-        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n""".format(
+        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
             attr_name=op_non_mutable_attribute_name_list[idx]
         )
 
@@ -734,20 +735,26 @@ def gen_build_func_str(
         op_non_mutable_attribute_name_list,
         op_non_mutable_attribute_type_list,
     )
-    build_outputs_str = GenBuildOutputs(
-        op_class_name,
-        op_input_name_list,
-        op_input_type_list,
-        op_input_optional_list,
-        op_mutable_attribute_name_list,
-        op_mutable_attribute_type_list,
-        op_output_name_list,
-        op_output_type_list,
-        op_output_size_list,
-        op_output_optional_list,
-        op_infer_meta_map,
-        op_inplace_map,
-        muta_attr_is_input,
+    # build_outputs_str = GenBuildOutputs(
+    #     op_class_name,
+    #     op_input_name_list,
+    #     op_input_type_list,
+    #     op_input_optional_list,
+    #     op_mutable_attribute_name_list,
+    #     op_mutable_attribute_type_list,
+    #     op_output_name_list,
+    #     op_output_type_list,
+    #     op_output_size_list,
+    #     op_output_optional_list,
+    #     op_infer_meta_map,
+    #     op_inplace_map,
+    #     muta_attr_is_input,
+    # )
+    build_outputs_str = """
+  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);""".format(
+        op_name=op_class_name
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
