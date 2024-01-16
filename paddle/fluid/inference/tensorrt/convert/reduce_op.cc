@@ -30,7 +30,7 @@ class ReduceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
+    VLOG(4) << "Convert " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
     auto reduce_type = ops_.find(op_type);
     auto* x = engine_->GetITensor(op_desc.Input("X").front());
@@ -38,8 +38,20 @@ class ReduceOpConverter : public OpConverter {
     int input_dims = input_shape.nbDims;
 
     bool keep_dim = PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_dim"));
-    std::vector<int32_t> dim =
-        PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
+
+    std::vector<int32_t> dim;
+    if (op_desc.GetProtoAttr("dim").type() ==
+        framework::proto::AttrType::INTS) {
+      dim = PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
+    } else if (op_desc.GetProtoAttr("dim").type() ==
+               framework::proto::AttrType::LONGS) {
+      std::vector<int64_t> tem_dim =
+          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("dim"));
+      for (size_t i = 0; i < tem_dim.size(); i++) {
+        dim.push_back(static_cast<int32_t>(tem_dim[i]));
+      }
+    }
+
     bool reduce_all = PADDLE_GET_CONST(bool, op_desc.GetAttr("reduce_all"));
 
     if (dim.size() == 0) {
@@ -148,8 +160,19 @@ class ReduceAnyOpConverter : public ReduceOpConverter {
     int input_dims = input_shape.nbDims;
     // Discriminate DataType between int and bool.
     bool keep_dim = PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_dim"));
-    std::vector<int32_t> dim =
-        PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
+
+    std::vector<int32_t> dim;
+    if (op_desc.GetProtoAttr("dim").type() ==
+        framework::proto::AttrType::INTS) {
+      dim = PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
+    } else if (op_desc.GetProtoAttr("dim").type() ==
+               framework::proto::AttrType::LONGS) {
+      std::vector<int64_t> tem_dim =
+          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("dim"));
+      for (size_t i = 0; i < tem_dim.size(); i++) {
+        dim.push_back(static_cast<int32_t>(tem_dim[i]));
+      }
+    }
     bool reduce_all = PADDLE_GET_CONST(bool, op_desc.GetAttr("reduce_all"));
 
     if (reduce_all) {

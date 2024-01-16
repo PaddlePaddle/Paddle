@@ -15,29 +15,14 @@
 #pragma once
 
 #include <memory>
-#include <string>
+#include "paddle/pir/pass/pass.h"
 
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_operation.h"
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-namespace paddle {
-namespace drr {
+std::unique_ptr<::pir::Pass> CreateMoveGenerateShapeOpsToProloguePass();
 
-class TensorInterface;
-class MatchContextImpl;
-
-class MatchContext final {
- public:
-  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
-
-  const TensorInterface& Tensor(const std::string& tensor_name) const;
-
-  template <typename T>
-  T Attr(const std::string& attr_name) const;
-
- private:
-  std::shared_ptr<const MatchContextImpl> impl_;
-};
-
-}  // namespace drr
-}  // namespace paddle
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

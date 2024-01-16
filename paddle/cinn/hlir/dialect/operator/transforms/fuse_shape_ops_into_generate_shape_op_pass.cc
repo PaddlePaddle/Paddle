@@ -25,7 +25,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
@@ -139,9 +138,9 @@ bool ProcessOp(paddle::dialect::ExpandOp op, pir::PatternRewriter* rewriter) {
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(
             op.x().defining_op()->GetParentProgram());
-    CHECK(shape_analysis.value_id_to_shapeordata_.find(GetValueId(&value)) !=
-          shape_analysis.value_id_to_shapeordata_.end());
-    return shape_analysis.value_id_to_shapeordata_.at(GetValueId(&value));
+
+    CHECK(shape_analysis.HasShapeOrDataForValue(value));
+    return shape_analysis.GetShapeOrDataForValue(value);
   };
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewritedGenerateShapeOp(

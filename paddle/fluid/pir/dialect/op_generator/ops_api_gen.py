@@ -114,6 +114,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_allgather',
     'c_allreduce_max',
     'c_allreduce_sum',
+    'c_allreduce_prod',
+    'c_allreduce_prod_',
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
@@ -145,6 +147,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'uniform_random_batch_size_like',
     'c_reduce_min',
     'c_reduce_min_',
+    'push_sparse_v2',
+    'push_sparse_v2_',
 ]
 
 

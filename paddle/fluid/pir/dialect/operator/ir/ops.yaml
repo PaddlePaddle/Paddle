@@ -164,6 +164,16 @@
     func : c_allreduce_max
   inplace : (x -> out)
 
+- op : c_allreduce_prod
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_prod
+  inplace : (x -> out)
+
 - op : c_allreduce_sum
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)
@@ -395,6 +405,7 @@
     param : [x, equation]
   kernel :
     func : einsum
+  optional : inner_cache, xshape
   backward : einsum_grad
 
 - op : elementwise_pow
@@ -890,6 +901,8 @@
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
   inplace : (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : multiply_grad
 
 - op : norm
@@ -978,6 +991,17 @@
   kernel :
     func : prod
   backward : prod_grad
+
+- op : push_sparse_v2
+  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
+  output : Tensor[](out_grad_out){out_grad_in.size()}
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [out_grad_in]
+  kernel :
+    func : push_sparse_v2
+    data_type : out_grad_in
+  inplace: (out_grad_in -> out_grad_out)
 
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
