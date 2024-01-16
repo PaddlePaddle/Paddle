@@ -44,16 +44,16 @@ class IrMapping {
   template <typename T>
   using IrType = typename detail::ExactlyOneIrType<remove_lowlevel_const_t<T>,
                                                    Value,
-                                                   Block *,
-                                                   Operation *>::type;
+                                                   Block*,
+                                                   Operation*>::type;
 
   template <typename T>
-  auto &GetMutableMap() {
+  auto& GetMutableMap() {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
-    } else if constexpr (std::is_same<T, Block *>::value) {
+    } else if constexpr (std::is_same<T, Block*>::value) {
       return block_map_;
-    } else if constexpr (std::is_same<T, Operation *>::value) {
+    } else if constexpr (std::is_same<T, Operation*>::value) {
       return operation_map_;
     } else {
       IR_THROW("Not support type in IRMapping.");
@@ -61,12 +61,12 @@ class IrMapping {
   }
 
   template <typename T>
-  const auto &GetMap() const {
+  const auto& GetMap() const {
     if constexpr (std::is_same<T, Value>::value) {
       return value_map_;
-    } else if constexpr (std::is_same<T, Block *>::value) {
+    } else if constexpr (std::is_same<T, Block*>::value) {
       return block_map_;
-    } else if constexpr (std::is_same<T, Operation *>::value) {
+    } else if constexpr (std::is_same<T, Operation*>::value) {
       return operation_map_;
     } else {
       IR_THROW("Not support type in IRMapping.");
@@ -98,37 +98,10 @@ class IrMapping {
     operation_map_.clear();
   }
 
-  template <typename T>
-  using MapType = std::unordered_map<T, T>;
-
-  template <typename T>
-  const MapType<T> &Map() const {
-    if constexpr (std::is_convertible<T, Value>::value)
-      return value_map_;
-    else if constexpr (std::is_convertible<T, Block *>::value)
-      return block_map_;
-    else if constexpr (std::is_convertible<T, Operation *>::value)
-      return operation_map_;
-    else
-      IR_THROW("Not support type in IRMapping.");
-  }
-
-  template <typename T>
-  MapType<T> &MutableMap() {
-    if constexpr (std::is_convertible<T, Value>::value)
-      return value_map_;
-    else if constexpr (std::is_convertible<T, Block *>::value)
-      return block_map_;
-    else if constexpr (std::is_convertible<T, Operation *>::value)
-      return operation_map_;
-    else
-      IR_THROW("Not support type in IRMapping.");
-  }
-
  private:
   std::unordered_map<Value, Value> value_map_;
-  std::unordered_map<const Block *, Block *> block_map_;
-  std::unordered_map<const Operation *, Operation *> operation_map_;
+  std::unordered_map<const Block*, Block*> block_map_;
+  std::unordered_map<const Operation*, Operation*> operation_map_;
 };
 
 }  // namespace pir
