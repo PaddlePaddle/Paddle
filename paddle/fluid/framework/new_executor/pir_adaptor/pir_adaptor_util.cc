@@ -295,11 +295,10 @@ void DeepCopyVariable(const Variable* src_var,
                       bool is_optional,
                       std::map<Variable*, Variable*>* src_to_dst_map) {
   if (src_to_dst_map->count(const_cast<Variable*>(src_var))) {
-    std::cout << "src_var: " << std::endl;
     dst_var = (*src_to_dst_map)[const_cast<Variable*>(src_var)];
     return;
   }
-  std::cout << "out side src_var: " << std::endl;
+
   if (src_var->IsType<phi::DenseTensor>()) {
     auto& src_tensor = src_var->Get<phi::DenseTensor>();
     auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
@@ -373,7 +372,6 @@ void DeepCopyVariable(const Variable* src_var,
       std::string new_name = "copied_" + std::to_string(stack_size) + '_' +
                              value_exe_info->GetVarName(src_ref_var);
       auto tmp_dst_var = value_exe_info->GetScope()->Var(new_name);
-      std::cout << "deepcopy variablerefarray src_var: " << std::endl;
       DeepCopyVariable(src_ref_var,
                        tmp_dst_var,
                        value_exe_info,
