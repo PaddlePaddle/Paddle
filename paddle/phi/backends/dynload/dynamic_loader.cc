@@ -358,7 +358,8 @@ void* GetCublasDsoHandle() {
 void* GetCublasLtDsoHandle() {
 // APIs available after CUDA 10.1
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so.11");
+  return GetDsoHandleFromSearchPath(
+      FLAGS_cuda_dir, "libcublasLt.so.11", false, {cublas_lib_path});
 #else
   std::string warning_msg(
       "Your CUDA_VERSION less 10.1, not support CublasLt. "

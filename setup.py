@@ -928,6 +928,7 @@ def get_setup_requires():
         )
 
 
+# patchelf --set-rpath  /usr/local/lib/python3.10/dist-packages/nvidia/cublas/lib/ /usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib/libcudnn_ops_infer.so.8
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {

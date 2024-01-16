@@ -30,22 +30,23 @@ extern void* cudnn_dso_handle;
 extern bool HasCUDNN();
 
 extern void EnforceCUDNNLoaded(const char* fn_name);
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                      \
-  struct DynLoad__##__name {                                         \
-    template <typename... Args>                                      \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
-      using cudnn_func = decltype(&::__name);                        \
-      std::call_once(cudnn_dso_flag, []() {                          \
-        cudnn_dso_handle = phi::dynload::GetCUDNNDsoHandle();        \
-      });                                                            \
-      LOG_FIRST_N(WARNING, 1) << "debug info:" << cudnn_dso_handle;  \
-      EnforceCUDNNLoaded(#__name);                                   \
-      VLOG(1) << "CUDNN Function: " #__name;                         \
-      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);    \
-      VLOG(1) << "------: ";                                         \
-      return reinterpret_cast<cudnn_func>(p_##__name)(args...);      \
-    }                                                                \
-  };                                                                 \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
+  struct DynLoad__##__name {                                               \
+    template <typename... Args>                                            \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {       \
+      using cudnn_func = decltype(&::__name);                              \
+      std::call_once(cudnn_dso_flag, []() {                                \
+        cudnn_dso_handle = phi::dynload::GetCUDNNDsoHandle();              \
+      });                                                                  \
+      LOG_FIRST_N(WARNING, 1) << "debug info:" << cudnn_dso_handle;        \
+      EnforceCUDNNLoaded(#__name);                                         \
+      VLOG(1) << "CUDNN Function: " #__name;                               \
+      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);          \
+      VLOG(1) << "------: " << p_##__name;                                 \
+      VLOG(1) << ":" << reinterpret_cast<cudnn_func>(p_##__name)(args...); \
+      return reinterpret_cast<cudnn_func>(p_##__name)(args...);            \
+    }                                                                      \
+  };                                                                       \
   extern struct DynLoad__##__name __name
 
 /**
