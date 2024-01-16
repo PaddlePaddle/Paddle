@@ -22,6 +22,7 @@
 #include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/adt/symbolic_dim.h"
 #include "paddle/cinn/adt/unique_id.h"
+#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -300,12 +301,14 @@ void GenerateProductEqualConstraints(const ::pir::Value& lhs_tensor,
   }
 }
 
-std::vector<::pir::shape::SymbolicDimOp> CreateSymbolicDimsFromValue(
+std::vector<symbol::DimExpr> CreateSymbolicDimsFromValue(
     const ::pir::Value& tensor,
     const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   CHECK_NOTNULL(shape_analysis.get());
-  std::vector<::pir::shape::SymbolicDimOp> dims =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(tensor);
+  const auto& shape_or_data = shape_analysis->GetShapeOrDataForValue(tensor);
+  const auto& dims = shape_or_data.data().has_value()
+                         ? shape_or_data.data().value()
+                         : shape_or_data.shape();
   CHECK_EQ(dims.size(),
            hlir::framework::pir::CompatibleInfo::ValueShape(tensor).size());
   return dims;
@@ -331,19 +334,17 @@ std::string ToTxtString(const DimVar& dim_var) {
                     dim_var.variant());
 }
 
-void GenerateDimEqualConstraints(
-    const std::vector<::pir::shape::SymbolicDimOp>& lhs_dims,
-    const std::vector<::pir::shape::SymbolicDimOp>& rhs_dims,
-    const ::pir::Value& lhs_tensor,
-    const ::pir::Value& rhs_tensor,
-    const ::pir::SymbolicDimMgr* symbolic_dim_mgr,
-    DimFunctions* ret) {
+void GenerateDimEqualConstraints(const std::vector<symbol::DimExpr>& lhs_dims,
+                                 const std::vector<symbol::DimExpr>& rhs_dims,
+                                 const ::pir::Value& lhs_tensor,
+                                 const ::pir::Value& rhs_tensor,
+                                 const ::pir::SymbolicDimMgr* symbolic_dim_mgr,
+                                 DimFunctions* ret) {
   VisitEachIdxPairOfTwoVectors(
       lhs_dims, rhs_dims, [&](std::size_t lhs_idx, std::size_t rhs_idx) {
-        const ::pir::shape::SymbolicDimOp& lhs_dim = lhs_dims.at(lhs_idx);
-        const ::pir::shape::SymbolicDimOp& rhs_dim = rhs_dims.at(rhs_idx);
-        if (const_cast<::pir::SymbolicDimMgr*>(symbolic_dim_mgr)
-                ->IsSymbolicDimEqual(lhs_dim, rhs_dim)) {
+        const symbol::DimExpr& lhs_dim = lhs_dims.at(lhs_idx);
+        const symbol::DimExpr& rhs_dim = rhs_dims.at(rhs_idx);
+        if (lhs_dim == rhs_dim) {
           ShapeDialectTensorDim lhs_adt_dim{lhs_tensor, lhs_idx};
           ShapeDialectTensorDim rhs_adt_dim{rhs_tensor, rhs_idx};
           VLOG(4) << "Dim Equal: " << ToTxtString(lhs_adt_dim)
@@ -358,14 +359,30 @@ void GenerateDimEqualConstraints(
       });
 }
 
+bool IsSymbolicDimProductEqual(const std::vector<symbol::DimExpr>& lhs,
+                               const std::vector<symbol::DimExpr>& rhs) {
+  const auto& MakeListDimExpr = [](const std::vector<symbol::DimExpr>& exprs)
+      -> symbol::List<symbol::DimExpr> {
+    symbol::List<symbol::DimExpr> ret{};
+    for (const auto& expr : exprs) {
+      ret->emplace_back(expr);
+    }
+    return ret;
+  };
+  symbol::DimExpr lhs_expr{symbol::Mul<symbol::DimExpr>{MakeListDimExpr(lhs)}};
+  symbol::DimExpr rhs_expr{symbol::Mul<symbol::DimExpr>{MakeListDimExpr(rhs)}};
+  return cinn::common::SimplifyDimExpr(lhs_expr) ==
+         cinn::common::SimplifyDimExpr(rhs_expr);
+}
+
 void BuildTensorShapeDialectConstraints(
     const ::pir::Value& lhs_tensor,
     const ::pir::Value& rhs_tensor,
     const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis,
     DimFunctions* ret) {
-  std::vector<::pir::shape::SymbolicDimOp> lhs_dims =
+  std::vector<symbol::DimExpr> lhs_dims =
       CreateSymbolicDimsFromValue(lhs_tensor, shape_analysis);
-  std::vector<::pir::shape::SymbolicDimOp> rhs_dims =
+  std::vector<symbol::DimExpr> rhs_dims =
       CreateSymbolicDimsFromValue(lhs_tensor, shape_analysis);
 
   GenerateDimEqualConstraints(lhs_dims,
@@ -375,9 +392,7 @@ void BuildTensorShapeDialectConstraints(
                               &shape_analysis->symbolicDimMgr(),
                               ret);
 
-  if (shape_analysis->symbolicDimMgr().IsSymbolicDimProductEqual(
-          ::pir::SymbolicDimProduct{lhs_dims},
-          ::pir::SymbolicDimProduct{rhs_dims})) {
+  if (IsSymbolicDimProductEqual(lhs_dims, rhs_dims)) {
     GenerateProductEqualConstraints(lhs_tensor, rhs_tensor, ret);
   }
 }
@@ -439,14 +454,17 @@ void VisitEachTensor(const List<::pir::Value>& tensors, const DoEachT& DoEach) {
   }
 }
 
-::pir::shape::SymbolicDimOp GetSymbolicDimOp4TensorDim(
+symbol::DimExpr GetSymbolicDimOp4TensorDim(
     const ShapeDialectTensorDim& tensor_dim,
     const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis) {
-  const auto& [tensor, axis] = tensor_dim;
-  const auto& symbolic_dim_ops =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(tensor);
-  CHECK_LT(axis, symbolic_dim_ops.size());
-  return symbolic_dim_ops.at(axis);
+  auto [tensor, axis] = tensor_dim;
+  const auto& symbolic_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(tensor);
+  const auto& dim_exprs = symbolic_shape_or_data.data().has_value()
+                              ? symbolic_shape_or_data.data().value()
+                              : symbolic_shape_or_data.shape();
+  CHECK_LT(axis, dim_exprs.size());
+  return dim_exprs.at(axis);
 }
 
 SymbolicDim GetOrNewSymbolicDim(
@@ -459,8 +477,7 @@ SymbolicDim GetOrNewSymbolicDim(
   for (const auto& [tensor_dim, symbolic_dim] : tensor_dim2symbolic_Dim) {
     const auto& cur_symblic_dim_op =
         GetSymbolicDimOp4TensorDim(tensor_dim, shape_analysis);
-    if (shape_analysis->symbolicDimMgr().IsSymbolicDimEqual(
-            target_symbolic_dim_op, cur_symblic_dim_op)) {
+    if (target_symbolic_dim_op == cur_symblic_dim_op) {
       return symbolic_dim;
     }
   }
@@ -470,7 +487,7 @@ SymbolicDim GetOrNewSymbolicDim(
 std::unordered_map<DimVar, const DimExpr> MakeEquationStartExpr(
     const cinn::hlir::framework::pir::Group* group,
     const std::shared_ptr<::pir::ShapeConstraintIRAnalysis>& shape_analysis,
-    std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>*
+    std::unordered_map<SymbolicDim, symbol::DimExpr>*
         map_expr_symbolic2dialect_symbolic) {
   std::unordered_map<DimVar, const DimExpr> ret{};
   std::unordered_set<std::string> output_names = GetAllOutputNames(group->ops);
