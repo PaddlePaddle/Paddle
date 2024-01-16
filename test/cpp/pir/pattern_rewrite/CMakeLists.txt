@@ -3,16 +3,12 @@ paddle_test(
   SRCS
   pattern_rewrite_test.cc
   DEPS
-  gtest op_dialect_vjp
+  gtest
+  op_dialect_vjp
   pir
   pir_transforms)
 
-paddle_test(
-  drr_test
-  SRCS
-  drr_test.cc
-  DEPS
-  drr pir_transforms)
+paddle_test(drr_test SRCS drr_test.cc DEPS drr pir_transforms)
 
 paddle_test(
   drr_same_type_binding_test
