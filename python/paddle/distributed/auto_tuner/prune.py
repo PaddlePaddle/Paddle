@@ -441,52 +441,49 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
     return False
 
 
-@register_prune_history
-def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+def get_config_recompute_level(cfg):
     recompute_granularity_level = {"full": 3, "full_attn": 2, "core_attn": 1}
-
-    use_recompute = cur_cfg.get("use_recompute", None)
-    recompute_granularity = cur_cfg.get("recompute_granularity", None)
+    use_recompute = cfg.get("use_recompute", None)
+    recompute_granularity = cfg.get("recompute_granularity", None)
 
     if use_recompute is None:
+        return None
+
+    if not use_recompute:
+        return 0
+    else:
+        return recompute_granularity_level[recompute_granularity]
+
+
+@register_prune_history
+def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    recompute_level = get_config_recompute_level(cur_cfg)
+
+    if recompute_level is None:
         return False
 
-    if not use_recompute:
-        recompute_level = 0
-    else:
-        recompute_level = recompute_granularity_level[recompute_granularity]
-
-    cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
+    cfgs = same_cfgs_beside(
+        ["use_recompute", "recompute_granularity"], cur_cfg, history_cfgs
+    )
     if cfgs:
         for cfg in cfgs:
-            if not cfg["use_recompute"]:
-                cfg["recompute_level"] = 0
-            else:
-                cfg["recompute_level"] = recompute_granularity_level[
-                    cfg["recompute_granularity"]
-                ]
+            cfg["recompute_level"] = get_config_recompute_level(cfg)
 
             if (
-                cfg["recompute_level"] < recompute_level
+                cfg["recompute_level"] <= recompute_level
                 and cfg.get("time", -1) > 0
             ):
-                pruned_reason = f"use_recompute {use_recompute} may be slower because {cfg['use_recompute']} has been already runnable."
+                pruned_reason = f"use_recompute may be slower because {cfg['use_recompute']} has been already runnable."
                 log_pruned_info(cur_cfg, pruned_reason)
                 return True
 
             if (
-                cfg["recompute_level"] > recompute_level
+                cfg["recompute_level"] >= recompute_level
                 and cfg.get("max_mem_usage") == "OOM"
             ):
-                pruned_reason = f"use_recompute {use_recompute} may cause oom because {cfg['use_recompute']} already oom."
+                pruned_reason = f"use_recompute may cause oom because {cfg['use_recompute']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 return True
-    if not use_recompute:
-        cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
-        if cfgs:
-            pruned_reason = f"recompute_granularity invalid because use_recompute is {use_recompute}."
-            log_pruned_info(cur_cfg, pruned_reason)
-            return True
     return False
 
 
