@@ -3397,6 +3397,12 @@
   outputs :
     out: Out
 
+- op: c_allreduce_prod
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_sum
   inputs :
     x : X
