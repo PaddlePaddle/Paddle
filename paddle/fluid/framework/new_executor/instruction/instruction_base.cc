@@ -244,10 +244,11 @@ void InstructionBase::AddEagerGCVar(Variable* var) {
     for (size_t i = 0; i < array.size(); ++i) {
       AddEagerGCVar(const_cast<Variable*>(array.at(i)));
     }
-  }
-  if (std::find(eager_gc_vars_.begin(), eager_gc_vars_.end(), var) ==
-      eager_gc_vars_.end()) {
-    eager_gc_vars_.push_back(var);
+  } else {
+    if (std::find(eager_gc_vars_.begin(), eager_gc_vars_.end(), var) ==
+        eager_gc_vars_.end()) {
+      eager_gc_vars_.push_back(var);
+    }
   }
 }
 

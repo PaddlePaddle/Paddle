@@ -134,7 +134,7 @@ void BuildScope(const pir::Block& block,
                 ValueExecutionInfo* value_exe_info = nullptr);
 
 void DeepCopyVariable(const Variable* src_var,
-                      Variable* dst_var,
+                      Variable*& dst_var,  // NOLINT
                       ValueExecutionInfo* value_exe_info,
                       uint32_t stack_size,
                       bool is_optional,
