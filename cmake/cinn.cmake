@@ -184,8 +184,8 @@ if(WITH_MKL)
 endif()
 
 if(CINN_ONLY)
-  target_link_libraries(cinnapi ${flags_dep})
-  add_dependencies(cinnapi ${flags_dep})
+  target_link_libraries(cinnapi common)
+  add_dependencies(cinnapi common)
 endif()
 
 if(WITH_GPU)
@@ -248,8 +248,8 @@ function(gen_cinncore LINKTYPE)
   endif()
 
   if(CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} ${flags_dep})
-    add_dependencies(${CINNCORE_TARGET} ${flags_dep})
+    target_link_libraries(${CINNCORE_TARGET} common)
+    add_dependencies(${CINNCORE_TARGET} common)
   endif()
 
   if(WITH_GPU)
