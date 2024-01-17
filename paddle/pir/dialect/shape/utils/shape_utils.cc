@@ -60,7 +60,7 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
     return false;
 
   if (lhs_type.HasStaticShape() && rhs_type.HasStaticShape()) {
-    return lhs_type.GetDyShape() == rhs_type.GetDyShape();
+    return vectorize(lhs_type.GetShape()) == vectorize(rhs_type.GetShape());
   }
 
   auto lhs_it = value_to_sym_dims_.find(lhs);
@@ -95,13 +95,13 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
         auto it = value_to_sym_dims_.find(value);
         if (!type || !type.HasRank()) return false;
         for (int idx : dim_idxs) {
-          if (type.GetDyShape()[idx] == ShapedTypeInterface::kDynamic) {
+          if (type.GetShape()[idx] == ShapedTypeInterface::kDynamic) {
             if (it == value_to_sym_dims_.end() ||
                 static_cast<int>(it->second.size()) <= idx)
               return false;
             prod.symbols.push_back(it->second[idx]);
           } else {
-            prod.factor *= type.GetDyShape()[idx];
+            prod.factor *= type.GetShape()[idx];
           }
         }
         return true;
@@ -148,23 +148,36 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   return it->second;
 }
 
-std::string GetValueId(Value* val) {
-  auto op_id = val->defining_op()->id();
-  auto val_idx = val->dyn_cast<OpResult>().index();
+bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
+  return value_to_shape_or_data_.count(val) > 0;
+}
 
-  return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
+static std::string GetValueId(const Value& val) {
+  auto op_id = val.defining_op()->id();
+  auto val_idx = val.dyn_cast<OpResult>().index();
+
+  return val.defining_op()->name() + "_" + std::to_string(op_id) + "_rst_" +
+         std::to_string(val_idx);
 }
 
 const symbol::ShapeOrDataDimExprs&
-ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value* val) {
-  auto val_id = GetValueId(val);
-  return value_id_to_shapeordata_[val_id];
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
+  return value_to_shape_or_data_[val];
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
-    Value* val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  auto val_id = GetValueId(val);
-  value_id_to_shapeordata_[val_id] = shape_or_data;
+    Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  value_to_shape_or_data_[val] = shape_or_data;
+}
+
+void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
+  LOG(INFO) << "shape analysis : @" << this
+            << " value_to_shape_or_data_ size : "
+            << value_to_shape_or_data_.size();
+  LOG(INFO) << "----------- ShapeOrData for Values ------------";
+  for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
+    LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
+  }
 }
 
 }  // namespace pir

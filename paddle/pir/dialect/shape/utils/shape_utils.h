@@ -20,8 +20,6 @@
 
 namespace pir {
 
-std::string GetValueId(Value* val);
-
 // Helper class to query and manipulate shape constraint IR on buffer level.
 class IR_API ShapeAnalysis {
  public:
@@ -61,6 +59,11 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // Auto-save updated shape constriant ir when destroying.
   ~ShapeConstraintIRAnalysis();
 
+  void Init() {
+    value_to_shape_or_data_.clear();
+    next_sym_idx_ = 0;
+  }
+
   // Returns the `SymbolicDimMgr` this object holds.
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
@@ -80,22 +83,21 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
     return "S" + std::to_string(next_sym_idx_++);
   }
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value* val);
+  bool HasShapeOrDataForValue(Value val) const;
 
-  void SetShapeOrDataForValue(Value* val,
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+
+  void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
-
-  // const symbol::ShapeOrData& GetShapeOrDataForValue() const;
 
   symbol::DimExprBuilder CreateDimExprBuilder() override;
 
-  std::unordered_map<std::string, symbol::ShapeOrDataDimExprs>
-      value_id_to_shapeordata_;
-
-  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
-      value_to_shape_or_data_;
+  // Used to debug
+  void PrintShapeOrDatas() const;
 
  private:
+  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_;
   // The operation this analysis runs on.
   ModuleOp m_;
   // The `SymbolicDimMgr` this analysis holds.
@@ -125,6 +127,10 @@ class IR_API ShapeAnalysisManager {
  public:
   static ShapeAnalysisManager& Instance();
   ShapeConstraintIRAnalysis& Get(pir::Program* program);
+
+  ShapeAnalysisManager(const ShapeAnalysisManager&) = delete;
+  ShapeAnalysisManager(ShapeAnalysisManager&&) = delete;
+  ShapeAnalysisManager& operator=(const ShapeAnalysisManager&) = delete;
 
  private:
   ShapeAnalysisManager() {}

@@ -128,7 +128,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
 
     update value_to_valuegrad and op_to_opgrad.
 
-    return complete_outputs and complete_gradoutputs, backward_ops.
+    return complete_outputs, backward_ops.
 
     """
     if not grad_outputs:
@@ -166,7 +166,6 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
 
     # add input for bwd first op
     complete_outputs = outputs
-    complete_gradoutputs = grad_outputs
 
     visited_output = ValueSet()
     for output in outputs:
@@ -188,9 +187,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     visited_output.add(opresult)
 
                     complete_outputs.append(opresult)
-                    complete_gradoutputs.append(grad_value)
 
-    return complete_outputs, complete_gradoutputs, backward_ops
+    return complete_outputs, backward_ops
 
 
 def some_in_set(value_list, value_set):
@@ -1043,7 +1041,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
 
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
-    complete_outputs, _, backward_ops = prepare_grad_outputs(
+    complete_outputs, backward_ops = prepare_grad_outputs(
         grad_outputs, outputs, state
     )
 

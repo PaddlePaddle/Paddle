@@ -14,20 +14,14 @@
 
 #pragma once
 
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/pass/pass.h"
 
-namespace paddle {
-namespace drr {
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-class IrOperation {
- public:
-  explicit IrOperation(pir::Operation* op) : op_(op) {}
+IR_API std::unique_ptr<pir::Pass> CreateInsertBroadcastPass();
 
-  pir::Operation* get() const { return op_; }
-
- private:
-  pir::Operation* op_;
-};
-
-}  // namespace drr
-}  // namespace paddle
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
