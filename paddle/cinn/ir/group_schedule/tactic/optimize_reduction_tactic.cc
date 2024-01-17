@@ -35,6 +35,9 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
 
   // 1. The block must have write buffer
   if (sch_block->write_buffers.empty()) {
+    VLOG(6) << "the block: " << block_name
+            << " do not have write buffer, so can not apply "
+               "OptimizeReductionTactic";
     return false;
   }
 
@@ -48,6 +51,9 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
     }
   }
   if (!find_reduce_axis) {
+    VLOG(6)
+        << "the block: " << block_name
+        << " do not have reduce axis, so can not apply OptimizeReductionTactic";
     return false;
   }
 
@@ -61,6 +67,10 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
         if (body.As<ir::Block>()->stmts[0].As<ir::For>() == nullptr &&
             body.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>() ==
                 nullptr) {
+          VLOG(6) << "the block: " << block_name
+                  << " has a block stmt that is not any of "
+                     "schedule_block/for_loop, so can not apply "
+                     "OptimizeReductionTactic";
           return false;
         }
       } else if (body.As<ir::Block>()->stmts.size() == 2) {
@@ -73,14 +83,24 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
         if (body.As<ir::Block>()->stmts[1].As<ir::For>() == nullptr &&
             body.As<ir::Block>()->stmts[1].As<ir::ScheduleBlockRealize>() ==
                 nullptr) {
+          VLOG(6) << "the block: " << block_name
+                  << " has a block stmt that is not any of "
+                     "schedule_block/for_loop, so can not apply "
+                     "OptimizeReductionTactic";
           return false;
         }
       } else {
+        VLOG(6) << "the block: " << block_name
+                << " contains more than 2 statements, so can not apply "
+                   "OptimizeReductionTactic";
         return false;
       }
     } else if (body.As<ir::For>() || body.As<ir::ScheduleBlockRealize>()) {
       continue;
     } else {
+      VLOG(6) << "the block: " << block_name
+              << " has a loop body that is not any of schedule_block/for_loop, "
+                 "so can not apply OptimizeReductionTactic";
       return false;
     }
   }
@@ -96,9 +116,14 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
   int first_reduce_loop_idx = context_->iter_space_info.sp_space.size();
   CHECK_LT(first_reduce_loop_idx, loops.size())
       << "first_reduce_loop_idx shoud be less than number of loop.";
+  ir::Expr block = sch->GetBlock(block_id);
+  ir::Tensor reduce_tensor = analyzer::GetStoreTensorOfSBlock(block);
+  int non_reduce_memory_space_rank =
+      reduce_tensor->domain_without_reduce_axis().size();
   // Apply FactorizeReduction
   VLOG(6) << "before FactorizeReduction: " << sch->GetModule().GetExprs()[0];
-  sch->FactorizeReduction(loops[first_reduce_loop_idx], first_reduce_loop_idx);
+  sch->FactorizeReduction(loops[first_reduce_loop_idx],
+                          non_reduce_memory_space_rank);
   VLOG(6) << "after FactorizeReduction: " << sch->GetModule().GetExprs()[0];
 
   // Loop fusion and cross thread reduction

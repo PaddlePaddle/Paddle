@@ -21,10 +21,10 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::CreateArrayLikeOp, paddle::dialect::ArrayLengthOp,
     paddle::dialect::ArrayReadOp, paddle::dialect::ArrayWrite_Op,
     paddle::dialect::SliceArrayOp, paddle::dialect::SliceArrayDenseOp,
-    paddle::dialect::AssignArray_Op, paddle::dialect::ArrayToTensorOp,
-    paddle::dialect::TensorToArrayOp, paddle::dialect::IncrementOp,
-    paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
-    paddle::dialect::MemcpyD2hMultiIoOp
+    paddle::dialect::AssignArrayOp, paddle::dialect::AssignArray_Op,
+    paddle::dialect::ArrayToTensorOp, paddle::dialect::TensorToArrayOp,
+    paddle::dialect::IncrementOp, paddle::dialect::Increment_Op,
+    paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -3687,6 +3687,170 @@ phi::DataType SliceArrayDenseOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+OpInfoTuple AssignArrayOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("x",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   true)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      "UnchangedArrayInferMeta", {"x"}, "assign_array", {"x"}, {}, {}, {}, {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "assign_array");
+}
+
+void AssignArrayOp::Build(pir::Builder &builder,
+                          pir::OperationArgument &argument,
+                          pir::Value x_) {
+  VLOG(4) << "Start build AssignArrayOp";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType x_type;
+  if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
+        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
+    x_type = paddle::dialect::DenseTensorArrayType::get(
+        pir::IrContext::Instance(),
+        allocated_input.dtype(),
+        allocated_input.data_layout());
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorArrayType or "
+        "paddle::dialect::AllocatedDenseTensorArrayType"));
+  }
+
+  VLOG(4) << "Builder construction dense_tensor_array_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
+      {},
+      x_type.data_layout(),
+      {});
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::UnchangedArrayInferMeta(meta_x, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_array_type =
+      paddle::dialect::DenseTensorArrayType::get(
+          pir::IrContext::Instance(),
+          TransToIrDataType(dense_out.dtype()),
+          dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_array_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void AssignArrayOp::VerifySig() {
+  VLOG(4)
+      << "Start Verifying inputs, outputs and attributes for: AssignArrayOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    // Attributes num is 0, not need to check attributes type.
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: AssignArrayOp.";
+}
+
+void AssignArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::UnchangedArrayInferMeta);
+  fn(infer_meta);
+}
+
+phi::DataType AssignArrayOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: AssignArrayOp";
+
+  return expected_kernel_dtype;
+}
+
+std::vector<pir::Type> AssignArrayOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta AssignArrayOp";
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
+             input_values.size());
+  pir::Value x_ = input_values[0];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType x_type;
+  if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
+        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
+    x_type = paddle::dialect::DenseTensorArrayType::get(
+        pir::IrContext::Instance(),
+        allocated_input.dtype(),
+        allocated_input.data_layout());
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorArrayType or "
+        "paddle::dialect::AllocatedDenseTensorArrayType"));
+  }
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
+      {},
+      x_type.data_layout(),
+      {});
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::UnchangedArrayInferMeta(meta_input, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_array_type =
+      paddle::dialect::DenseTensorArrayType::get(
+          pir::IrContext::Instance(),
+          TransToIrDataType(dense_out.dtype()),
+          dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_array_type);
+  return argument_outputs;
+}
+
 OpInfoTuple AssignArray_Op::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo("x",
@@ -4009,6 +4173,18 @@ void ExpandOp::Build(pir::Builder &builder,
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
+}
+
+bool ExpandOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &data_shape = shape_analysis->GetShapeOrDataForValue(shape());
+  IR_ENFORCE(data_shape.data().has_value(),
+             "Value shape comes from ShapeOp, it must have data");
+  const auto &data = data_shape.data().value();
+
+  shape_analysis->SetShapeOrDataForValue(out(),
+                                         symbol::ShapeOrDataDimExprs(data));
+  return true;
 }
 
 void ExpandOp::VerifySig() {
@@ -4802,6 +4978,8 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
     return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
   } else if (rhs.isa<std::int64_t>()) {
     return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
+  } else if (lhs == rhs) {
+    return lhs;
   } else {
     return symbol::Broadcast<symbol::DimExpr>{
         symbol::List<symbol::DimExpr>{lhs, rhs}};
@@ -4816,6 +4994,10 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
 
+  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(x) > 0,
+             "Value x does not exist.");
+  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(y) > 0,
+             "Value y does not exist.");
   const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
   const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
   IR_ENFORCE(x_data_shape.data().has_value(),
@@ -4876,7 +5058,6 @@ void MemcpyD2hMultiIoOp::VerifySig() {
     IR_ENFORCE(input_size == 1u,
                "The size %d of inputs must be equal to 1.",
                input_size);
-
     IR_ENFORCE((*this)
                    ->operand_source(0)
                    .type()
@@ -4988,6 +5169,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::TensorToArrayOp)
