@@ -221,6 +221,7 @@ from .tensor.linalg import (  # noqa: F401
     t_,
     transpose,
     transpose_,
+    vector_norm,
 )
 from .tensor.logic import (
     allclose,
@@ -848,6 +849,7 @@ __all__ = [
     'masked_select',
     'var',
     'trace',
+    'vector_norm',
     'enable_static',
     'scatter_nd',
     'set_default_dtype',

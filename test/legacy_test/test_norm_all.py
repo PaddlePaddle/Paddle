@@ -31,6 +31,44 @@ def p_norm_python_api(
         return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
 
 
+def linalg_vector_norm(x, axis, porder, keepdims=False, reduce_all=False):
+    r = []
+    if axis is None or reduce_all:
+        x = x.flatten()
+        if porder == np.inf:
+            r = np.amax(np.abs(x), keepdims=keepdims)
+        elif porder == -np.inf:
+            r = np.amin(np.abs(x), keepdims=keepdims)
+        else:
+            r = np.linalg.norm(x, ord=porder, keepdims=keepdims)
+    elif isinstance(axis, list or tuple) and len(axis) >= 2:
+        if porder == np.inf:
+            axis = tuple(axis)
+            r = np.amax(np.abs(x), axis=axis, keepdims=keepdims)
+        elif porder == -np.inf:
+            axis = tuple(axis)
+            r = np.amin(np.abs(x), axis=axis, keepdims=keepdims)
+        elif porder == 0:
+            axis = tuple(axis)
+            r = x.astype(bool)
+            r = np.sum(r, axis, keepdims=keepdims)
+        elif porder == 1:
+            axis = tuple(axis)
+            r = np.sum(np.abs(x), axis, keepdims=keepdims)
+        else:
+            axis = tuple(axis)
+            xp = np.power(np.abs(x), porder)
+            s = np.sum(xp, axis=axis, keepdims=keepdims)
+            r = np.power(s, 1.0 / porder)
+    else:
+        if isinstance(axis, list):
+            axis = tuple(axis)
+        r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
+    r = r.astype(x.dtype)
+
+    return r
+
+
 def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
     r = []
     if axis is None or reduce_all:
@@ -125,51 +163,6 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
-
-
-# class TestNuclearNormOp(OpTest):
-#     def setUp(self):
-#         self.python_api = nuclear_norm
-#         self.op_type = "nuclear_norm"
-#         self.init_test_case()
-#         self.init_dtype()
-#         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
-#         norm = numpy_nuclear_norm(x, self.axis, self.keepdim)
-#         self.reduce_all = len(self.axis) == len(self.shape)
-#         self.inputs = {'X': x}
-#         self.attrs = {
-#             'dim': list(self.axis),
-#             'keep_dim': self.keepdim,
-#             'reduce_all': self.reduce_all,
-#         }
-#         self.outputs = {'Out': norm}
-
-#     def test_check_output(self):
-#         self.check_output(check_pir=True)
-
-#     def test_check_grad(self):
-#         self.check_grad(['X'], 'Out', check_pir=True)
-
-#     def init_test_case(self):
-#         self.shape = [2, 3, 4, 5]
-#         self.axis = (1, 2)
-#         self.keepdim = False
-
-#     def init_dtype(self):
-#         self.dtype = "float64"
-
-
-# class TestNuclearNormOp2(TestNuclearNormOp):
-#     def init_test_case(self):
-#         self.shape = [5, 5, 5]
-#         self.axis = (0, 1)
-#         self.keepdim = True
-
-#     def init_dtype(self):
-#         self.dtype = "float32"
-
-#     def test_check_grad(self):
-#         self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestPnormOp(OpTest):
@@ -525,6 +518,30 @@ def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         )
 
 
+def check_linalg_vector_static(
+    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+):
+    with base.program_guard(base.Program()):
+        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
+        out = paddle.vector_norm(x=data, p=p, axis=axis, keepdim=keep_dim)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
+        expected_result = linalg_vector_norm(
+            np_input, porder=p, axis=axis, keepdims=keep_dim
+        ).astype(dtype)
+        (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
+    self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
+    if keep_dim and check_dim:
+        self.assertEqual(
+            (
+                np.abs(np.array(result.shape) - np.array(expected_result.shape))
+                < 1e-6
+            ).all(),
+            True,
+        )
+
+
 def run_graph(self, p, axis, shape_x, dtype):
     paddle.disable_static()
     shape = [2, 3, 4]
@@ -534,6 +551,7 @@ def run_graph(self, p, axis, shape_x, dtype):
     # [[[-12. -11. -10.  -9.] [ -8.  -7.  -6.  -5.] [ -4.  -3.  -2.  -1.]]
     # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
     out_pnorm = paddle.norm(x, p=2, axis=-1)
+    out_vector_norm = paddle.vector_norm(x, p=2, axis=-1)
 
     # compute frobenius norm along last two dimensions.
     out_fro = paddle.norm(x, p='fro')
@@ -544,17 +562,23 @@ def run_graph(self, p, axis, shape_x, dtype):
     # compute 2-order  norm along [0,1] dimension.
     out_pnorm = paddle.norm(x, p=2, axis=[0, 1])
     out_pnorm = paddle.norm(x, p=2)
+    out_vector_norm = paddle.vector_norm(x, p=2, axis=[0, 1])
+    out_vector_norm = paddle.vector_norm(x, p=2)
     # out_pnorm = [17.43559577 16.91153453 16.73320053 16.91153453]
     # compute inf-order  norm
     out_pnorm = paddle.norm(x, p=np.inf)
+    out_vector_norm = paddle.vector_norm(x, p=np.inf)
     # out_pnorm = [12.]
     out_pnorm = paddle.norm(x, p=np.inf, axis=0)
+    out_vector_norm = paddle.vector_norm(x, p=np.inf, axis=0)
     # out_pnorm = [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
 
     # compute -inf-order  norm
     out_pnorm = paddle.norm(x, p=-np.inf)
+    out_vector_norm = paddle.vector_norm(x, p=-np.inf)
     # out_pnorm = [0.]
-    out_pnorm = paddle.norm(x, p=-np.inf, axis=0)
+    out_norm = paddle.norm(x, p=-np.inf, axis=0)
+    out_vector_norm = paddle.vector_norm(x, p=-np.inf, axis=0)
     # out_fro = [17.43559577 16.91153453 16.73320053 16.91153453]
     paddle.enable_static()
 
@@ -708,6 +732,131 @@ class API_NormTest(unittest.TestCase):
                 self,
                 p=-np.inf,
                 axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+
+            check_linalg_vector_static(
+                self,
+                p=2,
+                axis=None,
+                shape_x=[3, 4],
+                dtype="float32",
+                keep_dim=keep,
+            )
+            check_linalg_vector_static(
+                self,
+                p=2,
+                axis=1,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=np.inf,
+                axis=0,
+                shape_x=[2, 3, 4],
+                dtype="float32",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=np.inf,
+                axis=None,
+                shape_x=[2, 3, 4],
+                dtype="float32",
+                keep_dim=keep,
+            )
+            check_linalg_vector_static(
+                self,
+                p=-np.inf,
+                axis=0,
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=-np.inf,
+                axis=None,
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+            )
+            check_linalg_vector_static(
+                self,
+                p=0,
+                axis=1,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+
+            check_linalg_vector_static(
+                self,
+                p=1,
+                axis=1,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=0,
+                axis=None,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=2,
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=2,
+                axis=-1,
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=1,
+                axis=[0, 1],
+                shape_x=[2, 3, 4, 5],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=np.inf,
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=-np.inf,
+                axis=[0, 1, 2],
                 shape_x=[2, 3, 4],
                 dtype="float64",
                 keep_dim=keep,

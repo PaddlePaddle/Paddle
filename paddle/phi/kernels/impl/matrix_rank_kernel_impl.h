@@ -53,7 +53,6 @@ static DDim GetVHDDim(const DDim& x_dim, int k) {
   x_vec[x_vec.size() - 2] = k;
   return common::make_ddim(x_vec);
 }
-
 }  // namespace detail
 
 template <typename T>
