@@ -15,10 +15,11 @@
 #include <chrono>
 #include <iomanip>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/platform/init_phi.h"
+#include "paddle/common/macros.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
@@ -63,7 +64,9 @@ class PassTimer : public PassInstrumentation {
 
   void RunAfterPipeline(Operation* op) override {
     pipeline_timers_[op].Stop();
-    PrintTime(op, std::cout);
+    std::ostringstream oss;
+    PrintTime(op, oss);
+    std::cout << oss.str() << std::endl;
   }
 
   void RunBeforePass(Pass* pass, Operation* op) override {

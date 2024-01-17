@@ -83,6 +83,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'generate_sequence_xpu',
     'layer_norm_act_xpu',
     'memcpy',
+    'memcpy_d2h_multi_io',
     'batch_norm_',
     'multi_encoder_xpu',
     'multihead_matmul',
@@ -104,6 +105,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'assign_value',
     'share_data',
     'onednn_to_paddle_layout',
+    'lrn',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -112,6 +114,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_allgather',
     'c_allreduce_max',
     'c_allreduce_sum',
+    'c_allreduce_prod',
+    'c_allreduce_prod_',
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
@@ -139,10 +143,13 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'shadow_feed',
     'shuffle_batch',
     'sparse_momentum',
+    'tdm_sampler',
     'soft_relu',
     'uniform_random_batch_size_like',
     'c_reduce_min',
     'c_reduce_min_',
+    'push_sparse_v2',
+    'push_sparse_v2_',
 ]
 
 

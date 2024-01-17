@@ -1269,6 +1269,13 @@ void ElementwiseInferMeta(const MetaTensor& x,
   return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
+void BitwiseShiftInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           bool is_arithmetic,
+                           MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, out);
+}
+
 void ElementwiseRawInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              int axis,
@@ -2850,7 +2857,7 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y) {
   auto dim = common::vectorize<int>(x.dims());
 
@@ -2861,8 +2868,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
   }
 
   y->set_dims(common::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,

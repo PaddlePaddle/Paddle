@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/program.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -48,12 +50,14 @@ class IRPrinting : public PassInstrumentation {
       // TODO(liuyuanle): support print on change
     }
 
-    option_->PrintBeforeIfEnabled(pass, op, [&](std::ostream &os) {
+    option_->PrintBeforeIfEnabled(pass, op, [&]() {
+      std::ostringstream oss;
       std::string header =
           "IRPrinting on " + op->name() + " before " + pass->name() + " pass";
-      detail::PrintHeader(header, os);
-      PrintIR(op, option_->print_module(), os);
-      os << "\n\n";
+      detail::PrintHeader(header, oss);
+      PrintIR(op, option_->print_module(), oss);
+      oss << "\n";
+      std::cout << oss.str() << std::endl;
     });
   }
 
@@ -62,12 +66,14 @@ class IRPrinting : public PassInstrumentation {
       // TODO(liuyuanle): support print on change
     }
 
-    option_->PrintAfterIfEnabled(pass, op, [&](std::ostream &os) {
+    option_->PrintAfterIfEnabled(pass, op, [&]() {
+      std::ostringstream oss;
       std::string header =
           "IRPrinting on " + op->name() + " after " + pass->name() + " pass";
-      detail::PrintHeader(header, os);
-      PrintIR(op, option_->print_module(), os);
-      os << "\n\n";
+      detail::PrintHeader(header, oss);
+      PrintIR(op, option_->print_module(), oss);
+      oss << "\n";
+      std::cout << oss.str() << std::endl;
     });
   }
 

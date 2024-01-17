@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/executor_cache.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -24,6 +25,8 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+
+DECLARE_FILE_SYMBOLS(print_statistics);
 
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 PHI_DECLARE_bool(print_ir);
@@ -391,9 +394,6 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const std::vector<std::string> &x_names,
     const std::vector<paddle::Tensor> &params,
     const phi::Place &place) {
-  auto ir_ctx = ::pir::IrContext::Instance();
-  auto program = std::make_unique<::pir::Program>(ir_ctx);
-
   std::set<std::string> set_output_names;
   auto local_program =
       paddle::framework::ProgramDesc(*(forward_global_block->Program()));
@@ -477,10 +477,8 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
-  paddle::translator::ProgramTranslator program_translator(&local_program,
-                                                           program.get());
+  auto program = TranslateLegacyProgramToProgram(local_program);
 
-  program_translator.Translate();
   return ApplyIrPass(program.get(), place);
 }
 
@@ -491,9 +489,6 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const std::vector<paddle::Tensor *> &params_grad,
     const paddle::framework::Scope *scope,
     const phi::Place &place) {
-  auto ir_ctx = ::pir::IrContext::Instance();
-  auto program = std::make_unique<::pir::Program>(ir_ctx);
-
   auto local_program =
       paddle::framework::ProgramDesc(*(backward_global_block->Program()));
 
@@ -551,9 +546,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
 
-  paddle::translator::ProgramTranslator program_translator(&local_program,
-                                                           program.get());
-  program_translator.Translate();
+  auto program = TranslateLegacyProgramToProgram(local_program);
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
@@ -562,6 +555,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     pm.AddPass(::pir::CreateInplacePass());
     if (VLOG_IS_ON(6)) {
       pm.EnableIRPrinting();
+      pm.EnablePrintStatistics();
     }
     pm.Run(res.get());
     if (FLAGS_print_ir) {

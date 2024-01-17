@@ -134,7 +134,7 @@
     backend : place > output
 
 - op : batch_norm
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta:
     func : BatchNormInferMeta
@@ -162,6 +162,16 @@
     param : [x]
   kernel :
     func : c_allreduce_max
+  inplace : (x -> out)
+
+- op : c_allreduce_prod
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_prod
   inplace : (x -> out)
 
 - op : c_allreduce_sum
@@ -395,6 +405,7 @@
     param : [x, equation]
   kernel :
     func : einsum
+  optional : inner_cache, xshape
   backward : einsum_grad
 
 - op : elementwise_pow
@@ -757,6 +768,16 @@
     func : logsumexp
   backward : logsumexp_grad
 
+- op : lrn
+  args : (Tensor x, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW")
+  output : Tensor(out), Tensor(mid_out)
+  infer_meta :
+    func : LrnInferMeta
+    param : [x, n]
+  kernel :
+    func : lrn
+  backward : lrn_grad
+
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
@@ -880,6 +901,8 @@
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
   inplace : (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : multiply_grad
 
 - op : norm
@@ -968,6 +991,17 @@
   kernel :
     func : prod
   backward : prod_grad
+
+- op : push_sparse_v2
+  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
+  output : Tensor[](out_grad_out){out_grad_in.size()}
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [out_grad_in]
+  kernel :
+    func : push_sparse_v2
+    data_type : out_grad_in
+  inplace: (out_grad_in -> out_grad_out)
 
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
@@ -1253,6 +1287,7 @@
     func : sum
     data_type : x
   backward : sum_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)
@@ -1265,7 +1300,7 @@
   backward : swish_grad
 
 - op : sync_batch_norm_
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
     func : BatchNormInferMeta
@@ -1275,6 +1310,16 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
+
+- op : tdm_sampler
+  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
+  output: Tensor(out), Tensor(labels), Tensor(mask)
+  infer_meta:
+    func : TdmSamplerInferMeta
+  kernel:
+    func : tdm_sampler
+    data_type : x
+  optional : labels
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})

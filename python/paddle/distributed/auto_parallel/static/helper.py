@@ -36,7 +36,7 @@ from .utils import get_logger, to_list
 class ProxyLayer(Layer):
     """
     ProxyLayer implements all logic for converting dygraph model into
-    static Program IR. Meanwhile, it provides conviential interfaces for
+    static Program IR. Meanwhile, it provides conventional interfaces for
     auto parallel to visit feed/fetch/loss/metric variables.
     """
 
@@ -251,9 +251,7 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        concrete_program = getattr(
-            self.proxy_layer, func_name
-        ).concrete_program  # noqa: B018
+        concrete_program = getattr(self.proxy_layer, func_name).concrete_program
         prepare_op_amp_options(
             concrete_program.main_program,
             ProgramTranslator.get_instance()._amp_records,
