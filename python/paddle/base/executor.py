@@ -41,6 +41,7 @@ from .framework import (
     get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
+    process_type_promotion,
     set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
@@ -52,16 +53,6 @@ __all__ = []
 g_scope = core.Scope()
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
-
-SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
-    "elementwise_add": ['X', 'Y'],
-    "elementwise_add_grad": ['X', 'Y'],
-    "elementwise_sub": ['X', 'Y'],
-    "elementwise_sub_grad": ['X', 'Y'],
-    "elementwise_mul": ['X', 'Y'],
-    "elementwise_mul_grad": ['X', 'Y'],
-    "where": ['X', 'Y'],
-}
 
 
 def global_scope():
@@ -1615,97 +1606,6 @@ class Executor:
             del trainer_instance
         self.trainer_caches.clear()
 
-    def _dtype_to_str(self, in_dtype):
-        if in_dtype == core.VarDesc.VarType.FP16:
-            return "fp16"
-        elif in_dtype == core.VarDesc.VarType.BF16:
-            return "bf16"
-        elif in_dtype == core.VarDesc.VarType.FP32:
-            return "fp32"
-        elif in_dtype == core.VarDesc.VarType.FP64:
-            return "fp64"
-        else:
-            return None
-
-    def _add_cast_for_type_promotion(self, op, block, idx, var_name, out_dtype):
-        op_device = op.attr('op_device')
-        cast_name = var_name.name + '.cast_' + self._dtype_to_str(out_dtype)
-        out_var = block.create_var(
-            name=cast_name,
-            dtype=out_dtype,
-            persistable=False,
-            stop_gradient=var_name.stop_gradient,
-        )
-        op_role = (
-            int(core.op_proto_and_checker_maker.OpRole.Forward)
-            if not op.has_attr('op_role')
-            else op.attr('op_role')
-        )
-        block._insert_op_without_sync(
-            idx,
-            type="cast",
-            inputs={"X": var_name},
-            outputs={"Out": out_var},
-            attrs={
-                "in_dtype": var_name.dtype,
-                "out_dtype": out_var.dtype,
-                "op_device": op_device,
-                "op_role": op_role,
-            },
-        )
-        op.desc._rename_input(var_name.name, out_var.name)
-
-    def _process_type_promotion(self, program):
-        if program is None:
-            program = default_main_program()
-        # not support pir for now
-        if not isinstance(program, Program):
-            return
-        global_block = program.global_block()
-        all_params = global_block.all_parameters()
-        for block in program.blocks:
-            ops = block.ops
-            idx = 0
-            while idx < len(ops):
-                op = ops[idx]
-                var_name = None
-                all_dtypes = []
-                all_input_name_need_cast = []
-
-                need_transed_var_names = (
-                    SUPPORT_PROMOTION_OPS_AND_INPUTNAME.get(op.type, None)
-                )
-                # type promotion only support some dyadic api
-                if need_transed_var_names is None:
-                    idx += 1
-                    continue
-
-                # get all dtype and input_name
-                for input_idx in range(len(op.input_arg_names)):
-                    if op.input_names[input_idx] in need_transed_var_names:
-                        input_arg_name = op.input_arg_names[input_idx]
-                        all_dtypes.append(
-                            op.block._var_recursive(input_arg_name).dtype
-                        )
-                        all_input_name_need_cast.append(input_arg_name)
-
-                # only support promote between float
-                if core.need_type_promotion(*all_dtypes):
-                    common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
-                    for input_name_need_cast in all_input_name_need_cast:
-                        var_name = op.block._var_recursive(input_name_need_cast)
-                        if var_name.dtype != common_dtype:
-                            # add cast op for different dtype
-                            self._add_cast_for_type_promotion(
-                                op,
-                                block,
-                                idx,
-                                var_name,
-                                common_dtype,
-                            )
-                            idx += 1
-                idx += 1
-
     def run(
         self,
         program=None,
@@ -1872,7 +1772,7 @@ class Executor:
             )
         else:
             # do type promotion if necessary
-            self._process_type_promotion(program)
+            program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,
