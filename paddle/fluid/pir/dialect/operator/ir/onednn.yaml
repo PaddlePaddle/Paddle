@@ -1,3 +1,13 @@
+- op : dequantize
+  args : (Tensor input, float scale=1.0, float shift=0.0)
+  output : Tensor(output)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : dequantize
+    data_type : input
+
 - op : quantize
   args : (Tensor input, bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false)
   output : Tensor(output)
@@ -6,4 +16,14 @@
     param : [input]
   kernel :
     func : quantize
+    data_type : input
+
+- op : requantize
+  args : (Tensor input, float scale_in=1.0, float scale_out=1.0, float shift_in=1.0, float shift_out=1.0)
+  output : Tensor(output)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : requantize
     data_type : input
