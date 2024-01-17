@@ -35,16 +35,8 @@ struct DynamicTensor final {
         .size();
   }
 
-  std::vector<DimExpr> GetShape() const {
-    std::vector<DimExpr> ret{};
-    for (const auto& dim_expr : group->GetShapeOrDataExprs(node_data).shape()) {
-      ret.emplace_back(ConvertDimExpr(dim_expr));
-    }
-    return ret;
-  }
-
-  DimExpr ConvertDimExpr(const ::symbol::DimExpr& dim_expr) const {
-    LOG(FATAL) << "TODO";
+  const std::vector<DimExpr>& GetShape() const {
+    return group->GetShapeOrDataExprs(node_data).shape();
   }
 
 };
