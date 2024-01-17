@@ -16,16 +16,11 @@ if(WITH_ROCM)
     DEPS phi common)
 endif()
 
-cc_test(
-  test_cpu_vec
-  SRCS test_cpu_vec.cc
-  DEPS phi common)
+paddle_test(test_cpu_vec SRCS test_cpu_vec.cc DEPS phi common)
 
 # For String Kernels
-cc_test(
-  test_strings_lower_upper_dev_api
-  SRCS test_strings_lower_upper_dev_api.cc
-  DEPS phi common)
+paddle_test(test_strings_lower_upper_dev_api SRCS
+            test_strings_lower_upper_dev_api.cc DEPS phi common)
 if(WITH_GPU)
   nv_test(
     test_strings_lower_upper_dev_gpu_api
@@ -38,10 +33,8 @@ elseif(WITH_ROCM)
     DEPS phi common)
 endif()
 
-cc_test(
-  test_strings_copy_dev_api
-  SRCS test_strings_copy_dev_api.cc
-  DEPS phi common)
+paddle_test(test_strings_copy_dev_api SRCS test_strings_copy_dev_api.cc DEPS
+            phi common)
 if(WITH_GPU)
   nv_test(
     test_strings_copy_dev_gpu_api
@@ -54,15 +47,10 @@ elseif(WITH_ROCM)
     DEPS phi common)
 endif()
 
-cc_test(
-  test_memcpy_dev_api
-  SRCS test_memcpy_dev_api.cc
-  DEPS phi common)
+paddle_test(test_memcpy_dev_api SRCS test_memcpy_dev_api.cc DEPS phi common)
 
-cc_test(
-  test_transfer_layout_dev_api
-  SRCS test_transfer_layout_dev_api.cc
-  DEPS phi common)
+paddle_test(test_transfer_layout_dev_api SRCS test_transfer_layout_dev_api.cc
+            DEPS phi common)
 
 if(WITH_GPU)
   nv_test(
@@ -73,10 +61,14 @@ if(WITH_GPU)
     test_auto_tune
     SRCS test_auto_tune.cu
     DEPS gtest)
-  cc_test(
+  paddle_test(
     test_fused_adam_kernel
-    SRCS test_fused_adam_kernel.cc
-    DEPS gtest phi common)
+    SRCS
+    test_fused_adam_kernel.cc
+    DEPS
+    gtest
+    phi
+    common)
 elseif(WITH_ROCM)
   hip_test(
     test_gpu_timer
@@ -88,22 +80,17 @@ elseif(WITH_ROCM)
     DEPS gtest)
 endif()
 
-cc_test(
+paddle_test(
   test_cache
-  SRCS test_cache.cc
-  DEPS gtest phi common)
+  SRCS
+  test_cache.cc
+  DEPS
+  gtest
+  phi
+  common)
 
-cc_test(
-  strided_memcpy_test
-  SRCS strided_memcpy_test.cc
-  DEPS phi common)
+paddle_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS phi common)
 
-cc_test(
-  sequence_padding_test
-  SRCS sequence_padding_test.cc
-  DEPS phi common)
+paddle_test(sequence_padding_test SRCS sequence_padding_test.cc DEPS phi common)
 
-cc_test(
-  sequence_pooling_test
-  SRCS sequence_pooling_test.cc
-  DEPS phi common)
+paddle_test(sequence_pooling_test SRCS sequence_pooling_test.cc DEPS phi common)
