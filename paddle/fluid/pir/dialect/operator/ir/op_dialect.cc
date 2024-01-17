@@ -62,28 +62,30 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     }
 
     auto operand_source_1st_data =
-        shape_analysis->value_to_shape_or_data_[op->operand_source(0)].data();
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).data();
     if (operand_source_1st_data.has_value()) {
       for (auto operand_source : op->operands_source()) {
         auto source_data =
-            shape_analysis->value_to_shape_or_data_[operand_source]
+            shape_analysis->GetShapeOrDataForValue(operand_source)
                 .data()
                 .value();
         out_dims.push_back(source_data[0]);
       }
     }
 
+    // TODO(zhangbopd): use op->result(0) to infer the shape
     symbol::ShapeOrDataDimExprs shape_data{out_dims};
     if (operand_source_1st_data.has_value()) {
-      shape_data =
-          symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+      std::vector<symbol::DimExpr> tmp_shape(std::int64_t(out_dims.size()));
+      symbol::ShapeOrDataDimExprs temp_shape_data(tmp_shape, out_dims);
+      shape_data = temp_shape_data;
     }
 
     op->set_attribute("symbolic_shape",
                       pir::shape::SymbolAttribute::get(
                           pir::IrContext::Instance(), shape_data));
     auto res = op->result(0);
-    shape_analysis->value_to_shape_or_data_[res] = shape_data;
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
     return true;
   }
 

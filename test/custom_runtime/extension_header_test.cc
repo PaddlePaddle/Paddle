@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "glog/logging.h"
+#include "gtest/gtest.h"
 
-#include <memory>
-#include "paddle/pir/core/dll_decl.h"
+// Note(qili93): ensure compile with one header file 'extension.h' only,
+// !!! do not fix this ut by adding other header files (PR#60842) !!!
+#include "paddle/phi/extension.h"
 
-namespace pir {
-
-class Pass;
-
-IR_API std::unique_ptr<Pass> CreateFcWithSpecialOpFusePass();
-
-}  // namespace pir
+TEST(CustomDevce, extension_header) {
+  VLOG(1) << "check extension header support compile only";
+}

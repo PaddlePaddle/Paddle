@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
+#pragma once
 
-namespace paddle {
-namespace drr {
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
-bool ShapeInterface::operator==(const ShapeInterface& other) const {
-  return *shape_ == *other.shape_;
-}
+namespace phi {
+namespace distributed {
 
-int ShapeInterface::size() const { return shape_->size(); }
+class RToXExpandReshardFunction final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
 
-bool DtypeInterface::operator==(const DtypeInterface& other) const {
-  return *dtype_ == *other.dtype_;
-}
+  std::string Name() override { return "RToXExpandReshard"; }
+};
 
-IrDtype DtypeInterface::get() const { return *(this->dtype_); }
-
-}  // namespace drr
-}  // namespace paddle
+}  // namespace distributed
+}  // namespace phi

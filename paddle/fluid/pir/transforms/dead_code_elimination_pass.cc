@@ -32,7 +32,7 @@ class DeadCodeEliminationPass : public pir::Pass {
     VLOG(6) << "apply dead_code_elimination_pass";
     int64_t num_erasers{0};
     EraseOp(*op->GetParentProgram()->block(), &num_erasers);
-    PrintStatistics(num_erasers);
+    AddStatistics(num_erasers);
   }
 
  private:

@@ -100,22 +100,23 @@ class HistoryRecorder:
         # get enhanced report in dp-estimation mode
         if self.search_algo == "dp_estimation":
             metric_name = self.tuner_cfg['metric_cfg']['name']
-            _history = []
-            for cfg in self.history:
-                if (
-                    "sharding_overlap" not in cfg.keys()
-                    or cfg["sharding_overlap"] is None
-                ) and cfg["error_info"] is None:
-                    _history.append(copy.deepcopy(cfg))
-            _history.sort(
-                key=lambda x: x[self.additional_metric_key]
-                if x[self.additional_metric_key] is not None
-                else float('-inf'),
-                reverse=True,
-            )
-            self._store_history_impl(
-                data=_history, path=path.split('.csv')[0] + '_enhanced.csv'
-            )
+            if self.additional_metric_key:
+                _history = []
+                for cfg in self.history:
+                    if (
+                        "sharding_overlap" not in cfg.keys()
+                        or cfg["sharding_overlap"] is None
+                    ) and cfg["error_info"] is None:
+                        _history.append(copy.deepcopy(cfg))
+                _history.sort(
+                    key=lambda x: x[self.additional_metric_key]
+                    if x[self.additional_metric_key] is not None
+                    else float('-inf'),
+                    reverse=True,
+                )
+                self._store_history_impl(
+                    data=_history, path=path.split('.csv')[0] + '_enhanced.csv'
+                )
 
         """Store history to csv file."""
         self.store_path = path

@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+from pathlib import Path
+
+# Add test/legacy_test to sys.path
+test_dir = Path(__file__).resolve().parents[1]
+sys.path.append(str(test_dir / "legacy_test"))
 
 import unittest
 
@@ -20,10 +26,9 @@ from op_test import OpTest
 
 import paddle
 from paddle.base.framework import (
-    Program,
     convert_np_dtype_to_dtype_,
-    program_guard,
 )
+from paddle.pir_utils import test_with_pir_api
 
 
 def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
@@ -168,26 +173,27 @@ class SequenceMaskTest5_tensor_attr(SequenceMaskTestBase_tensor_attr):
 
 
 class TestSequenceMaskOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_data = np.random.uniform(1, 5, [4]).astype("float32")
 
             def test_Variable():
                 # the input must be Variable
-                paddle.static.nn.sequence_lod.sequence_mask(
-                    input_data, maxlen=4
-                )
+                paddle.nn.functional.sequence_mask(input_data, maxlen=4)
 
             self.assertRaises(TypeError, test_Variable)
+        paddle.disable_static()
 
 
 class TestSequenceMaskWithEmptyTensor(unittest.TestCase):
     def test_empty(self):
-        paddle.disable_static()
         lengths = paddle.to_tensor(np.array([], dtype=np.int64))
         mask = paddle.nn.functional.sequence_mask(lengths)
         self.assertEqual(list(mask.shape), [0, 0])
-        paddle.enable_static()
 
 
 if __name__ == '__main__':

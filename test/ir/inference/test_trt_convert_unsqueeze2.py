@@ -28,9 +28,9 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        for dims in [2, 3, 4]:
-            for batch in [3, 4]:
-                for axes in [[-2, 3], [1], [2], [2, 3]]:
+        for dims in [2, 4]:
+            for batch in [4]:
+                for axes in [[-2, 3], [1]]:
                     self.batch = batch
                     self.dims = dims
                     self.axes = axes

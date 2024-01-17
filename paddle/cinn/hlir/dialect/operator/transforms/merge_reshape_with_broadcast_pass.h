@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class FullyInsertBroadcastPass : public pir::PatternRewritePass {
+class MergeReshapeWithBroadcastPass : public pir::PatternRewritePass {
  public:
-  FullyInsertBroadcastPass();
+  MergeReshapeWithBroadcastPass();
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 
