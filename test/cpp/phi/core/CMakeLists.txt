@@ -1,12 +1,6 @@
-cc_test(
-  test_custom_kernel
-  SRCS test_custom_kernel.cc
-  DEPS phi common)
-cc_test(
-  test_dense_tensor
-  SRCS test_dense_tensor.cc
-  DEPS phi common)
-cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
+paddle_test(test_custom_kernel SRCS test_custom_kernel.cc DEPS phi common)
+paddle_test(test_dense_tensor SRCS test_dense_tensor.cc DEPS phi common)
+paddle_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
 cc_test(
   test_kernel_factory
