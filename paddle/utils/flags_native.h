@@ -96,7 +96,7 @@ T GetFromEnv(const std::string& name, const T& default_val);
 
 namespace paddle {
 namespace flags {
-class TEST_API FlagRegisterer {
+class PADDLE_API FlagRegisterer {
  public:
   template <typename T>
   FlagRegisterer(std::string name,

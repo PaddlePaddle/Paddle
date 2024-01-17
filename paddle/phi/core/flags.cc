@@ -20,11 +20,11 @@
 
 namespace phi {
 
-TEST_API const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
+PADDLE_API const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
   return *GetMutableExportedFlagInfoMap();
 }
 
-TEST_API ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
+PADDLE_API ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
   static ExportedFlagInfoMap g_exported_flag_info_map;
   return &g_exported_flag_info_map;
 }
