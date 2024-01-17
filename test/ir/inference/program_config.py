@@ -260,7 +260,7 @@ class ProgramConfig:
         no_cast_list: Optional[List[str]] = None,
     ):
         self.ops = ops
-        # if no weight need to save, we create a place_holder to help seriazlie params.
+        # if no weight need to save, we create a place_holder to help serialize params.
         if not weights:
 
             def generate_weight():

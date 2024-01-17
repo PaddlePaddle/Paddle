@@ -228,11 +228,11 @@ def decompose(
 
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of blacklisst is set|frozenset, but got {type(blacklist)}.'
+            f'Expected type of blacklist is set|frozenset, but got {type(blacklist)}.'
         )
     if not isinstance(whitelist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of whiltelist is set|frozenset, but got {type(whitelist)}.'
+            f'Expected type of whitelist is set|frozenset, but got {type(whitelist)}.'
         )
 
     blacklist = core.prim_config["forward_blacklist"] | blacklist
@@ -288,7 +288,7 @@ and the whitelist which will be processed in lowering is: {whitelist}.'
 
 def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
     """
-    The operators in block wich satisfy the filter conditon will be decomposed into primitives.
+    The operators in block which satisfy the filter condition will be decomposed into primitives.
 
     Args:
         block (Block|Sequence[Block]): The blocks of program to be processed.
@@ -605,7 +605,7 @@ def _prepare_grad_outputs(fwd_op, bwd_op):
             new_grad_outputs.append(grad_outputs[index])
             index += 1
         else:
-            new_grad_outputs.append([pir.fake_op_result()])
+            new_grad_outputs.append([pir.fake_value()])
     return new_grad_outputs
 
 
@@ -679,7 +679,7 @@ def _decomp_bwd_with_vjp(
             if grad_input[0] is not None and grad_input[0].initialized():
                 res.append(grad_input[0])
             else:
-                res.append(pir.fake_op_result())
+                res.append(pir.fake_value())
         assert len(res) == len(
             bwd_op.results()
         ), "results of original backward op do not match results of decomposed backward op"
@@ -689,7 +689,7 @@ def _decomp_bwd_with_vjp(
             grad_var_to_var, orig_grads=bwd_op.results(), new_grads=res
         )
 
-        # step5: replace original backward op with new primiive ops
+        # step5: replace original backward op with new primitive ops
         insert_idx = bwd_op_idx
         for i in range(before_num_ops, after_num_ops):
             block.move_op(block.ops[i], insert_idx)
@@ -752,14 +752,14 @@ def _decomp_bwd_without_vjp(
             res.append(new_grad_inputs[input_grads_idx])
             input_grads_idx += 1
         else:
-            res.append(pir.fake_op_result())
+            res.append(pir.fake_value())
 
     # step4: upgrade grad_var_to_var
     _upgrade_grad_var_to_var(
         grad_var_to_var, orig_grads=grad_inputs, new_grads=res
     )
 
-    # step5: replace original backward op with new primiive ops
+    # step5: replace original backward op with new primitive ops
     insert_idx = bwd_op_idx
     for i in range(before_num_ops, after_num_ops):
         block.move_op(block.ops[i], insert_idx)
@@ -957,7 +957,7 @@ def _decomp_fwd_program(pir_program, pir_grad_var_to_var):
     with paddle.pir.core.program_guard(pir_program):
         ops = pir_program.global_block().ops
         bwd_ops = _get_all_bwd_ops(pir_program)
-        # ops including compile-time infermeta, causing mismatched input shape and output shape, which is unsupported when decompoing.
+        # ops including compile-time infermeta, causing mismatched input shape and output shape, which is unsupported when decomposing.
         black_fwd_ops = ["pd_op.stack", "pd_op.squeeze"]
         undecomposed_fwd_ops = []
 

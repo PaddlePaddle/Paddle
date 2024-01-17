@@ -88,12 +88,12 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [{"X": ["reshape_input"]}]
+                dics_input = [{"X": ["reshape_input"]}]
 
                 ops_config = [
                     {
                         "op_type": "reshape",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
                     }
@@ -228,7 +228,7 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
                     {},
                 ]
                 self.dims = dims
-                dics_intput = [
+                dics_input = [
                     {
                         "X": ["reshape_input"],
                         "ShapeTensor": ["shapeT1_data", "shapeT2_data"],
@@ -257,7 +257,7 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
                     },
                     {
                         "op_type": "reshape",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
                     },
@@ -351,7 +351,7 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
                     {},
                 ]
                 self.dims = dims
-                dics_intput = [
+                dics_input = [
                     {
                         "X": ["reshape_input"],
                         "shape_data": ["shape_data"],
@@ -370,7 +370,7 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
                     },
                     {
                         "op_type": "reshape",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
                     },
@@ -463,12 +463,12 @@ class TrtConvertReshapeZeroDimsTest(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [{"X": ["reshape_input"]}]
+                dics_input = [{"X": ["reshape_input"]}]
 
                 ops_config = [
                     {
                         "op_type": "reshape",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
                     }
