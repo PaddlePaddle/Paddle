@@ -131,7 +131,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInput(inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       AddNOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -237,7 +237,7 @@ void AddN_Op::Build(pir::Builder &builder,
   argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       AddN_Op::InferMeta(argument_inputs, argument_attributes);
 
@@ -400,7 +400,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
   argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       AddNWithKernelOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -642,7 +642,7 @@ void AddNArrayOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       AddNArrayOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -794,7 +794,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   argument.AddInputs({x_, y_, bias_});
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_trans_x =
       pir::BoolAttribute::get(pir::IrContext::Instance(), trans_x);
   argument.AddAttribute("trans_x", attr_trans_x);
@@ -1135,7 +1135,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   argument.AddInputs({x_, y_, reserve_space_, out_grad_});
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_trans_x =
       pir::BoolAttribute::get(pir::IrContext::Instance(), trans_x);
   argument.AddAttribute("trans_x", attr_trans_x);
@@ -1424,7 +1424,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   argument.AddInputs({out_grad_, axis_});
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       SplitGradOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -1443,7 +1443,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   argument.AddInputs({out_grad_, axis_});
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       SplitGradOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -1596,9 +1596,9 @@ void CreateArrayOp::Build(pir::Builder &builder,
                           phi::DataType dtype) {
   VLOG(4) << "Start build CreateArrayOp";
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::Value> argument_inputs;
+  std::vector<pir::Value> argument_inputs = {};
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
       pir::IrContext::Instance(), dtype);
   argument.AddAttribute("dtype", attr_dtype);
@@ -1715,7 +1715,7 @@ void CreateArrayLikeOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_val =
       pir::FloatAttribute::get(pir::IrContext::Instance(), val);
   argument.AddAttribute("val", attr_val);
@@ -1848,7 +1848,7 @@ void ArrayLengthOp::Build(pir::Builder &builder,
   std::vector<pir::Value> argument_inputs = {x};
   argument.AddInputs({x});
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       ArrayLengthOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -1989,7 +1989,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
   std::vector<pir::Value> argument_inputs = {array, full_i_op.result(0)};
   argument.AddInputs({array, full_i_op.result(0)});
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       ArrayReadOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -2006,9 +2006,9 @@ void ArrayReadOp::Build(pir::Builder &builder,
   std::vector<pir::Value> argument_inputs = {array, i};
   argument.AddInputs({array, i});
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
-      AddNOp::InferMeta(argument_inputs, argument_attributes);
+      ArrayReadOp::InferMeta(argument_inputs, argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
@@ -2174,7 +2174,7 @@ void ArrayWrite_Op::Build(pir::Builder &builder,
   std::vector<pir::Value> argument_inputs = {array, x, i};
   argument.AddInputs({array, x, i});
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       ArrayWrite_Op::InferMeta(argument_inputs, argument_attributes);
 
@@ -2362,7 +2362,7 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInputs({x});
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_axis =
       pir::Int32Attribute::get(pir::IrContext::Instance(), axis);
   argument.AddAttribute("axis", attr_axis);
@@ -2557,7 +2557,7 @@ void TensorToArrayOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInputs({x_, out_grad_});
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_axis =
       pir::Int32Attribute::get(pir::IrContext::Instance(), axis);
   argument.AddAttribute("axis", attr_axis);
@@ -2640,7 +2640,7 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   pir::Value out_grad_ = input_values[1];
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
 
   IR_ENFORCE(attributes.find("axis") != attributes.end(),
              "'value' Attribute is expected for IncrementOp. ");
@@ -2965,7 +2965,7 @@ void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
   std::vector<pir::Value> argument_inputs = {input, starts};
   argument.AddInputs({input, starts});
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       SliceArrayDenseOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -3246,7 +3246,7 @@ void ExpandOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       ExpandOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -3279,7 +3279,7 @@ void ExpandOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       ExpandOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -3298,7 +3298,7 @@ void ExpandOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       ExpandOp::InferMeta(argument_inputs, argument_attributes);
 
@@ -3559,7 +3559,7 @@ void IncrementOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_value =
       pir::FloatAttribute::get(pir::IrContext::Instance(), value);
   argument.AddAttribute("value", attr_value);
@@ -3586,7 +3586,7 @@ void IncrementOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_value =
       pir::FloatAttribute::get(pir::IrContext::Instance(), value);
   argument.AddAttribute("value", attr_value);
@@ -3742,7 +3742,7 @@ void Increment_Op::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_value =
       pir::FloatAttribute::get(pir::IrContext::Instance(), value);
   argument.AddAttribute("value", attr_value);
@@ -3769,7 +3769,7 @@ void Increment_Op::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_value =
       pir::FloatAttribute::get(pir::IrContext::Instance(), value);
   argument.AddAttribute("value", attr_value);
@@ -3902,7 +3902,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes;
+  pir::AttributeMap argument_attributes = {};
   std::vector<pir::Type> argument_outputs =
       ShapeBroadcastOp::InferMeta(argument_inputs, argument_attributes);
 
