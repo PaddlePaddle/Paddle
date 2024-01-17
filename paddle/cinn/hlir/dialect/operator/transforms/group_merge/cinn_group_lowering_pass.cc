@@ -621,7 +621,7 @@ pir::Operation* ProcessGroup(
   cinn::common::BroadcastTree broadcast_tree =
       cinn::common::ConstructBroadcastTree(
           cinn::common::BroadcastLeaf(all_value_dim_exprs));
-  VLOG(6) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
+  VLOG(0) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
 
   auto group_inputs = GetBlockOutsideInput(group->ops);
   for (size_t i = 0; i < group_inputs.size(); ++i) {
@@ -650,6 +650,10 @@ pir::Operation* ProcessGroup(
                                                 rewriter);
   } else {  // no condition block
     // complie group to jit_kernel_op
+    VLOG(0) << "### NO branch  group->ops.size(): " << group->ops.size();
+    for (auto op : group->ops) {
+      VLOG(0) << "  op: " << op->name();
+    }
     auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, {group});
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);

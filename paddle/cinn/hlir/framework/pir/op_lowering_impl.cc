@@ -158,7 +158,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
-                                                   apply_group_schedule,
+                                                   apply_op_schedule,
+                                                   //  apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
@@ -440,6 +441,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         continue;
       }
 
+      VLOG(0) << op->name() << " ######## tensor->name: " << tensor->name;
       group->output_values.push_back(opresult);
       // output arg tensors
       group_func_arg_tensors->push_back(tensor);
@@ -466,6 +468,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         if (args_set.count("_" + tensor->name) != 0) {
           continue;
         }
+        VLOG(0) << op->name() << " ######## tensor->name: " << tensor->name;
+
         group->output_values.push_back(opresult);
         group_func_arg_tensors->push_back(tensor);
         group->output_names.push_back(tensor->name);
@@ -764,7 +768,6 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
       (*tensor_map)[in_value]->domain = tensor->domain;
     }
     tensors.push_back(tensor);
-    VLOG(0) << "####### tensors.push_back(tensor)";
   }
   return tensors;
 }
