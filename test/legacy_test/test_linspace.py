@@ -32,7 +32,7 @@ class TestLinspaceOpCommonCase(OpTest):
 
     def _set_dtype(self):
         self.dtype = "float32"
-        self.attr_dtype = int(core.VarDesc.VarType.FP32)
+        self.attr_dtype = paddle.float32
 
     def _set_data(self):
         self.outputs = {'Out': np.arange(0, 11).astype(self.dtype)}
@@ -75,19 +75,19 @@ class TestLinspaceOpNumOneCase(TestLinspaceOpCommonCase):
 class TestLinspaceOpCommonCaseFP16(TestLinspaceOpCommonCase):
     def _set_dtype(self):
         self.dtype = np.float16
-        self.attr_dtype = int(core.VarDesc.VarType.FP16)
+        self.attr_dtype = paddle.float16
 
 
 class TestLinspaceOpReverseCaseFP16(TestLinspaceOpReverseCase):
     def _set_dtype(self):
         self.dtype = np.float16
-        self.attr_dtype = int(core.VarDesc.VarType.FP16)
+        self.attr_dtype = paddle.float16
 
 
 class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
     def _set_dtype(self):
         self.dtype = np.float16
-        self.attr_dtype = int(core.VarDesc.VarType.FP16)
+        self.attr_dtype = paddle.float16
 
 
 @unittest.skipIf(
@@ -98,7 +98,7 @@ class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
 class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCaseFP16):
     def _set_dtype(self):
         self.dtype = np.uint16
-        self.attr_dtype = int(core.VarDesc.VarType.BF16)
+        self.attr_dtype = paddle.bfloat16
 
     def _set_data(self):
         self.outputs = {

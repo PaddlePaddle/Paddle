@@ -20,7 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle.base import Program, core, program_guard
+from paddle.base import Program, program_guard
 
 
 class BaseTestCase(OpTest):
@@ -195,7 +195,7 @@ class BaseTestComplex1_1(OpTest):
         self.x = (np.random.random(self.dims)).astype(self.dtype)
         self.inputs = {'X': self.x}
         self.attrs = {'axis': self.axis}
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         if self.op_type == "arg_min":
             self.outputs = {
                 'Out': np.argmin(self.x, axis=self.axis).asdtype("int32")
@@ -219,7 +219,7 @@ class BaseTestComplex1_2(OpTest):
         self.x = (np.random.random(self.dims)).astype(self.dtype)
         self.inputs = {'X': self.x}
         self.attrs = {'axis': self.axis}
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         if self.op_type == "arg_min":
             self.outputs = {
                 'Out': np.argmin(self.x, axis=self.axis).asdtype("int32")
@@ -243,7 +243,7 @@ class BaseTestComplex2_1(OpTest):
         self.x = (np.random.random(self.dims)).astype(self.dtype)
         self.inputs = {'X': self.x}
         self.attrs = {'axis': self.axis}
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
@@ -272,7 +272,7 @@ class BaseTestComplex2_2(OpTest):
         self.x = (np.random.random(self.dims)).astype(self.dtype)
         self.inputs = {'X': self.x}
         self.attrs = {'axis': self.axis}
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         self.attrs = {'keep_dims': True}
         if self.op_type == "arg_min":
             self.outputs = {
