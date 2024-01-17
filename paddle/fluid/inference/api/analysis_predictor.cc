@@ -795,6 +795,11 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
         //----------------------------------------------------------------------------------------------//
+        // Functional pass
+        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
+        //----------------------------------------------------------------------------------------------//
+
+        //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
@@ -802,11 +807,6 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
-        //----------------------------------------------------------------------------------------------//
-
-        //----------------------------------------------------------------------------------------------//
-        // Functional pass
-        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
         //----------------------------------------------------------------------------------------------//
 
         //----------------------------------------------------------------------------------------------//
