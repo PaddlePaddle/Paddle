@@ -342,8 +342,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   symbol::ShapeOrDataDimExprs shape_data{out_dims};
   if (operand_shape_or_data.data().has_value()) {
-    shape_data =
-        symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+    shape_data.SetData(operand_shape_or_data.shape());
   }
   op->set_attribute(
       "symbolic_shape",
