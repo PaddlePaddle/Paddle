@@ -34,11 +34,14 @@ class FillConstantOpConverter : public OpConverter {
       str_value = std::to_string(value);
     }
     nvinfer1::ILayer* layer = nullptr;
-    if (op_desc.HasInput("ShapeTensor") ||
-        op_desc.HasInput("ShapeTensorList")) {
+    if ((op_desc.HasInput("ShapeTensor") &&
+         op_desc.Input("ShapeTensor").size() == 1) ||
+        (op_desc.HasInput("ShapeTensorList") &&
+         op_desc.Input("ShapeTensorList").size() >= 1)) {
       nvinfer1::ITensor* shapes_tensor;
       int tensor_rank = 0;
-      if (op_desc.HasInput("ShapeTensor")) {
+      if (op_desc.HasInput("ShapeTensor") &&
+          op_desc.Input("ShapeTensor").size() == 1) {
         shapes_tensor = engine_->GetITensor(op_desc.Input("ShapeTensor")[0]);
         auto shape_nbDims = shapes_tensor->getDimensions().nbDims;
         PADDLE_ENFORCE_EQ(shape_nbDims,

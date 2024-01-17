@@ -1663,11 +1663,9 @@ struct SimpleOpTypeSetTeller : public Teller {
         if (!desc.Input("ValueTensor").empty()) return false;
       }
       if (desc.HasInput("ShapeTensor")) {
-        if (desc.Input("ShapeTensor").size() != 1) return false;
+        if (desc.Input("ShapeTensor").size() > 1) return false;
       }
-      if (desc.HasInput("ShapeTensorList")) {
-        if (desc.Input("ShapeTensorList").size() < 1) return false;
-      }
+
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : 5;
