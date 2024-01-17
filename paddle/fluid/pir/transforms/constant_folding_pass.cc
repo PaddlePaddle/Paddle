@@ -33,6 +33,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
+#include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
@@ -101,15 +102,21 @@ class ConstantFoldingPattern : public pir::RewritePattern {
               !prev_op->operand_source(i).type()) {
             continue;
           }
+          // 3. for combine's prev op, inputs must come from
+          // ParameterOp/ConstantTensorOp
+          auto* prev_prev_op = pir::GetDefiningOpForInput(prev_op, i);
+          if (!prev_prev_op || !(prev_prev_op->isa<pir::ParameterOp>() ||
+                                 prev_prev_op->isa<pir::ConstantTensorOp>())) {
+            return false;
+          }
           if (!prev_op->operand_source(i)
                    .type()
                    .isa<paddle::dialect::DenseTensorType>()) {
             return false;
           }
         }
-
       } else {
-        // 3. inputs must be a dense tensor type
+        // 4. inputs must be a dense tensor type
         if (!op->operand_source(i)
                  .type()
                  .isa<paddle::dialect::DenseTensorType>()) {
@@ -122,13 +129,13 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       if (!op->result(i) || !op->result(i).type()) {
         continue;
       }
-      // 4. outputs must be a dense tensor type
+      // 5. outputs must be a dense tensor type
       if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
         return false;
       }
     }
 
-    // 5. maybe affect performence
+    // 6. maybe affect performence
     if (op->isa<paddle::dialect::FullOp>()) {
       auto next_ops = pir::GetUseOpsForOutput(op, 0);
       for (auto [next_op, _] : next_ops) {
@@ -204,7 +211,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         }
 
         auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
-            rewriter.tensor_name_attr(output_var_name), op->result(i).type());
+            output_var_name, op->result(i).type());
         constant_op->set_attribute(
             kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
@@ -266,6 +273,29 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return output_var_names;
   }
 
+  template <typename Op>
+  Op BuildParameterOrConstantTensorOP(
+      uint32_t index,
+      pir::Operation* op,
+      pir::Builder& builder,                   // NOLINT
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    const auto& var_name =
+        pir::GetParameterNameFromValue(op->operand_source(index));
+    auto* var = scope_->FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            phi::errors::InvalidArgument(
+                                "Persisable var [%s] not in scope.", var_name));
+    auto from_op =
+        builder.Build<Op>(var_name, op->operand_source(index).type());
+    if (op->operand_source(index).use_count() <= 1) {
+      deleted_vars_->push_back(var_name);
+    } else {
+      from_op->set_attribute(kAttrIsPersisable,
+                             rewriter.array_attr({rewriter.bool_attr(true)}));
+    }
+    return from_op;
+  }
+
   std::vector<std::string> BuildProgramFromOperation(
       pir::Operation* op,
       pir::Program* new_program,
@@ -281,94 +311,39 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         if (prev_op->isa<pir::CombineOp>()) {
           // prepare combine op inputs
           std::vector<pir::Value> combine_op_inputs;
-          for (uint32_t i = 0; i < prev_op->num_operands(); i++) {
-            auto* combine_prev_op = pir::GetDefiningOpForInput(prev_op, i);
-            if (combine_prev_op->isa<pir::ParameterOp>()) {
-              const auto& param_name =
-                  pir::GetParameterNameFromValue(prev_op->operand_source(i));
-              auto* param_var = scope_->FindVar(param_name);
-              PADDLE_ENFORCE_NOT_NULL(
-                  param_var,
-                  phi::errors::InvalidArgument(
-                      "Parameter var [%s] not in scope.", param_name));
-
-              auto parameter_op = builder.Build<pir::ParameterOp>(
-                  param_name, prev_op->operand_source(i).type());
-              if (prev_op->operand_source(i).use_count() <= 1) {
-                deleted_vars_->push_back(param_name);
-              } else {
-                parameter_op->set_attribute(
-                    kAttrIsPersisable,
-                    rewriter.array_attr({rewriter.bool_attr(true)}));
-              }
+          for (uint32_t j = 0; j < prev_op->num_operands(); j++) {
+            auto* prev_prev_op = pir::GetDefiningOpForInput(prev_op, j);
+            if (prev_prev_op->isa<pir::ParameterOp>()) {
+              auto parameter_op =
+                  BuildParameterOrConstantTensorOP<pir::ParameterOp>(
+                      j, prev_op, builder, rewriter);
               combine_op_inputs.push_back(parameter_op->result(0));
-            } else if (combine_prev_op->isa<pir::ConstantTensorOp>()) {
-              const auto& tensor_name =
-                  pir::GetParameterNameFromValue(prev_op->operand_source(i));
-              auto* tensor_var = scope_->FindVar(tensor_name);
-              PADDLE_ENFORCE_NOT_NULL(
-                  tensor_var,
-                  phi::errors::InvalidArgument("Tensor var [%s] not in scope.",
-                                               tensor_name));
-
-              auto constant_op = builder.Build<pir::ConstantTensorOp>(
-                  rewriter.tensor_name_attr(tensor_name),
-                  prev_op->operand_source(i).type());
-              if (prev_op->operand_source(i).use_count() <= 1) {
-                deleted_vars_->push_back(tensor_name);
-              } else {
-                constant_op->set_attribute(
-                    kAttrIsPersisable,
-                    rewriter.array_attr({rewriter.bool_attr(true)}));
-              }
+            } else if (prev_prev_op->isa<pir::ConstantTensorOp>()) {
+              auto constant_op =
+                  BuildParameterOrConstantTensorOP<pir::ConstantTensorOp>(
+                      j, prev_op, builder, rewriter);
               combine_op_inputs.push_back(constant_op->result(0));
             } else {
-              PADDLE_THROW(phi::errors::Fatal("Not Support!"));
+              PADDLE_THROW(phi::errors::Fatal(
+                  "Not support %s before builtin.combine op!",
+                  prev_prev_op->name()));
             }
           }
           auto combine_op = builder.Build<pir::CombineOp>(combine_op_inputs);
           op_inputs.push_back(combine_op->result(0));
         } else if (prev_op->isa<pir::ParameterOp>()) {
-          const auto& param_name =
-              pir::GetParameterNameFromValue(op->operand_source(i));
-          auto* param_var = scope_->FindVar(param_name);
-          PADDLE_ENFORCE_NOT_NULL(
-              param_var,
-              phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
-                                           param_name));
-
-          auto parameter_op = builder.Build<pir::ParameterOp>(
-              param_name, op->operand_source(i).type());
-          if (op->operand_source(i).use_count() <= 1) {
-            deleted_vars_->push_back(param_name);
-          } else {
-            parameter_op->set_attribute(
-                kAttrIsPersisable,
-                rewriter.array_attr({rewriter.bool_attr(true)}));
-          }
+          auto parameter_op =
+              BuildParameterOrConstantTensorOP<pir::ParameterOp>(
+                  i, op, builder, rewriter);
           op_inputs.push_back(parameter_op->result(0));
         } else if (prev_op->isa<pir::ConstantTensorOp>()) {
-          const auto& tensor_name =
-              pir::GetParameterNameFromValue(op->operand_source(i));
-          auto* tensor_var = scope_->FindVar(tensor_name);
-          PADDLE_ENFORCE_NOT_NULL(
-              tensor_var,
-              phi::errors::InvalidArgument("Tensor var [%s] not in scope.",
-                                           tensor_name));
-
-          auto constant_op = builder.Build<pir::ConstantTensorOp>(
-              rewriter.tensor_name_attr(tensor_name),
-              op->operand_source(i).type());
-          if (op->operand_source(i).use_count() <= 1) {
-            deleted_vars_->push_back(tensor_name);
-          } else {
-            constant_op->set_attribute(
-                kAttrIsPersisable,
-                rewriter.array_attr({rewriter.bool_attr(true)}));
-          }
+          auto constant_op =
+              BuildParameterOrConstantTensorOP<pir::ConstantTensorOp>(
+                  i, op, builder, rewriter);
           op_inputs.push_back(constant_op->result(0));
         } else {
-          PADDLE_THROW(phi::errors::Fatal("Not Support!"));
+          PADDLE_THROW(phi::errors::Fatal("Not support %s before matched op!",
+                                          prev_op->name()));
         }
       } else {
         op_inputs.push_back(
@@ -462,7 +437,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
                                        output_var_name));
 
       auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
-          rewriter.tensor_name_attr(output_var_name), op->result(i).type());
+          output_var_name, op->result(i).type());
       constant_op->set_attribute(
           kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
