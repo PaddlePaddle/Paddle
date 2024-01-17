@@ -68,8 +68,7 @@ class TestFusedRmsNorm(unittest.TestCase):
             # forward rtol
             rtol = 1e-5 if dtype == paddle.float32 else 1e-3
             np.testing.assert_allclose(
-                raw_out.astype(paddle.float32).numpy(), fused_out.astype(paddle.float32).numpy(), rtol=rtol,
-                err_msg=f" dtype {dtype}"
+                raw_out.astype(paddle.float32).numpy(), fused_out.astype(paddle.float32).numpy(), rtol=rtol
             )
             # backward rtol, only check float32 grad
             rtol = 1e-3
@@ -77,12 +76,10 @@ class TestFusedRmsNorm(unittest.TestCase):
                 raw_x_grad, raw_scale_grad = raw_grads
                 fused_x_grad, fused_scale_grad = fused_grads
                 np.testing.assert_allclose(
-                    raw_x_grad.astype(paddle.float32).numpy(), fused_x_grad.astype(paddle.float32).numpy(), rtol=rtol,
-                    err_msg=f" dtype {dtype}"
+                    raw_x_grad.astype(paddle.float32).numpy(), fused_x_grad.astype(paddle.float32).numpy(), rtol=rtol
                 )
                 np.testing.assert_allclose(
-                    raw_scale_grad.astype(paddle.float32).numpy(), fused_scale_grad.astype(paddle.float32).numpy(), rtol=rtol,
-                    err_msg=f" dtype {dtype}"
+                    raw_scale_grad.astype(paddle.float32).numpy(), fused_scale_grad.astype(paddle.float32).numpy(), rtol=rtol
                 )
 
 
