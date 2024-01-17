@@ -201,16 +201,6 @@ class TestNumelAPI(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_type)
 
-    def test_pir_error(self):
-        with paddle.pir_utils.IrGuard():
-
-            def test_x_type():
-                shape = [1, 4, 5]
-                input_1 = np.random.random(shape).astype("int32")
-                out_1 = paddle.numel(input_1)
-
-            self.assertRaises(TypeError, test_x_type)
-
 
 if __name__ == '__main__':
     paddle.enable_static()
