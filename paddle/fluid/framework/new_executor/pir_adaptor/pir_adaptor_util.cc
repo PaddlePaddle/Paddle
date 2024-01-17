@@ -355,7 +355,9 @@ void DeepCopyVariable(const Variable* src_var,
         tmp_dst_tensor.set_meta(src_tensor_array.at(i).meta());
         continue;
       }
-      framework::TensorCopy(src_tensor_array.at(i), src_tensor_array.at(i).place(), &tmp_dst_tensor);
+      framework::TensorCopy(src_tensor_array.at(i),
+                            src_tensor_array.at(i).place(),
+                            &tmp_dst_tensor);
     }
   } else if (src_var->IsType<VariableRefArray>()) {
     auto src_ref_array = src_var->Get<VariableRefArray>();
