@@ -14,17 +14,20 @@
 
 #pragma once
 #include <variant>
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
 namespace dialect {
 
-class GroupOp : public pir::Op<GroupOp> {
+class IR_API GroupOp : public pir::Op<GroupOp> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.group"; }
@@ -82,7 +85,9 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
   void VerifySig() const {}
 };
 
-class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
+class IR_API GenerateShapeOp
+    : public pir::Op<GenerateShapeOp,
+                     paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.generate_shape"; }
@@ -112,6 +117,8 @@ class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
 
   pir::OpResult out() { return result(0); }
 
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+
   static pir::Attribute ConvertSymbolBindingsToAttribute(
       pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT
   static std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(
@@ -121,7 +128,7 @@ class GenerateShapeOp : public pir::Op<GenerateShapeOp> {
 }  // namespace dialect
 }  // namespace cinn
 
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

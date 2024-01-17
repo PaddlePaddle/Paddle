@@ -33,10 +33,36 @@ from paddle.framework import core
 from paddle.static import program_guard
 
 from ..utils.log_utils import get_logger
-from .auto_parallel_sharding import _supported_optimizer_type
 from .pass_base import PassBase, register_pass
 
+_supported_optimizer_type = [
+    "adam",
+    "adamax",
+    "adamw",
+    "decayed_adagrad",
+    "momentum",
+    "dgc_momentum",
+    "lars_momentum",
+    "merged_momentum",
+    "lamb",
+    "sgd",
+]
+
 logger = get_logger(logging.INFO, "MasterGradPass")
+
+
+def _is_master_grad_cast_op(block, op, amp_dtype="float16"):
+    if op.type != "cast":
+        return False
+    assert len(op.input_arg_names) == 1
+    assert len(op.output_arg_names) == 1
+    input_var_name = op.input_arg_names[0]
+    if amp_dtype == "float16":
+        return "@master_grad_fp16" in input_var_name
+    elif amp_dtype == "bfloat16":
+        return "@master_grad_bf16" in input_var_name
+    else:
+        return False
 
 
 def get_output_in_varlist(op, var_names) -> List[str]:
@@ -113,9 +139,9 @@ class MasterGradPass(PassBase):
                 ref_dims_mapping = ref_output_dist_attr.dims_mapping
                 ref_chunk_id = producer_op_dist_attr.chunk_id
                 grad_half_precision_name = (
-                    grad_name + '@tmp_fp16'
+                    grad_name + '@master_grad_fp16'
                     if is_fp16
-                    else grad_name + '@tmp_bf16'
+                    else grad_name + '@master_grad_bf16'
                 )
                 grad_half_precision = cur_block.create_var(
                     name=grad_half_precision_name,

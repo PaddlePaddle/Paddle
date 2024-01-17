@@ -1437,7 +1437,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     if pooled_height * pooled_width == 0:
         raise ValueError('output_size should not contain 0.')
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.psroi_pool(
             x,
             boxes,

@@ -74,7 +74,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                [-0.43333334,  2.23333335]]]])
     """
     if not isinstance(theta, (Variable, paddle.pir.Value)):
-        raise ValueError("The theta should be a Tensor.")
+        raise TypeError("The theta should be a Tensor.")
 
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
@@ -519,7 +519,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
             f"But recevie Attr(data_format): {data_format} "
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.channel_shuffle(x, groups, data_format)
 
     helper = LayerHelper("channel_shuffle", **locals())
