@@ -262,14 +262,10 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
 
 class TestWarpRNNTOpError(unittest.TestCase):
     @test_with_pir_api
-    def test_errors(self):
-        print("test_errors")
+    def test_errors1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            logits = paddle.static.data(
-                name='input', shape=[5, 16, 6], dtype='float32'
-            )
             logits_length = paddle.static.data(
                 name='logit_lengths', shape=[None], dtype='int32'
             )
@@ -292,6 +288,23 @@ class TestWarpRNNTOpError(unittest.TestCase):
                 )
 
             self.assertRaises(TypeError, test_logits_Variable)
+
+    def test_errors2(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            logits = paddle.static.data(
+                name='input', shape=[5, 16, 6], dtype='float32'
+            )
+            logits_length = paddle.static.data(
+                name='logit_lengths', shape=[None], dtype='int32'
+            )
+            label = paddle.static.data(
+                name='labels', shape=[16, 3], dtype='int32'
+            )
+            label_length = paddle.static.data(
+                name='label_lengths', shape=[None], dtype='int32'
+            )
 
             def test_label_Variable():
                 label_data = paddle.static.data(
