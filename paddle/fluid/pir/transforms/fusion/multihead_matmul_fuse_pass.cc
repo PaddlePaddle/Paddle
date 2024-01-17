@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
@@ -496,9 +496,10 @@ class MultiHeadMatmulFuseWithBiasQKPattern
   }
 };
 
-class AttentionFusePass : public pir::PatternRewritePass {
+class MultiHeadMatmulFusePass : public pir::PatternRewritePass {
  public:
-  AttentionFusePass() : pir::PatternRewritePass("attention_fuse_pass", 2) {}
+  MultiHeadMatmulFusePass()
+      : pir::PatternRewritePass("multihead_matmul_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -513,9 +514,9 @@ class AttentionFusePass : public pir::PatternRewritePass {
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateAttentionFusePass() {
-  return std::make_unique<AttentionFusePass>();
+std::unique_ptr<Pass> CreateMultiHeadMatmulFusePass() {
+  return std::make_unique<MultiHeadMatmulFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(attention_fuse_pass, AttentionFusePass);
+REGISTER_IR_PASS(multihead_matmul_fuse_pass, MultiHeadMatmulFusePass);

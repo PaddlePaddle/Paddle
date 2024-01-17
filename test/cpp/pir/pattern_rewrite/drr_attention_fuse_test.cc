@@ -22,7 +22,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/core/builtin_dialect.h"
@@ -146,7 +146,7 @@ TEST(DrrTest, AttentionFuse) {
   EXPECT_EQ(program.block()->size(), 33u);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateAttentionFusePass());
+  pm.AddPass(pir::CreateMultiHeadMatmulFusePass());
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
   constant_folding_pass->Set(pir::kPlaceAttr, new phi::Place{phi::GPUPlace{}});
