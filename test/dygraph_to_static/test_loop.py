@@ -338,7 +338,6 @@ class TestTransformWhileLoop(Dy2StTestBase):
         else:
             return ret
 
-    @test_sot_only
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
