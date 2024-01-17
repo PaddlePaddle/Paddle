@@ -17,8 +17,10 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/concat_grad_kernel.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/stack_grad_kernel.h"
 #include "paddle/phi/kernels/stack_kernel.h"
 
 namespace phi {
@@ -26,6 +28,20 @@ template <typename T, typename Context>
 void CreateArrayKernel(const Context& dev_ctx,
                        DataType dtype,
                        TensorArray* out) {}
+
+template <typename T, typename Context>
+void CreateArrayLikeKernel(const Context& dev_ctx,
+                           const TensorArray& input,
+                           float val,
+                           TensorArray* out) {
+  out->resize(input.size());
+  for (size_t i = 0; i < input.size(); i++) {
+    DenseTensor input_i = input[i];
+    out->at(i).Resize(input_i.dims());
+    FullLikeKernel<T, Context>(
+        dev_ctx, input_i, val, input_i.dtype(), &out->at(i));
+  }
+}
 
 template <typename T, typename Context>
 void ArrayLengthKernel(const Context& dev_ctx,
@@ -119,6 +135,32 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   StackKernel<int, Context>(dev_ctx, indexs, 0, out_index);
 }
 
+template <typename T, typename Context>
+void TensorToArrayKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         const DenseTensor& out_grad,
+                         int axis,
+                         bool use_stack,
+                         TensorArray* x_grad) {
+  std::vector<DenseTensor> tmp_inputs(x.size());
+  std::vector<const DenseTensor*> inputs;
+
+  std::vector<DenseTensor*> inputs_grad(x.size());
+
+  for (size_t i = 0; i < x.size(); i++) {
+    tmp_inputs[i].ShareDataWith(x[i]);
+    inputs.push_back(&tmp_inputs[i]);
+    x_grad->at(i).Resize(x[i].dims());
+    inputs_grad[i]->ShareDataWith(x_grad->at(i));
+  }
+
+  if (use_stack) {
+    StackGradKernel<T, Context>(dev_ctx, out_grad, axis, inputs_grad);
+  } else {
+    ConcatGradKernel<T, Context>(dev_ctx, inputs, out_grad, axis, inputs_grad);
+  }
+}
+
 }  // namespace phi
 PD_REGISTER_KERNEL(create_array,
                    CPU,
@@ -139,6 +181,36 @@ PD_REGISTER_KERNEL(create_array,
                    GPU,
                    ALL_LAYOUT,
                    phi::CreateArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
+
+PD_REGISTER_KERNEL(create_array_like,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayLikeKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(create_array_like,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayLikeKernel,
                    bool,
                    int,
                    int64_t,
@@ -250,6 +322,34 @@ PD_REGISTER_KERNEL(array_to_tensor,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
+
+PD_REGISTER_KERNEL(tensor_to_array,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TensorToArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(tensor_to_array,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TensorToArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif

@@ -37,6 +37,8 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
 
+#include "test/cpp/pir/tools/macros_utils.h"
+
 // Define op
 class OperationTest
     : public pir::Op<OperationTest, paddle::dialect::InferMetaInterface> {
@@ -50,8 +52,15 @@ class OperationTest
     auto fn = PD_INFER_META(phi::CreateInferMeta);
     fn(infer_meta);
   }
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes) {
+    VLOG(4) << "Start infermeta OperationTest";
+    std::vector<pir::Type> argument_outputs;
+    return argument_outputs;
+  }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(OperationTest)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(OperationTest)
 IR_DEFINE_EXPLICIT_TYPE_ID(OperationTest)
 
 const char *OperationTest::attributes_name[attributes_num] = {  // NOLINT
@@ -70,7 +79,7 @@ class TestDialect : public pir::Dialect {
  private:
   void initialize() { RegisterOps<OperationTest>(); }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 TEST(infershape_test, infershape_test) {

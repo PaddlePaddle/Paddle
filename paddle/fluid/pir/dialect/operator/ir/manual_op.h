@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -52,10 +53,14 @@ class AddNOp : public pir::Op<AddNOp,
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
   static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation *op);
@@ -80,6 +85,9 @@ class AddN_Op : public pir::Op<AddN_Op,
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
@@ -100,6 +108,32 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+};
+
+class AddNArrayOp : public pir::Op<AddNArrayOp,
+                                   paddle::dialect::OpYamlInfoInterface,
+                                   paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.add_n_array"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value inputs_);
+
+  void VerifySig();
+  pir::Value inputs() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class FusedGemmEpilogueOp
@@ -127,6 +161,9 @@ class FusedGemmEpilogueOp
   pir::OpResult reserve_space() { return result(1); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class FusedGemmEpilogueGradOp
@@ -157,6 +194,9 @@ class FusedGemmEpilogueGradOp
   pir::OpResult bias_grad() { return result(2); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
@@ -180,6 +220,9 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
   pir::Value axis() { return operand_source(1); }
   pir::OpResult x_grad() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class CreateArrayOp
@@ -196,6 +239,31 @@ class CreateArrayOp
   void VerifySig();
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+};
+
+class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
+                                         OpYamlInfoInterface,
+                                         InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.create_array_like"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value &input_,                // NOLINT
+                    float &val);                       // NOLINT
+  void VerifySig();
+  pir::Value input() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class ArrayLengthOp
@@ -213,10 +281,15 @@ class ArrayLengthOp
   pir::Value x() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
-class ArrayReadOp
-    : public pir::Op<ArrayReadOp, OpYamlInfoInterface, InferMetaInterface> {
+class ArrayReadOp : public pir::Op<ArrayReadOp,
+                                   OpYamlInfoInterface,
+                                   paddle::dialect::VjpInterface,
+                                   InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_read"; }
@@ -236,10 +309,20 @@ class ArrayReadOp
   pir::Value i() { return operand_source(1); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
                                      OpYamlInfoInterface,
+                                     paddle::dialect::VjpInterface,
                                      InferMetaInterface,
                                      InplaceTrait> {
  public:
@@ -259,10 +342,21 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
   pir::Value i() { return operand_source(2); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
-class ArrayToTensorOp
-    : public pir::Op<ArrayToTensorOp, OpYamlInfoInterface, InferMetaInterface> {
+class ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
+                                       OpYamlInfoInterface,
+                                       paddle::dialect::VjpInterface,
+                                       InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_to_tensor"; }
@@ -277,8 +371,41 @@ class ArrayToTensorOp
   void VerifySig();
   pir::Value x() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
-  pir::OpResult out_index() { return result(2); }
+  pir::OpResult out_index() { return result(1); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+};
+
+class TensorToArrayOp
+    : public pir::Op<TensorToArrayOp, OpYamlInfoInterface, InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.tensor_to_array"; }
+  static constexpr uint32_t attributes_num = 2;
+  static const char *attributes_name[attributes_num];
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x,
+                    pir::Value out_grad,
+                    int axis,
+                    bool use_stack);
+  void VerifySig();
+  pir::Value x() { return operand_source(0); }
+  pir::Value out_grad() { return operand_source(1); }
+  pir::OpResult x_grad() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class SliceArrayOp
@@ -304,6 +431,9 @@ class SliceArrayOp
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class SliceArrayDenseOp
@@ -314,10 +444,15 @@ class SliceArrayDenseOp
  public:
   using Op::Op;
   static const char *name() { return "pd_op.slice_array_dense"; }
-  static const char *attributes_name[1];
-  static constexpr uint32_t attributes_num = 1;
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
   void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    pir::Value starts);
 
   static phi::DataType GetKernelTypeForVar(
       const std::string &var_name,
@@ -328,6 +463,40 @@ class SliceArrayDenseOp
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+};
+
+class AssignArrayOp
+    : public pir::Op<AssignArrayOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.assign_array"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_);
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class AssignArray_Op
@@ -353,11 +522,15 @@ class AssignArray_Op
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
 };
 
 class ExpandOp : public pir::Op<ExpandOp,
                                 paddle::dialect::OpYamlInfoInterface,
                                 paddle::dialect::InferMetaInterface,
+                                paddle::dialect::InferSymbolicShapeInterface,
                                 paddle::dialect::VjpInterface,
                                 paddle::dialect::GetKernelTypeForVarInterface> {
  public:
@@ -393,12 +566,16 @@ class ExpandOp : public pir::Op<ExpandOp,
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class SelectInputOp : public pir::Op<SelectInputOp> {
@@ -412,6 +589,160 @@ class SelectInputOp : public pir::Op<SelectInputOp> {
   pir::OpResult out() { return result(0); }
 };
 
+class IncrementOp
+    : public pir::Op<IncrementOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::VjpInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.increment"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,                     // NOLINT
+                    float value = 1.0);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,                     // NOLINT
+                    pir::AttributeMap attributes);
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+};
+
+class Increment_Op
+    : public pir::Op<Increment_Op,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::VjpInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface,
+                     paddle::dialect::InplaceTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.increment_"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,                     // NOLINT
+                    float value = 1.0);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,                     // NOLINT
+                    pir::AttributeMap attributes);
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+};
+
+class MemcpyD2hMultiIoOp
+    : public pir::Op<MemcpyD2hMultiIoOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.memcpy_d2h_multi_io"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    int dst_place_type);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::AttributeMap attributes);
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+};
+
+class IR_API ShapeBroadcastOp
+    : public pir::Op<ShapeBroadcastOp,
+                     paddle::dialect::InferSymbolicShapeInterface,
+                     paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.shape_broadcast"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::Value y_);
+
+  void VerifySig() {}
+
+  pir::Value x() { return operand_source(0); }
+  pir::Value y() { return operand_source(1); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -419,15 +750,23 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayLikeOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::TensorToArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)

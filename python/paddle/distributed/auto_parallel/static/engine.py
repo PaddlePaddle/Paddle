@@ -38,12 +38,14 @@ from paddle.static.amp.fp16_utils import _convert_float_to_bfloat16
 
 from ...utils.log_utils import get_logger
 from ..interface import CollectionNames, fetch, get_collection
+from ..static.dist_tensor import DistributedTensor
 from ..strategy import Strategy
 from .callbacks import config_callbacks
 from .cluster import Cluster, get_default_cluster
 from .converter import Converter
 from .cost.estimate_cost import get_cost_from_engine
 from .dist_context import DistributedContext, get_default_distributed_context
+from .dist_input_spec import DistrubutedInputSpec
 from .dist_loader import (
     DistributedDataLoader,
     DistributedDataLoaderFromGenerator,
@@ -256,6 +258,53 @@ class Engine:
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
         self.enable_job_schedule_profiler = False
+
+    # get dist input spec from shard dataloader
+    def _prepare_data_spec_from_dataloader(self, dataloader):
+        inputs_spec = []
+        labels_spec = []
+        data = next(iter(dataloader))
+        if isinstance(data, dict):
+            data = tuple(data.values())
+            if len(data) != 2:
+                raise ValueError(
+                    "Data should be a dict with two keys, but received {}.".format(
+                        len(data)
+                    )
+                )
+            inputs, labels = data
+        elif isinstance(data, (list, tuple)):
+            if len(data) != 2:
+                raise ValueError(
+                    "Data should be a list or tuple with two elements, but received {}.".format(
+                        len(data)
+                    )
+                )
+            inputs, labels = data
+        else:
+            raise TypeError(
+                f"Data should be a dict or list, but received {type(data)}."
+            )
+
+        inputs = auto_utils.to_list(inputs)
+        labels = auto_utils.to_list(labels)
+
+        if inputs is not None:
+            for i, item in enumerate(inputs):
+                assert item is not None, "Receive None input."
+                name = "input" + str(i)
+                inputs_spec.append(
+                    DistrubutedInputSpec.from_dtensor(item, name)
+                )
+        if labels is not None:
+            for i, item in enumerate(labels):
+                assert item is not None, "Receive None input."
+                name = "label" + str(i)
+                labels_spec.append(
+                    DistrubutedInputSpec.from_dtensor(item, name)
+                )
+
+        return inputs_spec, labels_spec
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -574,6 +623,29 @@ class Engine:
         self._mark_prim(mode)
         self._has_prepared[mode] = True
 
+    def _process_dist_input_specs(self):
+        if isinstance(self._inputs_spec[0], DistrubutedInputSpec):
+
+            def _create_dist_input_var(input_var, input_spec):
+                dist_tensor = DistributedTensor(input_var)
+
+                dist_tensor.dist_attr.process_mesh = input_spec.mesh
+                dist_tensor.dist_attr.dims_mapping = input_spec.dims_mapping
+                dist_tensor.dist_attr.mark_annotated("process_mesh")
+                dist_tensor.dist_attr.mark_annotated("dims_mapping")
+                default_dist_ctx = get_default_distributed_context()
+                default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
+
+            for index in range(len(self._inputs)):
+                input_var = self._inputs[index]
+                input_spec = self._inputs_spec[index]
+                _create_dist_input_var(input_var, input_spec)
+
+            for index in range(len(self._labels)):
+                input_var = self._labels[index]
+                input_spec = self._labels_spec[index]
+                _create_dist_input_var(input_var, input_spec)
+
     def _build(self, mode):
         if in_dynamic_mode() or self._dygraph_mode:
             paddle.disable_static()
@@ -597,6 +669,7 @@ class Engine:
 
             self._inputs = self.program_helper.input_vars
             self._labels = self.program_helper.label_vars
+            self._process_dist_input_specs()
             outputs = self.program_helper.output_vars
             self._losses = self.program_helper.loss_vars
             metrics = self.program_helper.metric_vars
@@ -848,7 +921,9 @@ class Engine:
                         # for amp
                         if dest_type == core.VarDesc.VarType.BF16:
                             buffer_tensor.set(
-                                _convert_float_to_bfloat16(buffer.numpy()),
+                                _convert_float_to_bfloat16(
+                                    self._place, buffer.numpy()
+                                ),
                                 self._place,
                             )
                         elif dest_type == core.VarDesc.VarType.FP16:

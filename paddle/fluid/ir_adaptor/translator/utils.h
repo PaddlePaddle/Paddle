@@ -59,7 +59,7 @@ pir::Operation* InsertSliceOperationForTarget(
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str);
 
-std::vector<std::string> CheckUnregisteredOperation(
+TEST_API std::vector<std::string> CheckUnregisteredOperation(
     pir::IrContext* ctx, const framework::ProgramDesc& legacy_program);
 
 inline DataType VarTypeToDataType(
@@ -99,8 +99,6 @@ inline DataType VarTypeToDataType(
           var_type));
   }
 }
-
-phi::DataType PirTypeToPhiDType(pir::Type type);
 
 }  // namespace translator
 }  // namespace paddle

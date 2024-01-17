@@ -127,6 +127,16 @@ def OpNameNormalizerInitialization(
                 )
 
     # special mapping list
+    op_name_mappings["deformable_conv_v1"] = "deformable_conv"
+    op_name_mappings["deformable_conv_v1_grad"] = "deformable_conv_grad"
+    op_arg_name_mappings["deformable_conv_v1"] = {
+        "x": "Input",
+        "offset": "Offset",
+        "filter": "Filter",
+        "mask": "Mask",
+        "out": "Output",
+    }
+
     op_arg_name_mappings["set_value_grad"]["values_grad"] = "ValueTensor@GRAD"
     op_arg_name_mappings["fetch"] = {"x": "X"}
     op_arg_name_mappings["elementwise_add_grad_grad"] = {
@@ -154,6 +164,9 @@ def OpNameNormalizerInitialization(
         "atol_tensor": "TolTensor",
         "out": "Out",
     }
+    op_arg_name_mappings['push_sparse_v2'].update(
+        {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
+    )
 
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:

@@ -114,7 +114,7 @@
     backend : place > output
 
 - op : batch_norm
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta:
     func : BatchNormInferMeta
@@ -142,6 +142,16 @@
     param : [x]
   kernel :
     func : c_allreduce_max
+  inplace : (x -> out)
+
+- op : c_allreduce_prod
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_prod
   inplace : (x -> out)
 
 - op : c_allreduce_sum
@@ -334,6 +344,7 @@
     func : dropout
     data_type : x
   optional : seed_tensor
+  intermediate : mask
   backward : dropout_grad
 
 - op : einsum
@@ -979,6 +990,15 @@
   intermediate : noise
   backward : rrelu_grad
 
+- op : sequence_mask
+  args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: SequenceMaskScalarInferMeta
+  kernel:
+    func: sequence_mask_scalar
+    data_type : x
+
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
@@ -1084,7 +1104,7 @@
   backward : swish_grad
 
 - op : sync_batch_norm_
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
     func : BatchNormInferMeta

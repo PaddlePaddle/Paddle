@@ -136,6 +136,50 @@ TEST_F(TestSymbolicExprAnalyzer, compare) {
                analyzer.Prove(e3 < e4).value());
 }
 
+TEST_F(TestSymbolicExprAnalyzer, Divisible) {
+  auto x = ir::Var(ir::Expr(1), ir::Expr(7), "x");
+  auto y = ir::Var(ir::Expr(1), ir::Expr(15), "y");
+  auto S = ir::Var(ir::Expr(16), ir::Expr(256), "S");
+
+  cas_intervals_t divisible_var_intervals = {
+      {"x", CasInterval(x->lower_bound, x->upper_bound)},
+      {"y", CasInterval(y->lower_bound, y->upper_bound)},
+      {"S", CasInterval(S->lower_bound, S->upper_bound)},
+  };
+  SymbolicExprAnalyzer divisible_analyzer{divisible_var_intervals};
+
+  // case 1
+  ir::Expr e1 = 4 * x + 2 * y * x;
+  ir::Expr e2 = x;
+  ir::Expr e3 = y;
+
+  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e1, e2).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e1, e3).value_or(false));
+
+  // case 2
+  ir::Expr e4 = y + y * x + 4 * y - x * y;
+
+  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e4, e3).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e4, e2).value_or(false));
+
+  // case 3
+  ir::Expr e5 = x / y + x + y;
+
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e5, e3).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e5, e2).value_or(false));
+
+  // case 4
+  ir::Expr e6 = S * x / 4 + x * y;
+
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e6, e2).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e6, e3).value_or(false));
+
+  ir::Expr e7 = 16 * x / 4 + x * y;
+
+  EXPECT_TRUE(divisible_analyzer.ProveDivisible(e7, e2).value_or(false));
+  EXPECT_FALSE(divisible_analyzer.ProveDivisible(e7, e3).value_or(false));
+}
+
 TEST(SingleIntervalIntSet, constant) {
   SingleIntervalIntSet empty_set(ir::Expr(0), ir::Expr(-1));
   SingleIntervalIntSet all_set(SymbolicExprLimit::negative_inf,
@@ -276,6 +320,19 @@ TEST(SingleIntervalIntSet, case_1) {
   EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, single_point).value(), set_1).value());
   EXPECT_TRUE(
       ProvedIntersect(set_0, single_point).value().ProveEmpty().value());
+}
+
+TEST(SingleIntervalIntSet, case_2) {
+  ir::Var S = ir::Var(ir::Expr(0), ir::Expr(0), "S");
+
+  SingleIntervalIntSet set_0{S, S + Expr(1)};
+  SingleIntervalIntSet set_1{Expr(0), Expr(1)};
+  SingleIntervalIntSet set_2{Expr(0), Expr(2)};
+
+  EXPECT_TRUE(ProveEQ(set_0, set_1).value());
+  EXPECT_FALSE(ProveEQ(set_0, set_2).value());
+  EXPECT_TRUE(set_0.ProveSubSet(set_2).value());
+  EXPECT_TRUE(set_2.ProveSuperSet(set_0).value());
 }
 
 }  // namespace common

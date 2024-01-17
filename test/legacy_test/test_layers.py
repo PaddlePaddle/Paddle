@@ -1259,6 +1259,7 @@ class TestLayer(LayerTest):
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
 
+    @test_with_pir_api
     def test_cond(self):
         def less_than_branch(a, b):
             return paddle.add(a, b)
@@ -1310,10 +1311,11 @@ class TestLayer(LayerTest):
 
         np.testing.assert_array_equal(static_res, dynamic_res)
 
+    @test_with_pir_api
     def test_case(self):
         def fn_1():
             return paddle.tensor.fill_constant(
-                shape=[1, 2], dtype='float32', value=1
+                shape=[1, 2], dtype='int32', value=1
             )
 
         def fn_2():
@@ -1323,7 +1325,7 @@ class TestLayer(LayerTest):
 
         def fn_3():
             return paddle.tensor.fill_constant(
-                shape=[3], dtype='int32', value=3
+                shape=[3, 2], dtype='int32', value=3
             )
 
         with self.static_graph():
@@ -1383,10 +1385,11 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_res1, dynamic_res1)
         np.testing.assert_array_equal(static_res2, dynamic_res2)
 
+    @test_with_pir_api
     def test_switch_case(self):
         def fn_1():
             return paddle.tensor.fill_constant(
-                shape=[1, 2], dtype='float32', value=1
+                shape=[1, 2], dtype='int32', value=1
             )
 
         def fn_2():
@@ -1396,7 +1399,7 @@ class TestLayer(LayerTest):
 
         def fn_3():
             return paddle.tensor.fill_constant(
-                shape=[3], dtype='int32', value=3
+                shape=[3, 2], dtype='int32', value=3
             )
 
         with self.static_graph():
@@ -2185,6 +2188,7 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
+    @test_with_pir_api
     def test_affine_grid(self):
         with self.static_graph():
             data = paddle.static.data(
@@ -2204,6 +2208,7 @@ class TestBook(LayerTest):
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
 
+    @test_with_pir_api
     def test_stridedslice(self):
         axes = [0, 1, 2]
         starts = [1, 0, 2]

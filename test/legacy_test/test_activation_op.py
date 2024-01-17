@@ -390,7 +390,7 @@ class TestSigmoid(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -411,7 +411,7 @@ class TestSigmoid_Complex64(TestSigmoid):
 
     def test_check_output(self):
         with paddle.static.scope_guard(paddle.static.Scope()):
-            self.check_output(check_prim=False)
+            self.check_output(check_prim=False, check_prim_pir=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -420,6 +420,7 @@ class TestSigmoid_Complex64(TestSigmoid):
             max_relative_error=0.006,
             check_prim=False,
             check_pir=True,
+            check_prim_pir=False,
         )
 
 
@@ -428,7 +429,9 @@ class TestSigmoid_Complex128(TestSigmoid_Complex64):
         self.dtype = np.complex128
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=False, check_pir=True, check_prim_pir=False
+        )
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -469,12 +472,19 @@ class TestSigmoidBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=True, check_pir=True)
+        self.check_output_with_place(
+            place, check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -1005,9 +1015,10 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with program_guard(Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, paddle.sinh, 1)
                 # The input dtype must be float16, float32, float64.
@@ -1016,10 +1027,11 @@ class TestSinhOpError(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, paddle.sinh, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                paddle.sinh(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    paddle.sinh(x_fp16)
 
 
 class TestCosh(TestActivation):
@@ -1209,6 +1221,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1220,10 +1233,11 @@ class TestTanhshrinkAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.tanhshrink, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.tanhshrink(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.tanhshrink(x_fp16)
 
 
 def ref_hardshrink(x, threshold):
@@ -1481,6 +1495,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1497,10 +1512,11 @@ class TestSoftshrinkAPI(unittest.TestCase):
                 )
                 self.assertRaises(ValueError, F.softshrink, x_fp32, -1.0)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.softshrink(x_fp16)
+                if core.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.softshrink(x_fp16)
 
 
 class TestSqrt(TestActivation, TestParameter):
@@ -1803,7 +1819,9 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestAbs_ZeroDim(TestAbs):
@@ -2548,7 +2566,7 @@ class TestLeakyRelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -2932,6 +2950,7 @@ class TestRelu6API(unittest.TestCase):
             out_ref = ref_relu6(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2943,10 +2962,11 @@ class TestRelu6API(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.relu6, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.relu6(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.relu6(x_fp16)
 
 
 class TestRelu6APIWarnings(unittest.TestCase):
@@ -3031,7 +3051,9 @@ class TestHardSwish(TestActivation):
             else False,
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
-            check_prim_pir=True,
+            check_prim_pir=True
+            if self.dtype not in [np.complex64, np.complex128]
+            else False,
         )
 
     def test_check_output(self):
@@ -3362,6 +3384,7 @@ class TestCELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3393,6 +3416,11 @@ class TestReciprocal(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(1, 2, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.reciprocal(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3402,10 +3430,27 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_pir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.03, check_pir=True
+            )
+        else:
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.01, check_pir=True
+            )
 
     def test_check_output(self):
         self.check_output(check_pir=True)
+
+
+class TestReciprocal_Complex64(TestReciprocal):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestReciprocal_Complex128(TestReciprocal):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestReciprocal_ZeroDim(TestReciprocal):
@@ -3778,6 +3823,11 @@ class TestSquare(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.square(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3791,6 +3841,16 @@ class TestSquare(TestActivation):
 
     def test_check_output(self):
         self.check_output(check_pir=True)
+
+
+class TestSquare_Complex64(TestSquare):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSquare_Complex128(TestSquare):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSquare_ZeroDim(TestSquare):
@@ -4029,6 +4089,7 @@ class TestSTanhAPI(unittest.TestCase):
             out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4040,10 +4101,11 @@ class TestSTanhAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, paddle.stanh, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                paddle.stanh(x_fp16)
+                if core.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    paddle.stanh(x_fp16)
 
 
 class TestSTanhAPIScaleA(TestSTanhAPI):
@@ -4188,6 +4250,7 @@ class TestSoftplusAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4199,10 +4262,11 @@ class TestSoftplusAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.softplus, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.softplus(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.softplus(x_fp16)
 
 
 def ref_softsign(x):
@@ -4293,6 +4357,7 @@ class TestSoftsignAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4304,10 +4369,11 @@ class TestSoftsignAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.softsign, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.softsign(x_fp16)
+                if core.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.softsign(x_fp16)
 
 
 def ref_thresholded_relu(x, threshold=1.0):
@@ -4388,6 +4454,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4399,10 +4466,11 @@ class TestThresholdedReluAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.thresholded_relu, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.thresholded_relu(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.thresholded_relu(x_fp16)
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
@@ -4619,6 +4687,7 @@ class TestSwishAPI(unittest.TestCase):
             out_ref = ref_swish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4630,10 +4699,11 @@ class TestSwishAPI(unittest.TestCase):
                 )
                 self.assertRaises(TypeError, F.swish, x_int32)
                 # support the input dtype is float16
-                x_fp16 = paddle.static.data(
-                    name='x_fp16', shape=[12, 10], dtype='float16'
-                )
-                F.swish(x_fp16)
+                if paddle.is_compiled_with_cuda():
+                    x_fp16 = paddle.static.data(
+                        name='x_fp16', shape=[12, 10], dtype='float16'
+                    )
+                    F.swish(x_fp16)
 
 
 def ref_mish(x, threshold=20.0):
@@ -4662,12 +4732,12 @@ class TestMish(TestActivation):
         self.shape = [10, 12]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestMish_ZeroDim(TestMish):
@@ -4686,6 +4756,7 @@ class TestMishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4709,9 +4780,10 @@ class TestMishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
-            with base.program_guard(base.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = paddle.nn.functional.mish(x)
                 exe = base.Executor(self.place)
@@ -4719,6 +4791,7 @@ class TestMishAPI(unittest.TestCase):
             out_ref = ref_mish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4823,7 +4896,11 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(
-    TestSigmoid, check_prim=True, enable_cinn=True, check_pir=True
+    TestSigmoid,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
     TestSilu, check_prim=True, enable_cinn=True, check_prim_pir=True
@@ -4850,7 +4927,11 @@ create_test_act_fp16_class(
     check_prim_pir=True,
 )
 create_test_act_fp16_class(
-    TestAbs, check_prim=True, enable_cinn=True, check_pir=True
+    TestAbs,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
@@ -4866,7 +4947,7 @@ create_test_act_fp16_class(TestTan, check_pir=True)
 create_test_act_fp16_class(TestCosh, check_pir=True)
 create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True, check_prim_pir=True)
-create_test_act_fp16_class(TestSinh)
+create_test_act_fp16_class(TestSinh, check_pir=True)
 create_test_act_fp16_class(TestAsin, check_pir=True)
 create_test_act_fp16_class(TestAtan, check_pir=True)
 create_test_act_fp16_class(TestAcosh, check_pir=True)
@@ -4895,7 +4976,7 @@ create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU)
-create_test_act_fp16_class(TestCELU)
+create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
@@ -4910,24 +4991,30 @@ create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
 create_test_act_fp16_class(TestSoftplus, check_pir=True)
 create_test_act_fp16_class(TestSoftsign, check_pir=True)
-create_test_act_fp16_class(TestThresholdedRelu)
+create_test_act_fp16_class(TestThresholdedRelu, check_pir=True)
 create_test_act_fp16_class(TestHardSigmoid, check_pir=True)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish, check_prim=True, check_pir=True)
-create_test_act_fp16_class(TestMish)
+create_test_act_fp16_class(TestMish, check_pir=True)
 create_test_act_fp16_class(
-    TestLeakyRelu, check_prim=True, enable_cinn=True, check_pir=True
+    TestLeakyRelu,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
-    TestLeakyReluAlpha1, check_prim=True, enable_cinn=True
+    TestLeakyReluAlpha1, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
 create_test_act_fp16_class(
-    TestLeakyReluAlpha2, check_prim=True, enable_cinn=True
+    TestLeakyReluAlpha2, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
 create_test_act_fp16_class(
-    TestLeakyReluAlpha3, check_prim=True, enable_cinn=True
+    TestLeakyReluAlpha3, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
-create_test_act_fp16_class(TestLeakyRelu_ZeroDim, check_prim=True)
+create_test_act_fp16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, check_prim_pir=True
+)
 create_test_act_fp16_class(
     TestRsqrt,
     check_prim=True,
@@ -5004,7 +5091,9 @@ create_test_act_bf16_class(
     TestExpFp32_Prim, check_prim=True, check_prim_pir=True
 )
 create_test_act_bf16_class(TestExpm1)
-create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestSigmoid, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
@@ -5017,7 +5106,9 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestSqrtComp, check_prim=True, check_pir=True, check_prim_pir=True
 )
-create_test_act_bf16_class(TestAbs, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestAbs, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
 create_test_act_bf16_class(
     TestFloor,
@@ -5031,7 +5122,7 @@ create_test_act_bf16_class(TestTan, check_pir=True)
 create_test_act_bf16_class(TestCosh, check_pir=True)
 create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True, check_prim_pir=True)
-create_test_act_bf16_class(TestSinh)
+create_test_act_bf16_class(TestSinh, check_pir=True)
 create_test_act_bf16_class(TestAsin, check_pir=True)
 create_test_act_bf16_class(TestAtan, check_pir=True)
 create_test_act_bf16_class(TestAcosh, check_pir=True)
@@ -5054,7 +5145,7 @@ create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
 create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU)
-create_test_act_bf16_class(TestCELU)
+create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
@@ -5069,16 +5160,26 @@ create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
 create_test_act_bf16_class(TestSoftplus, check_pir=True)
 create_test_act_bf16_class(TestSoftsign, check_pir=True)
-create_test_act_bf16_class(TestThresholdedRelu)
+create_test_act_bf16_class(TestThresholdedRelu, check_pir=True)
 create_test_act_bf16_class(TestHardSigmoid, check_pir=True)
 create_test_act_bf16_class(TestSwish)
 create_test_act_bf16_class(TestHardSwish, check_prim=True, check_pir=True)
-create_test_act_bf16_class(TestMish)
-create_test_act_bf16_class(TestLeakyRelu, check_prim=True, check_pir=True)
-create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
-create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
-create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)
-create_test_act_bf16_class(TestLeakyRelu_ZeroDim, check_prim=True)
+create_test_act_bf16_class(TestMish, check_pir=True)
+create_test_act_bf16_class(
+    TestLeakyRelu, check_prim=True, check_pir=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha1, check_prim=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha2, check_prim=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha3, check_prim=True, check_prim_pir=True
+)
+create_test_act_bf16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, check_prim_pir=True
+)
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )

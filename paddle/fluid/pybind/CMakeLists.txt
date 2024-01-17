@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    staticgraph_executor_statistics
+    standalone_executor
     executor
     fleet_wrapper
     box_wrapper
@@ -39,22 +39,19 @@ set(PYBIND_DEPS
     phi_utils
     phi
     op_dialect_vjp
-    pir_adaptor
     program_translator
     pir_transforms
-    pir
     new_profiler
     fluid_jit
     prim_utils
-    gather_op_handle
+    detail_op_handle
     static_tensor_operants
     type_info
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
-      add_broadcast_to_elementwise_pass pd_to_cinn_pass sub_graph_checker)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
+                  sub_graph_checker)
 endif()
 
 if(WITH_PSCORE)
@@ -156,6 +153,15 @@ set(PYBIND_SRCS
     auto_parallel_py.cc
     eval_frame_tools.cc
     eval_frame.c)
+
+if(NOT WITH_SHARED_IR)
+  # Note: We want to compile pir source into paddle.so directly, because
+  # we can't get all pir symbols when link pir static lib
+  file(GLOB_RECURSE PIR_CPP_SOURCES "${CMAKE_SOURCE_DIR}/paddle/pir/*.cc")
+  set(PYBIND_SRCS ${PYBIND_SRCS} ${PIR_CPP_SOURCES})
+else()
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir)
+endif()
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
@@ -491,8 +497,6 @@ if(WITH_PYTHON)
     add_custom_target(eager_legacy_op_function_generator_cmd ALL
                       DEPENDS ${eager_impl_file})
   endif()
-
-  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})

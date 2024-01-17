@@ -17,10 +17,17 @@ import logging
 from collections import defaultdict
 
 from paddle.jit import not_to_static, to_static
-from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.program_translator import (
+    ProgramTranslator,
+    StaticFunction,
+)
 from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
+from paddle.static.amp.fp16_utils import (
+    DEFAULT_AMP_OPTIONS,
+    prepare_op_amp_options,
+)
 
 from .converter import Converter
 from .utils import get_logger, to_list
@@ -29,7 +36,7 @@ from .utils import get_logger, to_list
 class ProxyLayer(Layer):
     """
     ProxyLayer implements all logic for converting dygraph model into
-    static Program IR. Meanwhile, it provides conviential interfaces for
+    static Program IR. Meanwhile, it provides conventional interfaces for
     auto parallel to visit feed/fetch/loss/metric variables.
     """
 
@@ -244,8 +251,12 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        getattr(self.proxy_layer, func_name).concrete_program  # noqa: B018
-
+        concrete_program = getattr(self.proxy_layer, func_name).concrete_program
+        prepare_op_amp_options(
+            concrete_program.main_program,
+            ProgramTranslator.get_instance()._amp_records,
+            DEFAULT_AMP_OPTIONS,
+        )
         self._build_startup_program()
 
     def _build_startup_program(self):

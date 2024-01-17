@@ -153,14 +153,21 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super().__init__(while_op.helper.main_program)
+        if not in_pir_mode():
+            super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
+        if in_pir_mode():
+            self.block = build_while_op(self.while_op.cond_var, []).body()
+            return self.block.__enter__()
         self.while_op.status = While.IN_WHILE_BLOCK
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if in_pir_mode():
+            cf_yield([self.while_op.cond_var])
+            return self.block.__exit__(exc_type, exc_val, exc_tb)
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
@@ -509,8 +516,7 @@ class While:
     AFTER_WHILE_BLOCK = 2
 
     def __init__(self, cond, is_test=False, name=None):
-        self.helper = LayerHelper("while", name=name)
-        self.status = While.BEFORE_WHILE_BLOCK
+        self.cond_var = cond
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
@@ -518,7 +524,10 @@ class While:
                     list(cond.shape)
                 )
             )
-        self.cond_var = cond
+        if in_pir_mode():
+            return
+        self.status = While.BEFORE_WHILE_BLOCK
+        self.helper = LayerHelper("while", name=name)
         self.is_test = is_test
 
     def block(self):
@@ -675,16 +684,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     pre_cond = cond(*loop_vars)
 
-    if in_pir_mode():
-        while_op = build_while_op(pre_cond, flatten(loop_vars))
-        with while_op.body() as cur_block:
-            args = cur_block.args()
-            next_var = body(*args)
-            next_cond = cond(*next_var)
-            next_cond.stop_gradient = True
-            cf_yield([next_cond, *next_var])
-        return while_op.as_operation().results()
-
     check_variable_and_dtype(
         pre_cond, 'var of cond returned', ['bool'], 'static.nn.while_loop'
     )
@@ -693,6 +692,27 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [1],"
             f"but given shape as {list(pre_cond.shape)}."
         )
+
+    if in_pir_mode():
+        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        with while_op.body() as cur_block:
+            args = pack_sequence_as(loop_vars, cur_block.args())
+            next_vars = body(*args)
+            try:
+                assert_same_structure(
+                    flatten(next_vars), flatten(loop_vars), check_types=False
+                )
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    f"(length and structure) as loop_vars: {e}"
+                )
+            if not isinstance(next_vars, (list, tuple)):
+                next_vars = [next_vars]
+            next_cond = cond(*next_vars)
+            next_cond.stop_gradient = True
+            cf_yield([next_cond, *flatten(next_vars)])
+        return pack_sequence_as(loop_vars, while_op.optimize_update())
 
     if in_dygraph_mode():
         now_cond = pre_cond.item()
@@ -848,7 +868,6 @@ def case(pred_fn_pairs, default=None, name=None):
             ...     print(res_1, res_2)
             [[1. 1.]] [3 3 3]
     '''
-    helper = LayerHelper('case', **locals())
 
     def _case_check_args(pred_fn_pairs, default):
         '''
@@ -879,16 +898,9 @@ def case(pred_fn_pairs, default=None, name=None):
                 )
             pred, fn = pred_fn
 
-            if not isinstance(pred, Variable):
-                raise TypeError(
-                    _error_message(
-                        "The pred's type",
-                        "pred_fn_pairs",
-                        "case",
-                        "boolean Variable",
-                        type(pred),
-                    )
-                )
+            check_variable_and_dtype(
+                pred, 'pred', ['bool'], 'paddle.static.nn.case'
+            )
 
             if not callable(fn):
                 raise TypeError(
@@ -1611,7 +1623,9 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.jit.dy2static.return_transformer import RETURN_VALUE_PREFIX
+    from paddle.jit.dy2static.transformers.return_transformer import (
+        RETURN_VALUE_PREFIX,
+    )
     from paddle.jit.dy2static.utils import UndefinedVar
 
     def pack_undefined_var_as(seq):
@@ -1857,5 +1871,4 @@ class Switch:
         self.inside_scope = False
         if exc_type is not None:
             return False  # re-raise exception
-
         return True

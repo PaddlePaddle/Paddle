@@ -57,21 +57,18 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
         out = last_op.results()
         self.assertEqual(out[0].stop_gradient, False)
         self.assertEqual(last_op.name(), "pd_op.while")
-        self.assertEqual(len(out), 2)
+        self.assertEqual(len(out), 1)
 
     def test_get_used_external_value(self):
         main_program = paddle.static.Program()
         with paddle.pir.core.program_guard(main_program):
-            print(main_program)
             i = paddle.full(shape=[1], fill_value=0)
-            print(main_program)
             x = paddle.full(shape=[1], fill_value=10)
             y = paddle.full(shape=[1], fill_value=5)
             # i, x = paddle.static.nn.while_loop(cond, body, [i, ten])
             paddle.static.nn.while_loop(
                 lambda p, q: p < q, lambda p, q: [p + y, q + i], [i, x]
             )
-            print(main_program)
         while_op = main_program.global_block().ops[-1]
         self.assertEqual(while_op.name(), "pd_op.while")
         body_block = while_op.as_while_op().body()
@@ -107,7 +104,7 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
                 [input] for input in get_used_external_value(body_block)
             ]
             self.assertEqual(len(while_input), 4)
-            while_input_stop_graditents = [[True], [False], [True], [True]]
+            while_input_stop_gradients = [[True], [False], [True], [True]]
             while_output = [[value] for value in while_op.results()]
             while_output_grad = [[out_grad], [out_grad], [out_grad]]
             self.assertEqual(has_vjp(while_op), True)
@@ -116,7 +113,7 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
                 while_input,
                 while_output,
                 while_output_grad,
-                while_input_stop_graditents,
+                while_input_stop_gradients,
             )
 
             self.assertEqual(grad_outs[0][0], None)
@@ -152,7 +149,7 @@ def body2(i, j, ten):
 
 
 class TestBuildModuleWithWhile2Op(unittest.TestCase):
-    def test_add_n_program(self):
+    def test_backward(self):
         main_program = paddle.static.Program()
         with paddle.pir.core.program_guard(main_program):
             i = paddle.full(
@@ -175,18 +172,8 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 out,
                 [i, j],
             )
-
             self.assertEqual(
                 grad_outs[0].get_defining_op().name(), "pd_op.while"
-            )
-            self.assertEqual(
-                main_program.global_block()
-                .ops[-1]
-                .as_while_op()
-                .body()
-                .ops[-2]
-                .name(),
-                "pd_op.add",
             )
             self.assertEqual(
                 main_program.global_block()
@@ -196,6 +183,53 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .ops[-4]
                 .name(),
                 "cf.has_elements",
+            )
+
+            self.assertEqual(
+                main_program.global_block()
+                .ops[-1]
+                .as_while_op()
+                .body()
+                .ops[-5]
+                .name(),
+                "pd_op.add_grad",
+            )
+
+    def test_backward_with_loop_var_same_to_extra_var(self):
+        main_program = paddle.static.Program()
+        with paddle.pir.core.program_guard(main_program):
+            i = paddle.full(shape=[1], fill_value=0)
+            x = paddle.full(shape=[1], fill_value=5)
+            y = paddle.full(shape=[1], fill_value=10)
+            i.stop_gradient = False
+            x.stop_gradient = False
+            y.stop_gradient = False
+            new_i, new_x = paddle.static.nn.while_loop(
+                lambda p, q: p < q, lambda p, q: [p + y, q + x], [i, x]
+            )
+
+            out = new_i - new_x
+            grad_outs = grad(out, [i, x, y])
+
+            self.assertEqual(
+                grad_outs[0].get_defining_op().name(), "pd_op.while"
+            )
+            self.assertEqual(
+                grad_outs[1].get_defining_op().name(), "pd_op.add_n"
+            )
+            self.assertEqual(
+                grad_outs[2].get_defining_op().name(), "pd_op.while"
+            )
+            self.assertEqual(
+                main_program.global_block()
+                .ops[-3]
+                .as_while_op()
+                .body()
+                .ops[-1]
+                .operand_source(1)
+                .get_defining_op()
+                .name(),
+                "pd_op.add_grad",
             )
 
 

@@ -26,7 +26,11 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import get_pp_stage, is_sequential_run, use_new_executor
+from .utils import (
+    get_pp_stage,
+    is_sequential_run,
+    use_new_executor,
+)
 
 NEW_IR_PASS = [
     'fused_gemm_epilogue_pass',
@@ -238,8 +242,6 @@ class Parallelizer:
             )
         self._completer.complete_backward_annotation(main_program)
         self._dist_context.block_state.parse_backward_blocks(main_program)
-        # NOTE(zhaoyingli): temporary method: complete all vars' chunk_id attr of main_program
-        self._completer._complete_var_chunk_id(main_program)
         return params_grads
 
     def _generate_optimizer(
@@ -250,14 +252,15 @@ class Parallelizer:
         #    but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
         # 2. lr_scheduler cannot be deepcopy, cause 'deepcopy' will lead to difference of learning_rate between executor and engine.
         learning_rate = optimizer._learning_rate
-        optimizer = copy.deepcopy(optimizer)
+        new_optimizer = copy.deepcopy(optimizer)
+        new_optimizer._learning_rate = learning_rate
+        new_optimizer._sorted = False
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
-        optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
             with main_program.switch_name_generator_guard("opt_"):
-                optimizer_ops = optimizer.apply_gradients(params_grads)
+                optimizer_ops = new_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 
@@ -378,6 +381,21 @@ class Parallelizer:
                     [main_program], [startup_program], self._pass_context
                 )
 
+        # apply master grad pass
+        if self._strategy.amp.enable:
+            amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+            config = {}
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["completer"] = self._completer
+            if amp_config['level'] == "o2" and amp_config["use_master_grad"]:
+                master_grad_pass = new_pass(
+                    "auto_parallel_master_grad_pass", config
+                )
+                master_grad_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+
         # data parallel optimization
         if self._strategy.dp_optimization.enable:
             config = copy.deepcopy(self._strategy.dp_optimization.to_dict())
@@ -394,6 +412,9 @@ class Parallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
+            if self._strategy.amp.enable:
+                amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+                config["amp_dtype"] = amp_config['dtype']
             auto_parallel_sharding_pass = new_pass(
                 "auto_parallel_sharding", config
             )
@@ -410,8 +431,11 @@ class Parallelizer:
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
                 )
 
+            config = {
+                "dist_context": self._dist_context,
+            }
             allreduce_matmul_grad_overlapping_pass = new_pass(
-                "allreduce_matmul_grad_overlapping", {}
+                "allreduce_matmul_grad_overlapping", config
             )
             allreduce_matmul_grad_overlapping_pass.apply(
                 [main_program], [startup_program], self._pass_context
@@ -512,6 +536,6 @@ class Parallelizer:
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),
                 "pp_stage": get_pp_stage(self._dist_context, rank),
-                "vpp_degree": self._dist_context._num_model_chunks,
+                "vpp_degree": self._strategy.pipeline.vpp_degree,
                 "dist_context": self._dist_context,
             }

@@ -34,6 +34,9 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_instruction.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -45,16 +48,17 @@
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
 
-#include "paddle/fluid/framework/new_executor/instruction/assert_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/assert_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/has_elements_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/if_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/select_input_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/select_input_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
@@ -683,9 +687,8 @@ void PirInterpreter::BuildInstruction() {
       }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
-        auto skip_gc_vars = execution_config_.skip_gc_vars;
         vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
+            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
@@ -695,9 +698,8 @@ void PirInterpreter::BuildInstruction() {
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
-        auto skip_gc_vars = execution_config_.skip_gc_vars;
         vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
+            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
              dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
@@ -728,10 +730,30 @@ void PirInterpreter::BuildInstruction() {
       } else {
         CREATE_INSTR(PhiKernelInstruction);
       }
+#ifdef PADDLE_WITH_DNNL
+    } else if (op.dialect()->name() == "onednn_kernel") {
+      auto op_name = op.attributes()
+                         .at("op_name")
+                         .dyn_cast<::pir::StrAttribute>()
+                         .AsString();
+      VLOG(6) << "process " << op_name;
+
+      if (op.isa<paddle::dialect::OneDNNPhiKernelOp>()) {
+        CREATE_INSTR(OneDNNPhiKernelInstruction);
+      } else if (op.isa<paddle::dialect::OneDNNMixedPhiKernelOp>()) {
+        CREATE_INSTR(OneDNNMixedPhiKernelInstruction);
+      } else {
+        CREATE_INSTR(OneDNNLegacyKernelInstruction);
+      }
+#endif
 #ifdef PADDLE_WITH_CINN
     } else if (op.dialect()->name() == "cinn_runtime") {
       CREATE_INSTR(CinnJitInstruction);
 #endif
+    } else if (op.dialect()->name() == "custom_kernel") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CustomKernelInstruction>(
+              op_idx++, place_, &op, *(value_exe_info_.get())));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel and cinn dialect."));
@@ -1233,7 +1255,8 @@ paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
     bool need_fetch,
-    bool enable_job_schedule_profiler) {
+    bool enable_job_schedule_profiler,
+    bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   auto FeedInput = [&] {
@@ -1296,6 +1319,12 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (switch_stream) {
+      BuildInstruction();
+      VLOG(4) << "Done BuildInstruction";
+    }
+#endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
@@ -1328,7 +1357,8 @@ paddle::framework::FetchList PirInterpreter::Run(
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool need_fetch,
                               bool enable_job_schedule_profiler,
-                              bool enable_op_profiling) {
+                              bool enable_op_profiling,
+                              bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   if (enable_op_profiling) {
@@ -1379,6 +1409,12 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (switch_stream) {
+      BuildInstruction();
+      VLOG(4) << "Done BuildInstruction";
+    }
+#endif
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
@@ -1740,6 +1776,7 @@ void PirInterpreter::PreAnalysis() {
   BuildInstructionDependences();
   VLOG(4) << "Done BuildInstructionDependences";
 
+  ir_stream_analyzer_.SetForceEventsToWaitInfo(force_evnets_to_wait_);
   ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
   VLOG(4) << "Done ConstructEvents";
 

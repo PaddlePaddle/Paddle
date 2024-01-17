@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/core/utils.h"
 
 namespace symbol {
 
@@ -122,6 +123,143 @@ bool DimExpr::operator==(const DimExpr& other) const {
 
 bool DimExpr::operator!=(const DimExpr& other) const {
   return !(*this == other);
+}
+
+namespace {
+
+std::string ToStringImpl(std::int64_t dim_expr) {
+  return std::to_string(dim_expr);
+}
+
+std::string ToStringImpl(const std::string& dim_expr) { return dim_expr; }
+
+std::string ToStringImpl(const Negative<DimExpr>& dim_expr) {
+  return "-" + ToString(dim_expr->data);
+}
+
+std::string ToStringImpl(const Reciprocal<DimExpr>& dim_expr) {
+  return "1 / (" + ToString(dim_expr->data) + ")";
+}
+
+std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
+                                const std::string& delim = ", ") {
+  std::string ret;
+  for (std::size_t i = 0; i < dim_exprs->size(); ++i) {
+    if (i > 0) {
+      ret += delim;
+    }
+    ret += ToString(dim_exprs->at(i));
+  }
+  return ret;
+}
+
+std::string ToStringImpl(const Add<DimExpr>& dim_expr) {
+  return "Add(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Mul<DimExpr>& dim_expr) {
+  return "Mul(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Max<DimExpr>& dim_expr) {
+  return "Max(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Min<DimExpr>& dim_expr) {
+  return "Min(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+std::string ToStringImpl(const Broadcast<DimExpr>& dim_expr) {
+  return "Broadcast(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+}
+
+}  // namespace
+
+std::string ToString(const DimExpr& dim_expr) {
+  return std::visit([](const auto& impl) { return ToStringImpl(impl); },
+                    dim_expr.variant());
+}
+
+std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
+  stream << ToString(dim_expr);
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const ShapeOrDataDimExprs& shape_or_data) {
+  std::string result = "shape[";
+  for (size_t i = 0; i < shape_or_data.shape().size(); ++i) {
+    result += ToString(shape_or_data.shape()[i]);
+    if (i < shape_or_data.shape().size() - 1) {
+      result += ", ";
+    }
+  }
+  result += "]";
+  if (shape_or_data.data()) {
+    result += ", data[";
+    for (size_t i = 0; i < shape_or_data.data()->size(); ++i) {
+      result += ToString(shape_or_data.data()->at(i));
+      if (i < shape_or_data.data()->size() - 1) {
+        result += ", ";
+      }
+    }
+    result += "]";
+  } else {
+    result += ", data[NULL]";
+  }
+  stream << result;
+  return stream;
+}
+
+namespace {
+
+std::size_t GetHashValueImpl(const std::int64_t& dim_expr) { return dim_expr; }
+
+std::size_t GetHashValueImpl(const std::string& dim_expr) {
+  return std::hash<std::string>()(dim_expr);
+}
+
+std::size_t GetHashValueImpl(const Negative<DimExpr>& dim_expr) {
+  return -GetHashValue(dim_expr->data);
+}
+
+std::size_t GetHashValueImpl(const Reciprocal<DimExpr>& dim_expr) {
+  return pir::hash_combine(1, -GetHashValue(dim_expr->data));
+}
+
+std::size_t GetHashValueImpl(const List<DimExpr>& exprs) {
+  std::size_t ret = 0;
+  for (const auto& expr : *exprs) {
+    ret = pir::hash_combine(ret, GetHashValue(expr));
+  }
+  return ret;
+}
+
+std::size_t GetHashValueImpl(const Add<DimExpr>& dim_expr) {
+  return pir::hash_combine(1, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Mul<DimExpr>& dim_expr) {
+  return pir::hash_combine(2, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Max<DimExpr>& dim_expr) {
+  return pir::hash_combine(3, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Min<DimExpr>& dim_expr) {
+  return pir::hash_combine(4, GetHashValueImpl(dim_expr.operands));
+}
+
+std::size_t GetHashValueImpl(const Broadcast<DimExpr>& dim_expr) {
+  return pir::hash_combine(5, GetHashValueImpl(dim_expr.operands));
+}
+
+}  // namespace
+
+std::size_t GetHashValue(const DimExpr& dim_expr) {
+  return std::visit([](const auto& impl) { return GetHashValueImpl(impl); },
+                    dim_expr.variant());
 }
 
 }  // namespace symbol

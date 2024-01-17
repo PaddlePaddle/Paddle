@@ -16,8 +16,8 @@
 
 #include <thrust/device_vector.h>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"

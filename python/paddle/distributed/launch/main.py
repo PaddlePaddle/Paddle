@@ -436,7 +436,7 @@ def launch():
 
         is_first_task = True
         # build history recorder
-        recorder = HistoryRecorder()
+        recorder = HistoryRecorder(tuner_cfg)
 
         job_id = 0
         error_task_nums = 0
@@ -576,10 +576,10 @@ def launch():
 
             end_time = time.time()
             ctx.logger.info(
-                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
             )
             logger.info(
-                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
             )
 
         # build AutoTuner to get new config
@@ -587,6 +587,10 @@ def launch():
         logger.info(
             f"Launch {len(auto_tuner.algo.all_tasks)} tasks by auto tuner: "
         )
+        resume_csv_file_path = tuner_cfg.get(
+            "resume_csv_file_path", history_file_path
+        )
+        auto_tuner.resume_form_history(resume_csv_file_path)
         cur_cfg = auto_tuner.search_once()
         auto_tuner.add_cfg(cur_cfg)
         assert cur_cfg is not None, "No config can run."
@@ -658,9 +662,87 @@ def launch():
             )
             logger.info(f"Launch task: job_id {task_job_id}, log_dir {log_dir}")
 
+            cur_resume_cfg = auto_tuner.get_cfg_from_resume(cur_cfg)
+            if cur_resume_cfg:
+                cur_cfg = cur_resume_cfg
+                cur_cfg['job_id'] = job_id
+                auto_tuner.history_cfgs.pop(-1)
+                auto_tuner.add_cfg(cur_cfg)
+                if (
+                    recorder.additional_metric_key is None
+                    and "additional_metric_key" in cur_cfg
+                ):
+                    recorder.additional_metric_key = cur_cfg[
+                        "additional_metric_key"
+                    ]
+                recorder.add_cfg(**cur_cfg)
+                cur_best_cfgs, err = recorder.get_best(
+                    metric=tuner_cfg['metric_cfg']['name'],
+                    direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                )
+                if not err:
+                    ctx.logger.info(f"Current best config: {cur_best_cfgs}")
+                    logger.info(f"Current best config: {cur_best_cfgs}")
+                else:
+                    ctx.logger.info(
+                        "Get best config failed. Currently no config can be run."
+                    )
+                    logger.info(
+                        "Get best config failed. Currently no config can be run."
+                    )
+                if (
+                    "sharding_overlap" in cur_cfg
+                    and cur_cfg["sharding_overlap"]
+                ):
+                    add_overlap_performance(
+                        cur_cfg, tuner_cfg, recorder.history
+                    )
+
+                if cur_cfg["error_info"]:
+                    error_task_nums += 1
+                error_info = cur_cfg["error_info"]
+                task_nums = len(auto_tuner.algo.all_tasks)
+                cur_task_id = auto_tuner.algo.idx
+                ctx.logger.info(
+                    "Auto Tuner Schedule: [{}/{}], Pruned nums {}, Error nums {}, Error info {}, Remaining time {} min".format(
+                        cur_task_id,
+                        task_nums,
+                        cur_task_id - job_id,
+                        error_task_nums,
+                        error_info,
+                        round(
+                            (task_nums - cur_task_id) * max_time_per_task / 60,
+                            2,
+                        ),
+                    )
+                )
+                logger.info(
+                    "Auto Tuner Schedule: [{}/{}], Pruned nums {}, Error nums {}, Error info {}, Remaining time {} min".format(
+                        cur_task_id,
+                        task_nums,
+                        cur_task_id - job_id,
+                        error_task_nums,
+                        error_info,
+                        round(
+                            (task_nums - cur_task_id) * max_time_per_task / 60,
+                            2,
+                        ),
+                    )
+                )
+                recorder.store_history(history_file_path)
+                # generate a new config
+                new_cfg = auto_tuner.search_once()
+                cur_cfg = copy.deepcopy(new_cfg)
+                auto_tuner.add_cfg(cur_cfg)
+                continue
+
             # in single dp estimation scene, just some nodes not all nodes run
             ctx = gen_new_ctx(ctx, cur_cfg, tuner_cfg)
-            actual_nnodes = int(ctx.args.nnodes.split(":")[0])
+            actual_nnodes = (
+                int(ctx.args.nnodes.split(":")[0])
+                if not isinstance(ctx.args.nnodes, int)
+                else ctx.args.nnodes
+            )
             if sorted_ips:
                 actual_exec_ips = sorted_ips[:actual_nnodes]
                 if ip not in actual_exec_ips:
@@ -684,6 +766,13 @@ def launch():
                     cur_cfg = json.loads(cur_cfg.decode())
                     auto_tuner.history_cfgs.pop(-1)
                     auto_tuner.add_cfg(cur_cfg)
+                    if (
+                        recorder.additional_metric_key is None
+                        and "additional_metric_key" in cur_cfg
+                    ):
+                        recorder.additional_metric_key = cur_cfg[
+                            "additional_metric_key"
+                        ]
                     recorder.add_cfg(**cur_cfg)
                     cur_best_cfgs, err = recorder.get_best(
                         metric=tuner_cfg['metric_cfg']['name'],
@@ -870,6 +959,25 @@ def launch():
             if tuner_cfg['metric_cfg']['name'] not in cur_cfg:
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
 
+            # if need accurate peak memory
+            if os.environ.get("FLAGS_log_memory_stats", False):
+                max_peak_memory = None
+                from ..auto_tuner.utils import read_allocated_memory_log
+
+                for root, dirs, files in os.walk(ctx.args.log_dir):
+                    for file in files:
+                        if not file.startswith("workerlog"):
+                            continue
+                        peak_memory = read_allocated_memory_log(
+                            ctx.args.log_dir, file
+                        )
+                        if peak_memory is not None and max_peak_memory is None:
+                            max_peak_memory = peak_memory
+                        elif peak_memory and max_peak_memory:
+                            if peak_memory > max_peak_memory:
+                                max_peak_memory = peak_memory
+                cur_cfg["max_peak_memory"] = max_peak_memory
+
             cur_cfg['job_id'] = job_id
 
             # multi dp conversion
@@ -898,6 +1006,18 @@ def launch():
                     )
                 )
                 amp = tuner_cfg["search_algo"]["conversion"].get("amp", False)
+                num_gpus = int(cur_cfg["num_gpus"])
+                seq_length = int(
+                    tuner_cfg["model_cfg"].get("max_seq_length", 2048)
+                )
+                cur_cfg[f"unified_{tuner_cfg['metric_cfg']['name']}"] = (
+                    round(single_dp_performance / num_gpus, 2)
+                    if single_dp_performance
+                    and tuner_cfg["search_algo"]["conversion"].get(
+                        "need_unify", False
+                    )
+                    else single_dp_performance
+                )
                 for bw in comm_bw:
                     if amp:
                         comm_time = model_size_b * (4 + 2) / bw
@@ -916,6 +1036,23 @@ def launch():
                     cur_cfg[
                         f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = multi_dp_performace
+                    cur_cfg[
+                        f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
+                    ] = (
+                        round(multi_dp_performace / num_gpus, 2)
+                        if multi_dp_performace
+                        and tuner_cfg["search_algo"]["conversion"].get(
+                            "need_unify", False
+                        )
+                        else multi_dp_performace
+                    )
+                    if recorder.additional_metric_key is None:
+                        recorder.additional_metric_key = (
+                            f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
+                        )
+                        cur_cfg[
+                            "additional_metric_key"
+                        ] = recorder.additional_metric_key
 
             error_info = None
             cur_cfg["has_error"] = has_error
@@ -1098,8 +1235,8 @@ def launch():
         assert best_cfg and best_cfg["time"] != -1
 
         end_time = time.time()
-        ctx.logger.info(f"AutoTuner ended in {end_time-start_time}s.")
-        logger.info(f"AutoTuner ended in {end_time-start_time}s.")
+        ctx.logger.info(f"AutoTuner ended in {end_time - start_time}s.")
+        logger.info(f"AutoTuner ended in {end_time - start_time}s.")
         # launch best cfg
         # estimation search need not run best cfg
         if not tuner_cfg.get("run_best", True) or tuner_cfg["search_algo"].get(

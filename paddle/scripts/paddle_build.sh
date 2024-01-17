@@ -1119,9 +1119,15 @@ function generate_upstream_develop_api_spec() {
     echo "develop git log: "
     git log --pretty=oneline -10
 
-    dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
-    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+    dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
+    for commit_id in $dev_commit
+    do
+      dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${commit_id}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
+      url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+      if [ "$url_return" == '200' ];then
+        break
+      fi
+    done
     if [ "$url_return" == '200' ];then
         echo "wget develop whl from bos! "
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
@@ -3481,9 +3487,15 @@ function build_pr_and_develop() {
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
 
     git checkout $BRANCH
-    dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
+    dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
+    for commit_id in $dev_commit
+    do
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${commit_id}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+      if [ "$url_return" == '200' ];then
+        break
+      fi
+    done
     if [ "$url_return" == '200' ];then
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
@@ -4190,6 +4202,7 @@ function main() {
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
+        export ON_INFER=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
         check_coverage_added_ut
@@ -4197,6 +4210,7 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
+        export ON_INFER=ON
         export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data 
         is_run_distribute_in_op_test
         parallel_test
