@@ -14,10 +14,13 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/dim_expr_match_trait.h"
+#include "paddle/cinn/adt/dim_expr.h"
+#include "paddle/cinn/common/dim_expr_simplify.h"
 
 namespace cinn::adt {
 
-DimExpr SimplifyDimExpr(const DimExpr&);
+inline DimExpr SimplifyDimExpr(const DimExpr& dim_expr) {
+  return cinn::common::SimplifyDimExpr(dim_expr);
+}
 
 }

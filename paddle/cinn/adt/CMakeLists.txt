@@ -24,7 +24,6 @@ if(NOT CINN_ONLY)
     schedule_dim.cc
     schedule_mesh.cc
     dim_expr.cc
-    dim_expr_simplifier.cc
     simplify_value.cc
     write_broadcast_disabled_bidirection_equation_generator.cc)
 
@@ -41,14 +40,5 @@ if(NOT CINN_ONLY)
     gtest
     glog
     absl)
-
-  cinn_cc_test(
-    dim_expr_test
-    SRCS
-    dim_expr_test.cc
-    DEPS
-    gtest
-    glog
-    cinncore)
 
 endif()
