@@ -39,6 +39,7 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
 
 namespace paddle {
 namespace translator {
@@ -120,6 +121,33 @@ TranslationContext* TranslationContext::CreateInnerContext() {
   return sons_.back().get();
 }
 
+static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
+  std::unordered_set<std::string> all_var_names;
+  for (auto& var : block.AllVars()) {
+    all_var_names.insert(var->Name());
+  }
+  std::vector<std::string> external_inputs;
+  std::unordered_set<std::string> inner_outputs;
+  for (auto op_desc : block.AllOps()) {
+    for (const auto& n : op_desc->Inputs()) {
+      const auto& input_var_names = n.second;
+      for (const auto& var_name : input_var_names) {
+        if (all_var_names.count(var_name) == 0) continue;
+        if (inner_outputs.count(var_name) == 0) {
+          external_inputs.push_back(var_name);
+        }
+      }
+    }
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_outputs.insert(var_name);
+      }
+    }
+  }
+  return external_inputs;
+}
+
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
@@ -131,6 +159,8 @@ void ProgramTranslator::Translate() {
   GetParameterForSingleBlock(legacy_program_->Block(0));
 
   InsertDataOpForSingleBlock(legacy_program_->Block(0));
+
+  PreAnalysisForCond();
 
   TranslateBlock(legacy_program_->Block(0),
                  0,
@@ -225,8 +255,46 @@ pir::Operation* ProgramTranslator::InsertInitOpOrCreateArrayToBlock(
   return nullptr;
 }
 
-// NOTE(zhangbo): All condition_block_op will be translated as an if_op with
-// only a true branch.
+// NOTE(zhangbo): This function is used to analyze cond and cond_grad in
+// program, insert tuple_push and tuple_pop op for forward variables used in
+// backward operator.
+void ProgramTranslator::PreAnalysisForCond() {
+  const BlockDesc& block = legacy_program_->Block(0);
+  std::unordered_map<std::string, const OpDesc*> scope_var_to_cond;
+  for (uint64_t op_id = 0; op_id < block.OpSize(); op_id++) {
+    auto op = block.Op(static_cast<int>(op_id));
+    if (op->Type() == "conditional_block") {
+      scope_var_to_cond[op->Output("Scope")[0]] = op;
+    } else if (op->Type() == "conditional_block_grad") {
+      cond_grad_to_cond_[op] = scope_var_to_cond[op->Input("Scope")[0]];
+    }
+  }
+  for (auto& pair : cond_grad_to_cond_) {
+    const OpDesc* cond_op = pair.second;
+    const BlockDesc& cond_block =
+        legacy_program_->Block(cond_op->GetBlockAttrId("sub_block"));
+    const OpDesc* cond_grad_op = pair.first;
+    const BlockDesc& cond_grad_block =
+        legacy_program_->Block(cond_grad_op->GetBlockAttrId("sub_block"));
+
+    std::unordered_set<std::string> cond_var_names;
+    for (auto& var : cond_block.AllVars()) {
+      cond_var_names.insert(var->Name());
+    }
+    auto cond_grad_external_inputs = GetExternalInputs(cond_grad_block);
+    for (auto& var : cond_grad_external_inputs) {
+      IR_ENFORCE(cond_var_names.count(var) != 0,
+                 "%s in cond_grad can not found in cond block",
+                 var);
+    }
+    push_pop_var_names_[cond_op] = cond_grad_external_inputs;
+    push_pop_var_names_[cond_grad_op] = cond_grad_external_inputs;
+  }
+}
+
+// NOTE(zhangbo): All condition_block_op will be translated as an if_op with a
+// true branch and a fake false branch, fake false branch will insert some init
+// op such as full to facilitate alignment of the outputs of the true branch.
 void ProgramTranslator::TranslateIfOperation(
     const OpDesc* op,
     TranslationContext* translation_ctx,
@@ -276,23 +344,74 @@ void ProgramTranslator::TranslateIfOperation(
     if_op_output_types.emplace_back(translated_var_type);
   }
   auto if_op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::IfOp::name());
-  pir::Operation* operation = pir::Operation::Create(
+  pir::Operation* if_op = pir::Operation::Create(
       if_op_inputs, attribute_map, if_op_output_types, if_op_info, 2);
 
-  dst_block->push_back(operation);
+  // NOTE(zhangbo): If program has if_grad_op and if_grad_op sub_block use some
+  // value defined in if_op, we should insert tuple_push_op into if_op sub_block
+  // and tuple_pop_op into if_grad_op sub_block.
+  if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+    pir::Operation* create_stack_op = pir::Operation::Create(
+        {},
+        {},
+        {pir::StackType::get(ctx_),
+         pir::InletType::get(ctx_),
+         pir::OutletType::get(ctx_)},
+        ctx_->GetRegisteredOpInfo(pir::StackCreateOp::name()));
+    dst_block->push_back(create_stack_op);
+    cond_to_stack_value_[op] = {
+        create_stack_op->dyn_cast<pir::StackCreateOp>().inlet(),
+        create_stack_op->dyn_cast<pir::StackCreateOp>().outlet()};
+  }
+
+  dst_block->push_back(if_op);
   VLOG(4) << "[general op][conditional_block] IfOp creation end.";
 
   if (op->GetBlockAttrId("sub_block") != -1) {
     // Translate true branch by sub_block.
     auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
-    pir::Region& true_region = operation->region(0);
+    pir::Region& true_region = if_op->region(0);
     if (true_region.empty()) true_region.emplace_back();
     auto* true_block_context = translation_ctx->CreateInnerContext();
+
+    // insert tuple_pop op to if_grad
+    if (for_bwd && push_pop_var_names_[op].size() != 0) {
+      pir::Operation* tuple_pop_op = pir::Operation::Create(
+          {cond_to_stack_value_[cond_grad_to_cond_[op]][1]},
+          {},
+          push_pop_var_types_[cond_grad_to_cond_[op]],
+          ctx_->GetRegisteredOpInfo(pir::TuplePopOp::name()));
+      true_region.front().push_back(tuple_pop_op);
+      for (size_t i = 0; i < push_pop_var_names_[op].size(); ++i) {
+        true_block_context->PushValue(
+            push_pop_var_names_[op][i],
+            VariableDefiningInfo(tuple_pop_op->result(i)));
+      }
+    }
+
     TranslateBlock(sub_block,
                    0,
                    sub_block.OpSize(),
                    true_block_context,
                    &true_region.front());
+
+    // insert tuple_push op to true block before yeild op
+    if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+      std::vector<pir::Value> local_values;
+      local_values.push_back(cond_to_stack_value_[op][0]);
+      for (auto& var_name : push_pop_var_names_[op]) {
+        local_values.push_back(true_block_context->at(var_name).value);
+        push_pop_var_types_[op].push_back(
+            true_block_context->at(var_name).value.type());
+      }
+      pir::Operation* tuple_push_op = pir::Operation::Create(
+          local_values,
+          {},
+          {},
+          ctx_->GetRegisteredOpInfo(pir::TuplePushOp::name()));
+      true_region.front().push_back(tuple_push_op);
+    }
+
     // insert yeild op to true block
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
     std::vector<pir::Value> true_yeild_inputs;
@@ -310,7 +429,7 @@ void ProgramTranslator::TranslateIfOperation(
     // consistent. Only inconsistent shape is allowed. To be compatible with the
     // old IR design, only true branches are allowed. The false branch may
     // require yeild some fake variables.
-    pir::Region& false_region = operation->region(1);
+    pir::Region& false_region = if_op->region(1);
     if (false_region.empty()) false_region.emplace_back();
     auto* false_block_context = translation_ctx->CreateInnerContext();
     std::vector<pir::Value> false_yeild_inputs;
@@ -337,13 +456,13 @@ void ProgramTranslator::TranslateIfOperation(
 
   for (size_t i = 0; i < cond_op_output_vars.size(); i++) {
     translation_ctx->PushValue(cond_op_output_vars[i]->Name(),
-                               VariableDefiningInfo(operation->result(i)));
+                               VariableDefiningInfo(if_op->result(i)));
     VLOG(4) << "[general op][conditional_block] var "
             << cond_op_output_vars[i]->Name() << " was mapped to If's " << i
             << "-th output.";
   }
 
-  operation->Verify();
+  if_op->Verify();
   VLOG(4) << "[general op][conditional_block] IfOp translate end.";
 }
 
@@ -444,30 +563,11 @@ inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
 }
 
 void ProgramTranslator::InsertDataOpForSingleBlock(const BlockDesc& block) {
-  std::unordered_set<std::string> all_var_names;
-  for (auto& var : block.AllVars()) {
-    all_var_names.insert(var->Name());
-  }
-
-  std::unordered_set<std::string> inner_outputs;
-  for (auto op_desc : block.AllOps()) {
-    for (const auto& n : op_desc->Inputs()) {
-      const auto& input_var_names = n.second;
-      for (const auto& var_name : input_var_names) {
-        if (param_map_.count(var_name) != 0) continue;
-        if (no_cast_var_names.count(var_name) != 0) continue;
-        if (all_var_names.count(var_name) == 0) continue;
-        if (inner_outputs.count(var_name) == 0) {
-          CreateUndefinedVariable(var_name, block);
-        }
-      }
-    }
-    for (const auto& n : op_desc->Outputs()) {
-      const auto& output_var_names = n.second;
-      for (const auto& var_name : output_var_names) {
-        inner_outputs.insert(var_name);
-      }
-    }
+  auto external_inputs = GetExternalInputs(block);
+  for (auto& var_name : external_inputs) {
+    if (param_map_.count(var_name) != 0) continue;
+    if (no_cast_var_names.count(var_name) != 0) continue;
+    CreateUndefinedVariable(var_name, block);
   }
 }
 
