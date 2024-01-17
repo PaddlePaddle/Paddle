@@ -161,7 +161,7 @@ static std::string GetValueId(const Value& val) {
 }
 
 const symbol::ShapeOrDataDimExprs&
-ShapeConstraintIRAnalysis::GetShapeOrDataForValue(const Value& val) {
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
   return value_to_shape_or_data_[val];
 }
 
