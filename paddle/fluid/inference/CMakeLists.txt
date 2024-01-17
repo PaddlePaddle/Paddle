@@ -37,10 +37,6 @@ get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
 set(utils_modules pretty_log string_helper benchmark utf8proc)
 
-if(NOT WITH_GFLAGS)
-  set(utils_modules ${utils_modules} paddle_flags)
-endif()
-
 add_subdirectory(api)
 
 # Create static inference library if needed
