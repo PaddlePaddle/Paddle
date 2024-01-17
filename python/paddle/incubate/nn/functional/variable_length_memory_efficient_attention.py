@@ -89,7 +89,7 @@ def variable_length_memory_efficient_attention(
             >>> out = naive_attention_impl(query, key, value, mask, scale)
             >>> # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale, pre_cache_length)
 
-            >>> print(out.shape) # [batch, num_head, seq_len, head_size]
+            >>> out.shape # [batch, num_head, seq_len, head_size]
             [1, 8, 256, 32]
     """
     if scale is None:
