@@ -16,7 +16,7 @@
 
 #include <string>
 #include <vector>
-#include "paddle/utils/test_macros.h"
+#include "paddle/common/flags.h"
 
 // This is a simple commandline flags tool for paddle, which is inspired by
 // gflags but only implements the following necessary features:
