@@ -34,9 +34,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -62,14 +60,11 @@ BuildGroupProgramForLowering() {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
-  ctx->GetOrRegisterDialect<::pir::shape::ShapeDialect>();
 
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
   const std::vector<int64_t> x_shape = {-1, 2};
   const std::vector<int64_t> y_shape = {1, -1, 2};
-
-  auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx);
 
   auto x = builder
                .Build<paddle::dialect::DataOp>(
@@ -95,31 +90,53 @@ BuildGroupProgramForLowering() {
   groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>(
       {exp.operation(), reshape.operation(), sub.operation()})));
   groups[0]->output_ops.insert(groups[0]->ops.back());
-  groups[0]->shape_analysis = shape_analysis;
-
-  auto& x_sym_shape = shape_analysis->GetOrCreateSymbolicDimsForRankedValue(x);
-  auto& y_sym_shape = shape_analysis->GetOrCreateSymbolicDimsForRankedValue(y);
-  auto& exp_sym_shape =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(exp.result(0));
-  auto& reshape_sym_shape =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(reshape.result(0));
-  auto& sub_sym_shape =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(sub.result(0));
-
-  auto set_sym_shape = [](const std::vector<pir::shape::SymbolicDimOp>& source,
-                          std::vector<pir::shape::SymbolicDimOp>* target) {
-    target->reserve(source.size());
-    for (size_t i = 0; i < source.size(); ++i) {
-      target->at(i) = source[i];
-    }
-  };
-
-  (&x_sym_shape)->at(0) = y_sym_shape[1];
-  set_sym_shape(x_sym_shape, &exp_sym_shape);
-  set_sym_shape(y_sym_shape, &reshape_sym_shape);
-  set_sym_shape(reshape_sym_shape, &sub_sym_shape);
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_data;
+  symbol::DimExpr x_dim_0("S0");
+  symbol::DimExpr x_dim_1(2);
+  symbol::DimExpr y_dim_0(1);
+  symbol::DimExpr y_dim_1("S1");
+  symbol::DimExpr y_dim_2(2);
+  value_to_shape_data[x] = symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1});
+  value_to_shape_data[y] =
+      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
+  value_to_shape_data[exp.result(0)] = value_to_shape_data[x];
+  value_to_shape_data[reshape.result(0)] = value_to_shape_data[y];
+  value_to_shape_data[sub.result(0)] = value_to_shape_data[y];
+  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
 
   return {program, groups};
+}
+
+TEST(ReshapeOpGroup, CINNLowering) {
+  FLAGS_cinn_bucket_compile = true;
+  // Step 1: Construct pir::Program
+  auto program_info = BuildGroupProgramForLowering();
+  auto program = std::get<0>(program_info);
+  auto groups = std::get<1>(program_info);
+
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
+
+  for (const auto* op : groups[0]->ops) {
+    LOG(INFO) << op->name() << ":";
+    for (uint32_t i = 0; i < op->num_results(); ++i) {
+      const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
+      LOG(INFO) << " result(" << i << ") : " << sym_shape;
+    }
+  }
+
+  // Step 2: Compiler New pir::Program into Runtime Program
+  auto target = cinn::common::DefaultNVGPUTarget();
+  auto scope = cinn::hlir::framework::BuildScope(target, *program);
+  LOG(INFO) << scope->var_names().size();
+  ASSERT_EQ(scope->var_names().size(), 4);
+
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
+  auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  ASSERT_EQ(fn_ptr_res.size(), 1);
+  ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }
 
 std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>
@@ -128,7 +145,6 @@ BuildBroadcastGroupProgramForLowering() {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
-  ctx->GetOrRegisterDialect<::pir::shape::ShapeDialect>();
 
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
@@ -162,98 +178,55 @@ BuildBroadcastGroupProgramForLowering() {
   groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>(
       {x_broadcast.operation(), sub.operation()})));
   groups[0]->output_ops.insert(groups[0]->ops.back());
-  groups[0]->shape_analysis = shape_analysis;
 
-  auto& x_sym_shape = shape_analysis->GetOrCreateSymbolicDimsForRankedValue(x);
-  auto& y_sym_shape = shape_analysis->GetOrCreateSymbolicDimsForRankedValue(y);
-  auto& broadcast_to_shape =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-          x_broadcast.result(0));
-  auto& sub_sym_shape =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(sub.result(0));
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_data;
+  symbol::DimExpr x_dim_0(1);
+  symbol::DimExpr x_dim_1(1);
+  symbol::DimExpr x_dim_2(1);
+  symbol::DimExpr y_dim_0(1);
+  symbol::DimExpr y_dim_1("S0");
+  symbol::DimExpr y_dim_2(128);
+  value_to_shape_data[x] =
+      symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1, x_dim_2});
+  value_to_shape_data[y] =
+      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
+  value_to_shape_data[x_broadcast.result(0)] =
+      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
+  value_to_shape_data[sub.result(0)] =
+      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
+  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
 
-  auto set_sym_shape = [](const std::vector<pir::shape::SymbolicDimOp>& source,
-                          std::vector<pir::shape::SymbolicDimOp>* target) {
-    target->reserve(source.size());
-    for (size_t i = 0; i < source.size(); ++i) {
-      target->at(i) = source[i];
-    }
-  };
-  set_sym_shape(y_sym_shape, &sub_sym_shape);
-  set_sym_shape(y_sym_shape, &broadcast_to_shape);
   return {program, groups};
 }
 
-// TEST(ReshapeOpGroup, CINNLowering) {
-//   FLAGS_cinn_bucket_compile = true;
-//   // Step 1: Construct pir::Program
-//   auto program_info = BuildGroupProgramForLowering();
-//   auto program = std::get<0>(program_info);
-//   auto groups = std::get<1>(program_info);
-//
-//   std::stringstream ss;
-//   program->Print(ss);
-//   LOG(INFO) << ss.str();
-//
-//   for (const auto* op : groups[0]->ops) {
-//     LOG(INFO) << op->name() << ":";
-//     for (uint32_t i = 0; i < op->num_results(); ++i) {
-//       const auto& sym_shape =
-//           groups[0]->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-//               op->result(i));
-//       std::string sym_shape_str = "[";
-//       for (const auto& sym : sym_shape) {
-//         sym_shape_str += sym.GetSymName() + ",";
-//       }
-//       sym_shape_str[sym_shape_str.size() - 1] = ']';
-//       LOG(INFO) << " result(" << i << ") : " << sym_shape_str;
-//     }
-//   }
-//
-//   // Step 2: Compiler New pir::Program into Runtime Program
-//   auto target = cinn::common::DefaultNVGPUTarget();
-//   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-//   LOG(INFO) << scope->var_names().size();
-//   ASSERT_EQ(scope->var_names().size(), 4);
-//   cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-//   auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
-//   ASSERT_EQ(fn_ptr_res.size(), 1);
-//   ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
-// }
+TEST(BroadcastOpGroup, CINNLowering) {
+  FLAGS_cinn_bucket_compile = true;
+  // Step 1: Construct pir::Program
+  auto program_info = BuildBroadcastGroupProgramForLowering();
+  auto program = std::get<0>(program_info);
+  auto groups = std::get<1>(program_info);
 
-// TEST(BroadcastOpGroup, CINNLowering) {
-//   FLAGS_cinn_bucket_compile = true;
-//   // Step 1: Construct pir::Program
-//   auto program_info = BuildBroadcastGroupProgramForLowering();
-//   auto program = std::get<0>(program_info);
-//   auto groups = std::get<1>(program_info);
-//
-//   std::stringstream ss;
-//   program->Print(ss);
-//   LOG(INFO) << ss.str();
-//
-//   for (const auto* op : groups[0]->ops) {
-//     LOG(INFO) << op->name() << ":";
-//     for (uint32_t i = 0; i < op->num_results(); ++i) {
-//       const auto& sym_shape =
-//           groups[0]->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-//               op->result(i));
-//       std::string sym_shape_str = "[";
-//       for (const auto& sym : sym_shape) {
-//         sym_shape_str += sym.GetSymName() + ",";
-//       }
-//       sym_shape_str[sym_shape_str.size() - 1] = ']';
-//       LOG(INFO) << " result(" << i << ") : " << sym_shape_str;
-//     }
-//   }
-//
-//   // Step 2: Compiler New pir::Program into Runtime Program
-//   auto target = cinn::common::DefaultNVGPUTarget();
-//   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-//   LOG(INFO) << scope->var_names().size();
-//
-//   cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-//   auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
-//   ASSERT_EQ(fn_ptr_res.size(), 1);
-//   ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
-// }
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
+
+  for (const auto* op : groups[0]->ops) {
+    LOG(INFO) << op->name() << ":";
+    for (uint32_t i = 0; i < op->num_results(); ++i) {
+      const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
+      LOG(INFO) << " result(" << i << ") : " << sym_shape;
+    }
+  }
+
+  // Step 2: Compiler New pir::Program into Runtime Program
+  auto target = cinn::common::DefaultNVGPUTarget();
+  auto scope = cinn::hlir::framework::BuildScope(target, *program);
+  LOG(INFO) << scope->var_names().size();
+  ASSERT_EQ(scope->var_names().size(), 4);
+
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
+  auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  ASSERT_EQ(fn_ptr_res.size(), 1);
+  ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
+}
