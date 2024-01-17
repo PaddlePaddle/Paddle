@@ -17,6 +17,7 @@
 
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/symbolic_dim.h"
+#include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 
 namespace cinn::adt::adapter {

@@ -55,12 +55,9 @@ class MapExprToIrTranslator {
   explicit MapExprToIrTranslator(
       const MapExpr& map_expr,
       const Node2LoweredFuncs& node2lowered_funcs,
-      const std::unordered_map<SymbolicDim, symbol::DimExpr>&
-          map_expr_symbolic2dialect_symbolic,
       const cinn::common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
-        map_expr_symbolic2dialect_symbolic_(map_expr_symbolic2dialect_symbolic),
         target_(target) {
     const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
     CHECK_EQ(anchored_map_stmts->size(), 1);
@@ -789,10 +786,7 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) const {
-    CHECK_GT(map_expr_symbolic2dialect_symbolic_.count(dim_expr), 0);
-    CHECK(map_expr_symbolic2dialect_symbolic_.at(dim_expr).Has<std::string>());
-    return ir::Var{
-        map_expr_symbolic2dialect_symbolic_.at(dim_expr).Get<std::string>()};
+    return ir::Var{dim_expr};
   }
 
   ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) const {
@@ -874,8 +868,6 @@ class MapExprToIrTranslator {
   const cinn::common::Target target_;
   TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
   LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
-  std::unordered_map<SymbolicDim, symbol::DimExpr>
-      map_expr_symbolic2dialect_symbolic_;
 };
 
 }  // namespace
@@ -885,7 +877,6 @@ ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
   const auto& expr =
       MapExprToIrTranslator(map_expr_ctx.map_expr(),
                             map_expr_ctx.node2lowered_funcs(),
-                            map_expr_ctx.map_expr_symbolic2dialect_symbolic(),
                             target)
           .Translate();
   VLOG(1) << "Finish MapExprToIr\n" << expr;
