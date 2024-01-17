@@ -835,7 +835,6 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.Run(pir_program_.get());
       } else {
         ::pir::PassManager cpu_pm(::pir::IrContext::Instance(), 2);
-        cpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
 
         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);

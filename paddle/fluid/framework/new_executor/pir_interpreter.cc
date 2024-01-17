@@ -592,9 +592,9 @@ void PirInterpreter::UpdateOneDNNOpNum() {
   int64_t onednn_op_num = 0;
 #ifdef PADDLE_WITH_DNNL
   for (auto& ins : vec_instruction_base_) {
-    if (static_cast<OneDNNPhiKernelInstruction*>(ins.get()) != nullptr ||
-        static_cast<OneDNNLegacyKernelInstruction*>(ins.get()) != nullptr ||
-        static_cast<OneDNNMixedPhiKernelInstruction*>(ins.get()) != nullptr) {
+    if (dynamic_cast<OneDNNPhiKernelInstruction*>(ins.get()) != nullptr ||
+        dynamic_cast<OneDNNLegacyKernelInstruction*>(ins.get()) != nullptr ||
+        dynamic_cast<OneDNNMixedPhiKernelInstruction*>(ins.get()) != nullptr) {
       onednn_op_num = onednn_op_num + 1;
     }
   }
