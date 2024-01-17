@@ -16,8 +16,8 @@
 #include "glog/logging.h"
 
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/adt/symbolic_dim.h"
 #include "paddle/cinn/adt/dim_expr.h"
+#include "paddle/cinn/adt/symbolic_dim.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 
 namespace cinn::adt::adapter {
@@ -38,7 +38,6 @@ struct DynamicTensor final {
   const std::vector<DimExpr>& GetShape() const {
     return group->GetShapeOrDataExprs(node_data).shape();
   }
-
 };
 
 inline std::size_t GetHashValueImpl(const DynamicTensor& tensor) {

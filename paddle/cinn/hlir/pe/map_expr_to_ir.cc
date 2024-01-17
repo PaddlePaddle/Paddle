@@ -52,10 +52,9 @@ using LoopDescriptor4LoopIteratorT =
 
 class MapExprToIrTranslator {
  public:
-  explicit MapExprToIrTranslator(
-      const MapExpr& map_expr,
-      const Node2LoweredFuncs& node2lowered_funcs,
-      const cinn::common::Target& target)
+  explicit MapExprToIrTranslator(const MapExpr& map_expr,
+                                 const Node2LoweredFuncs& node2lowered_funcs,
+                                 const cinn::common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
         target_(target) {
@@ -789,13 +788,15 @@ class MapExprToIrTranslator {
     return ir::Var{dim_expr};
   }
 
-  ir::Expr TranslateDimExprImpl(const ::symbol::Negative<DimExpr>& dim_expr) const {
+  ir::Expr TranslateDimExprImpl(
+      const ::symbol::Negative<DimExpr>& dim_expr) const {
     const auto& [inner_dim_expr] = *dim_expr;
     ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
     return ir::Sub::Make(ir::Expr(0), inner_expr);
   }
 
-  ir::Expr TranslateDimExprImpl(const ::symbol::Reciprocal<DimExpr>& dim_expr) const {
+  ir::Expr TranslateDimExprImpl(
+      const ::symbol::Reciprocal<DimExpr>& dim_expr) const {
     const auto& [inner_dim_expr] = *dim_expr;
     ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
     return ir::Div::Make(ir::Expr(1), inner_expr);
@@ -827,7 +828,8 @@ class MapExprToIrTranslator {
     LOG(FATAL) << "Not Supported yet";
   }
 
-  ir::Expr TranslateDimExprImpl(const ::symbol::Broadcast<DimExpr>& dim_expr) const {
+  ir::Expr TranslateDimExprImpl(
+      const ::symbol::Broadcast<DimExpr>& dim_expr) const {
     LOG(FATAL) << "Not Supported yet";
   }
 
@@ -883,9 +885,8 @@ class MapExprToIrTranslator {
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
                      const cinn::common::Target& target) {
   const auto& expr =
-      MapExprToIrTranslator(map_expr_ctx.map_expr(),
-                            map_expr_ctx.node2lowered_funcs(),
-                            target)
+      MapExprToIrTranslator(
+          map_expr_ctx.map_expr(), map_expr_ctx.node2lowered_funcs(), target)
           .Translate();
   VLOG(1) << "Finish MapExprToIr\n" << expr;
   return expr;

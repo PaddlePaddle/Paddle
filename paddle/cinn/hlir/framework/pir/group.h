@@ -233,7 +233,6 @@ struct Group {
     map_expr_ctx_ = map_expr_ctx;
   }
 
-
  public:
   const std::unordered_set<std::shared_ptr<Group>,
                            SharedGroupHasher,

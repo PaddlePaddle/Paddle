@@ -23,4 +23,4 @@ inline DimExpr SimplifyDimExpr(const DimExpr& dim_expr) {
   return cinn::common::SimplifyDimExpr(dim_expr);
 }
 
-}
+}  // namespace cinn::adt

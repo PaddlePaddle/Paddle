@@ -16,9 +16,7 @@
 
 namespace cinn::adt {
 
-std::string ToTxtString(const DimExpr& dim_expr) {
-  return ToString(dim_expr);
-}
+std::string ToTxtString(const DimExpr& dim_expr) { return ToString(dim_expr); }
 
 std::string ToTxtString(const List<DimExpr>& dim_exprs) {
   std::string ret;

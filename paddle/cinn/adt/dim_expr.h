@@ -16,16 +16,15 @@
 
 #include <ostream>
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/cinn/adt/arithmetic.h"
 #include "paddle/cinn/adt/logical.h"
 #include "paddle/cinn/adt/symbolic_dim.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::adt {
 
 using DimExpr = ::symbol::DimExpr;
 
 DimExpr MakeBroadcastedDim(const DimExpr& lhs, const DimExpr& rhs);
-
 
 }  // namespace cinn::adt

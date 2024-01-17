@@ -79,8 +79,8 @@ struct ToTxtStringStruct {
   std::string operator()(const ListGetItem<Value, DimExpr>& list_get_item) {
     std::string ret;
     const auto& [value, constant] = list_get_item.tuple();
-    ret += "ListGetItem(" + ToTxtString(value) + ", " + ToString(constant) +
-           ")";
+    ret +=
+        "ListGetItem(" + ToTxtString(value) + ", " + ToString(constant) + ")";
     return ret;
   }
 

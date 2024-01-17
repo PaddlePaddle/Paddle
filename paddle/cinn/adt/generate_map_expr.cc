@@ -460,8 +460,7 @@ void TryGenerateMapExprFromGroup(
   const auto& map_expr = GenerateMapExpr(fusion_group);
   VLOG(4) << "Generate MapExpr: \n"
           << ToTxtString(map_expr, fusion_group->group_id);
-  fusion_group->set_map_expr_ctx(
-      std::make_shared<MapExprCtx>(map_expr));
+  fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
 }
 
 }  // namespace cinn::adt

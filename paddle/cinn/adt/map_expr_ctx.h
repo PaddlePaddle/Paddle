@@ -33,8 +33,7 @@ class MapExprCtx final {
   MapExprCtx(const MapExprCtx&) = delete;
   MapExprCtx(MapExprCtx&&) = delete;
 
-  explicit MapExprCtx(const MapExpr& map_expr)
-      : map_expr_(map_expr) {}
+  explicit MapExprCtx(const MapExpr& map_expr) : map_expr_(map_expr) {}
 
   const MapExpr& map_expr() const { return map_expr_; }
 
