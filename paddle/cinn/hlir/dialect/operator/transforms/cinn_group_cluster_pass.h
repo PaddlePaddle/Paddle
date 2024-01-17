@@ -15,37 +15,13 @@
 #pragma once
 
 #include "paddle/pir/pass/pass.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-// class CinnGroupClustergPass : public pir::PatternRewritePass {
-// public:
-//   CinnGroupClustergPass() : pir::PatternRewritePass("cinn_group_cluster", 1)
-//         {}
-//   virtual  ~CinnGroupClustergPass() {}
-//   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
+IR_API std::unique_ptr<pir::Pass> CreateCinnGroupClusterPass();
 
-//   bool CanApplyOn(pir::Operation* op) const override;
-
-// };
-
-class CinnGroupClustergPass : public pir::PatternRewritePass {
- public:
-  CinnGroupClustergPass();
-
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
-
-  bool CanApplyOn(pir::Operation *op) const override;
-};
-
-
-IR_API std::unique_ptr<pir::Pass> CreateCinnGroupClusterPass(){
-    return std::make_unique<CinnGroupClustergPass>();
-}
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
