@@ -112,13 +112,13 @@ template <>
 struct IrAttrTypeCast<std::vector<int64_t>> {
   static std::vector<int64_t> To(const pir::Attribute& attr) {
     std::vector<int64_t> result;
-    if (attr.dyn_cast<pir::ArrayAttribute>()) {
+    if (attr.isa<pir::ArrayAttribute>()) {
       auto array_attr = attr.dyn_cast<pir::ArrayAttribute>();
       for (size_t i = 0; i < array_attr.size(); i++) {
         result.push_back(
             array_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
       }
-    } else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
+    } else if (attr.isa<paddle::dialect::IntArrayAttribute>()) {
       result =
           attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
     } else {
