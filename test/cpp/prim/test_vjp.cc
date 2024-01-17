@@ -29,6 +29,7 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 

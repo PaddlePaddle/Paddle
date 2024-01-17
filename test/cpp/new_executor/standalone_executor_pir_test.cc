@@ -36,6 +36,7 @@
 #include "paddle/common/macros.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
@@ -74,11 +75,11 @@ TEST(StandaloneExecutor, run) {
   auto place = platform::CPUPlace();
   ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
   lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
-  lowered_pm.Run(program);
+  lowered_pm.Run(&program);
 
   Scope scope;
 
-  InterpreterCore test_core(place, {}, program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -145,10 +146,10 @@ TEST(StandaloneExecutor, run_feed_tensor) {
   auto place = platform::CPUPlace();
   ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
   lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
-  lowered_pm.Run(program);
+  lowered_pm.Run(&program);
 
   Scope scope;
-  InterpreterCore test_core(place, {}, program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -198,10 +199,10 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   auto place = platform::CPUPlace();
   ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
   lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
-  lowered_pm.Run(program);
+  lowered_pm.Run(&program);
 
   Scope scope;
-  InterpreterCore test_core(place, {}, program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -263,10 +264,10 @@ TEST(StandaloneExecutor, if_op) {
   auto place = platform::CPUPlace();
   ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
   lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
-  lowered_pm.Run(program);
+  lowered_pm.Run(&program);
 
   Scope scope;
-  InterpreterCore test_core(place, {}, program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -335,10 +336,10 @@ TEST(StandaloneExecutor, while_op) {
   auto place = platform::CPUPlace();
   ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
   lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
-  lowered_pm.Run(program);
+  lowered_pm.Run(&program);
 
   Scope scope;
-  InterpreterCore test_core(place, {}, program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 

@@ -372,7 +372,7 @@ bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
 std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
                                             phi::Place place) {
   pir::IrMapping ir_mapping;
-  std::unique_ptr<Program> new_program = program->Clone(ir_mapping);
+  std::unique_ptr<pir::Program> new_program = program->Clone(ir_mapping);
   ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
   pm.AddPass(::pir::CreatePdOpToKernelPass(place));
 

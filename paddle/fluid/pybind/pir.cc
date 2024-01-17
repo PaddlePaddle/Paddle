@@ -1028,7 +1028,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
   // Limitation of this function:
   // 1. don't support Parameters.
   pir::IrMapping mapper;
-  auto cloned_program = program.Clone(mapper);
+  std::shared_ptr<Program> cloned_program = program.Clone(mapper);
   std::vector<pir::OpResult> associated_array_key, associated_array_value;
   for (auto &pair : mapper.GetMap<pir::Value>()) {
     associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());

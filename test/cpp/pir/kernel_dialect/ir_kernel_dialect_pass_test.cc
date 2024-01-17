@@ -47,6 +47,7 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
