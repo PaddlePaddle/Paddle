@@ -235,8 +235,9 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
     if (axis < 0) {
       axis += input_shapes.size();
     }
-    IR_ENFORCE(axis >= 0 && axis < input_shapes.size(),
-               "Invalid axis, please check again");
+    IR_ENFORCE(
+        axis >= 0 && axis < static_cast<std::int64_t>(input_shapes.size()),
+        "Invalid axis, please check again");
     axis_set.insert(axis);
   }
 
@@ -246,7 +247,7 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
   bool keepdim = attributes.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
   std::vector<symbol::DimExpr> output_shapes;
-  for (std::int64_t i = 0; i < input_shapes.size(); ++i) {
+  for (std::size_t i = 0; i < input_shapes.size(); ++i) {
     if (axis_set.find(i) != axis_set.end()) {
       if (keepdim) {
         output_shapes.emplace_back(1);
