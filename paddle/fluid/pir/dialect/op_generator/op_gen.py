@@ -2078,6 +2078,10 @@ def OpGenerator(
         other_info_str = ONEDNN_ONLY_OP_SET.format(
             maps=", \r".join(onednn_only_op_list)
         )
+        for name in reversed(namespaces):
+            other_info_str = NAMESPACE_GARD_TEMPLATE.format(
+                namespace=name, input=other_info_str
+            )  # Add namespaces
     else:
         other_info_str = ""
 

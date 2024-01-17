@@ -248,7 +248,8 @@ set(op_dialect_srcs
     ${api_source_file})
 
 if(WITH_MKLDNN)
-  set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file})
+  set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file}
+                      ${op_onednn_info_file})
 endif()
 
 set(op_dialect_deps phi common pir type_info string_helper)
