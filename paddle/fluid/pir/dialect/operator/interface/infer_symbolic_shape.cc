@@ -46,13 +46,11 @@ bool SameOperandsAndResultShape(
 
 bool InferSymbolicShapeElementWiseBinary(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::Value operand_source_0 = op->operand_source(0);
   std::vector<symbol::DimExpr> shape_0{
-      shape_analysis->GetShapeOrDataForValue(operand_source_0).shape()};
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape()};
 
-  pir::Value operand_source_1 = op->operand_source(1);
   std::vector<symbol::DimExpr> shape_1{
-      shape_analysis->GetShapeOrDataForValue(operand_source_1).shape()};
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1)).shape()};
 
   if (shape_0.size() > shape_1.size()) {
     for (size_t i = 0; i < shape_0.size() - shape_1.size(); i++) {
@@ -218,6 +216,33 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
   pir::OpResult res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  return true;
+}
+
+bool SumOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::OpResult res = op->result(0);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  std::vector<symbol::DimExpr> shapes;
+  VLOG(1) << "SumOpInferSymbolicShape begin";
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+    VLOG(1) << "SumOpInferSymbolicShape dim_expr = " << dim_expr;
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes};
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
