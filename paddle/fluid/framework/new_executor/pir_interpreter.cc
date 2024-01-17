@@ -590,6 +590,7 @@ void PirInterpreter::UpdateNcclOpNum() {
 
 void PirInterpreter::UpdateOneDNNOpNum() {
   int64_t onednn_op_num = 0;
+#ifdef PADDLE_WITH_DNNL
   for (auto& ins : vec_instruction_base_) {
     if (static_cast<OneDNNPhiKernelInstruction*>(ins.get()) != nullptr ||
         static_cast<OneDNNLegacyKernelInstruction*>(ins.get()) != nullptr ||
@@ -597,6 +598,7 @@ void PirInterpreter::UpdateOneDNNOpNum() {
       onednn_op_num = onednn_op_num + 1;
     }
   }
+#endif
   onednn_op_num_ = onednn_op_num;
   VLOG(4) << "Update onednn op num, onednn op num is: " << onednn_op_num;
 }
@@ -1817,6 +1819,9 @@ void PirInterpreter::PreAnalysis() {
 
   UpdateNcclOpNum();
   VLOG(4) << "Done UpdateNcclOpNum";
+
+  UpdateOneDNNOpNum();
+  VLOG(4) << "Done UpdateOneDNNOpNum";
 }
 
 ::pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
