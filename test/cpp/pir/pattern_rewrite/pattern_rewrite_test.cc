@@ -445,10 +445,8 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("a"),
-                                                  dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("b"),
-                                                  dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
