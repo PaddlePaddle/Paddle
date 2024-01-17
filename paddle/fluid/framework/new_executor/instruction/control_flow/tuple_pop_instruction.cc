@@ -96,15 +96,15 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
     if (src_tensor_array.size() == 0) return;
-    dst_tensor_array->clear();
+    dst_tensor_array->resize(0);
     for (auto src_tensor : src_tensor_array) {
-      phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
+      phi::DenseTensor tmp_dst_tensor = std::move(phi::DenseTensor());
       if (src_tensor.numel() == 0) {
-        tmp_dst_tensor->set_meta(src_tensor.meta());
+        tmp_dst_tensor.set_meta(src_tensor.meta());
       } else {
-        tmp_dst_tensor->ShareDataWith(src_tensor);
+        tmp_dst_tensor.ShareDataWith(src_tensor);
       }
-      dst_tensor_array->push_back(*tmp_dst_tensor);
+      dst_tensor_array->push_back(tmp_dst_tensor);
     }
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
