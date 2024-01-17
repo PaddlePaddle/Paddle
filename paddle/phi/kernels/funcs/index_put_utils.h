@@ -241,31 +241,27 @@ void DealWithIndices(const Context& dev_ctx,
     }
 
   } else {
-    std::vector<DenseTensor> int_indices_v_tmp;
-
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
+      phi::DenseTensor index_tensor;
+      phi::DenseTensor expand_index;
       if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        int_indices_v_tmp.emplace_back(phi::Cast<int, Context>(
-            dev_ctx, *int_indices_v[i], phi::DataType::INT64));
+        index_tensor = phi::Cast<int, Context>(
+            dev_ctx, *int_indices_v[i], phi::DataType::INT64);
       } else {
-        int_indices_v_tmp.emplace_back(*int_indices_v[i]);
+        index_tensor = *int_indices_v[i];
       }
-    }
-
-    for (size_t i = 0; i < int_indices_v.size(); ++i) {
       if (bd_dim != int_indices_v[i]->dims()) {
-        tmp_res_indices_v->emplace_back(
-            DenseTensor(phi::DataType::INT64).Resize(bd_dim));
+        expand_index = DenseTensor(phi::DataType::INT64).Resize(bd_dim);
         ExpandKernel<int64_t, Context>(
             dev_ctx,
-            int_indices_v_tmp[i],
+            index_tensor,
             IntArray(common::vectorize<int64_t>(bd_dim)),
-            &(*tmp_res_indices_v)[i]);
+            &expand_index);
       } else {
-        tmp_res_indices_v->emplace_back(int_indices_v_tmp[i]);
+        expand_index = index_tensor;
       }
+      tmp_res_indices_v->emplace_back(expand_index);
     }
-
     for (size_t i = 0; i < res_indices_v->size(); ++i) {
       (*res_indices_v)[i] = &(*tmp_res_indices_v)[i];
     }
