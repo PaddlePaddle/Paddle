@@ -94,7 +94,7 @@ class TestUniqueConsecutiveOp(OpTest):
             'X': x,
         }
         self.python_out_sig = ["Out"]
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         self.outputs = {
             'Out': out,
         }
@@ -128,7 +128,7 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
         }
         self.attrs = {
             'return_inverse': self.return_inverse,
-            'dtype': int(core.VarDesc.VarType.INT32),
+            'dtype': paddle.int32,
         }
         self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Index': inverse}
@@ -159,7 +159,7 @@ class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
         }
         self.attrs = {
             'return_counts': self.return_counts,
-            'dtype': int(core.VarDesc.VarType.INT32),
+            'dtype': paddle.int32,
         }
         self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Counts': counts}
@@ -192,7 +192,7 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
         self.attrs = {
             'return_inverse': self.return_inverse,
             'return_counts': self.return_counts,
-            'dtype': int(core.VarDesc.VarType.INT32),
+            'dtype': paddle.int32,
         }
         self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
@@ -342,7 +342,7 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
             'X': x,
         }
         self.python_out_sig = ["Out"]
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         self.outputs = {
             'Out': out,
         }
