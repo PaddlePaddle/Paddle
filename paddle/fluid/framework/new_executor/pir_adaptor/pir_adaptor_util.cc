@@ -349,7 +349,7 @@ void DeepCopyVariable(const Variable* src_var,
       }
     }
     dst_tensor_array->resize(src_tensor_array.size());
-    for (int i = 0; i < src_tensor_array.size(); ++i) {
+    for (size_t i = 0; i < src_tensor_array.size(); ++i) {
       phi::DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
       if (src_tensor_array.at(i).numel() == 0) {
         tmp_dst_tensor.set_meta(src_tensor_array.at(i).meta());
