@@ -15,6 +15,9 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include <iostream>
+#include <regex>
+#include <string>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -52,6 +55,8 @@
 #endif
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_string(pir_onednn_kernel_blacklist);
+
 namespace paddle {
 namespace dialect {
 
@@ -2318,8 +2323,21 @@ void ProcessBlock(
     }
 
 #ifdef PADDLE_WITH_DNNL
+    std::regex reg(",");
+    std::unordered_set<std::string> elems{
+        std::sregex_token_iterator(FLAGS_pir_onednn_kernel_blacklist.begin(),
+                                   FLAGS_pir_onednn_kernel_blacklist.end(),
+                                   reg,
+                                   -1),
+        std::sregex_token_iterator()};
+    elems.erase("");
+
     if (op_item->HasTrait<OneDNNTrait>() &&
-        kernel_key.backend() != phi::Backend::ONEDNN) {
+        (kernel_key.backend() != phi::Backend::ONEDNN ||
+         elems.count(op_item->name().substr(
+             strlen(OneDNNOperatorDialect::name()),
+             op_item->name().size() -
+                 strlen(OneDNNOperatorDialect::name()))))) {
       std::vector<pir::Type> op_item_inner_output_types;
       if (op_item->num_results() > 0) {
         for (size_t i = 0; i < op_item->num_results(); ++i) {

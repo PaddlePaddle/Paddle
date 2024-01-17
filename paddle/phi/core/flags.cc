@@ -1430,6 +1430,19 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify the directory of saving PIR sugraph from @to_static.");
 
+/**
+ * PIR use OneDNN kernel black list FLAG
+ * Name: pir_onednn_kernel_blacklist
+ * Since Version: 2.7.0
+ * Value Range: str, default=""
+ * Example:
+ * Note: It controls the pir onednn kernel subset do not use.
+ */
+PHI_DEFINE_EXPORTED_string(
+    pir_onednn_kernel_blacklist,
+    "",
+    "It controls the pir onednn kernel subset do not use.");
+
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
 PHI_DEFINE_EXPORTED_bool(
