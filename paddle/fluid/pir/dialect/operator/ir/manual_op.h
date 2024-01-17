@@ -499,6 +499,7 @@ class AssignArray_Op
 class ExpandOp : public pir::Op<ExpandOp,
                                 paddle::dialect::OpYamlInfoInterface,
                                 paddle::dialect::InferMetaInterface,
+                                paddle::dialect::InferSymbolicShapeInterface,
                                 paddle::dialect::VjpInterface,
                                 paddle::dialect::GetKernelTypeForVarInterface> {
  public:
@@ -543,6 +544,7 @@ class ExpandOp : public pir::Op<ExpandOp,
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class SelectInputOp : public pir::Op<SelectInputOp> {

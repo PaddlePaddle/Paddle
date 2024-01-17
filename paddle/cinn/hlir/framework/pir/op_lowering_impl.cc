@@ -158,7 +158,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
-                                                   apply_op_schedule,
+                                                   apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
@@ -719,13 +719,11 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  VLOG(3) << "group->shape_analysis:" << group->shape_analysis;
-  if (group->shape_analysis != nullptr) {
-    auto sym_vec =
-        group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
+  if (!group->value_to_shape_or_data_exprs.empty()) {
+    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
     std::vector<ir::Dim> sym_shape;
     for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(ir::Dim(input_id + "_" + sym.GetSymName(), sym));
+      sym_shape.emplace_back(ir::Dim(input_id, sym));
     }
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
@@ -766,6 +764,7 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
       (*tensor_map)[in_value]->domain = tensor->domain;
     }
     tensors.push_back(tensor);
+    VLOG(0) << "####### tensors.push_back(tensor)";
   }
   return tensors;
 }
@@ -800,14 +799,11 @@ void OpLowererImpl::CollectOutputInfo(
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    if (group->shape_analysis != nullptr) {
-      auto sym_vec =
-          group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(
-              out_value);
+    if (!group->value_to_shape_or_data_exprs.empty()) {
+      auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
       std::vector<ir::Dim> sym_shape;
       for (auto& sym : sym_vec) {
-        sym_shape.emplace_back(
-            ir::Dim(output_id + "_" + sym.GetSymName(), sym));
+        sym_shape.emplace_back(ir::Dim(output_id, sym));
       }
       out_shapes->push_back(std::move(sym_shape));
     }

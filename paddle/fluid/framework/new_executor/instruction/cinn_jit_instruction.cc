@@ -55,6 +55,11 @@ class CinnJitInstruction::FnPtrImpl {
               int_arg_mp.second.dim_idx)));
     }
 
+    VLOG(4) << "Run func_args_ size: " << func_args_.size();
+    for (const auto& args : func_args_) {
+      VLOG(4) << " args type_code: " << args.type_code();
+    }
+
     // 3. Launch host kernel
     ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
         static_cast<void*>(func_args_.data()), func_args_.size(), stream);
@@ -73,8 +78,6 @@ class CinnJitInstruction::FnPtrImpl {
 
     // 2. Convert arg's data about shape of Tensor to cinn_pod_value_t
     for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
-      func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
-          int_arg_mp.second.dim_idx));
       func_args_.emplace_back(static_cast<int64_t>(
           kernel_args[int_arg_mp.second.arg_idx]->dims().at(
               int_arg_mp.second.dim_idx)));
@@ -86,6 +89,11 @@ class CinnJitInstruction::FnPtrImpl {
       output_tensor_shapes[i] = reinterpret_cast<int32_t*>(
           malloc(kernel_args[input_tensor_size + i]->dims().size() *
                  sizeof(int32_t*)));
+    }
+
+    VLOG(4) << "InferShape func_args_ size: " << func_args_.size();
+    for (const auto& args : func_args_) {
+      VLOG(4) << " args type_code: " << args.type_code();
     }
 
     // 4. Launch infer_shape_fn_ptr to infer shape of output tensor
