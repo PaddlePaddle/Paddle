@@ -24,6 +24,7 @@ from paddle.pir_utils import test_with_pir_api
 class TestIncrement(unittest.TestCase):
     @test_with_pir_api
     def test_api(self):
+        paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
             input = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=5
@@ -57,7 +58,8 @@ class TestIncrement(unittest.TestCase):
                 exe = base.Executor(base.CPUPlace())
                 result = exe.run(fetch_list=[out, dx])
 
-                print(result)
+                self.assertEqual(result[0], 5.0)
+                self.assertEqual(result[1], 1.0)
 
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
