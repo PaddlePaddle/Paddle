@@ -35,12 +35,12 @@ namespace flags {
  * which matching the format "--name=value" or "--name value". After parsing,
  * the corresponding flag value will be reset.
  */
-TEST_API void ParseCommandLineFlags(int* argc, char*** argv);
+PADDLE_API void ParseCommandLineFlags(int* argc, char*** argv);
 
 /**
  * @brief Allow undefined flags in ParseCommandLineFlags()
  */
-TEST_API void AllowUndefinedFlags();
+PADDLE_API void AllowUndefinedFlags();
 
 /**
  * @brief Set flags from environment variables.
