@@ -335,7 +335,7 @@ bool GPUDeviceCode::Compile(bool include_path) {
       DeviceContextPool::Instance().Get(place_));
   int compute_capability = dev_ctx->GetComputeCapability();
   std::string compute_flag =
-      "--gpu-architecture=compute_" + std::to_string(compute_capability);
+      "--gpu-architecture=sm_" + std::to_string(compute_capability);
   std::vector<const char*> options = {"--std=c++11", compute_flag.c_str()};
   std::string include_option;
   if (include_path) {
@@ -369,15 +369,15 @@ bool GPUDeviceCode::Compile(bool include_path) {
     return false;
   }
 
-  // Obtain PTX from the program
-  size_t ptx_size;
-  if (!CheckNVRTCResult(dynload::nvrtcGetPTXSize(program, &ptx_size),
-                        "nvrtcGetPTXSize")) {
+  // Obtain cubin from the program
+  size_t cubin_size;
+  if (!CheckNVRTCResult(dynload::nvrtcGetCUBINSize(program, &cubin_size),
+                        "nvrtcGetCUBINSize")) {
     return false;
   }
-  ptx_.resize(ptx_size + 1);
-  if (!CheckNVRTCResult(dynload::nvrtcGetPTX(program, ptx_.data()),
-                        "nvrtcGetPTX")) {
+  cubin_.resize(cubin_size + 1);
+  if (!CheckNVRTCResult(dynload::nvrtcGetCUBIN(program, cubin_.data()),
+                        "nvrtcGetCUBIN")) {
     return false;
   }
 
@@ -386,7 +386,7 @@ bool GPUDeviceCode::Compile(bool include_path) {
     return false;
   }
 
-  if (!CheckCUDADriverResult(dynload::cuModuleLoadData(&module_, ptx_.data()),
+  if (!CheckCUDADriverResult(dynload::cuModuleLoadData(&module_, cubin_.data()),
                              "cuModuleLoadData",
                              name_)) {
     return false;

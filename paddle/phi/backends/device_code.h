@@ -78,6 +78,7 @@ class GPUDeviceCode : public DeviceCode {
   int max_threads_{0};
   int num_threads_{1024};
   int workload_per_thread_{1};
+  std::vector<char> cubin_;
   std::vector<char> ptx_;
 #ifdef PADDLE_WITH_HIP
   hipModule_t module_;

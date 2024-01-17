@@ -39,6 +39,8 @@ extern bool HasNVRTC();
   __macro(nvrtcCompileProgram);     \
   __macro(nvrtcCreateProgram);      \
   __macro(nvrtcDestroyProgram);     \
+  __macro(nvrtcGetCUBIN);           \
+  __macro(nvrtcGetCUBINSize);       \
   __macro(nvrtcGetPTX);             \
   __macro(nvrtcGetPTXSize);         \
   __macro(nvrtcGetProgramLog);      \
