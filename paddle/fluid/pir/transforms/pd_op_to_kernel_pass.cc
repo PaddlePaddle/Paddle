@@ -1098,8 +1098,9 @@ phi::KernelKey GetKernelKey(
   if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
       SupportsMKLDNN(kernel_fn_str, res.dtype()) &&
       elems.count(op->name().substr(
-          strlen(OneDNNOperatorDialect::name()),
-          op->name().size() - strlen(OneDNNOperatorDialect::name()))) == 0) {
+          strlen(OneDNNOperatorDialect::name()) + 1,
+          op->name().size() - strlen(OneDNNOperatorDialect::name()) - 1)) ==
+          0) {
     res.set_backend(phi::Backend::ONEDNN);
     res.set_layout(phi::DataLayout::ONEDNN);
   }
@@ -2335,21 +2336,8 @@ void ProcessBlock(
     }
 
 #ifdef PADDLE_WITH_DNNL
-    std::regex reg(",");
-    std::unordered_set<std::string> elems{
-        std::sregex_token_iterator(FLAGS_pir_onednn_kernel_blacklist.begin(),
-                                   FLAGS_pir_onednn_kernel_blacklist.end(),
-                                   reg,
-                                   -1),
-        std::sregex_token_iterator()};
-    elems.erase("");
-
     if (op_item->HasTrait<OneDNNTrait>() &&
-        (kernel_key.backend() != phi::Backend::ONEDNN ||
-         elems.count(op_item->name().substr(
-             strlen(OneDNNOperatorDialect::name()),
-             op_item->name().size() -
-                 strlen(OneDNNOperatorDialect::name()))))) {
+        kernel_key.backend() != phi::Backend::ONEDNN) {
       std::vector<pir::Type> op_item_inner_output_types;
       if (op_item->num_results() > 0) {
         for (size_t i = 0; i < op_item->num_results(); ++i) {
