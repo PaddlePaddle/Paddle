@@ -26,6 +26,12 @@ void CreateArrayKernel(const Context& dev_ctx,
                        TensorArray* out);
 
 template <typename T, typename Context>
+void CreateArrayLikeKernel(const Context& dev_ctx,
+                           const TensorArray& input,
+                           float val,
+                           TensorArray* out);
+
+template <typename T, typename Context>
 void ArrayLengthKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        DenseTensor* out);
@@ -51,4 +57,11 @@ void ArrayToTensorKernel(const Context& dev_ctx,
                          DenseTensor* out,
                          DenseTensor* out_index);
 
+template <typename T, typename Context>
+void TensorToArrayKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         const DenseTensor& out_grad,
+                         int axis,
+                         bool use_stack,
+                         TensorArray* x_grad);
 }  // namespace phi

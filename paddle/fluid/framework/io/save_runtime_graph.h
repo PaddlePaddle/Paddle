@@ -14,6 +14,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 void save_runtime_cinn_graph(const ir::Graph& graph,
+                             int64_t graph_compilation_key,
                              std::string clusters_ops,
                              std::string clusters_inputs,
                              std::string cluster_outputs,

@@ -91,13 +91,13 @@ platform::DeviceContext* ParseDeviceContext(
       return dev_ctx;
     }
 
-    if (op_name == interpreter::kMemcpyD2H) {
+    if (op_name.compare(paddle::dialect::MemcpyD2hOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kD2HStream), place, stream_priority)
                     .get()
                     .get();
       interpreter::SetDeviceCommContext(op, dev_ctx);
       return dev_ctx;
-    } else if (op_name == interpreter::kMemcpyH2D) {
+    } else if (op_name.compare(paddle::dialect::MemcpyH2dOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kH2DStream), place, stream_priority)
                     .get()
                     .get();
@@ -114,9 +114,11 @@ platform::DeviceContext* ParseDeviceContext(
     // DeviceContext passed from executor (see CAllReduceOpCUDAKernel in
     // c_allreduce_op.h). Now it is just a temporary solution for ONLY
     // c_allreduce_sum which is used in ResNet50 distributed training.
-    if (op_name == "c_allreduce_sum" && op_attributes.at("use_calc_stream")
-                                                .dyn_cast<pir::BoolAttribute>()
-                                                .data() == false) {
+    if ((op_name.compare(paddle::dialect::CAllreduceSumOp::name()) == 0 ||
+         op_name.compare(paddle::dialect::CAllreduceSum_Op::name()) == 0) &&
+        op_attributes.at("use_calc_stream")
+                .dyn_cast<pir::BoolAttribute>()
+                .data() == false) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
       if (FLAGS_dynamic_static_unified_comm) {
@@ -181,7 +183,9 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
       return OpFuncType::kGpuSync;
     }
 
-    if (platform::is_gpu_place(place) && op_name == "pd_op.memcpy_d2h") {
+    if (platform::is_gpu_place(place) &&
+        (op_name == "pd_op.memcpy_d2h" ||
+         op_name == "pd_op.memcpy_d2h_multi_io")) {
       return OpFuncType::kGpuSync;
     }
 
@@ -343,6 +347,55 @@ void InsertTuplePushContinerToOuts(
   for (pir::Value value : inner_stack_outputs) {
     outputs->emplace(value, GetValueIds(value, value_exec_info));
     VLOG(6) << "InsertTuplePushContinerToOuts of " << value.impl();
+  }
+}
+
+void InsertInplacedExternalInputsToOuts(
+    pir::Block* block,
+    const std::vector<pir::Value>& external_inputs,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs) {
+  for (auto& op : *block) {
+    if (op.attributes().count("is_inplace") != 0 &&
+        op.attributes()
+            .at("is_inplace")
+            .dyn_cast<pir::BoolAttribute>()
+            .data()) {
+      std::string op_name = op.name();
+      if (op.attributes().count("op_name")) {
+        op_name = op.attributes()
+                      .at("op_name")
+                      .dyn_cast<pir::StrAttribute>()
+                      .AsString();
+      }
+      pir::OpInfo op_info =
+          pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+      paddle::dialect::OpYamlInfoParser yaml_parser(
+          op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+              ->get_op_info_(op_name),
+          paddle::dialect::IsLegacyOp(op_name));
+
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        pir::Value value = op.result(i);
+        if (!IsInvalid(value)) {
+          VLOG(8) << "Number " << i << " result of " << op_name
+                  << " is not invalid, so skip build a variable.";
+          continue;
+        }
+        std::string value_name = yaml_parser.OutputNames()[i];
+        if (yaml_parser.HasInplace(value_name)) {
+          const std::string& inplace_name = yaml_parser.InplaceName(value_name);
+          pir::Value inplace_value =
+              op.operand_source(yaml_parser.InputName2Id().at(inplace_name));
+          if (std::find(external_inputs.begin(),
+                        external_inputs.end(),
+                        inplace_value) != external_inputs.end()) {
+            outputs->emplace(value,
+                             GetValueIds(inplace_value, value_exec_info));
+          }
+        }
+      }
+    }
   }
 }
 

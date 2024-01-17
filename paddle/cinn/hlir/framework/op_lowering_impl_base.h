@@ -27,6 +27,12 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
+struct BucketLoweredFuncsWrapper {
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
+      predicate2funcs;
+  ir::LoweredFunc infer_shape_func;
+};
+
 template <typename T>
 class OpLowererImplBase {
  public:
@@ -38,11 +44,12 @@ class OpLowererImplBase {
                                              bool apply_group_schedule = true,
                                              bool apply_pass = true) = 0;
 
-  virtual std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
-  BucketLower(const T& group,
-              bool apply_op_schedule = false,
-              bool apply_group_schedule = true,
-              bool apply_pass = true) = 0;
+  virtual BucketLoweredFuncsWrapper BucketLower(
+      const T& group,
+      bool apply_op_schedule = false,
+      bool apply_group_schedule = true,
+      bool apply_pass = true) = 0;
+
   virtual void InsertNameGeneToScope(std::shared_ptr<Scope> scope) = 0;
 };
 
