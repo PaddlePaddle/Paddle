@@ -397,7 +397,7 @@ paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
 PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
 
-PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args);
+PyObject* GetEmpytyTensorsWithValue(PyObject* self, PyObject* args);
 
 // end of Slice related methods
 

@@ -924,7 +924,7 @@ class PartialProgramLayer:
         return input_vars
 
     def _prepare_outputs(self):
-        return paddle.framework.core.create_empty_tensors_with_op_results(
+        return paddle.framework.core.create_empty_tensors_with_values(
             self._outputs.var_list
         )
 
