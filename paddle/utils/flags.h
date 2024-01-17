@@ -17,7 +17,7 @@
 #ifdef PADDLE_WITH_GFLAGS
 #include "gflags/gflags.h"
 #else
-#include "paddle/utils/flags_native.h"
+#include "paddle/common/flags_native.h"
 #endif
 
 #ifdef PADDLE_WITH_GFLAGS
