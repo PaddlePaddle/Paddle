@@ -222,9 +222,9 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  std::vector<symbol::DimExpr> input_shapes{
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape()};
-  symbol::ShapeOrDataDimExprs axis_exprs =
+  const std::vector<symbol::DimExpr> &input_shapes =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const symbol::ShapeOrDataDimExprs &axis_exprs =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   IR_ENFORCE(axis_exprs.data().has_value(),
              "The ShapeOrDataDimExprs of axis should have data");
@@ -240,9 +240,10 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
     axis_set.insert(axis);
   }
 
-  auto attributes = op->attributes();
-  pir::Attribute attr = attributes["keepdim"];
-  bool keepdim = attr.dyn_cast<pir::BoolAttribute>().data();
+  const auto &attributes = op->attributes();
+  IR_ENFORCE(attributes.find("keepdim") != attributes.end(),
+             "SumOp must have keepdim attribute");
+  bool keepdim = attributes.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
   std::vector<symbol::DimExpr> output_shapes;
   for (std::int64_t i = 0; i < input_shapes.size(); ++i) {
