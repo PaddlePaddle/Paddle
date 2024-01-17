@@ -52,12 +52,13 @@ bool InferSymbolicShapeElementWiseBinary(
   std::vector<symbol::DimExpr> shape_1{
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1)).shape()};
 
-  if (shape_0.size() > shape_1.size()) {
-    for (size_t i = 0; i < shape_0.size() - shape_1.size(); i++) {
+  int diff = shape_0.size() - shape_1.size();
+  if (diff > 0) {
+    for (int i = 0; i < diff; i++) {
       shape_1.emplace(shape_1.begin(), 1);
     }
   } else {
-    for (size_t i = 0; i < shape_1.size() - shape_0.size(); i++) {
+    for (int i = 0; i < -diff; i++) {
       shape_0.emplace(shape_0.begin(), 1);
     }
   }
@@ -237,13 +238,22 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  VLOG(1) << "SumOpInferSymbolicShape begin";
+
+  auto attributes = op->attributes();
+  pir::Attribute attr = attributes["keepdim"];
+  bool keepdim = attr.dyn_cast<pir::BoolAttribute>().data();
+  if (keepdim) {
+    InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+    return true;
+  }
+
   pir::OpResult res = op->result(0);
 
   std::vector<int64_t> dims =
       common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
 
   std::vector<symbol::DimExpr> shapes;
-  VLOG(1) << "SumOpInferSymbolicShape begin";
   for (int64_t dim : dims) {
     symbol::DimExpr dim_expr;
     if (dim == -1) {
@@ -351,6 +361,104 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  return true;
+}
+
+bool FullOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  auto attributes = op->attributes();
+  pir::Attribute attr_value = attributes["value"];
+  auto value = attr_value.dyn_cast<pir::FloatAttribute>().data();
+
+  pir::Attribute attr_shape = attributes["shape"];
+  const auto &shape_vec =
+      attr_shape.dyn_cast<paddle::dialect::IntArrayAttribute>()
+          .data()
+          .GetData();
+
+  std::vector<symbol::DimExpr> sym_shape;
+  for (auto dim : shape_vec) {
+    symbol::DimExpr dim_expr;
+
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    sym_shape.push_back(dim_expr);
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{sym_shape};
+
+  op->set_attribute(
+      "symbolic_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+
+  pir::OpResult res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  return true;
+}
+
+bool DivideOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool Divide_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool ElementwisePowOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+  return true;
+}
+
+bool FullWithTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool MultiplyOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool Multiply_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool MultiplySrOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool MultiplySr_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool ScaleOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool Scale_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool ScaleSrOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool ScaleSr_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return true;
 }
 

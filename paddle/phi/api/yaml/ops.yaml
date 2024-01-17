@@ -2306,6 +2306,7 @@
     data_type : x
   inplace : (x -> out)
   backward : scale_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
