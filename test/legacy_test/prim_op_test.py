@@ -222,11 +222,10 @@ class OpTestUtils:
                 else:
                     results.append(tmp)
         assert len(results) == len(api_params)
-        # TODO(SigureMo): remove this in #60423
-        if hasattr(api, "__name__") and api.__name__ != "sequence_mask_wraper":
-            results = paddle.utils.map_structure(
-                partial(convert_dtype, target_dtype=target_dtype), results
-            )
+
+        results = paddle.utils.map_structure(
+            partial(convert_dtype, target_dtype=target_dtype), results
+        )
         return results
 
     @classmethod
