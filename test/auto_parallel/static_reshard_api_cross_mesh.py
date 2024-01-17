@@ -99,11 +99,6 @@ class DemoNetPP(nn.Layer):
 
     def forward(self, x):
         # stage0
-        dist.shard_tensor(
-            x,
-            self._mesh0,
-            [Replicate()],
-        )
         out0 = self.mlp0(x)
 
         self.varnmes.append(out0.name)
@@ -147,8 +142,9 @@ class TestStaticReshard(unittest.TestCase):
 
         # static training
         data_loader = self.create_data_loader()
-        dist_model, dist_loader = dist.to_static(
-            dy2static_layer, data_loader, loss_fn, dy2static_opt
+        dist_loader = dist.shard_dataloader(data_loader, [mesh0, mesh1])
+        dist_model = dist.to_static(
+            dy2static_layer, dist_loader, loss_fn, dy2static_opt
         )
 
         program = dist_model._engine._dist_contexts["train"].dist_main_programs[
