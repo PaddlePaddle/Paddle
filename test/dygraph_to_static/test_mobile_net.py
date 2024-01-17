@@ -19,7 +19,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_pt_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_pt_only,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -735,12 +738,6 @@ class TestMobileNet(Dy2StTestBase):
         )
 
     @test_pt_only
-    def test_mobile_net_pir(self):
-        # MobileNet-V1
-        self.assert_same_loss("MobileNetV1")
-        # MobileNet-V2
-        self.assert_same_loss("MobileNetV2")
-
     def test_mobile_net(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
