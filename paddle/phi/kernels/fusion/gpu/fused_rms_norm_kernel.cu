@@ -1140,7 +1140,6 @@ PD_REGISTER_KERNEL(fused_rms_norm,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }
 }
 
