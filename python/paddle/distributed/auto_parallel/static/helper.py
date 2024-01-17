@@ -338,7 +338,7 @@ class ProgramHelper:
     def init(self, main_program, place, dist_context):
         if self.lazy_init:
             return
-
+        is_comm = False
         for param in self.concrete_program.parameters:
             if param.is_dist():
                 serial_main_program = self.concrete_program.main_program
@@ -346,6 +346,7 @@ class ProgramHelper:
                 var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     var
                 )
+                is_comm = True
                 tmp = paddle.base.core.reshard(param, var_dist_attr)
                 if tmp._is_initialized():
                     param.get_tensor()._share_data_with(tmp.get_tensor())
@@ -380,12 +381,13 @@ class ProgramHelper:
                 dense_tensor = global_scope().var(param.name).get_tensor()
                 dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
-        paddle.disable_static()
-        barrier_tensor = paddle.full([1], 1, dtype="int32")
-        paddle._legacy_C_ops.barrier(
-            barrier_tensor, barrier_tensor, 'ring_id', 0
-        )
-        paddle.enable_static()
+        if is_comm:
+            paddle.disable_static()
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', 0
+            )
+            paddle.enable_static()
 
     @property
     def concrete_program(self):

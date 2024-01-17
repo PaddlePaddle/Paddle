@@ -754,7 +754,11 @@ class Engine:
 
         self._dp_world_sizes = getattr(self, "_dp_world_sizes", [])
         self._dp_ranks = getattr(self, "_dp_ranks", [])
-        if not self._dp_world_sizes and not self._dp_ranks:
+        if mode in ['eval', 'predice'] or (
+            not self._dp_world_sizes and not self._dp_ranks
+        ):
+            self._dp_world_sizes = []
+            self._dp_ranks = []
             for feed_var in feed_list:
                 dp_world_size, dp_rank = auto_utils.get_input_split_info(
                     self._cur_rank, feed_var, self._dist_contexts[mode]

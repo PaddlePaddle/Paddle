@@ -1086,7 +1086,12 @@ class DistModel:
         outputs of the model.
         """
         if not self._engine._has_prepared["predict"]:
-            self._engine._prepare_program(mode="predict", init_parameters=False)
+            self._engine.prepare(
+                self._engine._inputs_spec,
+                None,
+                mode="predict",
+                init_parameters=False,
+            )
 
         self._mode = "predict"
         self._engine.to_mode("predict")
