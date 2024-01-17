@@ -610,13 +610,8 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
 void IrPrinter::Visit(const _Dim_ *x) {
   str_ += "Dim(name: ";
   str_ += x->name;
-  if (x->IsDynamic()) {
-    str_ += ", sym_name: ";
-    str_ += x->GetSymbolName();
-  } else {
-    str_ += ", dim_size: ";
-    str_ += std::to_string(x->GetRealDimSize());
-  }
+  str_ += ", symbol: ";
+  str_ += x->ToString();
   str_ += ")";
 }
 

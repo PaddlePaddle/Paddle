@@ -486,9 +486,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     int tensor_dim_size = tensor_dim.size();
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
-      if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
+      if (tensor_dim[tensor_arg_dim_idx]->IsUniSymbolic()) {
         const std::string symbol_name =
-            tensor_dim[tensor_arg_dim_idx]->GetSymbolName();
+            tensor_dim[tensor_arg_dim_idx]->ToString();
         if (int_args_set.count(symbol_name) != 0) {
           continue;
         }

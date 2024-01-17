@@ -151,8 +151,6 @@ BuildBroadcastGroupProgramForLowering() {
   const std::vector<int64_t> x_shape = {1, 1, 1};
   const std::vector<int64_t> y_shape = {1, -1, 128};
 
-  auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx);
-
   auto x = builder
                .Build<paddle::dialect::DataOp>(
                    "input_x", x_shape, phi::DataType::FLOAT32, phi::GPUPlace())
