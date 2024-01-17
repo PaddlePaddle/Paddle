@@ -21,6 +21,7 @@
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
@@ -370,20 +371,21 @@ bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
 
 std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
                                             phi::Place place) {
-  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
+  pir::IrMapping ir_mapping;
+  std::unique_ptr<Program> new_program = program->Clone(ir_mapping);
+  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+  pm.AddPass(::pir::CreatePdOpToKernelPass(place));
 
   if (FLAGS_pir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
-    pm.Run(ir_res.get());
-
-    if (FLAGS_print_ir) {
-      std::cout << "IR After inplace -------------------" << std::endl;
-      std::cout << *ir_res << std::endl;
-    }
   }
 
-  return ir_res;
+  if (VLOG_IS_ON(6)) {
+    pm.EnableIRPrinting();
+    pm.EnablePrintStatistics();
+  }
+  pm.Run(new_program.get());
+  return new_program;
 }
 
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
@@ -546,6 +548,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
 
+<<<<<<< HEAD
   auto program = TranslateLegacyProgramToProgram(local_program);
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
@@ -565,6 +568,12 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   }
 
   return res;
+=======
+  paddle::translator::ProgramTranslator program_translator(&local_program,
+                                                           program.get());
+  program_translator.Translate();
+  return ApplyIrPass(program.get(), place);
+>>>>>>> c20a066523... [PIR]Migrate pd_op_to_kernel into PdOpToKernelPass
 }
 
 }  // namespace framework

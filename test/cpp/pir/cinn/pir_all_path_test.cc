@@ -70,12 +70,14 @@ static void RunAndCheckResult(::pir::Program* program,
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(program, place);
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(program);
 
   paddle::framework::Scope exe_scope;
 
   paddle::framework::InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+      place, {"out@fetch"}, program->block(), &exe_scope);
 
   executor.Run({}, true);
 

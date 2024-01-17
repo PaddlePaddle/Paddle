@@ -213,13 +213,13 @@ TEST(GroupOp, CINNLowering) {
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(program.get());
   paddle::framework::Scope exe_scope;
 
   paddle::framework::InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+      place, {"out@fetch"}, program->block(), &exe_scope);
 
   std::set<std::string> out_names;
   out_names.insert("out@fetch");

@@ -13,23 +13,15 @@
 // limitations under the License.
 #pragma once
 
+#include <memory>
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/dll_decl.h"
 
-namespace paddle {
-namespace dialect {
+namespace pir {
 
-pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
+class Pass;
 
-std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
-    pir::Program* prog, phi::Place place = phi::CPUPlace());
+IR_API std::unique_ptr<Pass> CreatePdOpToKernelPass(
+    const phi::Place& place = phi::CPUPlace());
 
-void ProcessBlock(
-    const phi::Place& place,
-    pir::Block* block,
-    pir::Block* new_block,
-    pir::IrContext* ctx,
-    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair);
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace pir

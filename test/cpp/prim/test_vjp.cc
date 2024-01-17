@@ -83,12 +83,14 @@ TEST(VJP, TanhBackwardTest) {
   builder->Build<pir::ShadowOutputOp>(
       GetOpFromProgram("pd_op.tanh_grad", program)->result(0), "tanh_grad_out");
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
+
   Scope scope;
 
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
   test_core.SetSkipGcVars({"tanh_out", "tanh_grad_out"});
   test_core.Run({});
   auto out_tensor = test_core.local_scope() == nullptr
@@ -140,12 +142,13 @@ TEST(VJP, Tanh_BackwardTest) {
   builder->Build<pir::ShadowOutputOp>(
       GetOpFromProgram("pd_op.tanh_grad", program)->result(0), tanh_grad_out);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
   Scope scope;
 
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
   test_core.SetSkipGcVars({tanh_out, tanh_grad_out});
   test_core.Run({});
   auto out_tensor =
@@ -194,13 +197,14 @@ TEST(VJP, MeanBackwardTest) {
   builder->Build<pir::ShadowOutputOp>(
       GetOpFromProgram("pd_op.mean_grad", program)->result(0), "mean_grad_out");
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
   test_core.SetSkipGcVars({"mean_out", "mean_grad_out"});
   test_core.Run({});
   auto out_tensor = test_core.local_scope() == nullptr
@@ -255,13 +259,14 @@ TEST(VJP, ConcatBackwardTest) {
   builder->Build<pir::ShadowOutputOp>(
       GetOpFromProgram("builtin.split", program)->result(1), "split_out_1");
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
   test_core.SetSkipGcVars({"concat_out", "split_out_0", "split_out_1"});
   test_core.Run({});
   auto out_tensor = test_core.local_scope() == nullptr
@@ -323,13 +328,14 @@ TEST(VJP, AddBackwardTest) {
   builder->Build<pir::ShadowOutputOp>(
       GetOpFromProgram("pd_op.add_grad", program)->result(1), "add_grad_out_1");
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
   test_core.SetSkipGcVars({"add_out", "add_grad_out_0", "add_grad_out_1"});
   test_core.Run({});
   auto out_tensor = test_core.local_scope() == nullptr
@@ -388,13 +394,14 @@ TEST(VJP, Add_BackwardTest) {
   builder->Build<pir::ShadowOutputOp>(
       GetOpFromProgram("pd_op.add_grad", program)->result(1), "add_grad_out_1");
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({"full_op1_out", "add_grad_out_0", "add_grad_out_1"});
   test_core.Run({});
@@ -465,12 +472,13 @@ TEST(VJP, SplitBackwardTest) {
   builder->Build<pir::ShadowOutputOp>(
       GetOpFromProgram("pd_op.concat", program)->result(0), concat_out);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
   Scope scope;
 
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({split_out1, split_out2, concat_out});
   test_core.Run({});

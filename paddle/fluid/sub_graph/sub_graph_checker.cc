@@ -31,6 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -94,8 +95,10 @@ std::vector<pir::Value> GetBlockInput(pir::Block* block) {
 }
 
 SubGraphChecker::SubGraphChecker(std::shared_ptr<pir::Program> phi_program,
-                                 std::shared_ptr<pir::Program> prim_program)
-    : phi_program_(phi_program), prim_program_(prim_program) {}
+                                 std::shared_ptr<pir::Program> prim_program) {
+  phi_program_info_.program = phi_program;
+  prim_program_info_.program = prim_program;
+}
 
 bool SubGraphChecker::CheckResult() {
   auto phi_res = RunPhiResult();
@@ -120,30 +123,34 @@ bool SubGraphChecker::CheckResult() {
 }
 
 std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
-  phi_input_values_ = GetBlockInput(phi_program_->block());
-  InitInputs(phi_input_values_, phi_program_->block(), &inner_scope_);
-  AppendFetchOp(phi_program_->block(), &phi_fetch_names_, kOutputPrefix);
+  pir::IrMapping ir_mapping;
+  phi_program_info_.kernel_program =
+      phi_program_info_.program->Clone(ir_mapping);
+  auto& phi_program = phi_program_info_.kernel_program;
+  phi_program_info_.input_values = GetBlockInput(phi_program->block());
+  InitInputs(
+      phi_program_info_.input_values, phi_program->block(), &inner_scope_);
+  AppendFetchOp(
+      phi_program->block(), &phi_program_info_.fetch_names, kOutputPrefix);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-  phi_kernel_program_ =
-      paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
+  ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(::pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(phi_program.get());
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
-  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+  for (size_t i = 0; i < phi_program_info_.input_values.size(); ++i) {
     std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
   std::vector<std::string> fetch_var_names;
-  for (auto name : phi_fetch_names_) {
+  for (auto name : phi_program_info_.fetch_names) {
     fetch_var_names.push_back(name + kFetchSuffix);
   }
-  paddle::framework::InterpreterCore exec(place,
-                                          fetch_var_names,
-                                          phi_kernel_program_->block(),
-                                          &inner_scope_,
-                                          exec_config);
+  paddle::framework::InterpreterCore exec(
+      place, fetch_var_names, phi_program->block(), &inner_scope_, exec_config);
 
   exec.Run({}, true);
 
@@ -156,43 +163,44 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
 }
 
 std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
-  cinn_input_values_ = GetBlockInput(prim_program_->block());
+  pir::IrMapping ir_mapping;
+  prim_program_info_.kernel_program =
+      prim_program_info_.program->Clone(ir_mapping);
+  auto& prim_program = prim_program_info_.kernel_program;
+  prim_program_info_.input_values = GetBlockInput(prim_program->block());
 
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-  AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, kOutputPrefix);
+  AppendFetchOp(
+      prim_program->block(), &prim_program_info_.fetch_names, kOutputPrefix);
 
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-  pm.Run(prim_program_.get());
-
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(prim_program_.get(), place);
+  pm.AddPass(::pir::CreatePdOpToKernelPass(place));
+  pm.Run(prim_program.get());
 
   std::vector<std::string> fetch_var_names;
-  for (auto name : cinn_fetch_names_) {
+  for (auto name : prim_program_info_.fetch_names) {
     fetch_var_names.push_back(name + kFetchSuffix);
   }
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
-  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+  for (size_t i = 0; i < prim_program_info_.input_values.size(); ++i) {
     std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
   paddle::framework::InterpreterCore executor(place,
                                               fetch_var_names,
-                                              kernel_program->block(),
+                                              prim_program->block(),
                                               &inner_scope_,
                                               exec_config);
 
@@ -218,27 +226,30 @@ std::vector<double> SubGraphChecker::CheckSpeed() {
 }
 
 double SubGraphChecker::RunPhiSpeed() {
-  RemoveFetchOp(phi_program_->block());
+  pir::IrMapping ir_mapping;
+  phi_program_info_.kernel_program =
+      phi_program_info_.program->Clone(ir_mapping);
+  auto& phi_program = phi_program_info_.kernel_program;
+  RemoveFetchOp(phi_program->block());
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-  phi_kernel_program_ =
-      paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
+
+  ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(::pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(phi_program.get());
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
-  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+  for (size_t i = 0; i < phi_program_info_.input_values.size(); ++i) {
     std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
   std::vector<std::string> fetch_var_names;
-  for (auto name : phi_fetch_names_) {
+  for (auto name : phi_program_info_.fetch_names) {
     fetch_var_names.push_back(name + kFetchSuffix);
   }
-  paddle::framework::InterpreterCore exec(place,
-                                          fetch_var_names,
-                                          phi_kernel_program_->block(),
-                                          &inner_scope_,
-                                          exec_config);
+  paddle::framework::InterpreterCore exec(
+      place, fetch_var_names, phi_program->block(), &inner_scope_, exec_config);
   // warm up
   for (size_t i = 0; i < 10; ++i) {
     exec.Run({}, true);
@@ -256,11 +267,16 @@ double SubGraphChecker::RunPhiSpeed() {
 }
 double SubGraphChecker::RunCinnSpeed() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-
-  AppendFetchOp(prim_program_->block(), &cinn_fetch_names_, kOutputPrefix);
+  pir::IrMapping ir_mapping;
+  prim_program_info_.kernel_program =
+      prim_program_info_.program->Clone(ir_mapping);
+  auto& prim_program = prim_program_info_.kernel_program;
+  AppendFetchOp(
+      prim_program->block(), &prim_program_info_.fetch_names, kOutputPrefix);
 
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
@@ -268,30 +284,24 @@ double SubGraphChecker::RunCinnSpeed() {
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
-  pm.Run(prim_program_.get());
-
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-  RemoveFetchOp(prim_program_->block());
-
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(prim_program_.get(), place);
+  pm.AddPass(::pir::CreatePdOpToKernelPass(place));
+  pm.Run(prim_program.get());
 
   std::vector<std::string> fetch_var_names;
-  for (auto name : cinn_fetch_names_) {
+  for (auto name : prim_program_info_.fetch_names) {
     fetch_var_names.push_back(name + kFetchSuffix);
   }
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
-  for (size_t i = 0; i < phi_input_values_.size(); ++i) {
+  for (size_t i = 0; i < prim_program_info_.input_values.size(); ++i) {
     std::string name = kInputPrefix + std::to_string(i);
     exec_config.skip_gc_vars.insert(name);
   }
 
   paddle::framework::InterpreterCore executor(place,
                                               fetch_var_names,
-                                              kernel_program->block(),
+                                              prim_program->block(),
                                               &inner_scope_,
                                               exec_config);
 
@@ -350,20 +360,6 @@ void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
     auto param = scope->Var(name);
     out_tensor = param->GetMutable<phi::DenseTensor>();
   }
-
-  if (input_values.size() > 0) {
-    paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-    auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
-    paddle::framework::interpreter::ExecutionConfig exec_config;
-    exec_config.create_local_scope = false;
-    paddle::framework::InterpreterCore executor(
-        place, {}, kernel_program->block(), scope, exec_config);
-
-    executor.Run({}, true);
-  }
 }
 void SubGraphChecker::AppendGetParameter(
     const std::vector<pir::Value>& input_values, pir::Block* block) {
@@ -389,6 +385,7 @@ void SubGraphChecker::AppendGetParameter(
 void SubGraphChecker::AppendFetchOp(pir::Block* block,
                                     std::vector<std::string>* fetch_names,
                                     const std::string& prefix) {
+  fetch_names->clear();
   for (auto& op : *block) {
     if (op.isa<paddle::dialect::FetchOp>()) {
       fetch_names->push_back(

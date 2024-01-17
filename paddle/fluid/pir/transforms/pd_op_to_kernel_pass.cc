@@ -43,6 +43,7 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass.h"
 #include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -52,12 +53,18 @@
 #endif
 
 PHI_DECLARE_bool(print_ir);
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
-pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
-                                    pir::Type op_type,
-                                    phi::Place place) {
+static void ProcessBlock(const phi::Place&,
+                         pir::Block*,
+                         pir::Block*,
+                         pir::IrContext*,
+                         std::unordered_map<pir::Operation*, pir::Operation*>*,
+                         std::unordered_map<pir::Value, pir::Value>*);
+
+static pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
+                                           pir::Type op_type,
+                                           phi::Place place) {
   if (op_type.isa<DenseTensorType>()) {
     return AllocatedDenseTensorType::get(
         ctx, place, op_type.dyn_cast<DenseTensorType>());
@@ -2377,37 +2384,69 @@ void ProcessBlock(
         place, op_item, op, new_block, ctx, map_op_pair, map_value_pair);
   }
 }
+}  // namespace paddle::dialect
 
-std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
-                                                    phi::Place place) {
-  if (FLAGS_print_ir) {
-    std::cout << "IR before lowering = " << *prog << std::endl;
+class PdOpToKernelPass : public pir::Pass {
+ public:
+  explicit PdOpToKernelPass(const phi::Place& place)
+      : pir::Pass("pd_op_to_kernel", 0) {
+    place_ = place;
   }
 
-  auto program = std::make_unique<pir::Program>(pir::IrContext::Instance());
-
-  auto block = prog->block();
-
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<KernelDialect>();
-  ctx->GetOrRegisterDialect<CustomKernelDialect>();
+  bool Initialize(pir::IrContext* context) {
+    context->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::CustomKernelDialect>();
 
 #ifdef PADDLE_WITH_DNNL
-  ctx->GetOrRegisterDialect<OneDNNOperatorDialect>();
-  ctx->GetOrRegisterDialect<OneDNNKernelDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::OneDNNKernelDialect>();
 #endif
-  std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
-  std::unordered_map<pir::Value, pir::Value> map_value_pair;
-
-  ProcessBlock(
-      place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
-
-  if (FLAGS_print_ir) {
-    std::cout << "IR after lowering = " << *program << std::endl;
   }
 
-  return program;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+
+  void Run(pir::Operation* op) override {
+    auto module_op = op->dyn_cast<pir::ModuleOp>();
+    IR_ENFORCE(module_op,
+               "PdOpToKernelPass should run on module op, but got ",
+               op->name());
+    auto& source_block = module_op.block();
+    // NOTE(Aurelius84): ModuleOp shall only containly one region and one block
+    // by design. However we need create a target block to hold all Kernel
+    // Dialect ops, so we create a new block temporarily and will delete source
+    // block to follow the rule.
+    module_op->region(0).emplace_back();
+    auto& target_block = module_op->region(0).back();
+
+    pir::IrContext* ctx = pir::IrContext::Instance();
+    std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
+    std::unordered_map<pir::Value, pir::Value> map_value_pair;
+
+    paddle::dialect::ProcessBlock(place_,
+                                  &source_block,
+                                  &target_block,
+                                  ctx,
+                                  &map_op_pair,
+                                  &map_value_pair);
+
+    // Delete source block
+    module_op->region(0).erase(module_op->region(0).begin());
+    IR_ENFORCE(module_op->num_regions() == 1U,
+               "Require module_op->num_regions() == 1, but got ",
+               module_op->num_regions());
+  }
+
+ private:
+  phi::Place place_;
+};
+
+namespace pir {
+
+std::unique_ptr<Pass> CreatePdOpToKernelPass(const phi::Place& place) {
+  return std::make_unique<PdOpToKernelPass>(place);
 }
-}  // namespace dialect
-}  // namespace paddle
+
+}  // namespace pir

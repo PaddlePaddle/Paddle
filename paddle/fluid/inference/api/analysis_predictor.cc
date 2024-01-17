@@ -835,10 +835,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.Run(pir_program_.get());
       }
 
-      pir_program_ = std::move(
-          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
-
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+      lowered_pm.AddPass(::pir::CreatePdOpToKernelPass(place_));
       if (FLAGS_pir_apply_inplace_pass) {
         lowered_pm.AddPass(::pir::CreateInplacePass());
       }
