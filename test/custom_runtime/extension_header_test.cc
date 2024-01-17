@@ -12,25 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
+#include "glog/logging.h"
+#include "gtest/gtest.h"
 
-namespace paddle {
-namespace drr {
+// Note(qili93): ensure compile with one header file 'extension.h' only,
+// !!! do not fix this ut by adding other header files (PR#60842) !!!
+#include "paddle/phi/extension.h"
 
-bool ShapeInterface::operator==(const ShapeInterface& other) const {
-  return *shape_ == *other.shape_;
+TEST(CustomDevce, extension_header) {
+  VLOG(1) << "check extension header support compile only";
 }
-
-int ShapeInterface::size() const { return shape_->size(); }
-
-int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
-
-bool DtypeInterface::operator==(const DtypeInterface& other) const {
-  return *dtype_ == *other.dtype_;
-}
-
-IrDtype DtypeInterface::get() const { return *(this->dtype_); }
-
-}  // namespace drr
-}  // namespace paddle
