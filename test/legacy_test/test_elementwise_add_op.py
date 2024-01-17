@@ -25,6 +25,7 @@ import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseAddOp(OpTest):
@@ -692,6 +693,7 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
         self.x_numpy = np.random.rand(3, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
+    @test_with_pir_api
     def test_broadcast_errors(self):
         paddle.disable_static()
         self.init_data()
