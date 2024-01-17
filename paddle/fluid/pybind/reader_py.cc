@@ -32,7 +32,6 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 PHI_DECLARE_bool(reader_queue_speed_test_mode);

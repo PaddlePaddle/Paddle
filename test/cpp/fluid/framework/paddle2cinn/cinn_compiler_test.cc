@@ -37,7 +37,6 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/utils/flags.h"
 
 PHI_DECLARE_string(allow_cinn_ops);
 PHI_DECLARE_string(deny_cinn_ops);

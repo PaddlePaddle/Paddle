@@ -52,7 +52,6 @@
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
-#include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
 PHI_DECLARE_bool(enable_cinn_auto_tune);

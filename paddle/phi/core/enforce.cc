@@ -22,9 +22,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
-#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/external_error.pb.h"

@@ -24,7 +24,6 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/kernels/funcs/jit/kernel_base.h"
-#include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(dump_jitcode);
 

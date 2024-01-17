@@ -15,8 +15,8 @@
 #include "paddle/phi/backends/device_base.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_double(fraction_of_gpu_memory_to_use);
 PD_DECLARE_uint64(initial_gpu_memory_in_mb);

@@ -15,8 +15,8 @@
 #include "paddle/phi/core/kernel_factory.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/common/data_type.h"
@@ -25,7 +25,6 @@
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/phi/backends/custom/custom_device_op_list.h"
 #endif
-#include "paddle/common/flags.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 

@@ -15,7 +15,7 @@
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 
 #include <gtest/gtest.h>
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 PD_DEFINE_string(model_dir, "<NOTEXIST>", "model directory path");
 

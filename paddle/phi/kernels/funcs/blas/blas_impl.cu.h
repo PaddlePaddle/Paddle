@@ -18,9 +18,8 @@
 #include <thrust/device_vector.h>
 #endif
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
-
 #include "paddle/common/flags.h"
+
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

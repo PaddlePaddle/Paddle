@@ -22,7 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_CUDNN
 PD_DEFINE_bool(

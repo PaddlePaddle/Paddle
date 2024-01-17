@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/common/errors.h"
 #include "paddle/common/macros.h"

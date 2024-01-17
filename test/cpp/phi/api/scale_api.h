@@ -25,7 +25,6 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/scale_kernel.h"
-#include "paddle/utils/flags.h"
 
 PHI_DECLARE_int32(low_precision_op_list);
 namespace paddle {

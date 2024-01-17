@@ -37,8 +37,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/utils/flags.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {

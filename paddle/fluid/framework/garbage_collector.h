@@ -20,9 +20,9 @@
 #include <mutex>  // NOLINT
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace framework {

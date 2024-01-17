@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/common/memory_utils.h"
 

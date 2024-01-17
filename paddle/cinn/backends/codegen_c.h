@@ -25,7 +25,7 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 namespace cinn {
 

@@ -42,7 +42,6 @@ limitations under the License. */
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/utils/flags.h"
 
 namespace phi {
 class DenseTensor;

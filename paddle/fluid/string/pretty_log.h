@@ -18,5 +18,5 @@
 #include <string>
 #include <utility>
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/utils/string/pretty_log.h"

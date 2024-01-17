@@ -20,7 +20,7 @@
 #include <iostream>
 
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 PD_DECLARE_bool(verbose_function_register);
 

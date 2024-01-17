@@ -16,12 +16,12 @@
 #include <random>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_int32(burning, 10, "Burning times.");
 PD_DEFINE_int32(repeat, 3000, "Repeat times.");

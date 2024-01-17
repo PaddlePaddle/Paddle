@@ -14,6 +14,7 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
@@ -22,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace platform {
