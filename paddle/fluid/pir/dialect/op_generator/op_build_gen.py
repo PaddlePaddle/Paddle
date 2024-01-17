@@ -201,7 +201,7 @@ def GenBuildInputs(op_input_name_list, op_mutable_attribute_name_list):
     BUILD_INPUT_TEMPLATE = """  argument_inputs = {{{inputs_args}}};
   argument.AddInputs(argument_inputs);
 """
-    build_input_str = '  VLOG(4) << "Builder construction inputs";\n  std::vector<pir::Value> argument_inputs = {{}};\n'
+    build_input_str = '  VLOG(4) << "Builder construction inputs";\n  std::vector<pir::Value> argument_inputs = {};\n'
     input_name_list = op_input_name_list + op_mutable_attribute_name_list
     if len(input_name_list) > 0:
         inputs_args_str = ""
@@ -229,7 +229,7 @@ def GenBuildAttributes(
   pir::Attribute attr_{attr_name} = pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_{attr_name});
 """
     attr_str = '  VLOG(4) << "Builder construction attributes";\n'
-    attr_str += '  pir::AttributeMap argument_attributes = {{}};\n'
+    attr_str += '  pir::AttributeMap argument_attributes = {};\n'
     array_attr_type = "pir::ArrayAttribute<"
     for idx in range(len(op_non_mutable_attribute_name_list)):
         if array_attr_type in op_non_mutable_attribute_type_list[idx]:
