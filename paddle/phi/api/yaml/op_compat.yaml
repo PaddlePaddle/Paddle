@@ -3158,6 +3158,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : tdm_sampler
+  inputs:
+    {x : X, travel : Travel, layer : Layer}
+  outputs:
+    {out : Out, labels : Labels, mask : Mask}
+
 - op : thresholded_relu
   inputs :
     x : X
@@ -3392,6 +3398,12 @@
     out: Out
 
 - op: c_allreduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_prod
   inputs :
     x : X
   outputs :

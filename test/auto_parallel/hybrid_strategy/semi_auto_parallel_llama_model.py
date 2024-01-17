@@ -755,10 +755,6 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         )
 
     def forward(self, prediction_scores, masked_lm_labels):
-        masked_lm_labels = dist.shard_tensor(
-            masked_lm_labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
-        )
-
         # Force Replicated to match dy & st
         prediction_scores1 = dist.reshard(
             prediction_scores,
@@ -817,10 +813,6 @@ class LlamaForCausalLMAuto(nn.Layer):
         output_hidden_states=None,
     ):
         input_ids.stop_gradient = True
-
-        input_ids = dist.shard_tensor(
-            input_ids, get_mesh(), [dist.Shard(0), dist.Replicate()]
-        )
 
         output_attentions = (
             output_attentions if output_attentions is not None else False
