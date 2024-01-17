@@ -49,7 +49,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
   void VerifySig();
   void VerifyRegion();
 
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -85,7 +85,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
   void VerifyRegion();
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -94,7 +94,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs,
       const std::vector<std::vector<pir::Value>> &outputs,

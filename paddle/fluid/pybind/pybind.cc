@@ -720,7 +720,7 @@ void BindVjp(pybind11::module *m) {
             vjp_interface,
             phi::errors::InvalidArgument(
                 "The vjp function is not registered in %s op ", fwd_op.name()));
-        std::vector<std::vector<pir::OpResult>> vjp_res = vjp_interface.Vjp(
+        std::vector<std::vector<pir::Value>> vjp_res = vjp_interface.Vjp(
             &fwd_op, inputs, outputs, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
