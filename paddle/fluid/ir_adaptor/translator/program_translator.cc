@@ -122,17 +122,12 @@ TranslationContext* TranslationContext::CreateInnerContext() {
 }
 
 static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
-  std::unordered_set<std::string> all_var_names;
-  for (auto& var : block.AllVars()) {
-    all_var_names.insert(var->Name());
-  }
   std::vector<std::string> external_inputs;
   std::unordered_set<std::string> inner_outputs;
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
-        if (all_var_names.count(var_name) == 0) continue;
         if (inner_outputs.count(var_name) == 0) {
           external_inputs.push_back(var_name);
         }
@@ -146,6 +141,19 @@ static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
     }
   }
   return external_inputs;
+}
+
+static std::vector<std::string> GetInnerOutputs(const BlockDesc& block) {
+  std::vector<std::string> inner_outputs;
+  for (auto op_desc : block.AllOps()) {
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_outputs.push_back(var_name);
+      }
+    }
+  }
+  return inner_outputs;
 }
 
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
@@ -277,18 +285,19 @@ void ProgramTranslator::PreAnalysisForCond() {
     const BlockDesc& cond_grad_block =
         legacy_program_->Block(cond_grad_op->GetBlockAttrId("sub_block"));
 
-    std::unordered_set<std::string> cond_var_names;
-    for (auto& var : cond_block.AllVars()) {
-      cond_var_names.insert(var->Name());
-    }
+    std::vector<std::string> cond_inner_outputs = GetInnerOutputs(cond_block);
     auto cond_grad_external_inputs = GetExternalInputs(cond_grad_block);
+
+    std::vector<std::string> push_pop_vars;
     for (auto& var : cond_grad_external_inputs) {
-      IR_ENFORCE(cond_var_names.count(var) != 0,
-                 "%s in cond_grad can not found in cond block",
-                 var);
+      if (std::find(cond_inner_outputs.begin(),
+                    cond_inner_outputs.end(),
+                    var) != cond_inner_outputs.end()) {
+        push_pop_vars.emplace_back(var);
+      }
     }
-    push_pop_var_names_[cond_op] = cond_grad_external_inputs;
-    push_pop_var_names_[cond_grad_op] = cond_grad_external_inputs;
+    push_pop_var_names_[cond_op] = push_pop_vars;
+    push_pop_var_names_[cond_grad_op] = push_pop_vars;
   }
 }
 
@@ -563,8 +572,13 @@ inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
 }
 
 void ProgramTranslator::InsertDataOpForSingleBlock(const BlockDesc& block) {
+  std::unordered_set<std::string> all_var_names;
+  for (auto& var : block.AllVars()) {
+    all_var_names.insert(var->Name());
+  }
   auto external_inputs = GetExternalInputs(block);
   for (auto& var_name : external_inputs) {
+    if (all_var_names.count(var_name) == 0) continue;
     if (param_map_.count(var_name) != 0) continue;
     if (no_cast_var_names.count(var_name) != 0) continue;
     CreateUndefinedVariable(var_name, block);
