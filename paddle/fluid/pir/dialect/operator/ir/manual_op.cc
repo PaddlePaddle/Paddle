@@ -4411,7 +4411,7 @@ const char *IncrementOp::attributes_name[1] = {"value"};
 OpInfoTuple IncrementOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false, false)};
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       paddle::dialect::OpAttributeInfo("value", "pir::FloatAttribute", "")};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
