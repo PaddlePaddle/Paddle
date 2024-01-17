@@ -308,7 +308,8 @@ void UpdateGroupShapeExprs(
         origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
       new_group->value_to_shape_or_data_exprs[new_val] =
-          symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(
+          symbol::ShapeOrDataDimExprs(
+              std::vector<symbol::DimExpr>{shape_dim_expr.size()},
               shape_dim_expr);
     } else {
       new_group->value_to_shape_or_data_exprs[new_val] =
