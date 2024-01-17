@@ -16,7 +16,6 @@
 
 
 from paddle import _C_ops, tensor
-from paddle.pir.core import vartype_to_datatype
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
@@ -26,7 +25,6 @@ from ...framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_or_pir_mode,
-    in_pir_mode,
 )
 
 __all__ = []
@@ -107,8 +105,6 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if maxlen is None:
             maxlen = -1
-        if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
-            dtype = vartype_to_datatype[dtype]
         out = _C_ops.sequence_mask(x, maxlen, dtype)
         out.stop_gradient = True
         return out

@@ -32,12 +32,13 @@ from paddle.base.framework import (
     canonicalize_attrs,
     in_dygraph_mode,
     in_pir_mode,
+    paddle_type_to_proto_type,
     use_pir_api,
 )
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
-from paddle.pir.core import datatype_to_vartype, vartype_to_datatype
+from paddle.pir.core import vartype_to_datatype
 
 
 def flatten(nest_list):
@@ -156,7 +157,7 @@ class OpTestUtils:
                 isinstance(dtype, paddle.pir.core.DataType)
                 and target_dtype is core.VarDesc.VarType
             ):
-                return datatype_to_vartype[dtype]
+                return paddle_type_to_proto_type[dtype]
             return dtype
 
         # NOTE(xiongkun): the logic of constructing parameters:
