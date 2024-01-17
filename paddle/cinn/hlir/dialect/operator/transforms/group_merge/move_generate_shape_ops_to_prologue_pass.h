@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,15 @@
 
 #pragma once
 
-#include "paddle/pir/core/operation.h"
+#include <memory>
+#include "paddle/pir/pass/pass.h"
 
-namespace paddle {
-namespace drr {
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-class IrOperation {
- public:
-  explicit IrOperation(pir::Operation* op) : op_(op) {}
+std::unique_ptr<::pir::Pass> CreateMoveGenerateShapeOpsToProloguePass();
 
-  pir::Operation* get() const { return op_; }
-
- private:
-  pir::Operation* op_;
-};
-
-}  // namespace drr
-}  // namespace paddle
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

@@ -46,13 +46,11 @@ bool SameOperandsAndResultShape(
 
 bool InferSymbolicShapeElementWiseBinary(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::Value operand_source_0 = op->operand_source(0);
   std::vector<symbol::DimExpr> shape_0{
-      shape_analysis->GetShapeOrDataForValue(operand_source_0).shape()};
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape()};
 
-  pir::Value operand_source_1 = op->operand_source(1);
   std::vector<symbol::DimExpr> shape_1{
-      shape_analysis->GetShapeOrDataForValue(operand_source_1).shape()};
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1)).shape()};
 
   if (shape_0.size() > shape_1.size()) {
     for (size_t i = 0; i < shape_0.size() - shape_1.size(); i++) {

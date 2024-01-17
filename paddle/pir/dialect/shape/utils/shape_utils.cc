@@ -148,16 +148,36 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   return it->second;
 }
 
+bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
+  return value_to_shape_or_data_.count(val) > 0;
+}
+
+static std::string GetValueId(const Value& val) {
+  auto op_id = val.defining_op()->id();
+  auto val_idx = val.dyn_cast<OpResult>().index();
+
+  return val.defining_op()->name() + "_" + std::to_string(op_id) + "_rst_" +
+         std::to_string(val_idx);
+}
+
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
-  // TODO(lanxianghit): check this when all the Ops support InferSymbolicShape
-  // CHECK(value_to_shape_or_data_.find(val) != value_to_shape_or_data_.end());
   return value_to_shape_or_data_[val];
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   value_to_shape_or_data_[val] = shape_or_data;
+}
+
+void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
+  LOG(INFO) << "shape analysis : @" << this
+            << " value_to_shape_or_data_ size : "
+            << value_to_shape_or_data_.size();
+  LOG(INFO) << "----------- ShapeOrData for Values ------------";
+  for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
+    LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
+  }
 }
 
 }  // namespace pir

@@ -20,42 +20,29 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
-#include "paddle/fluid/pir/drr/ir_operation.h"
-#include "paddle/fluid/pir/drr/ir_operation_factory.h"
-#include "paddle/fluid/pir/drr/match_context_impl.h"
-#include "paddle/fluid/pir/drr/pattern_graph.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/type_name.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
+
+namespace pir {
+class IrContext;
+}
 
 namespace paddle {
 namespace drr {
+
+class OpCall;
+class Constraint;
+class DrrPatternContext;
+class MatchContextImpl;
+class SourcePatternGraph;
+class ResultPatternGraph;
 
 class DrrRewritePattern : public pir::RewritePattern {
  public:
   explicit DrrRewritePattern(const std::string& pattern_name,
                              const DrrPatternContext& drr_context,
                              pir::IrContext* context,
-                             pir::PatternBenefit benefit = 1)
-      : pir::RewritePattern(
-            drr_context.source_pattern_graph()->AnchorNode()->name(),
-            benefit,
-            context,
-            {}),
-        pattern_name_(pattern_name),
-        source_pattern_graph_(drr_context.source_pattern_graph()),
-        constraints_(drr_context.constraints()),
-        result_pattern_graph_(drr_context.result_pattern_graph()) {
-    PADDLE_ENFORCE_NE(
-        source_pattern_graph_->owned_op_call().empty(),
-        true,
-        phi::errors::InvalidArgument("Source pattern graph is empty."
-                                     "Suggested fix: Please check the DRR "
-                                     "source pattern definition code."));
-  }
+                             pir::PatternBenefit benefit);
 
   bool MatchAndRewrite(
       pir::Operation* op,
