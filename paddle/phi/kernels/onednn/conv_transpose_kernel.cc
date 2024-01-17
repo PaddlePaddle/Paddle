@@ -24,6 +24,14 @@
 
 namespace phi {
 
+struct DeconvolutionCache {
+  dnnl::deconvolution_forward deconvolution_forward;
+  dnnl::memory src_mem;
+  dnnl::memory weights_mem;
+  dnnl::memory bias_mem;
+  dnnl::memory dst_mem;
+};
+
 inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
                                        const int groups) {
   auto weights_tz = common::vectorize(filter->dims());
@@ -338,46 +346,100 @@ void Execute(const OneDNNContext& dev_ctx,
   const auto* bias =
       dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
 
-  ConvTransposeOneDNNHandlerT<T, float, T_out> handler(dev_ctx,
-                                                       x,
-                                                       filter,
-                                                       bias,
-                                                       strides,
-                                                       paddings,
-                                                       padding_algorithm,
-                                                       groups,
-                                                       dilations,
-                                                       out);
+  std::string cache_key = funcs::CreateKey(dev_ctx,
+                                           dev_ctx.GetInputsName("Input")[0],
+                                           dev_ctx.GetInputsName("Filter")[0],
+                                           common::vectorize(x->dims()),
+                                           common::vectorize(filter->dims()));
 
-  auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
-  // Caching Key for weights is needed
-  std::string key =
-      funcs::CreateKey(dev_ctx,
-                       dev_ctx.GetInputsName("Input")[0],
-                       dev_ctx.GetInputsName("Filter")[0],
-                       (bias ? dev_ctx.GetInputsName("Bias")[0] : ""));
-  key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
-  auto weights_memory_p =
-      handler.AcquireWeightsMemoryWithReorder(dev_ctx, key, filter, groups);
+  auto deconvolution_cache =
+      std::static_pointer_cast<DeconvolutionCache>(dev_ctx.GetBlob(cache_key));
+  if (deconvolution_cache) {
+    // cout << "============cahce===============" << endl;
+    auto conv_p = std::make_shared<dnnl::deconvolution_forward>(
+        deconvolution_cache->deconvolution_forward);
 
-  std::shared_ptr<dnnl::memory> dst_memory_p =
-      handler.template AcquireDstMemory<T_out>(out);
-  auto conv_p = handler.AcquireForwardPrimitive();
+    auto src_memory_p =
+        std::make_shared<dnnl::memory>(deconvolution_cache->src_mem);
 
-  std::unordered_map<int, dnnl::memory> args = {
-      {DNNL_ARG_SRC, *src_memory_p},
-      {DNNL_ARG_WEIGHTS, *weights_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
+    auto weights_memory_p =
+        std::make_shared<dnnl::memory>(deconvolution_cache->weights_mem);
 
-  if (bias) {
-    auto bias_memory_p =
-        handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
-    args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+    auto dst_memory_p =
+        std::make_shared<dnnl::memory>(deconvolution_cache->dst_mem);
+    auto out_ptr =
+        dev_ctx.template Alloc<T_out>(out, dst_memory_p->get_desc().get_size());
+
+    dst_memory_p->set_data_handle(out_ptr);
+
+    std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC, *src_memory_p},
+        {DNNL_ARG_WEIGHTS, *weights_memory_p},
+        {DNNL_ARG_DST, *dst_memory_p}};
+
+    if (bias) {
+      auto bias_memory_p =
+          std::make_shared<dnnl::memory>(deconvolution_cache->bias_mem);
+      args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+    }
+    auto& astream = OneDNNContext::tls().get_stream();
+    conv_p->execute(astream, args);
+    astream.wait();
+    out->set_mem_desc(dst_memory_p->get_desc());
+  } else {
+    ConvTransposeOneDNNHandlerT<T, float, T_out> handler(dev_ctx,
+                                                         x,
+                                                         filter,
+                                                         bias,
+                                                         strides,
+                                                         paddings,
+                                                         padding_algorithm,
+                                                         groups,
+                                                         dilations,
+                                                         out);
+
+    auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
+    // Caching Key for weights is needed
+    std::string key =
+        funcs::CreateKey(dev_ctx,
+                         dev_ctx.GetInputsName("Input")[0],
+                         dev_ctx.GetInputsName("Filter")[0],
+                         (bias ? dev_ctx.GetInputsName("Bias")[0] : ""));
+    key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+    auto weights_memory_p =
+        handler.AcquireWeightsMemoryWithReorder(dev_ctx, key, filter, groups);
+
+    std::shared_ptr<dnnl::memory> dst_memory_p =
+        handler.template AcquireDstMemory<T_out>(out);
+    auto conv_p = handler.AcquireForwardPrimitive();
+
+    std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC, *src_memory_p},
+        {DNNL_ARG_WEIGHTS, *weights_memory_p},
+        {DNNL_ARG_DST, *dst_memory_p}};
+
+    std::shared_ptr<dnnl::memory> bias_memory_p;
+
+    if (bias) {
+      bias_memory_p = handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
+      args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+    }
+    auto& astream = OneDNNContext::tls().get_stream();
+    conv_p->execute(astream, args);
+    astream.wait();
+    out->set_mem_desc(dst_memory_p->get_desc());
+
+    auto cache = std::make_shared<DeconvolutionCache>();
+    cache->deconvolution_forward = *conv_p;
+    cache->src_mem = *src_memory_p;
+    cache->weights_mem = *weights_memory_p;
+    cache->dst_mem = *dst_memory_p;
+    if (bias) {
+      cache->bias_mem = *bias_memory_p;
+    }
+
+    dev_ctx.SetBlob(cache_key, cache);
   }
-  auto& astream = OneDNNContext::tls().get_stream();
-  conv_p->execute(astream, args);
-  astream.wait();
-  out->set_mem_desc(dst_memory_p->get_desc());
 }
 
 template <typename T, typename Context>
