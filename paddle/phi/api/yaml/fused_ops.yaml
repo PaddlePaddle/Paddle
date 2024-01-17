@@ -281,6 +281,7 @@
     func : fused_rms_norm
     data_type : x
   intermediate : invvar
+  backward: fused_rms_norm_grad
   support_dygraph_mode : true
 
 - op : fused_rotary_position_embedding

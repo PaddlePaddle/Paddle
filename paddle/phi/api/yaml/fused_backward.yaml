@@ -15,6 +15,18 @@
     func : fused_bias_dropout_residual_layer_norm_grad
     data_type : y_grad
 
+- backward_op : fused_rms_norm_grad
+  forward: fused_rms_norm (Tensor x, Tensor scale, float epsilon = 1e-5) -> Tensor(out), Tensor(invvar)
+  args : (Tensor x, Tensor scale, Tensor invvar, Tensor out_grad, float epsilon = 1e-5)
+  output : Tensor(x_grad), Tensor(scale_grad)
+  infer_meta :
+    func : FusedRmsNormGradInferMeta
+    param : [x, scale]
+  kernel :
+    func : fused_rms_norm_grad
+    data_type : x    
+  support_dygraph_mode : true  
+
 - backward_op : fused_dot_product_attention_grad
   forward : fused_dot_product_attention (Tensor q, Tensor k, Tensor v, Tensor mask, float scaling_factor, float dropout_probability, bool is_training, bool is_causal_masking) -> Tensor(out), Tensor(softmax_out), Tensor(rng_state)
   args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_out, Tensor rng_state, Tensor mask, Tensor out_grad, float scaling_factor, float dropout_probability, bool is_causal_masking = false)
