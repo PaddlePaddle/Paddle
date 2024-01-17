@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_legacy_and_pt_and_pir,
-    test_sot_only,
 )
 
 import paddle
@@ -411,7 +410,6 @@ class TestTransformForLoop(Dy2StTestBase):
             ret = self.dyfunc(self.len)
         return ret.numpy()
 
-    @test_sot_only
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), rtol=1e-05
