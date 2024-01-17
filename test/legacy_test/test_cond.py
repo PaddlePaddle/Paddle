@@ -711,6 +711,8 @@ class TestCondBackward(unittest.TestCase):
                     name='image', shape=[-1, 9], dtype='float32'
                 )
                 img.stop_gradient = False
+                if paddle.framework.in_pir_mode():
+                    img.persistable = True
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
                 )
@@ -800,6 +802,8 @@ class TestCondBackward(unittest.TestCase):
                     name='image', shape=[16, 784], dtype='float32'
                 )
                 img.stop_gradient = False
+                if paddle.framework.in_pir_mode():
+                    img.persistable = True
                 label = paddle.static.data(
                     name='label', shape=[16, 1], dtype='int64'
                 )
