@@ -30,5 +30,5 @@ vjp_interface_black_list = [
     'fused_bias_dropout_residual_layer_norm',
     'fused_dot_product_attention',
     'max_pool2d_v2',
-    'fused_rms_norm'
+    'fused_rms_norm',
 ]

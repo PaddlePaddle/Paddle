@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.base import core
 from paddle import _C_ops
+from paddle.base import core
+
 
 def composite_rms_norm(x, scale, epsilon=1e-5):
     hidden_states = x.astype("float32")
@@ -28,12 +29,12 @@ def composite_rms_norm(x, scale, epsilon=1e-5):
         hidden_states = paddle.cast(hidden_states, scale.dtype)
     return hidden_states * scale
 
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
     "core is not compiled with CUDA ",
 )
 class TestFusedRmsNorm(unittest.TestCase):
-
     def setUp(self):
         pass
 
@@ -50,25 +51,27 @@ class TestFusedRmsNorm(unittest.TestCase):
         out_g = paddle.randn([2, 256], dtype)
         out = func(x, scale, 1e-5)
         paddle.autograd.backward([out], [out_g], True)
-        return out, (x.grad,scale.grad) 
+        return out, (x.grad, scale.grad)
 
     def test_fused_rms_norm(self):
         dtypes = [paddle.float32]
         if paddle.amp.is_bfloat16_supported('gpu'):
             dtypes.append(paddle.bfloat16)
         if paddle.amp.is_float16_supported('gpu'):
-            dtypes.append(paddle.float16)    
+            dtypes.append(paddle.float16)
         for dtype in dtypes:
             raw_out, raw_grads = self.get_forward_backward(
                 composite_rms_norm, seed=2024, dtype=dtype
             )
             fused_out, fused_grads = self.get_forward_backward(
-                _C_ops.fused_rms_norm, seed=2024,  dtype=dtype
+                _C_ops.fused_rms_norm, seed=2024, dtype=dtype
             )
             # forward rtol
             rtol = 1e-5 if dtype == paddle.float32 else 1e-3
             np.testing.assert_allclose(
-                raw_out.astype(paddle.float32).numpy(), fused_out.astype(paddle.float32).numpy(), rtol=rtol
+                raw_out.astype(paddle.float32).numpy(),
+                fused_out.astype(paddle.float32).numpy(),
+                rtol=rtol,
             )
             # backward rtol, only check float32 grad
             rtol = 1e-3
@@ -76,12 +79,15 @@ class TestFusedRmsNorm(unittest.TestCase):
                 raw_x_grad, raw_scale_grad = raw_grads
                 fused_x_grad, fused_scale_grad = fused_grads
                 np.testing.assert_allclose(
-                    raw_x_grad.astype(paddle.float32).numpy(), fused_x_grad.astype(paddle.float32).numpy(), rtol=rtol
+                    raw_x_grad.astype(paddle.float32).numpy(),
+                    fused_x_grad.astype(paddle.float32).numpy(),
+                    rtol=rtol,
                 )
                 np.testing.assert_allclose(
-                    raw_scale_grad.astype(paddle.float32).numpy(), fused_scale_grad.astype(paddle.float32).numpy(), rtol=rtol
+                    raw_scale_grad.astype(paddle.float32).numpy(),
+                    fused_scale_grad.astype(paddle.float32).numpy(),
+                    rtol=rtol,
                 )
-
 
 
 if __name__ == '__main__':
