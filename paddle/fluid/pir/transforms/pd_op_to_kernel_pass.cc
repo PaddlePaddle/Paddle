@@ -1138,7 +1138,8 @@ void HandleForIfOp(
                &true_block,
                ctx,
                map_op_pair,
-               map_value_pair);
+               map_value_pair,
+               true);
 
   // process false block
   auto& false_block = new_ifop.false_block();
@@ -1147,7 +1148,8 @@ void HandleForIfOp(
                &false_block,
                ctx,
                map_op_pair,
-               map_value_pair);
+               map_value_pair,
+               true);
 
   // update map
   (*map_op_pair)[op_item] = new_ifop;
@@ -1263,7 +1265,8 @@ void HandleForSpecialOp(
     pir::Block* block,
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair,
+    bool for_if_block) {
   if (op_item->isa<IfOp>()) {
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
@@ -1371,9 +1374,11 @@ void HandleForSpecialOp(
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
 
-        if (op_item->isa<::pir::YieldOp>() &&
-            ParsePhiPlace(new_in.type()) != place &&
-            !new_in.type().isa<pir::VectorType>()) {
+        if (for_if_block && op_item->isa<::pir::YieldOp>() &&
+            (!new_in.type().isa<pir::VectorType>()) &&
+            (ParsePhiPlace(new_in.type()).GetType() !=
+             phi::AllocationType::UNDEFINED) &&
+            (ParsePhiPlace(new_in.type()) != place)) {
           phi::KernelKey kernel_key(TransToPhiBackend(place),
                                     phi::DataLayout::ALL_LAYOUT,
                                     ParsePhiDType(new_in.type()));
@@ -2318,7 +2323,8 @@ void ProcessBlock(
     pir::Block* new_block,
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair,
+    bool for_if_block) {
   auto inputs_by_data_op = GetInputsByDataOp(block);
 
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
@@ -2337,8 +2343,13 @@ void ProcessBlock(
     if (SpecialLowerOps.count(op_item->name())) {
       VLOG(6) << "Handle Special Op: [" << op_item->name()
               << "] while lowering to kernel pass";
-      HandleForSpecialOp(
-          place, op_item, new_block, ctx, map_op_pair, map_value_pair);
+      HandleForSpecialOp(place,
+                         op_item,
+                         new_block,
+                         ctx,
+                         map_op_pair,
+                         map_value_pair,
+                         for_if_block);
       continue;
     }
 
