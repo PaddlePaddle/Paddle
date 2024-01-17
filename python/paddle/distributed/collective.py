@@ -144,6 +144,7 @@ def _new_process_group_impl(
     group_name,
     pg_options,
     group_id=0,
+    enable_nccl_comm_init_option=False,
 ):
     pg = None
     genv = _get_global_env()
@@ -152,7 +153,12 @@ def _new_process_group_impl(
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
         pg = core.ProcessGroupNCCL.create(
-            store, rank, world_size, group_id, genv.pg_timeout
+            store,
+            rank,
+            world_size,
+            group_id,
+            genv.pg_timeout,
+            enable_nccl_comm_init_option,
         )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -174,7 +180,12 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def new_group(ranks=None, backend=None, timeout=_default_timeout):
+def new_group(
+    ranks=None,
+    backend=None,
+    timeout=_default_timeout,
+    enable_nccl_comm_init_option=False,
+):
     """
 
     Creates a new distributed communication group.
@@ -227,6 +238,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 group_name,
                 pg_options=None,
                 group_id=gid,
+                enable_nccl_comm_init_option=enable_nccl_comm_init_option,
             )
         else:
             rank = -1

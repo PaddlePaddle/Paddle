@@ -121,11 +121,15 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int rank,
     int size,
     int gid,
-    int64_t timeout)
+    int64_t timeout,
+    bool nccl_comm_init_option)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
-      pg_timeout_(timeout) {
+      pg_timeout_(timeout),
+      nccl_comm_init_option_(nccl_comm_init_option) {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
+  LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
+            << nccl_comm_init_option_;
 }
 ProcessGroupNCCL::~ProcessGroupNCCL() {
   LOG(INFO) << "ProcessGroupNCCL destruct ";
@@ -851,8 +855,13 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   NCCL_CHECK(phi::dynload::ncclGroupStart());
   ncclComm_t nccl_comm;
-  NCCL_CHECK(
-      phi::dynload::ncclCommInitRank(&nccl_comm, num_ranks, nccl_id, rank));
+  if (nccl_comm_init_option_) {
+    NCCL_CHECK(phi::dynload::ncclCommInitRank2(
+        &nccl_comm, num_ranks, nccl_id, rank, 1));
+  } else {
+    NCCL_CHECK(
+        phi::dynload::ncclCommInitRank(&nccl_comm, num_ranks, nccl_id, rank));
+  }
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
   VLOG(3) << "Get nccl comm: " << nccl_comm << " for place_key: " << place_key
@@ -1112,9 +1121,10 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     int rank,
     int size,
     int gid,
-    int64_t timeout) {
-  auto process_group =
-      std::make_shared<ProcessGroupNCCL>(store, rank, size, gid, timeout);
+    int64_t timeout,
+    bool nccl_comm_init_option) {
+  auto process_group = std::make_shared<ProcessGroupNCCL>(
+      store, rank, size, gid, timeout, nccl_comm_init_option);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
 }

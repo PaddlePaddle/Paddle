@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import os
 from functools import reduce
 from itertools import product
 
@@ -24,6 +25,10 @@ from ..utils.log_util import logger
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 _HYBRID_PARALLEL_GROUP = None
+
+g_pipeline_enable_nccl_comm_init_option = bool(
+    os.environ.get("FLAGS_pipeline_enable_nccl_comm_init_option", 0)
+)
 
 
 class ParallelMode:
@@ -274,8 +279,15 @@ class HybridCommunicateGroup:
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
 
+        group_enable_nccl_comm_init_option = (
+            g_pipeline_enable_nccl_comm_init_option
+            and (parallel_method == "pipe")
+        )
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group,
+                enable_nccl_comm_init_option=group_enable_nccl_comm_init_option,
+            )
             if self.global_rank in group:
                 parallel_group = group
                 parallel_comm_group = comm_group
