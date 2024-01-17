@@ -28,6 +28,14 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmd(const DistMetaTensor& x,
                                           int ignore_index,
                                           int axis);
 
+SpmdInfo CrossEntropyWithSoftmaxInferSpmdStatic(const DistMetaTensor& x,
+                                                const DistMetaTensor& label,
+                                                bool soft_label,
+                                                bool use_softmax,
+                                                bool numeric_stable_mode,
+                                                int ignore_index,
+                                                int axis);
+
 SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
     const DistMetaTensor& x,
     const DistMetaTensor& label,

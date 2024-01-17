@@ -679,10 +679,10 @@ void GraphSymbolicDimInferCtx::InitTensorDimExpr() {
     return;
   }
   DimFunctions dim_functions =
-      BuildGraphShapeDialectConstraints(group_, group_->shape_analysis);
+      BuildGraphShapeDialectConstraints(group_, nullptr);
   std::unordered_map<DimVar, const DimExpr> equation_start =
       MakeEquationStartExpr(
-          group_, group_->shape_analysis, &map_expr_symbolic2dialect_symbolic_);
+          group_, nullptr, &map_expr_symbolic2dialect_symbolic_);
 
   tensor2dim_exprs_ =
       SolveShapeDialectConstraints(group_, dim_functions, equation_start);

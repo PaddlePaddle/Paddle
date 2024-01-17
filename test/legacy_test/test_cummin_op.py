@@ -78,7 +78,7 @@ class TestCumminOp(OpTest):
         self.python_api = paddle.cummin
         self.dtype = np.float64
         self.axis = -1
-        self.indices_type = 3
+        self.indices_type = paddle.int64
         self.input_data = np.random.random((10, 10)).astype(self.dtype)
         self.set_attrs()
 
@@ -111,7 +111,7 @@ class TestCumminOpAxis2(TestCumminOp):
 
 class TestCumminOpIndexType(TestCumminOp):
     def set_attrs(self):
-        self.indices_type = 2
+        self.indices_type = paddle.int32
 
 
 class TestCumminAPI(unittest.TestCase):
