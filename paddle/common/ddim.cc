@@ -266,8 +266,12 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
 }
 
 DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2) {
+  IR_ENFORCE(dim1.size() == dim2.size(),
+             "Does not support rank inconsistency: rank1=%d, rank2=%d",
+             dim1.size(),
+             dim2.size());
   std::vector<int64_t> result;
-  for (int i = 0; i < std::min(dim1.size(), dim2.size()); ++i) {
+  for (int i = 0; i < dim1.size(); ++i) {
     if (dim1[i] != dim2[i]) {
       result.push_back(-1);
     } else {
