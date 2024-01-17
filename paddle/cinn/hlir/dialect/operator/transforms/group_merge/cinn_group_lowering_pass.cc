@@ -482,7 +482,6 @@ void SimplyConditionBlock(
   const auto& ForEachMutBlockGroup = [&](const DoEachMutBlockGroupT& DoEach) {
     for (auto& [block, group] : *group_map) {
       DoEach(block, group);
-      DoEach(block, group);
       std::vector<pir::Operation*> group_new_ops;
       group_new_ops.reserve(block->size());
       std::unordered_set<pir::Operation*> group_ops_set;
@@ -631,16 +630,17 @@ pir::Operation* ProcessGroup(
     }
   }
 
-  std::vector<pir::Type> output_types;
-  auto group_output_values = group->GetGroupOutputValues();
-  for (size_t i = 0; i < group_output_values.size(); ++i) {
-    output_types.push_back(group_output_values[i].type());
-  }
   shape_analysis->PrintShapeOrDatas();
 
   // has multiple branch
   if (broadcast_tree
           .Has<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>()) {
+    
+    std::vector<pir::Type> output_types;
+    auto group_output_values = group->GetGroupOutputValues();
+    for (size_t i = 0; i < group_output_values.size(); ++i) {
+      output_types.push_back(group_output_values[i].type());
+    }
     return ComplieBroadcastTreeToConditionBlock(broadcast_tree,
                                                 group,
                                                 shape_analysis,
@@ -656,6 +656,11 @@ pir::Operation* ProcessGroup(
       VLOG(0) << "  op: " << op->name();
     }
     auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, {group});
+    std::vector<pir::Type> output_types;
+    const auto& group_output_values = group->output_values;
+    for (size_t i = 0; i < group_output_values.size(); ++i) {
+      output_types.push_back(group_output_values[i].type());
+    }
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
     return jit_kernel_op;
