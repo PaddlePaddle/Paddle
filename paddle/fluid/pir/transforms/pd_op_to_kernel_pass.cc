@@ -1086,13 +1086,30 @@ phi::KernelKey GetKernelKey(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
-      SupportsMKLDNN(kernel_fn_str, res.dtype())) {
-    res.set_backend(phi::Backend::ONEDNN);
-    res.set_layout(phi::DataLayout::ONEDNN);
-  }
+  std::regex reg(",");
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(FLAGS_pir_onednn_kernel_blacklist.begin(),
+                                 FLAGS_pir_onednn_kernel_blacklist.end(),
+                                 reg,
+                                 -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+             strlen(OneDNNOperatorDialect::name()) + 1,
+             op_item->name().size() -
+                 strlen(OneDNNOperatorDialect::name()) - 1) << std::endl;
+
+             if (op->HasTrait<OneDNNTrait>() &&
+                 res.backend() == phi::Backend::CPU &&
+                 SupportsMKLDNN(kernel_fn_str, res.dtype()) &&
+                 elems.count(op_item->name().substr(
+                     strlen(OneDNNOperatorDialect::name()),
+                     op_item->name().size() -
+                         strlen(OneDNNOperatorDialect::name()))) == 0) {
+               res.set_backend(phi::Backend::ONEDNN);
+               res.set_layout(phi::DataLayout::ONEDNN);
+             }
 #endif
-  return res;
+             return res;
 }
 
 void HandleForIfOp(
@@ -2331,68 +2348,78 @@ void ProcessBlock(
                                    -1),
         std::sregex_token_iterator()};
     elems.erase("");
-
-    if (op_item->HasTrait<OneDNNTrait>() &&
-        (kernel_key.backend() != phi::Backend::ONEDNN ||
-         elems.count(op_item->name().substr(
-             strlen(OneDNNOperatorDialect::name()),
+             strlen(OneDNNOperatorDialect::name()) + 1,
              op_item->name().size() -
-                 strlen(OneDNNOperatorDialect::name()))))) {
-      std::vector<pir::Type> op_item_inner_output_types;
-      if (op_item->num_results() > 0) {
-        for (size_t i = 0; i < op_item->num_results(); ++i) {
-          op_item_inner_output_types.push_back(op_item->result_type(i));
-        }
-      }
-      std::string target_op_name = op_item->name();
-      target_op_name.replace(0, 9, "pd_op");
-      auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-      if (!op_info) {
-        IR_THROW("Ctx should have corresponding OpInfo %s", target_op_name);
-      }
-      pir::Operation* op_item_inner =
-          pir::Operation::Create(op_item->operands_source(),
-                                 op_item->attributes(),
-                                 op_item_inner_output_types,
-                                 op_info);
-      op_item->ReplaceAllUsesWith(op_item_inner->results());
-      for (auto iter = block->begin(); iter != block->end(); ++iter) {
-        if (*iter == *op_item) {
-          block->Assign(iter, op_item_inner);
-          break;
-        }
-      }
-      op_item = op_item_inner;
-      op_info_parser = GetOpYamlInfoParser(op_item_inner);
-    }
+                 strlen(OneDNNOperatorDialect::name()) - 1) << std::endl;
+
+             if (op_item->HasTrait<OneDNNTrait>() &&
+                 (kernel_key.backend() != phi::Backend::ONEDNN ||
+                  elems.count(op_item->name().substr(
+                      strlen(OneDNNOperatorDialect::name()),
+                      op_item->name().size() -
+                          strlen(OneDNNOperatorDialect::name()))))) {
+               std::vector<pir::Type> op_item_inner_output_types;
+               if (op_item->num_results() > 0) {
+                 for (size_t i = 0; i < op_item->num_results(); ++i) {
+                   op_item_inner_output_types.push_back(
+                       op_item->result_type(i));
+                 }
+               }
+               std::string target_op_name = op_item->name();
+               target_op_name.replace(0, 9, "pd_op");
+               auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+               if (!op_info) {
+                 IR_THROW("Ctx should have corresponding OpInfo %s",
+                          target_op_name);
+               }
+               pir::Operation* op_item_inner =
+                   pir::Operation::Create(op_item->operands_source(),
+                                          op_item->attributes(),
+                                          op_item_inner_output_types,
+                                          op_info);
+               op_item->ReplaceAllUsesWith(op_item_inner->results());
+               for (auto iter = block->begin(); iter != block->end(); ++iter) {
+                 if (*iter == *op_item) {
+                   block->Assign(iter, op_item_inner);
+                   break;
+                 }
+               }
+               op_item = op_item_inner;
+               op_info_parser = GetOpYamlInfoParser(op_item_inner);
+             }
 #endif
-    // build input
-    auto new_vec_inputs = BuildInputs(op_item,
-                                      kernel_name,
-                                      kernel_key,
-                                      place,
-                                      op_info_parser.get(),
-                                      ctx,
-                                      map_op_pair,
-                                      map_value_pair,
-                                      new_block);
-    // build output type
-    auto op_output_types =
-        BuildOutputs(op_item, kernel_name, kernel_key, new_vec_inputs, ctx);
+             // build input
+             auto new_vec_inputs = BuildInputs(op_item,
+                                               kernel_name,
+                                               kernel_key,
+                                               place,
+                                               op_info_parser.get(),
+                                               ctx,
+                                               map_op_pair,
+                                               map_value_pair,
+                                               new_block);
+             // build output type
+             auto op_output_types = BuildOutputs(
+                 op_item, kernel_name, kernel_key, new_vec_inputs, ctx);
 
-    // build op
-    pir::Operation* op = BuildKernelOp(kernel_name,
-                                       kernel_key,
-                                       new_vec_inputs,
-                                       op_output_types,
-                                       op_item,
-                                       new_block,
-                                       ctx,
-                                       map_op_pair,
-                                       map_value_pair);
+             // build op
+             pir::Operation* op = BuildKernelOp(kernel_name,
+                                                kernel_key,
+                                                new_vec_inputs,
+                                                op_output_types,
+                                                op_item,
+                                                new_block,
+                                                ctx,
+                                                map_op_pair,
+                                                map_value_pair);
 
-    AddShadowFeedOpForDataOrFeed(
-        place, op_item, op, new_block, ctx, map_op_pair, map_value_pair);
+             AddShadowFeedOpForDataOrFeed(place,
+                                          op_item,
+                                          op,
+                                          new_block,
+                                          ctx,
+                                          map_op_pair,
+                                          map_value_pair);
   }
 }
 
