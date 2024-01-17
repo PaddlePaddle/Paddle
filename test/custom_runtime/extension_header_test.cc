@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "glog/logging.h"
+#include "gtest/gtest.h"
 
-#include <memory>
-#include "paddle/pir/pass/pass.h"
+// Note(qili93): ensure compile with one header file 'extension.h' only,
+// !!! do not fix this ut by adding other header files (PR#60842) !!!
+#include "paddle/phi/extension.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
-
-std::unique_ptr<::pir::Pass> CreateMoveGenerateShapeOpsToProloguePass();
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+TEST(CustomDevce, extension_header) {
+  VLOG(1) << "check extension header support compile only";
+}
