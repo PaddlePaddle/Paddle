@@ -352,10 +352,10 @@ void DeepCopyVariable(const Variable* src_var,
     for (int i = 0; i < src_tensor_array.size(); ++i) {
       phi::DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
       if (src_tensor_array.at(i).numel() == 0) {
-        tmp_dst_tensor.set_meta(src_tensor.meta());
+        tmp_dst_tensor.set_meta(src_tensor_array.at(i).meta());
         continue;
       }
-      framework::TensorCopy(src_tensor, src_tensor.place(), &tmp_dst_tensor);
+      framework::TensorCopy(src_tensor_array.at(i), src_tensor_array.at(i).place(), &tmp_dst_tensor);
     }
   } else if (src_var->IsType<VariableRefArray>()) {
     auto src_ref_array = src_var->Get<VariableRefArray>();
