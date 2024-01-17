@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base, tensor
 from paddle.base import core
+from paddle.base.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -128,15 +129,22 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
     }
 
     class FailureCase(unittest.TestCase):
+        @test_with_pir_api
         def test_failure(self):
             paddle.enable_static()
 
             data = paddle.static.data(
                 shape=Xshape, dtype='float64', name=cls_name
             )
-            with self.assertRaisesRegex(
-                eval(expected.split(':')[-1]), errmsg[expected]
-            ):
+            #     assert False, expected
+            if in_pir_mode():
+                expected_raise = self.assertRaises(TypeError)
+            else:
+                expected_raise = self.assertRaisesRegex(
+                    eval(expected.split(':')[-1]), errmsg[expected]
+                )
+
+            with expected_raise:
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
