@@ -34,6 +34,7 @@
 
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/op_trait.h"
@@ -83,17 +84,36 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       if (!op->operand_source(i) || !op->operand_source(i).type()) {
         continue;
       }
-      // 2. inputs must come from parameter op or constant op
+      // 2. inputs must come from ParameterOp/ConstantTensorOp/CombineOp
       auto* prev_op = pir::GetDefiningOpForInput(op, i);
       if (!prev_op || !(prev_op->isa<pir::ParameterOp>() ||
-                        prev_op->isa<pir::ConstantTensorOp>())) {
+                        prev_op->isa<pir::ConstantTensorOp>() ||
+                        prev_op->isa<pir::CombineOp>())) {
         return false;
       }
-      // 3. inputs must be a dense tensor type
-      if (!op->operand_source(i)
-               .type()
-               .isa<paddle::dialect::DenseTensorType>()) {
-        return false;
+      if (prev_op->isa<pir::CombineOp>()) {
+        if (prev_op->result(0).use_count() > 1) {
+          return false;
+        }
+        for (uint32_t i = 0; i < prev_op->num_operands(); i++) {
+          if (!prev_op->operand_source(i) ||
+              !prev_op->operand_source(i).type()) {
+            continue;
+          }
+          if (!prev_op->operand_source(i)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorType>()) {
+            return false;
+          }
+        }
+
+      } else {
+        // 3. inputs must be a dense tensor type
+        if (!op->operand_source(i)
+                 .type()
+                 .isa<paddle::dialect::DenseTensorType>()) {
+          return false;
+        }
       }
     }
 
@@ -233,7 +253,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         BuildProgramFromOperation(op, &new_program, rewriter);
 
     // execute program
-    for (auto output_var_name : output_var_names) {
+    for (const auto& output_var_name : output_var_names) {
       exe_config_->skip_gc_vars.insert(output_var_name);
     }
     auto kernel_program =
@@ -256,24 +276,52 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     std::vector<pir::Value> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
       if (op->operand_source(i)) {
-        const auto& param_name =
-            pir::GetParameterNameFromValue(op->operand_source(i));
-        auto* param_var = scope_->FindVar(param_name);
-        PADDLE_ENFORCE_NOT_NULL(
-            param_var,
-            phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
-                                         param_name));
+        auto* prev_op = pir::GetDefiningOpForInput(op, i);
+        if (prev_op->isa<pir::CombineOp>()) {
+          // prepare combine op inputs
+          std::vector<pir::Value> combine_op_inputs;
+          for (uint32_t i = 0; i < prev_op->num_operands(); i++) {
+            const auto& param_name =
+                pir::GetParameterNameFromValue(prev_op->operand_source(i));
+            auto* param_var = scope_->FindVar(param_name);
+            PADDLE_ENFORCE_NOT_NULL(
+                param_var,
+                phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                             param_name));
 
-        auto parameter_op = builder.Build<pir::ParameterOp>(
-            param_name, op->operand_source(i).type());
-        if (op->operand_source(i).use_count() <= 1) {
-          deleted_vars_->push_back(param_name);
+            auto parameter_op = builder.Build<pir::ParameterOp>(
+                param_name, prev_op->operand_source(i).type());
+            if (prev_op->operand_source(i).use_count() <= 1) {
+              deleted_vars_->push_back(param_name);
+            } else {
+              parameter_op->set_attribute(
+                  kAttrIsPersisable,
+                  rewriter.array_attr({rewriter.bool_attr(true)}));
+            }
+            combine_op_inputs.push_back(parameter_op->result(0));
+          }
+          auto combine_op = builder.Build<pir::CombineOp>(combine_op_inputs);
+          op_inputs.push_back(combine_op->result(0));
         } else {
-          parameter_op->set_attribute(
-              kAttrIsPersisable,
-              rewriter.array_attr({rewriter.bool_attr(true)}));
+          const auto& param_name =
+              pir::GetParameterNameFromValue(op->operand_source(i));
+          auto* param_var = scope_->FindVar(param_name);
+          PADDLE_ENFORCE_NOT_NULL(
+              param_var,
+              phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                           param_name));
+
+          auto parameter_op = builder.Build<pir::ParameterOp>(
+              param_name, op->operand_source(i).type());
+          if (op->operand_source(i).use_count() <= 1) {
+            deleted_vars_->push_back(param_name);
+          } else {
+            parameter_op->set_attribute(
+                kAttrIsPersisable,
+                rewriter.array_attr({rewriter.bool_attr(true)}));
+          }
+          op_inputs.push_back(parameter_op->result(0));
         }
-        op_inputs.push_back(parameter_op->result(0));
       } else {
         op_inputs.push_back(
             op->operand_source(i).dyn_cast<pir::OpResult>() /*nullptr*/);
@@ -281,17 +329,17 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     }
 
     // prepare op outputs
-    std::vector<pir::Type> output_types;
+    std::vector<pir::Type> op_output_types;
     for (uint32_t i = 0; i < op->num_results(); i++) {
-      output_types.push_back(op->result(i).type());
+      op_output_types.push_back(op->result(i).type());
     }
 
-    auto* temp_op =
-        builder.Build(op_inputs, op->attributes(), output_types, op->info());
+    auto* op_copy =
+        builder.Build(op_inputs, op->attributes(), op_output_types, op->info());
 
     std::vector<std::string> output_var_names;
-    for (uint32_t i = 0; i < op->num_results(); i++) {
-      if (!temp_op->result(i) || !temp_op->result(i).type()) {
+    for (uint32_t i = 0; i < op_copy->num_results(); i++) {
+      if (!op_copy->result(i) || !op_copy->result(i).type()) {
         continue;
       }
       std::stringstream ss;
@@ -301,7 +349,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       std::string output_var_name =
           "constant_folding@_" + ss.str() + std::to_string((*suffix_)++);
 
-      builder.Build<pir::ShadowOutputOp>(temp_op->result(i), output_var_name);
+      builder.Build<pir::ShadowOutputOp>(op_copy->result(i), output_var_name);
       output_var_names.push_back(output_var_name);
     }
 
