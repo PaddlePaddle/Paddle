@@ -121,7 +121,6 @@ class ASGD(Optimizer):
         self._master_weights = {}
         self._n = [batch_num]
         self._n_tensor = None
-        self._sign = False
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -191,18 +190,7 @@ class ASGD(Optimizer):
                 assign_value
             )
 
-    def update_sign(self, value):
-        self._sign = value
-        if self._sign:
-            self.param = {}
-            self.grad = {}
-            self.lr = {}
-            self.d = {}
-            self.y = {}
-            self.n = {}
-
-    @no_grad
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_op_step0(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
@@ -242,16 +230,20 @@ class ASGD(Optimizer):
 
         lr = self._create_param_lr(param_and_grad)
 
-        param_name = param_and_grad[0].name
+        return param_and_grad, lr, d, y, m, master_weight, find_master, index
 
-        if self._sign:
-            self.param[param_name] = param_and_grad[0]
-            self.grad[param_name] = param_and_grad[1]
-            self.lr[param_name] = lr
-            self.d[param_name] = d
-            self.y[param_name] = y
-            self.n[param_name] = paddle.fmin(m, self._n_tensor)
-
+    def _append_optimize_op_step1(
+        self,
+        block,
+        param_and_grad,
+        lr,
+        d,
+        y,
+        m,
+        master_weight,
+        find_master,
+        index,
+    ):
         if in_dynamic_or_pir_mode():
             _C_ops.asgd_(
                 param_and_grad[0],
@@ -305,6 +297,30 @@ class ASGD(Optimizer):
             )
 
             return asgd_op
+
+    @no_grad
+    def _append_optimize_op(self, block, param_and_grad):
+        (
+            param_and_grad,
+            lr,
+            d,
+            y,
+            m,
+            master_weight,
+            find_master,
+            index,
+        ) = self._append_optimize_op_step0(block, param_and_grad)
+        return self._append_optimize_op_step1(
+            block,
+            param_and_grad,
+            lr,
+            d,
+            y,
+            m,
+            master_weight,
+            find_master,
+            index,
+        )
 
     def _update_param_group(self, parameters):
         parameters = parameters.get('params')
