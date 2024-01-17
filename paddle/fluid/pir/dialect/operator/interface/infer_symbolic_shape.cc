@@ -472,6 +472,25 @@ bool Transpose_OpInferSymbolicShape(
   return TransposeOpInferSymbolicShape(op, shape_analysis);
 }
 
+bool DivideOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Divide_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return DivideOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool ElementwisePowOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool FullWithTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
 }  // namespace paddle::dialect
 namespace cinn::dialect {
 
