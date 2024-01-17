@@ -75,7 +75,7 @@ class CallableVariable(VariableBase):
     def __init__(self, graph: FunctionGraph, tracker: Tracker):
         super().__init__(graph, tracker)
 
-    def __call__(self, /, *args, **kwargs) ->  VariableBase:
+    def __call__(self, /, *args, **kwargs) -> VariableBase:
         """Why we need '/' to make self positional only?
 
         If kwargs have {'self': xxx}, this function call raise a error.
@@ -531,8 +531,6 @@ class PaddleLayerVariable(LayerVariable):
         super().__init__(layer, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        if self.value.__class__.__name__ in ['Linear', 'Conv2D']:
-            raise BreakGraphError()
         self.graph.add_global_guarded_variable(self)
         # when layer is created in forward function, we use strong ref because it can't have
         # weigths and buffers, see PaddleLayerClassVariable for details.

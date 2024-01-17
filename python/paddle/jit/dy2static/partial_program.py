@@ -220,8 +220,6 @@ class PartialProgramLayer:
             self._outputs[var_id].desc for var_id in self._outputs.var_ids
         ]
         self._debug_name = None
-        # for trigger
-        self.infer_program = None
 
     def __call__(self, inputs):
         """

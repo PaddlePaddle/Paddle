@@ -74,7 +74,6 @@ std::vector<int64_t> GetBroadcastAxis(pir::Operation* reshape_op,
       cinn::dialect::ir::GetVectorAttr(broadcast_op, "broadcast_axes");
 
   std::vector<int64_t> new_broadcast_axes(in_dims.size(), 0);
-
   std::reverse(in_dims.begin(), in_dims.end());
   std::reverse(out_dims.begin(), out_dims.end());
 
@@ -134,6 +133,7 @@ pir::RewritePatternSet MergeReshapeWithBroadcastPass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
 
+  // merge reshape with broadcast op
   ps.Add<MergeReshapeWithBroadcastPattern>(context);
 
   return ps;

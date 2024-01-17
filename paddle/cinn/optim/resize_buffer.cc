@@ -191,7 +191,6 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
   void Visit(const ir::Store* op, Expr* expr) override {
     ir::Store* store = expr->As<ir::Store>();
     ir::Tensor tensor = store->tensor.as_tensor_ref();
-
     ResizeTensor(&tensor);
     ir::IRMutator<>::Visit(op, expr);
   }

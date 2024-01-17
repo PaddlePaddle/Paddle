@@ -62,7 +62,6 @@ Expr Optimize(Expr e,
   }
   if (remove_gpu_for_loops) {
     RemoveGpuForloopsAxis(&copied);
-    // std::cerr << "remove gpu loop " << copied << std::endl;
   }
   CudaSyncThreadsDropIfThenElse(&copied);
 #endif

@@ -85,9 +85,7 @@ class BaseExporter:
 
     def generate_saving_path(self):
         layer_name = self.pp_layer._debug_name
-        if not layer_name:
-            layer_name = "wrapper"
-            print("Found layer_name is None, specify as wrapper")
+        assert layer_name is not None
         ops_name = [
             op.type for op in self.program.block(0).ops[:MAX_FILE_PATH_LEN]
         ]
