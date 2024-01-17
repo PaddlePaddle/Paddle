@@ -282,21 +282,33 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
 def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
-    Calculate the p-order vector norm for certain  dimension of Tensor `input`.
+    Calculate the p-order vector norm for certain  dimension of Tensor `input`.When len(axis) == 1, this
+    behavior is for consistency with paddle.linalg.norm().
+
     Args:
-        input (Variable): Tensor, data type float32, float64.
-        porder (int, optional): None for porder=2.0. Default None.
+        x (Variable): Tensor, data type float32, float64.
+        p (float, optional): None for porder=2.0. Default None.
         axis (int|list, optional): None for last dimension. Default None.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-        asvector (bool, optional): Whether keep the result as a vector, Default False.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: results of vector_norm operation on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
     """
 
     def zero_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
     ):
-        return paddle.count_nonzero(input, axis=axis, keepdim=keepdim, name=name)
+        return paddle.count_nonzero(
+            input, axis=axis, keepdim=keepdim, name=name
+        )
 
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
@@ -447,7 +459,6 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     if isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
-
     # when len(axis) == 1, use the original op to calculate
     if isinstance(axis, int):
         return vector_norm_axis_int(
@@ -462,13 +473,9 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     # when len(axis) >= 1, calculate by combining other Python apis
     elif isinstance(axis, list):
         if p == np.inf or p == -np.inf:
-            return inf_norm(
-                x, porder=p, axis=axis, keepdim=keepdim, name=name
-            )
+            return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
-            return zero_norm(
-                x, porder=p, axis=axis, keepdim=keepdim, name=name
-            )
+            return zero_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         else:
             return vector_norm_axis_tuple(
                 x, porder=p, axis=axis, keepdim=keepdim, name=name

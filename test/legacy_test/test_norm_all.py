@@ -542,6 +542,19 @@ def check_linalg_vector_static(
         )
 
 
+def check_linalg_vector_dygraph(
+    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+):
+    x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+    expected_result = linalg_vector_norm(x_numpy, p, axis, keep_dim)
+    x_paddle = paddle.to_tensor(x_numpy)
+    result = paddle.vector_norm(x=x_paddle, p=p, axis=axis, keepdim=keep_dim)
+    result = result.numpy()
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
 def run_graph(self, p, axis, shape_x, dtype):
     paddle.disable_static()
     shape = [2, 3, 4]
@@ -887,6 +900,130 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
+            check_linalg_vector_dygraph(
+                self,
+                p=2,
+                axis=None,
+                shape_x=[3, 4],
+                dtype="float32",
+                keep_dim=keep,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=2,
+                axis=1,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=np.inf,
+                axis=0,
+                shape_x=[2, 3, 4],
+                dtype="float32",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=np.inf,
+                axis=None,
+                shape_x=[2, 3, 4],
+                dtype="float32",
+                keep_dim=keep,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=-np.inf,
+                axis=0,
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=-np.inf,
+                axis=None,
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=0,
+                axis=1,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+
+            check_linalg_vector_dygraph(
+                self,
+                p=1,
+                axis=1,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=0,
+                axis=None,
+                shape_x=[3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=2,
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=2,
+                axis=-1,
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=1,
+                axis=[0, 1],
+                shape_x=[2, 3, 4, 5],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=np.inf,
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=-np.inf,
+                axis=[0, 1, 2],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
         paddle.enable_static()
 
     def test_name(self):
@@ -895,7 +1032,7 @@ class API_NormTest(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
             y_1 = paddle.norm(x, p='fro', name='frobenius_name')
             y_2 = paddle.norm(x, p=2, name='pnorm_name')
-            y_3 = paddle.norm(x, p='fro', axis=[0, 1], name='nuclear_name')
+            y_3 = paddle.norm(x, p='nuc', axis=[0, 1], name='nuclear_name')
             y_4 = paddle.norm(x, p=2, axis=[0, 1], name='p_matrix_norm_name')
             self.assertEqual(('frobenius_name' in y_1.name), True)
             self.assertEqual(('pnorm_name' in y_2.name), True)
