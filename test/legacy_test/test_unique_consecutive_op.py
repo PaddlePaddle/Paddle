@@ -130,7 +130,7 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
             'return_inverse': self.return_inverse,
             'dtype': int(core.VarDesc.VarType.INT32),
         }
-        self.python_out_sig = ["Out"]
+        self.python_out_sig = ["Out", "Index"]
         self.outputs = {'Out': result, 'Index': inverse}
 
 
@@ -161,7 +161,7 @@ class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
             'return_counts': self.return_counts,
             'dtype': int(core.VarDesc.VarType.INT32),
         }
-        self.python_out_sig = ["Out"]
+        self.python_out_sig = ["Out", "Counts"]
         self.outputs = {'Out': result, 'Counts': counts}
 
 
@@ -194,7 +194,7 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
             'return_counts': self.return_counts,
             'dtype': int(core.VarDesc.VarType.INT32),
         }
-        self.python_out_sig = ["Out"]
+        self.python_out_sig = ["Out", "Index", "Counts"]
         self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
 
 
