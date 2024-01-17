@@ -131,6 +131,10 @@ if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8 AND ${TENSORRT_MINOR_VERSION}
   list(APPEND CONVERT_FILES set_value_op.cc)
 endif()
 
+if(WITH_TENSORRT AND WITH_TENSORRT_LLM)
+  list(APPEND CONVERT_FILES fused_rms_norm_op.cc)
+endif()
+
 nv_library(
   tensorrt_converter
   SRCS ${CONVERT_FILES}

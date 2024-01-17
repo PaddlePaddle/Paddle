@@ -103,7 +103,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "add_support_int8_pass",                     //
       "simplify_with_basic_ops_pass",              //
 #ifdef PADDLE_WITH_TENSORRT_LLM
-      "trt_llm_rotary_attention_pass",  //
+      "trt_llm_fused_rms_norm_pass",  //
 #else
       "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",  //
       "trt_embedding_eltwise_layernorm_fuse_pass",                //

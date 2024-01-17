@@ -2816,6 +2816,13 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "fused_rms_norm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the fused_rms_norm does not support static shape yet";
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2994,7 +3001,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "share_data",
       "bitwise_and",
       "bitwise_or",
-      "size"};
+      "size",
+      "fused_rms_norm"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3166,7 +3174,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "share_data",
       "bitwise_and",
       "bitwise_or",
-      "size"};
+      "size",
+      "fused_rms_norm"};
 };
 
 struct GenericPluginTeller : public Teller {

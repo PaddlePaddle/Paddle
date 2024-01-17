@@ -170,8 +170,8 @@ if(WITH_TENSORRT)
   pass_library(set_subgraph_edge_pass inference)
 endif()
 
-if(PADDLE_WITH_TENSORRT_LLM)
-  pass_library(trt_llm_rotary_attention_pass inference)
+if(WITH_TENSORRT AND WITH_TENSORRT_LLM)
+  pass_library(trt_llm_fused_rms_norm_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)

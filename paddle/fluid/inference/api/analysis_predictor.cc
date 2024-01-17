@@ -1546,6 +1546,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetOptimInputShape(config_.optim_input_shape_);
   argument_->SetTensorRtTunedDynamicShape(
       config_.tuned_tensorrt_dynamic_shape());
+  argument_->SetUseTensorRTLLM(config_.use_tensorrt_llm_);
   argument_->SetUseTensorRT(false);
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
@@ -3116,6 +3117,7 @@ USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(unbind)
 USE_TRT_CONVERTER(flip)
 USE_TRT_CONVERTER(share_data)
+USE_TRT_CONVERTER(fused_rms_norm)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)

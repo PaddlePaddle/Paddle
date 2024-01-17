@@ -22,11 +22,11 @@ namespace ir {
 
 class Graph;
 
-class TrtLLMRotaryAttentionPass : public FusePassBase {
+class TrtLLMRmsNormPass : public FusePassBase {
  public:
-  TrtLLMRotaryAttentionPass() {}
+  TrtLLMRmsNormPass() {}
 
-  virtual ~TrtLLMRotaryAttentionPass() {}
+  virtual ~TrtLLMRmsNormPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
