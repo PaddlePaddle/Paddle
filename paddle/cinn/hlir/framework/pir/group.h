@@ -127,7 +127,6 @@ struct Group {
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
-  std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_exprs;
 

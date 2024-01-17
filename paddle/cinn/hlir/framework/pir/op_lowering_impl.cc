@@ -511,9 +511,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 #endif
 
     // 2.Prepare temp buffers
-    poly::StageMap stages;
     auto temp_buffers =
-        lang::GetTempBuffers(*group_func_arg_tensors, stages, func_body);
+        lang::GetTempBuffers(*group_func_arg_tensors, func_body);
     // 3.Building LoweredFunc
     auto func = ir::_LoweredFunc_::Make(
         group->FuncName(), *group_func_args, func_body, temp_buffers);

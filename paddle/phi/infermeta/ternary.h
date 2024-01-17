@@ -238,4 +238,17 @@ void QuantLinearInferMeta(const MetaTensor& x,
                           float quant_min_bound,
                           MetaTensor* y);
 
+void TdmSamplerInferMeta(const MetaTensor& x,
+                         const MetaTensor& travel,
+                         const MetaTensor& layer,
+                         bool output_positive,
+                         const std::vector<int>& neg_samples_num_list,
+                         const std::vector<int>& layer_offset_lod,
+                         int seed,
+                         int dtype,
+                         MetaTensor* out,
+                         MetaTensor* labels,
+                         MetaTensor* mask,
+                         MetaConfig config = MetaConfig());
+
 }  // namespace phi

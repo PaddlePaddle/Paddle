@@ -48,8 +48,6 @@ struct _Dim_ : ExprNode<_Dim_> {
   symbol::DimExpr sym_dim;
   Expr dim_expr;
 
-  symbol::DimExpr GetSymbolicDim() const;
-
   bool IsDynamic() const;
 
   std::string GetSymbolName() const;
