@@ -28,6 +28,7 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -281,28 +282,53 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           // prepare combine op inputs
           std::vector<pir::Value> combine_op_inputs;
           for (uint32_t i = 0; i < prev_op->num_operands(); i++) {
-            const auto& param_name =
-                pir::GetParameterNameFromValue(prev_op->operand_source(i));
-            auto* param_var = scope_->FindVar(param_name);
-            PADDLE_ENFORCE_NOT_NULL(
-                param_var,
-                phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
-                                             param_name));
+            auto* combine_prev_op = pir::GetDefiningOpForInput(prev_op, i);
+            if (combine_prev_op->isa<pir::ParameterOp>()) {
+              const auto& param_name =
+                  pir::GetParameterNameFromValue(prev_op->operand_source(i));
+              auto* param_var = scope_->FindVar(param_name);
+              PADDLE_ENFORCE_NOT_NULL(
+                  param_var,
+                  phi::errors::InvalidArgument(
+                      "Parameter var [%s] not in scope.", param_name));
 
-            auto parameter_op = builder.Build<pir::ParameterOp>(
-                param_name, prev_op->operand_source(i).type());
-            if (prev_op->operand_source(i).use_count() <= 1) {
-              deleted_vars_->push_back(param_name);
+              auto parameter_op = builder.Build<pir::ParameterOp>(
+                  param_name, prev_op->operand_source(i).type());
+              if (prev_op->operand_source(i).use_count() <= 1) {
+                deleted_vars_->push_back(param_name);
+              } else {
+                parameter_op->set_attribute(
+                    kAttrIsPersisable,
+                    rewriter.array_attr({rewriter.bool_attr(true)}));
+              }
+              combine_op_inputs.push_back(parameter_op->result(0));
+            } else if (combine_prev_op->isa<pir::ConstantTensorOp>()) {
+              const auto& tensor_name =
+                  pir::GetParameterNameFromValue(prev_op->operand_source(i));
+              auto* tensor_var = scope_->FindVar(tensor_name);
+              PADDLE_ENFORCE_NOT_NULL(
+                  tensor_var,
+                  phi::errors::InvalidArgument("Tensor var [%s] not in scope.",
+                                               tensor_name));
+
+              auto constant_op = builder.Build<pir::ConstantTensorOp>(
+                  rewriter.tensor_name_attr(tensor_name),
+                  prev_op->operand_source(i).type());
+              if (prev_op->operand_source(i).use_count() <= 1) {
+                deleted_vars_->push_back(tensor_name);
+              } else {
+                constant_op->set_attribute(
+                    kAttrIsPersisable,
+                    rewriter.array_attr({rewriter.bool_attr(true)}));
+              }
+              combine_op_inputs.push_back(constant_op->result(0));
             } else {
-              parameter_op->set_attribute(
-                  kAttrIsPersisable,
-                  rewriter.array_attr({rewriter.bool_attr(true)}));
+              PADDLE_THROW(phi::errors::Fatal("Not Support!"));
             }
-            combine_op_inputs.push_back(parameter_op->result(0));
           }
           auto combine_op = builder.Build<pir::CombineOp>(combine_op_inputs);
           op_inputs.push_back(combine_op->result(0));
-        } else {
+        } else if (prev_op->isa<pir::ParameterOp>()) {
           const auto& param_name =
               pir::GetParameterNameFromValue(op->operand_source(i));
           auto* param_var = scope_->FindVar(param_name);
@@ -321,6 +347,28 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                 rewriter.array_attr({rewriter.bool_attr(true)}));
           }
           op_inputs.push_back(parameter_op->result(0));
+        } else if (prev_op->isa<pir::ConstantTensorOp>()) {
+          const auto& tensor_name =
+              pir::GetParameterNameFromValue(op->operand_source(i));
+          auto* tensor_var = scope_->FindVar(tensor_name);
+          PADDLE_ENFORCE_NOT_NULL(
+              tensor_var,
+              phi::errors::InvalidArgument("Tensor var [%s] not in scope.",
+                                           tensor_name));
+
+          auto constant_op = builder.Build<pir::ConstantTensorOp>(
+              rewriter.tensor_name_attr(tensor_name),
+              op->operand_source(i).type());
+          if (op->operand_source(i).use_count() <= 1) {
+            deleted_vars_->push_back(tensor_name);
+          } else {
+            constant_op->set_attribute(
+                kAttrIsPersisable,
+                rewriter.array_attr({rewriter.bool_attr(true)}));
+          }
+          op_inputs.push_back(constant_op->result(0));
+        } else {
+          PADDLE_THROW(phi::errors::Fatal("Not Support!"));
         }
       } else {
         op_inputs.push_back(
