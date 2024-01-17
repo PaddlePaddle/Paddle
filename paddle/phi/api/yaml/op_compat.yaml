@@ -3477,6 +3477,12 @@
     multi_level_rois_num: MultiLevelRoIsNum
     restore_index: RestoreIndex
 
+- op: distributed_lookup_table
+  inputs:
+    {ids: Ids, w: W}
+  outputs:
+    outputs: Outputs
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}

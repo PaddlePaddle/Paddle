@@ -1097,6 +1097,49 @@ void DistInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DistributeLookupTableInferMeta(
+    const std::vector<const phi::MetaTensor*>& ids,
+    const MetaTensor& w,
+    int table_id,
+    bool is_distributed,
+    const std::string& lookup_table_version,
+    int64_t padding_idx,
+    int dtype,
+    bool is_test,
+    std::vector<MetaTensor*> outputs) {
+  auto table_dims = w.dims();
+
+  PADDLE_ENFORCE_EQ(w.dims().size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Only 2 dimensions of the 'Embedding' is supported."));
+
+  for (auto& id : ids) {
+    PADDLE_ENFORCE_EQ(id->dims().size(),
+                      2,
+                      errors::InvalidArgument(
+                          "The dimension of the 'Ids' tensor must be 2."));
+  }
+
+  // for fluid.embedding
+  for (size_t i = 0; i < ids.size(); ++i) {
+    MetaTensor* output = outputs[i];
+    auto id_dims = ids[i]->dims();
+    if (lookup_table_version == "lookup_table") {
+      output->set_dims(common::make_ddim({id_dims[0], table_dims[1]}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    } else if (lookup_table_version == "lookup_table_v2") {
+      output->set_dims(
+          common::make_ddim({static_cast<int64_t>(id_dims[0]),
+                             static_cast<int64_t>(id_dims[1]),
+                             static_cast<int64_t>(table_dims[1])}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    }
+  }
+}
+
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,
     const MetaTensor& rois_num,
