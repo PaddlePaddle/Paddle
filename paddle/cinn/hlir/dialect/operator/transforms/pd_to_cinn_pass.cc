@@ -676,7 +676,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ReshapeOpPattern>(context);
   // ps.Add<ConcatOpPattern>(context);
   //  ps.Add<SliceOpPattern>(context);
-  ps.Add<Pool2dOpPattern>(context);
+  // ps.Add<Pool2dOpPattern>(context);
   ps.Add<PowOpPattern>(context);
   // ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
