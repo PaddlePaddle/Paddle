@@ -27,7 +27,7 @@ class TestRemoveUselessScalePattern(PassTest):
     def is_program_valid(self, program=None):
         return True
 
-    def build_ir_progam(self):
+    def build_ir_program(self):
         with paddle.pir_utils.IrGuard():
             start_prog = paddle.static.Program()
             main_prog = paddle.static.Program()
@@ -46,7 +46,7 @@ class TestRemoveUselessScalePattern(PassTest):
                 return [main_prog, start_prog]
 
     def sample_program(self):
-        pir_program = self.build_ir_progam()
+        pir_program = self.build_ir_program()
         yield pir_program, False
 
     def test_check_output(self):
@@ -58,7 +58,7 @@ class TestRemoveUselessScalePattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
 
-class TestRemoveRedundentScalePattern(PassTest):
+class TestRemoveRedundantScalePattern(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -169,7 +169,7 @@ class TestRemoveUselessConcatPattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
 
-class TestRemoveRedundentCastPattern(PassTest):
+class TestRemoveRedundantCastPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -204,7 +204,7 @@ class TestRemoveRedundentCastPattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
 
-class TestRemoveRedundentTransposePattern(PassTest):
+class TestRemoveRedundantTransposePattern(PassTest):
     def is_program_valid(self, program=None):
         return True
 

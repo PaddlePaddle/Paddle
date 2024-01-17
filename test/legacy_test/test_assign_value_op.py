@@ -22,14 +22,12 @@ from paddle import base
 from paddle.base import framework
 
 
-def wrap_assign_value_wrapper(dtype=base.core.VarDesc.VarType.FP32):
+def wrap_assign_value_wrapper(dtype=paddle.float32):
     def assign_value_wrapper(shape=[], dtype=dtype, values=0.0):
         if paddle.framework.in_dynamic_mode():
             tensor = paddle.Tensor()
         else:
-            np_type = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
-            tensor = paddle.zeros(list(shape), np_type)
-            dtype = paddle.pir.core.convert_np_dtype_to_dtype_(np_type)
+            tensor = paddle.zeros(list(shape), dtype)
         return paddle._C_ops.assign_value_(
             tensor, shape, dtype, values, framework._current_expected_place()
         )

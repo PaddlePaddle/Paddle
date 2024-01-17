@@ -91,6 +91,7 @@ void TileTactic::Init(ScheduleContext* context) {
 }
 
 void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
+  if (ir::IsReduceInitTensorName(block_id)) return;
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
   CHECK(loops.size() == 1 || loops.size() == 2)
       << "All loops must be unified as sp_loop or rb_loop.";

@@ -310,7 +310,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     tensor_stop = stop
     if not isinstance(num, (Variable, paddle.pir.Value)):
         check_type(num, 'num', (int), 'linspace')
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
@@ -1194,7 +1194,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     if dtype is None:
         dtype = paddle.get_default_dtype()
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")

@@ -1193,6 +1193,7 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_inputs,
                 attrs_outputs,
                 kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1377,6 +1378,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 if hasattr(self, "python_out_sig"):
@@ -3768,6 +3770,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
