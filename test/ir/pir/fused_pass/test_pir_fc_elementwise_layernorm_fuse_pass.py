@@ -29,7 +29,7 @@ class TestFcElementwiseLayerNormFusePattern(PassTest):
      \     /
        Add
         |
-      LayerNrom
+      LayerNorm
     """
 
     def is_program_valid(self, program=None):

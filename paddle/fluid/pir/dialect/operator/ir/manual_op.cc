@@ -4011,6 +4011,18 @@ void ExpandOp::Build(pir::Builder &builder,
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
+bool ExpandOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &data_shape = shape_analysis->GetShapeOrDataForValue(shape());
+  IR_ENFORCE(data_shape.data().has_value(),
+             "Value shape comes from ShapeOp, it must have data");
+  const auto &data = data_shape.data().value();
+
+  shape_analysis->SetShapeOrDataForValue(out(),
+                                         symbol::ShapeOrDataDimExprs(data));
+  return true;
+}
+
 void ExpandOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: ExpandOp.";
   VLOG(4) << "Verifying inputs:";
@@ -4879,6 +4891,8 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
     return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
   } else if (rhs.isa<std::int64_t>()) {
     return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
+  } else if (lhs == rhs) {
+    return lhs;
   } else {
     return symbol::Broadcast<symbol::DimExpr>{
         symbol::List<symbol::DimExpr>{lhs, rhs}};
@@ -4893,6 +4907,10 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
 
+  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(x) > 0,
+             "Value x does not exist.");
+  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(y) > 0,
+             "Value y does not exist.");
   const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
   const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
   IR_ENFORCE(x_data_shape.data().has_value(),
