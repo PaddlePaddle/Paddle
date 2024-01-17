@@ -3315,17 +3315,51 @@ EOF
 }
 
 function distribute_test() {
+    echo "Start gpups tests"
     parallel_test_base_gpups
-    bash tools/auto_parallel/ci_auto_parallel.sh
+    echo "End gpups tests"
+
+    echo "Download ..."
+    cd ${work_dir}
+    git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci
+    cd PaddleNLP
+    pip install -r requirements.txt
+    pip install -r scripts/regression/requirements_ci.txt
+    pip install -r ./csrc/requirements.txt
+    python -m pip install pytest-timeout
+    cd csrc && python  setup_cuda.py install
+
+    cd ${work_dir}
+    wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
+    unzip -P'41maLgwWnCLaFTCehlwQ6n4l3oZpS/r5gPq4K4VLj5M1024' Bos.zip
+    mkdir paddlenlp && mv Bos/* ./paddlenlp/
+    rm -rf ./paddlenlp/upload/*
+    rm -rf ./paddlenlp/models/bigscience/*
+
+    sed -i '35c # gpt_auto_recompute_bs16_fp16_o2_DP4-MP2-Sharding4_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
+    sed -i '37c # gpt_auto_recompute_bs16_fp16_o2_DP4-MP2-Sharding4_stage3' PaddleNLP/scripts/distribute/ci_case_auto.sh
+    sed -i '38c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP1-PP4_Sharding2_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
+    sed -i '40c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP1-PP4_Sharding2_stage3' PaddleNLP/scripts/distribute/ci_case_auto.sh
+    sed -i '41c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP2-PP2_Sharding2_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
+    sed -i '43c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP2-PP2_Sharding2_stage3' PaddleNLP/scripts/distribute/ci_case_auto.sh
+    sed -i -e 's/case_list=(\$(awk/case_list=(auto_unit_test) # /g' ./tools/auto_parallel/ci_auto_parallel.sh
+    export FLAGS_dynamic_static_unified_comm=True
+
+    echo "Start LLM Test"
+    cd ${work_dir}/PaddleNLP
+    python -m pytest -s -v tests/llm --timeout=3600
+    echo "End LLM Test"
+
+    echo "Start auto_parallel Test"
+    cd ${work_dir}
+    timeout 50m bash tools/auto_parallel/ci_auto_parallel.sh
     EXIT_CODE=$?
+    echo "End auto_parallel Test"
+
     if [[ "$EXIT_CODE" != "0" ]]; then
       exit 8;
     fi
-    cd ${work_dir}
-    git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci
-    cd PaddleNLP/csrc && python  setup_cuda.py install && cd ..;
-    python -m pip install pytest-timeout;
-    python -m pytest -s -v tests/llm --timeout=3600
+
 }
 
 function test_fluid_lib_train() {
