@@ -4743,9 +4743,10 @@ class TestMishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
-            with base.program_guard(base.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
                 out = paddle.nn.functional.mish(x)
                 exe = base.Executor(self.place)
