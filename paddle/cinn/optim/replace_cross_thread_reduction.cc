@@ -46,6 +46,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   bool CanReplace(const ir::ScheduleBlockRealize* block_realize) {
     const ir::ScheduleBlock* schedule_block =
         block_realize->schedule_block.As<ir::ScheduleBlock>();
+
     CHECK_NOTNULL(schedule_block);
 
     if (block_realize->schedule_block.As<ir::ScheduleBlock>()->name.substr(
@@ -67,18 +68,24 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
             if (x->as_var()) {
               reduce_var_names.insert(x->as_var()->name);
             }
+
             return false;
           });
     }
 
     std::vector<int> thread_binded_reduce_loop_indices;
+    bool thread_binded_inner = false;
     for (int i = 0; i < cur_loops_.size(); ++i) {
-      if (reduce_var_names.count(cur_loops_[i].As<ir::For>()->loop_var->name) >
-          0) {
-        if (cur_loops_[i].As<ir::For>()->is_gpu_thread_binded()) {
+      if (thread_binded_inner ||
+          reduce_var_names.count(cur_loops_[i].As<ir::For>()->loop_var->name) >
+              0) {
+        if (thread_binded_inner ||
+            cur_loops_[i].As<ir::For>()->is_gpu_thread_binded()) {
           if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
             return false;
           }
+
+          thread_binded_inner = true;
           thread_binded_reduce_loop_indices.push_back(i);
         }
       }
@@ -138,6 +145,13 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
       original_update_stmt = original_update_body;
     }
 
+    // std::cerr << "reduce type " << schedule_block->reduce_type << std::endl;
+    ir::Expr return_warp(false);
+
+    if (schedule_block->reduce_type == 0) {
+      return_warp = ir::Expr(true);
+    }
+
 #define REPLACE_TO_EXTERNAL_CALL(Op)                                     \
   if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {            \
     auto* node = original_update_stmt.As<ir::Store>()->value.As<Op>();   \
@@ -154,8 +168,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     tmp_buffer->dtype = tmp_dtype;                                       \
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;                 \
     shm_buffer_.insert(tmp_buffer);                                      \
-    original_update_stmt.As<ir::Store>()->value =                        \
-        lang::CallExtern(reduce_func_name, {node->b(), tmp_buffer});     \
+    original_update_stmt.As<ir::Store>()->value = lang::CallExtern(      \
+        reduce_func_name, {node->b(), tmp_buffer, return_warp});         \
   }
 
     REPLACE_TO_EXTERNAL_CALL(ir::Add)
