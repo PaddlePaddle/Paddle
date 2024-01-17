@@ -293,6 +293,11 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     """
 
+    def zero_norm(
+        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
+    ):
+        return paddle.count_nonzero(input, axis=axis, keepdim=keepdim, name=name)
+
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
     ):
@@ -429,65 +434,45 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             )
             return out
 
-    if axis is None and p is not None:
-        if isinstance(p, (int, float)):
-            return vector_norm_axis_int(
-                x,
-                porder=p,
-                axis=axis,
-                keepdim=keepdim,
-                asvector=True,
-                name=name,
-            )
-        else:
-            raise ValueError(f"only valid p type is float, found {type(p)}")
+    if not isinstance(p, (int, float)):
+        raise ValueError(f"only valid p type is int and float, found {type(p)}")
+
+    asvector = False
+    if axis is None:
+        axis = -1
+        asvector = True
 
     if isinstance(axis, tuple):
         axis = list(axis)
     if isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
-    if isinstance(axis, int):
-        if isinstance(p, str):
-            if p == "fro":
-                return vector_norm_axis_int(
-                    x,
-                    porder=2,
-                    axis=axis,
-                    keepdim=keepdim,
-                    asvector=False,
-                    name=name,
-                )
 
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
-        elif isinstance(p, (int, float)):
-            return vector_norm_axis_int(
-                x,
-                axis=axis,
-                porder=p,
-                keepdim=keepdim,
-                asvector=False,
-                name=name,
-            )
+    # when len(axis) == 1, use the original op to calculate
+    if isinstance(axis, int):
+        return vector_norm_axis_int(
+            x,
+            axis=axis,
+            porder=p,
+            keepdim=keepdim,
+            asvector=asvector,
+            name=name,
+        )
+
+    # when len(axis) >= 1, calculate by combining other Python apis
     elif isinstance(axis, list):
-        if isinstance(p, (int, float)):
-            if p == np.inf or p == -np.inf:
-                return inf_norm(
-                    x, porder=p, axis=axis, keepdim=keepdim, name=name
-                )
-            elif p == 0:
-                raise ValueError(
-                    f"just support axis type int or list (length of list <=1) if p = 0, found {axis}"
-                )
-            else:
-                return vector_norm_axis_tuple(
-                    x, porder=p, axis=axis, keepdim=keepdim, name=name
-                )
+        if p == np.inf or p == -np.inf:
+            return inf_norm(
+                x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
+        elif p == 0:
+            return zero_norm(
+                x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
         else:
-            raise ValueError(f"only valid type values are float, found {p}")
+            return vector_norm_axis_tuple(
+                x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
 
 
 def norm(x, p='fro', axis=None, keepdim=False, name=None):
@@ -780,43 +765,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 attrs=attrs,
             )
             return out
-
-    def inf_norm(
-        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
-    ):
-        if in_dynamic_mode():
-            out = _C_ops.abs(input)
-            if porder == np.float64('inf'):
-                return _C_ops.max(out, axis, keepdim)
-            else:
-                return _C_ops.min(out, axis, keepdim)
-        else:
-            helper = LayerHelper('inf_norm', **locals())
-            out = helper.create_variable_for_type_inference(
-                dtype=helper.input_dtype()
-            )
-            helper.append_op(
-                type='abs', inputs={'X': input}, outputs={'Out': out}
-            )
-            reduce_out = helper.create_variable_for_type_inference(
-                dtype=helper.input_dtype()
-            )
-            reduce_all, axis = _get_reduce_axis(axis, x)
-            reduce_type = (
-                'reduce_max' if porder == np.float64('inf') else 'reduce_min'
-            )
-            helper.append_op(
-                type=reduce_type,
-                inputs={'X': out},
-                outputs={'Out': reduce_out},
-                attrs={
-                    'dim': axis,
-                    'keep_dim': keepdim,
-                    'reduce_all': reduce_all,
-                },
-            )
-
-            return reduce_out
 
     def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
         """
