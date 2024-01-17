@@ -170,7 +170,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = src.ResultPattern();
 
     // W reshape.
-    const auto &reshape_w_shape_attr = res.Attr(
+    const auto &reshape_w_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           auto matmul_1_in_2 =
               pir::GetShapeFromValue(match_ctx.Tensor("matmul_1_in_2"));
@@ -195,14 +195,12 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
                &res.Tensor("reshape_6_out"),
                &res.Tensor("reshape_7_out")},
               {&res.Tensor("combine_1_out")});
-    const auto &concat_1_axis_attr = res.Attr(
-        [](const paddle::drr::MatchContext &match_ctx) -> int { return 1; });
-    const auto &concat_1 =
-        res.Op("pd_op.concat", {{"axis", concat_1_axis_attr}});
+
+    const auto &concat_1 = res.Op("pd_op.concat", {{"axis", res.Int32Attr(1)}});
     res.Tensor("concat_1_out") = concat_1(res.Tensor("combine_1_out"));
 
     // Bias reshape.
-    const auto &reshape_b_shape_attr = res.Attr(
+    const auto &reshape_b_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           auto add_1_in_2 =
               pir::GetShapeFromValue(match_ctx.Tensor("add_1_in_2"));
@@ -227,38 +225,26 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
                &res.Tensor("reshape_9_out"),
                &res.Tensor("reshape_10_out")},
               {&res.Tensor("combine_2_out")});
-    const auto &concat_2_axis_attr = res.Attr(
-        [](const paddle::drr::MatchContext &match_ctx) -> int { return 0; });
-    const auto &concat_2 =
-        res.Op("pd_op.concat", {{"axis", concat_2_axis_attr}});
+
+    const auto &concat_2 = res.Op("pd_op.concat", {{"axis", res.Int32Attr(0)}});
     res.Tensor("concat_2_out") = concat_2(res.Tensor("combine_2_out"));
 
     const auto &head_number =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> int {
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           const auto &full_int_array_1_value =
               match_ctx.Attr<std::vector<int64_t>>("full_int_array_1_value");
           return full_int_array_1_value.at(2);
         });
-    const auto &alpha =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("full_1_value");
         });
-    const auto &multihead_matmul =
-        res.Op("pd_op.multihead_matmul",
-               {{"transpose_q",
-                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
-                   return false;
-                 })},
-                {"transpose_k",
-                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
-                   return true;
-                 })},
-                {"transpose_v",
-                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
-                   return false;
-                 })},
-                {"head_number", head_number},
-                {"alpha", alpha}});
+    const auto &multihead_matmul = res.Op("pd_op.multihead_matmul",
+                                          {{"transpose_q", res.BoolAttr(false)},
+                                           {"transpose_k", res.BoolAttr(true)},
+                                           {"transpose_v", res.BoolAttr(false)},
+                                           {"head_number", head_number},
+                                           {"alpha", alpha}});
     multihead_matmul({&res.Tensor("matmul_1_in_1"),
                       &res.Tensor("concat_1_out"),
                       &res.Tensor("concat_2_out"),
@@ -423,7 +409,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     paddle::drr::ResultPattern res = src.ResultPattern();
 
     // W reshape.
-    const auto &reshape_w_shape_attr = res.Attr(
+    const auto &reshape_w_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           auto matmul_1_in_2 =
               pir::GetShapeFromValue(match_ctx.Tensor("matmul_1_in_2"));
@@ -448,14 +434,12 @@ class MultiHeadMatmulFuseWithBiasQKPattern
                &res.Tensor("reshape_6_out"),
                &res.Tensor("reshape_7_out")},
               {&res.Tensor("combine_1_out")});
-    const auto &concat_1_axis_attr = res.Attr(
-        [](const paddle::drr::MatchContext &match_ctx) -> int { return 1; });
-    const auto &concat_1 =
-        res.Op("pd_op.concat", {{"axis", concat_1_axis_attr}});
+
+    const auto &concat_1 = res.Op("pd_op.concat", {{"axis", res.Int32Attr(1)}});
     res.Tensor("concat_1_out") = concat_1(res.Tensor("combine_1_out"));
 
     // Bias reshape.
-    const auto &reshape_b_shape_attr = res.Attr(
+    const auto &reshape_b_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           auto add_1_in_2 =
               pir::GetShapeFromValue(match_ctx.Tensor("add_1_in_2"));
@@ -480,38 +464,26 @@ class MultiHeadMatmulFuseWithBiasQKPattern
                &res.Tensor("reshape_9_out"),
                &res.Tensor("reshape_10_out")},
               {&res.Tensor("combine_2_out")});
-    const auto &concat_2_axis_attr = res.Attr(
-        [](const paddle::drr::MatchContext &match_ctx) -> int { return 0; });
-    const auto &concat_2 =
-        res.Op("pd_op.concat", {{"axis", concat_2_axis_attr}});
+
+    const auto &concat_2 = res.Op("pd_op.concat", {{"axis", res.Int32Attr(0)}});
     res.Tensor("concat_2_out") = concat_2(res.Tensor("combine_2_out"));
 
     const auto &head_number =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> int {
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           const auto &full_int_array_1_value =
               match_ctx.Attr<std::vector<int64_t>>("full_int_array_1_value");
           return full_int_array_1_value.at(2);
         });
-    const auto &alpha =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("full_1_value");
         });
-    const auto &multihead_matmul =
-        res.Op("pd_op.multihead_matmul",
-               {{"transpose_q",
-                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
-                   return false;
-                 })},
-                {"transpose_k",
-                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
-                   return true;
-                 })},
-                {"transpose_v",
-                 res.Attr([](const paddle::drr::MatchContext &match_ctx) {
-                   return false;
-                 })},
-                {"head_number", head_number},
-                {"alpha", alpha}});
+    const auto &multihead_matmul = res.Op("pd_op.multihead_matmul",
+                                          {{"transpose_q", res.BoolAttr(false)},
+                                           {"transpose_k", res.BoolAttr(true)},
+                                           {"transpose_v", res.BoolAttr(false)},
+                                           {"head_number", head_number},
+                                           {"alpha", alpha}});
     multihead_matmul({&res.Tensor("matmul_1_in_1"),
                       &res.Tensor("concat_1_out"),
                       &res.Tensor("concat_2_out"),
