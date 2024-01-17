@@ -331,7 +331,10 @@ def inverse_sort_op(ops):
     sorted_list = []
     for op in ops:
         for x in get_real_op_inputs(op):
-            if x and x.get_defining_op() in ops_set:
+            if (
+                not paddle.pir.is_fake_value(x)
+                and x.get_defining_op() in ops_set
+            ):
                 pending_count[x.get_defining_op()] += 1
 
     queue = collections.deque()
