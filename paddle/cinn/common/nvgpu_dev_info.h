@@ -39,6 +39,7 @@ class NVGPUDevInfo : public DevInfoBase {
   int GetMultiProcessorCount() const;
   int GetMaxThreadsPerMultiProcessor() const;
   int GetMaxThreadsPerBlock() const;
+  size_t GetMaxSharedMemPerBlock() const;
 
  private:
   cudaDeviceProp prop_;
