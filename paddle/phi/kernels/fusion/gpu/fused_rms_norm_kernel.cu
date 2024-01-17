@@ -50,6 +50,9 @@ namespace phi {
 
 namespace fusion {
 
+namespace {
+#ifndef PADDLE_WITH_HIP
+
 #define DEFAULT_THROW(NAME, TYPE)                           \
   default:                                                  \
     do {                                                    \
@@ -239,7 +242,8 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
         }
         __syncthreads();
       }
-      // threadIdx.x = 0 && threadIdx.y == 0 only thread that has correct values
+      // threadIdx.x = 0 && threadIdx.y == 0 only thread that has correct
+      // values
       if (threadIdx.x == 0 && threadIdx.y == 0) {
         if (!rms_only) {
           ubuf[0] = mu;
@@ -364,7 +368,8 @@ __device__ void cuWelfordMuSigma2(const phi::dtype::float16* __restrict__ vals,
         }
         __syncthreads();
       }
-      // threadIdx.x = 0 && threadIdx.y == 0 only thread that has correct values
+      // threadIdx.x = 0 && threadIdx.y == 0 only thread that has correct
+      // values
       if (threadIdx.x == 0 && threadIdx.y == 0) {
         if (!rms_only) {
           ubuf[0] = mu;
@@ -712,7 +717,8 @@ __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
   U* buf = shared.getPointer();
   int i2 = blockIdx.x * blockDim.x + threadIdx.x;
   if (i2 < n2) {
-    // each warp does sequential reductions until reduced part_size is num_warps
+    // each warp does sequential reductions until reduced part_size is
+    // num_warps
     int num_warp_reductions = part_size / blockDim.y;
     U sum_gamma = U(0);
     U sum_beta = U(0);
@@ -1088,6 +1094,8 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                           grad_scale->data<SCALE_TYPE>(),
                           dev_ctx.stream()));
 }
+#endif
+}  // namespace
 
 template <typename T, typename Context>
 void FusedRmsNormKernel(const Context& dev_ctx,
