@@ -321,52 +321,36 @@ bool FullIntArrayOpInferSymbolicShape(
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // TODO(zhangbopd): Not implemented yet.
-  auto operand_source = op->operand_source(0);
-  auto operand_source_1 = op->operand_source(1);
-  auto operand_source_2 = op->operand_source(2);
+  pir::Value operand_source = op->operand_source(0);
+  pir::Value operand_starts = op->operand_source(1);
+  // pir::Value operand_ends = op->operand_source(2);
 
-  pir::OpResult res = op->result(0);
+  symbol::ShapeOrDataDimExprs operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  symbol::ShapeOrDataDimExprs starts_shape_data =
+      shape_analysis->GetShapeOrDataForValue(operand_starts);
 
-  std::vector<int64_t> dims =
-      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
-
-  // TODO(zhangbopd): check whether it's right for other cases
-  std::vector<symbol::DimExpr> shapes;
-  for (int64_t dim : dims) {
-    symbol::DimExpr dim_expr;
-    if (dim == -1) {
-      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
-      dim_expr = res_dim_expr;
-    } else {
-      symbol::DimExpr res_dim_expr(dim);
-      dim_expr = res_dim_expr;
-    }
-    shapes.push_back(dim_expr);
+  int64_t start = 0;
+  if (starts_shape_data.data().has_value()) {
+    start = starts_shape_data.data()->at(0).Get<int64_t>();
   }
 
-  auto starts_array =
-      shape_analysis->GetShapeOrDataForValue(operand_source_1).data();
-  auto start = starts_array->at(0).Get<int64_t>();
-
-  auto ends_array =
-      shape_analysis->GetShapeOrDataForValue(operand_source_2).data();
-  auto end = ends_array->at(0).Get<int64_t>();
-
-  std::vector<symbol::DimExpr> data;
-  auto source_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source).data();
-  if (source_data != std::nullopt) {
-    for (int i = start; i < end; i++) {
-      data.emplace_back(source_data->at(i));
-    }
+  std::vector<symbol::DimExpr> out_dims;
+  if (operand_shape_or_data.data().has_value()) {
+    out_dims.push_back(operand_shape_or_data.data().value()[start]);
   }
 
-  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  symbol::ShapeOrDataDimExprs shape_data{out_dims};
+  if (operand_shape_or_data.data().has_value()) {
+    shape_data =
+        symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+  }
   op->set_attribute(
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
 
+  pir::OpResult res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
