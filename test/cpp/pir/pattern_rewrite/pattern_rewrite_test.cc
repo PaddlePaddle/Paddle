@@ -583,7 +583,7 @@ TEST(constant_folding, ConstantFolding_Combine) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 12u);
+  EXPECT_EQ(program.block()->size(), 2u);
 }
 
 void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {
