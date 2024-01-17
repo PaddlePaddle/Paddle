@@ -14,6 +14,7 @@ if(WITH_TESTING AND WITH_CINN)
               pir_transforms)
 
   paddle_test(test_ir_op_fusion SRCS ir_op_fusion_test.cc)
+  paddle_test(test_ir_op_cluster SRCS ir_op_cluster_test.cc)
 
   paddle_test(test_pir_all_path SRCS pir_all_path_test.cc)
 
