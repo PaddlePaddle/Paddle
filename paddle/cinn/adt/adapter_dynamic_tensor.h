@@ -37,7 +37,7 @@ struct DynamicTensor final {
 
   std::vector<DimExpr> GetShape() const {
     std::vector<DimExpr> ret{};
-    for (const auto& dim_expr : group->shape_analysis->GetShapeOrDataForValue(node_data).shape()) {
+    for (const auto& dim_expr : group->GetShapeOrDataExprs(node_data).shape()) {
       ret.emplace_back(ConvertDimExpr(dim_expr));
     }
     return ret;

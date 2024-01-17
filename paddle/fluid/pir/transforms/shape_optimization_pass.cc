@@ -13,18 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 namespace {
@@ -85,6 +76,7 @@ void DebugPrintOpInfo(
 void InferSymExprForAllValues(ModuleOp module_op) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
+  shape_analysis.Init();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
@@ -112,7 +104,7 @@ class ShapeOptimizationPass : public pir::Pass {
 
   void Run(pir::Operation* op) override {
     VLOG(3) << "===================== ShapeOptimizationPass Run start... "
-               "=============================";
+               "=====================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
     PrintProgram(module_op, "Origin Program");
@@ -120,12 +112,12 @@ class ShapeOptimizationPass : public pir::Pass {
     InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+      pm.EnableIRPrinting();
       return pm.Run(m.program());
     };
-    PrintProgram(module_op, "After ShapeOptimizationPass Program");
-
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
-               "=============================";
+               "=====================";
+    PrintProgram(module_op, "ShapeOptimizationPass Program");
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
