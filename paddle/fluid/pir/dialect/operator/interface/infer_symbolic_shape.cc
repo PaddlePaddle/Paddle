@@ -222,27 +222,45 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::OpResult res = op->result(0);
-
-  std::vector<int64_t> dims =
-      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
-
-  std::vector<symbol::DimExpr> shapes;
-  VLOG(1) << "SumOpInferSymbolicShape begin";
-  for (int64_t dim : dims) {
-    symbol::DimExpr dim_expr;
-    if (dim == -1) {
-      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
-      dim_expr = res_dim_expr;
-    } else {
-      symbol::DimExpr res_dim_expr(dim);
-      dim_expr = res_dim_expr;
+  std::vector<symbol::DimExpr> input_shapes{
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape()};
+  symbol::ShapeOrDataDimExprs axis_exprs =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  IR_ENFORCE(axis_exprs.data().has_value(),
+             "The ShapeOrDataDimExprs of axis should have data");
+  const auto &axis_datas = axis_exprs.data().value();
+  std::unordered_set<std::int64_t> axis_set{};
+  for (std::size_t i = 0; i < axis_datas.size(); ++i) {
+    std::int64_t axis = axis_datas.at(i).dyn_cast<std::int64_t>();
+    if (axis < 0) {
+      axis += input_shapes.size();
     }
-    shapes.push_back(dim_expr);
-    VLOG(1) << "SumOpInferSymbolicShape dim_expr = " << dim_expr;
+    IR_ENFORCE(axis >= 0 && axis < input_shapes.size(),
+               "Invalid axis, please check again");
+    axis_set.insert(axis);
   }
 
-  symbol::ShapeOrDataDimExprs shape_data{shapes};
+  auto attributes = op->attributes();
+  pir::Attribute attr = attributes["keepdim"];
+  bool keepdim = attr.dyn_cast<pir::BoolAttribute>().data();
+
+  std::vector<symbol::DimExpr> output_shapes;
+  for (std::int64_t i = 0; i < input_shapes.size(); ++i) {
+    if (axis_set.find(i) != axis_set.end()) {
+      if (keepdim) {
+        output_shapes.emplace_back(1);
+      }
+    } else {
+      output_shapes.emplace_back(input_shapes.at(i));
+    }
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{output_shapes};
+  op->set_attribute(
+      "symbolic_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+
+  pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
