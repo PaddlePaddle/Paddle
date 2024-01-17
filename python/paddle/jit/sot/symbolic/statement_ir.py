@@ -135,7 +135,7 @@ class ApiStatement(Statement):
         stacks: list[str],
     ):
         super().__init__(
-            "api", "paddle." + api.__name__, inputs, outputs, stacks
+            "api", api.__module__ + "." + api.__name__, inputs, outputs, stacks
         )
         self.api = api
 
