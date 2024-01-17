@@ -1436,12 +1436,13 @@ PHI_DEFINE_EXPORTED_string(
  * Since Version: 2.7.0
  * Value Range: str, default=""
  * Example:
- * Note: It controls the pir onednn kernel subset do not use.
+ * Note: This environment variable controls the partial operators not using
+ * onednn.
  */
-PHI_DEFINE_EXPORTED_string(
-    pir_onednn_kernel_blacklist,
-    "",
-    "It controls the pir onednn kernel subset do not use.");
+PHI_DEFINE_EXPORTED_string(pir_onednn_kernel_blacklist,
+                           "",
+                           "This environment variable controls the partial "
+                           "operators not using onednn.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
