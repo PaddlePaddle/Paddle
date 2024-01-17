@@ -86,7 +86,7 @@ namespace {
 std::size_t GetHashValueImpl(std::int64_t expr) { return expr; }
 
 std::size_t GetHashValueImpl(const SymbolicDim& expr) {
-  return expr.value().unique_id();
+  return std::hash<std::string>()(expr);
 }
 
 std::size_t GetHashValueImpl(const Negative<DimExpr>& expr) {

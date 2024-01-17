@@ -24,7 +24,7 @@ DimExpr BD(const DimExpr& lhs, const DimExpr& rhs) {
   return MakeBroadcastedDim(lhs, rhs);
 }
 
-DimExpr MakeSymbolic() { return DimExpr{SymbolicDim{UniqueId::New()}}; }
+DimExpr MakeSymbolic() { return DimExpr{SymbolicDim(std::to_string(UniqueId::New().unique_id()))}; }
 
 DimExpr MakeConstant(std::int64_t value) { return DimExpr{value}; }
 

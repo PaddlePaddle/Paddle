@@ -338,7 +338,7 @@ void GenerateDimEqualConstraints(const std::vector<symbol::DimExpr>& lhs_dims,
                                  const std::vector<symbol::DimExpr>& rhs_dims,
                                  const ::pir::Value& lhs_tensor,
                                  const ::pir::Value& rhs_tensor,
-                                 const ::pir::SymbolicDimMgr* symbolic_dim_mgr,
+                                 const ::pir::SymbolicDimMgr*,
                                  DimFunctions* ret) {
   VisitEachIdxPairOfTwoVectors(
       lhs_dims, rhs_dims, [&](std::size_t lhs_idx, std::size_t rhs_idx) {
@@ -481,7 +481,7 @@ SymbolicDim GetOrNewSymbolicDim(
       return symbolic_dim;
     }
   }
-  return SymbolicDim{UniqueId::New()};
+  LOG(FATAL) << "Dead code.";
 }
 
 std::unordered_map<DimVar, const DimExpr> MakeEquationStartExpr(

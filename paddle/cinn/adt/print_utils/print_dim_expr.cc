@@ -25,7 +25,7 @@ std::string ToTxtStringImpl(std::int64_t dim_expr) {
 }
 
 std::string ToTxtStringImpl(const SymbolicDim& dim_expr) {
-  return std::string("sym_") + std::to_string(dim_expr.value().unique_id());
+  return dim_expr;
 }
 
 std::string ToTxtStringImpl(const Negative<DimExpr>& dim_expr) {

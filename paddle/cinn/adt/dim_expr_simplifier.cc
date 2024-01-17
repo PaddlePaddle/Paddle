@@ -171,7 +171,7 @@ struct IsLhsBeforeRhsStruct<std::int64_t, std::int64_t> {
 template <>
 struct IsLhsBeforeRhsStruct<SymbolicDim, SymbolicDim> {
   static bool Call(const SymbolicDim& lhs, const SymbolicDim& rhs) {
-    return lhs.value().unique_id() < rhs.value().unique_id();
+    return lhs < rhs;
   }
 };
 
