@@ -23,7 +23,7 @@ from paddle.pir_utils import test_with_pir_api
 
 class TestIncrement(unittest.TestCase):
     @test_with_pir_api
-    def _test_api(self):
+    def test_api(self):
         with base.program_guard(base.Program(), base.Program()):
             input = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=5
