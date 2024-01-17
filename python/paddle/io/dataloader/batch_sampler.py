@@ -132,6 +132,7 @@ class BatchSampler(Sampler):
             isinstance(batch_size, int) and batch_size > 0
         ), f"batch_size should be a positive integer, but got {batch_size}"
         self.batch_size = batch_size
+        self.shuffle = shuffle
         assert isinstance(
             drop_last, bool
         ), f"drop_last should be a boolean value, but got {type(drop_last)}"
