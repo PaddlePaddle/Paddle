@@ -36,7 +36,7 @@ struct ShapeOrDataDimExprsAccessor {
 };
 
 // Returns true if at least one GenerateShapeOp rewrited.
-bool RewriteGenerateShapeOpToRunFirst(
+bool MoveGenerateShapeOpsToPrologue(
     pir::IrContext* ir_context,
     pir::Block* block,
     const ShapeOrDataDimExprsAccessor& shape_or_data_dim_expr_accessor);
