@@ -1057,7 +1057,6 @@ class DistModel:
 
         # paddle.enable_static() will be called implicitly in self._engine.prepare.
         # call paddle.disable_static to keep the outside of DistModel in dynamic graph mode
-        paddle.disable_static()
 
         # set the default mode
         if optimizer is not None and loss is not None:
@@ -1078,6 +1077,7 @@ class DistModel:
 
         self._mode = "train"
         self._engine.to_mode("train")
+        paddle.disable_static()
 
     def eval(self):
         """
@@ -1089,6 +1089,7 @@ class DistModel:
 
         self._mode = "eval"
         self._engine.to_mode("eval")
+        paddle.disable_static()
 
     def predict(self):
         """
@@ -1106,6 +1107,7 @@ class DistModel:
 
         self._mode = "predict"
         self._engine.to_mode("predict")
+        paddle.disable_static()
 
     def __validate_mode(self, mode):
         if mode is None and self._mode is None:

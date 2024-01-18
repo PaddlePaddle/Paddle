@@ -31,6 +31,7 @@ from paddle.static.amp.fp16_utils import (
 )
 
 from .converter import Converter
+from .process_group import get_world_process_group
 from .utils import get_logger, to_list
 
 
@@ -338,6 +339,7 @@ class ProgramHelper:
     def init(self, main_program, place, dist_context):
         if self.lazy_init:
             return
+
         is_comm = False
         for param in self.concrete_program.parameters:
             if param.is_dist():
@@ -381,7 +383,12 @@ class ProgramHelper:
                 dense_tensor = global_scope().var(param.name).get_tensor()
                 dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
-        if is_comm:
+        world_group = get_world_process_group()
+        if (
+            is_comm
+            and world_group.nranks > 1
+            and paddle.distributed.get_world_size() > 1
+        ):
             paddle.disable_static()
             barrier_tensor = paddle.full([1], 1, dtype="int32")
             paddle._legacy_C_ops.barrier(
