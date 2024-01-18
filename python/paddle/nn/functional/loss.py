@@ -984,7 +984,41 @@ def hsigmoid_loss(
     if num_classes < 2:
         raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        out, _, _ = _C_ops.hsigmoid_loss(
+            input,
+            label,
+            weight,
+            bias,
+            path_table,
+            path_code,
+            num_classes,
+            is_sparse,
+            is_sparse,
+        )
+        return out
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'hsigmoid_loss'
+    )
+    check_variable_and_dtype(label, 'label', ['int64'], 'hsigmoid_loss')
+    check_variable_and_dtype(
+        weight, 'weight', ['float32', 'float64'], 'hsigmoid_loss'
+    )
+    if bias is not None:
+        check_variable_and_dtype(
+            bias, 'bias', ['float32', 'float64'], 'hsigmoid_loss'
+        )
+    if path_table is not None:
+        check_variable_and_dtype(
+            path_table, 'path_table', ['int64'], 'hsigmoid_loss'
+        )
+    if path_code is not None:
+        check_variable_and_dtype(
+            path_code, 'path_code', ['int64'], 'hsigmoid_loss'
+        )
+
+    if in_pir_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
             label,
@@ -998,26 +1032,6 @@ def hsigmoid_loss(
         )
         return out
     else:
-        check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'hsigmoid_loss'
-        )
-        check_variable_and_dtype(label, 'label', ['int64'], 'hsigmoid_loss')
-        check_variable_and_dtype(
-            weight, 'weight', ['float32', 'float64'], 'hsigmoid_loss'
-        )
-        if bias is not None:
-            check_variable_and_dtype(
-                bias, 'bias', ['float32', 'float64'], 'hsigmoid_loss'
-            )
-        if path_table is not None:
-            check_variable_and_dtype(
-                path_table, 'path_table', ['int64'], 'hsigmoid_loss'
-            )
-        if path_code is not None:
-            check_variable_and_dtype(
-                path_code, 'path_code', ['int64'], 'hsigmoid_loss'
-            )
-
         attrs = {
             "num_classes": num_classes,
             "is_sparse": is_sparse,
