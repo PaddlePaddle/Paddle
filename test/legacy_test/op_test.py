@@ -2644,7 +2644,7 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
 
-        if check_pir_onednn and self.is_mkldnn_op():
+        if check_pir_onednn:
             with pir_executor_guard():
                 pir_onednn_static_checker = StaticChecker(self, self.outputs)
                 pir_onednn_static_checker.check()
