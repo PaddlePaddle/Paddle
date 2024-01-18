@@ -72,7 +72,7 @@ void BindIfOp(py::module* m) {
       .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
-          op_list.append(self.result(i));
+          op_list.append(static_cast<Value>(self.result(i)));
         }
         return op_list;
       });
