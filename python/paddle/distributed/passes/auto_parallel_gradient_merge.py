@@ -178,6 +178,7 @@ def _append_gradient_merge_backward_op(
         for out_name in op.desc.output_arg_names():
             if out_name in grad_to_params_grads:
                 param = grad_to_params_grads[out_name][0]
+                grad = grad_to_params_grads[out_name][1]
                 assert param is not None
                 ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     param
@@ -188,8 +189,8 @@ def _append_gradient_merge_backward_op(
                 # Add persistable gradient variables in main_program
                 gradient_merge_var = main_block.create_var(
                     name=param.name + "@GRAD@MERGE",
-                    shape=param.shape,
-                    dtype=param.dtype,
+                    shape=grad.shape,
+                    dtype=grad.dtype,
                     persistable=True,
                 )
                 ref_process_mesh = ref_dist_attr.process_mesh
@@ -205,8 +206,8 @@ def _append_gradient_merge_backward_op(
                 # Add persistable gradient variables in startup_program
                 startup_gradient_merge_var = startup_block.create_var(
                     name=param.name + "@GRAD@MERGE",
-                    shape=param.shape,
-                    dtype=param.dtype,
+                    shape=grad.shape,
+                    dtype=grad.dtype,
                     persistable=True,
                 )
                 # Initial persistable gradient variables in startup_program
@@ -214,8 +215,8 @@ def _append_gradient_merge_backward_op(
                     type="fill_constant",
                     outputs={"Out": startup_gradient_merge_var},
                     attrs={
-                        "shape": param.shape,
-                        "dtype": param.dtype,
+                        "shape": grad.shape,
+                        "dtype": grad.dtype,
                         "value": float(0),
                     },
                 )
@@ -232,6 +233,7 @@ def _append_gradient_merge_backward_op(
                     attrs={
                         'axis': -1,
                         OP_ROLE_KEY: OpRole.Backward,
+                        "op_namescope": "/auto_parallel/gradient_merge",
                     },
                 )
 
@@ -375,8 +377,16 @@ def _create_cond_block_and_update_optimizer(
             )
 
     paddle.static.nn.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
+    cond_dist_attr = dist_context.get_tensor_dist_attr_for_program(cond_var)
     cond_op = main_program.global_block().ops[-1]
     cond_op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        cond_op,
+        process_mesh=cond_dist_attr.process_mesh,
+        ref_mapping=cond_dist_attr.dims_mapping,
+        ctx=dist_context,
+        chunk_id=cond_dist_attr.chunk_id,
+    )
 
 
 def parse_program(

@@ -19,10 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {
-
+constexpr char kCustomDialectPrefix[] = "custom_op.";  // NOLINT
 namespace detail {
 
 // dynamic lib load func
@@ -79,6 +80,38 @@ inline static bool IsGradVar(const std::string& var_name, bool is_double_grad) {
 inline static bool IsMemberOf(const std::vector<std::string>& vec,
                               const std::string& name) {
   return std::find(vec.cbegin(), vec.cend(), name) != vec.cend();
+}
+
+inline static const OpMetaInfo& GetOpInfoByPirName(
+    const std::string& pir_op_name) {
+  auto custom_name = pir_op_name.substr(strlen(kCustomDialectPrefix));
+  int pos = custom_name.length();
+
+  if (custom_name[pos - 1] == '_') {
+    // deal with inplace name
+    custom_name = custom_name.substr(0, pos - 1);
+  }
+
+  pos = custom_name.length();
+  if (custom_name.find("_grad_grad") != custom_name.npos) {
+    pos = custom_name.find("_grad_grad") + 1;
+  } else if (custom_name.find("_grad") != custom_name.npos) {
+    pos = custom_name.find("_grad") + 1;
+  }
+  auto custom_name_prefix = custom_name.substr(0, pos);
+  auto map_iter =
+      paddle::OpMetaInfoMap::Instance().GetMap().find(custom_name_prefix);
+  if (map_iter == paddle::OpMetaInfoMap::Instance().GetMap().end()) {
+    PADDLE_THROW("The info of custom op : " + custom_name + " is not exists!");
+  }
+  const auto& vec_op_meta = map_iter->second;
+  if (custom_name.find("_grad_grad") != custom_name.npos) {
+    return vec_op_meta[2];
+  } else if (custom_name.find("_grad") != custom_name.npos) {
+    return vec_op_meta[1];
+  } else {
+    return vec_op_meta[0];
+  }
 }
 
 }  // namespace detail
