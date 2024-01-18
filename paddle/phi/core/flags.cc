@@ -20,11 +20,11 @@
 
 namespace phi {
 
-PADDLE_API const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
+const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
   return *GetMutableExportedFlagInfoMap();
 }
 
-PADDLE_API ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
+ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
   static ExportedFlagInfoMap g_exported_flag_info_map;
   return &g_exported_flag_info_map;
 }
@@ -48,4 +48,3 @@ PHI_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
                           phi::backends::gpu::kDefaultConvWorkspaceSizeLimitMB,
                           "cuDNN convolution workspace limit in MB unit.");
 #endif
-
