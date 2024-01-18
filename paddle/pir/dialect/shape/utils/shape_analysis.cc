@@ -14,6 +14,7 @@
 
 #include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include <string>
+
 namespace pir {
 
 static std::string GetValueId(const Value& val) {
