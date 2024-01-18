@@ -181,7 +181,7 @@ class LlamaRMSNorm(paddle.nn.Layer):
     def forward(self, hidden_states):
         # 1. variance = hidden_states.pow(2).mean(-1, keepdim=True)
 
-        axis_rst = 2
+        axis_rst = -1
         # 1.1 decomp pow -> elementwise_pow
         pow_tensor = paddle.full([1], axis_rst, hidden_states.dtype)
         pow_rst = paddle.pow(hidden_states, pow_tensor)
