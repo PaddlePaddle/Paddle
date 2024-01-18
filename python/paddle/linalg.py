@@ -33,6 +33,8 @@ from .tensor.linalg import (
     matrix_rank,
     multi_dot,
     norm,
+    vector_norm,
+    matrix_norm,
     pca_lowrank,
     pinv,
     qr,

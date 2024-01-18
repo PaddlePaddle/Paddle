@@ -831,6 +831,9 @@ def matrix_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             )
             return reduce_out
 
+    if isinstance(axis, tuple):
+        axis = list(axis)
+
     if isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
@@ -951,6 +954,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
              [4., 5., 6., 5.],
              [4., 3., 2., 1.]])
     """
+    # if axis is None and len(x.shape) == 2:
+    #     axis = (0,1)
+    #     return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
 
     if axis is None and p is not None:
         if isinstance(p, str):
