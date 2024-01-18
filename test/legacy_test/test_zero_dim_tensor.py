@@ -25,6 +25,8 @@ from decorator_helper import prog_scope
 
 import paddle
 import paddle.nn.functional as F
+from paddle import base, core
+from paddle.framework import in_dynamic_mode
 from paddle.pir_utils import test_with_pir_api
 
 unary_api_list = [
@@ -2674,6 +2676,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [])
         self.assertEqual(x2.grad.numpy(), 0.25)
 
+    @test_with_pir_api
     def test_while_loop(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
@@ -2685,20 +2688,43 @@ class TestSundryAPI(unittest.TestCase):
 
         i = paddle.full([], 1.0, dtype='float32')
         i.stop_gradient = False
+        i.persistable = True
         eleven = paddle.full([], 11, dtype='float32')
         x = paddle.full([], 0.0, dtype='float32')
         x.stop_gradient = False
+        x.persistable = True
         out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
-        out_x.backward()
 
-        self.assertEqual(out_i.shape, [])
+        if in_dynamic_mode():
+            out_x.backward()
+            di = i.grad
+            dx = x.grad
+        else:
+            grad_list = paddle.static.append_backward(out_x)
+            for p, g in grad_list:
+                if p.is_same(i):
+                    di = g
+                elif p.is_same(x):
+                    dx = g
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+            exe = base.Executor(place)
+            main_program = paddle.static.default_main_program()
+            out_i, out_x, di, dx = exe.run(
+                main_program, feed={}, fetch_list=[out_i, out_x, di, dx]
+            )
+
+        self.assertEqual(np.asarray(out_i).shape, ())
         np.testing.assert_allclose(out_i, np.array(11))
-        self.assertEqual(out_x.shape, [])
+        self.assertEqual(np.asarray(out_x).shape, ())
         np.testing.assert_allclose(out_x, np.array(55))
-        self.assertEqual(i.grad.shape, [])
-        np.testing.assert_allclose(i.grad, np.array(10))
-        self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, np.array(1.0))
+        self.assertEqual(np.asarray(di).shape, ())
+        np.testing.assert_allclose(di, np.array(10))
+        self.assertEqual(np.asarray(dx).shape, ())
+        np.testing.assert_allclose(dx, np.array(1.0))
 
     def test_to_tensor(self):
         out1 = paddle.to_tensor(1)
