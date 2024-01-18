@@ -22,9 +22,9 @@ class ObserveWrapper(Layer):
     Put an observer layer and an observed layer into a wrapping layer.
     It is used to insert layers into the model for QAT or PTQ.
     Args:
-        observer(BaseQuanter) - Observer layer
-        observed(Layer) - Observed layer
-        observe_input(bool) - If it is true the observer layer will be called before observed layer.
+        observer(BaseQuanter): Observer layer
+        observed(Layer): Observed layer
+        observe_input(bool): If it is true the observer layer will be called before observed layer.
             If it is false the observed layer will be called before observer layer. Default: True.
     """
 

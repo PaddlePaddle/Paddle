@@ -26,8 +26,8 @@ class Stub(Layer):
     stub will observe or quantize the inputs of the functional API.
 
     Args:
-        observer(QuanterFactory) - The configured information of the observer to be inserted.
-        It will use a global configuration to create the observers if the 'observer' is none.
+        observer(QuanterFactory): The configured information of the observer to be inserted.
+            It will use a global configuration to create the observers if the 'observer' is none.
 
     Examples:
         .. code-block:: python
@@ -81,9 +81,9 @@ class QuanterStub(Layer):
     The user should not use this class directly.
 
     Args:
-        layer(paddle.nn.Layer) - The stub layer with an observer configure factory. If the observer
+        layer(paddle.nn.Layer): The stub layer with an observer configure factory. If the observer
         of the stub layer is none, it will use 'q_config' to create an observer instance.
-        q_config(QuantConfig) - The quantization configuration for the current stub layer.
+        q_config(QuantConfig): The quantization configuration for the current stub layer.
     """
 
     def __init__(self, layer: Stub, q_config):

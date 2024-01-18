@@ -69,9 +69,9 @@ class WMT16(Dataset):
 
     Returns:
         Dataset: Instance of WMT16 dataset. The instance of dataset has 3 fields:
-            - src_ids (np.array) - The sequence of token ids of source language.
-            - trg_ids (np.array) - The sequence of token ids of target language.
-            - trg_ids_next (np.array) - The next sequence of token ids of target language.
+            - src_ids (np.array): The sequence of token ids of source language.
+            - trg_ids (np.array): The sequence of token ids of target language.
+            - trg_ids_next (np.array): The next sequence of token ids of target language.
 
     Examples:
 

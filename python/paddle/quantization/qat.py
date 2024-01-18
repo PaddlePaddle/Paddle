@@ -24,7 +24,7 @@ class QAT(Quantization):
     r"""
     Tools used to prepare model for quantization-aware training.
     Args:
-        config(QuantConfig) - Quantization configuration
+        config(QuantConfig): Quantization configuration
 
     Examples:
         .. code-block:: python
@@ -47,8 +47,8 @@ class QAT(Quantization):
         And it will insert fake quanters into the model to simulate the quantization.
 
         Args:
-            model(Layer) - The model to be quantized.
-            inplace(bool) - Whether to modify the model in-place.
+            model(Layer): The model to be quantized.
+            inplace(bool): Whether to modify the model in-place.
 
         Return: The prepared model for quantization-aware training.
 
