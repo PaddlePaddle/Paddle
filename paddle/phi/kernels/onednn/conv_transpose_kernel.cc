@@ -364,8 +364,6 @@ void Execute(const OneDNNContext& dev_ctx,
              DenseTensor* out) {
   const auto* bias =
       dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
-  // auto start_time = high_resolution_clock::now();
-  // Caching Key for weights is needed
 
   std::shared_ptr<dnnl::deconvolution_forward> conv_p;
   std::shared_ptr<dnnl::memory> src_memory_p;
@@ -409,6 +407,7 @@ void Execute(const OneDNNContext& dev_ctx,
       args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
   } else {
+    // Caching Key for weights is needed
     std::string key =
         funcs::CreateKey(dev_ctx,
                          dev_ctx.GetInputsName("Input")[0],
