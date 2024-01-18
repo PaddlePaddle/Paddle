@@ -50,7 +50,9 @@ class TestCompatibility(unittest.TestCase):
         def false_func():
             return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='int32', value=3
-            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='bool', value=2)
+            ), paddle.tensor.fill_constant(
+                shape=[4, 5], dtype='bool', value=False
+            )
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -93,10 +95,10 @@ class TestCompatibility(unittest.TestCase):
         else:
             out = [
                 paddle.tensor.fill_constant(
-                    shape=[3, 4], dtype='float32', value=3
+                    shape=[3, 4], dtype='int32', value=3
                 ).numpy(),
                 paddle.tensor.fill_constant(
-                    shape=[4, 5], dtype='int64', value=2
+                    shape=[4, 5], dtype='bool', value=False
                 ).numpy(),
             ]
         return out
