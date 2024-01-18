@@ -27,7 +27,7 @@ cc_library(
 cc_library(
   paddle_pass_builder
   SRCS paddle_pass_builder.cc
-  DEPS framework_proto paddle_pass_controller)
+  DEPS framework_proto)
 
 set(paddle_inference_api_deps
     reset_tensor_array
@@ -62,7 +62,7 @@ cc_library(
   analysis_config
   SRCS analysis_config.cc
   DEPS ${mkldnn_quantizer_cfg} paddle_inference_api paddle_pass_builder
-       table_printer utf8proc)
+       paddle_pass_controller table_printer utf8proc)
 
 if(WIN32)
   target_link_libraries(paddle_inference_api phi common)

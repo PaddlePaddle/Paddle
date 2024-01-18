@@ -14,13 +14,12 @@
 
 #pragma once
 
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle_infer_declare.h"    // NOLINT
-#include "paddle_pass_controller.h"  // NOLINT
+
+#include "paddle_infer_declare.h"  // NOLINT
 
 ///
 /// \file paddle_pass_builder.h
@@ -32,6 +31,7 @@
 /// \author paddle-infer@baidu.com
 /// \date 2020-3-23
 /// \since 1.7
+
 /// \namespace paddle
 namespace paddle {
 
@@ -95,7 +95,7 @@ class PD_INFER_DECL PaddlePassBuilder {
 
   /// \brief Get information of passes.
   /// \return Return list of the passes.
-  virtual const std::vector<std::string> AllPasses() const { return passes_; }
+  const std::vector<std::string> &AllPasses() const { return passes_; }
 
   /// \brief Get information of analysis passes.
   /// \return Return list of analysis passes.
@@ -177,13 +177,6 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
-  virtual void InitPassCtrl(const int64_t mixed_precision_mode,
-                            const int64_t tensorrt_precision_mode,
-                            const bool use_gpu,
-                            const bool use_trt) {
-    return;
-  }
-
  protected:
   /// \cond Protected
   bool use_xpu_{false};
@@ -260,12 +253,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Construct by copying another GpuPassStrategy object.
   /// \param[in] other The GpuPassStrategy object we want to copy.
   explicit GpuPassStrategy(const GpuPassStrategy &other)
-      : PassStrategy(other.AllPassesForCopy()) {
-    if (other.pass_ctrl_ != nullptr) {
-      pass_ctrl_ = std::make_unique<PaddlePassContorller>(
-          other.pass_ctrl_->GetPassRuntimeStatus(),
-          other.pass_ctrl_->GetPassCtrlMode());
-    }
+      : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
     use_cudnn_ = other.use_cudnn_;
   }
@@ -291,18 +279,9 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;
 
-  void InitPassCtrl(const int64_t mixed_precision_mode,
-                    const int64_t tensorrt_precision_mode,
-                    const bool use_gpu,
-                    const bool use_trt) override;
-
-  const std::vector<std::string> AllPasses() const override;
-  const std::vector<std::string> AllPassesForCopy() const { return passes_; }
-
  protected:
   /// \cond Protected
   bool use_cudnn_{false};
-  std::unique_ptr<PaddlePassContorller> pass_ctrl_;
   /// \endcond
 };
 

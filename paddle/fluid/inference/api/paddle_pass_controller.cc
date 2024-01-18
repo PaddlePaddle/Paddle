@@ -23,38 +23,44 @@
 #include <iostream>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/flags.h"
+
 PADDLE_DEFINE_EXPORTED_string(pass_controller_config_path,
                               "",
                               "Enable pass controller for manage passes");
+PADDLE_DEFINE_EXPORTED_bool(pass_controller_radical_mode,
+                            false,
+                            "Enable switch to radical mode");
 
 namespace paddle {
 int GetTrtVersion() {
 #ifdef PADDLE_WITH_TENSORRT
-  auto trt_cmp_version_ = paddle::inference::tensorrt::GetTrtCompileVersion();
-  return std::get<0>(trt_cmp_version_) * 1000 +
-         std::get<1>(trt_cmp_version_) * 100 + std::get<2>(trt_cmp_version_);
+  auto trt_runtime_version_ =
+      paddle::inference::tensorrt::GetTrtRuntimeVersion();
+  return std::get<0>(trt_runtime_version_) * 1000 +
+         std::get<1>(trt_runtime_version_) * 100 +
+         std::get<2>(trt_runtime_version_);
 #else
   return 0;
 #endif
 }
 int GetCudnnVersion() {
 #ifdef PADDLE_WITH_CUDA
-  auto trt_cudnn_version_ = phi::backends::gpu::DnnVersion();
-  return trt_cudnn_version_;
+  auto cudnn_version_ = phi::backends::gpu::DnnVersion();
+  return cudnn_version_;
 #else
   return 0;
 #endif
 }
 bool VersionCtrlState::UseVersionCtrlStatus() {
   if (ctrl_name_ == "trt") {
-    auto trt_compile_version = GetTrtVersion();
+    auto trt_runtime_version = GetTrtVersion();
     if (lt_trt_version_ != 0 && gt_trt_version_ != 0) {
-      return trt_compile_version >= gt_trt_version_ &&
-             trt_compile_version < lt_trt_version_;
+      return trt_runtime_version >= gt_trt_version_ &&
+             trt_runtime_version < lt_trt_version_;
     } else if (lt_trt_version_ != 0) {
-      return trt_compile_version < lt_trt_version_;
+      return trt_runtime_version < lt_trt_version_;
     } else if (gt_trt_version_ != 0) {
-      return trt_compile_version >= gt_trt_version_;
+      return trt_runtime_version >= gt_trt_version_;
     }
   } else if (ctrl_name_ == "cudnn") {
     auto cudnn_version = GetCudnnVersion();
@@ -69,6 +75,25 @@ bool VersionCtrlState::UseVersionCtrlStatus() {
   }
   return false;
 }
+PassType getVersionCtrlRes(bool has_trt,
+                           bool has_cudnn,
+                           bool meet2trt_version,
+                           bool meet2cudnn_version,
+                           PassType trt_ctrl_state,
+                           PassType cudnn_ctrl_state) {
+  if (has_trt && has_cudnn && meet2trt_version && meet2cudnn_version) {
+    return trt_ctrl_state == cudnn_ctrl_state ? trt_ctrl_state
+                                              : PassType::Close;
+  } else if (has_trt && meet2trt_version) {
+    return trt_ctrl_state;
+  } else if (has_cudnn && meet2cudnn_version) {
+    return cudnn_ctrl_state;
+  } else if (has_trt || has_cudnn) {
+    return PassType::Default;
+  } else {
+    return PassType::Default;
+  }
+}
 PassType PassContorller::GetPassStatus(std::string pass_runtime_status,
                                        PassCtrlMode pass_ctrl_mode) {
   if (user_pass_status_ != PassType::Default) {
@@ -80,35 +105,61 @@ PassType PassContorller::GetPassStatus(std::string pass_runtime_status,
     }
     if (pass_ctrl_mode == PassCtrlMode::RadicalMode &&
         pass_state_map_[pass_runtime_status]
-                ->version_ctrl_state_["trt"]
+                .version_ctrl_state_["trt"]
                 .size() != 0) {
       return PassType::Open;
     }
+
+    auto has_trt_version_ctrl =
+        pass_state_map_[pass_runtime_status].version_ctrl_state_["trt"].size() >
+                0
+            ? true
+            : false;
+    auto has_cudnn_version_ctrl = pass_state_map_[pass_runtime_status]
+                                              .version_ctrl_state_["cudnn"]
+                                              .size() > 0
+                                      ? true
+                                      : false;
+
     auto use_cudnn_version_state = false;
     auto use_trt_version_state = false;
-    for (auto version_ctrl_info :
-         pass_state_map_[pass_runtime_status]->version_ctrl_state_["trt"]) {
-      use_trt_version_state =
-          use_trt_version_state || version_ctrl_info.UseVersionCtrlStatus();
-    }
-    for (auto version_ctrl_info :
-         pass_state_map_[pass_runtime_status]->version_ctrl_state_["cudnn"]) {
-      use_cudnn_version_state =
-          use_cudnn_version_state || version_ctrl_info.UseVersionCtrlStatus();
-    }
-    if (use_trt_version_state && use_cudnn_version_state) {
-      if (pass_state_map_[pass_runtime_status]->trt_ctrl_state_ ==
-          pass_state_map_["trt"]->cudnn_ctrl_state_) {
-        return pass_state_map_[pass_runtime_status]->trt_ctrl_state_;
-      } else {
-        return PassType::Close;
+    auto trt_version_state = PassType::Default;
+    auto cudnn_version_state = PassType::Default;
+    if (has_trt_version_ctrl) {
+      trt_version_state = pass_state_map_[pass_runtime_status]
+                              .version_ctrl_state_["trt"][0]
+                              .version_ctrl_state_;
+      for (auto version_ctrl_info :
+           pass_state_map_[pass_runtime_status].version_ctrl_state_["trt"]) {
+        use_trt_version_state =
+            use_trt_version_state || version_ctrl_info.UseVersionCtrlStatus();
       }
-    } else if (use_trt_version_state) {
-      return pass_state_map_[pass_runtime_status]->trt_ctrl_state_;
-    } else if (use_cudnn_version_state) {
-      return pass_state_map_[pass_runtime_status]->cudnn_ctrl_state_;
     }
-    return pass_state_map_[pass_runtime_status]->pass_default_state_;
+    if (has_cudnn_version_ctrl) {
+      cudnn_version_state = pass_state_map_[pass_runtime_status]
+                                .version_ctrl_state_["cudnn"][0]
+                                .version_ctrl_state_;
+      for (auto version_ctrl_info :
+           pass_state_map_[pass_runtime_status].version_ctrl_state_["cudnn"]) {
+        use_cudnn_version_state =
+            use_cudnn_version_state || version_ctrl_info.UseVersionCtrlStatus();
+      }
+    }
+    if (has_trt_version_ctrl || has_cudnn_version_ctrl) {
+      auto version_state_res = getVersionCtrlRes(has_trt_version_ctrl,
+                                                 has_cudnn_version_ctrl,
+                                                 use_trt_version_state,
+                                                 use_cudnn_version_state,
+                                                 trt_version_state,
+                                                 cudnn_version_state);
+      if (version_state_res == PassType::Default) {
+        return pass_state_map_[pass_runtime_status].pass_default_state_;
+      } else {
+        return version_state_res;
+      }
+    } else {
+      return pass_state_map_[pass_runtime_status].pass_default_state_;
+    }
   } catch (const std::exception& e) {
     LOG(ERROR) << "[pass controller] Error:" << e.what()
                << ",so paddle controller return default";
@@ -116,16 +167,6 @@ PassType PassContorller::GetPassStatus(std::string pass_runtime_status,
   }
 }
 
-PaddlePassContorller::PaddlePassContorller(std::string pass_runtime_status,
-                                           PassCtrlMode pass_ctrl_mode) {
-  pass_runtime_status_ = pass_runtime_status;
-  pass_ctrl_mode_ = pass_ctrl_mode;
-  if (pass_ctrl_mode == PassCtrlMode::RadicalMode) {
-    LOG(INFO) << "[PaddlePassContorller] is RadicalMode!";
-  } else {
-    LOG(INFO) << "[PaddlePassContorller] is DefaultMode!";
-  }
-}
 void PaddlePassContorller::LoadDefaultConfig() {
   LOG(INFO) << "[PaddlePassController]Load default configuration ！";
 
@@ -142,8 +183,7 @@ void PaddlePassContorller::LoadDefaultConfig() {
 
   for (auto ctrl_pass_name : ctrl_passes_) {
     LOG(INFO) << "Load pass[" << ctrl_pass_name << "] default config!";
-    pass_ctrl_map_.emplace(ctrl_pass_name,
-                           std::make_unique<PassContorller>(ctrl_pass_name));
+    pass_ctrl_map_.emplace(ctrl_pass_name, PassContorller(ctrl_pass_name));
     if (ctrl_pass_name == "preln_residual_bias_fuse_pass" ||
         ctrl_pass_name == "reverse_roll_fuse_pass" ||
         ctrl_pass_name == "preln_layernorm_x_fuse_pass" ||
@@ -151,90 +191,69 @@ void PaddlePassContorller::LoadDefaultConfig() {
         ctrl_pass_name == "split_layernorm_to_math_ops_pass" ||
         ctrl_pass_name == "merge_layernorm_fuse_pass" ||
         ctrl_pass_name == "elementwiseadd_transpose_pass") {
-      pass_ctrl_map_[ctrl_pass_name]->support_categories_ =
-          std::vector<std::string>{"trt"};
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"] =
-          std::make_unique<PassState>("trt");
-      pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trt"]
-          ->SetPassDefaultState(static_cast<PassType>(1));
-      VersionCtrlState trtversion = VersionCtrlState("trt");
+      pass_ctrl_map_[ctrl_pass_name].SetSupportCategories(
+          std::vector<std::string>{"trt"});
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trt"] = PassState("trt");
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trt"].SetPassDefaultState(
+          static_cast<PassType>(1));
+      VersionCtrlState trtversion =
+          VersionCtrlState("trt", static_cast<PassType>(0));
       trtversion.SetGtTrtVersion(8600);
       pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trt"]
-          ->version_ctrl_state_["trt"]
+          .pass_state_map_["trt"]
+          .version_ctrl_state_["trt"]
           .push_back(trtversion);
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"]->SetTrtCtrlState(
-          static_cast<PassType>(0));
     }
 
     if (ctrl_pass_name == "vit_attention_fuse_pass") {
-      pass_ctrl_map_[ctrl_pass_name]->support_categories_ =
+      pass_ctrl_map_[ctrl_pass_name].support_categories_ =
           std::vector<std::string>{"trt", "gpu"};
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"] =
-          std::make_unique<PassState>("trt");
-      pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trt"]
-          ->SetPassDefaultState(static_cast<PassType>(1));
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["gpu"] =
-          std::make_unique<PassState>("gpu");
-      pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["gpu"]
-          ->SetPassDefaultState(static_cast<PassType>(1));
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trt"] = PassState("trt");
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trt"].SetPassDefaultState(
+          static_cast<PassType>(1));
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["gpu"] = PassState("gpu");
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["gpu"].SetPassDefaultState(
+          static_cast<PassType>(1));
 
-      VersionCtrlState trtversion = VersionCtrlState("trt");
+      VersionCtrlState trtversion =
+          VersionCtrlState("trt", static_cast<PassType>(0));
       trtversion.SetGtTrtVersion(8600);
       pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trt"]
-          ->version_ctrl_state_["trt"]
+          .pass_state_map_["trt"]
+          .version_ctrl_state_["trt"]
           .push_back(trtversion);
-
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"]->SetTrtCtrlState(
-          static_cast<PassType>(0));
     }
 
     if (ctrl_pass_name == "add_support_int8_pass") {
-      pass_ctrl_map_[ctrl_pass_name]->support_categories_ =
+      pass_ctrl_map_[ctrl_pass_name].support_categories_ =
           std::vector<std::string>{"trtint8"};
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trtint8"] =
-          std::make_unique<PassState>("trt");
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trtint8"] =
+          PassState("trt");
       pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trtint8"]
-          ->SetPassDefaultState(static_cast<PassType>(1));
+          .pass_state_map_["trtint8"]
+          .SetPassDefaultState(static_cast<PassType>(1));
     }
 
     if (ctrl_pass_name == "trt_skip_layernorm_fuse_pass") {
-      pass_ctrl_map_[ctrl_pass_name]->support_categories_ =
+      pass_ctrl_map_[ctrl_pass_name].support_categories_ =
           std::vector<std::string>{"trt", "trtlow"};
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"] =
-          std::make_unique<PassState>("trt");
-      pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trt"]
-          ->SetPassDefaultState(static_cast<PassType>(1));
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trt"] = PassState("trt");
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trt"].SetPassDefaultState(
+          static_cast<PassType>(1));
 
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trtlow"] =
-          std::make_unique<PassState>("trt");
+      pass_ctrl_map_[ctrl_pass_name].pass_state_map_["trtlow"] =
+          PassState("trt");
       pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trtlow"]
-          ->SetPassDefaultState(static_cast<PassType>(1));
+          .pass_state_map_["trtlow"]
+          .SetPassDefaultState(static_cast<PassType>(1));
 
-      VersionCtrlState trtversion = VersionCtrlState("trt");
+      VersionCtrlState trtversion =
+          VersionCtrlState("trt", static_cast<PassType>(0));
       trtversion.SetGtTrtVersion(8600);
       pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trt"]
-          ->version_ctrl_state_["trt"]
+          .pass_state_map_["trtlow"]
+          .version_ctrl_state_["trt"]
           .push_back(trtversion);
-
-      pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trtlow"]
-          ->version_ctrl_state_["trt"]
-          .push_back(trtversion);
-
-      pass_ctrl_map_[ctrl_pass_name]->pass_state_map_["trt"]->SetTrtCtrlState(
-          static_cast<PassType>(0));
-      pass_ctrl_map_[ctrl_pass_name]
-          ->pass_state_map_["trtlow"]
-          ->SetTrtCtrlState(static_cast<PassType>(0));
     }
   }
 }
@@ -255,14 +274,15 @@ void safeStoll(const std::string& str, int64_t& result) {  // NOLINT
   return;
 }
 void PaddlePassContorller::SetPassStatus(const std::string& pass_name,
-                                         const int64_t& pass_status) {
+                                         const int64_t pass_status) {
   if (pass_ctrl_map_.count(pass_name) != 0) {
-    pass_ctrl_map_[pass_name]->SetUserPassStatus(
+    pass_ctrl_map_[pass_name].SetUserPassStatus(
         static_cast<PassType>(pass_status));
   }
 }
 std::vector<VersionCtrlState> GetVersionRange(std::string range,
-                                              std::string category_name) {
+                                              std::string category_name,
+                                              int64_t ctrl_state) {
   std::vector<VersionCtrlState> res;
   std::vector<std::string> version_range_list;
   std::istringstream value_Stream(range);
@@ -286,10 +306,20 @@ std::vector<VersionCtrlState> GetVersionRange(std::string range,
         safeStoll(startStr, start);
       }
     }
-    VersionCtrlState trtversion = VersionCtrlState(category_name);
-    trtversion.SetGtTrtVersion(start);
-    trtversion.SetLtTrtVersion(end);
-    res.push_back(trtversion);
+    if (category_name == "trt") {
+      VersionCtrlState trtversion =
+          VersionCtrlState(category_name, static_cast<PassType>(ctrl_state));
+      trtversion.SetGtTrtVersion(start);
+      trtversion.SetLtTrtVersion(end);
+      res.push_back(trtversion);
+    }
+    if (category_name == "cudnn") {
+      VersionCtrlState cudnnversion =
+          VersionCtrlState(category_name, static_cast<PassType>(ctrl_state));
+      cudnnversion.SetGtCudnnVersion(start);
+      cudnnversion.SetLtCudnnVersion(end);
+      res.push_back(cudnnversion);
+    }
   }
   return res;
 }
@@ -305,6 +335,12 @@ void PaddlePassContorller::LoadDefaultPassCtrl() {
           pass_status_config;
       std::map<std::string, std::map<std::string, std::string>>
           pass_info_config;
+      std::map<
+          std::string,
+          std::map<std::string,
+                   std::map<std::string, std::map<std::string, std::string>>>>
+          pass_version_ctrl;
+
       std::string line;
       std::string pass;
       while (std::getline(configFile, line)) {
@@ -313,7 +349,7 @@ void PaddlePassContorller::LoadDefaultPassCtrl() {
         }
         if (line[0] == '[' && line.back() == ']') {
           pass = line.substr(1, line.size() - 2);
-          pass_ctrl_map_.emplace(pass, std::make_unique<PassContorller>(pass));
+          pass_ctrl_map_.emplace(pass, PassContorller(pass));
         } else {
           size_t equalsPos = line.find('=');
           if (equalsPos != std::string::npos) {
@@ -325,7 +361,16 @@ void PaddlePassContorller::LoadDefaultPassCtrl() {
               if (dotPos != std::string::npos) {
                 std::string outerKey = key.substr(0, dotPos);
                 std::string innerKey = key.substr(dotPos + 1);
-                pass_status_config[pass][outerKey][innerKey] = value;
+                size_t mPos = value.find(':');
+                if (mPos != std::string::npos) {
+                  std::string innervalue1 = value.substr(0, mPos);
+                  std::string innervalue2 = value.substr(mPos + 1);
+                  pass_status_config[pass][outerKey][innerKey] = innervalue1;
+                  pass_version_ctrl[pass][outerKey][innerKey][innervalue1] =
+                      innervalue2;
+                } else {
+                  pass_status_config[pass][outerKey][innerKey] = value;
+                }
               } else {
                 pass_info_config[pass][key] = value;
               }
@@ -334,7 +379,7 @@ void PaddlePassContorller::LoadDefaultPassCtrl() {
         }
       }
       configFile.close();
-      for (const auto& pass_ctrl_map : pass_ctrl_map_) {
+      for (auto& pass_ctrl_map : pass_ctrl_map_) {
         auto pass_name = pass_ctrl_map.first;
         auto pass_info_map = pass_info_config[pass_name];
         if (pass_info_map.count("SupportedCategories") != 0) {
@@ -345,7 +390,7 @@ void PaddlePassContorller::LoadDefaultPassCtrl() {
           while (std::getline(value_Stream, token, ',')) {
             supportedcategories.push_back(token);
           }
-          pass_ctrl_map.second->support_categories_ = supportedcategories;
+          pass_ctrl_map.second.SetSupportCategories(supportedcategories);
         }
         if (pass_info_map.count("pass_status") != 0) {
           int64_t user_pass_status = 2;
@@ -363,40 +408,37 @@ void PaddlePassContorller::LoadDefaultPassCtrl() {
           } else if (passStatus.first == "TrtInt8PassState") {
             pass_category = "trtint8";
           }
-          pass_ctrl_map_[pass_name]->pass_state_map_[pass_category] =
-              std::make_unique<PassState>(pass_category);
+          pass_ctrl_map_[pass_name].pass_state_map_[pass_category] =
+              PassState(pass_category);
           auto pass_status_info_map = passStatus.second;
           for (const auto& pass_status_info : pass_status_info_map) {
             if (pass_status_info.first == "pass_default_state") {
               int64_t pass_default_state = 0;
               safeStoll(pass_status_info.second, pass_default_state);
               pass_ctrl_map_[pass_name]
-                  ->pass_state_map_[pass_category]
-                  ->SetPassDefaultState(
+                  .pass_state_map_[pass_category]
+                  .SetPassDefaultState(
                       static_cast<PassType>(pass_default_state));
-            } else if (pass_status_info.first == "trt_pass_ctrl_state") {
-              int64_t trt_pass_ctrl_state = 2;
-              safeStoll(pass_status_info.second, trt_pass_ctrl_state);
-              pass_ctrl_map_[pass_name]
-                  ->pass_state_map_[pass_category]
-                  ->SetTrtCtrlState(static_cast<PassType>(trt_pass_ctrl_state));
-            } else if (pass_status_info.first == "cudnn_pass_ctrl_state") {
-              int64_t cudnn_pass_ctrl_state = 2;
-              safeStoll(pass_status_info.second, cudnn_pass_ctrl_state);
-              pass_ctrl_map_[pass_name]
-                  ->pass_state_map_[pass_category]
-                  ->SetCudnnCtrlState(
-                      static_cast<PassType>(cudnn_pass_ctrl_state));
             } else if (pass_status_info.first == "trt_version_range") {
+              auto ctrl_state = pass_version_ctrl[pass_name][passStatus.first]
+                                                 ["trt_version_range"]
+                                                 [pass_status_info.second];
+              int64_t trt_pass_ctrl_state = 2;
+              safeStoll(ctrl_state, trt_pass_ctrl_state);
               pass_ctrl_map_[pass_name]
-                  ->pass_state_map_[pass_category]
-                  ->version_ctrl_state_["trt"] =
-                  GetVersionRange(pass_status_info.second, "trt");
+                  .pass_state_map_[pass_category]
+                  .version_ctrl_state_["trt"] = GetVersionRange(
+                  pass_status_info.second, "trt", trt_pass_ctrl_state);
             } else if (pass_status_info.first == "cudnn_version_range") {
+              auto ctrl_state = pass_version_ctrl[pass_name][passStatus.first]
+                                                 ["cudnn_version_range"]
+                                                 [pass_status_info.second];
+              int64_t cudnn_pass_ctrl_state = 2;
+              safeStoll(ctrl_state, cudnn_pass_ctrl_state);
               pass_ctrl_map_[pass_name]
-                  ->pass_state_map_[pass_category]
-                  ->version_ctrl_state_["cudnn"] =
-                  GetVersionRange(pass_status_info.second, "cudnn");
+                  .pass_state_map_[pass_category]
+                  .version_ctrl_state_["cudnn"] = GetVersionRange(
+                  pass_status_info.second, "cudnn", cudnn_pass_ctrl_state);
             }
           }
         }
@@ -407,16 +449,50 @@ void PaddlePassContorller::LoadDefaultPassCtrl() {
   }
 }
 
-std::vector<std::string> PaddlePassContorller::GetCtrlPassList(
-    const std::vector<std::string> passes) {
+std::string GetCtrlRuntimeStatus(int64_t mixed_precision_mode,
+                                 int64_t tensorrt_precision_mode,
+                                 bool use_gpu,
+                                 bool use_trt) {
+  auto pass_runtime_status = "gpu";
+  if (use_gpu && use_trt) {
+    // fp32
+    if (tensorrt_precision_mode == 0) {
+      pass_runtime_status = "trt";
+    } else if (tensorrt_precision_mode == 2) {
+      // fp16
+      pass_runtime_status = "trtlow";
+    } else if (tensorrt_precision_mode == 1) {
+      pass_runtime_status = "trtint8";
+    }
+  } else if (use_gpu) {
+    if (mixed_precision_mode == 0) {
+      pass_runtime_status = "gpu";
+    } else if (mixed_precision_mode == 2) {
+      pass_runtime_status = "gpulow";
+    }
+  }
+  return pass_runtime_status;
+}
+
+const std::vector<std::string> PaddlePassContorller::GetCtrlPassList(
+    const std::vector<std::string> passes,
+    const int64_t mixed_precision_mode,
+    const int64_t tensorrt_precision_mode,
+    const bool use_gpu,
+    const bool use_trt) {
   if (pass_ctrl_map_.empty()) {
     LoadDefaultPassCtrl();
   }
+  auto pass_runtime_status = GetCtrlRuntimeStatus(
+      mixed_precision_mode, tensorrt_precision_mode, use_gpu, use_trt);
+  auto pass_ctrl_mode = FLAGS_pass_controller_radical_mode
+                            ? PassCtrlMode::RadicalMode
+                            : PassCtrlMode::DefaultMode;
   auto new_passes = std::vector<std::string>();
   for (auto const pass : passes) {
     if (pass_ctrl_map_.count(pass) != 0) {
-      if (pass_ctrl_map_[pass]->GetPassStatus(
-              pass_runtime_status_, pass_ctrl_mode_) == PassType::Open) {
+      if (pass_ctrl_map_[pass].GetPassStatus(
+              pass_runtime_status, pass_ctrl_mode) == PassType::Open) {
         new_passes.push_back(pass);
         continue;
       } else {

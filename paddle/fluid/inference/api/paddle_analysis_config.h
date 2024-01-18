@@ -36,8 +36,9 @@
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
-#include "paddle_api.h"           // NOLINT
-#include "paddle_pass_builder.h"  // NOLINT
+#include "paddle_api.h"              // NOLINT
+#include "paddle_pass_builder.h"     // NOLINT
+#include "paddle_pass_controller.h"  // NOLINT
 #ifdef PADDLE_WITH_DNNL
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
@@ -1136,6 +1137,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   friend class ::paddle::AnalysisPredictor;
 
+  PaddlePassContorller* pass_controller() const;
   ///
   /// \brief Get a pass builder for customize the passes in IR analysis phase.
   /// NOTE: Just for developer, not an official API, easy to be broken.
@@ -1330,6 +1332,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
+  mutable std::unique_ptr<PaddlePassContorller> pass_ctrl_;
 
   bool use_lite_{false};
   std::vector<std::string> lite_passes_filter_;

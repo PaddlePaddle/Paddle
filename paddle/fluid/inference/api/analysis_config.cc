@@ -48,18 +48,18 @@ AnalysisConfig::AnalysisConfig() {
   // ref to https://github.com/PaddlePaddle/Paddle/pull/50864
   inference::InitGflagsFromEnv();
 }
+PaddlePassContorller *AnalysisConfig::pass_controller() const {
+  if (!pass_ctrl_.get()) {
+    pass_ctrl_ = std::make_unique<PaddlePassContorller>();
+  }
+  return pass_ctrl_.get();
+}
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
       pass_builder_ = std::make_unique<GpuPassStrategy>();
-      pass_builder_->InitPassCtrl(
-          static_cast<int64_t>(mixed_precision_mode_),
-          static_cast<int64_t>(tensorrt_precision_mode_),
-          use_gpu_,
-          use_tensorrt_);
-
     } else if (use_xpu_) {
       pass_builder_ = std::make_unique<XpuPassStrategy>();
     } else if (use_ipu_) {
@@ -591,11 +591,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                           "Only one choice can be made between CPU and XPU."));
     pass_builder_ = std::make_unique<GpuPassStrategy>(
         *static_cast<GpuPassStrategy *>(other.pass_builder()));
-    pass_builder_->InitPassCtrl(static_cast<int64_t>(mixed_precision_mode_),
-                                static_cast<int64_t>(tensorrt_precision_mode_),
-                                use_gpu_,
-                                use_tensorrt_);
-
   } else if (use_ipu_) {
     pass_builder_ = std::make_unique<IpuPassStrategy>(
         *static_cast<IpuPassStrategy *>(other.pass_builder()));
@@ -898,11 +893,6 @@ void AnalysisConfig::Update() {
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_ = std::make_unique<GpuPassStrategy>();
-      pass_builder_->InitPassCtrl(
-          static_cast<int64_t>(mixed_precision_mode_),
-          static_cast<int64_t>(tensorrt_precision_mode_),
-          use_gpu_,
-          use_tensorrt_);
     } else if (use_ipu()) {
       pass_builder_ = std::make_unique<IpuPassStrategy>();
     } else if (use_xpu()) {
@@ -989,10 +979,6 @@ void AnalysisConfig::Update() {
       }
       pass_builder()->AppendPass(pass);
     }
-    pass_builder_->InitPassCtrl(static_cast<int64_t>(mixed_precision_mode_),
-                                static_cast<int64_t>(tensorrt_precision_mode_),
-                                use_gpu_,
-                                use_tensorrt_);
   }
 
   // TODO(wilber): An ugly method to update pass, need to be fixed.

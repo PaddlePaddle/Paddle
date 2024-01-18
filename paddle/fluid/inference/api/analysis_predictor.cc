@@ -124,6 +124,7 @@
 
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
+PHI_DECLARE_bool(enable_pass_controller);
 
 namespace paddle {
 namespace {
@@ -1815,7 +1816,20 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   argument_->SetDisableLogs(config_.glog_info_disabled());
-  argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
+  if (FLAGS_enable_pass_controller &&
+      ((config_.use_gpu()) ||
+       (config_.use_gpu() && config_.tensorrt_engine_enabled()))) {
+    LOG(INFO) << "Pass Contorl is enabled!";
+    auto *pass_ctrl = config_.pass_controller();
+    argument_->SetIrAnalysisPasses(pass_ctrl->GetCtrlPassList(
+        pass_builder->AllPasses(),
+        static_cast<int64_t>(config_.mixed_precision_mode_),
+        static_cast<int64_t>(config_.tensorrt_precision_mode_),
+        config_.use_gpu_,
+        config_.use_tensorrt_));
+  } else {
+    argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
+  }
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
 

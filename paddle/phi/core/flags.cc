@@ -1352,6 +1352,18 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "Tensor operants mode");
 
 /**
+ * Using pass_ctrl   FLAG
+ * Name: enable_pass_controller
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR
+ */
+PHI_DEFINE_EXPORTED_bool(enable_pass_controller,
+                         false,
+                         "Enable pass controller");
+
+/**
  * Using PIR in executor  FLAG
  * Name: enable_pir_in_executor
  * Since Version: 2.6.0
