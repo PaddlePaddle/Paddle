@@ -64,6 +64,7 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_mul": ['X', 'Y'],
     "elementwise_mul_grad": ['X', 'Y'],
     "where": ['X', 'Y'],
+    "where_grad": ['X', 'Y'],
 }
 
 
