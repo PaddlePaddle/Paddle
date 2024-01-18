@@ -3067,7 +3067,7 @@ OpInfoTuple TensorToArrayOp::GetOpInfo() {
       paddle::dialect::OpRunTimeInfo("TensorToArrayInferMeta",
                                      {"x", "axis", "use_stack"},
                                      "tensor_to_array",
-                                     {"x", "axis", "use_stack"},
+                                     {"x", "out_grad", "axis", "use_stack"},
                                      {"x"},
                                      {},
                                      {},
