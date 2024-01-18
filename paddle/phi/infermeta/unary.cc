@@ -4096,14 +4096,13 @@ void SplitWithNumInferMeta(const MetaTensor& x,
 
 void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  const Scalar& max_len,
-                                 int out_dtype,
+                                 DataType out_dtype,
                                  MetaTensor* y) {
   auto dim = phi::vectorize<int>(x.dims());
   int maxlen = max_len.to<int>();
   dim.push_back(maxlen > 0 ? maxlen : -1);
   y->set_dims(phi::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {

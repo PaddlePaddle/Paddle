@@ -122,10 +122,11 @@ class TestViterbiAPI(unittest.TestCase):
         decoder = Decoder(self.transitions, self.use_tag)
         self.scores, self.path = decoder(self.input, self.length)
 
-    @test_with_pir_api
     def check_static_result(self, place):
         bz, length, ntags = self.bz, self.len, self.ntags
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             Input = paddle.static.data(
                 name="Input", shape=[bz, length, ntags], dtype="float32"
             )
@@ -147,6 +148,7 @@ class TestViterbiAPI(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], self.scores, rtol=1e-5)
             np.testing.assert_allclose(fetches[1], self.path)
 
+    @test_with_pir_api
     def test_static_net(self):
         for place in self.places:
             self.check_static_result(place)
