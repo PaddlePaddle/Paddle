@@ -31,7 +31,7 @@ from paddle.base.framework import (
 from paddle.pir_utils import test_with_pir_api
 
 
-def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
+def sequence_mask_wrapper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
     if maxlen_tensor is not None:
         maxlen = maxlen_tensor
     return paddle.nn.functional.sequence_mask(
@@ -42,7 +42,7 @@ def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
 class SequenceMaskTestBase(OpTest):
     def initDefaultParameters(self):
         self.op_type = 'sequence_mask'
-        self.python_api = sequence_mask_wraper
+        self.python_api = sequence_mask_wrapper
         self.maxlen = 10
         self.mask_dtype = 'int64'
         self.x = [[0, 3, 4], [5, 7, 9]]
@@ -112,7 +112,7 @@ class SequenceMaskTest6(SequenceMaskTestBase):
 class SequenceMaskTestBase_tensor_attr(OpTest):
     def initDefaultParameters(self):
         self.op_type = 'sequence_mask'
-        self.python_api = sequence_mask_wraper
+        self.python_api = sequence_mask_wrapper
         self.maxlen = 10
         self.maxlen_tensor = np.ones((1), 'int32') * 10
         self.mask_dtype = 'int64'

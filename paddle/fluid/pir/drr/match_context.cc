@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace drr {
@@ -41,6 +42,9 @@ template std::vector<int32_t> MatchContext::Attr<std::vector<int32_t>>(
     const std::string&) const;
 template std::vector<int64_t> MatchContext::Attr<std::vector<int64_t>>(
     const std::string&) const;
+template phi::DataType MatchContext::Attr<phi::DataType>(
+    const std::string&) const;
+template phi::Place MatchContext::Attr<phi::Place>(const std::string&) const;
 
 }  // namespace drr
 }  // namespace paddle
