@@ -1203,13 +1203,13 @@ class Executor:
 
             >>> # Run the main program directly without compile.
             >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
+            >>> loss_data = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
 
             >>> # Or, compiled the program and run. See `CompiledProgram`
             >>> # for more details.
             >>> compiled_prog = paddle.static.CompiledProgram(
             ...     train_program)
-            >>> loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
+            >>> loss_data = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
 
     """
 
