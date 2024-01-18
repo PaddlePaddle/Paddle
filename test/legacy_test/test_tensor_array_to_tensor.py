@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -256,6 +257,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         for s, d in zip(outs_static, outs_dynamic):
             np.testing.assert_array_equal(s, d.numpy())
 
+    @test_with_pir_api
     def test_while_loop_case(self):
         with base.dygraph.guard():
             zero = paddle.tensor.fill_constant(
