@@ -505,15 +505,24 @@ class OpInfoParser:
         # OneDNN info
         if "extra_args" in self.op_yaml_item:
             self.onednn_extra_args = self.op_yaml_item["extra_args"]
+        else:
+            self.onednn_extra_args = []
+
+        if "data_format_tensors" in self.op_yaml_item:
             self.onednn_data_format_tensors = self.op_yaml_item[
                 "data_format_tensors"
             ]
+        else:
+            self.onednn_data_format_tensors = None
+
+        if "is_onednn_only" in self.op_yaml_item:
             self.is_onednn_only = self.op_yaml_item["is_onednn_only"]
+        else:
+            self.is_onednn_only = False
+
+        if "dynamic_fallback" in self.op_yaml_item:
             self.dynamic_fallback = self.op_yaml_item["dynamic_fallback"]
         else:
-            self.onednn_extra_args = []
-            self.onednn_data_format_tensors = None
-            self.is_onednn_only = False
             self.dynamic_fallback = False
 
     def parse_op_traits(self):

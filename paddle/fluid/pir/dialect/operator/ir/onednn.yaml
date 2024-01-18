@@ -2,7 +2,7 @@
   args : (Tensor input, float scale=1.0, float shift=0.0)
   output : Tensor(output)
   infer_meta :
-    func : UnchangedInferMeta
+    func : UnchangedExceptDtypeInferMeta
     param : [input]
   kernel :
     func : dequantize

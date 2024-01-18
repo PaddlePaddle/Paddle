@@ -4784,6 +4784,12 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
