@@ -16,7 +16,7 @@
 
 OP_GET_INPUT_TEMPLATE = """  pir::Value {input_name}() {{ return operand_source({input_index}); }}
 """
-OP_GET_OUTPUT_TEMPLATE = """  pir::OpResult {output_name}() {{ return result({output_index}); }}
+OP_GET_OUTPUT_TEMPLATE = """  pir::Value {output_name}() {{ return result({output_index}); }}
 """
 
 

@@ -120,8 +120,8 @@ bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
 
 void DecompProgram::check_decomp_outputs(
     const std::string& op_name,
-    const std::vector<pir::OpResult>& orig_outs,
-    const std::vector<pir::OpResult>& decomp_outs) {
+    const std::vector<pir::Value>& orig_outs,
+    const std::vector<pir::Value>& decomp_outs) {
   bool skip_invalid_op_check =
       decomp_op_contain_none.find(op_name) != decomp_op_contain_none.end();
   for (size_t i = 0; i < orig_outs.size(); i++) {
@@ -187,10 +187,10 @@ void DecompProgram::check_decomp_outputs(
   return;
 }
 
-std::vector<pir::OpResult> DecompProgram::format_decomp_res(
+std::vector<pir::Value> DecompProgram::format_decomp_res(
     const std::string& op_name,
-    const std::vector<pir::OpResult>& orig_outs,
-    const std::vector<std::vector<pir::OpResult>>& decomp_outs) {
+    const std::vector<pir::Value>& orig_outs,
+    const std::vector<std::vector<pir::Value>>& decomp_outs) {
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
@@ -200,7 +200,7 @@ std::vector<pir::OpResult> DecompProgram::format_decomp_res(
           op_name,
           orig_outs.size(),
           decomp_outs.size()));
-  std::vector<pir::OpResult> new_decomp_outs(orig_outs.size());
+  std::vector<pir::Value> new_decomp_outs(orig_outs.size());
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (orig_outs[i]) {
       PADDLE_ENFORCE_EQ(
@@ -218,12 +218,12 @@ std::vector<pir::OpResult> DecompProgram::format_decomp_res(
   return new_decomp_outs;
 }
 
-std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
+std::vector<pir::Value> DecompProgram::construct_dst_vars(
     const std::string& op_name,
-    const std::vector<pir::OpResult>& orig_outs,
-    const std::vector<pir::OpResult>& decomp_outs,
-    std::unordered_map<pir::OpResult, int> orig_vars_dict) {
-  std::vector<pir::OpResult> tar_vars(src_vars_.size());
+    const std::vector<pir::Value>& orig_outs,
+    const std::vector<pir::Value>& decomp_outs,
+    std::unordered_map<pir::Value, int> orig_vars_dict) {
+  std::vector<pir::Value> tar_vars(src_vars_.size());
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
@@ -241,7 +241,7 @@ std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
   return tar_vars;
 }
 
-std::vector<pir::OpResult> DecompProgram::get_dst_vars() {
+std::vector<pir::Value> DecompProgram::get_dst_vars() {
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return src_vars_;
   } else {
@@ -265,20 +265,19 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
   return flag;
 }
 
-std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
+std::vector<std::vector<pir::Value>> call_decomp_rule(pir::Operation* op) {
   paddle::dialect::DecompInterface decomp_interface =
       op->dyn_cast<paddle::dialect::DecompInterface>();
   PADDLE_ENFORCE(decomp_interface,
                  phi::errors::InvalidArgument(
                      "[Prim] The decomp function is not registered in %s op ",
                      op->name()));
-  std::vector<std::vector<pir::OpResult>> decomp_res =
-      decomp_interface.Decomp(op);
+  std::vector<std::vector<pir::Value>> decomp_res = decomp_interface.Decomp(op);
   return decomp_res;
 }
 
 void DecompProgram::decomp_program() {
-  std::unordered_map<pir::OpResult, int> orig_vars_dict;
+  std::unordered_map<pir::Value, int> orig_vars_dict;
   for (size_t i = 0; i < src_vars_.size(); i++) {
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
@@ -290,7 +289,7 @@ void DecompProgram::decomp_program() {
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return;
   }
-  std::vector<pir::OpResult> tar_vars(src_vars_.size());
+  std::vector<pir::Value> tar_vars(src_vars_.size());
   pir::Block* block = program_->block();
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
@@ -309,9 +308,9 @@ void DecompProgram::decomp_program() {
       check_decomp_dynamic_shape(op);
       auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
       builder.set_insertion_point(op);
-      std::vector<std::vector<pir::OpResult>> decomp_res = call_decomp_rule(op);
-      std::vector<pir::OpResult> orig_outs = op->results();
-      std::vector<pir::OpResult> standard_decomp_res =
+      std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
+      std::vector<pir::Value> orig_outs = op->results();
+      std::vector<pir::Value> standard_decomp_res =
           format_decomp_res(op->name(), orig_outs, decomp_res);
       check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
       tar_vars = construct_dst_vars(

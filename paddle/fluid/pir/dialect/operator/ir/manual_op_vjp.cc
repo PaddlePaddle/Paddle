@@ -149,7 +149,7 @@ std::vector<std::vector<pir::Value>> IncrementOp::Vjp(
 
   VLOG(6) << "Vjp prepare call increment's vjp inteface";
 
-  pir::OpResult tensor_res = paddle::dialect::scale(out_grads[0][0]);
+  pir::Value tensor_res = paddle::dialect::scale(out_grads[0][0]);
 
   std::vector<std::vector<pir::Value>> res{{tensor_res}};
 

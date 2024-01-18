@@ -55,7 +55,7 @@ void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
              op->num_results());
 
   std::vector<pir::OpOperand> operands = op->operands();
-  std::vector<pir::OpResult> results = op->results();
+  std::vector<pir::Value> results = op->results();
 
   std::vector<pir::Type> types;
 
@@ -63,7 +63,7 @@ void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
     types.push_back(op.type());
   });
 
-  std::for_each(results.begin(), results.end(), [&types](pir::OpResult op) {
+  std::for_each(results.begin(), results.end(), [&types](pir::Value op) {
     types.push_back(op.type());
   });
 

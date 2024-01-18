@@ -85,10 +85,10 @@ struct OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc);
-  virtual pir::OpResult GetAttributeAsInput(pir::IrContext* ctx,
-                                            pir::Block* block,
-                                            const OpDesc& op_desc,
-                                            const OpInputInfo& input_info);
+  virtual pir::Value GetAttributeAsInput(pir::IrContext* ctx,
+                                         pir::Block* block,
+                                         const OpDesc& op_desc,
+                                         const OpInputInfo& input_info);
 
   virtual void RecordOpResultMapping(pir::IrContext* ctx,
                                      TranslationContext* param_map,

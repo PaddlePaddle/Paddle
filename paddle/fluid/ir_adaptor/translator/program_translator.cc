@@ -615,7 +615,7 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   auto var_desc = block.FindVarRecursive(var_name);
   pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
-  auto val = pir::OpResult(nullptr);
+  auto val = pir::Value(nullptr);
   if (var_desc->GetType() ==
       paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
     val = builder.Build<dialect::CreateArrayOp>(dtype).result(0);

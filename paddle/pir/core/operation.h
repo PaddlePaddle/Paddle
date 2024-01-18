@@ -126,7 +126,7 @@ class IR_API alignas(8) Operation final
   T result_type(uint32_t index) const {
     return result(index).type().dyn_cast<T>();
   }
-  std::vector<OpResult> results() const;
+  std::vector<Value> results() const;
 
   ///
   /// \brief op input related public interfaces

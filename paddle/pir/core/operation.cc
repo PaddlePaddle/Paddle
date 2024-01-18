@@ -251,8 +251,8 @@ Operation::Operation(const AttributeMap &attributes,
 ///
 /// \brief op ouput related public interfaces implementation
 ///
-std::vector<OpResult> Operation::results() const {
-  std::vector<OpResult> res;
+std::vector<Value> Operation::results() const {
+  std::vector<Value> res;
   for (uint32_t i = 0; i < num_results(); ++i) {
     res.push_back(result(i));
   }
@@ -351,9 +351,8 @@ void Operation::Erase() {
 
 bool Operation::use_empty() {
   auto res = results();
-  return std::all_of(res.begin(), res.end(), [](OpResult result) {
-    return result.use_empty();
-  });
+  return std::all_of(
+      res.begin(), res.end(), [](Value result) { return result.use_empty(); });
 }
 
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {

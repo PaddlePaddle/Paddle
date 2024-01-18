@@ -36,13 +36,12 @@ class Conv2dBnFusePattern
             ->dyn_cast<paddle::dialect::Conv2dOp>();
     if (!conv2d_op) return false;
 
-    pir::OpResult conv2d_out = conv2d_op.out();
+    pir::Value conv2d_out = conv2d_op.out();
     if (!conv2d_out.HasOneUse()) return false;
 
     pir::Value conv2d_filter = conv2d_op.filter();
 
-    pir::OpResult conv2d_filter_result =
-        conv2d_filter.dyn_cast<pir::OpResult>();
+    pir::Value conv2d_filter_result = conv2d_filter;
     IR_ENFORCE(conv2d_filter_result);
 
     pir::Value bn_input = op.x();
@@ -60,13 +59,12 @@ class Conv2dBnFusePattern
     float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
     paddle::dialect::FullOp full_op = rewriter.Build<paddle::dialect::FullOp>(
         common::vectorize(bn_variance_shape), epsilon);
-    paddle::dialect::AddOp add_op = rewriter.Build<paddle::dialect::AddOp>(
-        bn_variance.dyn_cast<pir::OpResult>(), full_op.out());
+    paddle::dialect::AddOp add_op =
+        rewriter.Build<paddle::dialect::AddOp>(bn_variance, full_op.out());
     paddle::dialect::SqrtOp sqrt_op =
         rewriter.Build<paddle::dialect::SqrtOp>(add_op.out());
     paddle::dialect::DivideOp div_op =
-        rewriter.Build<paddle::dialect::DivideOp>(
-            bn_scale.dyn_cast<pir::OpResult>(), sqrt_op.out());
+        rewriter.Build<paddle::dialect::DivideOp>(bn_scale, sqrt_op.out());
     // reshape scale
     phi::DDim conv2d_filter_shape = pir::GetShapeFromValue(conv2d_filter);
     phi::DDim bn_scale_shape =
@@ -83,18 +81,14 @@ class Conv2dBnFusePattern
 
     auto conv2d_attributes = conv2d_op->attributes();
     auto new_conv2d_op = rewriter.Build<paddle::dialect::Conv2dOp>(
-        conv2d_op.input().dyn_cast<pir::OpResult>(),
-        mul_op.out(),
-        conv2d_attributes);
+        conv2d_op.input(), mul_op.out(), conv2d_attributes);
 
     // --- deal with bias ---
     paddle::dialect::MultiplyOp mul_bias_op =
-        rewriter.Build<paddle::dialect::MultiplyOp>(
-            bn_mean.dyn_cast<pir::OpResult>(), div_op.out());
+        rewriter.Build<paddle::dialect::MultiplyOp>(bn_mean, div_op.out());
     // new bias --> sub_op.out()
     paddle::dialect::SubtractOp sub_op =
-        rewriter.Build<paddle::dialect::SubtractOp>(
-            bn_bias.dyn_cast<pir::OpResult>(), mul_bias_op.out());
+        rewriter.Build<paddle::dialect::SubtractOp>(bn_bias, mul_bias_op.out());
     // reshape new bias
     phi::DDim new_conv2d_out_shape =
         pir::GetShapeFromValue(new_conv2d_op.out());
@@ -126,13 +120,13 @@ class BatchNormReplacePattern
   bool MatchAndRewrite(
       paddle::dialect::BatchNormOp op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
-    auto bn_op = rewriter.Build<paddle::dialect::BatchNorm_Op>(
-        op.x().dyn_cast<pir::OpResult>(),
-        op.mean().dyn_cast<pir::OpResult>(),
-        op.variance().dyn_cast<pir::OpResult>(),
-        op.scale().dyn_cast<pir::OpResult>(),
-        op.bias().dyn_cast<pir::OpResult>(),
-        op->attributes());
+    auto bn_op =
+        rewriter.Build<paddle::dialect::BatchNorm_Op>(op.x(),
+                                                      op.mean(),
+                                                      op.variance(),
+                                                      op.scale(),
+                                                      op.bias(),
+                                                      op->attributes());
     rewriter.ReplaceAllUsesWith(op.out(), bn_op.out());
     rewriter.EraseOp(op);
     return true;

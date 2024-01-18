@@ -20,7 +20,7 @@ using IntArray = paddle::experimental::IntArray;
 {% set output_names=[] %}
 {% set output_types=[] %}
 
-std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* op) {
+std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) {
   VLOG(4) << "Decomp call {{fwd_name}}'s decomp interface begin";
 
   {{class_name}} op_obj = op->dyn_cast<{{class_name}}>();
@@ -120,7 +120,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule prepare";
 
   auto org_res = op->results();
-  std::vector<std::vector<pir::OpResult>> res(org_res.size());
+  std::vector<std::vector<pir::Value>> res(org_res.size());
 
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule begin";
   {% if outputs|length == 1 %}
@@ -129,8 +129,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
 
   res[0].push_back(
     std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
-        ->value()
-        .dyn_cast<pir::OpResult>());
+        ->value());
   {% else %}
     {% for item in outputs %}
       {% do output_names.append(item.name) %}
@@ -144,7 +143,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   pir::OpResult {{outputs[k].name}};
   res[{{k}}].push_back({{outputs[k].name}});
     {% else %}
-  res[{{k}}].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<{{k}}>(op_res).impl())->value().dyn_cast<pir::OpResult>());
+  res[{{k}}].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<{{k}}>(op_res).impl())->value());
     {% endif %}
   {% endfor %}
   {% endif %}

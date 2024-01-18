@@ -38,7 +38,7 @@ void DebugPrintOpInfo(
   for (auto& res : op->results()) {
     std::ostringstream print_stream;
 
-    print_stream << "result(" << res.index() << ") "
+    print_stream << "result(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: ";
 
     if (shape_analysis != nullptr) {

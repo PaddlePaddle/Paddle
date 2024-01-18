@@ -23,67 +23,67 @@
 namespace paddle {
 namespace dialect {
 
-pir::OpResult builtin_combine(const std::vector<pir::Value>& x);
+pir::Value builtin_combine(const std::vector<pir::Value>& x);
 
-std::vector<pir::OpResult> add_n_grad(const std::vector<pir::Value>& inputs,
-                                      const pir::Value& out_grad);
+std::vector<pir::Value> add_n_grad(const std::vector<pir::Value>& inputs,
+                                   const pir::Value& out_grad);
 
-pir::OpResult zeros_like(const pir::Value& x,
-                         phi::DataType dtype = phi::DataType::UNDEFINED,
-                         const Place& place = {});
+pir::Value zeros_like(const pir::Value& x,
+                      phi::DataType dtype = phi::DataType::UNDEFINED,
+                      const Place& place = {});
 
-pir::OpResult parameter(const std::string& name);
+pir::Value parameter(const std::string& name);
 
 void set_parameter(const pir::Value& parameter, const std::string& name);
 
-pir::OpResult embedding_grad(const pir::Value& x,
-                             const pir::Value& weight,
-                             const pir::Value& out_grad,
-                             int64_t padding_idx = -1,
-                             bool sparse = false);
+pir::Value embedding_grad(const pir::Value& x,
+                          const pir::Value& weight,
+                          const pir::Value& out_grad,
+                          int64_t padding_idx = -1,
+                          bool sparse = false);
 
-pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
-                                  int axis);
+pir::Value split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                               int axis);
 
-pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
-                                  const pir::Value& axis);
+pir::Value split_with_num_grad(const std::vector<pir::Value>& out_grad,
+                               const pir::Value& axis);
 
-pir::OpResult ones(const std::vector<int64_t>& shape,
-                   phi::DataType dtype = phi::DataType::FLOAT32,
-                   const Place& place = phi::CPUPlace());
+pir::Value ones(const std::vector<int64_t>& shape,
+                phi::DataType dtype = phi::DataType::FLOAT32,
+                const Place& place = phi::CPUPlace());
 
-pir::OpResult ones_like(pir::Value x_,
-                        phi::DataType dtype = phi::DataType::UNDEFINED,
-                        const Place& place = {});
+pir::Value ones_like(pir::Value x_,
+                     phi::DataType dtype = phi::DataType::UNDEFINED,
+                     const Place& place = {});
 
-pir::OpResult zeros(const std::vector<int64_t>& shape,
-                    phi::DataType dtype = phi::DataType::FLOAT32,
-                    const Place& place = phi::CPUPlace());
+pir::Value zeros(const std::vector<int64_t>& shape,
+                 phi::DataType dtype = phi::DataType::FLOAT32,
+                 const Place& place = phi::CPUPlace());
 
-pir::OpResult create_array(phi::DataType dtype);
+pir::Value create_array(phi::DataType dtype);
 
-pir::OpResult create_array_like(pir::Value input, float value);
+pir::Value create_array_like(pir::Value input, float value);
 
-pir::OpResult array_length(pir::Value x);
+pir::Value array_length(pir::Value x);
 
-pir::OpResult array_read(pir::Value array, pir::Value i);
+pir::Value array_read(pir::Value array, pir::Value i);
 
-pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i);
+pir::Value array_write_(pir::Value array, pir::Value x, pir::Value i);
 
-std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
-                                                         int axis,
-                                                         bool use_stack);
+std::tuple<pir::Value, pir::Value> array_to_tensor(pir::Value x,
+                                                   int axis,
+                                                   bool use_stack);
 
-pir::OpResult tensor_to_array(pir::Value x,
-                              pir::Value out_grad,
-                              int axis,
-                              bool use_stack);
+pir::Value tensor_to_array(pir::Value x,
+                           pir::Value out_grad,
+                           int axis,
+                           bool use_stack);
 
-pir::OpResult add_n_array(const std::vector<pir::Value>& inputs);
+pir::Value add_n_array(const std::vector<pir::Value>& inputs);
 
-pir::OpResult slice_array_dense(pir::Value input, pir::Value starts);
+pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
-pir::OpResult assign(const pir::Value& x);
+pir::Value assign(const pir::Value& x);
 
 }  // namespace dialect
 }  // namespace paddle
