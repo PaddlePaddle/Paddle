@@ -1119,6 +1119,7 @@ class TestLayer(LayerTest):
                 conv3d1.bias.numpy(), conv3d2.bias.numpy()
             )
 
+    @test_with_pir_api
     def test_while_loop(self):
         with self.static_graph():
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
