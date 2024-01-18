@@ -18,66 +18,36 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class PrelnSkipLayerNormOpConverter : public OpConverter {
+class FusedRmsNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert fused preln_skip_layernorm op to tensorrt layer";
-    if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "PrelnErnie: If you want to use oss, must be with interleaved"));
-    }
+    VLOG(3) << "convert fused fused_rms_norm op to tensorrt layer";
+
     framework::OpDesc op_desc(op, nullptr);
-    bool enable_int8 = op_desc.HasAttr("enable_int8");
-    if (!enable_int8) {
-      PADDLE_THROW(
-          platform::errors::Fatal("use with_interleaved must be int8."));
-    }
+
     // Declare inputs
-    auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+    auto* x = engine_->GetITensor(op_desc.Input("x")[0]);
+    auto* scale = engine_->GetITensor(op_desc.Input("scale")[0]);
     std::vector<nvinfer1::ITensor*> inputs;
-    inputs.push_back(input1);
-    inputs.push_back(input2);
+    inputs.push_back(x);
+    inputs.push_back(scale);
 
-    auto get_persistable_data = [&](const std::string& arg_name,
-                                    framework::DDim* dims) -> float* {
-      std::string var_name = op_desc.Input(arg_name).front();
-      auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
-      (*dims) = temp_tensor->dims();
-
-      auto* temp_data = const_cast<float*>(static_cast<const float*>(
-          engine_->GetFp32TrtWeight(var_name, *temp_tensor).get().values));
-      return temp_data;
-    };
-
-    framework::DDim bias_dims, scale_dims;
-    auto* bias = get_persistable_data("Bias", &bias_dims);
-    auto* scale = get_persistable_data("Scale", &scale_dims);
-    int bias_size = common::product(bias_dims);
-    int scale_size = common::product(scale_dims);
+    float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
 
     nvinfer1::ILayer* layer = nullptr;
 
-    VLOG(4)
-        << "fused preln_skip_layernorm op: use_varseqlen and with_interleaved";
+    int type = static_cast<int>(nvinfer1::DataType::kHALF);
 
-    auto creator = GetPluginRegistry()->getPluginCreator(
-        "CustomSkipLayerNormPluginDynamic", "4");
-    PADDLE_ENFORCE_NE(
-        creator,
-        nullptr,
-        platform::errors::InvalidArgument(
-            "fail to get creator of CustomPrelnSkipLayerNormPluginDynamic"));
+    auto creator = GetPluginRegistry()->getPluginCreator("Rmsnorm", "1");
+    PADDLE_ENFORCE_NE(creator,
+                      nullptr,
+                      platform::errors::InvalidArgument(
+                          "fail to get creator of Rmsnorm Plugin"));
     const std::vector<nvinfer1::PluginField> fields{
-        {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
-        { "gamma",
-          scale,
-          nvinfer1::PluginFieldType::kFLOAT32,
-          scale_size }};
+        {"eps", &epsilon, nvinfer1::PluginFieldType::kFLOAT32, 1},
+        {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1}};
     nvinfer1::PluginFieldCollection* pluginPtr =
         static_cast<nvinfer1::PluginFieldCollection*>(
             malloc(sizeof(*pluginPtr) +
@@ -85,28 +55,16 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     pluginPtr->nbFields = static_cast<int>(fields.size());
     pluginPtr->fields = fields.data();
 
-    auto pluginObj =
-        creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+    auto pluginObj = creator->createPlugin("RmsnormPlugin", pluginPtr);
     auto plugin_layer = engine_->network()->addPluginV2(
         inputs.data(), inputs.size(), *pluginObj);
 
-    PADDLE_ENFORCE_NE(
-        plugin_layer,
-        nullptr,
-        platform::errors::InvalidArgument(
-            "fail to add CustomPrelnSkipLayerNormPluginDynamic layer"));
     layer = plugin_layer;
 
     std::vector<std::string> output_names;
-    output_names.push_back(op_desc.Output("Out_0")[0]);
-    output_names.push_back(op_desc.Output("Out_1")[0]);
+    output_names.push_back(op_desc.Output("y")[0]);
     RreplenishLayerAndOutput(
-        layer, "preln_skip_layernorm", {output_names}, test_mode);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "PreInErnie want to use oss, must be with interleaved, "
-        "your TRT version is no less than 7.0"));
-#endif
+        layer, "fused_rms_norm", {output_names}, test_mode);
   }
 };
 
@@ -114,4 +72,4 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(preln_skip_layernorm, PrelnSkipLayerNormOpConverter);
+REGISTER_TRT_OP_CONVERTER(fused_rms_norm, FusedRmsNormOpConverter);
