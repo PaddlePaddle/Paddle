@@ -121,14 +121,15 @@ ProgramInfo BuildSoftmax() {
       builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
 
   std::vector<GroupPtr> groups;
-  groups.emplace_back(std::make_shared<Group>(
-      std::initializer_list<::pir::Operation*>({max.owner(),
-                                                broadcast_1.owner(),
-                                                sub.owner(),
-                                                exp.owner(),
-                                                sum.owner(),
-                                                broadcast_2.owner(),
-                                                divide.owner()})));
+  groups.emplace_back(
+      std::make_shared<Group>(std::initializer_list<::pir::Operation*>(
+          {max.dyn_cast<::pir::OpResult>().owner(),
+           broadcast_1.dyn_cast<::pir::OpResult>().owner(),
+           sub.dyn_cast<::pir::OpResult>().owner(),
+           exp.dyn_cast<::pir::OpResult>().owner(),
+           sum.dyn_cast<::pir::OpResult>().owner(),
+           broadcast_2.dyn_cast<::pir::OpResult>().owner(),
+           divide.dyn_cast<::pir::OpResult>().owner()})));
   groups[0]->output_ops.insert(groups[0]->ops.back());
 
   groups[0]->op_pattern_kind = cinn::hlir::framework::kReduction;
