@@ -48,22 +48,20 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
-// FusionOp represents a subgraphs that can be fused. Every GroupOp
-// can be lowered to at least one FusionOp
+// FusionOp represents a subgraphs that can be fused to one kernel.
+// Every GroupOp can be lowered to at least one FusionOp
 class IR_API FusionOp : public pir::Op<FusionOp> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.fusion"; }
-  static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Type> &output_types,
-                    const int op_pattern_kind);
+                    const std::vector<pir::Type> &output_types);
 
   pir::Block *block();
   std::vector<pir::Operation *> ops();
-  int op_pattern_kind();
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT

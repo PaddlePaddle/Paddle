@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 namespace cinn {
 namespace dialect {
 namespace ir {
-std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass(
+std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass(
     const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
         nullptr);
 }  // namespace ir
