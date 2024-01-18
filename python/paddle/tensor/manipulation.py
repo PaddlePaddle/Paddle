@@ -3062,7 +3062,13 @@ def unique_consecutive(
         axis = []
     else:
         axis = [axis]
-    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    attr_dtype = dtype
+    if not isinstance(
+        attr_dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)
+    ):
+        attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
     if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype
@@ -4503,12 +4509,13 @@ def masked_scatter(x, mask, value, name=None):
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
-    assert (
-        mask_prefix[-1] <= value.numel()
-    ), f'mask true nums must be <= value size, but got mask true nums is {mask.sum().item()}, value size is {value.numel().item()}'
+    if in_dynamic_mode():
+        assert (
+            mask_prefix[-1] <= value.numel()
+        ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
-    mask = paddle.logical_not(mask)
+    mask = paddle.logical_not(mask.astype(bool))
     return paddle.where(mask, x, value)
 
 
@@ -4530,7 +4537,7 @@ def masked_scatter_(x, mask, value, name=None):
     ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
-    mask = paddle.logical_not(mask)
+    mask = paddle.logical_not(mask.astype(bool))
     out = paddle.where_(mask, x, value)
     return out
 

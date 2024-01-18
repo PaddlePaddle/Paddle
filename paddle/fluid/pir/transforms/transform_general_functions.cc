@@ -75,7 +75,7 @@ std::string GetParameterNameFromValue(pir::Value value) {
   return name;
 }
 
-const phi::DDim& GetShapeFromValue(pir::Value value) {
+const common::DDim& GetShapeFromValue(pir::Value value) {
   // TODO(dev): Support other types like DenseTensor.
   PADDLE_ENFORCE_EQ(
       value.type().isa<paddle::dialect::DenseTensorType>(),

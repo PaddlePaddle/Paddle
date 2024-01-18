@@ -204,6 +204,30 @@ std::vector<pir::Operation*> GetOutputOpList(
   return vec_res;
 }
 
+std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
+                            pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
+  for (auto* op : group->ops) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto operand = op->operand_source(i);
+      if (shape_analysis->HasShapeOrDataForValue(operand)) {
+        value2shape.insert(
+            {operand, shape_analysis->GetShapeOrDataForValue(operand)});
+      }
+    }
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      if (value2shape.find(result) == value2shape.end() &&
+          shape_analysis->HasShapeOrDataForValue(result)) {
+        value2shape.insert(
+            {result, shape_analysis->GetShapeOrDataForValue(result)});
+      }
+    }
+  }
+  return value2shape;
+}
+
 class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
  public:
   GroupOpPattern(
@@ -241,10 +265,14 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     auto group_list = cinn::dialect::ir::GeneralFusionMergePassInternal(
         op_fusion, shape_analysis_);
 
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+
     for (auto group : group_list) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
-      group->shape_analysis = shape_analysis_;
+      group->value_to_shape_or_data_exprs =
+          CreateGroupShapeOrDataExprs(group, &shape_analysis);
       if (FLAGS_cinn_enable_map_expr) {
         cinn::adt::TryGenerateMapExprFromGroup(group);
       }

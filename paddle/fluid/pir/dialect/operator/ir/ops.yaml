@@ -24,6 +24,8 @@
     func : add
   inplace : (x -> out)
   backward : add_grad
+  data_transform :
+    support_trans_dtype : x, y
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : add_n
@@ -162,6 +164,16 @@
     param : [x]
   kernel :
     func : c_allreduce_max
+  inplace : (x -> out)
+
+- op : c_allreduce_prod
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_prod
   inplace : (x -> out)
 
 - op : c_allreduce_sum
@@ -373,6 +385,8 @@
   kernel :
     func : divide
   inplace: (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : divide_grad
 
 - op : dropout
@@ -406,6 +420,8 @@
     spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : elementwise_pow
+  data_transform :
+    support_trans_dtype : x, y
   backward : elementwise_pow_grad
 
 - op : embedding
@@ -464,6 +480,8 @@
     spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : exponential_
@@ -511,6 +529,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : floor_divide
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : frobenius_norm
@@ -654,6 +674,8 @@
     func : CompareInferMeta
   kernel :
     func : greater_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : greater_than
@@ -663,6 +685,8 @@
     func : CompareInferMeta
   kernel :
     func : greater_than
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : hardswish
@@ -702,6 +726,8 @@
     func : CompareInferMeta
   kernel :
     func : less_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : less_than
@@ -711,6 +737,8 @@
     func : CompareInferMeta
   kernel :
     func : less_than
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : linspace
@@ -776,6 +804,8 @@
     spmd_rule : MatmulInferSpmd
   kernel :
     func : matmul
+  data_transform :
+    support_trans_dtype : x, y
   backward : matmul_grad
 
 - op : matrix_rank
@@ -813,6 +843,8 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : maximum
+  data_transform :
+    support_trans_dtype : x, y
   backward : maximum_grad
 
 - op : mean
@@ -869,6 +901,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : minimum
+  data_transform :
+    support_trans_dtype : x, y
   backward : minimum_grad
 
 - op : mish
@@ -912,6 +946,8 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : not_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : one_hot
@@ -1047,6 +1083,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : remainder
+  data_transform :
+    support_trans_dtype : x, y
   inplace : (x -> out)
 
 - op : repeat_interleave
@@ -1264,6 +1302,8 @@
   kernel :
     func : subtract
   inplace : (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -1277,6 +1317,7 @@
     func : sum
     data_type : x
   backward : sum_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)
@@ -1299,6 +1340,16 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
+
+- op : tdm_sampler
+  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
+  output: Tensor(out), Tensor(labels), Tensor(mask)
+  infer_meta:
+    func : TdmSamplerInferMeta
+  kernel:
+    func : tdm_sampler
+    data_type : x
+  optional : labels
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
