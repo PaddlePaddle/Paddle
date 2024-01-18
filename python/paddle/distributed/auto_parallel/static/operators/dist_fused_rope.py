@@ -103,7 +103,7 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("fused_rotary_position_embedding")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(
             q_spec,
             k_spec,
@@ -153,7 +153,7 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
             )
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op,
             input_arg_names=[

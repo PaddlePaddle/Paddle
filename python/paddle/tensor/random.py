@@ -216,6 +216,57 @@ def poisson(x, name=None):
         return out
 
 
+def standard_gamma(x, name=None):
+    r"""
+    Returns a tensor filled with random number from a Standard Gamma Distribution.
+
+    .. math::
+
+        out_i \sim Gamma (alpha = x_i, beta = 1.0)
+
+    Args:
+        x(Tensor):  A tensor with rate parameter of standrad gamma Distribution. The data type
+            should be bfloat16, float16, float32, float64.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+
+            >>> x = paddle.uniform([2,3], min=1.0, max=5.0)
+            >>> out = paddle.standard_gamma(x)
+            >>> print(out)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[3.35393834, 0.80538225, 0.36511323],
+             [6.10344696, 4.28612375, 6.37196636]])
+            >>> # doctest: -SKIP
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.standard_gamma(x)
+    else:
+        check_variable_and_dtype(
+            x, "x", ["float32", "float64"], "standard_gamma"
+        )
+
+        helper = LayerHelper("standard_gamma", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='standard_gamma',
+            inputs={'x': x},
+            outputs={'out': out},
+            attrs={},
+        )
+        return out
+
+
 def multinomial(x, num_samples=1, replacement=False, name=None):
     """
     Returns a Tensor filled with random values sampled from a Multinomical
@@ -1365,7 +1416,7 @@ def randperm(n, dtype="int64", name=None):
             >>> #doctest: -SKIP
 
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():

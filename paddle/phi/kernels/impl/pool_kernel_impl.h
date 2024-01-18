@@ -322,4 +322,59 @@ void MaxPool3dWithIndexKernel(const Context& ctx,
                                         mask);
 }
 
+template <typename Context, typename T1, typename T2 = int>
+void FractionalMaxPoolRawKernel(const Context& ctx,
+                                const DenseTensor& x,
+                                const std::vector<int>& output_size,
+                                const std::vector<int>& kernel_size,
+                                float random_u,
+                                bool return_mask,
+                                DenseTensor* out,
+                                DenseTensor* mask) {
+  std::vector<int> output_size_ = output_size;
+
+  switch (output_size_.size()) {
+    case 2: {
+      funcs::FractionalMaxPool2dFunctor<Context, T1, T2> pool2d_forward;
+      pool2d_forward(
+          ctx, x, output_size, kernel_size, random_u, return_mask, out, mask);
+    } break;
+    case 3: {
+      funcs::FractionalMaxPool3dFunctor<Context, T1, T2> pool3d_forward;
+      pool3d_forward(
+          ctx, x, output_size, kernel_size, random_u, return_mask, out, mask);
+    } break;
+    default: {
+      PADDLE_THROW(
+          errors::InvalidArgument("Pool op only supports 2D and 3D input."));
+    }
+  }
+}
+
+template <typename T, typename Context>
+void FractionalMaxPool2dKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const std::vector<int>& output_size,
+                               const std::vector<int>& kernel_size,
+                               float random_u,
+                               bool return_mask,
+                               DenseTensor* out,
+                               DenseTensor* mask) {
+  FractionalMaxPoolRawKernel<Context, T>(
+      ctx, x, output_size, kernel_size, random_u, return_mask, out, mask);
+}
+
+template <typename T, typename Context>
+void FractionalMaxPool3dKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const std::vector<int>& output_size,
+                               const std::vector<int>& kernel_size,
+                               float random_u,
+                               bool return_mask,
+                               DenseTensor* out,
+                               DenseTensor* mask) {
+  FractionalMaxPoolRawKernel<Context, T>(
+      ctx, x, output_size, kernel_size, random_u, return_mask, out, mask);
+}
+
 }  // namespace phi

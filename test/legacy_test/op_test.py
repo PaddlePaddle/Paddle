@@ -45,7 +45,7 @@ test_dir = legacy_test_dir.parent  # test
 sys.path.append(str(legacy_test_dir.absolute()))
 sys.path.append(str(test_dir.absolute()))
 
-from utils import static_guard
+from utils import pir_executor_guard, static_guard
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
@@ -1193,6 +1193,7 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_inputs,
                 attrs_outputs,
                 kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1377,6 +1378,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 if hasattr(self, "python_out_sig"):
@@ -2028,6 +2030,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2640,6 +2643,12 @@ class OpTest(unittest.TestCase):
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
+
+        if check_pir_onednn and self.is_mkldnn_op():
+            with pir_executor_guard():
+                pir_onednn_static_checker = StaticChecker(self, self.outputs)
+                pir_onednn_static_checker.check()
+
         if check_dygraph:
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
@@ -2766,6 +2775,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2793,6 +2803,7 @@ class OpTest(unittest.TestCase):
                 check_cinn=check_cinn,
                 check_pir=check_pir,
                 check_auto_parallel=check_auto_parallel,
+                check_pir_onednn=check_pir_onednn,
             )
             if not res and only_check_prim:
                 continue
@@ -3761,6 +3772,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(

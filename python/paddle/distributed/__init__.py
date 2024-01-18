@@ -82,6 +82,7 @@ from .auto_parallel.api import (
     shard_tensor,
     dtensor_from_fn,
     reshard,
+    shard_dataloader,
     shard_layer,
     shard_optimizer,
     to_static,
@@ -92,7 +93,7 @@ from .auto_parallel.api import (
 
 from .fleet import BoxPSDataset  # noqa: F401
 
-from .entry_attr import (  # noqa: F401
+from .entry_attr import (
     ProbabilityEntry,
     CountFilterEntry,
     ShowClickEntry,
@@ -159,6 +160,7 @@ __all__ = [
     "dtensor_from_fn",
     "reshard",
     "shard_layer",
+    "shard_dataloader",
     "ReduceType",
     "Placement",
     "Shard",

@@ -353,7 +353,7 @@ def _compute_analytical_jacobian_pir(
 def grad_check(
     x,
     y,
-    x_init=None,
+    fetch_list=None,
     feeds=None,
     place=None,
     program=None,
@@ -403,12 +403,12 @@ def grad_check(
         for i in range(len(y)):
             analytical.append(
                 _compute_analytical_jacobian_pir(
-                    program, x, i, y, x_init, feeds, place
+                    program, x, i, y, fetch_list, feeds, place
                 )
             )
         numerical = [
             _compute_numerical_jacobian_pir(
-                program, xi, y, x_init, feeds, place, eps
+                program, xi, y, fetch_list, feeds, place, eps
             )
             for xi in x
         ]
