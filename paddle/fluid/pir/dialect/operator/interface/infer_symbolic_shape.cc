@@ -355,26 +355,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
 bool FullOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  auto attributes = op->attributes();
-  pir::Attribute attr = attributes["shape"];
-  const auto &vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
-
-  std::vector<symbol::DimExpr> data;
-  for (auto item : vec) {
-    int64_t i = item.dyn_cast<pir::Int64Attribute>().data();
-    data.push_back(symbol::DimExpr(i));
-  }
-
-  std::vector<symbol::DimExpr> shape(std::int64_t(data.size()));
-
-  symbol::ShapeOrDataDimExprs shape_data{shape, data};
-
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
-
-  pir::OpResult res = op->result(0);
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
