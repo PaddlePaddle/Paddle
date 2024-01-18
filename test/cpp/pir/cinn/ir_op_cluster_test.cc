@@ -230,74 +230,78 @@ std::vector<pir::OpResult> BuildInput(
 //   // ASSERT_EQ(new_group.size(), 2u);
 // }
 
-// Real reduce 0
-TEST(IROpFusionPass, reduce_test_0) {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-   ::pir::Program program(ctx);
-  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+// // Real reduce 0
+// TEST(IROpFusionPass, reduce_test_0) {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+//    ::pir::Program program(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
-  int h = 32, w = 32;
-  auto inputs = BuildInput(&builder, {{h, w}, {h, w}});
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder, {{h, w}, {h, w}});
 
 
 
-  std::vector<int64_t> axes{0};
-  auto c =
-      builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-  builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
-  builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
-  builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
+//   std::vector<int64_t> axes{0};
+//   auto c =
+//       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
+//   builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
+//   builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
+//   builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
 
-   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateBuildCinnPass());
+//    pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
   
-  pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-  pm.EnableIRPrinting();
+//   pm.EnableIRPrinting();
       
-  CHECK_EQ(pm.Run(&program), true);
-  program.Print( std::cout );
+//   CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
 
 
-  // ASSERT_EQ(new_group.size(), 1u);
+//   // ASSERT_EQ(new_group.size(), 1u);
 
-  // ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
-}
+//   // ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
+// }
 
-// // Real reduce 1
+// Real reduce 1
 // TEST(IROpFusionPass, reduce_test_1) {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-//   ::pir::Program program_base(ctx);
-//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
-
-//   int h = 32, w = 32;
-//   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}});
-
 //   ::pir::Program program(ctx);
 //   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder, {{h, w}, {h, w}});
+
+ 
 
 //   std::vector<int64_t> axes{0};
 //   std::vector<int64_t> axes1{1};
 //   auto c =
 //       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-//   builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
-//   builder.Build<cinn::dialect::ReduceSumOp>(c, axes1, true).result(0);
+//   auto out1 = builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
+//   auto out2 = builder.Build<cinn::dialect::ReduceSumOp>(c, axes1, true).result(0);
 
-//   std::vector<pir::Operation*> vec_op;
-//   for (auto& op : *program.block()) {
-//     vec_op.push_back(&op);
-//   }
-//   auto res = cinn::dialect::ir::OpFusionPassInternal(vec_op);
+//   builder.Build<paddle::dialect::FetchOp>( out1, "out1", 0);
+//   builder.Build<paddle::dialect::FetchOp>( out2, "out2", 1);
 
-//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//     pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
+  
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-//   ASSERT_EQ(new_group.size(), 2u);
-//   ASSERT_EQ(new_group[0]->ops.size(), 2u);
-//   ASSERT_EQ(new_group[1]->ops.size(), 2u);
+//   pm.EnableIRPrinting();
+      
+//   CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
+
+//   // ASSERT_EQ(new_group.size(), 2u);
+//   // ASSERT_EQ(new_group[0]->ops.size(), 2u);
+//   // ASSERT_EQ(new_group[1]->ops.size(), 2u);
 // }
 
 // // Real reduce 2
@@ -305,14 +309,14 @@ TEST(IROpFusionPass, reduce_test_0) {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-//   ::pir::Program program_base(ctx);
-//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
-
-//   int h = 32, w = 32;
-//   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}});
 
 //   ::pir::Program program(ctx);
 //   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder, {{h, w}, {h, w}, {w}});
+
+  
 
 //   std::vector<int64_t> axes{0};
 //   std::vector<int64_t> axes1{1};
@@ -320,20 +324,24 @@ TEST(IROpFusionPass, reduce_test_0) {
 //       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
 //   auto e = builder.Build<cinn::dialect::ReduceSumOp>(d, axes, false).result(0);
 //   auto f = builder.Build<cinn::dialect::ReduceSumOp>(d, axes1, false).result(0);
-//   builder.Build<paddle::dialect::AddOp>(inputs[2], e).result(0);
-//   builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
+//   auto out1 = builder.Build<paddle::dialect::AddOp>(inputs[2], e).result(0);
+//   auto out2 = builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
+//     builder.Build<paddle::dialect::FetchOp>( out1, "out1", 0);
+//   builder.Build<paddle::dialect::FetchOp>( out2, "out2", 1);
 
-//   std::vector<pir::Operation*> vec_op;
-//   for (auto& op : *program.block()) {
-//     vec_op.push_back(&op);
-//   }
-//   auto res = cinn::dialect::ir::OpFusionPassInternal(vec_op);
 
-//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//   pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
+  
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-//   ASSERT_EQ(new_group.size(), 2u);
-//   ASSERT_EQ(new_group[0]->ops.size(), 3u);
-//   ASSERT_EQ(new_group[1]->ops.size(), 3u);
+//   pm.EnableIRPrinting();
+  
+//     CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
+//   // ASSERT_EQ(new_group.size(), 2u);
+//   // ASSERT_EQ(new_group[0]->ops.size(), 3u);
+//   // ASSERT_EQ(new_group[1]->ops.size(), 3u);
 // }
 
 // // Real reduce 3
@@ -341,14 +349,13 @@ TEST(IROpFusionPass, reduce_test_0) {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-//   ::pir::Program program_base(ctx);
-//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+//  ::pir::Program program(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
 //   int h = 32, w = 32;
-//   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}, {h, w}});
+//   auto inputs = BuildInput(&builder, {{h, w}, {h, w}, {w}});
 
-//   ::pir::Program program(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+  
 
 //   std::vector<int64_t> axes{0};
 //   std::vector<int64_t> axes1{1};
@@ -356,113 +363,126 @@ TEST(IROpFusionPass, reduce_test_0) {
 //       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
 //   auto f = builder.Build<cinn::dialect::ReduceSumOp>(e, axes, false).result(0);
 
-//   builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
+//   auto out1 = builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
 
 //   std::vector<int64_t> out_shape{h, w};
 //   auto f1 =
 //       builder.Build<cinn::dialect::BroadcastOp>(f, axes1, out_shape).result(0);
-//   builder.Build<paddle::dialect::AddOp>(inputs[2], f1).result(0);
+//   auto out2 = builder.Build<paddle::dialect::AddOp>(inputs[2], f1).result(0);
+//       builder.Build<paddle::dialect::FetchOp>( out1, "out1", 0);
+//   builder.Build<paddle::dialect::FetchOp>( out2, "out2", 1);
 
-//   std::vector<pir::Operation*> vec_op;
-//   for (auto& op : *program.block()) {
-//     vec_op.push_back(&op);
-//   }
-//   auto res = cinn::dialect::ir::OpFusionPassInternal(vec_op);
+//    pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
+  
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//   pm.EnableIRPrinting();
+  
+//     CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
 
-//   ASSERT_EQ(new_group.size(), 1u);
-//   ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
+//   // ASSERT_EQ(new_group.size(), 1u);
+//   // ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 // }
 
-// // FIXME(Aurelius84): Real reduce 4
-// // TEST(IROpFusionPass, reduce_test_4) {
-// //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-// //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-// //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-// //   ::pir::Program program_base(ctx);
-// //   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+// TEST(IROpFusionPass, reduce_test_4) {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+//     ::pir::Program program(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
-// //   int h = 32, w = 32;
-// //   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}, {h, w}});
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder, {{h, w}, {h, w}, {w}, {h, w}});
 
-// //   ::pir::Program program(ctx);
-// //   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
-// //   std::vector<int64_t> axes{0};
-// //   std::vector<int64_t> axes1{1};
-// //   auto e =
-// //       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-// //   auto f = builder.Build<cinn::dialect::ReduceSumOp>(e, axes,
-// //   false).result(0);
 
-// //   builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
+//   std::vector<int64_t> axes{0};
+//   std::vector<int64_t> axes1{1};
+//   auto e =
+//       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
+//   auto f = builder.Build<cinn::dialect::ReduceSumOp>(e, axes,   false).result(0);
 
-// //   std::vector<int64_t> out_shape{h, w};
-// //   auto f1 =
-// //       builder.Build<cinn::dialect::BroadcastOp>(f, axes1,
-// //       out_shape).result(0);
-// //   builder.Build<paddle::dialect::AddOp>(inputs[3], f1).result(0);
-// //   auto f2 =
-// //       builder.Build<cinn::dialect::BroadcastOp>(f, axes1,
-// //       out_shape).result(0);
-// //   builder.Build<paddle::dialect::AddOp>(inputs[3], f2).result(0);
+//   auto out1 = builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
 
-// //   auto res =
-// //       cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
-// //           program.block()->begin(), program.block()->end()));
+//   std::vector<int64_t> out_shape{h, w};
+//   auto f1 =
+//       builder.Build<cinn::dialect::BroadcastOp>(f, axes1,
+//       out_shape).result(0);
+//   auto out2 = builder.Build<paddle::dialect::AddOp>(inputs[3], f1).result(0);
+//   auto f2 =
+//       builder.Build<cinn::dialect::BroadcastOp>(f, axes1,
+//       out_shape).result(0);
+//   auto out3 = builder.Build<paddle::dialect::AddOp>(inputs[3], f2).result(0);
 
-// //   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//   builder.Build<paddle::dialect::FetchOp>( out1, "out1", 0);
+//   builder.Build<paddle::dialect::FetchOp>( out2, "out2", 1);
+//   builder.Build<paddle::dialect::FetchOp>( out3, "out3", 2);
 
-// //   ASSERT_EQ(new_group.size(), 1u);
-// // }
+//      pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
+  
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-// // Real reduce 5
+//   pm.EnableIRPrinting();
+  
+//     CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
+
+//   // ASSERT_EQ(new_group.size(), 1u);
+// }
+
+// Real reduce 5
 // TEST(IROpFusionPass, reduce_test_5) {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-//   ::pir::Program program_base(ctx);
-//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+//     ::pir::Program program(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
 //   int h = 32, w = 32;
-//   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}});
+//   auto inputs = BuildInput(&builder, {{h, w}, {h, w}});
 
-//   ::pir::Program program(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+
 
 //   std::vector<int64_t> axes{1};
 
 //   auto c =
 //       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-//   builder.Build<cinn::dialect::ReduceSumOp>(inputs[0], axes, false).result(0);
-//   builder.Build<cinn::dialect::ReduceSumOp>(inputs[1], axes, false).result(0);
-//   builder.Build<cinn::dialect::ReduceSumOp>(c, axes, false).result(0);
+//   auto out1 = builder.Build<cinn::dialect::ReduceSumOp>(inputs[0], axes, false).result(0);
+//   auto out2 = builder.Build<cinn::dialect::ReduceSumOp>(inputs[1], axes, false).result(0);
+//   auto out3 = builder.Build<cinn::dialect::ReduceSumOp>(c, axes, false).result(0);
 
-//   std::vector<pir::Operation*> vec_op;
-//   for (auto& op : *program.block()) {
-//     vec_op.push_back(&op);
-//   }
-//   auto res = cinn::dialect::ir::OpFusionPassInternal(vec_op);
+//    builder.Build<paddle::dialect::FetchOp>( out1, "out1", 0);
+//   builder.Build<paddle::dialect::FetchOp>( out2, "out2", 1);
+//   builder.Build<paddle::dialect::FetchOp>( out3, "out3", 2);
+  
+//        pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
+  
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//   pm.EnableIRPrinting();
+  
+//     CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
 
-//   ASSERT_EQ(new_group.size(), 1u);
+//   // ASSERT_EQ(new_group.size(), 1u);
 
-//   ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
+//   // ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 // }
 
 // TEST(IROpFusionPass, layer_norm) {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-//   ::pir::Program program_base(ctx);
-//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
-
-//   auto inputs = BuildInput(&builder_base, {{128, 128, 768}, {768}, {768}});
-
+ 
 //   ::pir::Program program(ctx);
 //   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+
+//   auto inputs = BuildInput(&builder, {{128, 128, 768}, {768}, {768}});
+
 
 //   std::vector<int64_t> axes{-1};
 
@@ -515,80 +535,89 @@ TEST(IROpFusionPass, reduce_test_0) {
 //       builder.Build<cinn::dialect::BroadcastOp>(inputs[2], all_axes, out_shape2)
 //           .result(0);
 //   auto t5 = builder.Build<paddle::dialect::MultiplyOp>(t3, scale).result(0);
-//   builder.Build<paddle::dialect::MultiplyOp>(t5, bias).result(0);
+//   auto out1 = builder.Build<paddle::dialect::MultiplyOp>(t5, bias).result(0);
 
-//   std::vector<pir::Operation*> vec_op;
-//   for (auto& op : *program.block()) {
-//     vec_op.push_back(&op);
-//   }
-//   auto res = cinn::dialect::ir::OpFusionPassInternal(vec_op);
+//      builder.Build<paddle::dialect::FetchOp>( out1, "out1", 0);
+  
+  
+//        pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
+  
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+//   pm.EnableIRPrinting();
+  
+//     CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
 
-//   ASSERT_EQ(new_group.size(), 1u);
+  
 
-//   ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
+//   // ASSERT_EQ(new_group.size(), 1u);
+
+//   // ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 // }
 
-// TEST(IROpFusionPass, softmax) {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-//   ::pir::Program program_base(ctx);
-//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
+TEST(IROpFusionPass, softmax) {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
-//   auto inputs = BuildInput(&builder_base, {{128, 128, 768}});
+  auto inputs = BuildInput(&builder, {{128, 128, 768}});
 
-//   ::pir::Program program(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+ 
 
-//   std::vector<int64_t> axes{-1};
+  std::vector<int64_t> axes{-1};
 
-//   auto x = inputs[0];
-//   auto max = builder.Build<cinn::dialect::ReduceMaxOp>(x, axes, true).result(0);
-//   auto broadcast_1 = builder
-//                          .Build<cinn::dialect::BroadcastOp>(
-//                              max,
-//                              std::vector<int64_t>({0, 1, 2}),
-//                              std::vector<int64_t>({128, 128, 768}))
-//                          .result(0);
-//   auto sub =
-//       builder.Build<paddle::dialect::SubtractOp>(x, broadcast_1).result(0);
-//   auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
-//   auto sum =
-//       builder.Build<cinn::dialect::ReduceSumOp>(exp, axes, true).result(0);
+  auto x = inputs[0];
+  auto max = builder.Build<cinn::dialect::ReduceMaxOp>(x, axes, true).result(0);
+  auto broadcast_1 = builder
+                         .Build<cinn::dialect::BroadcastOp>(
+                             max,
+                             std::vector<int64_t>({0, 1, 2}),
+                             std::vector<int64_t>({128, 128, 768}))
+                         .result(0);
+  auto sub =
+      builder.Build<paddle::dialect::SubtractOp>(x, broadcast_1).result(0);
+  auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
+  auto sum =
+      builder.Build<cinn::dialect::ReduceSumOp>(exp, axes, true).result(0);
 
-//   auto broadcast_2 = builder
-//                          .Build<cinn::dialect::BroadcastOp>(
-//                              sum,
-//                              std::vector<int64_t>({0, 1, 2}),
-//                              std::vector<int64_t>({128, 128, 768}))
-//                          .result(0);
-//   auto divide =
-//       builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
+  auto broadcast_2 = builder
+                         .Build<cinn::dialect::BroadcastOp>(
+                             sum,
+                             std::vector<int64_t>({0, 1, 2}),
+                             std::vector<int64_t>({128, 128, 768}))
+                         .result(0);
+  auto divide =
+      builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
 
-//   std::vector<pir::Operation*> vec_op;
-//   for (auto& op : *program.block()) {
-//     vec_op.push_back(&op);
-//   }
-//   auto res = cinn::dialect::ir::OpFusionPassInternal(vec_op);
+    
 
-//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
+     builder.Build<paddle::dialect::FetchOp>( divide, "out1", 0);
+  
+  
+       pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateBuildCinnPass());
+  
+  pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
 
-//   ASSERT_EQ(new_group.size(), 1u);
+  pm.EnableIRPrinting();
+  
+    CHECK_EQ(pm.Run(&program), true);
+  program.Print( std::cout );
 
-//   ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
-// }
+}
 
 // TEST(IROpFusionPass, layer_norm2) {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 //   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 //   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-//   ::pir::Program program_base(ctx);
-//   ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
-//   auto inputs = BuildInput(&builder_base, {{128, 128, 768}, {768}, {768}});
 //   ::pir::Program program(ctx);
 //   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+//   auto inputs = BuildInput(&builder, {{128, 128, 768}, {768}, {768}});
+  
 //   std::vector<int64_t> axes{-1};
 //   auto num = builder
 //                  .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1},
@@ -636,18 +665,26 @@ TEST(IROpFusionPass, reduce_test_0) {
 //       builder.Build<cinn::dialect::BroadcastOp>(inputs[2], all_axes, out_shape2)
 //           .result(0);
 //   auto t5 = builder.Build<paddle::dialect::MultiplyOp>(t3, scale).result(0);
-//   builder.Build<paddle::dialect::MultiplyOp>(t5, bias).result(0);
-//   builder.Build<cinn::dialect::ReshapeOp>(mean, std::vector<int>({-1}))
+  
+//   auto out1 = builder.Build<paddle::dialect::MultiplyOp>(t5, bias).result(0);
+//   auto out2 = builder.Build<cinn::dialect::ReshapeOp>(mean, std::vector<int>({-1}))
 //       .result(0);
-//   builder.Build<cinn::dialect::ReshapeOp>(mean2, std::vector<int>({-1}))
+//   auto out3 = builder.Build<cinn::dialect::ReshapeOp>(mean2, std::vector<int>({-1}))
 //       .result(0);
 
-//   std::vector<pir::Operation*> vec_op;
-//   for (auto& op : *program.block()) {
-//     vec_op.push_back(&op);
-//   }
-//   auto res = cinn::dialect::ir::OpFusionPassInternal(vec_op);
-//   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
-//   ASSERT_EQ(new_group.size(), 1u);
-//   ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
+  
+//      builder.Build<paddle::dialect::FetchOp>( out1, "out1", 0);
+//      builder.Build<paddle::dialect::FetchOp>( out2, "out2", 1);
+//      builder.Build<paddle::dialect::FetchOp>( out3, "out3", 2);
+  
+  
+//        pir::PassManager pm(ctx);
+//   pm.AddPass(pir::CreateBuildCinnPass());
+  
+//   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
+
+//   pm.EnableIRPrinting();
+  
+//     CHECK_EQ(pm.Run(&program), true);
+//   program.Print( std::cout );
 // }

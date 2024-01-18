@@ -45,6 +45,7 @@
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 
 namespace cinn {
 namespace dialect {
@@ -70,20 +71,22 @@ std::unordered_set<pir::Value> GetInnerGeneValue( const std::vector<pir::Operati
 struct GroupClusterNode
 {
     std::vector<::pir::Operation*> ops;
-
+    cinn::hlir::framework::OpPatternKind group_kind{cinn::hlir::framework::kElementWise};
+    std::vector<int64_t> reduce_axis;
+    std::vector<int64_t> loop_ranges;
 
     std::unordered_set<::pir::Value> GetOutsideInput()
     {
       
       std::unordered_set<pir::Value> outside_ops;
-      auto block_inner_output = GetInnerGeneValue( ops);
-      
+      auto block_inner_output = GetInnerGeneValue( ops);      
 
       for (auto & op : ops) {
         for (size_t i = 0; i < op->num_operands(); ++i) {
           if (!block_inner_output.count(op->operand_source(i)) &&
               !outside_ops.count(op->operand_source(i))) {
             outside_ops.insert(op->operand_source(i));
+          }
         }
       }
       return outside_ops;
@@ -93,6 +96,10 @@ struct GroupClusterNode
     {
       for( auto & op : ops)
       {
+        if( op->name() == "cf.yield")
+        {
+          continue;
+        }
         for( size_t i = 0; i < op->num_results(); ++i )
         {
           if( outside_need_value.count( op->result(i) ) )
@@ -103,13 +110,14 @@ struct GroupClusterNode
       }
     }
 
-private:
     std::vector<::pir::Value> output_value;
 };
 
 ::pir::Operation* ReplaceWithGroupOp(::pir::Block* block,
                         const ::pir::GroupOpsVec& group_ops, 
-                        ::pir::Operation* insert_op) 
+                        const std::vector<::pir::Value>& output_value,
+                        ::pir::Operation* insert_op,
+                        ::pir::IrMapping* ir_mapping ) 
 {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
@@ -119,10 +127,10 @@ private:
   auto* last_op = group_ops.back();
   builder.SetInsertionPointAfter(insert_op);
   std::vector<pir::Type> output_types;
-  std::vector<pir::Value> outputs = ::pir::AnalysisOutputs(group_ops);
+  //std::vector<pir::Value> outputs = ::pir::AnalysisOutputs(group_ops);
 
-  ::pir::IrMapping ir_mapping;
-  for (auto& value : outputs) {
+ //  ::pir::IrMapping ir_mapping;
+  for (auto& value : output_value) {
     output_types.emplace_back(value.type());   
   }
   // step 2: Replace the old op with GroupOp.
@@ -144,7 +152,7 @@ private:
 
   for (auto op : group_ops) {
     std::cerr << "!! name " << op->name() << std::endl; 
-    auto new_op = op->Clone(ir_mapping, clone_options);
+    auto new_op = op->Clone(*ir_mapping, clone_options);
 
         
     group_block->insert(group_block->end(), new_op); 
@@ -154,16 +162,21 @@ private:
   std::vector<pir::OpResult> group_outs = new_group_op->results();
   std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
                                                 group_ops.end());
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i].ReplaceUsesWithIf(group_outs[i],
-                                 [&inner_ops](pir::OpOperand op) {
-                                   return !inner_ops.count(op.owner());
-                                 });
-  }
+  // for (size_t i = 0; i < output_value.size(); ++i) {
+  //   output_value[i].ReplaceUsesWithIf(group_outs[i],
+  //                                [&inner_ops](pir::OpOperand op) {
+  //                                  return op.owner()->name() == "cf.yield";
+  //                                });
+  // }
 
   // step 4: Insert YieldOp for outputs
+  std::vector<::pir::Value> new_output;
+  for( size_t i = 0; i < output_value.size(); ++i )
+  {
+    new_output.push_back( ir_mapping->Lookup<::pir::Value>( output_value[i]));
+  }
   builder.SetInsertionPointToBlockEnd(group_block);
-  builder.Build<::pir::YieldOp>(outputs);
+  builder.Build<::pir::YieldOp>(new_output);
 
   return new_group_op;
 }
@@ -202,7 +215,8 @@ std::vector< GroupClusterNode > GroupSplit( ::pir::Operation* input_op)
         continue;
       }
 
-      auto& op_list = op_path[op].ops;
+      auto& cluster_node =  op_path[op];
+      auto& op_list = cluster_node.ops;
       for( size_t i = 0; i < op->num_operands(); ++i)
       {
         if( !inner_values.count( op->operand_source(i)))
@@ -222,6 +236,41 @@ std::vector< GroupClusterNode > GroupSplit( ::pir::Operation* input_op)
         
       }
 
+      // process cluster node
+      if( cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) == cinn::hlir::framework::kReduction )
+      { 
+        // set reduce axis and loop range
+        cluster_node.reduce_axis = cinn::dialect::ir::GetVectorAttr(op, "dim");
+        cluster_node.loop_ranges = phi::vectorize( op->operand_source(0)
+                   .type()
+                   .dyn_cast<paddle::dialect::DenseTensorType>()
+                   .dims() );
+      }
+      else if ( cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) == cinn::hlir::framework::kElementWise )
+      {
+        if ( cluster_node.group_kind == cinn::hlir::framework::kElementWise )
+        {
+        cluster_node.loop_ranges = phi::vectorize( op->result(0)
+                   .type()
+                   .dyn_cast<paddle::dialect::DenseTensorType>()
+                   .dims() );
+        }
+      }
+      else if( cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) == cinn::hlir::framework::kBroadcast )
+      {
+         if ( cluster_node.group_kind == cinn::hlir::framework::kElementWise )
+        {
+          cluster_node.loop_ranges = phi::vectorize( op->result(0)
+                    .type()
+                    .dyn_cast<paddle::dialect::DenseTensorType>()
+                    .dims() );
+        }
+      }
+      else
+      {
+        throw std::runtime_error("not support op kind yet");
+      }
+
       op_list.push_back( op ); 
 
       if( yield_output_ops.count(op) || cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) == cinn::hlir::framework::kReduction)
@@ -229,6 +278,19 @@ std::vector< GroupClusterNode > GroupSplit( ::pir::Operation* input_op)
         first_stage_output.push_back( op_path[op]);
       }
     }
+
+
+
+    // stage 2 merge
+    // for now we merge node in same pass
+    // only for vertial fuse    
+    // std::unordered_set<::pir::Value> all_ouput_values;
+    // for( auto & node : first_stage_output )
+    // {
+    //     node.GenerateOutputValue();
+    //     auto node_outside_input = 
+    //     all_ouput_values.insert( node_outside_input.begin(), node_outside_input.end() );
+    // }
 
     return first_stage_output;
 
@@ -261,20 +323,36 @@ class CinnGroupClusterPass : public pir::Pass {
       ++it;
       if( base_it->isa<cinn::dialect::GroupOp>() )
       {
+        ::pir::IrMapping ir_mapping;
+        cinn::dialect::GroupOp group_op = base_it->dyn_cast<cinn::dialect::GroupOp>();
         auto split_res = GroupSplit( base_it );
+        // need sort split res
+
+        std::unordered_set<::pir::Value> all_ouput_values;
+        for( auto & node : split_res )
+        {
+            auto node_outside_input = node.GetOutsideInput();
+            all_ouput_values.insert( node_outside_input.begin(), node_outside_input.end() );
+        }
 
         size_t index = 0;
         std::unordered_map<pir::Operation*, size_t> op2id;
-         cinn::dialect::GroupOp group_op = base_it->dyn_cast<cinn::dialect::GroupOp>();
+         
         for (auto op1 : group_op.ops() ) {
           op2id[op1] = index++;
+        }
+
+        auto yield_op = group_op.ops().back();
+        for( size_t i = 0; i < yield_op->num_operands(); ++i )
+        {
+          all_ouput_values.insert( yield_op->operand_source(i));
         }
 
         ::pir::Operation* insert_point = base_it;
         for (auto& node : split_res) {
 
-
-        std::vector<pir::Operation*> tmp_ops(node.ops.begin(),
+          node.GenerateOutputValue( all_ouput_values );
+          std::vector<pir::Operation*> tmp_ops(node.ops.begin(),
                                          node.ops.end());
           
           std::sort(tmp_ops.begin(),
@@ -288,13 +366,36 @@ class CinnGroupClusterPass : public pir::Pass {
             std::cerr << "name  " << op1->name() << std::endl;
           }
           std::cerr << "fin!!!!!!!!!!! \n";
-          insert_point = ReplaceWithGroupOp(&block, tmp_ops, insert_point);
 
-          // ++it;
+          auto node_outside_input = node.GetOutsideInput();
+          for( auto it = node_outside_input.begin(); it != node_outside_input.end(); ++it )
+          {
+            std::cerr << "have " << ir_mapping.GetMap<::pir::Value>().count( *it ) << std::endl;
+          }
+
+          insert_point = ReplaceWithGroupOp(&block, tmp_ops, node.output_value, insert_point, &ir_mapping);
+
+          for(size_t i = 0; i < node.output_value.size(); ++i)
+          {
+            std::cerr << "addddddddddddddddddddd\n";
+            ir_mapping.Add( node.output_value[i], insert_point->result(i));
+          } 
+          
+          std::unordered_set<::pir::Value> local_outs( node.output_value.begin(), node.output_value.end() );
+
+          int local_index = 0;
+          for(  size_t i = 0; i < yield_op->num_operands(); ++i )
+          {
+            if( local_outs.count( yield_op->operand_source(i)) )
+            {
+              base_it->result(i).ReplaceAllUsesWith(  insert_point->result( local_index ++ ));
+            }
+          }
         }
 
         
-        // auto yield_op = group_op.ops().back();
+        
+
         // yield_op->Erase();
 
         base_it->Erase();
