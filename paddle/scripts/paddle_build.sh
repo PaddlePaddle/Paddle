@@ -3326,6 +3326,7 @@ function distribute_test() {
     pip install -r requirements.txt
     pip install -r scripts/regression/requirements_ci.txt
     pip install -r ./csrc/requirements.txt
+    python setup.py install
     python -m pip install pytest-timeout
     cd csrc && python  setup_cuda.py install
 
