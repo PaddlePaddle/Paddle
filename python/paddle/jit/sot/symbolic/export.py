@@ -275,7 +275,9 @@ class PyFileGen:
         api = stmt.api
         api_str = api.__module__ + "." + api.__name__
         if isinstance(stmt.outputs, Symbol):
-            return [f"{stmt.outputs.name} = {api_str}({input_str})"]
+            return [
+                f"{self.get_true_string(stmt.outputs)} = {api_str}({input_str})"
+            ]
         else:
             compute_code = f"out = {api_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
@@ -284,9 +286,11 @@ class PyFileGen:
     def create_method_stmt(self, stmt):
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args[1:], kwargs)
-        method_str = args[0].name + "." + stmt.method
+        method_str = self.get_true_string(args[0]) + "." + stmt.method
         if isinstance(stmt.outputs, Symbol):
-            return [f"{stmt.outputs.name} = {method_str}({input_str})"]
+            return [
+                f"{self.get_true_string(stmt.outputs)} = {method_str}({input_str})"
+            ]
         else:
             compute_code = f"out = {method_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
@@ -297,7 +301,9 @@ class PyFileGen:
         input_str = self.create_input_string(args, kwargs)
         layer_str = "self." + self.layer_name_map[id(stmt.layer())]
         if isinstance(stmt.outputs, Symbol):
-            return [f"{stmt.outputs.name} = {layer_str}({input_str})"]
+            return [
+                f"{self.get_true_string(stmt.outputs)} = {layer_str}({input_str})"
+            ]
         else:
             compute_code = f"out = {layer_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
