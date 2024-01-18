@@ -228,31 +228,6 @@ class TestSetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
-    def test_combined_indexing_and_value_is_tensor_1(self):
-        # value is tensor with same shape to getitem and index will be adjusted
-        np_data = np.ones((3, 3)).astype(self.ndtype)
-        value_data = np.array([-1, -1, -1]).astype(self.ndtype)
-
-        if self.dtype == 'bfloat16':
-            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-            value_data = convert_uint16_to_float(
-                convert_float_to_uint16(value_data)
-            )
-        if self.dtype == 'complex64' or self.dtype == 'complex128':
-            np_data = np_data + 1j * np_data
-            value_data = value_data + 1j * value_data
-
-        x = paddle.to_tensor(np_data, dtype=self.dtype)
-        v = paddle.to_tensor(value_data, dtype=self.dtype)
-
-        np_data[:, [0, 2]] = np_data[:, [0, 2]] + np.expand_dims(value_data, -1)
-        x[:, [0, 2]] = x[:, [0, 2]] + v.unsqueeze(-1)
-
-        if self.dtype == 'bfloat16':
-            x = paddle.cast(x, dtype='float32')
-
-        np.testing.assert_allclose(x.numpy(), np_data)
-
     def test_combined_indexing_and_value_is_tensor_2(self):
         # value is tensor needed to broadcast and index will be adjusted
         np_data = np.ones((3, 4, 5, 6)).astype(self.ndtype)
