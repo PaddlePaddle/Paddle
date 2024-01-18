@@ -904,8 +904,7 @@ def case(pred_fn_pairs, default=None, name=None):
 
             if not callable(fn):
                 raise TypeError(
-                    f"The fn for {pred.name} of pred_fn_pairs in Op(case) must"
-                    " be callable."
+                    "The fn of pred_fn_pairs in Op(case) must" " be callable."
                 )
 
         if default is None:
