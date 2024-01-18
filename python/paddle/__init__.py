@@ -221,7 +221,6 @@ from .tensor.linalg import (  # noqa: F401
     t_,
     transpose,
     transpose_,
-    vector_norm,
 )
 from .tensor.logic import (
     allclose,

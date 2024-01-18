@@ -527,7 +527,9 @@ def check_linalg_vector_static(
 ):
     with base.program_guard(base.Program()):
         data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
-        out = paddle.vector_norm(x=data, p=p, axis=axis, keepdim=keep_dim)
+        out = paddle.linalg.vector_norm(
+            x=data, p=p, axis=axis, keepdim=keep_dim
+        )
         place = base.CPUPlace()
         exe = base.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
@@ -554,7 +556,9 @@ def check_linalg_vector_dygraph(
         x_numpy, porder=p, axis=axis, keepdims=keep_dim
     )
     x_paddle = paddle.to_tensor(x_numpy)
-    result = paddle.vector_norm(x=x_paddle, p=p, axis=axis, keepdim=keep_dim)
+    result = paddle.linalg.vector_norm(
+        x=x_paddle, p=p, axis=axis, keepdim=keep_dim
+    )
     result = result.numpy()
     np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
     if keep_dim and check_dim:
@@ -570,7 +574,7 @@ def run_graph(self, p, axis, shape_x, dtype):
     # [[[-12. -11. -10.  -9.] [ -8.  -7.  -6.  -5.] [ -4.  -3.  -2.  -1.]]
     # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
     out_pnorm = paddle.norm(x, p=2, axis=-1)
-    out_vector_norm = paddle.vector_norm(x, p=2, axis=-1)
+    out_vector_norm = paddle.linalg.vector_norm(x, p=2, axis=-1)
 
     # compute frobenius norm along last two dimensions.
     out_fro = paddle.norm(x, p='fro')
@@ -581,23 +585,23 @@ def run_graph(self, p, axis, shape_x, dtype):
     # compute 2-order  norm along [0,1] dimension.
     out_pnorm = paddle.norm(x, p=2, axis=[0, 1])
     out_pnorm = paddle.norm(x, p=2)
-    out_vector_norm = paddle.vector_norm(x, p=2, axis=[0, 1])
-    out_vector_norm = paddle.vector_norm(x, p=2)
+    out_vector_norm = paddle.linalg.vector_norm(x, p=2, axis=[0, 1])
+    out_vector_norm = paddle.linalg.vector_norm(x, p=2)
     # out_pnorm = [17.43559577 16.91153453 16.73320053 16.91153453]
     # compute inf-order  norm
     out_pnorm = paddle.norm(x, p=np.inf)
-    out_vector_norm = paddle.vector_norm(x, p=np.inf)
+    out_vector_norm = paddle.linalg.vector_norm(x, p=np.inf)
     # out_pnorm = [12.]
     out_pnorm = paddle.norm(x, p=np.inf, axis=0)
-    out_vector_norm = paddle.vector_norm(x, p=np.inf, axis=0)
+    out_vector_norm = paddle.linalg.vector_norm(x, p=np.inf, axis=0)
     # out_pnorm = [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
 
     # compute -inf-order  norm
     out_pnorm = paddle.norm(x, p=-np.inf)
-    out_vector_norm = paddle.vector_norm(x, p=-np.inf)
+    out_vector_norm = paddle.linalg.vector_norm(x, p=-np.inf)
     # out_pnorm = [0.]
     out_norm = paddle.norm(x, p=-np.inf, axis=0)
-    out_vector_norm = paddle.vector_norm(x, p=-np.inf, axis=0)
+    out_vector_norm = paddle.linalg.vector_norm(x, p=-np.inf, axis=0)
     # out_fro = [17.43559577 16.91153453 16.73320053 16.91153453]
     paddle.enable_static()
 

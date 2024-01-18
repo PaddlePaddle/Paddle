@@ -97,7 +97,6 @@ from .linalg import (  # noqa: F401
     t_,
     transpose,
     transpose_,
-    vector_norm,
 )
 from .logic import (  # noqa: F401
     allclose,
@@ -445,7 +444,6 @@ tensor_method_func = [
     'cov',
     'corrcoef',
     'norm',
-    'vector_norm',
     'cond',
     'transpose',
     'cauchy_',

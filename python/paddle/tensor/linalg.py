@@ -512,98 +512,9 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             )
 
 
-def norm(x, p='fro', axis=None, keepdim=False, name=None):
+def matrix_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
-
-    Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
-    or 2-norm, and in general the p-norm for p > 0) of a given tensor.
-
-    Note:
-        This norm API is different from `numpy.linalg.norm`.
-        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
-        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
-        For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
-
-    Args:
-        x (Tensor): The input tensor could be N-D tensor, and the input data
-            type could be float32 or float64.
-        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0.
-            Default value is `fro`.
-        axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
-            or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
-            If `axis < 0`, the dimension to norm operation is rank(input) + axis.
-            If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
-            Default value is `None`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
-            value is False.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: results of norm operation on the specified axis of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
-            >>> print(x)
-            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[-12., -11., -10., -9. ],
-              [-8. , -7. , -6. , -5. ],
-              [-4. , -3. , -2. , -1. ]],
-             [[ 0. ,  1. ,  2. ,  3. ],
-              [ 4. ,  5. ,  6. ,  7. ],
-              [ 8. ,  9. ,  10.,  11.]]])
-
-            >>> # compute frobenius norm along last two dimensions.
-            >>> out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
-            >>> print(out_fro)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
-
-            >>> # compute 2-order vector norm along last dimension.
-            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
-            >>> print(out_pnorm)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[21.11871147, 13.19090557, 5.47722578 ],
-             [3.74165750 , 11.22497177, 19.13112640]])
-
-            >>> # compute 2-order  norm along [0,1] dimension.
-            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
-            >>> print(out_pnorm)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
-
-            >>> # compute inf-order  norm
-            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"))
-            >>> print(out_pnorm)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            12.)
-
-            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
-            >>> print(out_pnorm)
-            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[12., 11., 10., 9. ],
-             [8. , 7. , 6. , 7. ],
-             [8. , 9. , 10., 11.]])
-
-            >>> # compute -inf-order  norm
-            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
-            >>> print(out_pnorm)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            0.)
-
-            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
-            >>> print(out_pnorm)
-            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 2., 3.],
-             [4., 5., 6., 5.],
-             [4., 3., 2., 1.]])
+    Calculate the p-order vector norm for certain  dimension of Tensor `input`.
     """
 
     def _backshift_permutation(dim0, dim1, dimn):
@@ -691,7 +602,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             input, 'input', ['float32', 'float64'], 'nuclear_norm'
         )
 
-        block = LayerHelper('nuclear_nrom', **locals())
+        block = LayerHelper('nuclear_norm', **locals())
         out = block.create_variable_for_type_inference(
             dtype=block.input_dtype()
         )
@@ -753,56 +664,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         return out
 
-    def vector_norm(
-        input, porder=None, axis=None, keepdim=False, asvector=False, name=None
-    ):
-        """
-        Calculate the p-order vector norm for certain  dimension of Tensor `input`.
-        Args:
-          input (Variable): Tensor, data type float32, float64.
-          porder (float, optional): None for porder=2.0. Default None.
-          axis (int, optional): None for last dimension. Default None.
-          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-          asvector (bool, optional): Whether keep the result as a vector, Default False.
-          name (str, optional): The default value is None. Normally there is no need for
-              user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-        """
-        if in_dynamic_or_pir_mode():
-            if axis is None:
-                axis = -1
-            return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
-        else:
-            if porder is not None:
-                check_type(porder, 'porder', (float, int), 'p_norm')
-            if axis is not None:
-                check_type(axis, 'axis', (int), 'p_norm')
-            check_variable_and_dtype(
-                input,
-                'input',
-                ['float16', 'uint16', 'float32', 'float64'],
-                'p_norm',
-            )
-
-            attrs = {
-                'axis': axis if axis is not None else -1,
-                'porder': float(porder) if porder is not None else 2.0,
-                'keepdim': keepdim,
-                'asvector': asvector,
-                'epsilon': 1e-12,
-            }
-            helper = LayerHelper('p_norm', **locals())
-            out = helper.create_variable_for_type_inference(
-                dtype=helper.input_dtype()
-            )
-
-            helper.append_op(
-                type='p_norm',
-                inputs={'X': input},
-                outputs={'Out': out},
-                attrs=attrs,
-            )
-            return out
-
     def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
         """
         Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
@@ -843,11 +704,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                     dim1,
                     keepdim,
                 )
-
-            # out = _C_ops.p_matrix_norm(
-            #     input, porder, axis, 1e-12, keepdim, True
-            # )
-            # return out
 
         check_variable_and_dtype(
             input,
@@ -974,85 +830,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 },
             )
             return reduce_out
-        # attrs = {
-        #     'porder': porder,
-        #     'axis': axis,
-        #     'keepdim': keepdim,
-        #     'asvector': False,
-        #     'epsilon': 1e-12,
-        # }
-        # helper = LayerHelper('p_matrix_norm', **locals())
-        # out = helper.create_variable_for_type_inference(
-        #     dtype=helper.input_dtype()
-        # )
 
-        # helper.append_op(
-        #     type='p_matrix_norm',
-        #     inputs={'x': input},
-        #     outputs={'out': out},
-        #     attrs=attrs,
-        # )
-        # return out
-
-    if axis is None and p is not None:
-        if isinstance(p, str):
-            if p == "fro":
-                return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
-        elif isinstance(p, (int, float)):
-            return vector_norm(
-                x,
-                porder=p,
-                axis=axis,
-                keepdim=keepdim,
-                asvector=True,
-                name=name,
-            )
-        else:
-            raise ValueError(
-                f"only valid p type is string or float, found {type(p)}"
-            )
-
-    if isinstance(axis, tuple):
-        axis = list(axis)
-    if isinstance(axis, list) and len(axis) == 1:
-        axis = axis[0]
-
-    # calculate vector norm, where axis is int or list with only one integer
-    if isinstance(axis, int):
-        if isinstance(p, str):
-            if p == "fro":
-                return vector_norm(
-                    x,
-                    porder=2,
-                    axis=axis,
-                    keepdim=keepdim,
-                    asvector=False,
-                    name=name,
-                )
-
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
-        elif isinstance(p, (int, float)):
-            return vector_norm(
-                x,
-                axis=axis,
-                porder=p,
-                keepdim=keepdim,
-                asvector=False,
-                name=name,
-            )
-        else:
-            raise ValueError(
-                f"unspport p for p-order vector norm. except float, found {p}"
-            )
-    # calculate matrix norm, where axis is list with two integers
-    elif isinstance(axis, list) and len(axis) == 2:
+    if isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
         elif p == "nuc":
@@ -1072,6 +851,170 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             raise ValueError(
                 f"just support p value 'fro','nuc',1,-1,inf,-inf,2,-2 if axis is 2D, found {p}"
             )
+
+    else:
+        raise ValueError(
+            f"except axis type int or list (length of list == 2), found {axis}"
+        )
+
+
+def norm(x, p='fro', axis=None, keepdim=False, name=None):
+    """
+
+    Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
+    or 2-norm, and in general the p-norm for p > 0) of a given tensor.
+
+    Note:
+        This norm API is different from `numpy.linalg.norm`.
+        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
+        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
+        For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
+
+    Args:
+        x (Tensor): The input tensor could be N-D tensor, and the input data
+            type could be float32 or float64.
+        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
+            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0.
+            Default value is `fro`.
+        axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
+            or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
+            If `axis < 0`, the dimension to norm operation is rank(input) + axis.
+            If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
+            Default value is `None`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have fewer dimension
+            than the :attr:`input` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: results of norm operation on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            >>> print(x)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[-12., -11., -10., -9. ],
+              [-8. , -7. , -6. , -5. ],
+              [-4. , -3. , -2. , -1. ]],
+             [[ 0. ,  1. ,  2. ,  3. ],
+              [ 4. ,  5. ,  6. ,  7. ],
+              [ 8. ,  9. ,  10.,  11.]]])
+
+            >>> # compute frobenius norm along last two dimensions.
+            >>> out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
+            >>> print(out_fro)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
+
+            >>> # compute 2-order vector norm along last dimension.
+            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
+            >>> print(out_pnorm)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[21.11871147, 13.19090557, 5.47722578 ],
+             [3.74165750 , 11.22497177, 19.13112640]])
+
+            >>> # compute 2-order  norm along [0,1] dimension.
+            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
+            >>> print(out_pnorm)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
+
+            >>> # compute inf-order  norm
+            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"))
+            >>> print(out_pnorm)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            12.)
+
+            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
+            >>> print(out_pnorm)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[12., 11., 10., 9. ],
+             [8. , 7. , 6. , 7. ],
+             [8. , 9. , 10., 11.]])
+
+            >>> # compute -inf-order  norm
+            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
+            >>> print(out_pnorm)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            0.)
+
+            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
+            >>> print(out_pnorm)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 1., 2., 3.],
+             [4., 5., 6., 5.],
+             [4., 3., 2., 1.]])
+    """
+
+    if axis is None and p is not None:
+        if isinstance(p, str):
+            if p == "fro":
+                return vector_norm(
+                    x,
+                    p=2,
+                    axis=axis,
+                    keepdim=keepdim,
+                    name=name,
+                )
+            else:
+                raise ValueError(
+                    f"only valid string values are 'fro', found {p}"
+                )
+        elif isinstance(p, (int, float)):
+            return vector_norm(
+                x,
+                p=p,
+                axis=axis,
+                keepdim=keepdim,
+                name=name,
+            )
+        else:
+            raise ValueError(
+                f"only valid p type is string or float, found {type(p)}"
+            )
+
+    if isinstance(axis, tuple):
+        axis = list(axis)
+    if isinstance(axis, list) and len(axis) == 1:
+        axis = axis[0]
+
+    # calculate vector norm, where axis is int or list with only one integer
+    if isinstance(axis, int):
+        if isinstance(p, str):
+            if p == "fro":
+                return vector_norm(
+                    x,
+                    p=2,
+                    axis=axis,
+                    keepdim=keepdim,
+                    name=name,
+                )
+
+            else:
+                raise ValueError(
+                    f"only valid string values are 'fro', found {p}"
+                )
+        elif isinstance(p, (int, float)):
+            return vector_norm(
+                x,
+                axis=axis,
+                p=p,
+                keepdim=keepdim,
+                name=name,
+            )
+        else:
+            raise ValueError(
+                f"unspport p for p-order vector norm. except float, found {p}"
+            )
+    # calculate matrix norm, where axis is list with two integers
+    elif isinstance(axis, list) and len(axis) == 2:
+        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
 
     else:
         raise ValueError(
