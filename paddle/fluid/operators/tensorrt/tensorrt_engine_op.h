@@ -652,7 +652,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
-      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
+      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype()
+              << ", dimensions are " << t.dims();
 
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
@@ -703,8 +704,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "The TRT Engine OP only support "
             "float/double/int32_t/int64_t/float16/bool input."));
       }
-      auto buffername = engine->engine()->getBindingName(bind_index);
-      trt_context->setTensorAddress(buffername, buffers[bind_index]);
     }
 
     // Bind output tensor to TRT.
@@ -774,8 +773,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
               << TRT2FluidDataType(trt_type);
       buffers[bind_index] = static_cast<void *>(
           fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
-      auto buffername1 = engine->engine()->getBindingName(bind_index);
-      trt_context->setTensorAddress(buffername1, buffers[bind_index]);
       output_index += 1;
     }
 

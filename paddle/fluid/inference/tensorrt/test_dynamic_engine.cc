@@ -151,7 +151,12 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
 #if IS_TRT_VERSION_GE(8500)
   for (size_t i = 0; i < buffers.size(); i++) {
     auto name = engine_->engine()->getBindingName(i);
-    engine_->context()->setTensorAddress(name, buffers[i]);
+    if (engine_->engine()->isShapeBinding(j) &&
+        context->getEngine()->bindingIsInput(j)) {
+      continue;
+    } else {
+      engine_->context()->setTensorAddress(name, buffers[i]);
+    }
   }
 #endif
 
