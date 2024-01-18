@@ -26,6 +26,7 @@
 
 namespace pir {
 class Operation;
+class SymbolicDimMgr;
 }  // namespace pir
 
 namespace cinn::hlir::framework::pir {
