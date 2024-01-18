@@ -5051,6 +5051,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_allclose(res[0], np.array(1))
         np.testing.assert_allclose(res[1], np.array(1))
 
+    @test_with_pir_api
     @prog_scope()
     def test_while_loop(self):
         def cond(i, x):
@@ -5065,20 +5066,34 @@ class TestSundryAPIStatic(unittest.TestCase):
         with paddle.static.program_guard(main_program, paddle.static.Program()):
             i = paddle.static.data(name='i', shape=[], dtype='float32')
             i.stop_gradient = False
+            i.persistable = True
             eleven = paddle.full([], 11, 'float32')
             x = paddle.static.data(name='x', shape=[], dtype='float32')
             x.stop_gradient = False
+            x.persistable = True
             out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
-            paddle.static.append_backward(out_x)
+            grad_list = paddle.static.append_backward(out_x)
 
-        res = self.exe.run(
-            main_program,
-            feed={
-                'i': np.array(1.0, dtype='float32'),
-                'x': np.array(0.0, dtype='float32'),
-            },
-            fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
-        )
+        feed = {
+            'i': np.array(1.0, dtype='float32'),
+            'x': np.array(0.0, dtype='float32'),
+        }
+        if paddle.framework.in_pir_mode():
+            fetch_list = [out_i, out_x]
+            for _, g in grad_list:
+                fetch_list.append(g)
+            res = self.exe.run(
+                main_program,
+                feed=feed,
+                fetch_list=fetch_list,
+            )
+        else:
+            res = self.exe.run(
+                main_program,
+                feed=feed,
+                fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
+            )
+
         self.assertEqual(res[0].shape, ())
         np.testing.assert_allclose(res[0], np.array(11))
         self.assertEqual(res[1].shape, ())
