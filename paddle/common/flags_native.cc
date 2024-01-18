@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/common/flags_native.h"
+#include "paddle/common/flags.h"
 
 #include <assert.h>
 #include <stdlib.h>
