@@ -94,7 +94,7 @@ CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
 
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
-  FusionOpPattern(::pir::IrContext* context)
+  explicit FusionOpPattern(::pir::IrContext* context)
       : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,

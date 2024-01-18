@@ -256,7 +256,7 @@ CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
 
 class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
  public:
-  GroupOpPattern(::pir::IrContext* context)
+  explicit GroupOpPattern(::pir::IrContext* context)
       : pir::OpRewritePattern<cinn::dialect::GroupOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::GroupOp group_op,
