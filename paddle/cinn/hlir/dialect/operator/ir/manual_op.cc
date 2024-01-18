@@ -63,7 +63,7 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::ops() {
+std::vector<pir::Operation*> GroupOp::GetOperators() {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -82,7 +82,7 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
+  for (auto& sub_op : GetOperators()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }
@@ -102,7 +102,7 @@ pir::Block* FusionOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> FusionOp::ops() {
+std::vector<pir::Operation*> FusionOp::GetOperators() {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -121,7 +121,7 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
+  for (auto& sub_op : GetOperators()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }

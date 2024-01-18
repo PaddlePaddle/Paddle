@@ -95,10 +95,8 @@ CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   FusionOpPattern(
-      ::pir::IrContext* context,
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
-      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context),
-        shape_analysis_(shape_analysis) {}
+      ::pir::IrContext* context)
+      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
@@ -116,9 +114,11 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // so a mapping is required.
     std::unordered_map<::pir::Value, size_t> value2id;
 
-    if (shape_analysis_) {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(fusion_op->GetParentProgram());
+    if (shape_analysis) {
       group->value_to_shape_or_data_exprs =
-          CreateGroupShapeOrDataExprs(group, shape_analysis_.get());
+          CreateGroupShapeOrDataExprs(group, shape_analysis);
     }
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
@@ -160,7 +160,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
 
     // Rebuild ops of the group
-    for (auto op : fusion_op.ops()) {
+    for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
         group->ops.push_back(op);
         group->ops_set.insert(op);
@@ -173,7 +173,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // Rebuild output_ops and input_ops of the group
-    auto yeild_op = fusion_op.ops().back();
+    auto yeild_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
       group->output_ops.insert(yeild_op->operand_source(i).defining_op());
     }
@@ -182,17 +182,11 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // TODO(zhangyuqin1998): Do we need group.master_ops?
     return group;
   }
-
- private:
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_{nullptr};
 };
 
 class LowerCinnFusionOpPass : public pir::PatternRewritePass {
  public:
-  LowerCinnFusionOpPass(
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
-      : pir::PatternRewritePass("lower_cinn_fusion_op", 1),
-        shape_analysis_(shape_analysis) {}
+  LowerCinnFusionOpPass(): pir::PatternRewritePass("lower_cinn_fusion_op", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
@@ -200,7 +194,7 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
     context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
     pir::RewritePatternSet ps(context);
-    ps.Add<FusionOpPattern>(context, shape_analysis_);
+    ps.Add<FusionOpPattern>(context);
 
     return ps;
   }
@@ -208,9 +202,6 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
-
- private:
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_{nullptr};
 };
 
 }  // namespace
@@ -219,9 +210,8 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass(
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
-  return std::make_unique<LowerCinnFusionOpPass>(shape_analysis);
+std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass() {
+  return std::make_unique<LowerCinnFusionOpPass>();
 }
 
 }  // namespace ir

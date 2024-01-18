@@ -42,7 +42,7 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
                     std::unique_ptr<pir::Block> &&block);
 
   pir::Block *block();
-  std::vector<pir::Operation *> ops();
+  std::vector<pir::Operation *> GetOperators();
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -61,7 +61,7 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
                     const std::vector<pir::Type> &output_types);
 
   pir::Block *block();
-  std::vector<pir::Operation *> ops();
+  std::vector<pir::Operation *> GetOperators();
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
