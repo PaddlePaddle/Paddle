@@ -25,6 +25,6 @@ limitations under the License. */
 #include "paddle/utils/pybind.h"
 #endif
 // For initialization of DeviceContextPool and MemoryMethod
-#include "paddle/phi/init_phi.h"
+#include "paddle/fluid/platform/init_phi.h"
 
 static paddle::InitPhi g_init_phi;

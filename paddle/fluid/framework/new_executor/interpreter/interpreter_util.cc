@@ -1240,6 +1240,8 @@ void SetDeviceCommContext(pir::Operation* op,
   if (op_attributes.count("ring_id") != 0) {
     int ring_id =
         op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
+    VLOG(1) << "Set device comm context for op: " << op->name() << " ring_id "
+            << ring_id;
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(std::to_string(ring_id))) {

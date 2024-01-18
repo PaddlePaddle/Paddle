@@ -1717,6 +1717,12 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
 
+      if (nccl_op_num_ == 2 && sync_op_num_ == 11 &&
+          var_ref_count_.size() == 116) {
+        VLOG(0) << "Begin sync" << last_live_ops_.size();
+        instr_node->DeviceContext().Wait();
+      }
+
       if (FLAGS_benchmark) {
         instr_node->DeviceContext().Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

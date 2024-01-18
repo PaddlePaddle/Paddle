@@ -53,6 +53,8 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   ~PirInterpreter();
 
+  void set_op_sync(bool op_sync) override;
+
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,

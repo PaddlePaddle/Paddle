@@ -122,6 +122,7 @@ template <typename T, typename DeviceContext>
 class SendOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    VLOG(0) << ctx.Attr<bool>("use_calc_stream");
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
@@ -204,6 +205,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
     }
+
+    VLOG(1) << "stream = " << stream;
 
     auto* x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensorArray>()) {

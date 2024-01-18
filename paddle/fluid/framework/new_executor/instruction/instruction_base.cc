@@ -146,6 +146,7 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
 
 static double GetDenseTensorEleSum(const Scope& scope,
                                    const std::string& name) {
+  return 0;
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return std::numeric_limits<double>::quiet_NaN();
