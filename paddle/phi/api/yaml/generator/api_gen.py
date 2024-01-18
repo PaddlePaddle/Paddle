@@ -495,8 +495,14 @@ def generate_api(
 
     for api in apis:
         foward_api = ForwardAPI(api)
-        if foward_api.is_dygraph_api:
+        if foward_api.is_dygraph_api and not is_fused_ops_yaml:
             foward_api.is_dygraph_api = False
+
+        if foward_api.is_dygraph_api and is_fused_ops_yaml:
+            foward_api.is_dygraph_api = False
+            header_file.write(foward_api.gene_api_declaration())
+            source_file.write(foward_api.gene_api_code())
+            foward_api.is_dygraph_api = True
 
         header_file.write(foward_api.gene_api_declaration())
         source_file.write(foward_api.gene_api_code())
