@@ -33,14 +33,18 @@ def p_norm_python_api(
 
 def linalg_vector_norm(x, axis, porder, keepdims=False, reduce_all=False):
     r = []
-    if axis is None or reduce_all:
-        x = x.flatten()
+    if axis is None:
+        x_f = x.flatten()
         if porder == np.inf:
-            r = np.amax(np.abs(x), keepdims=keepdims)
+            r = np.amax(np.abs(x_f), keepdims=keepdims)
         elif porder == -np.inf:
-            r = np.amin(np.abs(x), keepdims=keepdims)
+            r = np.amin(np.abs(x_f), keepdims=keepdims)
         else:
-            r = np.linalg.norm(x, ord=porder, keepdims=keepdims)
+            r = np.linalg.norm(x_f, ord=porder, keepdims=keepdims)
+        if keepdims:
+            r = np.squeeze(r)
+            for i in range(len(x.shape)):
+                r = np.expand_dims(r, 0)
     elif isinstance(axis, list or tuple) and len(axis) >= 2:
         if porder == np.inf:
             axis = tuple(axis)
@@ -546,7 +550,9 @@ def check_linalg_vector_dygraph(
     self, p, axis, shape_x, dtype, keep_dim, check_dim=False
 ):
     x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
-    expected_result = linalg_vector_norm(x_numpy, p, axis, keep_dim)
+    expected_result = linalg_vector_norm(
+        x_numpy, porder=p, axis=axis, keepdims=keep_dim
+    )
     x_paddle = paddle.to_tensor(x_numpy)
     result = paddle.vector_norm(x=x_paddle, p=p, axis=axis, keepdim=keep_dim)
     result = result.numpy()

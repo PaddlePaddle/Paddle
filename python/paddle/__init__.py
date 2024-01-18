@@ -849,7 +849,6 @@ __all__ = [
     'masked_select',
     'var',
     'trace',
-    'vector_norm',
     'enable_static',
     'scatter_nd',
     'set_default_dtype',

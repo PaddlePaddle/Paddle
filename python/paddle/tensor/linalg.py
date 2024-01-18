@@ -282,8 +282,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
 def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
-    Calculate the p-order vector norm for certain  dimension of Tensor `input`.When len(axis) == 1, this
-    behavior is for consistency with paddle.linalg.norm().
+    Calculate the p-order vector norm for certain  dimension of Tensor `input`.
 
     Args:
         x (Variable): Tensor, data type float32, float64.
@@ -301,6 +300,37 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            >>> print(x)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[[-12., -11., -10., -9. ],
+              [-8. , -7. , -6. , -5. ],
+              [-4. , -3. , -2. , -1. ]],
+             [[ 0. ,  1. ,  2. ,  3. ],
+              [ 4. ,  5. ,  6. ,  7. ],
+              [ 8. ,  9. ,  10.,  11.]]])
+
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=2,axis=None,keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            34.)
+
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=0,axis=[0,1],keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [5, 6, 6, 6])
+
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [12., 11.])
+
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=1,axis=1,keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[24., 21., 18., 15.],
+             [12., 15., 18., 21.]])
+
     """
 
     def zero_norm(
