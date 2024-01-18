@@ -1,5 +1,6 @@
 add_subdirectory(adt)
 add_subdirectory(symbolic)
+add_subdirectory(sub_graphs)
 
 if(WITH_GPU)
   file(

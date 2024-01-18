@@ -1,0 +1,92 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# repo: PaddleClas
+# model: ppcls^configs^ImageNet^Inception^InceptionV4
+# api||paddle.nn.functional.pooling.adaptive_avg_pool2d,api||paddle.tensor.manipulation.squeeze,api||paddle.nn.functional.common.dropout,api||paddle.nn.functional.common.linear
+import unittest
+
+import numpy as np
+
+import paddle
+
+
+class SIR111(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.var_765 = self.create_parameter(
+            shape=[1536, 1000],
+            dtype=paddle.float32,
+        )
+        self.var_766 = self.create_parameter(
+            shape=[1000],
+            dtype=paddle.float32,
+        )
+
+    def forward(
+        self,
+        var_761,  # (shape: [22, 1536, 8, 8], dtype: paddle.float32, stop_gradient: False)
+    ):
+        var_762 = paddle.nn.functional.pooling.adaptive_avg_pool2d(
+            var_761, output_size=1, data_format='NCHW', name=None
+        )
+        var_763 = paddle.tensor.manipulation.squeeze(var_762, axis=[2, 3])
+        var_764 = paddle.nn.functional.common.dropout(
+            var_763,
+            p=0.2,
+            axis=None,
+            training=True,
+            mode='downscale_in_infer',
+            name=None,
+        )
+        var_767 = paddle.nn.functional.common.linear(
+            x=var_764, weight=self.var_765, bias=self.var_766, name=None
+        )
+        return var_767
+
+
+class TestSIR111(unittest.TestCase):
+    def setUp(self):
+        self.inputs = (
+            paddle.rand(shape=[22, 1536, 8, 8], dtype=paddle.float32),
+        )
+        self.net = SIR111()
+
+    def train(self, net, to_static, with_prim=False, with_cinn=False):
+        paddle.set_flags({'FLAGS_prim_all': with_prim})
+        if to_static:
+            if with_cinn:
+                build_strategy = paddle.static.BuildStrategy()
+                build_strategy.build_cinn_pass = True
+                net = paddle.jit.to_static(
+                    net, build_strategy=build_strategy, full_graph=True
+                )
+            else:
+                net = paddle.jit.to_static(net, full_graph=True)
+        outs = net(*self.inputs)
+        return outs
+
+    def test_ast_prim_cinn(self):
+        st_out = self.train(self.net, to_static=True)
+        cinn_out = self.train(
+            self.net, to_static=True, with_prim=True, with_cinn=True
+        )
+        for st, cinn in zip(
+            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
+        ):
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+
+
+if __name__ == '__main__':
+    unittest.main()
