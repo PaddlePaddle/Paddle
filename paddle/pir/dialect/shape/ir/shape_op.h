@@ -23,59 +23,6 @@
 
 namespace pir::shape {
 
-class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "shape.symbolic_dim"; }
-
-  static constexpr uint32_t attributes_num = 6;
-  static const char *attributes_name[attributes_num];
-
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    const std::string &sym_name,
-                    int64_t value = ShapedTypeInterface::kDynamic,
-                    bool known_non_negative = false,
-                    bool known_negative_one = false,
-                    bool known_non_size_one = false,
-                    bool known_non_size_zero = false);
-
-  const std::string GetSymName() const;
-  int64_t GetDimSize() const;
-
-  bool GetKnownNonNegative();
-  bool GetKnownNegativeOne();
-  bool GetKnownNonSizeOne();
-  bool GetKnownNonSizeZero();
-
-  void SetSymName(const std::string &attr_value);
-  void SetDimSize(int64_t attr_value);
-
-  // Sets `known_non_negative` to the value of `flag`
-  void UpdateKnownNonNegative(bool flag);
-
-  // Sets `known_negative_one` to the value of `flag`
-  void UpdateKnownNegativeOne(bool flag);
-
-  // Sets `known_non_size_one` to the value of `flag`
-  void UpdateKnownNonSizeOne(bool flag);
-
-  // Sets `known_non_size_zero` to the value of `flag`
-  void UpdateKnownNonSizeZero(bool flag);
-
-  // Returns true if this SymbolicDimOp is not known at compile-time.
-  bool IsDynamic() const;
-
-  // Try to merge two SymbolicDimOp.
-  bool Merge(SymbolicDimOp other);
-
-  static const std::string GetSymbolicDimAttrName() {
-    return "kSymbolicDimAttr";
-  }
-
-  void VerifySig() {}
-};
-
 class IR_API DimOp : public Op<DimOp> {
  public:
   using Op::Op;
@@ -91,64 +38,6 @@ class IR_API DimOp : public Op<DimOp> {
   const std::string GetName();
   void SetName(std::string attrValue);
   OpResult out() { return result(0); }
-  void VerifySig() {}
-};
-
-class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "shape.tie_product_equal"; }
-
-  static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
-
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    int64_t lhs_len,
-                    int64_t rhs_len,
-                    const std::vector<Value> &inputs);
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    const std::vector<Value> &lhs,
-                    const std::vector<Value> &rhs);
-  std::vector<Value> lhs();
-  std::vector<Value> rhs();
-  void VerifySig() {}
-};
-
-class IR_API TieShapeOp : public Op<TieShapeOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "shape.tie_shape"; }
-
-  static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
-
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    pir::Value input);
-
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    Value input,
-                    const std::vector<Value> &dims);
-  Value input() { return operand_source(0); }
-  std::vector<Value> dims();
-  void VerifySig() {}
-};
-
-class IR_API FuncOp : public Op<FuncOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "shape.func"; }
-
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-
-  static void Build(Builder &builder,              // NOLINT
-                    OperationArgument &argument);  // NOLINT
-  void Print(IrPrinter &printer);                  // NOLINT
-  Block *block();
   void VerifySig() {}
 };
 
@@ -260,11 +149,7 @@ class IR_API IndexCastOp : public Op<IndexCastOp> {
 
 }  // namespace pir::shape
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::SymbolicDimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::DimOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TieProductEqualOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TieShapeOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::FuncOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TensorDimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeOfOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::FromElementsOp);

@@ -23,11 +23,7 @@ ShapeDialect::ShapeDialect(IrContext *context)
 }
 
 void ShapeDialect::initialize() {
-  RegisterOps<SymbolicDimOp,
-              DimOp,
-              TieProductEqualOp,
-              TieShapeOp,
-              FuncOp,
+  RegisterOps<DimOp,
               TensorDimOp,
               ShapeOfOp,
               FromElementsOp,
@@ -68,11 +64,7 @@ void ShapeDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
 }
 
 void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {
-  if (auto func_op = op->dyn_cast<FuncOp>()) {
-    func_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
-  }
+  printer.PrintGeneralOperation(op);
 }
 
 }  // namespace pir::shape
