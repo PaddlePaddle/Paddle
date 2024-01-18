@@ -15,6 +15,9 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include <iostream>
+#include <regex>
+#include <string>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -52,6 +55,8 @@
 #endif
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_string(pir_onednn_kernel_blacklist);
+
 namespace paddle {
 namespace dialect {
 
@@ -144,10 +149,17 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     SelectInputOp::name(),
     "cinn_runtime.jit_kernel"};
 
-const std::unordered_map<std::string, uint32_t> XShapeRelatedOps = {
+const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
     {paddle::dialect::ReshapeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Reshape_Op::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::SqueezeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Squeeze_Op::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::UnsqueezeOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Unsqueeze_Op::name(), /*xshape_idx*/ 1U},
     {paddle::dialect::FlattenOp::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::Flatten_Op::name(), /*xshape_idx*/ 1U},
+    {paddle::dialect::BatchNormOp::name(), /*reserve_space*/ 5U},
+    {paddle::dialect::BatchNorm_Op::name(), /*reserve_space*/ 5U},
 };
 
 static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
@@ -155,8 +167,8 @@ static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
   if (op->isa<paddle::dialect::FetchOp>()) {
     auto define_op_name = op->operand_source(0).defining_op()->name();
     uint32_t index = op->operand_source(0).dyn_cast<pir::OpResult>().index();
-    need_skip = XShapeRelatedOps.count(define_op_name) > 0 &&
-                (XShapeRelatedOps.at(define_op_name) == index);
+    need_skip = NoBufferRelatedOps.count(define_op_name) > 0 &&
+                (NoBufferRelatedOps.at(define_op_name) == index);
   }
   return need_skip;
 }
@@ -1074,8 +1086,21 @@ phi::KernelKey GetKernelKey(
   }
 
 #ifdef PADDLE_WITH_DNNL
+  std::regex reg(",");
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(FLAGS_pir_onednn_kernel_blacklist.begin(),
+                                 FLAGS_pir_onednn_kernel_blacklist.end(),
+                                 reg,
+                                 -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+
   if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
-      SupportsMKLDNN(kernel_fn_str, res.dtype())) {
+      SupportsMKLDNN(kernel_fn_str, res.dtype()) &&
+      elems.count(op->name().substr(
+          strlen(OneDNNOperatorDialect::name()) + 1,
+          op->name().size() - strlen(OneDNNOperatorDialect::name()) - 1)) ==
+          0) {
     res.set_backend(phi::Backend::ONEDNN);
     res.set_layout(phi::DataLayout::ONEDNN);
   }
@@ -1338,7 +1363,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::YieldOp>() || op_item->isa<::pir::ShadowOutputOp>()) {
+  if (op_item->isa<::pir::YieldOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -1348,6 +1373,32 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+  }
+
+  if (op_item->isa<::pir::ShadowOutputOp>()) {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        // layout transfer(only for onednn)
+#ifdef PADDLE_WITH_DNNL
+        auto new_in_type = new_in.type();
+        if (new_in_type.isa<AllocatedDenseTensorType>()) {
+          if (new_in_type.dyn_cast<AllocatedDenseTensorType>().data_layout() ==
+              phi::DataLayout::ONEDNN) {
+            new_in = AddOneDNN2PaddleLayoutTransferOp(
+                new_in, phi::DataLayout::ANY, block);
+          }
+        }
+#endif
         vec_inputs.push_back(new_in);
       }
     }

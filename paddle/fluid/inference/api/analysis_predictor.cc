@@ -795,6 +795,11 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
         //----------------------------------------------------------------------------------------------//
+        // Functional pass
+        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
+        //----------------------------------------------------------------------------------------------//
+
+        //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
@@ -802,11 +807,6 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
-        //----------------------------------------------------------------------------------------------//
-
-        //----------------------------------------------------------------------------------------------//
-        // Functional pass
-        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
         //----------------------------------------------------------------------------------------------//
 
         //----------------------------------------------------------------------------------------------//
@@ -833,6 +833,24 @@ bool AnalysisPredictor::PrepareExecutor() {
           gpu_pm.EnableIRPrinting();
         }
         gpu_pm.Run(pir_program_.get());
+      } else {
+        ::pir::PassManager cpu_pm(::pir::IrContext::Instance(), 2);
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        cpu_pm.AddPass(std::move(constant_folding_pass));
+        cpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        cpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        //----------------------------------------------------------------------------------------------//
+        if (!config_.glog_info_disabled()) {
+          cpu_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          cpu_pm.EnableIRPrinting();
+        }
+        cpu_pm.Run(pir_program_.get());
       }
 
       pir_program_ = std::move(

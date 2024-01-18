@@ -85,8 +85,18 @@ struct Group {
     for (auto* op : this->output_ops) {
       new_group->output_ops.insert(ops_mapper.at(op));
     }
+    for (const auto& output_value : this->output_values) {
+      new_group->output_values.push_back(output_value);
+    }
 
     return new_group;
+  }
+
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
+      const ::pir::Value& value) {
+    CHECK(value_to_shape_or_data_exprs.count(value))
+        << "value not found in value_to_shape_or_data_exprs";
+    return value_to_shape_or_data_exprs.at(value);
   }
 
   // distance to last group.
@@ -117,7 +127,8 @@ struct Group {
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
-  std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_exprs;
 
   // for op lowering.
   std::vector<std::string> input_names;

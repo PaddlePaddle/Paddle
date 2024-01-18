@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include <NvInfer.h>
 #include <glog/logging.h>
-
 #include <string>
 
 #include "NvInferRuntimeCommon.h"
@@ -176,7 +175,6 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 #if IS_TRT_VERSION_GE(8500)
   for (size_t j = 0; j < buffers->size(); ++j) {
     auto name = context->getEngine().getBindingName(j);
-    std::cout << "name " << name << std::endl;
     if (context->getEngine().isShapeBinding(j) &&
         context->getEngine().bindingIsInput(j)) {
       continue;

@@ -652,8 +652,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
-      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype()
-              << ", dimensions are " << t.dims();
+      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
 
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());

@@ -12,25 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
+#pragma once
 
-namespace paddle {
-namespace drr {
+#include "paddle/phi/core/dense_tensor.h"
 
-bool ShapeInterface::operator==(const ShapeInterface& other) const {
-  return *shape_ == *other.shape_;
-}
+namespace phi {
 
-int ShapeInterface::size() const { return shape_->size(); }
-
-int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
-
-bool DtypeInterface::operator==(const DtypeInterface& other) const {
-  return *dtype_ == *other.dtype_;
-}
-
-IrDtype DtypeInterface::get() const { return *(this->dtype_); }
-
-}  // namespace drr
-}  // namespace paddle
+template <typename T, typename Context>
+void ApplyPerChannelScaleKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& scales,
+                                DenseTensor* out);
+}  // namespace phi
