@@ -355,7 +355,6 @@ void Execute(const OneDNNContext& dev_ctx,
   auto deconvolution_cache =
       std::static_pointer_cast<DeconvolutionCache>(dev_ctx.GetBlob(cache_key));
   if (deconvolution_cache) {
-    // cout << "============cahce===============" << endl;
     auto conv_p = std::make_shared<dnnl::deconvolution_forward>(
         deconvolution_cache->deconvolution_forward);
 
