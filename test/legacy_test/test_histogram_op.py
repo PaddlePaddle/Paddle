@@ -104,6 +104,7 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
+    @test_with_pir_api
     def test_min_max_range_error(self):
         """Test range of min, max is not finite"""
 
@@ -116,6 +117,7 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.run_network(net_func)
 
+    @test_with_pir_api
     def test_type_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.

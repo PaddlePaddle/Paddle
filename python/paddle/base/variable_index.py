@@ -527,7 +527,7 @@ def _setitem_static(x, indices, values):
                         ends = paddle.utils.get_int_tensor_list(ends)
                 if isinstance(steps, (list, tuple)):
                     if paddle.utils._contain_var(steps):
-                        ends = paddle.utils.get_int_tensor_list(steps)
+                        steps = paddle.utils.get_int_tensor_list(steps)
 
             if value_tensor is None:
                 output = paddle._C_ops.set_value_(
