@@ -82,8 +82,8 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_fusion_lowering_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -1571,10 +1571,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateCinnFusionLoweringPass(shape_analysis));
+  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
           << ", shape_analysis: " << shape_analysis;
 #else

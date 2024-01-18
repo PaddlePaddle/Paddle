@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_fusion_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
 
 #include <unordered_map>
 
@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_pass.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
@@ -41,8 +42,11 @@ PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace {
 
+using cinn::dialect::ir::Group;
+using cinn::hlir::framework::pir::CompatibleInfo;
+
 std::vector<pir::Value> GetBlockOutsideInput(
-    const std::vector<pir::Operation*> op_list) {
+    const std::vector<pir::Operation*>& op_list) {
   std::vector<pir::Value> vec_res;
   std::unordered_set<::pir::Value> block_inner_output;
   for (size_t k = 0; k < op_list.size(); ++k) {
@@ -64,13 +68,34 @@ std::vector<pir::Value> GetBlockOutsideInput(
   return vec_res;
 }
 
+std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
+                            pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
+  for (auto* op : group->ops) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto operand = op->operand_source(i);
+      if (shape_analysis->HasShapeOrDataForValue(operand)) {
+        value2shape.insert(
+            {operand, shape_analysis->GetShapeOrDataForValue(operand)});
+      }
+    }
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      if (value2shape.find(result) == value2shape.end() &&
+          shape_analysis->HasShapeOrDataForValue(result)) {
+        value2shape.insert(
+            {result, shape_analysis->GetShapeOrDataForValue(result)});
+      }
+    }
+  }
+  return value2shape;
+}
+
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
-  FusionOpPattern(
-      ::pir::IrContext* context,
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
-      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context),
-        shape_analysis_(shape_analysis) {}
+  FusionOpPattern(::pir::IrContext* context)
+      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
@@ -82,15 +107,23 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     auto* program = fusion_op->GetParentProgram();
     auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
         *program, target, scope);
-
-    VLOG(4) << "Before FusionOpPattern: " << *program;
-
     auto group = RebuildGroup(fusion_op);
+    // Because the group is rebuilt, the order of group.output_values generated
+    // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
+    // so a mapping is required.
+    std::unordered_map<::pir::Value, size_t> value2id;
 
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        fusion_op->GetParentProgram());
+    if (shape_analysis) {
+      group->value_to_shape_or_data_exprs =
+          CreateGroupShapeOrDataExprs(group, shape_analysis);
+    }
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
 
+    // TODO(zhangyuqin1998): Replace pir::Group with a new structure
     auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
     std::unordered_map<std::string, ::pir::Attribute> op_attrs{
         {cinn::dialect::JitKernelOp::kAttrName,
@@ -103,13 +136,17 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     std::vector<pir::Type> vec_types;
     for (size_t i = 0; i < group->output_values.size(); ++i) {
       vec_types.push_back(group->output_values[i].type());
+      value2id[group->output_values[i]] = i;
     }
 
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         vec_ins, op_attrs, vec_types);
 
-    for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
-      rewriter.ReplaceAllUsesWith(fusion_op.result(i), jit_kernel_op.result(i));
+    auto yeild_op = fusion_op.ops().back();
+    for (size_t i = 0; i < fusion_op.num_results(); ++i) {
+      rewriter.ReplaceAllUsesWith(
+          fusion_op.result(i),
+          jit_kernel_op.result(value2id[yeild_op->operand_source(i)]));
     }
 
     rewriter.EraseOp(fusion_op);
@@ -117,51 +154,39 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   }
 
  private:
-  std::shared_ptr<cinn::dialect::ir::Group> RebuildGroup(
-      cinn::dialect::FusionOp fusion_op) const {
-    auto group = std::make_shared<cinn::dialect::ir::Group>();
+  std::shared_ptr<Group> RebuildGroup(cinn::dialect::FusionOp fusion_op) const {
+    auto group = std::make_shared<Group>();
+    group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
 
     // Rebuild ops of the group
-    for (auto op : fusion_op.ops()) {
+    for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
         group->ops.push_back(op);
         group->ops_set.insert(op);
+        group->op_pattern_kind =
+            static_cast<int>(CompatibleInfo::OpKind(*op)) >
+                    static_cast<int>(group->op_pattern_kind)
+                ? CompatibleInfo::OpKind(*op)
+                : group->op_pattern_kind;
       }
     }
 
     // Rebuild output_ops and input_ops of the group
-    std::unordered_set<pir::Value> inner_inputs;
-    for (auto op : group->ops) {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        inner_inputs.insert(op->operand_source(i));
-      }
-    }
-    for (auto op : group->ops) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        if (!inner_inputs.count(op->result(i))) {
-          group->output_ops.insert(op);
-        }
-      }
+    auto yeild_op = fusion_op.GetOperators().back();
+    for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
+      group->output_ops.insert(yeild_op->operand_source(i).defining_op());
     }
 
     // Rebuild other informations
-    // TODO(zhangyuqin1998): Rebuild master ops
-    group->shape_analysis = shape_analysis_;
-    group->op_pattern_kind = static_cast<cinn::hlir::framework::OpPatternKind>(
-        fusion_op->dyn_cast<cinn::dialect::FusionOp>().op_pattern_kind());
+    // TODO(zhangyuqin1998): Do we need group.master_ops?
     return group;
   }
-
- private:
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_{nullptr};
 };
 
-class CinnFusionLoweringPass : public pir::PatternRewritePass {
+class LowerCinnFusionOpPass : public pir::PatternRewritePass {
  public:
-  CinnFusionLoweringPass(
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
-      : pir::PatternRewritePass("cinn_fusion_lowering", 1),
-        shape_analysis_(shape_analysis) {}
+  LowerCinnFusionOpPass()
+      : pir::PatternRewritePass("lower_cinn_fusion_op", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
@@ -169,7 +194,7 @@ class CinnFusionLoweringPass : public pir::PatternRewritePass {
     context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
     pir::RewritePatternSet ps(context);
-    ps.Add<FusionOpPattern>(context, shape_analysis_);
+    ps.Add<FusionOpPattern>(context);
 
     return ps;
   }
@@ -177,9 +202,6 @@ class CinnFusionLoweringPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
-
- private:
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_{nullptr};
 };
 
 }  // namespace
@@ -188,13 +210,12 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<::pir::Pass> CreateCinnFusionLoweringPass(
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
-  return std::make_unique<CinnFusionLoweringPass>(shape_analysis);
+std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass() {
+  return std::make_unique<LowerCinnFusionOpPass>();
 }
 
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
 
-// REGISTER_IR_PASS(cinn_group_lowering, CinnFusionLoweringPass);
+// REGISTER_IR_PASS(cinn_group_lowering, LowerCinnFusionOpPass);

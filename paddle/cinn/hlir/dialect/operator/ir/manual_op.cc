@@ -32,8 +32,6 @@ namespace cinn {
 namespace dialect {
 
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
-const char* FusionOp::attributes_name[FusionOp::attributes_num] = {
-    "op_pattern_kind"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
@@ -65,7 +63,7 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::ops() {
+std::vector<pir::Operation*> GroupOp::GetOperators() {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -84,7 +82,7 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
+  for (auto& sub_op : GetOperators()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }
@@ -93,13 +91,9 @@ void GroupOp::Print(pir::IrPrinter& printer) {
 
 void FusionOp::Build(pir::Builder& builder,
                      pir::OperationArgument& argument,
-                     const std::vector<pir::Type>& output_types,
-                     const int op_pattern_kind) {
+                     const std::vector<pir::Type>& output_types) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
-  argument.AddAttribute(
-      "op_pattern_kind",
-      pir::Int32Attribute::get(pir::IrContext::Instance(), op_pattern_kind));
 }
 
 pir::Block* FusionOp::block() {
@@ -108,7 +102,7 @@ pir::Block* FusionOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> FusionOp::ops() {
+std::vector<pir::Operation*> FusionOp::GetOperators() {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -116,17 +110,7 @@ std::vector<pir::Operation*> FusionOp::ops() {
   return rt_ops;
 }
 
-int FusionOp::op_pattern_kind() {
-  return attributes()
-      .at("op_pattern_kind")
-      .dyn_cast<pir::Int32Attribute>()
-      .data();
-}
-
-void FusionOp::VerifySig() {
-  IR_ENFORCE(attributes().at("op_pattern_kind").isa<pir::Int32Attribute>(),
-             "Type of op_pattern_kind must be Int32Attribute");
-}
+void FusionOp::VerifySig() {}
 
 void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
@@ -137,7 +121,7 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
+  for (auto& sub_op : GetOperators()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }
