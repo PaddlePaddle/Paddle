@@ -503,9 +503,12 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        self._check_dist_attr(
-            main_program, self._strategy.pipeline.vpp_degree, self._dist_context
-        )
+        if use_new_executor():
+            self._check_dist_attr(
+                main_program,
+                self._strategy.pipeline.vpp_degree,
+                self._dist_context,
+            )
 
         enable_ir = get_flags("FLAGS_enable_pir_in_executor")[
             'FLAGS_enable_pir_in_executor'
