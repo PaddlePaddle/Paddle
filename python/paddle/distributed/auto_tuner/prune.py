@@ -238,7 +238,13 @@ def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[]):
     vpp_degree = cur_cfg.get("vpp_degree", None)
     if vpp_degree is None:
         return False
+
     cfgs = same_cfgs_beside("vpp_degree", cur_cfg, history_cfgs)
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["vpp_degree", "sharding_satge"], cur_cfg, history_cfgs
+        )
+
     if cfgs:
         for cfg in cfgs:
             # memory prune
@@ -308,7 +314,13 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[]):
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
     if micro_batch_size is None:
         return False
+
     cfgs = same_cfgs_beside("micro_batch_size", cur_cfg, history_cfgs)
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["micro_batch_size", "sharding_satge"], cur_cfg, history_cfgs
+        )
+
     if cfgs:
         for cfg in cfgs:
             if (
@@ -338,6 +350,7 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs=[]):
     2. Sharding stage and degree should be in the candidates of user defined.
     3. If PP (pipeline-parallelism) degree is not 1, sharding stage must be 1.
     4. Prune if a similar configuration with a lower sharding stage resulted in a valid run.
+    5. If sharding degree is 1, sharding stage is invalid.
     """
     sharding_stage = cur_cfg.get("sharding_stage", None)
     sharding_degree = cur_cfg.get("sharding_degree", None)
@@ -367,6 +380,11 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     if pp_degree and pp_degree != 1 and sharding_stage != 1:
         return True
+
+    if sharding_degree == 1:
+        cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
+        if cfgs:
+            return True
 
     return False
 
@@ -401,11 +419,6 @@ def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
                 log_pruned_info(cur_cfg, pruned_reason)
                 return True
 
-    if sharding_degree == 1:
-        cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
-        if cfgs:
-            return True
-
     return False
 
 
@@ -417,9 +430,12 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
     2. Usage of recompute and recompute granularity should be in the candidates of user defined.
     3. If recompute is not used, but recompute granularity is set, return True for pruning.
     4. Prune if a similar configuration without using recompute resulted in a valid run.
+    5. If recompute is false, prune redundant recompute granularity
     """
     recompute_granularity = cur_cfg.get("recompute_granularity", None)
     use_recompute = cur_cfg.get("use_recompute", None)
+    recompute_level = get_config_recompute_level(cur_cfg)
+
     if use_recompute is None:
         return False
 
@@ -437,6 +453,18 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
     if recompute_granularity_candidates and recompute_granularity:
         if recompute_granularity not in recompute_granularity_candidates:
             return True
+
+    if not use_recompute:
+        if recompute_granularity != "full":
+            return True
+
+        cfgs = same_cfgs_beside(
+            ["use_recompute", "recompute_granularity"], cur_cfg, history_cfgs
+        )
+        if cfgs:
+            for cfg in cfgs:
+                if recompute_level == get_config_recompute_level(cfg):
+                    return True
 
     return False
 
@@ -465,12 +493,19 @@ def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
     cfgs = same_cfgs_beside(
         ["use_recompute", "recompute_granularity"], cur_cfg, history_cfgs
     )
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["use_recompute", "recompute_granularity", "sharding_satge"],
+            cur_cfg,
+            history_cfgs,
+        )
+
     if cfgs:
         for cfg in cfgs:
             cfg["recompute_level"] = get_config_recompute_level(cfg)
 
             if (
-                cfg["recompute_level"] <= recompute_level
+                cfg["recompute_level"] < recompute_level
                 and cfg.get("time", -1) > 0
             ):
                 pruned_reason = f"use_recompute may be slower because {cfg['use_recompute']} has been already runnable."
@@ -478,50 +513,12 @@ def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
                 return True
 
             if (
-                cfg["recompute_level"] >= recompute_level
+                cfg["recompute_level"] > recompute_level
                 and cfg.get("max_mem_usage") == "OOM"
             ):
                 pruned_reason = f"use_recompute may cause oom because {cfg['use_recompute']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 return True
-    return False
-
-
-@register_prune_history
-def prune_by_mp_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
-    recompute_level = get_config_recompute_level(cur_cfg)
-    micro_batch_size = cur_cfg.get("micro_batch_size", None)
-
-    if recompute_level is None or micro_batch_size is None:
-        return False
-
-    cfgs = same_cfgs_beside(
-        ["micro_batch_size", "use_recompute", "recompute_granularity"],
-        cur_cfg,
-        history_cfgs,
-    )
-    if cfgs:
-        for cfg in cfgs:
-            cfg["recompute_level"] = get_config_recompute_level(cfg)
-
-            if (
-                cfg["micro_batch_size"] > micro_batch_size
-                and cfg["recompute_level"] <= recompute_level
-                and cfg.get("time", -1) > 0
-            ):
-                pruned_reason = f"use_recompute may be slower because {cfg['micro_batch_size']}  and {cfg['use_recompute']} has been already runnable."
-                log_pruned_info(cur_cfg, pruned_reason)
-                return True
-
-            if (
-                cfg["micro_batch_size"] < micro_batch_size
-                and cfg["recompute_level"] >= recompute_level
-                and cfg.get("max_mem_usage") == "OOM"
-            ):
-                pruned_reason = f"use_recompute may be slower because {cfg['micro_batch_size']}  and {cfg['use_recompute']} has been already runnable."
-                log_pruned_info(cur_cfg, pruned_reason)
-                return True
-
     return False
 
 

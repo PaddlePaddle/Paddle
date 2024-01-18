@@ -404,7 +404,7 @@ def search_all(tuner_cfg):
     for cur_cfg in new_all_cfgs:
         pruned = False
         for func in _PRUNE_FUNC:
-            result = func(tuner_cfg, cur_cfg, [])
+            result = func(tuner_cfg, cur_cfg, pruned_all_cfgs)
             if result:
                 pruned = True
                 break
