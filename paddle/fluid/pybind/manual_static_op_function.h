@@ -321,6 +321,58 @@ PyObject *static_api_add_n_array(PyObject *self,
     return nullptr;
   }
 }
+
+static PyObject *static_api_slice_array(PyObject *self,
+                                        PyObject *args,
+                                        PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add slice_array op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "slice_array", 0);
+
+    PyObject *starts_obj = PyTuple_GET_ITEM(args, 1);
+    pir::Value starts;
+    if (PyObject_CheckIROpResult(starts_obj)) {
+      starts = CastPyArg2Value(starts_obj, "slice_array", 1);
+    } else if (PyObject_CheckIRVectorOfOpResult(starts_obj)) {
+      std::vector<pir::Value> starts_tmp =
+          CastPyArg2VectorOfValue(starts_obj, "slice_array", 1);
+      starts = paddle::dialect::stack(starts_tmp, /*axis*/ 0);
+    } else {
+      std::vector<int64_t> starts_tmp =
+          CastPyArg2Longs(starts_obj, "slice_array", 1);
+      starts = paddle::dialect::full_int_array(
+          starts_tmp, phi::DataType::INT64, phi::CPUPlace());
+    }
+
+    PyObject *ends_obj = PyTuple_GET_ITEM(args, 1);
+    pir::Value ends;
+    if (PyObject_CheckIROpResult(ends_obj)) {
+      ends = CastPyArg2Value(ends_obj, "slice_array", 1);
+    } else if (PyObject_CheckIRVectorOfOpResult(ends_obj)) {
+      std::vector<pir::Value> ends_tmp =
+          CastPyArg2VectorOfValue(ends_obj, "slice_array", 1);
+      ends = paddle::dialect::stack(ends_tmp, /*axis*/ 0);
+    } else {
+      std::vector<int64_t> ends_tmp =
+          CastPyArg2Longs(ends_obj, "slice_array", 1);
+      ends = paddle::dialect::full_int_array(
+          ends_tmp, phi::DataType::INT64, phi::CPUPlace());
+    }
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::slice_array(input, starts, ends);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_slice_array_dense(PyObject *self,
                                               PyObject *args,
                                               PyObject *kwargs) {
@@ -395,6 +447,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_add_n_array,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for add_n_array."},
+    {"slice_array",
+     (PyCFunction)(void (*)(void))static_api_slice_array,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for slice_array."},
     {"slice_array_dense",
      (PyCFunction)(void (*)(void))static_api_slice_array_dense,
      METH_VARARGS | METH_KEYWORDS,

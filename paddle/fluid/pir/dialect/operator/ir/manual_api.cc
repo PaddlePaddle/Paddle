@@ -193,6 +193,15 @@ pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
   return add_n_array_op.result(0);
 }
 
+pir::OpResult slice_array(pir::Value input,
+                          pir::Value starts,
+                          pir::Value ends) {
+  auto op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::SliceArrayOp>(
+          input, starts, ends);
+  return op.result(0);
+}
+
 pir::OpResult slice_array_dense(pir::Value input, pir::Value starts) {
   auto op = ApiBuilder::Instance()
                 .GetBuilder()
