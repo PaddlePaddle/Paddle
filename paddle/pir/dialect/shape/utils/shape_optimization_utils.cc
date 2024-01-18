@@ -14,7 +14,6 @@
 
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
 
@@ -176,7 +175,6 @@ SymbolicDimOp SymbolicDimMgr::NewSymbolicDim(const std::string& name) {
                                    false,
                                    true);
   symbol_dim_union_set_[symbol] = symbol;
-  symbol_table_.insert(symbol);
   return symbol;
 }
 

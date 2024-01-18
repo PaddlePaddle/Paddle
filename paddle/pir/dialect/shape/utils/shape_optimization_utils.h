@@ -13,9 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include <unordered_set>
 #include <vector>
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/dll_decl.h"
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
+#include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 namespace pir {
 using shape::SymbolicDimOp;
@@ -114,9 +119,6 @@ class IR_API SymbolicDimMgr {
   bool MapSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
                                   const SymbolicDimProduct& rhs);
 
-  // retuns the SymbolTable.
-  SymbolTable& symbolTable() { return symbol_table_; }
-
  private:
   const std::string GetNextName();
   bool UpdateProductEqualityMap();
@@ -125,8 +127,6 @@ class IR_API SymbolicDimMgr {
 
  private:
   ModuleOp m_;
-
-  SymbolTable symbol_table_;
 
   int64_t next_symbolic_idx_ = 0;
 

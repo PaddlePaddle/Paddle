@@ -338,7 +338,6 @@ void GenerateDimEqualConstraints(const std::vector<symbol::DimExpr>& lhs_dims,
                                  const std::vector<symbol::DimExpr>& rhs_dims,
                                  const ::pir::Value& lhs_tensor,
                                  const ::pir::Value& rhs_tensor,
-                                 const ::pir::SymbolicDimMgr* symbolic_dim_mgr,
                                  DimFunctions* ret) {
   VisitEachIdxPairOfTwoVectors(
       lhs_dims, rhs_dims, [&](std::size_t lhs_idx, std::size_t rhs_idx) {
@@ -385,12 +384,7 @@ void BuildTensorShapeDialectConstraints(
   std::vector<symbol::DimExpr> rhs_dims =
       CreateSymbolicDimsFromValue(lhs_tensor, shape_analysis);
 
-  GenerateDimEqualConstraints(lhs_dims,
-                              rhs_dims,
-                              lhs_tensor,
-                              rhs_tensor,
-                              &shape_analysis->symbolicDimMgr(),
-                              ret);
+  GenerateDimEqualConstraints(lhs_dims, rhs_dims, lhs_tensor, rhs_tensor, ret);
 
   if (IsSymbolicDimProductEqual(lhs_dims, rhs_dims)) {
     GenerateProductEqualConstraints(lhs_tensor, rhs_tensor, ret);

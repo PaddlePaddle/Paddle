@@ -16,7 +16,6 @@
 
 #include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
 
