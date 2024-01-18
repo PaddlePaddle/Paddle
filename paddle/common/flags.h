@@ -48,7 +48,7 @@
 
 #define PD_DECLARE_VARIABLE(type, name) \
   namespace paddle_flags {              \
-  extern type FLAGS_##name;             \
+  PADDLE_API extern type FLAGS_##name;  \
   }                                     \
   using paddle_flags::FLAGS_##name
 

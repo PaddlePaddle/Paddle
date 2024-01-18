@@ -45,6 +45,7 @@ PHI_DEFINE_EXPORTED_int32(inner_op_parallelism,
  * instance to 2
  * Note:
  */
+
 PHI_DEFINE_EXPORTED_int32(paddle_num_threads,
                           1,
                           "Number of threads for each paddle instance.");
