@@ -28,6 +28,10 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass_manager.h"
 
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(multihead_matmul, GPU, ALL_LAYOUT);
+
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp matmul_1_in_1 =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 300, 256},

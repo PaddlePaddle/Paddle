@@ -283,39 +283,39 @@ class ResultPattern {
 
   Attribute StrAttr(const std::string& value) const {
     return ComputeAttr(
-        [&](const MatchContext& match_ctx) -> std::string { return value; });
+        [=](const MatchContext& match_ctx) -> std::string { return value; });
   }
 
   Attribute BoolAttr(bool value) const {
     return ComputeAttr(
-        [&](const MatchContext& match_ctx) -> bool { return value; });
+        [=](const MatchContext& match_ctx) -> bool { return value; });
   }
 
   Attribute Int32Attr(int32_t value) const {
     return ComputeAttr(
-        [&](const MatchContext& match_ctx) -> int32_t { return value; });
+        [=](const MatchContext& match_ctx) -> int32_t { return value; });
   }
 
   Attribute Int64Attr(int64_t value) const {
     return ComputeAttr(
-        [&](const MatchContext& match_ctx) -> int64_t { return value; });
+        [=](const MatchContext& match_ctx) -> int64_t { return value; });
   }
 
   Attribute Float32Attr(float value) const {
     return ComputeAttr(
-        [&](const MatchContext& match_ctx) -> float { return value; });
+        [=](const MatchContext& match_ctx) -> float { return value; });
   }
 
   Attribute VectorInt64Attr(const std::vector<int64_t>& value) const {
     return ComputeAttr(
-        [&](const MatchContext& match_ctx) -> std::vector<int64_t> {
+        [=](const MatchContext& match_ctx) -> std::vector<int64_t> {
           return value;
         });
   }
 
   Attribute VectorInt32Attr(const std::vector<int32_t>& value) const {
     return ComputeAttr(
-        [&](const MatchContext& match_ctx) -> std::vector<int32_t> {
+        [=](const MatchContext& match_ctx) -> std::vector<int32_t> {
           return value;
         });
   }
