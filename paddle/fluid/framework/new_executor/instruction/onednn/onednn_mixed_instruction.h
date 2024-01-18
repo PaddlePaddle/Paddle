@@ -33,6 +33,12 @@ class OneDNNMixedPhiKernelInstruction : public OneDNNPhiKernelInstruction {
                                   const ValueExecutionInfo* value_exec_info);
 
   void Run() override;
+
+ private:
+  std::string kernel_name_;
+  phi::KernelKey kernel_key_;
+  bool has_choose_kernel_{false};
+  bool use_onednn_kernel_{true};
 };
 
 }  // namespace framework
