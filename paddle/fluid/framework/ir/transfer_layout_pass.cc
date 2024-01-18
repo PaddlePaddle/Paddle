@@ -22,9 +22,6 @@
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/transfer_layout_elim_pass.h"
-#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
