@@ -462,7 +462,20 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   if (op_desc.dist_attr_) {
+    VLOG(0) << "Copy dist_attr_ from " << op_desc.Type();
+    // print dist_attr_ of op_desc
+    auto process_mesh = op_desc.dist_attr_->process_mesh();
+    auto shape = process_mesh.shape();
+    auto process_ids = process_mesh.process_ids();
+    for (auto &id : process_ids) {
+      VLOG(0) << "process_ids: " << id;
+    }
+    for (auto &s : shape) {
+      VLOG(0) << "shape: " << s;
+    }
     dist_attr_ = std::make_unique<OperatorDistAttr>(*op_desc.dist_attr_);
+    auto proto = dist_attr_->to_proto();
+    desc_.set_allocated_dist_attr(&proto);
   }
   need_update_ = true;
 }
@@ -1168,6 +1181,15 @@ OperatorDistAttr *OpDesc::MutableDistAttr() {
 void OpDesc::SetDistAttr(const OperatorDistAttr &dist_attr) {
   MutableDistAttr();
   *dist_attr_ = dist_attr;
+  auto proto = dist_attr_->to_proto();
+  desc_.set_allocated_dist_attr(&proto);
+}
+
+void OpDesc::SetDistAttr(const OperatorDistAttrProto &dist_attr_proto) {
+  MutableDistAttr();
+  dist_attr_->from_proto(dist_attr_proto);
+  OperatorDistAttrProto mutable_proto = dist_attr_proto;
+  desc_.set_allocated_dist_attr(&mutable_proto);
 }
 
 void OpDesc::UpdateVarAttr(const std::string &name, const Attribute &attr) {

@@ -733,6 +733,19 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
       ops->emplace_back(*n->Op());
+
+      if (n->Op()->MutableDistAttr()) {
+        auto process_mesh = n->Op()->MutableDistAttr()->process_mesh();
+        auto shape = process_mesh.shape();
+        auto process_ids = process_mesh.process_ids();
+        for (auto &id : process_ids) {
+          VLOG(5) << "process_ids: " << id;
+        }
+        for (auto &s : shape) {
+          VLOG(5) << "shape: " << s;
+        }
+      }
+
       VLOG(5) << n->ToString();
     }
     // delete no OpDesc op
@@ -801,9 +814,35 @@ static void GraphToBlock(const Graph &graph,
   GetGraphOpDesc(nodes, block, &ops, graph, graph_idx);
 
   for (auto &op : ops) {
+    if (op.MutableDistAttr()) {
+      auto process_mesh = op.MutableDistAttr()->process_mesh();
+      auto shape = process_mesh.shape();
+      auto process_ids = process_mesh.process_ids();
+      for (auto &id : process_ids) {
+        VLOG(5) << "process_ids: " << id;
+      }
+      for (auto &s : shape) {
+        VLOG(5) << "shape: " << s;
+      }
+    }
     RemoveControlDepInputAndOuput(&op);
     block->add_ops()->MergeFrom(*op.Proto());
   }
+
+  //   for (int op_idx = 0; op_idx < block->ops_size(); ++op_idx) {
+  //     auto op = block->ops(op_idx);
+  //     if (op.MutableDistAttr()) {
+  //       auto process_mesh = op.MutableDistAttr()->process_mesh();
+  //       auto shape = process_mesh.shape();
+  //       auto process_ids = process_mesh.process_ids();
+  //       for (auto &id : process_ids) {
+  //         VLOG(5) << "process_ids: " << id;
+  //       }
+  //       for (auto &s : shape) {
+  //         VLOG(5) << "shape: " << s;
+  //       }
+  //     }
+  //   }
 }
 
 void GraphToProgram(const Graph &graph,

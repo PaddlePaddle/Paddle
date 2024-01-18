@@ -15,6 +15,8 @@ limitations under the License. */
 syntax = "proto2";
 package paddle.framework.proto;
 
+import "paddle/phi/core/distributed/auto_parallel/auto_parallel.proto";
+
 // Any incompatible changes to ProgramDesc and its dependencies should
 // raise the version defined version.h.
 //
@@ -101,6 +103,7 @@ message OpDesc {
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
   optional bool is_target = 5 [ default = false ];
+  optional phi.distributed.auto_parallel.OperatorDistAttrProto dist_attr = 6;
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.

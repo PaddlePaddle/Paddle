@@ -44,6 +44,8 @@ PyTypeObject *g_blockdesc_pytype = nullptr;
 namespace pd = paddle::framework;
 namespace jit = paddle::jit;
 
+using paddle::distributed::auto_parallel::OperatorDistAttr;
+
 template <typename T>
 static pybind11::bytes SerializeMessage(
     T &self) {  // NOLINT due to pybind11 convention.
@@ -451,10 +453,11 @@ void BindOpDesc(pybind11::module *m) {
       .def("id", &pd::OpDesc::Id)
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)
-      .def_property("dist_attr",
-                    &pd::OpDesc::MutableDistAttr,
-                    &pd::OpDesc::SetDistAttr,
-                    pybind11::return_value_policy::reference)
+      .def_property(
+          "dist_attr",
+          &pd::OpDesc::MutableDistAttr,
+          py::overload_cast<const OperatorDistAttr &>(&pd::OpDesc::SetDistAttr),
+          pybind11::return_value_policy::reference)
       .def("inputs", [](pd::OpDesc &self) { return self.Inputs(); })
       .def("outputs", &pd::OpDesc::Outputs)
       .def("get_attr_map", &pd::OpDesc::GetAttrMap);

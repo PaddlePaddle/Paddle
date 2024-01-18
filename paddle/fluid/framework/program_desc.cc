@@ -187,6 +187,7 @@ void ProgramDesc::InitFromProto() {
           op->SetBlocksAttr(attr.name(), block_descs);
         }
       }
+      op->SetDistAttr(op->Proto()->dist_attr());
     }
   }
 }

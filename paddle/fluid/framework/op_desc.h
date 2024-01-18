@@ -36,6 +36,7 @@ class BlockDesc;
 class ProgramDesc;
 
 using paddle::distributed::auto_parallel::OperatorDistAttr;
+using phi::distributed::auto_parallel::OperatorDistAttrProto;
 
 class TEST_API OpDesc {
  public:
@@ -205,6 +206,7 @@ class TEST_API OpDesc {
   const OperatorDistAttr *DistAttr() const;
   OperatorDistAttr *MutableDistAttr();
   void SetDistAttr(const OperatorDistAttr &dist_attr);
+  void SetDistAttr(const OperatorDistAttrProto &dist_attr_proto);
 
   void ResetBlock() { this->block_ = nullptr; }
 
