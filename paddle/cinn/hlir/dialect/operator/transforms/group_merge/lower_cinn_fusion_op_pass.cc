@@ -115,10 +115,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
-    if (shape_analysis) {
-      group->value_to_shape_or_data_exprs =
-          CreateGroupShapeOrDataExprs(group, shape_analysis);
-    }
+    group->value_to_shape_or_data_exprs =
+        CreateGroupShapeOrDataExprs(group, &shape_analysis);
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
@@ -142,7 +140,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         vec_ins, op_attrs, vec_types);
 
-    auto yeild_op = fusion_op.ops().back();
+    auto yeild_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(
           fusion_op.result(i),
