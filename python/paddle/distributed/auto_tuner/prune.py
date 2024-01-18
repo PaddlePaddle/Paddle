@@ -190,6 +190,38 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=[]):
     return False
 
 
+@register_prune_history
+def prune_by_mp_pp_history(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs):
+    mp_degree = cur_cfg.get("mp_degree", None)
+    pp_degree = cur_cfg.get("pp_degree", None)
+    use_recompute = cur_cfg.get("recompute", None)
+
+    if mp_degree is None or pp_degree is None or use_recompute is None:
+        return False, None
+
+    history_cfgs.extend(pruned_cfgs)
+    cfgs = same_cfgs_beside(["mp_degree", "pp_degree"], cur_cfg, history_cfgs)
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["mp_degree", "pp_degree", "sharding_satge"], cur_cfg, history_cfgs
+        )
+
+    if cfgs:
+        for cfg in cfgs:
+            if (
+                not use_recompute
+                and cfg["mp_degree"] * cfg["pp_degree"] == mp_degree * pp_degree
+                and cfg["mp_degree"] > mp_degree
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                pruned_reason = f"mp_degree {mp_degree}, pp_degree {pp_degree} may cause oom because {cfg['mp_degree']}, {cfg['pp_degree']} already oom."
+                log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["max_mem_usage"] = "OOM"
+                return True, cur_cfg
+
+    return False, None
+
+
 @register_prune
 def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
