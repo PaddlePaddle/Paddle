@@ -1269,6 +1269,13 @@ void ElementwiseInferMeta(const MetaTensor& x,
   return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
+void BitwiseShiftInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           bool is_arithmetic,
+                           MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, out);
+}
+
 void ElementwiseRawInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              int axis,
@@ -2607,6 +2614,37 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scales,
+                                   MetaTensor* out) {
+  auto x_dim = x.dims();
+  auto scales_dim = scales.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(x) must be 2, but received %d.", x_dim.size()));
+
+  PADDLE_ENFORCE_EQ(scales_dim.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(scales) must be 1, but received %d.",
+                        scales_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[1],
+      scales_dim[0],
+      phi::errors::InvalidArgument(
+          "The second dim of Input(x) must be equal to the first dim of scales,"
+          "but received %d and %d.",
+          x_dim[2],
+          scales_dim[1]));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(x_dim);
+  out->set_layout(x.layout());
+}
+
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
                                std::vector<float>* output_aspect_ratior) {
@@ -2832,10 +2870,25 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 }
 
+void ShuffleBatchInferMeta(const MetaTensor& x,
+                           const MetaTensor& seed,
+                           int startup_seed,
+                           MetaTensor* out,
+                           MetaTensor* shuffle_idx,
+                           MetaTensor* seed_out
+
+) {
+  out->share_dims(x);
+  out->share_lod(x);
+  seed_out->share_dims(seed);
+  seed_out->share_lod(seed);
+  shuffle_idx->set_dims(phi::make_ddim({-1}));
+}
+
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y) {
   auto dim = common::vectorize<int>(x.dims());
 
@@ -2846,8 +2899,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
   }
 
   y->set_dims(common::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
@@ -3381,6 +3433,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
                                DataType out_dtype,
+                               const int32_t group_size,
                                MetaTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size(),
                     2UL,
@@ -3388,18 +3441,44 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                         "The x tensor of dequantize op must be 2D, but got[%d]",
                         x.dims().size()));
   PADDLE_ENFORCE_EQ(
-      scale.dims().size(),
-      1UL,
-      phi::errors::InvalidArgument(
-          "The scale tensor of dequantize op must be 1D, but got[%d]",
-          scale.dims().size()));
-  PADDLE_ENFORCE_EQ(scale.dims()[0],
-                    x.dims()[0],
-                    phi::errors::InvalidArgument(
-                        "The scale tensor's shape must be equal to the x "
-                        "tensor's shape, but got [%d] not equal to [%d]",
-                        scale.dims()[0],
-                        x.dims()[0]));
+      (group_size == -1 || group_size == 64 || group_size == 128),
+      true,
+      phi::errors::InvalidArgument("group_size must be -1, 64 or 128."));
+
+  auto dim_scale = scale.dims();
+
+  // per-channel dequantization
+  if (group_size == -1) {
+    PADDLE_ENFORCE_EQ(
+        dim_scale.size(),
+        1UL,
+        phi::errors::InvalidArgument("The scale tensor of dequantize op must "
+                                     "be 1D in per-channel mode, but got[%d]",
+                                     scale.dims().size()));
+    PADDLE_ENFORCE_EQ(dim_scale[0],
+                      x.dims()[0],
+                      phi::errors::InvalidArgument(
+                          "The scale tensor's shape must be equal to the x "
+                          "tensor's shape, but got [%d] not equal to [%d]",
+                          scale.dims()[0],
+                          x.dims()[0]));
+  } else /* groupwise dequantization */ {
+    PADDLE_ENFORCE_EQ(
+        dim_scale.size(),
+        2UL,
+        phi::errors::InvalidArgument("The scale tensor of dequantize op must "
+                                     "be 2D in group-wise mode, but got[%d]",
+                                     scale.dims().size()));
+    PADDLE_ENFORCE_EQ(
+        dim_scale[0],
+        (x.dims()[1] + (group_size - 1)) / group_size,
+        errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
+                                "to (Input(weight).dim[1] + (group_size -1))"
+                                " / group_size"
+                                "But receive %d and %d",
+                                dim_scale[0],
+                                (x.dims()[1] + (group_size - 1)) / group_size));
+  }
   int n = x.dims()[1];
   int k = x.dims()[0];
   out->set_dims(common::make_ddim({n, k}));

@@ -191,8 +191,7 @@ class TestMNISTWithToStatic(TestMNIST):
 
     def train(self, to_static=False):
         loss_data = []
-        base.default_main_program().random_seed = SEED
-        base.default_startup_program().random_seed = SEED
+        paddle.seed(SEED)
         mnist = MNIST()
         if to_static:
             mnist = paddle.jit.to_static(mnist, full_graph=True)

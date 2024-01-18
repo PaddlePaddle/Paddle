@@ -149,11 +149,9 @@ std::vector<std::vector<pir::OpResult>> IncrementOp::Vjp(
 
   VLOG(6) << "Vjp prepare Prepare attributes of increment_grad";
 
-  float value = op->attribute("value").dyn_cast<pir::FloatAttribute>().data();
-
   VLOG(6) << "Vjp prepare call increment's vjp inteface";
 
-  pir::OpResult tensor_res = paddle::dialect::increment(inputs_[0][0], -value);
+  pir::OpResult tensor_res = paddle::dialect::scale(out_grads[0][0]);
 
   std::vector<std::vector<pir::OpResult>> res{{tensor_res}};
 
@@ -170,7 +168,7 @@ std::vector<std::vector<pir::OpResult>> Increment_Op::Vjp(
       inputs_.size(),
       1,
       platform::errors::InvalidArgument(
-          "Increment_ op's inputs size should be 2, but now is %d.",
+          "Increment_ op's inputs size should be 1, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
@@ -185,10 +183,132 @@ std::vector<std::vector<pir::OpResult>> Increment_Op::Vjp(
 
   VLOG(6) << "Vjp prepare call increment_'s vjp inteface";
 
-  pir::OpResult tensor_res = paddle::dialect::increment_(inputs_[0][0], -value);
+  paddle::dialect::increment_(inputs_[0][0], -value);
 
-  std::vector<std::vector<pir::OpResult>> res{{tensor_res}};
+  std::vector<std::vector<pir::OpResult>> res;
+  return res;
+}
 
+std::vector<std::vector<pir::OpResult>> ArrayWrite_Op::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::Value>>& outputs,
+    const std::vector<std::vector<pir::Value>>& in_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      3,
+      platform::errors::InvalidArgument(
+          "ArrayWrite_ op's inputs size should be 3, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "ArrayWrite_ op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      in_grads.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "ArrayWrite_ op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Vjp prepare call  ArrayWrite_'s vjp inteface";
+  pir::OpResult x_grad =
+      paddle::dialect::array_read(in_grads[0][0], inputs_[2][0]);
+  pir::OpResult zero = paddle::dialect::zeros_like(inputs_[1][0]);
+  paddle::dialect::array_write_(in_grads[0][0], zero, inputs_[2][0]);
+  std::vector<std::vector<pir::OpResult>> res(1);
+  res[0].resize(1);
+  if (!stop_gradients[0][0]) {
+    res[0][0] = x_grad;
+  }
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> ArrayReadOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::Value>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "Array_read op's inputs size should be 2, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "Array_read op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+  // x = array_read(input, i)
+  // out_grads[0][0] is x_grad
+  // out_grads[1][0] is input_array_grad
+  PADDLE_ENFORCE_EQ(
+      out_grads.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "Array_read op's outputs size should be 1, but now is %d.",
+          out_grads.size()));
+
+  VLOG(6) << "Vjp prepare call  Array_read's vjp inteface";
+
+  pir::Value array_grad_i_origin =
+      paddle::dialect::array_read(out_grads[1][0], inputs_[1][0]);
+  pir::Value array_grad_i =
+      paddle::dialect::add(array_grad_i_origin, out_grads[0][0]);
+  paddle::dialect::array_write_(out_grads[1][0], array_grad_i, inputs_[1][0]);
+
+  std::vector<std::vector<pir::OpResult>> res;
+  return res;
+}
+
+std::vector<std::vector<pir::OpResult>> ArrayToTensorOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::Value>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "Array_read op's inputs size should be 1, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "Array_read op's outputs size should be 2, but now is %d.",
+          outputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      out_grads.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "Array_read op's outputs size should be 2, but now is %d.",
+          out_grads.size()));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of array_to_tensor_grad";
+  int axis = op->attribute("axis").dyn_cast<pir::Int32Attribute>().data();
+  bool use_stack =
+      op->attribute("use_stack").dyn_cast<pir::BoolAttribute>().data();
+
+  VLOG(6) << "Vjp prepare call ArrayToTensor's vjp inteface";
+
+  pir::OpResult tensor_res = paddle::dialect::tensor_to_array(
+      inputs_[0][0], out_grads[0][0], axis, use_stack);
+
+  std::vector<std::vector<pir::OpResult>> res(1);
+  res[0].resize(1);
+  if (!stop_gradients[0][0]) {
+    res[0][0] = tensor_res;
+  }
   return res;
 }
 

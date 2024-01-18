@@ -143,7 +143,7 @@ def build_view(in_labels, out_labels):
     Returns
     -------
     The inverse map from out_labels to in_labels. The length of the inverse map equals that of
-    out_labels. -1 is filled if there's no matching intput dimension for a specific label.
+    out_labels. -1 is filled if there's no matching input dimension for a specific label.
 
     Examples
     --------

@@ -412,15 +412,15 @@ TEST(pattern_rewrite, Patterns) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  //   pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       true,
-  //       true));
+  // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     true,
+  //     true));
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 17u);
@@ -445,8 +445,10 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ParameterOp>("a", dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ParameterOp>("b", dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("a"),
+                                                  dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("b"),
+                                                  dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
@@ -491,6 +493,31 @@ TEST(constant_folding, ConstantFolding) {
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 2u);
+}
+
+TEST(constant_folding, ConstantFolding_Train) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  paddle::framework::Scope scope;
+  BuildConstantFoldingProgram(&program, ctx, &scope);
+
+  pir::PassManager pm(ctx);
+  std::unique_ptr<pir::Pass> constant_folding_pass =
+      pir::CreateConstantFoldingPass();
+  phi::Place place = phi::CPUPlace();
+  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  constant_folding_pass->Set("train_mode", new bool(true));
+
+  pm.AddPass(std::move(constant_folding_pass));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }
 
 void BuildConcatProgram(pir::Program *program, pir::IrContext *ctx) {

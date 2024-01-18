@@ -13,11 +13,10 @@
 # limitations under the License.
 
 
-import astor
-
 from paddle.utils import gast
 
 from .. import utils
+from ..ast_utils import ast_to_source_code
 from .base import BaseTransformer
 
 __all__ = []
@@ -63,7 +62,7 @@ class BasicApiTransformer(BaseTransformer):
 
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
-        func_name = astor.to_source(gast.gast_to_ast(node.func))
+        func_name = ast_to_source_code(node.func)
 
         if self._is_dygraph_forward(func_name):
             class_node = self._get_class_node(func_name)
@@ -91,7 +90,7 @@ class BasicApiTransformer(BaseTransformer):
                     return False
 
                 utils.update_args_of_func(node_value, node_value, "__init__")
-                target_str = astor.to_source(gast.gast_to_ast(node.targets[0]))
+                target_str = ast_to_source_code(node.targets[0])
                 self.class_node_dict[target_str] = node_value
                 return True
             # TODO: node.value is not dygraph class
@@ -153,6 +152,8 @@ class NameloadJstTransformer(BaseTransformer):
         Can't convert name of function call, bacause this will affect CallTransformer.
         """
         node.args = [self.visit(arg) for arg in node.args]
+        for keyword in node.keywords:
+            keyword.value = self.visit(keyword.value)
         node.func = self.visit(node.func)
         return node
 
@@ -170,9 +171,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def visit_Attribute(self, node):
         def skip_fn(node):
-            if utils.ast_to_source_code(node).startswith(
-                "_jst."
-            ):  # skip _jst.xxx
+            if isinstance(node.value, gast.Name) and node.value.id == "_jst":
                 return True
             return False
 

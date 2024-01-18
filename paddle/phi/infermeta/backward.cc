@@ -818,6 +818,33 @@ void NanmedianGradInferMeta(const MetaTensor& x,
   x_grad->set_dtype(x.dtype());
 }
 
+void NceGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& bias,
+                      const MetaTensor& weight,
+                      MetaTensor* input_grad,
+                      MetaTensor* bias_grad,
+                      MetaTensor* weight_grad
+
+) {
+  auto x_dims = input.dims();
+  if (input_grad != nullptr) {
+    input_grad->set_dims(x_dims);
+    input_grad->set_dtype(input.dtype());
+  }
+
+  auto w_dims = weight.dims();
+  if (weight_grad) {
+    weight_grad->set_dims(w_dims);
+    weight_grad->set_dtype(weight.dtype());
+  }
+
+  auto bias_dims = bias.dims();
+  if (bias_grad) {
+    bias_grad->set_dims(bias_dims);
+    bias_grad->set_dtype(bias.dtype());
+  }
+}
+
 void NllLossGradInferMeta(const MetaTensor& x,
                           const MetaTensor& label,
                           const MetaTensor& weight,
@@ -1039,6 +1066,15 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
+                               const MetaTensor& out_grad,
+                               int startup_seed,
+                               MetaTensor* x_grad) {
+  x_grad->share_dims(out_grad);
+  x_grad->share_lod(out_grad);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void SpectralNormGradInferMeta(const MetaTensor& weight,
                                const MetaTensor& u,
                                const MetaTensor& v,
@@ -1191,12 +1227,19 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
                                    const int32_t arch,
+                                   const int32_t group_size,
                                    MetaTensor* x_grad) {
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86)),
       true,
       phi::errors::InvalidArgument(
           "Currently weightonly linear grad only support arch = 80 or 86. "));
+  PADDLE_ENFORCE_EQ(
+      group_size,
+      -1,
+      phi::errors::InvalidArgument(
+          "Currently weightonly linear grad only support per-channel mode. "));
+
   x_grad->set_dims(x.dims());
   x_grad->set_dtype(x.dtype());
 }

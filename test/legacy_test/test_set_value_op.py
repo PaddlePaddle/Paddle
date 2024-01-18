@@ -23,6 +23,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -57,12 +58,13 @@ class TestSetValueBase(unittest.TestCase):
 class TestSetValueApi(TestSetValueBase):
     def _run_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(self.program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x = self._call_setitem_static_api(x)
 
         exe = paddle.static.Executor(paddle.CPUPlace())
-        out = exe.run(self.program, fetch_list=[x])
+        out = exe.run(main_program, fetch_list=[x])
         paddle.disable_static()
         return out
 
@@ -74,6 +76,7 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
+    @test_with_pir_api
     def test_api(self):
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()

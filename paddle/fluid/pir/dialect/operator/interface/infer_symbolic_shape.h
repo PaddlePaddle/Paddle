@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 // Type inference is currently modelled executionally for operation creation
 // using the `InferMetaInterface`. While `InferSymbolicShapeInterface` is used
@@ -31,54 +32,100 @@ class InferSymbolicShapeInterface
   /// Defined these methods with the interface.
   struct Concept {
     explicit Concept(bool (*infer_symbolic_shapes)(
-        pir::Operation* op,
-        pir::Builder& builder,  // NOLINT
-        const std::vector<pir::OpOperand>& operands,
-        std::vector<pir::Value>& reified_return_shapes))  // NOLINT
+        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis))
         : infer_symbolic_shapes(infer_symbolic_shapes) {}
     bool (*infer_symbolic_shapes)(
-        pir::Operation* op,
-        pir::Builder& builder,
-        const std::vector<pir::OpOperand>& operands,
-        std::vector<pir::Value>& reified_return_shapes);  // NOLINT
+        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
     static inline bool InferSymbolicShape(
-        pir::Operation* op,
-        pir::Builder& builder,  // NOLINT
-        const std::vector<pir::OpOperand>& operands,
-        std::vector<pir::Value>& reified_return_shapes) {  // NOLINT
-      return op->dyn_cast<ConcreteOp>().InferSymbolicShape(
-          builder, operands, reified_return_shapes);
+        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+      return op->dyn_cast<ConcreteOp>().InferSymbolicShape(shape_analysis);
     }
 
     Model() : Concept(InferSymbolicShape) {}
   };
 
   /// Constructor
-  InferSymbolicShapeInterface(pir::Operation* op, Concept* impl)
+  InferSymbolicShapeInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferSymbolicShapeInterface>(op), impl_(impl) {}
 
-  bool InferSymbolicShape(
-      pir::Builder& builder,  // NOLINT
-      const std::vector<pir::OpOperand>& operands,
-      std::vector<pir::Value>& reified_return_shapes);  // NOLINT
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 
  private:
-  Concept* impl_;
+  Concept *impl_;
 };
 
-bool AbsOpInferSymbolicShape(
-    pir::Builder& builder,  // NOLINT
-    const std::vector<pir::OpOperand>& operands,
-    std::vector<pir::Value>& reified_return_shapes);  // NOLINT
-bool Abs_OpInferSymbolicShape(
-    pir::Builder& builder,  // NOLINT
-    const std::vector<pir::OpOperand>& operands,
-    std::vector<pir::Value>& reified_return_shapes);  // NOLINT
+}  // namespace paddle::dialect
+
+namespace paddle::dialect {
+
+bool AbsOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool Abs_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool DataOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool AddOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool Add_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool CastOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool Cast_OpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool ExpOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool Exp_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool SubtractOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool Subtract_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool ShapeOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool ShapeSrOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool StackOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool SumOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool ReshapeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool Reshape_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool FullIntArrayOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool SliceOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+
+bool SliceOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+}
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::InferSymbolicShapeInterface)

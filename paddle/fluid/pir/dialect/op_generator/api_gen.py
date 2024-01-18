@@ -27,6 +27,7 @@ from op_gen import (
 
 PD_MANUAL_API_LIST = {
     'embedding_grad',
+    'assign',
 }
 
 H_FILE_TEMPLATE = """
@@ -241,7 +242,7 @@ class CodeGen:
     def _need_skip(self, op_info, op_name):
         return (
             op_info.infer_meta_func is None and op_name not in PD_MANUAL_OP_LIST
-        ) or op_name in PD_MANUAL_API_LIST
+        )
 
     def _is_optional_input(self, op_info, input_name):
         name_list = op_info.input_name_list
@@ -377,7 +378,10 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if self._need_skip(op_info, op_name):
+                if (
+                    self._need_skip(op_info, op_name)
+                    or op_name in PD_MANUAL_API_LIST
+                ):
                     continue
                 declare_str += self._gen_one_declare(
                     op_info, op_name, False, False
@@ -593,7 +597,7 @@ class CodeGen:
         )
 
         if (
-            op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
+            op_name in ["real_grad", "imag_grad"]
             or len(mapping_name_to_type) == 0
         ):
             return ""
@@ -828,7 +832,10 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if self._need_skip(op_info, op_name):
+                if (
+                    self._need_skip(op_info, op_name)
+                    or op_name in PD_MANUAL_API_LIST
+                ):
                     continue
                 impl_str += self._gen_one_impl(op_info, op_name, False, False)
                 if len(op_info.mutable_attribute_name_list) > 0:

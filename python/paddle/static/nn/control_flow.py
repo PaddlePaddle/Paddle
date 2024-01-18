@@ -153,14 +153,21 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super().__init__(while_op.helper.main_program)
+        if not in_pir_mode():
+            super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
+        if in_pir_mode():
+            self.block = build_while_op(self.while_op.cond_var, []).body()
+            return self.block.__enter__()
         self.while_op.status = While.IN_WHILE_BLOCK
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if in_pir_mode():
+            cf_yield([self.while_op.cond_var])
+            return self.block.__exit__(exc_type, exc_val, exc_tb)
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
@@ -276,7 +283,7 @@ class ConditionalBlock:
         `conditional_block_grad` is appended manually.
 
         Args:
-            parent_block (Block): The block that `conditional_block_op` blongs to.
+            parent_block (Block): The block that `conditional_block_op` belongs to.
             inside_block (Block): The sub block of `conditional_block_op`.
             conditional_block_op (Operator): The forward op conditional_block.
         '''
@@ -390,7 +397,7 @@ def get_inputs_outputs_in_block(
 
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
-    # but some variables are created without appendding a real op.
+    # but some variables are created without appending a real op.
     # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
     for op in current_block.ops:
         assert isinstance(op, Operator)
@@ -509,8 +516,7 @@ class While:
     AFTER_WHILE_BLOCK = 2
 
     def __init__(self, cond, is_test=False, name=None):
-        self.helper = LayerHelper("while", name=name)
-        self.status = While.BEFORE_WHILE_BLOCK
+        self.cond_var = cond
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
@@ -518,7 +524,10 @@ class While:
                     list(cond.shape)
                 )
             )
-        self.cond_var = cond
+        if in_pir_mode():
+            return
+        self.status = While.BEFORE_WHILE_BLOCK
+        self.helper = LayerHelper("while", name=name)
         self.is_test = is_test
 
     def block(self):
@@ -605,7 +614,7 @@ def assign_skip_lod_tensor_array(input, output):
             and has_shape_diff(input, output)
         ):
             warnings.warn(
-                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
+                "In dy2static mode, we attempt to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
                     input.shape, output.shape
                 )
             )
@@ -687,21 +696,23 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     if in_pir_mode():
         while_op = build_while_op(pre_cond, flatten(loop_vars))
         with while_op.body() as cur_block:
-            args = cur_block.args()
-            next_var = body(*args)
+            args = pack_sequence_as(loop_vars, cur_block.args())
+            next_vars = body(*args)
             try:
                 assert_same_structure(
-                    flatten(next_var), flatten(loop_vars), check_types=False
+                    flatten(next_vars), flatten(loop_vars), check_types=False
                 )
             except ValueError as e:
                 raise ValueError(
                     "body in while_loop should return the same arity "
                     f"(length and structure) as loop_vars: {e}"
                 )
-            next_cond = cond(*next_var)
+            if not isinstance(next_vars, (list, tuple)):
+                next_vars = [next_vars]
+            next_cond = cond(*next_vars)
             next_cond.stop_gradient = True
-            cf_yield([next_cond, *next_var])
-        return while_op.as_operation().results()
+            cf_yield([next_cond, *flatten(next_vars)])
+        return pack_sequence_as(loop_vars, while_op.optimize_update())
 
     if in_dygraph_mode():
         now_cond = pre_cond.item()
@@ -857,7 +868,6 @@ def case(pred_fn_pairs, default=None, name=None):
             ...     print(res_1, res_2)
             [[1. 1.]] [3 3 3]
     '''
-    helper = LayerHelper('case', **locals())
 
     def _case_check_args(pred_fn_pairs, default):
         '''
@@ -888,16 +898,9 @@ def case(pred_fn_pairs, default=None, name=None):
                 )
             pred, fn = pred_fn
 
-            if not isinstance(pred, Variable):
-                raise TypeError(
-                    _error_message(
-                        "The pred's type",
-                        "pred_fn_pairs",
-                        "case",
-                        "boolean Variable",
-                        type(pred),
-                    )
-                )
+            check_variable_and_dtype(
+                pred, 'pred', ['bool'], 'paddle.static.nn.case'
+            )
 
             if not callable(fn):
                 raise TypeError(
@@ -1120,7 +1123,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     ``None`` in this case.
 
     ``true_fn`` and ``false_fn`` should return same nest structure of tensors
-    or both return ``None`` if user doens't like to return anything. A nest
+    or both return ``None`` if user doesn't like to return anything. A nest
     structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
     list of tensors.
 
@@ -1316,13 +1319,13 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     # Merge true and false output if they are not None
     if return_names is None:
-        is_dy2staic = False
+        is_dy2static = False
         return_names = ["no name"] * len(_to_sequence_except_dict(true_output))
     else:
         """
         dy2static will set the return_names and expand the return values to UndefinedVar.
         """
-        is_dy2staic = True
+        is_dy2static = True
 
         # TODO:  expand_undefined_var will replace None to Undefinedvar(), to fix cases like:
         #       a = None
@@ -1368,7 +1371,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     and f_true[idx] is not None
                 ):
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
                             f_name,
@@ -1385,7 +1388,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(return_names),
     )
 
-    if is_dy2staic:
+    if is_dy2static:
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output
         )
@@ -1539,7 +1542,7 @@ def select_input_with_buildin_type(inputs, mask, name):
             return select_input(inputs, mask)
         except Exception as e:
             raise RuntimeError(
-                f"Exceptions throwed while doing select_input on {name}:\n{e}"
+                f"Exceptions thrown while doing select_input on {name}:\n{e}"
             )
 
     if isinstance(false_var, UndefinedVar) and isinstance(
@@ -1637,7 +1640,7 @@ def expand_undefined_var(nest1, nest2, names):
             if n1 is None and n2 is not None:
                 if order == 0:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
                             name, type(n1), n1, type(n2), n2
@@ -1645,7 +1648,7 @@ def expand_undefined_var(nest1, nest2, names):
                     )
                 else:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
                             name, type(n2), n2, type(n1), n1
@@ -1723,7 +1726,7 @@ def Print(
         summarize (int, optional): Number of elements in the tensor to be print. If
                 it's value is -1, then all elements in the tensor will be print.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
-        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_type (bool, optional): Print the tensor type. Default: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
@@ -1868,5 +1871,4 @@ class Switch:
         self.inside_scope = False
         if exc_type is not None:
             return False  # re-raise exception
-
         return True

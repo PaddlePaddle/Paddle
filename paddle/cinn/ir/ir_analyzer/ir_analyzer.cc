@@ -23,6 +23,8 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -371,6 +373,141 @@ std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
     iter_values.push_back(common::AutoSimplify(index_value));
   }
   return iter_values;
+}
+
+std::unordered_set<ir::Var> GetReduceIterVars(ir::Expr block) {
+  ir::ScheduleBlockRealize* schedule_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(schedule_block_realize);
+  ir::ScheduleBlock* schedule_block =
+      schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(schedule_block);
+  std::vector<ir::Var>& iter_vars = schedule_block->iter_vars;
+  std::unordered_set<ir::Var> reduce_vars;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      reduce_vars.insert(iter_vars[i]);
+    }
+  }
+  return reduce_vars;
+}
+
+bool IsReductionSBlock(ir::Expr block) {
+  ir::ScheduleBlockRealize* s_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(s_block_realize);
+  ir::ScheduleBlock* s_block =
+      s_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(s_block);
+  for (const ir::Var& var : s_block->iter_vars) {
+    if (var->is_reduce_axis) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsBroadcastSBlock(ir::Expr block) {
+  ir::ScheduleBlockRealize* s_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(s_block_realize);
+  ir::ScheduleBlock* s_block =
+      s_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(s_block);
+  ir::Expr e_store = GetStoreOfSBlock(block);
+  ir::Store* store = e_store.As<ir::Store>();
+  CHECK_NOTNULL(store);
+  ir::Load* load = store->value.As<ir::Load>();
+  if (load == nullptr) {
+    return false;
+  }
+  // each load index can be found in store index and maintain relative order
+  for (size_t i = 0; i < load->indices.size(); ++i) {
+    bool found = false;
+    for (size_t j = i; j < store->indices.size(); ++j) {
+      ir::_Var_* load_var = load->indices[i].as_var();
+      ir::_Var_* store_var = store->indices[j].as_var();
+      if (load_var == nullptr || store_var == nullptr) {
+        return false;
+      }
+      if (load_var->name == store_var->name) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return load->indices.size() < store->indices.size();
+}
+
+std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
+  std::vector<ir::Var> result;
+  for (const ir::Expr& e : indices) {
+    if (e.is_constant()) {
+      std::string var_name =
+          cinn::UniqName("constant" + static_cast<int>(e.get_constant()));
+      result.emplace_back(e, e, var_name, /* is_reduce = */ false);
+    } else if (e.As<ir::_Var_>() != nullptr) {
+      ir::Expr copy_e = ir::ir_utils::IRCopy(e);
+      ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
+      result.emplace_back(ir::Var(var_ref));
+    } else {
+      std::string var_name = cinn::UniqName("expr");
+      common::cas_intervals_t var_intervals;
+      bool is_reduce = false;
+      ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
+        if (x->As<ir::_Var_>() != nullptr) {
+          ir::Var var = x->as_var_ref();
+          var_intervals.insert(
+              {var->name,
+               common::CasInterval{var->lower_bound, var->upper_bound}});
+          if (var->is_reduce_axis) is_reduce = true;
+        }
+        return false;
+      });
+      common::SymbolicExprAnalyzer analyzer(var_intervals);
+      result.emplace_back(
+          analyzer.LowerBound(e), analyzer.UpperBound(e), var_name, is_reduce);
+    }
+  }
+  return result;
+}
+
+void AnalyzeScheduleBlockReadWriteBuffer(ir::ScheduleBlock* sche_block) {
+  if (!sche_block->read_buffers.empty() || !sche_block->write_buffers.empty()) {
+    return;
+  }
+
+  ir::ir_utils::CollectIRNodesWithoutTensor(
+      sche_block->body, [&](const Expr* x) {
+        const ir::Load* load_expr = x->As<ir::Load>();
+        if (load_expr != nullptr) {
+          const ir::Tensor t = load_expr->tensor.as_tensor_ref();
+          sche_block->read_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(load_expr->indices)));
+          return false;
+        }
+        const ir::Store* store_expr = x->As<ir::Store>();
+        if (store_expr != nullptr) {
+          const ir::Tensor t = store_expr->tensor.as_tensor_ref();
+          sche_block->write_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(store_expr->indices)));
+          return false;
+        }
+        return false;
+      });
+}
+
+std::string GetBlockName(const ir::Expr block) {
+  const ir::ScheduleBlockRealize* block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  const ir::ScheduleBlock* block_node =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(block_node);
+  return block_node->name;
 }
 
 }  // namespace analyzer

@@ -19,11 +19,14 @@ if(WITH_TESTING AND WITH_CINN)
 
   paddle_test(test_group_op SRCS group_op_test.cc)
 
-  paddle_test(dynamic_reshape_test SRCS dynamic_reshape_test.cc)
+  paddle_test(test_symbolic_lower SRCS symbolic_lower_test.cc)
 
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc)
 
   paddle_test(test_compilation_task SRCS compilation_task_test.cc)
+
+  paddle_test(test_generate_shape_util_test SRCS generate_shape_util_test.cc
+              DEPS cinn_op_dialect)
 
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.
@@ -37,7 +40,8 @@ if(WITH_TESTING AND WITH_CINN)
       test_pir_all_path
       test_group_op
       test_pir_build_cinn_pass
-      test_compilation_task)
+      test_compilation_task
+      test_generate_shape_util_test)
 
   foreach(test_name ${cinn_unit_tests})
     get_property(

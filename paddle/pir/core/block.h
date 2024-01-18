@@ -69,10 +69,10 @@ class IR_API Block {
 
   void push_back(Operation *op);
   void push_front(Operation *op);
+  void pop_back();
   Iterator insert(ConstIterator iterator, Operation *op);
   Iterator erase(ConstIterator position);
   void clear();
-  operator Region::Iterator() { return position_; }
 
   // Assign the operation underlying in position with parameter op,
   // meanwhile, destroy the original operation.
@@ -111,6 +111,7 @@ class IR_API Block {
   Type arg_type(uint32_t index) const { return arguments_[index].type(); }
   void ClearArguments();
   Value AddArgument(Type type);
+  void EraseArgument(uint32_t index);
   template <class TypeIter>
   void AddArguments(TypeIter first, TypeIter last);
   template <class TypeContainer>
@@ -143,16 +144,15 @@ class IR_API Block {
 
   // Allow access to 'SetParent'.
   friend class Region;
-  void SetParent(Region *parent, Region::Iterator position);
+  void SetParent(Region *parent);
 
-  // Take out corresponding Operation and its ownershipe.
+  // Take out corresponding Operation and its ownership.
   friend class Operation;
   Operation *Take(Operation *op);
 
   static bool TopoOrderCheck(const OpListType &op_list);
 
  private:
-  Region::Iterator position_;
   BlockOperand first_use_;
   OpListType ops_;         // owned
   ArgListType arguments_;  // owned

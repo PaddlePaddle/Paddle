@@ -103,6 +103,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
+  use_new_executor_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;

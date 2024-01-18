@@ -24,6 +24,9 @@
     func : add
   inplace : (x -> out)
   backward : add_grad
+  data_transform :
+    support_trans_dtype : x, y
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : add_n
   args : (Tensor[] inputs)
@@ -133,7 +136,7 @@
     backend : place > output
 
 - op : batch_norm
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta:
     func : BatchNormInferMeta
@@ -161,6 +164,16 @@
     param : [x]
   kernel :
     func : c_allreduce_max
+  inplace : (x -> out)
+
+- op : c_allreduce_prod
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_prod
   inplace : (x -> out)
 
 - op : c_allreduce_sum
@@ -211,6 +224,16 @@
     func : CIdentityInferMeta
   kernel :
     func : c_identity
+  inplace : (x -> out)
+
+- op : c_reduce_min
+  args : (Tensor x, int ring_id, int root_id, bool use_calc_stream)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_reduce_min
   inplace : (x -> out)
 
 - op : c_reduce_sum
@@ -265,6 +288,7 @@
     data_type : x
   inplace: (x -> out)
   backward : cast_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : channel_shuffle
   args : (Tensor x, int groups, str data_format="NCHW")
@@ -350,7 +374,7 @@
   kernel :
     func : distribute_fpn_proposals
     data_type : fpn_rois
-  optional : rois_num
+  optional : rois_num, multi_level_rois_num
 
 - op : divide
   args : (Tensor x, Tensor y)
@@ -361,6 +385,8 @@
   kernel :
     func : divide
   inplace: (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : divide_grad
 
 - op : dropout
@@ -383,6 +409,7 @@
     param : [x, equation]
   kernel :
     func : einsum
+  optional : inner_cache, xshape
   backward : einsum_grad
 
 - op : elementwise_pow
@@ -393,6 +420,8 @@
     spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : elementwise_pow
+  data_transform :
+    support_trans_dtype : x, y
   backward : elementwise_pow_grad
 
 - op : embedding
@@ -451,6 +480,8 @@
     spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : exponential_
@@ -498,6 +529,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : floor_divide
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : frobenius_norm
@@ -641,6 +674,8 @@
     func : CompareInferMeta
   kernel :
     func : greater_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : greater_than
@@ -650,6 +685,8 @@
     func : CompareInferMeta
   kernel :
     func : greater_than
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : hardswish
@@ -689,6 +726,8 @@
     func : CompareInferMeta
   kernel :
     func : less_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : less_than
@@ -698,6 +737,8 @@
     func : CompareInferMeta
   kernel :
     func : less_than
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : linspace
@@ -745,6 +786,16 @@
     func : logsumexp
   backward : logsumexp_grad
 
+- op : lrn
+  args : (Tensor x, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW")
+  output : Tensor(out), Tensor(mid_out)
+  infer_meta :
+    func : LrnInferMeta
+    param : [x, n]
+  kernel :
+    func : lrn
+  backward : lrn_grad
+
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
@@ -753,6 +804,8 @@
     spmd_rule : MatmulInferSpmd
   kernel :
     func : matmul
+  data_transform :
+    support_trans_dtype : x, y
   backward : matmul_grad
 
 - op : matrix_rank
@@ -790,6 +843,8 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : maximum
+  data_transform :
+    support_trans_dtype : x, y
   backward : maximum_grad
 
 - op : mean
@@ -846,6 +901,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : minimum
+  data_transform :
+    support_trans_dtype : x, y
   backward : minimum_grad
 
 - op : mish
@@ -868,6 +925,8 @@
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
   inplace : (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : multiply_grad
 
 - op : norm
@@ -887,6 +946,8 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : not_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : one_hot
@@ -957,6 +1018,17 @@
     func : prod
   backward : prod_grad
 
+- op : push_sparse_v2
+  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
+  output : Tensor[](out_grad_out){out_grad_in.size()}
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [out_grad_in]
+  kernel :
+    func : push_sparse_v2
+    data_type : out_grad_in
+  inplace: (out_grad_in -> out_grad_out)
+
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
   output : Tensor(out)
@@ -1011,6 +1083,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : remainder
+  data_transform :
+    support_trans_dtype : x, y
   inplace : (x -> out)
 
 - op : repeat_interleave
@@ -1044,6 +1118,7 @@
   view: (x -> out)
   intermediate : xshape
   backward: reshape_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
@@ -1141,9 +1216,22 @@
 - op : share_data
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
   kernel:
     func: share_data
     param: [x]
+
+- op : shuffle_batch
+  args : (Tensor x, Tensor seed, int startup_seed=0)
+  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
+  infer_meta:
+     func: ShuffleBatchInferMeta
+  kernel:
+     func: shuffle_batch
+     data_type: x
+  backward : shuffle_batch_grad
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -1154,6 +1242,7 @@
   kernel :
     func : slice
   backward : slice_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)
@@ -1213,7 +1302,10 @@
   kernel :
     func : subtract
   inplace : (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : subtract_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sum
   args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
@@ -1225,6 +1317,7 @@
     func : sum
     data_type : x
   backward : sum_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)
@@ -1237,7 +1330,7 @@
   backward : swish_grad
 
 - op : sync_batch_norm_
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
     func : BatchNormInferMeta
@@ -1247,6 +1340,16 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
+
+- op : tdm_sampler
+  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
+  output: Tensor(out), Tensor(labels), Tensor(mask)
+  infer_meta:
+    func : TdmSamplerInferMeta
+  kernel:
+    func : tdm_sampler
+    data_type : x
+  optional : labels
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
@@ -1411,6 +1514,15 @@
      func: dpsgd
      data_type: param
 
+- op: ftrl
+  args: (Tensor param, Tensor squared_accumulator, Tensor linear_accumulator, Tensor grad, Tensor learning_rate, float l1=0.0f, float l2=0.0f, float lr_power=-0.5f)
+  output: Tensor(param_out), Tensor(squared_accum_out), Tensor(linear_accum_out)
+  infer_meta:
+    func: FtrlInferMeta
+  kernel:
+    func: ftrl
+    data_type: param
+
 - op: fused_attention
   args: (Tensor x, Tensor ln_scale, Tensor ln_bias, Tensor qkv_weight, Tensor qkv_bias, Tensor cache_kv, Tensor src_mask, Tensor out_linear_weight, Tensor out_linear_bias, Tensor ln_scale_2, Tensor ln_bias_2, int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon, float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed, str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual, int ring_id)
   output: Tensor(ln_mean), Tensor(ln_var), Tensor(ln_out), Tensor(qkv_out), Tensor(qkv_bias_out), Tensor(transpose_out_2), Tensor(qk_out), Tensor(qktv_out), Tensor(softmax_out), Tensor(attn_dropout_mask_out), Tensor(attn_dropout_out), Tensor(src_mask_out), Tensor(fmha_out), Tensor(out_linear_out), Tensor(dropout_mask_out), Tensor(ln_mean_2), Tensor(ln_var_2), Tensor(bias_dropout_residual_out), Tensor(cache_kv_out), Tensor(out)
@@ -1455,6 +1567,17 @@
     data_type: param
   optional: master_param, master_param_out
 
+- op: nce
+  args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
+  output: Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
+  infer_meta:
+    func: NceInferMeta
+  kernel:
+    func: nce
+    data_type: input
+  optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
+  backward: nce_grad
+
 - op: number_count
   args: (Tensor numbers, int upper_range)
   output: Tensor(out)
@@ -1463,6 +1586,15 @@
   kernel:
      func: number_count
      data_type: numbers
+
+- op: onednn_to_paddle_layout
+  args: (Tensor x, int dst_layout)
+  output: Tensor(out)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: onednn_to_paddle_layout
 
 - op: sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)

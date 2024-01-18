@@ -27,7 +27,12 @@ from ..base.data_feeder import (
     convert_dtype,
 )
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from ..framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
@@ -295,8 +300,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
-        p (float|string, optional): Order of the norm. Supported values are `fro`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0 and nuclear norm.
+        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
+            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0.
             Default value is `fro`.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
@@ -374,6 +379,21 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
              [4., 3., 2., 1.]])
     """
 
+    def _backshift_permutation(dim0, dim1, dimn):
+        """
+        Auxiliary function for matrix_norm
+        Computes the permutation that moves the two given dimensions to the back
+        """
+        ret = [i for i in range(dimn) if i != dim0 and i != dim1]
+        ret.extend((dim0, dim1))
+        return ret
+
+    def _inverse_permutation(perm):
+        """
+        Given a permutation, returns its inverse. It's equivalent to argsort on an array
+        """
+        return [i for i, j in sorted(enumerate(perm), key=lambda ij: ij[1])]
+
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
@@ -413,6 +433,98 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 attrs=attrs,
             )
             return out
+
+    def nuclear_norm(input, axis=axis, keepdim=False, name=None):
+        """
+        The nuclear norm OP is to calculate the nuclear norm of certain two dimensions of Tensor `input`.
+        Args:
+          input (Variable): Tensor, data type float32, float64.
+          dim (list): Two dimensions.
+          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+          name (str, optional): The default value is None. Normally there is no need for
+              user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        """
+
+        perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
+        inv_perm = _inverse_permutation(perm)
+
+        if in_dynamic_mode():
+            transposed = _C_ops.transpose(input, perm)
+            u, s, vh = _C_ops.svd(transposed, False)
+            result = _C_ops.sum(s, -1, None, keepdim)
+            if keepdim:
+                result = _C_ops.transpose(
+                    _C_ops.unsqueeze(result, -1), inv_perm
+                )
+            return result
+
+        attrs = {'axis': axis, 'keepdim': keepdim}
+
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'nuclear_norm'
+        )
+
+        block = LayerHelper('nuclear_nrom', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        transpose_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        input_shape = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        block.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [transpose_out], 'XShape': [input_shape]},
+            attrs={'axis': perm},
+        )
+
+        u = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        s = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        vt = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        block.append_op(
+            type='svd',
+            inputs={'X': [transpose_out]},
+            outputs={'U': u, 'VH': vt, 'S': s},
+            attrs={'full_matrices': False},
+        )
+
+        reduce_all, sum_axis = _get_reduce_axis(-1, s)
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': s},
+            outputs={'Out': out},
+            attrs={
+                'dim': sum_axis,
+                'keep_dim': keepdim,
+                'reduce_all': reduce_all,
+            },
+        )
+
+        if keepdim:
+            unsqueeze_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+
+            block.append_op(
+                type='unsqueeze2',
+                inputs={'X': [out]},
+                outputs={'Out': [unsqueeze_out], 'XShape': [input_shape]},
+                attrs={'axes': [-1]},
+            )
+
+            block.append_op(
+                type='transpose2',
+                inputs={'X': [unsqueeze_out]},
+                outputs={'Out': [out], 'XShape': [input_shape]},
+                attrs={'axis': inv_perm},
+            )
+
+        return out
 
     def vector_norm(
         input, porder=None, axis=None, keepdim=False, asvector=False, name=None
@@ -616,6 +728,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     elif isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
+        elif p == "nuc":
+            return nuclear_norm(x, axis=axis, keepdim=keepdim, name=name)
         elif p == np.inf or p == -np.inf:
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
@@ -2830,26 +2944,30 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.eigh(x, UPLO)
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        return _C_ops.eigh(x, UPLO)
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigh', **locals())
@@ -3192,9 +3310,9 @@ def triangular_solve(
 
     Args:
         x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
-            zero or more batch dimensions. Its data type should be float32 or float64.
+            zero or more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular
             system of equations. Default: True.
         transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
@@ -3233,10 +3351,16 @@ def triangular_solve(
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("triangular_solve", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'triangular_solve'
+            x,
+            'x',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64'], 'triangular_solve'
+            y,
+            'y',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -3336,27 +3460,32 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigvalsh', **locals())

@@ -52,7 +52,9 @@ class TestRollOp(OpTest):
         self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestRollOpCase2(TestRollOp):
@@ -139,7 +141,12 @@ class TestRollBF16OpCase2(TestRollOp):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_prim=True, check_pir=True
+            self.place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -163,7 +170,12 @@ class TestRollBF16OpCase3(TestRollOp):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_prim=True, check_pir=True
+            self.place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

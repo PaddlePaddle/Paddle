@@ -8,11 +8,10 @@ DRR can reduce the development cost of PASS, allowing developers to focus on pro
 
 Taking PASS to eliminate redundant CastOp as an example, the code example developed using DRR is as follows:
 ~~~ c++
-// 1. Inherit specialized template class from DrPatternBase
-class RemoveRedundentCastPattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+// 1. Inherit class from DrPatternBase
+class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
   // 2. Overload operator()
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 3. Define a SourcePattern containing two consecutive CastOps using Op, Tensor, and Attribute
     auto pat = ctx->SourcePattern();
 
@@ -32,6 +31,8 @@ class RemoveRedundentCastPattern
         res.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 ~~~
 
@@ -55,7 +56,7 @@ Developers only need to define `SourcePattern`, `Constrains` and `ResultPattern`
 	<tr>
 		<td rowspan="1">DrrPatternBase</td>
 		<td> <pre> virtual void operator()(
-        pir::drr::DrrPatternContext* ctx) const </pre></td>
+        paddle::drr::DrrPatternContext* ctx) const </pre></td>
 		<td> Implement the entry function of DRR PASS </td>
 		<td> ctx: Context parameters required to create Patten</td>
 	</tr>
@@ -165,11 +166,11 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 ## 3 Example
 Example 1: Matmul + Add -> FusedGemmEpilogue
 ~~~ c++
-class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
+class FusedLinearPattern : public paddle::drr::DrrPatternBase {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
 	// Define SourcePattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -179,10 +180,10 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
     // Define ResultPattern
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     // Define Constrain
     const auto &act_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
           return "none";
         });
     const auto &fused_gemm_epilogue = res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
@@ -193,17 +194,18 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
   }
+
+  std::string name() const override { return "FusedLinearPattern"; }
 };
 ~~~
 
 Example 2: Full + Expand -> Full
 ~~~ c++
-class FoldExpandToConstantPattern
-    : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
+class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Define SourcePattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("shape_1")},
                                 {"value", pat.Attr("value_1")},
@@ -218,7 +220,7 @@ class FoldExpandToConstantPattern
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
     // Define ResultPattern
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("expand_shape_value")},
                                 {"value", pat.Attr("value_1")},
@@ -226,5 +228,7 @@ class FoldExpandToConstantPattern
                                 {"place", pat.Attr("place_1")}});
     res.Tensor("ret") = full2();
   }
+
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 ~~~

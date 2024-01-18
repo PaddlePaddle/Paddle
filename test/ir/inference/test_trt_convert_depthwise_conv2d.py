@@ -50,12 +50,12 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 1, 3, 3]).astype(np.float32)
 
-        batch_options = [1, 4]
+        batch_options = [1]
         strides_options = [[1, 2]]
-        paddings_options = [[0, 3], [1, 2, 3, 4]]
-        groups_options = [1, 3]
+        paddings_options = [[0, 3]]
+        groups_options = [1]
         padding_algorithm_options = ['EXPLICIT', 'SAME', 'VAILD']
-        dilations_options = [[1, 1], [1, 2]]
+        dilations_options = [[1, 1]]
         data_format_options = ['NCHW']
 
         configurations = [

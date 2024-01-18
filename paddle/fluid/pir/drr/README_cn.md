@@ -8,11 +8,10 @@ DRR ( Declarative Rewrite Rule ) 是来处理这种 DAG-to-DAG 类型的一套 P
 
 以消除冗余 CastOp 的 PASS 为例，使用 DRR 的代码开发示例如下：
 ~~~ c++
-// 1. 继承 DrrPatternBase 的特化模板类
-class RemoveRedundentCastPattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+// 1. 继承 DrrPatternBase 类
+class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
   // 2. 重载 operator()
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 3. 使用 Op、Tensor 和 Attribute 定义一个包含两个连续 CastOp 的 SourcePattern
     auto pat = ctx->SourcePattern();
 
@@ -32,6 +31,8 @@ class RemoveRedundentCastPattern
         res.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 ~~~
 
@@ -56,7 +57,7 @@ DRR PASS 包含以下三个部分：
 	<tr>
 		<td rowspan="1">DrrPatternBase</td>
 		<td> <pre> virtual void operator()(
-        pir::drr::DrrPatternContext* ctx) const </pre></td>
+        paddle::drr::DrrPatternContext* ctx) const </pre></td>
 		<td> 实现 DRR PASS 的入口函数 </td>
 		<td> ctx: 创建 Patten 所需要的 Context 参数</td>
 	</tr>
@@ -168,11 +169,11 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 ## 3 使用示例
 Example 1: Matmul + Add -> FusedGemmEpilogue
 ~~~ c++
-class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
+class FusedLinearPattern : public paddle::drr::DrrPatternBase {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 定义 Source Pattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -182,10 +183,10 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
     // 定义 Result Pattern
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     // 定义 Constrain
     const auto &act_attr =
-        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
           return "none";
         });
     const auto &fused_gemm_epilogue = res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
@@ -196,17 +197,18 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
   }
+
+  std::string name() const override { return "FusedLinearPattern"; }
 };
 ~~~
 
 Example 2: Full + Expand -> Full
 ~~~ c++
-class FoldExpandToConstantPattern
-    : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
+class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 定义 Source Pattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("shape_1")},
                                 {"value", pat.Attr("value_1")},
@@ -221,7 +223,7 @@ class FoldExpandToConstantPattern
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
     // 定义 Result Pattern      Constrains: 本 Pass 无额外约束规则
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("expand_shape_value")},
                                 {"value", pat.Attr("value_1")},
@@ -229,5 +231,7 @@ class FoldExpandToConstantPattern
                                 {"place", pat.Attr("place_1")}});
     res.Tensor("ret") = full2();
   }
+
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 ~~~

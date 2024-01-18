@@ -155,6 +155,10 @@ class Interpreter:
         assert layer is not None, "SIR bound layer is None."
         return layer(*args, **kwargs)
 
+    def AST(self, stmt, inputs):
+        args, kwargs = inputs
+        return stmt.converted_func(*args, **kwargs)
+
 
 def compile_sir(context: SymbolicTraceContext, name: str):
     """
@@ -184,7 +188,7 @@ def prepare_state(SIR, inputs):
     state = {}
 
     # update free vars if exsits
-    if SIRRuntimeCache().has_key(SIR.name):  # noqa: W601
+    if SIRRuntimeCache().has_key(SIR.name):
         free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
         if free_var_seeker:
             state = free_var_seeker()

@@ -32,8 +32,11 @@ using Program = pir::Program;
 
 // some outputs like xshape will no longer used after decomp, and those outputs
 // will skip checking.
-std::unordered_set<std::string> decomp_op_contain_none = {
-    "pd_op.squeeze", "pd_op.unsqueeze", "pd_op.flatten", "pd_op.batch_norm"};
+std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
+                                                          "pd_op.unsqueeze",
+                                                          "pd_op.flatten",
+                                                          "pd_op.batch_norm",
+                                                          "pd_op.batch_norm_"};
 
 static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
@@ -124,8 +127,8 @@ void DecompProgram::check_decomp_outputs(
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (skip_invalid_op_check &&
         paddle::dialect::IsEmptyValue(decomp_outs[i])) {
-      VLOG(0) << "[Prim] Decomp op skip check of output index " << i
-              << " of op " << op_name;
+      VLOG(4) << "[Prim] Decomp op skip check of " << i
+              << "-index output of op " << op_name;
     } else {
       PADDLE_ENFORCE(
           !paddle::dialect::IsEmptyValue(orig_outs[i]),
@@ -238,6 +241,14 @@ std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
   return tar_vars;
 }
 
+std::vector<pir::OpResult> DecompProgram::get_dst_vars() {
+  if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
+    return src_vars_;
+  } else {
+    return dst_vars_;
+  }
+}
+
 bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
   bool flag = true;
 
@@ -266,26 +277,18 @@ std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
   return decomp_res;
 }
 
-DecompProgram::DecompProgram(pir::Program* program,
-                             const std::vector<pir::OpResult>& src_vars,
-                             const std::set<std::string>& blacklist,
-                             const std::set<std::string>& whitelist)
-    : program_(program),
-      src_vars_(src_vars),
-      blacklist_(blacklist),
-      whitelist_(whitelist) {}
-
-std::vector<pir::OpResult> DecompProgram::decomp_program() {
-  std::ostringstream orig_prog_stream;
+void DecompProgram::decomp_program() {
   std::unordered_map<pir::OpResult, int> orig_vars_dict;
   for (size_t i = 0; i < src_vars_.size(); i++) {
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
+  std::ostringstream orig_prog_stream;
   program_->Print(orig_prog_stream);
-  VLOG(4) << "[Prim] Origin program bofore decomp :\n"
+  VLOG(4) << "[Prim] Origin program before decomp :\n"
           << orig_prog_stream.str();
+
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
-    return src_vars_;
+    return;
   }
   std::vector<pir::OpResult> tar_vars(src_vars_.size());
   pir::Block* block = program_->block();
@@ -338,7 +341,8 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   std::ostringstream decomp_prog_stream;
   program_->Print(decomp_prog_stream);
   VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
-  return tar_vars;
+  dst_vars_ = tar_vars;
+  return;
 }
 
 }  // namespace paddle

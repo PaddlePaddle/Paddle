@@ -29,6 +29,10 @@ ENV_SOT_LOG_LEVEL = IntegerEnvironmentVariable("SOT_LOG_LEVEL", 0)
 ENV_STRICT_MODE = BooleanEnvironmentVariable("STRICT_MODE", False)
 ENV_SHOW_TRACKERS = StringEnvironmentVariable("SHOW_TRACKERS", "")
 ENV_CLEAN_CODE = BooleanEnvironmentVariable("CLEAN_CODE", False)
+ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
+    "SOT_WITH_CONTROL_FLOW", True
+)
+ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 
 
 @contextmanager
@@ -46,4 +50,16 @@ def strict_mode_guard(value: bool):
 @contextmanager
 def min_graph_size_guard(value: int):
     with EnvironmentVariableGuard(ENV_MIN_GRAPH_SIZE, value):
+        yield
+
+
+@contextmanager
+def with_control_flow_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_WITH_CONTROL_FLOW, value):
+        yield
+
+
+@contextmanager
+def with_export_guard(value: str):
+    with EnvironmentVariableGuard(ENV_SOT_EXPORT, value):
         yield
