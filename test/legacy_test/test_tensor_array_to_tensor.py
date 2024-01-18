@@ -411,7 +411,6 @@ class TestPirArrayOp(unittest.TestCase):
             main_program, feed={}, fetch_list=[output, dout[0], dout[1]]
         )
 
-        print("fetch_out0 = ", fetched_out0)
         np.testing.assert_array_equal(
             fetched_out0,
             np.array(

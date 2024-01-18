@@ -41,7 +41,7 @@ void TensorToArrayKernel(const Context& dev_ctx,
     inputs_grad.push_back(&tmp_inputs_grad[i]);
     inputs_grad[i]->set_meta(x[i].meta());
   }
-  std::cout << "out grad dim = " << out_grad.dims() << std::endl;
+
   if (use_stack) {
     StackGradKernel<T, Context>(dev_ctx, out_grad, axis, inputs_grad);
   } else {
