@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import unittest
 
 import paddle
 import paddle.distributed as dist
@@ -36,6 +37,7 @@ class TestSaveStateDict:
         state_dict = dict(zip(keys, [w1, w2]))
         save_state_dict(state_dict, self._ckpt_path)
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def test_save_state_dict_with_four_devices(self):
         global_state_dict = get_global_state_dict()
         keys = list(global_state_dict.keys())

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import unittest
 
 import numpy as np
 
@@ -163,6 +164,7 @@ class TestSemiAutoParallelCrossMeshReshard:
                 else expect_out[1].numpy(),
             )
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def run_test_case(self):
         self.test_p_to_r()
         self.test_p_to_s()

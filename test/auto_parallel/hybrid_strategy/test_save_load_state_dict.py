@@ -15,6 +15,7 @@
 import tempfile
 import unittest
 
+import paddle
 import collective.test_communication_api_base as test_base
 
 
@@ -23,6 +24,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         self._default_envs = {}
         self._changeable_envs = {"device_num": ["1", "2", "4", "8"]}
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 8, "number of GPUs is not enough")
     def test_save_load_state_dict(self):
         # save with 1 device
         ckpt_path = tempfile.TemporaryDirectory()

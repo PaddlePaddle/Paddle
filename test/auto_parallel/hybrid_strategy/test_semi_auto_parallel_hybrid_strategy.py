@@ -29,6 +29,7 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -56,6 +57,7 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 8, "number of GPUs is not enough")
     def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -85,6 +87,7 @@ class TestSemiAutoParallelHybridStrategyWithSP(
         }
         self._changeable_envs = {"backend": ["gpu"], "is_dp": ["false"]}
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def test_simple_net_mp_pp_sp(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -98,6 +101,7 @@ class TestSemiAutoParallelHybridStrategyWithSP(
             )
             ckpt_path.cleanup()
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 8, "number of GPUs is not enough")
     def test_simple_net_dp_mp_pp_sp(self):
         super().setUp(
             num_of_devices=8,
@@ -131,6 +135,7 @@ class TestSemiAutoParallelCrossMeshReshard(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def test_simple_net_cross_mesh_reshard(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -153,6 +158,7 @@ class TestSemiAutoParallelNdCrossMeshReshard(
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 8, "number of GPUs is not enough")
     def test_simple_net_bybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -175,6 +181,7 @@ class TestSemiAutoParallelLlamaDPMPStrategy(
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -198,6 +205,7 @@ class TestSemiAutoParallelLlama2D(test_base.CommunicationTestDistBase):
             "use_sp": ["true", "false"],
         }
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -218,6 +226,7 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
             "use_sp": ["true", "false"],
         }
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 8, "number of GPUs is not enough")
     def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs

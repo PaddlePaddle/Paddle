@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import unittest
 
 import numpy as np
 from auto_parallel.hybrid_strategy.save_state_dict import (
@@ -49,6 +50,7 @@ class TestLoadStateDict:
             assert k in expect_state_dict, k
             self.check_tensor_eq(v, expect_state_dict[k])
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 4, "number of GPUs is not enough")
     def test_load_state_dict_with_four_devices(self):
         global_state_dict = get_global_state_dict()
         saved_w1, saved_w2 = list(global_state_dict.values())
@@ -76,6 +78,7 @@ class TestLoadStateDict:
             assert k in expect_state_dict, k
             self.check_tensor_eq(v._local_value(), expect_state_dict[k])
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 2, "number of GPUs is not enough")
     def test_load_state_dict_with_two_devices(self):
         global_state_dict = get_global_state_dict()
         saved_w1, saved_w2 = list(global_state_dict.values())
@@ -99,6 +102,7 @@ class TestLoadStateDict:
             assert k in expect_state_dict, k
             self.check_tensor_eq(v._local_value(), expect_state_dict[k])
 
+    @unittest.skipIf(paddle.device.cuda.device_count() < 8, "number of GPUs is not enough")
     def test_load_state_dict_with_eight_devices(self):
         global_state_dict = get_global_state_dict()
         saved_w1, saved_w2 = list(global_state_dict.values())
