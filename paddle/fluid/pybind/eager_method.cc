@@ -1005,12 +1005,17 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
   EAGER_TRY
   paddle::Tensor* dst_ptr =
       &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
-  PADDLE_ENFORCE_EQ(self->tensor.initialized(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Tensor %s has not been initialized! please initialize "
-                        "src tensor before share_buffer_with to other.",
-                        self->tensor.name()));
+  if (!self->tensor.initialized()) {
+    if (self->tensor.numel() == 0) {
+      // Do nothing for 0-size Tensor
+      Py_RETURN_NONE;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized! please initialize "
+          "src tensor before share_buffer_with to other.",
+          self->tensor.name()));
+    }
+  }
   if (self->tensor.is_dist_tensor()) {
     auto* src_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
