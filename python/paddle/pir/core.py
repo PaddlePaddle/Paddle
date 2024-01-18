@@ -45,21 +45,6 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
 }
 
-datatype_to_vartype = {
-    DataType.FLOAT32: VarDesc.VarType.FP32,
-    DataType.FLOAT64: VarDesc.VarType.FP64,
-    DataType.FLOAT16: VarDesc.VarType.FP16,
-    DataType.BFLOAT16: VarDesc.VarType.BF16,
-    DataType.INT32: VarDesc.VarType.INT32,
-    DataType.INT16: VarDesc.VarType.INT16,
-    DataType.INT64: VarDesc.VarType.INT64,
-    DataType.BOOL: VarDesc.VarType.BOOL,
-    DataType.UINT8: VarDesc.VarType.UINT8,
-    DataType.INT8: VarDesc.VarType.INT8,
-    DataType.COMPLEX64: VarDesc.VarType.COMPLEX64,
-    DataType.COMPLEX128: VarDesc.VarType.COMPLEX128,
-}
-
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,
