@@ -21,6 +21,7 @@ from dygraph_to_static_utils import (
     IrMode,
     ToStaticMode,
     disable_test_case,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -272,6 +273,7 @@ class TestListWithoutControlFlowConfig(Dy2StTestBase):
 
 
 class TestListWithoutControlFlow(TestListWithoutControlFlowConfig):
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 
@@ -305,6 +307,7 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
             return self.result_to_numpy(res)
 
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 
