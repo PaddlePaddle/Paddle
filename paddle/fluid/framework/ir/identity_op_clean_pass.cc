@@ -155,8 +155,13 @@ int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
         CHECK_EQ(useless_op->IsOp(), true);
 
         for (auto* after_op : useless_op_out->outputs) {
+          if (after_op->Name() == "fetch") {
+            VLOG(3) << "The OP is model'output, skip";
+            return;
+          }
           after_op->Op()->RenameInput(useless_op_out->Var()->Name(),
                                       useless_op_in->Var()->Name());
+          after_op->Op()->Flush();
           IR_NODE_LINK_TO(useless_op_in, after_op);
         }
         GraphSafeRemoveNodes(graph, {useless_op, useless_op_out});
@@ -190,6 +195,7 @@ int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
             CHECK_EQ(prev_op->IsOp(), true);
             prev_op->Op()->RenameOutput(pre_op_out->Var()->Name(),
                                         cast_op_2_out->Var()->Name());
+            prev_op->Op()->Flush();
             IR_NODE_LINK_TO(prev_op, cast_op_2_out);
           }
 
