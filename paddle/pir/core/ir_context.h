@@ -30,7 +30,6 @@ class TypeId;
 class Dialect;
 class OpInfo;
 class Type;
-class OpResult;
 class Attribute;
 class Operation;
 class InterfaceValue;

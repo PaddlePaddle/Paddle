@@ -62,10 +62,10 @@ TEST(MapExpr, ElementWise_Fusion_0) {
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
   phi::DDim dims_D_2 = {-1, 1};
-  pir::OpResult value1 =
+  pir::Value value1 =
       test::CreateDenseTensorOp(ctx, dims_D_2, {"op1_attr"}, {"op1_name"})
           ->result(0);
-  pir::OpResult value2 =
+  pir::Value value2 =
       test::CreateDenseTensorOp(ctx, dims_D_2, {"op2_attr"}, {"op2_name"})
           ->result(0);
   ::pir::Builder builder = ::pir::Builder(ctx, program.block());

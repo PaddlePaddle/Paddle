@@ -1717,7 +1717,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, phi::CPUPlace());
-  pir::OpResult axis_ = full_axis_op->result(0);
+  pir::Value axis_ = full_axis_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
   argument.AddInputs({out_grad_, axis_});
@@ -4008,7 +4008,7 @@ void ExpandOp::Build(pir::Builder &builder,
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
           shape, phi::DataType::INT64, phi::CPUPlace());
-  pir::OpResult shape_ = full_shape_op->result(0);
+  pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {x_, shape_};
@@ -4066,7 +4066,7 @@ void ExpandOp::Build(pir::Builder &builder,
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
           shape, phi::DataType::INT64, phi::CPUPlace());
-  pir::OpResult shape_ = full_shape_op->result(0);
+  pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {x_, shape_};
@@ -5091,7 +5091,7 @@ bool ShapeBroadcastOp::InferSymbolicShape(
     output_data.emplace_back(GetBroadcastDimExpr(x_data.at(i), y_data.at(i)));
   }
 
-  pir::OpResult res = result(0);
+  pir::Value res = result(0);
   // TODO(HongyuJia): use op->result(0) to infer the shape
   std::vector<symbol::DimExpr> shape(std::int64_t(output_data.size()));
   symbol::ShapeOrDataDimExprs output_data_shape{shape, output_data};

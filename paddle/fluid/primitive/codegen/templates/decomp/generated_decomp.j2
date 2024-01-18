@@ -140,7 +140,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) 
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule end";
   {% for k in range(outputs|length) %}
     {% if outputs[k].intermediate and fwd_name in decomp_ops_list_contain_unused_output %}
-  pir::OpResult {{outputs[k].name}};
+  pir::Value {{outputs[k].name}};
   res[{{k}}].push_back({{outputs[k].name}});
     {% else %}
   res[{{k}}].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<{{k}}>(op_res).impl())->value());

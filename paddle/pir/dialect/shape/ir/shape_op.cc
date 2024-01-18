@@ -269,7 +269,7 @@ void TensorDimOp::Build(Builder &builder,
                         OperationArgument &argument,
                         Value source,
                         int64_t index) {
-  OpResult index_value =
+  Value index_value =
       builder
           .Build<ConstantOp>(Int64Attribute::get(IrContext::Instance(), index),
                              IndexType::get(IrContext::Instance()))

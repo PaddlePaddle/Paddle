@@ -236,7 +236,7 @@ void IrPrinter::PrintValue(Value v) {
 void IrPrinter::PrintOpResult(Operation* op) {
   os << " (";
   auto num_op_result = op->num_results();
-  std::vector<OpResult> op_results;
+  std::vector<Value> op_results;
   op_results.reserve(num_op_result);
   for (size_t idx = 0; idx < num_op_result; idx++) {
     op_results.push_back(op->result(idx));

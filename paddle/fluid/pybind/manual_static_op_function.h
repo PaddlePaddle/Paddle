@@ -52,7 +52,7 @@ static PyObject *static_api_set_parameter(PyObject *self,
     VLOG(6) << "Add set_parameter op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
-    // Get OpResult from args
+    // Get Value from args
     PyObject *parameter_obj = PyTuple_GET_ITEM(args, 0);
     auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0);
 

@@ -349,12 +349,12 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
   return res;
 }
 
-static pir::OpResult AddPlaceTransferOp(pir::Value in,
-                                        pir::Type out_type,
-                                        const phi::Place& src_place,
-                                        const phi::Place& dst_place,
-                                        const phi::KernelKey& kernel_key,
-                                        pir::Block* block) {
+static pir::Value AddPlaceTransferOp(pir::Value in,
+                                     pir::Type out_type,
+                                     const phi::Place& src_place,
+                                     const phi::Place& dst_place,
+                                     const phi::KernelKey& kernel_key,
+                                     pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
 
   auto copy_kernel_key = kernel_key;
@@ -397,7 +397,7 @@ static pir::OpResult AddPlaceTransferOp(pir::Value in,
 }
 
 #ifdef PADDLE_WITH_DNNL
-static pir::OpResult AddOneDNN2PaddleLayoutTransferOp(
+static pir::Value AddOneDNN2PaddleLayoutTransferOp(
     pir::Value in, const phi::DataLayout& dst_layout, pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   auto in_alloc_type = in.type().dyn_cast<AllocatedDenseTensorType>();
@@ -566,13 +566,13 @@ static pir::Type BuildOutputType(pir::Type type,
 }
 #endif
 
-pir::OpResult AddDtypeTransferOp(pir::Value in,
-                                 pir::Block* block,
-                                 const phi::KernelKey& kernel_key,
-                                 const phi::Place& origin_place,
-                                 const phi::Place& out_place,
-                                 const phi::DataType& src_dtype,
-                                 const phi::DataType& dst_dtype) {
+pir::Value AddDtypeTransferOp(pir::Value in,
+                              pir::Block* block,
+                              const phi::KernelKey& kernel_key,
+                              const phi::Place& origin_place,
+                              const phi::Place& out_place,
+                              const phi::DataType& src_dtype,
+                              const phi::DataType& dst_dtype) {
   pir::IrContext* ctx = pir::IrContext::Instance();
 
   pir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
@@ -619,7 +619,7 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
     op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
   }
   block->push_back(op);
-  pir::OpResult new_in = op->result(0);
+  auto new_in = op->result(0);
   return new_in;
 }
 

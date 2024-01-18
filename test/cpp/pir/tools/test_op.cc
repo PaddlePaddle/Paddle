@@ -23,7 +23,7 @@ void RegionOp::Build(pir::Builder &builder, pir::OperationArgument &argument) {
 
 void BranchOp::Build(pir::Builder &builder,             // NOLINT
                      pir::OperationArgument &argument,  // NOLINT
-                     const std::vector<pir::OpResult> &target_operands,
+                     const std::vector<pir::Value> &target_operands,
                      pir::Block *target) {
   argument.AddInputs(target_operands.begin(), target_operands.end());
   argument.AddSuccessor(target);

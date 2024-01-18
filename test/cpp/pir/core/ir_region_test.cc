@@ -35,10 +35,8 @@ TEST(region, erase_op_test) {
   // (3) Def a = ConstantOp("2.0"); b = ConstantOp("2.0");
   pir::FloatAttribute fp_attr = builder.float_attr(2.0f);
   pir::Float32Type fp32_type = builder.float32_type();
-  pir::OpResult a =
-      builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
-  pir::OpResult b =
-      builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
+  pir::Value a = builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
+  pir::Value b = builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
 
   // (6) Def c = CombineOp(a, b)
   builder.Build<pir::CombineOp>(std::vector<pir::Value>{a, b});
@@ -68,10 +66,8 @@ TEST(region, clone_op_test) {
   // (3) Def a = ConstantOp("2.0"); b = ConstantOp("2.0");
   pir::FloatAttribute fp_attr = builder.float_attr(2.0f);
   pir::Float32Type fp32_type = builder.float32_type();
-  pir::OpResult a =
-      builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
-  pir::OpResult b =
-      builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
+  pir::Value a = builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
+  pir::Value b = builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
 
   // (6) Def c = CombineOp(a, b)
   builder.Build<pir::CombineOp>(std::vector<pir::Value>{a, b});

@@ -484,7 +484,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
              << legacy_input_name;
 
     std::vector<std::string> legacy_input_vars;
-    // return empty OpResult if this arg is optional and not shown in OpDesc
+    // return empty Value if this arg is optional and not shown in OpDesc
     if (op_desc.HasInput(legacy_input_name, true)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }

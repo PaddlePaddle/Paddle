@@ -2048,7 +2048,7 @@ PyObject* GetEmpytyTensorsWithValue(PyObject* self, PyObject* args) {
   } else if (PyTuple_Check(value_list)) {
     Py_ssize_t len = PyTuple_Size(value_list);
     for (Py_ssize_t i = 0; i < len; i++) {
-      auto value = PyObjectCast<pir::OpResult>(PyTuple_GetItem(value_list, i));
+      auto value = PyObjectCast<pir::Value>(PyTuple_GetItem(value_list, i));
       if (out_tensor_map.find(value) == out_tensor_map.end()) {
         paddle::Tensor tensor = CreateTensorFromValue(value);
         out_tensor_map[value] = tensor;
@@ -2059,7 +2059,7 @@ PyObject* GetEmpytyTensorsWithValue(PyObject* self, PyObject* args) {
     }
   } else if (value_list != Py_None) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Argument of GetTensorsWithOpResultInArgs must be list of OpResult, "
+        "Argument of GetTensorsWithValueInArgs must be list of Value, "
         "but got "
         "%s",
         (reinterpret_cast<PyTypeObject*>(value_list->ob_type))->tp_name));
@@ -2140,14 +2140,12 @@ pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
                            size_t arg_pos) {
   obj = CastPyArg2ValuePreHook(obj);
-  if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return ::pybind11::handle(obj).cast<pir::OpResult>();
-  } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
+  if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
     return ::pybind11::handle(obj).cast<pir::Value>();
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
-        "OpResult, but got %s",
+        "Value, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT

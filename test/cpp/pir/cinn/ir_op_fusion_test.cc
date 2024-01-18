@@ -24,10 +24,10 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 
-std::vector<pir::OpResult> BuildInput(
+std::vector<pir::Value> BuildInput(
     ::pir::Builder* builder,
     const std::vector<std::vector<int64_t>>& vec_shapes) {
-  std::vector<pir::OpResult> vec_res;
+  std::vector<pir::Value> vec_res;
   for (size_t i = 0; i < vec_shapes.size(); ++i) {
     auto op = builder->Build<paddle::dialect::FullOp>(
         vec_shapes[i], 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
