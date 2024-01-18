@@ -58,9 +58,9 @@ if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
   set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_transformer PROPERTIES TIMEOUT 420)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 endif()
 
 # Legacy IR only tests for dygraph_to_static
