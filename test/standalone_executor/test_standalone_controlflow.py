@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -49,12 +49,12 @@ class TestCompatibility(unittest.TestCase):
 
         def false_func():
             return paddle.tensor.fill_constant(
-                shape=[3, 4], dtype='float32', value=3
-            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='int64', value=2)
+                shape=[3, 4], dtype='int32', value=3
+            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='bool', value=2)
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.1
             )
@@ -111,6 +111,7 @@ class TestCompatibility(unittest.TestCase):
         out = self._run(feed)
         return out
 
+    @test_with_pir_api
     def test_with_feed(self):
         feed = self._get_feed()
         paddle.enable_static()
