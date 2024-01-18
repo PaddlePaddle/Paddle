@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include <string>
 namespace pir {
 
@@ -24,8 +24,7 @@ static std::string GetValueId(const Value& val) {
          std::to_string(val_idx);
 }
 
-ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m)
-    : m_(m), mgr_(m) {}
+ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m) : m_(m) {}
 
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(
     std::shared_ptr<pir::Program>&& program)

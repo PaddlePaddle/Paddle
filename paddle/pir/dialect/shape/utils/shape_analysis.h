@@ -14,8 +14,13 @@
 
 #pragma once
 
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
-#include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 
 namespace pir {
 
@@ -29,11 +34,6 @@ class IR_API ShapeConstraintIRAnalysis {
   explicit ShapeConstraintIRAnalysis(pir::IrContext* ctx);
 
   void Init();
-
-  // Returns the `SymbolicDimMgr` this object holds.
-  SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
-
-  const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
 
   const std::string GetNextSymName();
 
@@ -77,8 +77,6 @@ class IR_API ShapeConstraintIRAnalysis {
   std::shared_ptr<pir::Program> program_;
 
   int64_t next_sym_idx_ = 0;
-
-  SymbolicDimMgr mgr_;
 
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
