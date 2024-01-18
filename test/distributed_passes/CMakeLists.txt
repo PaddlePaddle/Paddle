@@ -28,7 +28,6 @@ endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS "test_dist_fuse_resunit_pass")
-  set_tests_properties(test_dist_fuse_resunit_pass PROPERTIES TIMEOUT 350)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
