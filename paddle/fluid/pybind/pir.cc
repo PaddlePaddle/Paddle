@@ -416,7 +416,7 @@ void BindBlock(py::module *m) {
                    bool is_persistable =
                        attrs[i].dyn_cast<pir::BoolAttribute>().data();
                    if (is_persistable) {
-                     param_list.append(op.result(i));
+                     param_list.append(static_cast<Value>(op.result(i)));
                    }
                  }
                }
