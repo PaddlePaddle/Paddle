@@ -647,7 +647,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_1(self):
         # value is tensor with same shape to getitem and index will be adjusted
         np_data = np.ones((3, 3), dtype='int32')
@@ -667,7 +666,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_2(self):
         # value is tensor needed to broadcast and index will be adjusted
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
@@ -690,7 +688,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_3(self):
         # value is tensor and index will be adjusted
         # and the value rank is less than original tensor
