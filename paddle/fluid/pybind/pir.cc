@@ -134,7 +134,6 @@ PHI_DECLARE_bool(print_ir);
 namespace paddle {
 namespace pybind {
 
-PyTypeObject *g_ir_opresult_pytype = nullptr;
 PyTypeObject *g_ir_value_pytype = nullptr;
 
 void BindOpsAPI(pybind11::module *module);
@@ -454,14 +453,7 @@ void BindOperation(py::module *m) {
            })
       .def("operand_source", &Operation::operand_source)
       .def("operands", &Operation::operands)
-      .def("results",
-           [](Operation &self) -> py::list {
-             py::list res;
-             for (uint32_t i = 0; i < self.num_results(); i++) {
-               res.append(static_cast<Value>(self.result(i)));
-             }
-             return res;
-           })
+      .def("results", &Operation::results)
       .def(
           "blocks",
           [](Operation &self) { return &self.blocks(); },

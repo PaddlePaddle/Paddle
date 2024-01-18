@@ -137,13 +137,13 @@ OPTIONAL_VALUE_INPUT_TEMPLATE = """
         optional_{name} = {name};
     }}"""
 
-OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
+OPTIONAL_VALUE_OUTPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
         optional_{name} = paddle::make_optional<pir::Value>({op_name}_op.result({index}));
     }}"""
 
-OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
+OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE = """
     paddle::optional<std::vector<pir::Value>> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
         auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
@@ -423,13 +423,13 @@ class CodeGen:
                 continue
             if self._is_optional_output(op_info, name):
                 if VECTOR_TYPE in type:
-                    ret += OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE.format(
+                    ret += OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
                         op_name=op_name,
                         index=i,
                     )
                 else:
-                    ret += OPTIONAL_OPRESULT_OUTPUT_TEMPLATE.format(
+                    ret += OPTIONAL_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
                         op_name=op_name,
                         index=i,

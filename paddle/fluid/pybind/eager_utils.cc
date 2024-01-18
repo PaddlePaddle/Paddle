@@ -58,7 +58,6 @@ extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
-extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_ir_value_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_data_type_pytype;
@@ -185,10 +184,6 @@ bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj) {
 
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 
-bool PyObject_CheckIROpResult(PyObject* obj) {
-  return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
-}
-
 bool PyObject_CheckIRValue(PyObject* obj) {
   return PyObject_TypeCheck(obj, g_ir_value_pytype);
 }
@@ -228,40 +223,6 @@ bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
   }
 }
 
-bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
-  if (PyList_Check(obj)) {
-    Py_ssize_t len = PyList_Size(obj);
-    PyObject* item = nullptr;
-    // if obj is [], parse it as std::vector<scalar>
-    if (len == 0) {
-      return false;
-    }
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyList_GetItem(obj, i);
-      if (!PyObject_CheckIROpResult(item)) {
-        return false;
-      }
-    }
-    return true;
-  } else if (PyTuple_Check(obj)) {
-    Py_ssize_t len = PyTuple_Size(obj);
-    PyObject* item = nullptr;
-    if (len == 0) {
-      return false;
-    }
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyTuple_GetItem(obj, i);
-      if (!PyObject_CheckIROpResult(item)) {
-        return false;
-      }
-    }
-    return true;
-  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return true;
-  } else {
-    return false;
-  }
-}
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None || obj == Py_False) {
     return false;  // To be compatible with QA integration testing. Some
