@@ -46,10 +46,10 @@
 #define PD_DECLARE_string(name) DECLARE_string(name)
 #endif
 
-#define PD_DECLARE_VARIABLE(type, name) \
-  namespace paddle_flags {              \
-  PADDLE_API extern type FLAGS_##name;  \
-  }                                     \
+#define PD_DECLARE_VARIABLE(type, name)     \
+  namespace paddle_flags {                  \
+  extern PHI_IMPORT_FLAG type FLAGS_##name; \
+  }                                         \
   using paddle_flags::FLAGS_##name
 
 #define PD_DECLARE_bool(name) PD_DECLARE_VARIABLE(bool, name)
