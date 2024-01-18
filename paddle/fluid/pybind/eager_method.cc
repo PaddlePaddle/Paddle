@@ -1369,6 +1369,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
              &use_strided_slice);
 
   // step2: Dealing with basic indexing
+  bool out_is_view = false;
   auto out = getTensorWithBasicIndexing(tensor,
                                         &slice_axes,
                                         &slice_starts,
@@ -1377,7 +1378,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                         &decrease_axis,
                                         &none_axes,
                                         &infer_flags,
-                                        &use_strided_slice);
+                                        &use_strided_slice,
+                                        &out_is_view);
 
   if (!has_advanced_index) {
     return ToPyObject(out);
@@ -1396,7 +1398,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &trans_back_dim,
                                                         &pos_of_new_dim,
                                                         &rank_of_new_dim,
-                                                        &trans_dim);
+                                                        &trans_dim,
+                                                        &out_is_view);
 
   if (transed_index.size() == 1 &&
       transed_index[0].dtype() == phi::DataType::BOOL) {
@@ -1691,6 +1694,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     //   3. assign values to the sliced result by index_put OP;
     //   4. transpose back and assign the result to original tensor by set_value
     //   OP.
+    bool out_is_view = false;
     paddle::Tensor sub_tensor = getTensorWithBasicIndexing(tensor,
                                                            &slice_axes,
                                                            &slice_starts,
@@ -1699,7 +1703,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                                                            &decrease_axis,
                                                            &none_axes,
                                                            &infer_flags,
-                                                           &use_strided_slice);
+                                                           &use_strided_slice,
+                                                           &out_is_view);
 
     std::vector<paddle::Tensor> transed_index;
     std::vector<int> trans_back_dim, trans_dim;
@@ -1715,7 +1720,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &trans_back_dim,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
-                              &trans_dim);
+                              &trans_dim,
+                              &out_is_view);
 
     // Release gil and do tracing
     py::gil_scoped_release release;
@@ -1742,10 +1748,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       value_tensor = transpose_ad_func(value_tensor, trans_dim);
     }
 
-    // TODO(zoooo0820) 1.Using inplace version index_put
-    //                  2.Remove following code after backward bug fixed.
-    transed_sub_tensor = assign_ad_func(transed_sub_tensor);
-
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(
             &mesh, self->tensor, transed_sub_tensor, value_tensor)) {
@@ -1754,19 +1756,22 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     }
 
     transed_sub_tensor =
-        index_put_ad_func(transed_sub_tensor, transed_index, value_tensor);
+        index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
 
-    paddle::Tensor transback_sub_tensor =
-        transpose_ad_func(transed_sub_tensor, trans_back_dim);
+    // TODO(zoooo0820) Remove following code after backward bug fixed.
+    if (out_is_view) {
+      paddle::Tensor transback_sub_tensor =
+          transpose_ad_func(transed_sub_tensor, trans_back_dim);
 
-    self->tensor = set_value_with_tensor__ad_func(self->tensor,
-                                                  transback_sub_tensor,
-                                                  slice_starts,
-                                                  slice_ends,
-                                                  slice_strides,
-                                                  slice_axes,
-                                                  decrease_axis,
-                                                  none_axes);
+      self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                    transback_sub_tensor,
+                                                    slice_starts,
+                                                    slice_ends,
+                                                    slice_strides,
+                                                    slice_axes,
+                                                    decrease_axis,
+                                                    none_axes);
+    }
     if (PyCheckTensor(value_obj)) {
       // pass the stop_gradient from value to tensor.
       // pass stop gradient should be done after CheckInplace in
