@@ -324,8 +324,8 @@ struct FlagInfo {
 };
 
 using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
-TEST_API const ExportedFlagInfoMap& GetExportedFlagInfoMap();
-TEST_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
+PADDLE_API const ExportedFlagInfoMap& GetExportedFlagInfoMap();
+PADDLE_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
 
 #define __PHI_DEFINE_EXPORTED_FLAG(                                           \
     __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \
