@@ -135,6 +135,15 @@
     func : angle
   backward : angle_grad
 
+- op : apply_per_channel_scale
+  args: (Tensor x, Tensor scales)
+  output: Tensor(out)
+  infer_meta :
+    func : ApplyPerChannelScaleInferMeta
+  kernel :
+    func : apply_per_channel_scale
+    data_type : x
+
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)

@@ -817,12 +817,8 @@ def crop(x, shape=None, offsets=None, name=None):
     if shape is None:
         shape = x.shape
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.crop(x, shape, offsets)
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
-    attrs = {}
 
     def _attr_shape_check(shape_val):
         if not isinstance(shape_val, int):
@@ -852,6 +848,48 @@ def crop(x, shape=None, offsets=None, name=None):
                 "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
                 % str(offset_val)
             )
+
+    if in_pir_mode():
+        if isinstance(offsets, paddle.pir.Value):
+            offsets.stop_gradient = True
+        elif paddle.utils._contain_var(offsets):
+            new_offsets_tensor = []
+            for dim in offsets:
+                if isinstance(dim, paddle.pir.Value):
+                    dim.stop_gradient = True
+                    new_offsets_tensor.append(dim)
+                else:
+                    _attr_offsets_check(dim)
+                    temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                    new_offsets_tensor.append(temp_out)
+            offsets = new_offsets_tensor
+        else:
+            for offset in offsets:
+                _attr_offsets_check(offset)
+
+        if isinstance(shape, paddle.pir.Value):
+            shape.stop_gradient = True
+        elif paddle.utils._contain_var(shape):
+            new_shape_tensor = []
+            for dim_size in shape:
+                if isinstance(dim_size, paddle.pir.Value):
+                    dim_size.stop_gradient = True
+                    new_shape_tensor.append(dim_size)
+                else:
+                    _attr_shape_check(dim_size)
+                    temp_out = fill_constant(
+                        [1], 'int32', dim_size, force_cpu=True
+                    )
+                    new_shape_tensor.append(temp_out)
+            shape = new_shape_tensor
+        else:
+            for dim_size in shape:
+                _attr_shape_check(dim_size)
+        return _C_ops.crop(x, shape, offsets)
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    ipts = {'X': x}
+    attrs = {}
 
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True
@@ -3062,7 +3100,13 @@ def unique_consecutive(
         axis = []
     else:
         axis = [axis]
-    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    attr_dtype = dtype
+    if not isinstance(
+        attr_dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)
+    ):
+        attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
     if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype
@@ -4503,12 +4547,13 @@ def masked_scatter(x, mask, value, name=None):
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
-    assert (
-        mask_prefix[-1] <= value.numel()
-    ), f'mask true nums must be <= value size, but got mask true nums is {mask.sum().item()}, value size is {value.numel().item()}'
+    if in_dynamic_mode():
+        assert (
+            mask_prefix[-1] <= value.numel()
+        ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
-    mask = paddle.logical_not(mask)
+    mask = paddle.logical_not(mask.astype(bool))
     return paddle.where(mask, x, value)
 
 
@@ -4530,7 +4575,7 @@ def masked_scatter_(x, mask, value, name=None):
     ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
-    mask = paddle.logical_not(mask)
+    mask = paddle.logical_not(mask.astype(bool))
     out = paddle.where_(mask, x, value)
     return out
 
