@@ -93,10 +93,10 @@ class TestCompatibility(unittest.TestCase):
         else:
             out = [
                 paddle.tensor.fill_constant(
-                    shape=[3, 4], dtype='int32', value=3
+                    shape=[3, 4], dtype='float32', value=3
                 ).numpy(),
                 paddle.tensor.fill_constant(
-                    shape=[4, 5], dtype='bool', value=False
+                    shape=[4, 5], dtype='int64', value=2
                 ).numpy(),
             ]
         return out
