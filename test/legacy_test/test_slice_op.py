@@ -1207,7 +1207,7 @@ class TestSliceTensorArray(unittest.TestCase):
             paddle.tensor.array_write(x, zero, array=arr)
             paddle.tensor.array_write(y, zero + 1, array=arr)
 
-            sliced_item = paddle._pir_ops.slice_array_dense(arr, [0], [1])
+            sliced_item = paddle._pir_ops.slice_array_dense(arr, [0])
             self.assertTrue(sliced_item.is_dense_tensor_type())
             self.assertEqual(sliced_item.dtype, paddle.pir.core.DataType.INT32)
             # TODO(dev): sliced item shape should be [-1, 2]
