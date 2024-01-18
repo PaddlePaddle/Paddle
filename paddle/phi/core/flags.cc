@@ -16,22 +16,6 @@
 #include "paddle/common/flags.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
-#endif
-
-namespace phi {
-
-const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
-  return *GetMutableExportedFlagInfoMap();
-}
-
-ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
-  static ExportedFlagInfoMap g_exported_flag_info_map;
-  return &g_exported_flag_info_map;
-}
-
-}  // namespace phi
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * CUDNN related FLAG
  * Name: FLAGS_conv_workspace_size_limit

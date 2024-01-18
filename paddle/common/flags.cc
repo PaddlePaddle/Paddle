@@ -15,6 +15,19 @@
 
 #include "paddle/common/flags.h"
 
+namespace phi {
+
+const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
+  return *GetMutableExportedFlagInfoMap();
+}
+
+ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
+  static ExportedFlagInfoMap g_exported_flag_info_map;
+  return &g_exported_flag_info_map;
+}
+
+}  // namespace phi
+
 PHI_DEFINE_EXPORTED_int32(inner_op_parallelism,
                           0,
                           "number of threads for inner op");
