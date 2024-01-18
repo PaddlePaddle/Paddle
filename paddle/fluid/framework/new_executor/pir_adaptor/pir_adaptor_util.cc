@@ -354,15 +354,16 @@ void DeepCopyVariable(const Variable* src_var,
             "TensorArray shouldn't be null"));
       }
     }
-    dst_tensor_array->clear();
-    for (auto src_tensor : src_tensor_array) {
-      phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
-      if (src_tensor.numel() == 0) {
-        tmp_dst_tensor->set_meta(src_tensor.meta());
+    dst_tensor_array->resize(src_tensor_array.size());
+    for (size_t i = 0; i < src_tensor_array.size(); ++i) {
+      phi::DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
+      if (src_tensor_array.at(i).numel() == 0) {
+        tmp_dst_tensor.set_meta(src_tensor_array.at(i).meta());
         continue;
       }
-      framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-      dst_tensor_array->push_back(*tmp_dst_tensor);
+      framework::TensorCopy(src_tensor_array.at(i),
+                            src_tensor_array.at(i).place(),
+                            &tmp_dst_tensor);
     }
   } else if (src_var->IsType<VariableRefArray>()) {
     auto src_ref_array = src_var->Get<VariableRefArray>();
