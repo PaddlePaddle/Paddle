@@ -34,6 +34,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -70,18 +71,6 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
   }
   PADDLE_THROW(platform::errors::Unimplemented(
       "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
-}
-
-std::vector<int64_t> GetValueShape(const pir::Value& value) {
-  if (value.type().isa<DenseTensorType>()) {
-    return phi::vectorize(value.type().dyn_cast<DenseTensorType>().dims());
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return phi::vectorize(value.type().dyn_cast<SelectedRowsType>().dims());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get shape for dense "
-        "tensor."));
-  }
 }
 
 static const std::vector<pir::Type> InferMetaByValue(
@@ -220,7 +209,7 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
       use_cudnn = false;
     }
 
-    auto shape = GetValueShape(op->operand_source(0));
+    auto shape = pir::GetShapeFromValue(op->operand_source(0));
     if (shape[1] == 3) {
       use_cudnn = false;
     }

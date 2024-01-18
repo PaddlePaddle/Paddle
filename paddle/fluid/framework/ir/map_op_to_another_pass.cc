@@ -30,6 +30,7 @@ void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
 
   int found_count = 0;
   std::unordered_map<std::string, std::string> replaced_map{
+      {"conv2d", "conv2d"},
       {"depthwise_conv2d", "conv2d"},
       {"flatten_contiguous_range", "reshape2"},
   };
@@ -61,6 +62,10 @@ void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
         op_desc->SetAttr("use_cudnn", true);
 #endif
       }
+    } else if (op_type == "conv2d") {
+      op_desc->SetType(replaced_map[op_type]);
+      op_desc->RemoveAttr("use_cudnn");
+      op_desc->SetAttr("use_cudnn", true);
     }
     op_desc->Flush();
     ++found_count;

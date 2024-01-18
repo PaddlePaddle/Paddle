@@ -20,10 +20,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FusedConv2dAddActLayoutTransferPass : public FusePassBase {
+class TransferLayoutPass : public FusePassBase {
  public:
-  FusedConv2dAddActLayoutTransferPass() = default;
-  virtual ~FusedConv2dAddActLayoutTransferPass() = default;
+  TransferLayoutPass() = default;
+  virtual ~TransferLayoutPass() = default;
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
