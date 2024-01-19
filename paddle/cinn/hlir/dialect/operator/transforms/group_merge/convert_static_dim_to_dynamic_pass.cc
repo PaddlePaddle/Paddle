@@ -27,10 +27,11 @@ template <typename DoEachT>
 void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
   const std::string& env_var = FLAGS_cinn_convert_static_dim_to_dynamic;
   size_t start = 0;
-  while (start != std::string::npos) {
+  while (true) {
     size_t end = env_var.find(",", start);
     DoEach(env_var.substr(start, end));
-    start = end + (end != std::string::npos);
+    if (end == std::string::npos) return;
+    start = end + 1;
   }
 }
 
@@ -47,25 +48,22 @@ std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(
   if (constant <= 0) return std::nullopt;
   std::string symbol = raw_pair.substr(pos + 1, -1);
   if (symbol == "") return std::nullopt;
-  const auto& IsWord = [&](const char ch) {
-    if (ch >= 'a' && ch <= 'z') return true;
-    if (ch >= 'A' && ch <= 'Z') return true;
-    if (ch == '_') return true;
-    return false;
+  const auto& IsWordOrUnderLine = [&](const char ch) {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch == '_');
   };
-  const auto& IsDigit = [&](const char ch) { return ch >= '0' & ch <= '9'; };
-  if (!IsWord(symbol[0])) return std::nullopt;
+  const auto& IsDigit = [&](const char ch) { return ch >= '0' && ch <= '9'; };
+  if (!IsWordOrUnderLine(symbol[0])) return std::nullopt;
   for (int i = 1; i < symbol.size(); ++i) {
-    if (!(IsWord(symbol[i]) || IsDigit(symbol[i]))) return std::nullopt;
+    if (!(IsWordOrUnderLine(symbol[i]) || IsDigit(symbol[i]))) return std::nullopt;
   }
   return std::pair{int64_t{constant}, symbol};
 }
 
 std::unordered_map<int64_t, std::string> GetStaticDimToDyanmicFromFlag() {
-  std::unordered_map<int64_t, std::string> map{};
+  std::unordered_map<int64_t, std::string> map;
   ForEachRawStaticDimToDyanmicPair([&](const std::string& raw_pair) {
     if (auto pair = ParseRawStaticDimToDyanmicPair(raw_pair)) {
-      map.insert(pair.value().first(), pair.value().second);
+      map.insert(pair.value());
     }
   });
   return map;
@@ -84,7 +82,7 @@ std::optional<GlobalStaticDimToDynamicMapT> CalcGlobalStaticDimToDynamicMap() {
     }
     return false;
   };
-  GlobalStaticDimToDynamicMapT ret{};
+  GlobalStaticDimToDynamicMapT ret;
   for (const auto& pair : map) {
     if (DividedByOther(pair.first)) continue;
     ret.push_back(pair);
@@ -351,7 +349,7 @@ struct StaticDimToDynamicConverter {
     return symbol::ShapeOrDataDimExprs{ret_shape};
   }
 
-  template <typename DoEachT /*void(*)(int64_t c, const std::string&)*/>
+  template <typename DoEachT>
   void ForEachConstantToSymbol(const DoEachT& DoEach) {
     const auto& map = *GetGlobalStaticDimToDynamicMap();
     CHECK(map.has_value());
@@ -360,7 +358,7 @@ struct StaticDimToDynamicConverter {
     }
   }
 
-  template <typename DoEachT /*void(*)(pir::Value)*/>
+  template <typename DoEachT>
   void ForEachValue(const DoEachT& DoEach) {
     ForEachOp([&](pir::Operator* op) {
       for (int i = 0; i < op->num_operands(); ++i) {
@@ -372,7 +370,7 @@ struct StaticDimToDynamicConverter {
     });
   }
 
-  template <typename DoEachT /*void(*)(pir::Operator*)*/>
+  template <typename DoEachT>
   void ForEachOp(const DoEachT& DoEach) {
     for (auto* op : this->fusion_op->GetOperators()) {
       DoEach(op);
