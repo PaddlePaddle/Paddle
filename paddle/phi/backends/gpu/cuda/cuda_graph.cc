@@ -283,7 +283,7 @@ void CUDAGraphNodeLauncher::KernelNodeLaunch(
     parameterSetter_t parameterSetter,
     cudaKernelCallback_t cudakernelCallback) {
   if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-    unsigned int id = GenerateIndentifier();
+    unsigned int id = GenerateIdentifier();
 
     parameterSetters[cudaFunc][id] = parameterSetter;
     cudakernelCallback(id);

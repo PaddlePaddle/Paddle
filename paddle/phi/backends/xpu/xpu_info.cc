@@ -56,11 +56,11 @@ int GetDriverVersion() {
 
 //! Get the version of XPU Runtime
 int GetRuntimeVersion() {
-  uint32_t rumtime_version_major = 0;
-  uint32_t rumtime_version_minor = 0;
+  uint32_t runtime_version_major = 0;
+  uint32_t runtime_version_minor = 0;
   PADDLE_ENFORCE_XPU_SUCCESS(
-      xpu_get_runtime_version(&rumtime_version_major, &rumtime_version_minor));
-  int runtime_version = rumtime_version_major * 10 + rumtime_version_minor;
+      xpu_get_runtime_version(&runtime_version_major, &runtime_version_minor));
+  int runtime_version = runtime_version_major * 10 + runtime_version_minor;
   return runtime_version;
 }
 
