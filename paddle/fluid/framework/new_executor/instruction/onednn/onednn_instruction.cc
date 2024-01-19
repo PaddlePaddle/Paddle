@@ -331,6 +331,9 @@ void OneDNNPhiKernelInstruction::Run() {
       size_t(0), kernel_context_.InputsSize());
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto input = inputs[i];
+    if (input == nullptr) {
+      continue;
+    }
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
 

@@ -23,7 +23,6 @@
   extra_args : float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float scale_weights=1.0
   data_format_tensors : input
 
-
 - op : lrn
   extra_args : bool is_test=false
   data_format_tensors : x
