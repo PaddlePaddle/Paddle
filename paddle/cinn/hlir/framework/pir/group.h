@@ -21,6 +21,7 @@
 
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
@@ -91,8 +92,22 @@ struct Group {
     return new_group;
   }
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
+  symbol::ShapeOrDataDimExprs GetShapeOrDataExprs(
       const ::pir::Value& value) const {
+    if (value_to_shape_or_data_exprs.find(value) ==
+        value_to_shape_or_data_exprs.end()) {
+      const auto& shape = value.type().dyn_cast<::pir::ShapedTypeInterface>();
+      CHECK(shape && !shape.IsDynamicShape())
+          << "Value is not found in value_to_shape_or_data and also not "
+             "static.";
+      const auto& val_dims = shape.GetShape();
+      std::vector<symbol::DimExpr> static_shape;
+      static_shape.reserve(val_dims.size());
+      for (int i = 0; i < val_dims.size(); ++i) {
+        static_shape.emplace_back(val_dims.at(i));
+      }
+      return symbol::ShapeOrDataDimExprs(static_shape);
+    }
     CHECK(value_to_shape_or_data_exprs.count(value))
         << "value not found in value_to_shape_or_data_exprs";
     return value_to_shape_or_data_exprs.at(value);
