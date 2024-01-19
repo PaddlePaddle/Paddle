@@ -543,7 +543,7 @@ struct UniqueFlattendCUDAFunctor {
   }
 };
 
-// functor for processing a multi-dimentional DenseTensor
+// functor for processing a multi-dimensional DenseTensor
 template <typename Context, typename InT>
 struct UniqueDimsCUDAFunctor {
   const Context& ctx_;

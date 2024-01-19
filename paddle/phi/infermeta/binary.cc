@@ -508,7 +508,7 @@ void ConvInferMeta(const MetaTensor& input,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -550,7 +550,7 @@ void ConvInferMeta(const MetaTensor& input,
         strides[i],
         0,
         phi::errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -720,7 +720,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }

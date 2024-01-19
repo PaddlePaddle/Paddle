@@ -120,7 +120,7 @@ void TransposeTwoAxis(const DenseTensor& input,
 }
 
 // Apply eig to a batch of matrices, values, vectors and (intermidiate
-// DenseTensor) info are overritten
+// DenseTensor) info are overwritten
 template <typename T, typename Context>
 void LapackEig(DenseTensor* input,
                DenseTensor* values,

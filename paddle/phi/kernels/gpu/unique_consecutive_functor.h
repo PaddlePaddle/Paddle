@@ -412,7 +412,7 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& context,
       out_trans.dims().size(), context, out_trans, out, permute);
 }
 
-// functor for processing a multi-dimentional Tensor
+// functor for processing a multi-dimensional Tensor
 template <typename Context, typename InT>
 struct UniqueConsecutiveDimsCUDAFunctor {
   const Context& ctx_;
