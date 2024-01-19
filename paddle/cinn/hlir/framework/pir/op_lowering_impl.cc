@@ -441,7 +441,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         continue;
       }
 
-      VLOG(0) << op->name() << " ######## tensor->name: " << tensor->name;
       group->output_values.push_back(opresult);
       // output arg tensors
       group_func_arg_tensors->push_back(tensor);
@@ -468,7 +467,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         if (args_set.count("_" + tensor->name) != 0) {
           continue;
         }
-        VLOG(0) << op->name() << " ######## tensor->name: " << tensor->name;
 
         group->output_values.push_back(opresult);
         group_func_arg_tensors->push_back(tensor);
