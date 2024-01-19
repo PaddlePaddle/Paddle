@@ -62,23 +62,23 @@ struct MatchTrait<DimExpr, SymbolicDim> final {
 };
 
 template <typename T0>
-struct MatchTrait<DimExpr, Negative<T0>> final
-    : public UnaryDimExprMatchTrait<Negative, T0> {};
+struct MatchTrait<DimExpr, ::symbol::Negative<T0>> final
+    : public UnaryDimExprMatchTrait<::symbol::Negative, T0> {};
 
 template <typename T0>
-struct MatchTrait<DimExpr, Reciprocal<T0>> final
-    : public UnaryDimExprMatchTrait<Reciprocal, T0> {};
+struct MatchTrait<DimExpr, ::symbol::Reciprocal<T0>> final
+    : public UnaryDimExprMatchTrait<::symbol::Reciprocal, T0> {};
 
 template <typename T0>
-struct MatchTrait<DimExpr, Sum<T0>> final
-    : public ListDimExprMatchTrait<Sum, T0> {};
+struct MatchTrait<DimExpr, ::symbol::Add<T0>> final
+    : public ListDimExprMatchTrait<::symbol::Add, T0> {};
 
 template <typename T0>
-struct MatchTrait<DimExpr, Product<T0>> final
-    : public ListDimExprMatchTrait<Product, T0> {};
+struct MatchTrait<DimExpr, ::symbol::Mul<T0>> final
+    : public ListDimExprMatchTrait<::symbol::Mul, T0> {};
 
 template <typename T0>
-struct MatchTrait<DimExpr, BroadcastedDim<T0>> final
-    : public ListDimExprMatchTrait<BroadcastedDim, T0> {};
+struct MatchTrait<DimExpr, ::symbol::Broadcast<T0>> final
+    : public ListDimExprMatchTrait<::symbol::Broadcast, T0> {};
 
 }  // namespace cinn::adt

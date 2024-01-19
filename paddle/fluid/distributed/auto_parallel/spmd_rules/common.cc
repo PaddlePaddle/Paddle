@@ -82,7 +82,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     }
   }
 
-  // Resolute "mesh_dim shard by more than one axis" confict.
+  // Resolute "mesh_dim shard by more than one axis" conflict.
   // Now we just naive pick the first axis naively.
   // (TODO) use local cost model to pick the axis with lowest cost(in concern of
   // memory or communication or computation).
@@ -107,7 +107,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   return axis_to_dim_map;
 }
 
-// Rule1: A repicated dimension could be merged by any sharded dimension.
+// Rule1: A replicated dimension could be merged by any sharded dimension.
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
 // (TODO trigger heuristics cost model and reshard to handle axis sharded by
 // multiple dimension case.)
@@ -159,7 +159,7 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
   return partial_on_dims;
 }
 
-std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet) {
   PADDLE_ENFORCE_GE(
@@ -170,15 +170,15 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
           alphabet.size(),
           broadcast_ndim));
   PADDLE_ENFORCE_GE(broadcast_ndim,
-                    tenosr_ndim,
+                    tensor_ndim,
                     phi::errors::InvalidArgument(
-                        "broadcast ndim [%d] is less than tenosr ndim [%d]",
+                        "broadcast ndim [%d] is less than tensor ndim [%d]",
                         broadcast_ndim,
-                        tenosr_ndim));
-  if (tenosr_ndim <= 0) {
+                        tensor_ndim));
+  if (tensor_ndim <= 0) {
     return std::string();
   }
-  return alphabet.substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
+  return alphabet.substr(broadcast_ndim - tensor_ndim, tensor_ndim);
 }
 
 TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr) {

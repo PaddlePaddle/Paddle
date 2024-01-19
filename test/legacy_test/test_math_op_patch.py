@@ -390,6 +390,14 @@ class TestMathOpPatches(unittest.TestCase):
         )
         np.testing.assert_allclose(a_np @ b_np, c_np, rtol=1e-05)
 
+    @prog_scope()
+    def test_builtin_type_conversion(self):
+        a = paddle.static.data(name="a", shape=[])
+        with self.assertRaises(TypeError):
+            int(a)
+        with self.assertRaises(TypeError):
+            float(a)
+
 
 class TestDygraphMathOpPatches(unittest.TestCase):
     def init_data(self):

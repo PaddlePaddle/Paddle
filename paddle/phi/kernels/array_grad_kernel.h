@@ -14,23 +14,18 @@
 
 #pragma once
 
-#include <vector>
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/tensor_array.h"
 
-#include "paddle/cinn/adt/map_expr.h"
+namespace phi {
 
-namespace cinn::hlir::framework::pir {
-
-struct Group;
-using GroupList = std::vector<std::shared_ptr<Group>>;
-
-}  // namespace cinn::hlir::framework::pir
-
-namespace cinn::adt {
-
-MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::pir::Group>& group);
-
-void TryGenerateMapExprFromGroup(
-    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group);
-
-}  // namespace cinn::adt
+template <typename T, typename Context>
+void TensorToArrayKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         const DenseTensor& out_grad,
+                         int axis,
+                         bool use_stack,
+                         TensorArray* x_grad);
+}  // namespace phi

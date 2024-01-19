@@ -22,7 +22,8 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -182,7 +183,8 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.AddPass(::pir::CreatePdOpToKernelPass(place));
   pm.Run(prim_program.get());
 
@@ -283,9 +285,12 @@ double SubGraphChecker::RunCinnSpeed() {
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.AddPass(::pir::CreatePdOpToKernelPass(place));
   pm.Run(prim_program.get());
+
+  RemoveFetchOp(prim_program->block());
 
   std::vector<std::string> fetch_var_names;
   for (auto name : prim_program_info_.fetch_names) {

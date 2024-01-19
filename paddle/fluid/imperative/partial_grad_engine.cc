@@ -196,7 +196,7 @@ static void GetGraphInfoBetweenTargets(
     bool is_valid = false;
     for (auto &output_pair : op->GetOutsMap()) {
       if (!output_pair.second.IsGrad()) {
-        VLOG(10) << "Continueded output for : " << op->Type();
+        VLOG(10) << "Continued output for : " << op->Type();
         continue;
       }
 
@@ -220,7 +220,7 @@ static void GetGraphInfoBetweenTargets(
     is_valid = false;
     for (auto &input_pair : op->GetInsMap()) {
       if (!input_pair.second.IsGrad()) {
-        VLOG(10) << "Continueded input for : " << op->Type();
+        VLOG(10) << "Continued input for : " << op->Type();
         continue;
       }
 

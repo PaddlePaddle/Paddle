@@ -187,8 +187,8 @@ class LogSimplyStrRegistrar {
 }  // namespace enforce
 }  // namespace common
 
-// TODO(zhangbopd): This is a copy from pir, and shoud be removed after merge
-// this into common enfoce namespace above.
+// TODO(zhangbopd): This is a copy from pir, and should be removed after merge
+// this into common enforce namespace above.
 template <typename T>
 inline bool is_error(const T& stat) {
   return !stat;

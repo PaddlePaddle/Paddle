@@ -329,6 +329,105 @@ class TestPirArrayOp(unittest.TestCase):
             fetched_out1, np.array([3, 3], dtype="int32")
         )
 
+    @test_with_pir_api
+    def test_array_concat_backward(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.full(shape=[1, 4], fill_value=5, dtype="float32")
+            y = paddle.full(shape=[1, 4], fill_value=6, dtype="float32")
+            x.stop_gradient = False
+            y.stop_gradient = False
+
+            array = paddle.tensor.create_array(
+                dtype="float32", initialized_list=[x, y]
+            )
+            array.stop_gradient = False
+            (
+                output,
+                output_index,
+            ) = paddle.tensor.manipulation.tensor_array_to_tensor(
+                input=array, axis=1, use_stack=False
+            )
+
+            loss = paddle.mean(output)
+            dout = paddle.base.gradients(loss, [x, y])
+
+        place = (
+            paddle.base.CPUPlace()
+            if not paddle.base.core.is_compiled_with_cuda()
+            else paddle.base.CUDAPlace(0)
+        )
+        exe = paddle.base.Executor(place)
+        [fetched_out0, fetched_out1, fetched_out2] = exe.run(
+            main_program, feed={}, fetch_list=[output, dout[0], dout[1]]
+        )
+
+        np.testing.assert_array_equal(
+            fetched_out0,
+            np.array(
+                [[5.0, 5.0, 5.0, 5.0, 6.0, 6.0, 6.0, 6.0]], dtype="float32"
+            ),
+        )
+        np.testing.assert_array_equal(
+            fetched_out1,
+            np.array([[0.125, 0.125, 0.125, 0.125]], dtype="float32"),
+        )
+        np.testing.assert_array_equal(
+            fetched_out2,
+            np.array([[0.125, 0.125, 0.125, 0.125]], dtype="float32"),
+        )
+
+    @test_with_pir_api
+    def test_array_stack_backward(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.full(shape=[1, 4], fill_value=5, dtype="float32")
+            y = paddle.full(shape=[1, 4], fill_value=6, dtype="float32")
+            x.stop_gradient = False
+            y.stop_gradient = False
+
+            array = paddle.tensor.create_array(
+                dtype="float32", initialized_list=[x, y]
+            )
+            array.stop_gradient = False
+            (
+                output,
+                output_index,
+            ) = paddle.tensor.manipulation.tensor_array_to_tensor(
+                input=array, axis=0, use_stack=True
+            )
+
+            loss = paddle.mean(output)
+            dout = paddle.base.gradients(loss, [x, y])
+
+        place = (
+            paddle.base.CPUPlace()
+            if not paddle.base.core.is_compiled_with_cuda()
+            else paddle.base.CUDAPlace(0)
+        )
+        exe = paddle.base.Executor(place)
+        [fetched_out0, fetched_out1, fetched_out2] = exe.run(
+            main_program, feed={}, fetch_list=[output, dout[0], dout[1]]
+        )
+
+        np.testing.assert_array_equal(
+            fetched_out0,
+            np.array(
+                [[[5.0, 5.0, 5.0, 5.0]], [[6.0, 6.0, 6.0, 6.0]]],
+                dtype="float32",
+            ),
+        )
+        np.testing.assert_array_equal(
+            fetched_out1,
+            np.array([[0.125, 0.125, 0.125, 0.125]], dtype="float32"),
+        )
+        np.testing.assert_array_equal(
+            fetched_out2,
+            np.array([[0.125, 0.125, 0.125, 0.125]], dtype="float32"),
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

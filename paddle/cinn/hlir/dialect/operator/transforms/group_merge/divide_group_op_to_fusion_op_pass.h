@@ -21,9 +21,7 @@
 namespace cinn {
 namespace dialect {
 namespace ir {
-std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass(
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
-        nullptr);
+std::unique_ptr<::pir::Pass> CreateDivideGroupOpToFusionOpPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,14 @@
 
 #pragma once
 
-#include <vector>
+#include <memory>
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/pass/pass.h"
 
-#include "paddle/cinn/adt/map_expr.h"
-
-namespace cinn::hlir::framework::pir {
-
-struct Group;
-using GroupList = std::vector<std::shared_ptr<Group>>;
-
-}  // namespace cinn::hlir::framework::pir
-
-namespace cinn::adt {
-
-MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::pir::Group>& group);
-
-void TryGenerateMapExprFromGroup(
-    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group);
-
-}  // namespace cinn::adt
+namespace cinn {
+namespace dialect {
+namespace ir {
+std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
