@@ -760,6 +760,14 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : dequantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift}
+
 - op : dequantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
@@ -2493,7 +2501,6 @@
     {q : Q, r : R}
 
 - op : quantize
-  backward : quantize_grad
   inputs :
     input : Input
   outputs :
@@ -2600,6 +2607,14 @@
     out : Out
   attrs:
     axis : dim
+
+- op : requantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, shift_in : Shift_in, shift_out : Shift_out}
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
