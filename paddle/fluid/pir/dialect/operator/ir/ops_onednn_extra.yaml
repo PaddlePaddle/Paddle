@@ -1,4 +1,16 @@
 
+- op : add
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
+- op : add_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
+- op : add_double_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
+- op : add_triple_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
 - op : conv2d
   extra_args : bool is_test=false
   data_format_tensors : input

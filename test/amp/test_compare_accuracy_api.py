@@ -44,7 +44,7 @@ class TestCompareAccuracyApi(unittest.TestCase):
         self.calc(fp32_path, "float32")
         self.calc(fp16_path, "float16")
 
-        out_excel = "compary_accuracy_out_excel.csv"
+        out_excel = "compare_accuracy_out_excel.csv"
         paddle.amp.debugging.compare_accuracy(
             fp32_path,
             fp16_path,
@@ -57,7 +57,7 @@ class TestCompareAccuracyApi(unittest.TestCase):
         fp32_path = "workerlog_fp32_log_dir"
         fp16_path = "workerlog_fp16_null_log_dir"
         self.calc(fp32_path, "float32")
-        out_excel = "compary_accuracy_out_excel_2.csv"
+        out_excel = "compare_accuracy_out_excel_2.csv"
         paddle.amp.debugging.compare_accuracy(
             fp32_path,
             fp16_path,

@@ -52,7 +52,7 @@ class TensorParallelNet(paddle.base.dygraph.Layer):
 
 def filter_fn(param, pos_emb=True, layer_norm=True, bias=True):
     """
-    Layer fliter function for tensor parallelism transformer.
+    Layer filter function for tensor parallelism transformer.
 
     In tensor parallelism of transformer like model, there is 4 kind of param
     that are supposed to be the same in all tensor parallel peers:
