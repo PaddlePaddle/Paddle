@@ -22,6 +22,7 @@ from functools import lru_cache
 import numpy as np
 
 from paddle import pir
+from paddle.base.data_feeder import convert_uint16_to_float
 
 from ..pir import (
     Program as PirProgram,
@@ -166,12 +167,12 @@ def as_numpy(tensor, copy=False):
     if tensor._is_initialized():
         if copy:
             if tensor._dtype() == core.VarDesc.VarType.BF16:
-                return np.array(tensor._as_type(core.VarDesc.VarType.FP32))
+                return convert_uint16_to_float(np.array(tensor))
             else:
                 return np.array(tensor)
         else:
             if tensor._dtype() == core.VarDesc.VarType.BF16:
-                return np.asarray(tensor._as_type(core.VarDesc.VarType.FP32))
+                return convert_uint16_to_float(np.asarray(tensor))
             else:
                 return np.asarray(tensor)
     else:
