@@ -86,7 +86,9 @@ std::optional<GlobalStaticDimToDynamicMapT> CalcGlobalStaticDimToDynamicMap() {
   if (map.empty()) return std::nullopt;
   auto DividedByOther = [&](int64_t constant) {
     for (const auto& [other_constant, _] : map) {
-      if (constant % other_constant == 0) return true;
+      if (constant != other_constant && constant % other_constant == 0) {
+        return true;
+      }
     }
     return false;
   };
@@ -118,10 +120,51 @@ struct StaticDimToDynamicConverter {
       converted_once |= converted.has_value();
       return converted;
     });
+    UpdateValueDim();
     return converted_once;
   }
 
  private:
+  std::vector<std::int64_t> GetOriginValueShape(pir::Value value) {
+    auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
+    return ::common::vectorize(dim);
+  }
+
+  std::vector<std::int64_t> GetTargetValueShape(
+      const std::vector<symbol::DimExpr>& exprs) {
+    std::vector<std::int64_t> ret{};
+    for (const auto& expr : exprs) {
+      if (expr.Has<std::int64_t>()) {
+        ret.emplace_back(expr.Get<std::int64_t>());
+      } else {
+        ret.emplace_back(-1);
+      }
+    }
+    return ret;
+  }
+
+  void UpdateValueDim() {
+    pir::ShapeConstraintIRAnalysis* shape_analysis =
+        &pir::ShapeAnalysisManager::Instance().Get(
+            this->fusion_op->GetParentProgram());
+    ForEachValue([&](pir::Value value) {
+      CHECK(shape_analysis->HasShapeOrDataForValue(value));
+      const auto& origin_shape = GetOriginValueShape(value);
+      const auto& target_shape = GetTargetValueShape(
+          shape_analysis->GetShapeOrDataForValue(value).shape());
+      CHECK_EQ(origin_shape.size(), target_shape.size());
+      const auto& origin_type = value.type().dyn_cast<::pir::DenseTensorType>();
+      pir::DenseTensorType target_type =
+          pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                    origin_type.dtype(),
+                                    ::common::make_ddim(target_shape),
+                                    origin_type.data_layout(),
+                                    origin_type.lod(),
+                                    origin_type.offset());
+      value.set_type(target_type);
+    });
+  }
+
   bool AppliedOnce(const symbol::DimExpr& dim_expr, const std::string& symbol) {
     return std::visit(
         [&](const auto& impl) { return AppliedOnceImpl(impl, symbol); },
