@@ -145,7 +145,7 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
     rb_loops = sch->GetLoops(block_id);
     rf_block = sch->GetBlock(rf_block_id);
     sch->Bind(rb_loops.back(), "threadIdx.x");
-    sch->SetBuffer(rf_block, "shared");
+    sch->SetBuffer(rf_block, "local");
   }
   VLOG(6) << "Loop fusion and cross thread reduction: "
           << sch->GetModule().GetExprs()[0];

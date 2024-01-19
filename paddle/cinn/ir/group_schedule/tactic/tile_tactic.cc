@@ -42,7 +42,8 @@ void TileTactic::Init(ScheduleContext* context) {
     int sp_factor = GetFirstFactor(context_->bucket_info.sp_lower_bound);
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(context_->bucket_info.sp_lower_bound / sp_factor),
-        IterativeSpaceInfo::AxisType::kCudaBlockX);
+        has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaBlockY
+                    : IterativeSpaceInfo::AxisType::kCudaBlockX);
     VLOG(6) << "sp_space: <"
             << std::get<0>(context_->iter_space_info.sp_space.back())
             << ", AxisType["
@@ -51,7 +52,7 @@ void TileTactic::Init(ScheduleContext* context) {
             << "]>";
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(sp_factor),
-        has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaThreadY
+        has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaBlockX
                     : IterativeSpaceInfo::AxisType::kCudaThreadX);
     VLOG(6) << "sp_space: <"
             << std::get<0>(context_->iter_space_info.sp_space.back())
