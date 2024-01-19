@@ -52,6 +52,38 @@ class NameGener:
         self.non_param_name_generator = NameGenerator("var_")
 
     def __call__(self, var):
+        return self.get_str(var)
+
+    def get_str(self, var):
+        if isinstance(var, list):
+            return self.get_list_str(var)
+        elif isinstance(var, tuple):
+            return self.get_tuple_str(var)
+        elif isinstance(var, dict):
+            return self.get_dict_str(var)
+        elif isinstance(var, set):
+            return self.get_set_str(var)
+        else:
+            return self.get_obj_str(var)
+
+    def get_list_str(self, list_):
+        return "[{}]".format(", ".join(self.get_str(var) for var in list_))
+
+    def get_tuple_str(self, tuple_):
+        return "({},)".format(", ".join(self.get_str(var) for var in tuple_))
+
+    def get_dict_str(self, dict_):
+        return "{{{},}}".format(
+            ", ".join(
+                f"{self.get_str(k)}: {self.get_str(v)}"
+                for k, v in dict_.items()
+            )
+        )
+
+    def get_set_str(self, set_):
+        return "{{{},}}".format(", ".join(self.get_str(var) for var in set_))
+
+    def get_obj_str(self, var):
         if isinstance(var, Symbol):
             if var not in self.name_map:
                 self.register_symbol(var)
