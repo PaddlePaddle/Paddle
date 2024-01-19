@@ -49,6 +49,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
+    CAllreduceProd_Op::name(),
     CAllreduceSumOp::name(),
     CAllreduceSum_Op::name(),
     CReduceSumOp::name(),
@@ -61,6 +62,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     ShareDataOp::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
+    TdmSamplerOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
@@ -72,6 +74,8 @@ const std::unordered_set<std::string> LegacyOpList = {
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
+    paddle::onednn::dialect::QuantizeOp::name(),
+    paddle::onednn::dialect::RequantizeOp::name(),
 #endif
     CReduceMinOp::name(),
     PushSparseV2Op::name()};

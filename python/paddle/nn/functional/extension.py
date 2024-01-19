@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the extention functions
+# TODO: define the extension functions
 
 
 from paddle import _C_ops, tensor
@@ -103,10 +103,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     if in_dynamic_or_pir_mode():
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        if maxlen is not None:
-            out = _C_ops.sequence_mask(x, maxlen, dtype)
-            out.stop_gradient = True
-            return out
+        if maxlen is None:
+            maxlen = -1
+        out = _C_ops.sequence_mask(x, maxlen, dtype)
+        out.stop_gradient = True
+        return out
 
     helper = LayerHelper('sequence_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)

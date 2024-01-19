@@ -11,16 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 
-#include "paddle/common/ddim.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
+
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_registry.h"
 
 namespace {
 
@@ -69,9 +68,8 @@ class Conv2dBnFusePattern
         rewriter.Build<paddle::dialect::DivideOp>(
             bn_scale.dyn_cast<pir::OpResult>(), sqrt_op.out());
     // reshape scale
-    phi::DDim conv2d_filter_shape = pir::GetShapeFromValue(conv2d_filter);
-    phi::DDim bn_scale_shape =
-        bn_scale.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    auto conv2d_filter_shape = pir::GetShapeFromValue(conv2d_filter);
+    auto bn_scale_shape = pir::GetShapeFromValue(bn_scale);
     std::vector<int64_t> bn_scale_new_shape(conv2d_filter_shape.size(), 1);
     bn_scale_new_shape[0] = bn_scale_shape[0];
     paddle::dialect::ReshapeOp reshape_scale_op =
@@ -97,8 +95,7 @@ class Conv2dBnFusePattern
         rewriter.Build<paddle::dialect::SubtractOp>(
             bn_bias.dyn_cast<pir::OpResult>(), mul_bias_op.out());
     // reshape new bias
-    phi::DDim new_conv2d_out_shape =
-        pir::GetShapeFromValue(new_conv2d_op.out());
+    auto new_conv2d_out_shape = pir::GetShapeFromValue(new_conv2d_op.out());
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
     std::string data_format =
         new_conv2d_op.attribute<pir::StrAttribute>("data_format").AsString();

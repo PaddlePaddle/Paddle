@@ -93,6 +93,7 @@ class API_TestStaticCond(unittest.TestCase):
 
 
 class API_TestDygraphCond(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
         paddle.disable_static()
         # test calling results of 'cond' in dynamic mode
@@ -102,6 +103,7 @@ class API_TestDygraphCond(unittest.TestCase):
 
 
 class TestCondAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_dygraph_api_error(self):
         paddle.disable_static()
         # test raising errors when 'cond' is called in dygraph mode
@@ -154,6 +156,7 @@ class TestCondAPIError(unittest.TestCase):
 
 
 class TestCondEmptyTensorInput(unittest.TestCase):
+    @test_with_pir_api
     def test_dygraph_empty_tensor_input(self):
         paddle.disable_static()
         # test calling results of 'cond' when input is an empty tensor in dynamic mode
