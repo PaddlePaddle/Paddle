@@ -921,6 +921,7 @@ def get_setup_requires():
                 continue
             setup_requires_tmp += [setup_requires_i]
         setup_requires = setup_requires_tmp
+
         return setup_requires
     else:
         raise RuntimeError(
@@ -928,7 +929,61 @@ def get_setup_requires():
         )
 
 
-# patchelf --set-rpath  /usr/local/lib/python3.10/dist-packages/nvidia/cublas/lib/ /usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib/libcudnn_ops_infer.so.8
+def get_paddle_extra_install_requirements():
+    # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
+    paddle_cuda_install_requirements = os.getenv(
+        "PADDLE_CUDA_INSTALL_REQUIREMENTS", ""
+    )
+    if paddle_cuda_install_requirements is not None:
+        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+            "V11": (
+                "nvidia-cuda-nvrtc-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nvtx-cu11==11.8.86; platform_system == 'Linux' and platform_machine == 'x86_64'"
+            ),
+            "V12": (
+                "nvidia-cuda-nvrtc-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-runtime-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-cupti-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu12==8.9.2.26; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cublas-cu12==12.1.3.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cufft-cu12==11.0.2.54; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-curand-cu12==10.3.2.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusolver-cu12==11.4.5.107; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusparse-cu12==12.1.0.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nvtx-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64'"
+            ),
+        }
+        try:
+            output = subprocess.check_output(['nvcc', '--version']).decode(
+                'utf-8'
+            )
+            version_line = [
+                line for line in output.split('\n') if 'release' in line
+            ][0]
+            version = version_line.split(' ')[-1].split(',')[0]
+            cuda_major_version = version.split('.')[0]
+        except Exception as e:
+            raise ValueError("CUDA not found")
+
+        paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[
+            cuda_major_version
+        ].split("|")
+
+        return paddle_cuda_requires
+    else:
+        return []
+
+
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {
@@ -991,28 +1046,30 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
-    # if env_dict.get("WITH_CUDNN_DSO") == 'ON' and os.path.exists(
-    #     env_dict.get("CUDNN_LIBRARY")
-    # ):
-    #     package_data['paddle.libs'] += [
-    #         os.path.basename(env_dict.get("CUDNN_LIBRARY"))
-    #     ]
-    #     shutil.copy(env_dict.get("CUDNN_LIBRARY"), libs_path)
-    #     if (
-    #         sys.platform.startswith("linux")
-    #         and env_dict.get("CUDNN_MAJOR_VERSION") == '8'
-    #     ):
-    #         # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
-    #         # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
-    #         # libcudnn_adv_train.so
-    #         cudnn_lib_files = glob.glob(
-    #             os.path.dirname(env_dict.get("CUDNN_LIBRARY"))
-    #             + '/libcudnn_*so.8'
-    #         )
-    #         for cudnn_lib in cudnn_lib_files:
-    #             if os.path.exists(cudnn_lib):
-    #                 package_data['paddle.libs'] += [os.path.basename(cudnn_lib)]
-    #                 shutil.copy(cudnn_lib, libs_path)
+
+    if env_dict.get("WITH_CUDNN_DSO") == 'ON' and os.path.exists(
+        env_dict.get("CUDNN_LIBRARY")
+    ):
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("CUDNN_LIBRARY"))
+        ]
+        shutil.copy(env_dict.get("CUDNN_LIBRARY"), libs_path)
+        if (
+            sys.platform.startswith("linux")
+            and env_dict.get("CUDNN_MAJOR_VERSION") == '8'
+        ):
+            # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
+            # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
+            # libcudnn_adv_train.so
+            cudnn_lib_files = glob.glob(
+                os.path.dirname(env_dict.get("CUDNN_LIBRARY"))
+                + '/libcudnn_*so.8'
+            )
+            for cudnn_lib in cudnn_lib_files:
+                if os.path.exists(cudnn_lib):
+                    package_data['paddle.libs'] += [os.path.basename(cudnn_lib)]
+                    shutil.copy(cudnn_lib, libs_path)
+
     if not sys.platform.startswith("linux"):
         package_data['paddle.libs'] += [
             os.path.basename(env_dict.get("GNU_RT_LIB_2"))
@@ -1397,6 +1454,10 @@ def get_headers():
 def get_setup_parameters():
     # get setup_requires
     setup_requires = get_setup_requires()
+    if platform.system == 'Linux' and platform.machine() == 'x86_64':
+        paddle_cuda_requires = get_paddle_extra_install_requirements()
+        setup_requires += paddle_cuda_requires
+
     packages = [
         'paddle',
         'paddle.libs',

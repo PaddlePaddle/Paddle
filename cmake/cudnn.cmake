@@ -48,6 +48,7 @@ set(CUDNN_LIB_NAME "")
 
 if(LINUX)
   set(CUDNN_LIB_NAME "libcudnn.so.8")
+  set(CUDNN_OPS_INFER_LIB_NAME "libcudnn_ops_infer.so.8")
 endif()
 
 if(WIN32)
@@ -61,10 +62,17 @@ endif()
 
 find_library(
   CUDNN_LIBRARY
-  NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
+  NAMES ${CUDNN_LIB_NAME}
   PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
   NO_DEFAULT_PATH
   DOC "Path to cuDNN library.")
+
+find_library(
+  CUDNN_OPS_INFER_LIBRARY
+  NAMES ${CUDNN_OPS_INFER_LIB_NAME}
+  PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
+  NO_DEFAULT_PATH
+  DOC "Path to cuDNN_ops_infer library.")
 
 if(CUDNN_INCLUDE_DIR AND CUDNN_LIBRARY)
   set(CUDNN_FOUND ON)

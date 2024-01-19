@@ -543,13 +543,16 @@ if(WITH_PYTHON)
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
-  set_target_properties(
-    ${SHARD_LIB_NAME}
-    PROPERTIES
-      BUILD_WITH_INSTALL_RPATH TRUE
-      INSTALL_RPATH
-      "/usr/local/cuda/targets/x86_64-linux/lib;/usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cuda_runtime/lib;${CMAKE_BINARY_DIR}/python/paddle/libs;$ORIGIN"
-  )
+  # get_target_property(PADDLE_RPATH ${SHARD_LIB_NAME} INSTALL_RPATH)
+  # list(APPEND PADDLE_RPATH $ORIGIN/../libs $ORIGIN/../../nvidia/cuda_runtime/lib)
+  # set_target_properties(
+  #   ${SHARD_LIB_NAME}
+  #   PROPERTIES
+  #     BUILD_WITH_INSTALL_RPATH TRUE
+  #     INSTALL_RPATH
+  #     "${PADDLE_RPATH}"
+  # )
+  #"/usr/local/cuda/targets/x86_64-linux/lib;/usr/local/lib/python${PY_VERSION}/dist-packages/nvidia/cuda_runtime/lib;$ORIGIN/../libs"
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)
     #set_target_properties(${SHARD_LIB_NAME} PROPERTIES LINK_FLAGS "-Wl,--whole-archive")
