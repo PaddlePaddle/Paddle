@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import types
 import unittest
 
 import numpy as np
@@ -24,7 +23,6 @@ from utils import dygraph_guard
 
 import paddle
 from paddle.base import core
-from paddle.base.dygraph import no_grad
 
 paddle.enable_static()
 
@@ -351,13 +349,14 @@ class TestASGDSimple(unittest.TestCase):
                 loss = paddle.mean(output)
 
                 optimizer = paddle.optimizer.ASGD(
-                    batch_num=2,
+                    batch_num=3,
                 )
+
                 optimizer.minimize(loss)
 
             exe.run(startup_program)
             out = []
-            for _ in range(5):
+            for _ in range(10):
                 (loss_data,) = exe.run(
                     train_program, feed={"input": self.data}, fetch_list=[loss]
                 )
@@ -372,9 +371,9 @@ class TestASGDSimple(unittest.TestCase):
             out = []
             model = paddle.nn.Linear(2, 2)
             optimizer = paddle.optimizer.ASGD(
-                batch_num=2, parameters=model.parameters()
+                batch_num=3, parameters=model.parameters()
             )
-            for _ in range(5):
+            for _ in range(10):
                 output = model(paddle.to_tensor(self.data))
                 loss = paddle.mean(output)
                 out.append(loss.numpy())
@@ -389,32 +388,6 @@ class TestASGDSimple(unittest.TestCase):
         out1 = self.run_dygraph()
         out2 = self.run_static()
         np.testing.assert_allclose(out1, out2)
-
-
-@no_grad
-def _monkey_append_optimize_op(self, block, param_and_grad):
-    (
-        param_and_grad,
-        lr,
-        d,
-        y,
-        m,
-        master_weight,
-        find_master,
-        index,
-    ) = self._append_optimize_op_step0(block, param_and_grad)
-
-    param_name = param_and_grad[0].name
-    if self.sign:
-        self.param = {}
-        self.grad = {}
-        self.sign = False
-    self.param[param_name] = param_and_grad[0]
-    self.grad[param_name] = param_and_grad[1]
-
-    return self._append_optimize_op_step1(
-        block, param_and_grad, lr, d, y, m, master_weight, find_master, index
-    )
 
 
 class TestASGDValidation:
@@ -440,6 +413,7 @@ class TestASGDValidation:
 
             param_validation = {}
             grad_validation = {}
+            lr_validation = {}
             d_validation = {}
             ys_validation = {}
             y_validation = {}
@@ -449,10 +423,6 @@ class TestASGDValidation:
             optimizer = paddle.optimizer.ASGD(
                 batch_num=self.batch_num, parameters=model.parameters()
             )
-            optimizer._append_optimize_op = types.MethodType(
-                _monkey_append_optimize_op, optimizer
-            )
-            optimizer.sign = True
 
             for param in model.parameters():
                 d_validation[param.name] = np.zeros(param.shape)
@@ -475,10 +445,8 @@ class TestASGDValidation:
                 optimizer.step()
 
                 for param in model.parameters():
-                    grad_validation[param.name] = optimizer.grad[
-                        param.name
-                    ].numpy()
-                    lr_validation = optimizer.get_lr()
+                    grad_validation[param.name] = param.grad.numpy()
+                    lr_validation[param.name] = optimizer.get_lr()
                     y_validation[param.name] = ys_validation[param.name][
                         i % self.batch_num
                     ]
@@ -493,13 +461,13 @@ class TestASGDValidation:
                     n_validation[param.name] = min(i + 1, self.batch_num)
                     param_validation[param.name] = (
                         param_validation[param.name]
-                        - lr_validation
+                        - lr_validation[param.name]
                         * d_validation[param.name]
                         / n_validation[param.name]
                     )
 
                     np.testing.assert_allclose(
-                        optimizer.param[param.name].numpy(),
+                        param.numpy(),
                         param_validation[param.name],
                     )
 

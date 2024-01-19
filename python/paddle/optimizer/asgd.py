@@ -20,7 +20,7 @@ from paddle.tensor.creation import to_tensor
 
 from ..base import framework
 from ..base.dygraph import no_grad
-from ..base.framework import in_dygraph_mode, in_dynamic_or_pir_mode
+from ..base.framework import in_dygraph_mode, in_pir_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -119,7 +119,7 @@ class ASGD(Optimizer):
         self.type = "asgd"
         self._multi_precision = multi_precision
         self._master_weights = {}
-        self._n = [batch_num]
+        self._n = batch_num
         self._n_tensor = None
 
     def _create_accumulators(self, block, parameters):
@@ -149,14 +149,16 @@ class ASGD(Optimizer):
                 p.dtype,
                 0,
             )
+
             # Sometimes p.shape is a tuple, so we need to change it to a list
             self._add_accumulator(
                 self._y_acc_str,
                 p_new,
                 p.dtype,
                 0,
-                self._n + list(p.shape),
+                [self._n] + list(p.shape),
             )
+
             self._add_accumulator(
                 self._m_acc_str,
                 p_new,
@@ -164,9 +166,12 @@ class ASGD(Optimizer):
                 0,
                 [1],
             )
+
             self._already_create_accumulater.add(p.name)
 
-    def _assign_accumulator_master(self, name, param, assign_value, index):
+    def _assign_accumulator_master(
+        self, block, name, param, assign_value, index
+    ):
         if self._name is not None:
             name = self._name + "_" + name
         find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
@@ -183,20 +188,41 @@ class ASGD(Optimizer):
             raise Exception(
                 f"Accumulator {name} does not exist for parameter {target_name}"
             )
-        if index is None:
-            self._accumulators[name][target_name] = paddle.assign(assign_value)
+
+        if in_pir_mode():
+            if index is None:
+                self._accumulators[name][target_name] = paddle.assign(
+                    assign_value
+                )
+            else:
+                self._accumulators[name][target_name][index] = paddle.assign(
+                    assign_value
+                )
         else:
-            self._accumulators[name][target_name][index] = paddle.assign(
-                assign_value
+            assert isinstance(block, framework.Block)
+
+            assign_inputs = {
+                "X": assign_value,
+            }
+
+            assign_outputs = {
+                "Out": self._accumulators[name][target_name],
+            }
+
+            block.append_op(
+                type="assign",
+                inputs=assign_inputs,
+                outputs=assign_outputs,
             )
 
-    def _append_optimize_op_step0(self, block, param_and_grad):
+    @no_grad
+    def _append_optimize_op(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
         if self._n_tensor is None:
             self._n_tensor = to_tensor(
-                self._n,
+                [self._n],
             )
 
         d = self._get_accumulator_master(self._d_acc_str, param_and_grad[0])
@@ -206,18 +232,6 @@ class ASGD(Optimizer):
         ys = self._get_accumulator_master(self._y_acc_str, param_and_grad[0])
         index = paddle.mod(m, self._n_tensor).item()
         y = paddle.assign(ys[index])
-
-        m = paddle.assign(paddle.add(m, to_tensor([1], dtype=m.dtype)))
-
-        # The y in the static graph has one more dimension than the y in the dynamic graph.
-        # So we should unify the shape of y in both dynamic and static graph.
-        # eg:
-        #   dynamic graph: y.shape is [2, 2]
-        #   static graph: y.shape is [1, 2, 2]
-        # so we should do
-        #   static graph: y = y[0]
-        if not in_dygraph_mode():
-            y = y[0]
 
         find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
             param_and_grad[0].dtype
@@ -230,21 +244,36 @@ class ASGD(Optimizer):
 
         lr = self._create_param_lr(param_and_grad)
 
-        return param_and_grad, lr, d, y, m, master_weight, find_master, index
+        if in_dygraph_mode():
+            m.add_(to_tensor([1], dtype=m.dtype))
 
-    def _append_optimize_op_step1(
-        self,
-        block,
-        param_and_grad,
-        lr,
-        d,
-        y,
-        m,
-        master_weight,
-        find_master,
-        index,
-    ):
-        if in_dynamic_or_pir_mode():
+            _C_ops.asgd_(
+                param_and_grad[0],
+                param_and_grad[1],
+                lr,
+                d,
+                ys[index],
+                paddle.fmin(m, self._n_tensor),
+                master_weight,
+                find_master,
+            )
+
+            return None
+        elif in_pir_mode():
+            m = paddle.assign(paddle.add(m, to_tensor([1], dtype=m.dtype)))
+            self._assign_accumulator_master(
+                block, self._m_acc_str, param_and_grad[0], m, None
+            )
+
+            # The y in the static graph has one more dimension than the y in the dynamic graph.
+            # So we should unify the shape of y in both dynamic and static graph.
+            # eg:
+            #   dynamic graph: y.shape is [2, 2]
+            #   static graph: y.shape is [1, 2, 2]
+            # so we should do
+            #   static graph: y = y[0]
+            y = y[0]
+
             _C_ops.asgd_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -257,17 +286,38 @@ class ASGD(Optimizer):
             )
 
             self._assign_accumulator_master(
-                self._m_acc_str, param_and_grad[0], m, None
-            )
-            self._assign_accumulator_master(
-                self._y_acc_str, param_and_grad[0], y, index
+                block, self._y_acc_str, param_and_grad[0], y, index
             )
 
             return None
         else:
             assert isinstance(block, framework.Block)
             # create the optimize op
-            inputs = {
+            add_inputs = {
+                "X": to_tensor(m),
+                "Y": to_tensor([1], dtype=m.dtype),
+            }
+
+            add_outputs = {
+                "Out": m,
+            }
+
+            block.append_op(
+                type="elementwise_add",
+                inputs=add_inputs,
+                outputs=add_outputs,
+            )
+
+            # The y in the static graph has one more dimension than the y in the dynamic graph.
+            # So we should unify the shape of y in both dynamic and static graph.
+            # eg:
+            #   dynamic graph: y.shape is [2, 2]
+            #   static graph: y.shape is [1, 2, 2]
+            # so we should do
+            #   static graph: y = y[0]
+            y = y[0]
+
+            asgd_inputs = {
                 "param": param_and_grad[0],
                 "grad": param_and_grad[1],
                 "learning_rate": lr,
@@ -276,51 +326,33 @@ class ASGD(Optimizer):
                 "n": paddle.fmin(m, self._n_tensor),
             }
 
-            outputs = {
+            asgd_outputs = {
                 "param_out": param_and_grad[0],
                 "d_out": d,
                 "y_out": y,
             }
 
-            attrs = {"multi_precision": find_master}
+            asgd_attrs = {"multi_precision": find_master}
 
             if find_master:
-                inputs["master_param"] = master_weight
-                outputs["master_param_out"] = master_weight
+                asgd_inputs["master_param"] = master_weight
+                asgd_outputs["master_param_out"] = master_weight
 
             asgd_op = block.append_op(
                 type=self.type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=attrs,
+                inputs=asgd_inputs,
+                outputs=asgd_outputs,
+                attrs=asgd_attrs,
                 stop_gradient=True,
             )
 
-            return asgd_op
+            ys = paddle.static.setitem(ys, index, y)
 
-    @no_grad
-    def _append_optimize_op(self, block, param_and_grad):
-        (
-            param_and_grad,
-            lr,
-            d,
-            y,
-            m,
-            master_weight,
-            find_master,
-            index,
-        ) = self._append_optimize_op_step0(block, param_and_grad)
-        return self._append_optimize_op_step1(
-            block,
-            param_and_grad,
-            lr,
-            d,
-            y,
-            m,
-            master_weight,
-            find_master,
-            index,
-        )
+            self._assign_accumulator_master(
+                block, self._y_acc_str, param_and_grad[0], ys, None
+            )
+
+            return asgd_op
 
     def _update_param_group(self, parameters):
         parameters = parameters.get('params')
