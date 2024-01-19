@@ -17,7 +17,6 @@
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_solver.h"
-#include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/kgroup.h"
@@ -33,7 +32,6 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 
 #include "glog/logging.h"
 
@@ -453,37 +451,15 @@ MapExpr GenerateMapExpr(
   return GenerateMapExpr(kgroup);
 }
 
-void TryGenerateMapExprFromGraph(
-    const hlir::framework::pir::GroupList& groups) {
-  if (!FLAGS_cinn_enable_map_expr) {
-    return;
-  }
-  for (const auto& fusion_group : groups) {
-    fusion_group->set_graph_symbolic_dim_infer_ctx(
-        std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get()));
-    const auto& map_expr = GenerateMapExpr(fusion_group);
-    VLOG(4) << ToTxtString(map_expr, fusion_group->group_id);
-    fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(
-        map_expr,
-        fusion_group->graph_symbolic_dim_infer_ctx()
-            ->map_expr_symbolic2dialect_symbolic()));
-  }
-}
-
 void TryGenerateMapExprFromGroup(
     const std::shared_ptr<hlir::framework::pir::Group>& fusion_group) {
   if (!FLAGS_cinn_enable_map_expr) {
     return;
   }
-  fusion_group->set_graph_symbolic_dim_infer_ctx(
-      std::make_unique<config::GraphSymbolicDimInferCtx>(fusion_group.get()));
   const auto& map_expr = GenerateMapExpr(fusion_group);
   VLOG(4) << "Generate MapExpr: \n"
           << ToTxtString(map_expr, fusion_group->group_id);
-  fusion_group->set_map_expr_ctx(
-      std::make_shared<MapExprCtx>(map_expr,
-                                   fusion_group->graph_symbolic_dim_infer_ctx()
-                                       ->map_expr_symbolic2dialect_symbolic()));
+  fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
 }
 
 }  // namespace cinn::adt

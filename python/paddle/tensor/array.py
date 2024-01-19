@@ -60,7 +60,7 @@ def array_length(array):
             or not array.is_dense_tensor_array_type()
         ):
             raise TypeError(
-                "array should be tensor array vairable in array_length Op"
+                "array should be tensor array variable in array_length Op"
             )
         return paddle._pir_ops.array_length(array)
     else:
@@ -69,7 +69,7 @@ def array_length(array):
             or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
         ):
             raise TypeError(
-                "array should be tensor array vairable in array_length Op"
+                "array should be tensor array variable in array_length Op"
             )
 
         helper = LayerHelper('array_length', **locals())
@@ -141,7 +141,7 @@ def array_read(array, i):
             or not array.is_dense_tensor_array_type()
         ):
             raise TypeError(
-                "array should be tensor array vairable in array_length Op"
+                "array should be tensor array variable in array_length Op"
             )
         return paddle._pir_ops.array_read(array, i)
     else:
@@ -151,7 +151,7 @@ def array_read(array, i):
             not isinstance(array, Variable)
             or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
         ):
-            raise TypeError("array should be tensor array vairable")
+            raise TypeError("array should be tensor array variable")
         out = helper.create_variable_for_type_inference(dtype=array.dtype)
         helper.append_op(
             type='read_from_array',
@@ -220,13 +220,13 @@ def array_write(x, i, array=None):
     elif in_pir_mode():
         check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
         if not isinstance(x, paddle.pir.Value):
-            raise TypeError(f"x should be pir.Value, but recevied {type(x)}.")
+            raise TypeError(f"x should be pir.Value, but received {type(x)}.")
         if array is not None:
             if (
                 not isinstance(array, paddle.pir.Value)
                 or not array.is_dense_tensor_array_type()
             ):
-                raise TypeError("array should be tensor array vairable")
+                raise TypeError("array should be tensor array variable")
         if array is None:
             array = paddle._pir_ops.create_array(x.dtype)
 
@@ -242,7 +242,7 @@ def array_write(x, i, array=None):
                 or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
             ):
                 raise TypeError(
-                    "array should be tensor array vairable in array_write Op"
+                    "array should be tensor array variable in array_write Op"
                 )
         if array is None:
             array = helper.create_variable(
@@ -302,7 +302,7 @@ def create_array(dtype, initialized_list=None):
     for val in array:
         if not isinstance(val, (Variable, paddle.pir.Value)):
             raise TypeError(
-                "All values in `initialized_list` should be Variable or pir.Value, but recevied {}.".format(
+                "All values in `initialized_list` should be Variable or pir.Value, but received {}.".format(
                     type(val)
                 )
             )
@@ -314,7 +314,7 @@ def create_array(dtype, initialized_list=None):
             dtype = paddle.base.framework.convert_np_dtype_to_dtype_(dtype)
         out = paddle._pir_ops.create_array(dtype)
         for val in array:
-            out = paddle._pir_ops.array_write_(out, val, array_length(out))
+            paddle._pir_ops.array_write_(out, val, array_length(out))
         return out
     else:
         helper = LayerHelper("array", **locals())

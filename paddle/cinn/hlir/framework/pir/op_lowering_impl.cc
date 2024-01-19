@@ -487,9 +487,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     int tensor_dim_size = tensor_dim.size();
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
-      if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
+      if (tensor_dim[tensor_arg_dim_idx]->IsUniSymbolic()) {
         const std::string symbol_name =
-            tensor_dim[tensor_arg_dim_idx]->GetSymbolName();
+            tensor_dim[tensor_arg_dim_idx]->ToString();
         if (int_args_set.count(symbol_name) != 0) {
           continue;
         }
@@ -723,7 +723,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
     const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
     std::vector<ir::Dim> sym_shape;
     for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(ir::Dim(input_id, sym));
+      sym_shape.emplace_back(input_id, sym);
     }
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
@@ -802,7 +802,7 @@ void OpLowererImpl::CollectOutputInfo(
       auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
       std::vector<ir::Dim> sym_shape;
       for (auto& sym : sym_vec) {
-        sym_shape.emplace_back(ir::Dim(output_id, sym));
+        sym_shape.emplace_back(output_id, sym);
       }
       out_shapes->push_back(std::move(sym_shape));
     }
