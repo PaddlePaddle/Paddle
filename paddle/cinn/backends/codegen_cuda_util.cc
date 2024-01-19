@@ -15,6 +15,7 @@
 #include "paddle/cinn/backends/codegen_cuda_util.h"
 
 #include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
@@ -88,6 +89,9 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   // process host func
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
+
+  CollectDeviceKernelSharedMemoryVisitor collect_dyn_shared_mem;
+  Expr shared_mem_bytes = collect_dyn_shared_mem(func);
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
                      runtime::intrinsic::call_cuda_kernel,
@@ -100,6 +104,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                       Expr(func_node->cuda_axis_info.block_dim(0)),  // block_x
                       Expr(func_node->cuda_axis_info.block_dim(1)),  // block_y
                       Expr(func_node->cuda_axis_info.block_dim(2)),  // block_z
+                      shared_mem_bytes,  // shared_mem
                       kernel_stream_},
                      {},
                      ir::CallType::Extern,
@@ -134,6 +139,23 @@ Expr detail::CollectBucketStrategyHostFunctionVisitor::CreateDeviceFunction(
   auto *lowered_func = copied.as_lowered_func();
   lowered_func->name = GenDeviceKernelName(lowered_func->name, predicate);
   return copied;
+}
+
+void detail::CollectDeviceKernelSharedMemoryVisitor::Visit(
+    const ir::_Buffer_ *buffer) {
+  if (buffer->memory_type != ir::MemoryType::GPUShared) {
+    return;
+  }
+  int type_bytes = buffer->dtype.bytes();
+  Expr buffer_size(1);
+  for (int i = 0; i < buffer->shape.size(); ++i) {
+    buffer_size = buffer_size * buffer->shape[i];
+  }
+  buffer_size = buffer_size * Expr(type_bytes);
+  buffer_size = common::AutoSimplify(buffer_size);
+
+  sum_dyn_shared_bytes_ = sum_dyn_shared_bytes_ + buffer_size;
+  sum_dyn_shared_bytes_ = common::AutoSimplify(sum_dyn_shared_bytes_);
 }
 
 }  // namespace backends

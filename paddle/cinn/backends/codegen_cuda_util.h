@@ -46,6 +46,18 @@ std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module);
 
 namespace detail {
 
+struct CollectDeviceKernelSharedMemoryVisitor : public ir::IRVisitor {
+  ir::Expr operator()(const ir::Expr& e) {
+    IRVisitor::Visit(&e);
+    return sum_dyn_shared_bytes_;
+  }
+
+  void Visit(const ir::_Buffer_* buffer);
+
+ private:
+  ir::Expr sum_dyn_shared_bytes_{0};
+};
+
 struct CollectHostFunctionVisitor : public ir::IRMutator<> {
   explicit CollectHostFunctionVisitor(const std::string& module_name)
       : host_module_builder(module_name + "_host",
@@ -70,6 +82,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
       auto host_func = CreateHostFunctionGivenDeviceKernel(op);
       host_module_builder.AddFunctionWithoutOptim(
           host_func.as_lowered_func_ref());
+
       device_module_builder.AddFunctionWithoutOptim(
           CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
     }
@@ -103,6 +116,9 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
+    CollectDeviceKernelSharedMemoryVisitor collect_dyn_shared_mem;
+    Expr shared_mem_bytes = collect_dyn_shared_mem(func->body);
+
     auto call_extern_api =
         ir::Call::Make(Void(),
                        runtime::intrinsic::call_cuda_kernel,
@@ -115,6 +131,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                         Expr(func->cuda_axis_info.block_dim(0)),  // block_x
                         Expr(func->cuda_axis_info.block_dim(1)),  // block_y
                         Expr(func->cuda_axis_info.block_dim(2)),  // block_z
+                        shared_mem_bytes,
                         kernel_stream},
                        {},
                        ir::CallType::Extern,

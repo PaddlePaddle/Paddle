@@ -457,6 +457,7 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<int>()     // block_x
       .AddInputType<int>()     // block_y
       .AddInputType<int>()     // block_z
+      .AddInputType<int>()     // shared_mem
       .AddInputType<void *>()  // stream
       .End();
 

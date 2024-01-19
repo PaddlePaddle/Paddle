@@ -21,6 +21,7 @@
 #include <set>
 #include <unordered_set>
 
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
@@ -258,8 +259,34 @@ void CodeGenCUDA_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
   CHECK_NE(buffer->type(), Void());
-  auto print_gpu_memory = [&](const std::string &mark) {
-    str_ += mark;
+
+  if (buffer->memory_type == ir::MemoryType::GPUShared) {
+    if (MathEqual(dyn_shared_mem_offset, Expr(-1))) {
+      // The first shared memory buffer
+      str_ += "extern __shared__ byte dyn_shared_buffer[]";
+      dyn_shared_mem_offset = Expr(0);
+    }
+    std::string type_name = GetTypeRepr(buffer->dtype);
+    str_ += type_name;
+    str_ += " *";
+    str_ += buffer->name;
+    str_ += " = (";
+    str_ += type_name;
+    str_ += "*)&dyn_shared_buffer[";
+    IrPrinter::Visit(dyn_shared_mem_offset);
+    str_ += " ]";
+
+    Expr buffer_size(1);
+    for (int i = 0; i < buffer->shape.size(); ++i) {
+      buffer_size = buffer_size * buffer->shape[i];
+    }
+    int type_bytes = buffer->dtype.bytes();
+    buffer_size = buffer_size * Expr(type_bytes);
+    optim::Simplify(&buffer_size);
+
+    dyn_shared_mem_offset = dyn_shared_mem_offset + buffer_size;
+    optim::Simplify(&dyn_shared_mem_offset);
+  } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
     str_ += GetTypeRepr(buffer->dtype);
     str_ += " ";
     str_ += buffer->name;
@@ -273,19 +300,9 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     optim::Simplify(&buffer_size);
     IrPrinter::Visit(buffer_size);
     str_ += " ]";
-  };
-  switch (buffer->memory_type) {
-    case ir::MemoryType::GPUShared:
-      print_gpu_memory("__shared__ ");
-      break;
-
-    case ir::MemoryType::GPULocal:
-      print_gpu_memory("");
-      break;
-
-    default:
-      LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
-                 << ", type " << buffer->memory_type;
+  } else {
+    LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
+               << ", type " << buffer->memory_type;
   }
 }
 

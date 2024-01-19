@@ -113,6 +113,8 @@ class CodeGenCUDA_Dev : public CodeGenC {
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
   static const std::string source_header_;
+
+  ir::Expr dyn_shared_mem_offset{-1};
 };
 
 }  // namespace backends
