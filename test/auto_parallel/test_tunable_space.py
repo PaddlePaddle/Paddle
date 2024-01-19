@@ -85,7 +85,7 @@ class TestTunableSpace(unittest.TestCase):
         self.assertEqual(len(space.variables), 1)
         self.assertEqual(space.variables["float_range"].name, "float_range")
 
-    def test_varibles(self):
+    def test_variables(self):
         space = ts.TunableSpace()
         choice = space.choice("choice", [1, 2, 3, 4], default=4)
         self.assertEqual(space.values["choice"], 4)
@@ -134,7 +134,7 @@ class TestTunableSpace(unittest.TestCase):
         self.assertEqual(new_space.variables["int_range"].step, 1)
         self.assertEqual(new_space.variables["int_range"].endpoint, False)
 
-    def test_expection(self):
+    def test_exception(self):
         space = ts.TunableSpace()
         flag = True
         try:

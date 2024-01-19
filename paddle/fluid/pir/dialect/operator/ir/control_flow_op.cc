@@ -469,7 +469,7 @@ std::vector<std::vector<pir::Value>> WhileOp::Vjp(
       PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
                         true,
                         phi::errors::InvalidArgument(
-                            "The last container in foward while op must used "
+                            "The last container in forward while op must used "
                             "empty while construct while_grad op"));
       break;
     }

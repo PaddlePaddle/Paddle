@@ -27,7 +27,7 @@ std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
       engine_map_.count(name),
       1,
       phi::errors::InvalidArgument(
-          "Funciton named %s is not existed in engine_map_.", name));
+          "Function named %s is not existed in engine_map_.", name));
   return engine_map_.at(name);
 }
 

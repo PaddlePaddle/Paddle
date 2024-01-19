@@ -96,7 +96,7 @@ std::vector<std::vector<pir::Value>> {op_class_name}::Vjp(pir::Operation* op, co
     VLOG(6) << "Vjp prepare Prepare attributes of {op_grad_name}";
 {attribute_code}
 
-    VLOG(6) << "Vjp prepare call {op_phi_name}'s vjp inteface";
+    VLOG(6) << "Vjp prepare call {op_phi_name}'s vjp interface";
 {call_vjp_code}
 
     VLOG(6) << "Vjp prepare stop gradient of {op_grad_name}";
