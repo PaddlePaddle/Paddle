@@ -129,8 +129,6 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
             z = paddle.add(x=x, y=y)
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
-            # TODO(xiaoguoguo626807): Remove this stop_gradient=False.
-            init_array.stop_gradient = False
             array = paddle.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
