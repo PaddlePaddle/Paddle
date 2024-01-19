@@ -95,15 +95,15 @@ class DemoNetPP(nn.Layer):
         self._mesh1 = mesh1
         self.mlp0 = MLP(mesh0, False, "block0")
         self.mlp1 = MLP(mesh1, False, "block1")
-        self.varnmes = []
+        self.varnames = []
 
     def forward(self, x):
         # stage0
         out0 = self.mlp0(x)
 
-        self.varnmes.append(out0.name)
+        self.varnames.append(out0.name)
         out0 = dist.reshard(out0, self._mesh1, [Replicate()])
-        self.varnmes.append(out0.name)
+        self.varnames.append(out0.name)
 
         # stage1
         out1 = self.mlp1(out0)
