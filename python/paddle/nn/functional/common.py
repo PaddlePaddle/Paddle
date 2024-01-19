@@ -72,7 +72,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
         strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
+                                  or an integer stride treated as [stride, stride].
                                   For default, strides will be [1, 1].
         paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
@@ -91,7 +91,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     Returns:
         Tensor, The tensor corresponding to the sliding local blocks.
-        The output shape is [N, Cout, Lout] as decriabled above.
+        The output shape is [N, Cout, Lout] as described above.
         Cout is the  total number of values within each block,
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
@@ -193,7 +193,7 @@ def interpolate(
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
-    in_d is the depth of the intput tensor.
+    in_d is the depth of the input tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -340,7 +340,7 @@ def interpolate(
                                corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
-                            it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:`NCW`, `NWC`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`,
@@ -466,7 +466,7 @@ def interpolate(
             + " received but only `NCDHW` or `NDHWC` supported for 5-D input."
         )
 
-    def _is_list_or_turple_(data):
+    def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))
 
     if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
@@ -509,7 +509,7 @@ def interpolate(
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
                         out_shape[i] = dim.item()
-            if not (_is_list_or_turple_(out_shape)):
+            if not (_is_list_or_tuple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
             contain_var = False
@@ -730,7 +730,7 @@ def upsample(
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
-    in_d is the depth of the intput tensor.
+    in_d is the depth of the input tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -877,7 +877,7 @@ def upsample(
                                corner pixels.
                                Default: False
         align_mode(int, optional)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
-                            it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
@@ -1713,7 +1713,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         3,
         4,
         5,
-    ], f"input tesor dimension must be in [3, 4, 5] but got {x_dim}"
+    ], f"input tensor dimension must be in [3, 4, 5] but got {x_dim}"
 
     supported_format_map = {
         3: ["NCL", "NLC"],
@@ -2304,11 +2304,11 @@ def fold(
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
                                   data type can be float32, float64, complex64 or complex128
         output_sizes(int|list|tuple):       The size of output size, should be [output_size_h, output_size_w]
-                                  or an interger o treated as [o, o].
+                                  or an integer o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
         strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
+                                  or an integer stride treated as [stride, stride].
                                   For default, strides will be [1, 1].
         paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
@@ -2327,7 +2327,7 @@ def fold(
 
     Returns:
         The tensor formed by combining a group of sliding local blocks
-        The output shape is [N, Cout, H, W] as decriabled above.
+        The output shape is [N, Cout, H, W] as described above.
 
     Examples:
 
@@ -2353,34 +2353,34 @@ def fold(
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
-    def _is_list_or_turple_(data):
+    def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))
 
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]
     else:
-        assert _is_list_or_turple_(output_sizes) and (
+        assert _is_list_or_tuple_(output_sizes) and (
             len(output_sizes) == 2
         ), "output_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert _is_list_or_turple_(kernel_sizes) and (
+        assert _is_list_or_tuple_(kernel_sizes) and (
             len(kernel_sizes) == 2
         ), "kernel_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert _is_list_or_turple_(strides) and (
+        assert _is_list_or_tuple_(strides) and (
             len(strides) == 2
         ), "strides should either be an integer or a list/tuple of two integers"
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert _is_list_or_turple_(dilations) and (
+        assert _is_list_or_tuple_(dilations) and (
             len(dilations) == 2
         ), "dilations should either be an integer or a list/tuple of two integers"
 

@@ -884,7 +884,7 @@ def _reset_prim_state(state):
 
 
 def _translate_gradvartovar_to_pir(param_mapping, grad_var_to_var):
-    '''translate grad_var_to_var (mapping VarDesc->VarDesc) to pir_grad_var_to_var (mapping OpResult->OpResult)'''
+    '''translate grad_var_to_var (mapping VarDesc->VarDesc) to pir_grad_var_to_var (mapping Value->Value)'''
     pir_grad_var_to_var = ValueDict()
     for grad_var, var in grad_var_to_var.items():
         if grad_var in param_mapping.keys() and var in param_mapping.keys():
@@ -992,7 +992,7 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     Decompose all PHI ops into prim ops in a pir program.
     Args:
         pir_program (Program): the program to be decomposed
-        param_mapping (dict): a map of program variables to pir program opresults
+        param_mapping (dict): a map of program variables to pir program values
         grad_var_to_var (dict): a dict obtained from distributed processing,
             which maps the backward grad variable to its corresponding forward variable.
     '''

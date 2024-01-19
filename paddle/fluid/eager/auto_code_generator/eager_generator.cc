@@ -586,7 +586,7 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   }
   const std::string& op_type = op_proto->type();
 
-  // Skip ooerator which is not inherit form OperatorWithKernel, like while,
+  // Skip operator which is not inherit form OperatorWithKernel, like while,
   // since only OperatorWithKernel can run in dygraph mode.
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
   if (!all_kernels.count(op_type) &&
@@ -2702,7 +2702,7 @@ static std::string GenerateGradNodeCCContents(
   // This is a Copy
   auto op_base_infos = bwd_info.GetOpBaseInfos();
 
-  /* Special Case: ops such as sum_grad_op is implemented abnormaly,
+  /* Special Case: ops such as sum_grad_op is implemented abnormally,
                    where it unpacked duplicable GradX and created one OpBase
                    corresponds to each member of GradX[i]
      */
