@@ -638,8 +638,7 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor, Tensor>
-paddle::primitive::details::group_norm_decomp(
+std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,
     const paddle::optional<Tensor>& bias,
@@ -647,6 +646,7 @@ paddle::primitive::details::group_norm_decomp(
     const int groups,
     const std::string& data_format) {
   if (data_format != "NCHW") {
+    // TODO(chengyanfu): support NHWC data format
     PADDLE_THROW(phi::errors::Unimplemented("Only support NCHW format."));
   }
   auto org_dtype = x.dtype();

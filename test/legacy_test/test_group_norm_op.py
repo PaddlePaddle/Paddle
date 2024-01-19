@@ -83,7 +83,7 @@ def group_norm_wrapper(
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.python_api = group_norm_wrapper
         self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
@@ -121,9 +121,13 @@ class TestGroupNormOp(OpTest):
         inplace_atol = 0
         place = core.CPUPlace()
 
-        self.check_output_with_place(place, atol=atol, check_pir=True)
+        self.check_output_with_place(
+            place, atol=atol, check_pir=True, check_prim_pir=True
+        )
 
         if core.is_compiled_with_cuda():
+            self.fw_comp_atol = 1e-13
+            self.fw_comp_rtol = 1e-13
             place = core.CUDAPlace(0)
             # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
             # computation order when multiple threads write the same address. So the
@@ -134,7 +138,11 @@ class TestGroupNormOp(OpTest):
             # relative error is 1e-05 in numpy.allclose by default.
             # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
             self.check_output_with_place(
-                place, atol=atol, inplace_atol=inplace_atol, check_pir=True
+                place,
+                atol=atol,
+                inplace_atol=inplace_atol,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
     def do_compare_between_place(self):
@@ -203,7 +211,7 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.compare_between_place:
@@ -226,7 +234,9 @@ class TestGroupNormFP16OP(TestGroupNormOp):
 class TestGroupNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.prim_op_type = "comp"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.uint16
@@ -270,7 +280,7 @@ class TestGroupNormBF16Op(OpTest):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         if self.compare_between_place:
@@ -350,11 +360,41 @@ class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
         self.attrs['groups'] = 1
         self.data_format = "NHWC"
 
+    def test_check_output(self):
+        atol = 1e-2
+        inplace_atol = 1e-2
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place, check_pir=True)
+
 
 class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.data_format = "NHWC"
+
+    def test_check_output(self):
+        atol = 1e-2
+        inplace_atol = 1e-2
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place, check_pir=True)
 
 
 class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
@@ -437,6 +477,21 @@ class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
 
+    def test_check_output(self):
+        atol = 1e-2
+        inplace_atol = 1e-2
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place, check_pir=True)
+
 
 class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
@@ -444,11 +499,41 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
 
+    def test_check_output(self):
+        atol = 1e-2
+        inplace_atol = 1e-2
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place, check_pir=True)
+
 
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
+
+    def test_check_output(self):
+        atol = 1e-2
+        inplace_atol = 1e-2
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place, check_pir=True)
 
 
 @skip_check_grad_ci(
@@ -461,6 +546,21 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
         self.attrs['groups'] = 8
         self.data_format = "NHWC"
         self.compare_between_place = True
+
+    def test_check_output(self):
+        atol = 1e-2
+        inplace_atol = 1e-2
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place, check_pir=True)
 
 
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
