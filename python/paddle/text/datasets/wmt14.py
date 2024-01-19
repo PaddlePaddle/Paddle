@@ -54,9 +54,9 @@ class WMT14(Dataset):
 
     Returns:
         Dataset: Instance of WMT14 dataset
-            - src_ids (np.array): The sequence of token ids of source language.
-            - trg_ids (np.array): The sequence of token ids of target language.
-            - trg_ids_next (np.array): The next sequence of token ids of target language.
+            - src_ids (np.array) - The sequence of token ids of source language.
+            - trg_ids (np.array) - The sequence of token ids of target language.
+            - trg_ids_next (np.array) - The next sequence of token ids of target language.
     Examples:
 
         .. code-block:: python
