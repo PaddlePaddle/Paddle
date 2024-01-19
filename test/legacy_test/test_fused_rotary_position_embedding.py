@@ -147,11 +147,6 @@ def paddle_fused_rotary_position_embedding(
     # permute the result back to [batch_size, seq_len, num_heads, head_dim]
     r_query, r_key, r_value = deal_qkv(query, key, value)
 
-    # deal with MQA and GQA
-    num_key_value_groups = r_query.shape[2] // r_key.shape[2]
-    r_key = repeat_kv(r_key, num_key_value_groups)
-    r_value = repeat_kv(r_value, num_key_value_groups)
-
     return r_query, r_key, r_value
 
 
@@ -385,9 +380,9 @@ class TestFusedRotaryPositionEmbeddingMQA(TestFusedRotaryPositionEmbedding):
 )
 class TestFusedRotaryPositionEmbeddingGQA(TestFusedRotaryPositionEmbedding):
     def setUp(self):
-        self.shape_q = [2, 8, 2, 16]
-        self.shape_k = [2, 2, 2, 16]
-        self.shape_v = [2, 2, 2, 16]
+        self.shape_q = [2, 8, 8, 16]  # bs, seq_len, num_heads, head_dim
+        self.shape_k = [2, 8, 2, 16]
+        self.shape_v = [2, 8, 2, 16]
 
         self.dtype = 'float32'
         self.training = True

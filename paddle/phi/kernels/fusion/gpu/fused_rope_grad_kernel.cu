@@ -111,7 +111,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                      num_inputs,
                                      div_c);
   } else {
-    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
+    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>
         <<<grid, block, 0, stream>>>(ins_data,
                                      sin_cos_data,
                                      position_ids_data,
