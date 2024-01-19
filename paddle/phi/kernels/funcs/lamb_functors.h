@@ -408,7 +408,7 @@ struct LambBetaPowUpdateFunctor<MT, /*NeedUpdateBetaPow=*/false> {
 };
 
 template <typename T, typename MT, bool IsMultiPrecision, bool UpdateBetaPow>
-struct LambParamUpateFunctor
+struct LambParamUpdateFunctor
     : public LambBetaPowUpdateFunctor<MT, UpdateBetaPow> {
   const MT* lr_;
   const T* param_;
@@ -421,15 +421,15 @@ struct LambParamUpateFunctor
 
   const bool* skip_update_;
 
-  LambParamUpateFunctor(const MT* lr,
-                        const T* param,
-                        const MT* master_param,
-                        const MT* param_norm,
-                        const MT* trust_ratio_div,
-                        const MT* trust_ratio_div_norm,
-                        T* param_out,
-                        MT* master_param_out,
-                        const bool* skip_update)
+  LambParamUpdateFunctor(const MT* lr,
+                         const T* param,
+                         const MT* master_param,
+                         const MT* param_norm,
+                         const MT* trust_ratio_div,
+                         const MT* trust_ratio_div_norm,
+                         T* param_out,
+                         MT* master_param_out,
+                         const bool* skip_update)
       : lr_(lr),
         param_(param),
         master_param_(master_param),

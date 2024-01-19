@@ -290,7 +290,7 @@ inline static void InferLabelPerm(const CharIterable& op,
   int cur = 0;
   for (int c : op) {
     if (!label2perm->exist(
-            c))  // can appear repeatly. we just record the first position.
+            c))  // can appear repeatedly. we just record the first position.
       (*label2perm)[c] = cur;
     if (c == '.') {
       cur += n_broadcast;
@@ -391,9 +391,9 @@ std::vector<T> GetShapeByType(const std::vector<char>& all_labels,
 }
 
 inline static std::vector<int> perm_moveto(int n, int from, int to) {
-  // a permution means moving `from` to `to`.
+  // a permutation means moving `from` to `to`.
   /*
-  f => t   permtation
+  f => t   permutation
   --------------------
            0 1 2 3 4 5
   5 => 2 : 0 2 5 2 3 4
