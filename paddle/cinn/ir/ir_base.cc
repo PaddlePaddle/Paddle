@@ -119,10 +119,7 @@ int32_t Expr::as_int32() const {
   return As<IntImm>()->value;
 }
 int64_t Expr::as_int64() const {
-  if (type() == type_of<int32_t>()) {
-    p_->set_type(type_of<int64_t>());
-  }
-  CHECK(type().is_int(64));
+  CHECK(type().is_int(64) || type().is_int(32));
   return As<IntImm>()->value;
 }
 
@@ -241,7 +238,7 @@ const Expr &IrNode::operand(int i) {
 void IrNode::set_type(Type type) { type_ = type; }
 
 void IrNode::convert_int32_to_int64() {
-  CHECK(type_ == Int(64) || type_ == Int(32))
+  CHECK(type_ == Int(64) || type_ == Int(32) || type_.is_unk())
       << "Current only support convert int32_t to int64_t, but get type is "
       << type_;
   type_ = Int(64);
@@ -264,7 +261,8 @@ void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
     return;
   }
   for (const Expr &expr : expr_vec) {
-    CHECK(expr->type() == Int(64) || expr->type() == Int(32))
+    CHECK(expr->type() == Int(64) || expr->type() == Int(32) ||
+          expr->type().is_unk())
         << "Current only support convert int32_t to int64_t, but get type is "
         << expr->type();
     if (expr->type() == Int(32)) {

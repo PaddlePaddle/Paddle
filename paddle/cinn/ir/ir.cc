@@ -202,9 +202,7 @@ void Let::Verify() const {
   CHECK(symbol.defined());
   // The default value(contained in body) is not required.
   if (body.defined()) {
-    if (body.type() == type_of<int64_t>()) {
-      symbol->convert_int32_to_int64();
-    }
+    TryElevateInt32ToInt64({symbol, body});
     CHECK_EQ(symbol.type(), body.type());
   }
 }

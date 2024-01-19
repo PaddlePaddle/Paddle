@@ -227,15 +227,28 @@ isl::set _Tensor_::GenerateIslDomain() const {
     auto _axis_with_reduce = axis_with_reduce();
     for (int i = 0; i < domain.size(); i++) {
       auto dim = domain[i];
-      if (dim.is_constant()) {
-        dims.emplace_back(_axis_with_reduce[i]->name,
-                          static_cast<int64_t>(0),
-                          static_cast<int64_t>(dim.as_int64() - 1));
+      if (dim.type() == type_of<int64_t>()) {
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<int64_t>(0),
+                            static_cast<int64_t>(dim.as_int64() - 1));
+        } else {
+          dims.emplace_back(
+              _axis_with_reduce[i]->name,
+              Expr(static_cast<int64_t>(0)),
+              Sub::Make(dim,
+                        cinn::common::make_const(static_cast<int64_t>(1))));
+        }
       } else {
-        dims.emplace_back(
-            _axis_with_reduce[i]->name,
-            Expr(static_cast<int64_t>(0)),
-            Sub::Make(dim, cinn::common::make_const(static_cast<int64_t>(1))));
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<uint32_t>(0),
+                            dim.as_int32() - 1);
+        } else {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            Expr(0),
+                            Sub::Make(dim, cinn::common::make_const(1)));
+        }
       }
     }
   }
