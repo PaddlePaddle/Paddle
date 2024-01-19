@@ -96,7 +96,7 @@ void ConvGradKernel(const Context& dev_ctx,
               handler.AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
                   &out_grad);
 
-          // For convoluition with groups write filter grad into
+          // For convolution with groups write filter grad into
           // oneDNN buffer and then we reorder it into filter_grad tensor
           int g = std::max(groups, 1);
           auto diff_weights_memory_p =

@@ -55,7 +55,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
         x.data<T>(), x.numel(), dev_ctx.template Alloc<T>(&x_conj));
     x_for_range(x_functor);
 
-    // reuse forward to get dy_bst, and the result has been broadcated already.
+    // reuse forward to get dy_bst, and the result has been broadcasted already.
     TriangularSolveKernel<T, Context>(
         dev_ctx, x_conj, dout, upper, !transpose, unitriangular, &dy_bst);
 
