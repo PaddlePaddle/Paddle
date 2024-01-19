@@ -447,10 +447,7 @@ void BindOperation(py::module *m) {
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
       .def("operand", &Operation::operand)
-      .def("result",
-           [](Operation &self, uint32_t index) {
-             return static_cast<Value>(self.result(index));
-           })
+      .def("result", &Operation::result)
       .def("operand_source", &Operation::operand_source)
       .def("operands", &Operation::operands)
       .def("results", &Operation::results)
