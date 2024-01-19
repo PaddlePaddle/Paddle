@@ -122,8 +122,8 @@ std::vector<ir::Buffer> GetTempBuffers(
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {
       // TODO(phlrain): why update
-      if (e.as_tensor()->buffer->numel() <
-          name_to_buffer[buffer_name]->numel()) {
+      if (CanProveBufferNumelLT(e.as_tensor()->buffer,
+                                name_to_buffer[buffer_name])) {
         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
       }
     }

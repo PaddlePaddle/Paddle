@@ -358,13 +358,14 @@ void ArrangeStorageTactic::Init(ScheduleContext* context) {
 void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
                                  const std::string& block_id) {
   ir::Expr store_block = sch->GetBlock(block_id);
-  ir::Expr root_block = sch->GetRootBlock(store_block);
-  ir::Expr store = *ir::ir_utils::CollectIRNodesWithoutTensor(
-                        store_block,
-                        [&](const ir::Expr* x) { return x->As<ir::Store>(); },
-                        true)
-                        .begin();
+  ir::Tensor store_tensor = analyzer::GetStoreTensorOfSBlock(store_block);
+  // Skip if the store tensor has already been allocated to GPU shared or local
+  // memory.
+  if (store_tensor->buffer.defined() && store_tensor->buffer->is_on_gpu())
+    return;
 
+  ir::Expr root_block = sch->GetRootBlock(store_block);
+  ir::Expr store = analyzer::GetStoreOfSBlock(store_block);
   VarToForMap var2for_map =
       analyzer::CollectVarToForMap({root_block}, sch->GetAllBlocks());
 
