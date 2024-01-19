@@ -176,7 +176,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             [[2 2 0 1]]
     """
     if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.OpResult)
+        axis, (int, Variable, paddle.pir.Value)
     ):
         raise TypeError(
             "The type of 'axis'  must be int or Tensor or None in argmax, but received %s."
@@ -269,7 +269,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             [[1 1 1 2]]
     """
     if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.OpResult)
+        axis, (int, Variable, paddle.pir.Value)
     ):
         raise TypeError(
             "The type of 'axis'  must be int or Tensor or None in argmin, but received %s."
