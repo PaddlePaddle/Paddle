@@ -567,6 +567,7 @@
     func : ConvInferMeta
   kernel :
     func : conv2d
+    data_type : input
   backward : conv2d_grad
 
 - op : conv3d
@@ -576,6 +577,7 @@
     func : Conv3DInferMeta
   kernel :
     func : conv3d
+    data_type : input
   backward : conv3d_grad
 
 - op : conv3d_transpose
@@ -713,6 +715,7 @@
     func : DepthwiseConvInferMeta
   kernel :
     func : depthwise_conv2d
+    data_type : input
   backward : depthwise_conv2d_grad
 
 - op : det

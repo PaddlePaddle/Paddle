@@ -50,6 +50,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.init_data_type()
         self.init_force_fp32_output()
         self.init_infer_or_train()
+        self.check_pir_onednn = True
 
         self.conv2d_param = {
             'stride': self.stride,
@@ -117,7 +118,9 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.init_additional_attrs()
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir_onednn=self.check_pir_onednn
+        )
 
     def test_check_grad(self):
         pass
@@ -186,6 +189,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             "Output",
             user_defined_grads=[dx, dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_filter(self):
@@ -202,6 +206,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             {'Filter'},
             user_defined_grads=[dx],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_input(self):
@@ -218,6 +223,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             {'Input'},
             user_defined_grads=[dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
