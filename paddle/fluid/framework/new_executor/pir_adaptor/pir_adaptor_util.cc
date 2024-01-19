@@ -90,6 +90,13 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
 void ValueExecutionInfo::Rename(pir::Value value,
                                 const std::string& new_name,
                                 const std::string& orig_name) {
+  PADDLE_ENFORCE_EQ(var_name_2_id_.count(new_name),
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "The new name of %s has been set in "
+                        "ValueExecutionInfo, can not rename to it.",
+                        new_name));
+
   value_2_var_name_[value] = new_name;
 
   for (auto kv : value_2_var_name_) {
