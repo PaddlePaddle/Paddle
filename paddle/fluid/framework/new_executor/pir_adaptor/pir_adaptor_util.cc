@@ -101,15 +101,13 @@ void ValueExecutionInfo::Rename(const std::string& new_name,
     }
   }
 
-  if (var_name_2_id_.count(new_name) == 0) {
-    for (auto kv : var_name_2_id_) {
-      if (kv.first == orig_name) {
-        var_name_2_id_.emplace(new_name, kv.second);
-        var_name_2_id_.erase(orig_name);
-        id_2_var_name_[kv.second] = new_name;
-      }
+  for (auto kv : var_name_2_id_) {
+    if (kv.first == orig_name) {
+      var_name_2_id_.emplace(new_name, kv.second);
+      id_2_var_name_[kv.second] = new_name;
     }
   }
+  var_name_2_id_.erase(orig_name);
 }
 
 int ValueExecutionInfo::GetIdByName(const std::string& name) const {
