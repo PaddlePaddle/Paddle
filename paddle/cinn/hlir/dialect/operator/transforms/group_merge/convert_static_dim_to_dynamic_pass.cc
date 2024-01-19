@@ -1,7 +1,21 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
+#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/cinn/common/dim_expr_util.h"
 
 namespace cinn::dialect::ir {
 
@@ -20,10 +34,11 @@ void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
   }
 }
 
-std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(const std::string& raw_pair) {
+std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(
+    const std::string& raw_pair) {
   size_t pos = raw_pair.find(":", 0);
   if (pos == std::string::npos) return std::nullopt;
-  long long constant = 0;
+  std::int64_t constant = 0;
   try {
     constant = std::stoll(raw_pair.substr(0, pos), nullptr);
   } catch (const std::invalid_argument&) {
@@ -38,9 +53,7 @@ std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(co
     if (ch == '_') return true;
     return false;
   };
-  const auto& IsDigit = [&](const char ch) {
-    return ch >= '0' & ch <= '9';
-  };
+  const auto& IsDigit = [&](const char ch) { return ch >= '0' & ch <= '9'; };
   if (!IsWord(symbol[0])) return std::nullopt;
   for (int i = 1; i < symbol.size(); ++i) {
     if (!(IsWord(symbol[i]) || IsDigit(symbol[i]))) return std::nullopt;
@@ -58,10 +71,12 @@ std::unordered_map<int64_t, std::string> GetStaticDimToDyanmicFromFlag() {
   return map;
 }
 
-using GlobalStaticDimToDynamicMapT = std::vector<std::pair<int64_t, std::string>>;
+using GlobalStaticDimToDynamicMapT =
+    std::vector<std::pair<int64_t, std::string>>;
 
 std::optional<GlobalStaticDimToDynamicMapT> CalcGlobalStaticDimToDynamicMap() {
-  std::unordered_map<int64_t, std::string> map = GetStaticDimToDyanmicFromFlag();
+  std::unordered_map<int64_t, std::string> map =
+      GetStaticDimToDyanmicFromFlag();
   if (map.empty()) return std::nullopt;
   auto DividedByOther = [&](int64_t constant) {
     for (const auto& [other_constant, _] : map) {
@@ -77,32 +92,33 @@ std::optional<GlobalStaticDimToDynamicMapT> CalcGlobalStaticDimToDynamicMap() {
   return ret;
 }
 
-const std::optional<GlobalStaticDimToDynamicMapT>* GetGlobalStaticDimToDynamicMap() {
-  static std::optional<GlobalStaticDimToDynamicMapT> map(CalcGlobalStaticDimToDynamicMap());
+const std::optional<GlobalStaticDimToDynamicMapT>*
+GetGlobalStaticDimToDynamicMap() {
+  static std::optional<GlobalStaticDimToDynamicMapT> map(
+      CalcGlobalStaticDimToDynamicMap());
   return &map;
 }
 
 struct StaticDimToDynamicConverter {
-
   cinn::dialect::FusionOp fusion_op;
 
   bool Convert() {
     bool converted_once = false;
     RewriteEachDimExpr(
-      [&](const auto& dim_expr, int64_t c, const std::string& symbol) {
-        std::optional<symbol::DimExpr> converted = ConvertDimExpr(dim_expr, c, symbol);
-        converted_once |= converted.has_value();
-        return converted;
-      });
+        [&](const auto& dim_expr, int64_t c, const std::string& symbol) {
+          std::optional<symbol::DimExpr> converted =
+              ConvertDimExpr(dim_expr, c, symbol);
+          converted_once |= converted.has_value();
+          return converted;
+        });
     return converted_once;
   }
 
  private:
-
   bool AppliedOnce(const symbol::DimExpr& dim_expr, const std::string& symbol) {
-    return std::visit([&](const auto& impl) {
-      return AppliedOnceImpl(impl, symbol);
-    }, dim_expr.variant());
+    return std::visit(
+        [&](const auto& impl) { return AppliedOnceImpl(impl, symbol); },
+        dim_expr.variant());
   }
 
   bool AppliedOnceImpl(int64_t dim_expr, const std::string& symbol) {
@@ -119,11 +135,13 @@ struct StaticDimToDynamicConverter {
     return AppliedOnce(operand, symbol);
   }
 
-  bool AppliedOnceImpl(const symbol::Negative<symbol::DimExpr>& dim_expr, const std::string& symbol) {
+  bool AppliedOnceImpl(const symbol::Negative<symbol::DimExpr>& dim_expr,
+                       const std::string& symbol) {
     return AppliedOnceUnaryImpl(dim_expr, symbol);
   }
 
-  bool AppliedOnceImpl(const symbol::Reciprocal<symbol::DimExpr>& dim_expr, const std::string& symbol) {
+  bool AppliedOnceImpl(const symbol::Reciprocal<symbol::DimExpr>& dim_expr,
+                       const std::string& symbol) {
     return AppliedOnceUnaryImpl(dim_expr, symbol);
   }
 
@@ -136,34 +154,43 @@ struct StaticDimToDynamicConverter {
     return false;
   }
 
-  bool AppliedOnceImpl(const symbol::Add<symbol::DimExpr>& dim_expr, const std::string& symbol) {
+  bool AppliedOnceImpl(const symbol::Add<symbol::DimExpr>& dim_expr,
+                       const std::string& symbol) {
     return AppliedOnceListImpl(dim_expr, symbol);
   }
 
-  bool AppliedOnceImpl(const symbol::Mul<symbol::DimExpr>& dim_expr, const std::string& symbol) {
+  bool AppliedOnceImpl(const symbol::Mul<symbol::DimExpr>& dim_expr,
+                       const std::string& symbol) {
     return AppliedOnceListImpl(dim_expr, symbol);
   }
 
-  bool AppliedOnceImpl(const symbol::Min<symbol::DimExpr>& dim_expr, const std::string& symbol) {
+  bool AppliedOnceImpl(const symbol::Min<symbol::DimExpr>& dim_expr,
+                       const std::string& symbol) {
     return AppliedOnceListImpl(dim_expr, symbol);
   }
 
-  bool AppliedOnceImpl(const symbol::Max<symbol::DimExpr>& dim_expr, const std::string& symbol) {
+  bool AppliedOnceImpl(const symbol::Max<symbol::DimExpr>& dim_expr,
+                       const std::string& symbol) {
     return AppliedOnceListImpl(dim_expr, symbol);
   }
 
-  bool AppliedOnceImpl(const symbol::Broadcast<symbol::DimExpr>& dim_expr, const std::string& symbol) {
+  bool AppliedOnceImpl(const symbol::Broadcast<symbol::DimExpr>& dim_expr,
+                       const std::string& symbol) {
     return AppliedOnceListImpl(dim_expr, symbol);
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExpr(const symbol::DimExpr& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExpr(const symbol::DimExpr& dim_expr,
+                                                int64_t c,
+                                                const std::string& symbol) {
     if (AppliedOnce(dim_expr, symbol)) return std::nullopt;
-    return std::visit([&](const auto& impl) {
-      return ConvertDimExprImpl(impl, c, symbol);
-    }, dim_expr.variant());
+    return std::visit(
+        [&](const auto& impl) { return ConvertDimExprImpl(impl, c, symbol); },
+        dim_expr.variant());
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(int64_t dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(int64_t dim_expr,
+                                                    int64_t c,
+                                                    const std::string& symbol) {
     if (c <= 0) return std::nullopt;
     if (dim_expr == c) return symbol::DimExpr{symbol};
     if ((dim_expr > c) && (dim_expr % c == 0)) {
@@ -172,12 +199,15 @@ struct StaticDimToDynamicConverter {
     return std::nullopt;
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const std::string& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(const std::string& dim_expr,
+                                                    int64_t c,
+                                                    const std::string& symbol) {
     return std::nullopt;
   }
-  
+
   template <typename T>
-  std::optional<symbol::DimExpr> ConvertUnaryDimExprImpl(const T& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertUnaryDimExprImpl(
+      const T& dim_expr, int64_t c, const std::string& symbol) {
     const auto& [operand] = dim_expr;
     const auto& converted_operand = ConvertDimExpr(operand, c, symbol);
     if (!converted_operand.has_value()) return std::nullopt;
@@ -185,7 +215,8 @@ struct StaticDimToDynamicConverter {
   }
 
   template <typename T>
-  std::optional<symbol::DimExpr> ConvertListDimExprImpl(const T& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertListDimExprImpl(
+      const T& dim_expr, int64_t c, const std::string& symbol) {
     const auto& [operands] = dim_expr;
     symbol::List<symbol::DimExpr> ret_operands{};
     ret_operands->reserve(operands.size());
@@ -200,43 +231,68 @@ struct StaticDimToDynamicConverter {
     return T{ret_operands};
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const symbol::Negative<symbol::DimExpr>& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(
+      const symbol::Negative<symbol::DimExpr>& dim_expr,
+      int64_t c,
+      const std::string& symbol) {
     return ConvertUnaryDimExprImpl(dim_expr, c, symbol);
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const symbol::Reciprocal<symbol::DimExpr>& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(
+      const symbol::Reciprocal<symbol::DimExpr>& dim_expr,
+      int64_t c,
+      const std::string& symbol) {
     return ConvertUnaryDimExprImpl(dim_expr, c, symbol);
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const symbol::Add<symbol::DimExpr>& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(
+      const symbol::Add<symbol::DimExpr>& dim_expr,
+      int64_t c,
+      const std::string& symbol) {
     return ConvertListDimExprImpl(dim_expr, c, symbol);
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const symbol::Mul<symbol::DimExpr>& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(
+      const symbol::Mul<symbol::DimExpr>& dim_expr,
+      int64_t c,
+      const std::string& symbol) {
     return ConvertListDimExprImpl(dim_expr, c, symbol);
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const symbol::Max<symbol::DimExpr>& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(
+      const symbol::Max<symbol::DimExpr>& dim_expr,
+      int64_t c,
+      const std::string& symbol) {
     return ConvertListDimExprImpl(dim_expr, c, symbol);
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const symbol::Min<symbol::DimExpr>& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(
+      const symbol::Min<symbol::DimExpr>& dim_expr,
+      int64_t c,
+      const std::string& symbol) {
     return ConvertListDimExprImpl(dim_expr, c, symbol);
   }
 
-  std::optional<symbol::DimExpr> ConvertDimExprImpl(const symbol::Broadcast<symbol::DimExpr>& dim_expr, int64_t c, const std::string& symbol) {
+  std::optional<symbol::DimExpr> ConvertDimExprImpl(
+      const symbol::Broadcast<symbol::DimExpr>& dim_expr,
+      int64_t c,
+      const std::string& symbol) {
     return ConvertListDimExprImpl(dim_expr, c, symbol);
   }
 
-  template <typename DoEachT/*std::optional<symbol::DimExpr>(*)(const symbol::DimExpr&, int64_t c, const std::string&)*/>
+  template <typename DoEachT>
   void RewriteEachDimExpr(const DoEachT& DoEach) {
-    auto shape_analysis = GetShapeAnalysis();
+    pir::ShapeConstraintIRAnalysis* shape_analysis =
+        &pir::ShapeAnalysisManager::Instance().Get(
+            fusion_op->GetParentProgram());
     ForEachConstantToSymbol([&](int64_t c, const std::string& symbol) {
       ForEachValue([&](pir::Value value) {
         const symbol::ShapeOrDataDimExprs& opt_converted =
-            ConvertShapeOrDataDimExprs(DoEach, *shape_analysis, value, c, symbol);
+            ConvertShapeOrDataDimExprs(
+                DoEach, *shape_analysis, value, c, symbol);
         if (!opt_converted.has_value()) return;
-        UpdateShapeOrDataDimExprs(&*shape_analysis, value, opt_converted.value());
+        UpdateShapeOrDataDimExprs(
+            &*shape_analysis, value, opt_converted.value());
       });
     });
   }
@@ -248,48 +304,54 @@ struct StaticDimToDynamicConverter {
     shape_analysis->SetShapeOrDataForValue(value, shape_or_data_dim_exprs);
   }
 
-  template <typename ConverterT/*std::optional<symbol::DimExpr>(*)(const symbol::DimExpr&, int64_t c, const std::string&)*/>
+  template <typename ConverterT>
   std::optional<symbol::ShapeOrDataDimExprs> ConvertShapeOrDataDimExprs(
       const ConverterT& Converter,
       const pir::ShapeConstraintIRAnalysis& shape_analysis,
       pir::Value value,
       int64_t constant,
       const std::string& symbol) {
-    if (!shape_analysis.HasShapeOrDataForValue(value)) return std::nullopt;
-    const auto& old = shape_analysis.GetShapeOrDataForValue(value);
-    return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
+    if (shape_analysis.HasShapeOrDataForValue(value)) {
+      const auto& old = shape_analysis.GetShapeOrDataForValue(value).shape();
+      return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
+    } else {
+      auto& dims = value.type().dyn_cast<::pir::DenseTensorType>().dims();
+      const auto& int_dims = ::common::vectorize<int>(dims);
+      std::vector<symbol::DimExpr> old{};
+      for (int dim : int_dims) {
+        old.emplace_back(static_const<std::int64_t>(dim));
+      }
+      const auto& opt_exprs =
+          ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
+      return opt_exprs.value_or(old);
+    }
+    LOG(FATAL) << "Dead code";
   }
 
-  template <typename ConverterT/*std::optional<symbol::DimExpr>(*)(const symbol::DimExpr&, int64_t c, const std::string&)*/>
+  template <typename ConverterT>
   std::optional<symbol::ShapeOrDataDimExprs> ConvertShapeOrDataDimExprs(
       const ConverterT& Converter,
-      const symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs,
+      const std::vector<symbol::DimExpr>& dim_exprs,
       int64_t constant,
       const std::string& symbol) {
     bool converted_once = false;
     const auto& TryConvert = [&](const auto& dim_expr) {
       const auto& converted_dim_expr = Converter(dim_expr, constant, symbol);
       converted_once |= converted_dim_expr.has_value();
-      return converted_dim_expr.has_value()? converted_dim_expr.value() : dim_expr;
+      return converted_dim_expr.has_value() ? converted_dim_expr.value()
+                                            : dim_expr;
     };
     std::vector<symbol::DimExpr> ret_shape{};
-    ret_shape.reserve(shape_or_data_dim_exprs.shape().size());
-    for (const auto& dim_expr : shape_or_data_dim_exprs.shape()) {
+    ret_shape.reserve(dim_exprs.size());
+    for (const auto& dim_expr : dim_exprs) {
       ret_shape.emplace_back(TryConvert(dim_expr));
     }
-    
-    std::vector<symbol::DimExpr> ret_data{};
-    if (shape_or_data_dim_exprs.data().has_value()) {
-      ret_data.reserve(shape_or_data_dim_exprs.data().value().size());
-      for (const auto& dim_expr : shape_or_data_dim_exprs.data().value()) {
-        ret_data.emplace_back(TryConvert(dim_expr));
-      }
-    }
+
     if (!converted_once) return std::nullopt;
-    return symbol::ShapeOrDataDimExprs{ret_shape, ret_data};
+    return symbol::ShapeOrDataDimExprs{ret_shape};
   }
 
-  template <typename DoEachT/*void(*)(int64_t c, const std::string&)*/>
+  template <typename DoEachT /*void(*)(int64_t c, const std::string&)*/>
   void ForEachConstantToSymbol(const DoEachT& DoEach) {
     const auto& map = *GetGlobalStaticDimToDynamicMap();
     CHECK(map.has_value());
@@ -298,7 +360,7 @@ struct StaticDimToDynamicConverter {
     }
   }
 
-  template <typename DoEachT/*void(*)(pir::Value)*/>
+  template <typename DoEachT /*void(*)(pir::Value)*/>
   void ForEachValue(const DoEachT& DoEach) {
     ForEachOp([&](pir::Operator* op) {
       for (int i = 0; i < op->num_operands(); ++i) {
@@ -310,7 +372,7 @@ struct StaticDimToDynamicConverter {
     });
   }
 
-  template <typename DoEachT/*void(*)(pir::Operator*)*/>
+  template <typename DoEachT /*void(*)(pir::Operator*)*/>
   void ForEachOp(const DoEachT& DoEach) {
     for (auto* op : this->fusion_op->GetOperators()) {
       DoEach(op);
@@ -320,8 +382,7 @@ struct StaticDimToDynamicConverter {
 
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
-  FusionOpPattern(
-      ::pir::IrContext* context)
+  explicit FusionOpPattern(::pir::IrContext* context)
       : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
@@ -352,11 +413,12 @@ class ConvertStaticDimToDynamicPass : public pir::PatternRewritePass {
   }
 };
 
-}
+}  // namespace
 
-std::optional<std::unique_ptr<::pir::Pass>> CreateConvertStaticDimToDynamicPass() {
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateConvertStaticDimToDynamicPass() {
   if (!GetGlobalStaticDimToDynamicMap()->has_value()) return std::nullopt;
   return std::make_unique<ConvertStaticDimToDynamicPass>();
 }
 
-}
+}  // namespace cinn::dialect::ir
