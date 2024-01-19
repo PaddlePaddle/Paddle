@@ -31,6 +31,7 @@ from paddle.base.framework import _current_expected_place
 class TestOneDNNlementwiseAddSrcDifferentShape(TestElementwiseAddOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
