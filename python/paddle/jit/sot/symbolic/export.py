@@ -44,14 +44,38 @@ class PyStatement:
         return "\n".join(self.get_lines())
 
 
+class NameGener:
+    def __init__(self, SIR):
+        self.SIR = SIR
+        self.name_map = {}
+        self.param_name_generator = NameGenerator("self.parameter_")
+        self.non_param_name_generator = NameGenerator("self.var_")
+
+    def __call__(self, var):
+        if isinstance(var, Symbol):
+            if var not in self.name_map:
+                self.register_symbol(var)
+            return self.name_map[var]
+
+        elif isinstance(var, str):
+            return f"'{var}'"
+        else:
+            return str(var)
+
+    def register_symbol(self, symbol):
+        if symbol in self.SIR.param_symbol:
+            name = self.param_name_generator.next()
+        else:
+            name = self.non_param_name_generator.next()
+        self.name_map[symbol] = name
+
+
 class PyFileGen:
     def __init__(self, SIR):
         self.SIR = SIR
         self.roots = []
 
-        self.layer_name_map = {}
-        self.layer_name_generator = NameGenerator("_")
-        self.layer_name = SIR.name.replace("_", "")
+        self.name_gener = NameGener(self.SIR)
 
         self.SIR_sig = ",".join(
             f"{stmt.type}||{stmt.name}" for stmt in SIR.statements
@@ -105,17 +129,15 @@ class PyFileGen:
         )
 
     def create_layer(self):
-        layer_class = self.new_root(
-            f"class {self.layer_name}(paddle.nn.Layer):"
-        )
+        layer_class = self.new_root("class LayerCase(paddle.nn.Layer):")
 
         init_fn = layer_class.add_sub("def __init__(self):")
         init_fn.add_sub("super().__init__()")
 
         for param in self.SIR.param_symbol:
-            meta = self.SIR.symbol_meta_map[param.name]
+            meta = self.SIR.symbol_meta_map[param]
             init_fn.add_sub(
-                f"self.{param.name} = self.create_parameter(",
+                f"{self.name_gener(param)} = self.create_parameter(",
                 f"   shape={meta.shape},",
                 f"   dtype={meta.dtype},",
                 ")",
@@ -124,20 +146,16 @@ class PyFileGen:
         for stmt in self.SIR.statements:
             if stmt.type == "layer":
                 layer = stmt.layer()
-                if id(layer) not in self.layer_name_map:
-                    layer_name = (
-                        layer.__class__.__name__
-                        + self.layer_name_generator.next()
-                    )
-                    self.layer_name_map[id(layer)] = layer_name
-                    init_fn.add_sub(self.init_sub_layer(layer, layer_name))
+                init_fn.add_sub(self.init_sub_layer(layer))
 
         forward_definition = ["def forward(", "    self,"]
 
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
-                meta = self.SIR.symbol_meta_map[inp.name]
-                forward_definition.append(f"    {inp.name},    # {str(meta)}")
+                meta = self.SIR.symbol_meta_map[inp]
+                forward_definition.append(
+                    f"    {self.name_gener(inp)},    # {str(meta)}"
+                )
         forward_definition.append("):")
 
         forward_fn = layer_class.add_sub(*forward_definition)
@@ -147,14 +165,12 @@ class PyFileGen:
 
         forward_fn.add_sub(
             "return {}".format(
-                ", ".join(self.get_true_string(out) for out in self.SIR.outputs)
+                ", ".join(self.name_gener(out) for out in self.SIR.outputs)
             )
         )
 
     def create_test(self):
-        test_class = self.new_root(
-            f"class Test{self.layer_name}(unittest.TestCase):"
-        )
+        test_class = self.new_root("class TestLayer(unittest.TestCase):")
 
         setup = test_class.add_sub("def setUp(self):")
         test_inputs = [
@@ -179,7 +195,7 @@ class PyFileGen:
                     )
         test_inputs.append(")")
         setup.add_sub(*test_inputs)
-        setup.add_sub(f"self.net = {self.layer_name}()")
+        setup.add_sub("self.net = LayerCase()")
 
         train = test_class.add_sub(
             "def train(self, net, to_static, with_prim=False, with_cinn=False):"
@@ -213,17 +229,6 @@ class PyFileGen:
             "    unittest.main()",
         )
 
-    def get_true_string(self, var):
-        if isinstance(var, Symbol):
-            if var in self.SIR.param_symbol:
-                return "self." + var.name
-            else:
-                return var.name
-        elif isinstance(var, str):
-            return f"'{var}'"
-        else:
-            return str(var)
-
     def init_sub_layer(self, layer, layer_name):
         # TODO @wuzhanfei need more effecient way to create a sub layer
         # now, we just close call_Layer behavior
@@ -232,8 +237,8 @@ class PyFileGen:
     def create_input_string(self, args, kwargs):
         return ", ".join(
             chain(
-                (self.get_true_string(arg) for arg in args),
-                (f"{k}={self.get_true_string(v)}" for k, v in kwargs.items()),
+                (self.name_gener(arg) for arg in args),
+                (f"{k}={self.name_gener(v)}" for k, v in kwargs.items()),
             )
         )
 
@@ -247,9 +252,7 @@ class PyFileGen:
             elif isinstance(outputs, dict):
                 search_dict(outputs, path, result)
             elif isinstance(outputs, Symbol):
-                result.append(
-                    self.get_true_string(outputs) + " = " + "".join(path)
-                )
+                result.append(self.name_gener(outputs) + " = " + "".join(path))
 
         def search_sequnce(outputs, path, result):
             for idx, out in enumerate(outputs):
@@ -275,9 +278,7 @@ class PyFileGen:
         api = stmt.api
         api_str = api.__module__ + "." + api.__name__
         if isinstance(stmt.outputs, Symbol):
-            return [
-                f"{self.get_true_string(stmt.outputs)} = {api_str}({input_str})"
-            ]
+            return [f"{self.name_gener(stmt.outputs)} = {api_str}({input_str})"]
         else:
             compute_code = f"out = {api_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
@@ -286,26 +287,13 @@ class PyFileGen:
     def create_method_stmt(self, stmt):
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args[1:], kwargs)
-        method_str = self.get_true_string(args[0]) + "." + stmt.method
+        method_str = self.name_gener(args[0]) + "." + stmt.method
         if isinstance(stmt.outputs, Symbol):
             return [
-                f"{self.get_true_string(stmt.outputs)} = {method_str}({input_str})"
+                f"{self.name_gener(stmt.outputs)} = {method_str}({input_str})"
             ]
         else:
             compute_code = f"out = {method_str}({input_str})"
-            unpack_codes = self.create_unpack_output_string(stmt.outputs)
-            return [compute_code] + unpack_codes
-
-    def create_layer_stmt(self, stmt):
-        args, kwargs = stmt.inputs
-        input_str = self.create_input_string(args, kwargs)
-        layer_str = "self." + self.layer_name_map[id(stmt.layer())]
-        if isinstance(stmt.outputs, Symbol):
-            return [
-                f"{self.get_true_string(stmt.outputs)} = {layer_str}({input_str})"
-            ]
-        else:
-            compute_code = f"out = {layer_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
             return [compute_code] + unpack_codes
 
