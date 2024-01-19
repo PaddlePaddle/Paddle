@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,15 +15,13 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
-std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass(
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
-        nullptr);
+std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

@@ -113,6 +113,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
@@ -804,6 +805,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
@@ -1818,7 +1820,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
 
-  // mixed precison.
+  // mixed precision.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
   argument_->SetMixedWhiteList(config_.mixed_white_list_);

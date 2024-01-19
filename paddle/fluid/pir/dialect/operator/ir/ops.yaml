@@ -388,6 +388,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : divide_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dropout
   args : (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
@@ -423,6 +424,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : elementwise_pow_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
@@ -553,6 +555,7 @@
     param : [shape, value, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_
   args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -602,6 +605,7 @@
   kernel :
     func : full_with_tensor
     data_type : dtype
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -928,6 +932,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : multiply_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
@@ -1359,6 +1364,7 @@
   kernel :
     func : tile
   backward : tile_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : trans_layout
   args : (Tensor x, int[] perm)
@@ -1379,6 +1385,7 @@
     func : transpose
   inplace : (x -> out)
   backward : transpose_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril
   args : (Tensor x, int diagonal)
