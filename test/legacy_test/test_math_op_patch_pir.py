@@ -533,6 +533,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     int(x)
                 with self.assertRaises(TypeError):
                     float(x)
+                with self.assertRaises(TypeError):
+                    bool(x)
 
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
