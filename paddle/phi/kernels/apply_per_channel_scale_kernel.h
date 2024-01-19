@@ -14,16 +14,13 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
-#include "paddle/pir/pass/pass.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
-std::unique_ptr<::pir::Pass> CreateCinnGroupLoweringPass(
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
-        nullptr);
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+namespace phi {
+
+template <typename T, typename Context>
+void ApplyPerChannelScaleKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& scales,
+                                DenseTensor* out);
+}  // namespace phi

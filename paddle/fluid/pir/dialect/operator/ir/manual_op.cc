@@ -3067,7 +3067,7 @@ OpInfoTuple TensorToArrayOp::GetOpInfo() {
       paddle::dialect::OpRunTimeInfo("TensorToArrayInferMeta",
                                      {"x", "axis", "use_stack"},
                                      "tensor_to_array",
-                                     {"x", "axis", "use_stack"},
+                                     {"x", "out_grad", "axis", "use_stack"},
                                      {"x"},
                                      {},
                                      {},
@@ -4333,7 +4333,7 @@ const char *IncrementOp::attributes_name[1] = {"value"};
 OpInfoTuple IncrementOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false, false)};
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       paddle::dialect::OpAttributeInfo("value", "pir::FloatAttribute", "")};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
@@ -5014,8 +5014,9 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   }
 
   pir::OpResult res = result(0);
-  symbol::ShapeOrDataDimExprs output_data_shape =
-      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(output_data);
+  // TODO(HongyuJia): use op->result(0) to infer the shape
+  std::vector<symbol::DimExpr> shape(std::int64_t(output_data.size()));
+  symbol::ShapeOrDataDimExprs output_data_shape{shape, output_data};
   shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }

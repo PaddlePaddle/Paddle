@@ -27,7 +27,12 @@ from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from ..framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 __all__ = []
 
@@ -363,14 +368,16 @@ def is_empty(x, name=None):
             False)
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.is_empty(x)
+
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_empty'
+    )
+    check_type(name, "name", (str, type(None)), "is_empty")
+    if in_pir_mode():
         return _C_ops.is_empty(x)
     else:
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_empty'
-        )
-        check_type(name, "name", (str, type(None)), "is_empty")
-
         helper = LayerHelper("is_empty", **locals())
         cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True

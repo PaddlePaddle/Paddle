@@ -133,7 +133,7 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
-  // for autograd_meta we can tolerent it has nullptr.
+  // for autograd_meta we can tolerate it has nullptr.
   for (auto& target : *targets) {
     auto* p_autograd_meta = autograd_meta(&target);
     ret.emplace_back(p_autograd_meta);
@@ -146,7 +146,7 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
-  // for autograd_meta we can tolerent it has nullptr.
+  // for autograd_meta we can tolerate it has nullptr.
   for (auto& target : *targets) {
     auto* p_autograd_meta = autograd_meta(target);
     ret.emplace_back(p_autograd_meta);
@@ -506,7 +506,7 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "GetGradAccumulationNode should only be called on leaf tensor, but "
             "target tensor: %s has GradNode which is not a "
-            "GradNodeAccumulation, and this should not happend unless target "
+            "GradNodeAccumulation, and this should not happened unless target "
             "tensor is modified by some ops and calling set history for it.",
             tensor.name()));
       }
