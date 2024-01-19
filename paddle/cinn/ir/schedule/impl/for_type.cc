@@ -132,7 +132,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
   const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
   auto check_offset = [&](const char& c) -> bool {
-    auto extent = loop.As<ir::For>()->extent.as_int32();
+    auto extent = loop.As<ir::For>()->extent.as_int64();
     return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
   };
   if (thread_axis[0] == 'b') {
@@ -210,7 +210,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
   const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
   auto check_offset = [&](const char& c) -> bool {
-    auto extent = loop.As<ir::For>()->extent.as_int32();
+    auto extent = loop.As<ir::For>()->extent.as_int64();
     return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
   };
   if (thread_axis[0] == 'b') {
