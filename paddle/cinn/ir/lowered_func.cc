@@ -315,7 +315,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     argument_prepare_exprs.push_back(runtime::IntrinsicCall(
         Void(),
         runtime::intrinsic::print_debug_args_repr,
-        {pod_value_ptr, cinn::common::make_const(Int(64), args.size())}));
+        {pod_value_ptr, cinn::common::make_const(Int(32), args.size())}));
   }
 
   /*
@@ -334,7 +334,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
 
     // something like `_args[0]`
     Expr load_expr = Load::Make(
-        pod_value_ptr, {cinn::common::make_const(static_cast<int64_t>(i))});
+        pod_value_ptr, {cinn::common::make_const(static_cast<int32_t>(i))});
     CHECK_EQ(load_expr.type(), type_of<cinn_pod_value_t>());
     load_expr = ir::intrinsics::GetAddr::Make(load_expr);
 

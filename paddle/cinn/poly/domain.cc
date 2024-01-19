@@ -61,6 +61,7 @@ std::string Domain::__str__() const {
 }
 
 isl::set Domain::to_isl() const {
+  // TODO(6clc): will be removed in future
   VLOG(3) << "isl::set " << __str__();
   auto replace_substr = [](std::string& s,
                            std::string const& toReplace,
