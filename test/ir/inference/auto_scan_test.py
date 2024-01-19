@@ -342,6 +342,26 @@ class MkldnnAutoScanTest(AutoScanTest):
         return str(dic)
 
 
+class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def run_test_config(
+        self, model, params, prog_config, pred_config, feed_data
+    ) -> Dict[str, np.ndarray]:
+        """
+        Test a single case.
+        """
+        paddle.set_flags({'FLAGS_enable_pir_in_executor': True})
+        pred_config.switch_ir_optim(False)
+        pred_config.enable_new_executor()
+        result = super().run_test_config(
+            model, params, prog_config, pred_config, feed_data
+        )
+        paddle.set_flags({'FLAGS_enable_pir_in_executor': False})
+        return result
+
+
 class PassAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

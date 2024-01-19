@@ -1066,6 +1066,8 @@ inline void PirRunProgramGradAPI(
   auto p_grad_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
 
+  details::Trans2ContiguousTensorsInplace(out_grad);
+
   // share x, param, middles, output_grads, out into scope.
   details::ShareTensorsIntoScopeByValue(
       backward_global_block, out_grad, output_grad_values, global_inner_scope);

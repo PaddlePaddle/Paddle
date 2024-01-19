@@ -15,18 +15,16 @@
   extra_args : bool is_test=false
   data_format_tensors : x, out, mid_out, out_grad
 
+- op : pad3d
+  extra_args :
+  data_format_tensors : x
+  dynamic_fallback : True
+
 # - op : matmul
 #   extra_args : str mkldnn_data_type="float32"
 #   layout_transform :
 #     arg_name: cur_paddle_data_layout
 #     tensors: x, y
-
-# - op : pad3d
-#   extra_args :
-#   layout_transform :
-#     arg_name: data_format
-#     tensors: x
-#   dynamic_fallback : True
 
 # - op : batch_norm
 #   extra_args : bool fuse_with_relu=false

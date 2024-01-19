@@ -817,12 +817,8 @@ def crop(x, shape=None, offsets=None, name=None):
     if shape is None:
         shape = x.shape
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.crop(x, shape, offsets)
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
-    attrs = {}
 
     def _attr_shape_check(shape_val):
         if not isinstance(shape_val, int):
@@ -852,6 +848,48 @@ def crop(x, shape=None, offsets=None, name=None):
                 "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
                 % str(offset_val)
             )
+
+    if in_pir_mode():
+        if isinstance(offsets, paddle.pir.Value):
+            offsets.stop_gradient = True
+        elif paddle.utils._contain_var(offsets):
+            new_offsets_tensor = []
+            for dim in offsets:
+                if isinstance(dim, paddle.pir.Value):
+                    dim.stop_gradient = True
+                    new_offsets_tensor.append(dim)
+                else:
+                    _attr_offsets_check(dim)
+                    temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                    new_offsets_tensor.append(temp_out)
+            offsets = new_offsets_tensor
+        else:
+            for offset in offsets:
+                _attr_offsets_check(offset)
+
+        if isinstance(shape, paddle.pir.Value):
+            shape.stop_gradient = True
+        elif paddle.utils._contain_var(shape):
+            new_shape_tensor = []
+            for dim_size in shape:
+                if isinstance(dim_size, paddle.pir.Value):
+                    dim_size.stop_gradient = True
+                    new_shape_tensor.append(dim_size)
+                else:
+                    _attr_shape_check(dim_size)
+                    temp_out = fill_constant(
+                        [1], 'int32', dim_size, force_cpu=True
+                    )
+                    new_shape_tensor.append(temp_out)
+            shape = new_shape_tensor
+        else:
+            for dim_size in shape:
+                _attr_shape_check(dim_size)
+        return _C_ops.crop(x, shape, offsets)
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    ipts = {'X': x}
+    attrs = {}
 
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True

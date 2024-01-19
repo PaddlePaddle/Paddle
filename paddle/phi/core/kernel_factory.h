@@ -282,6 +282,8 @@ class Kernel {
   }
 
   GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
+  std::function<bool(const KernelContext* ctx)> check_if_onednn_kernel_support_{
+      nullptr};
 
  private:
   KernelFn fn_{nullptr};

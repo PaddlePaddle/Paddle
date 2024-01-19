@@ -293,8 +293,9 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .AsVector();
 
     for (auto& attr : data_format_tensors_attr) {
-      auto pair = kernel_context_.InputRangeAt(value_exec_info_->GetIdByName(
-          attr.dyn_cast<pir::StrAttribute>().AsString()));
+      auto pair =
+          kernel_context_.InputRangeAt(yaml_info_parser.InputName2Id().at(
+              attr.dyn_cast<pir::StrAttribute>().AsString()));
       for (int i = pair.first; i < pair.second; ++i) {
         data_format_tensors_.insert(i);
       }

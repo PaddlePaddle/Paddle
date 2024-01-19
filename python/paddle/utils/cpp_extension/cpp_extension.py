@@ -480,7 +480,7 @@ class BuildExtension(build_ext):
                 # shared library have same ABI suffix with libpaddle.so.
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
-                # Append this macor only when jointly compiling .cc with .cu
+                # Append this macro only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     if core.is_compiled_with_rocm():
                         cflags.append('-DPADDLE_WITH_HIP')
@@ -829,7 +829,7 @@ def load(
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may
     occur because of ABI compatibility.
 
-    Compared with ``setup`` interface, it doesn't need extra ``setup.py`` and excute
+    Compared with ``setup`` interface, it doesn't need extra ``setup.py`` and execute
     ``python setup.py install`` command. The interface contains all compiling and installing
     process underground.
 
@@ -850,7 +850,7 @@ def load(
         from paddle.utils.cpp_extension import load
 
         custom_op_module = load(
-            name="op_shared_libary_name",                # name of shared library
+            name="op_shared_library_name",                # name of shared library
             sources=['relu_op.cc', 'relu_op.cu'],        # source files of customized op
             extra_cxx_cflags=['-g', '-w'],               # optional, specify extra flags to compile .cc/.cpp file
             extra_cuda_cflags=['-O2'],                   # optional, specify extra flags to compile .cu file
