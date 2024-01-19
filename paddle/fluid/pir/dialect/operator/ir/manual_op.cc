@@ -3416,37 +3416,13 @@ void SliceArrayOp::Build(pir::Builder &builder,             // NOLINT
                          pir::Value ends) {
   VLOG(4) << "Start build SliceArrayDenseOp";
   VLOG(4) << "Builder construction inputs";
-  argument.AddInputs({input, starts, ends});
+  std::vector<pir::Value> argument_inputs = {input, starts, ends};
+  argument.AddInputs(argument_inputs);
   VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
   VLOG(4) << "Builder construction outputs";
-  paddle::dialect::DenseTensorArrayType input_type =
-      input.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-  paddle::dialect::IrTensor dense_input(
-      paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
-      input_type.data_layout(),
-      {});
-  paddle::dialect::IrMetaTensor meta_input(&dense_input);
-
-  phi::IntArray starts_list = CalcSliceBoundsFromValue(starts);
-  phi::IntArray ends_list = CalcSliceBoundsFromValue(ends);
-
-  paddle::dialect::IrTensor dense_out;
-  paddle::dialect::IrMetaTensor meta_out(&dense_out);
-
-  phi::SliceArrayInferMeta(meta_input,
-                           starts_list,
-                           ends_list,
-                           &meta_out,
-                           phi::MetaConfig(false, false));
-
-  std::vector<pir::Type> argument_outputs;
-  pir::Type out_dense_tensor_array_type =
-      paddle::dialect::DenseTensorArrayType::get(
-          pir::IrContext::Instance(),
-          TransToIrDataType(dense_out.dtype()),
-          dense_out.layout());
-  argument_outputs.push_back(out_dense_tensor_array_type);
+  std::vector<pir::Type> argument_outputs =
+      SliceArrayOp::InferMeta(argument_inputs, argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }
@@ -3731,44 +3707,11 @@ void AssignArrayOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
 
   VLOG(4) << "Builder construction outputs";
-  paddle::dialect::DenseTensorArrayType x_type;
-  if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
-    x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-    paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
-        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
-    x_type = paddle::dialect::DenseTensorArrayType::get(
-        pir::IrContext::Instance(),
-        allocated_input.dtype(),
-        allocated_input.data_layout());
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Only support paddle::dialect::DenseTensorArrayType or "
-        "paddle::dialect::AllocatedDenseTensorArrayType"));
-  }
-
-  VLOG(4) << "Builder construction dense_tensor_array_x";
-  paddle::dialect::IrTensor ir_tensor_x(
-      paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
-      x_type.data_layout(),
-      {});
-  VLOG(4) << "Builder construction  meta_x";
-  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
-  paddle::dialect::IrTensor dense_out;
-  paddle::dialect::IrMetaTensor meta_out(&dense_out);
-
-  phi::UnchangedArrayInferMeta(meta_x, &meta_out);
-
-  std::vector<pir::Type> argument_outputs;
-  pir::Type out_dense_tensor_array_type =
-      paddle::dialect::DenseTensorArrayType::get(
-          pir::IrContext::Instance(),
-          TransToIrDataType(dense_out.dtype()),
-          dense_out.layout());
-  argument_outputs.push_back(out_dense_tensor_array_type);
+  std::vector<pir::Type> argument_outputs =
+      AssignArrayOp::InferMeta(argument_inputs, argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }
