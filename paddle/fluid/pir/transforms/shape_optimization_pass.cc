@@ -38,8 +38,8 @@ void DebugPrintOpInfo(
   for (auto& res : op->results()) {
     std::ostringstream print_stream;
 
-    print_stream << "result(" << res.dyn_cast<pir::OpResult>().index() << ") "
-                 << "ShapeOrData: ";
+    print_stream << "  result(" << res.dyn_cast<pir::OpResult>().index() << ") "
+                 << "ShapeOrData: {";
 
     if (shape_analysis != nullptr) {
       auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
@@ -67,8 +67,9 @@ void DebugPrintOpInfo(
         print_stream << "nullopt";
       }
 
-      print_stream << "]\n";
+      print_stream << "]";
     }
+    print_stream << " }";
     VLOG(3) << print_stream.str();
   }
 }
@@ -115,9 +116,10 @@ class ShapeOptimizationPass : public pir::Pass {
       pm.EnableIRPrinting();
       return pm.Run(m.program());
     };
+
+    PrintProgram(module_op, "ShapeOptimizationPass Program");
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
                "=====================";
-    PrintProgram(module_op, "ShapeOptimizationPass Program");
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
