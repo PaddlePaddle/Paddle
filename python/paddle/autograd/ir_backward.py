@@ -1033,9 +1033,22 @@ def remove_op(block, op, state):
                 )
 
 
+def all_stop_gradient_true(block):
+    for op in block.ops:
+        for value in op.results():
+            if value.stop_gradient is False:
+                return False
+    return True
+
+
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
+    if all_stop_gradient_true(block):
+        logging.warning(
+            "all op in block stop_grdient is True, no grad will be calculate"
+        )
+        return state.value_to_valuegrad
 
     total_ops = []
     if block.parent_block is not None:
