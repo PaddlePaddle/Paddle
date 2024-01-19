@@ -15,8 +15,6 @@
 import inspect
 import warnings
 
-import numpy as np
-
 from .. import core
 from ..dygraph.base import in_to_static_mode
 from ..framework import Variable, default_main_program, static_only
@@ -384,7 +382,13 @@ def monkey_patch_variable():
         return out
 
     def _neg_(var):
-        neg_zero_x = float(np.copysign([1], -var.numpy())[0])
+        one = (
+            paddle.base.Program()
+            .current_block()
+            .create_var(name='one', shape=[1], dtype='float32')
+        )
+        one = paddle.static.setitem(one, 0, 1)
+        neg_zero_x = float(paddle._C_ops.copysign(one, -var.numpy())[0])
         return _scalar_op_(var, -1.0, neg_zero_x * 0.0)
 
     @property
