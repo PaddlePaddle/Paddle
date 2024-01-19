@@ -487,6 +487,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
 bool FullOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  auto attributes = op->attributes();
   pir::Attribute attr_shape = attributes["shape"];
   const auto &shape_vec =
       attr_shape.dyn_cast<paddle::dialect::IntArrayAttribute>()
