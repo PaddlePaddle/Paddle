@@ -52,7 +52,7 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
       int64_t layer_norm_x = 1;
       auto fc_out_dims = pir::GetShapeFromValue(match_ctx.Tensor("fc_out"));
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-      for (int i = match_ctx.Attr<int>("begin_norm_axis");
+      for (size_t i = match_ctx.Attr<int>("begin_norm_axis");
            i < fc_out_dims.size();
            i++) {
         layer_norm_x *= fc_out_dims.at(i);
@@ -121,7 +121,7 @@ class FcElementwiseLayerNormFuse2Pattern : public paddle::drr::DrrPatternBase {
       int64_t layer_norm_x = 1;
       auto fc_out_dims = pir::GetShapeFromValue(match_ctx.Tensor("fc_out"));
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-      for (int i = match_ctx.Attr<int>("begin_norm_axis");
+      for (size_t i = match_ctx.Attr<int>("begin_norm_axis");
            i < fc_out_dims.size();
            i++) {
         layer_norm_x *= fc_out_dims.at(i);

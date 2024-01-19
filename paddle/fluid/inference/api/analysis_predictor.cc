@@ -802,7 +802,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 
         //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
-        gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
+        // gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
         gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
@@ -1789,6 +1789,12 @@ void AnalysisPredictor::PrepareArgument() {
         model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
+      pass_builder->AppendPass("map_op_to_another_pass");
+      pass_builder->AppendPass("simplify_with_basic_ops_pass");
+      pass_builder->AppendPass("is_test_pass");
+      if (!FLAGS_enable_pir_in_executor) {
+        pass_builder->AppendPass("constant_folding_pass");
+      }
       pass_builder->AppendPass("auto_mixed_precision_pass");
       if (!FLAGS_enable_pir_in_executor) {
         pass_builder->AppendPass("inplace_op_var_pass");
