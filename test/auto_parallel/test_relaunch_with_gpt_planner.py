@@ -28,7 +28,7 @@ class TestPlannerReLaunch(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_relaunch_with_planner(self):
-        from test_auto_parallel_relaunch import cluster_json, mapping_josn
+        from test_auto_parallel_relaunch import cluster_json, mapping_json
 
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster.json"
@@ -41,7 +41,7 @@ class TestPlannerReLaunch(unittest.TestCase):
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
 
-        mapping_json_object = json.loads(mapping_josn)
+        mapping_json_object = json.loads(mapping_json)
         with open(mapping_json_path, "w") as mapping_json_file:
             json.dump(mapping_json_object, mapping_json_file)
 

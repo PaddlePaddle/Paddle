@@ -20,6 +20,7 @@ from utils import compare_legacy_with_pt
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.base.framework import in_pir_mode
 from paddle.incubate.layers.nn import shuffle_batch
@@ -94,7 +95,7 @@ class TestWhileOp(unittest.TestCase):
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
-            # append_backward(loss)
+            append_backward(loss)
 
             cpu = core.CPUPlace()
             exe = Executor(cpu)

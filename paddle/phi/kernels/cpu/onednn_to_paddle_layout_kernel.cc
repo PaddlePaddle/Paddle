@@ -46,6 +46,7 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
     oss << "[";
     oss << "layout:" << x.layout() << " ,";
     oss << "dims:" << x.dims() << " ,";
+    oss << "dtype:" << x.dtype() << " ,";
     if (x.IsInitialized()) oss << "place:" << x.place();
     oss << "]";
 
@@ -62,13 +63,12 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
   }
 
   DataLayout tmp_layout = static_cast<DataLayout>(dst_layout);
-  if (static_cast<DataLayout>(dst_layout) == DataLayout::ANY) {
-    tmp_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
-  }
 
   if (tmp_layout == DataLayout::ANY) {
     tmp_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
   }
+
+  VLOG(4) << "src_layout: " << src_layout << ", tmp_layout: " << tmp_layout;
 
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc

@@ -66,4 +66,13 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               DenseTensor* dx,
                               DenseTensor* dy);
+
+template <typename T, typename Context>
+void CopySignGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out_grad,
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad);
+
 }  // namespace phi

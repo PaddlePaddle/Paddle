@@ -172,13 +172,13 @@ class State:
 
     def __init__(self, block):
         self.block = block
-        # opresult -> list(list(opresult))
+        # value -> list(list(value))
         self.value_to_valuegrad = ValueDict(default_factory=list)
         self.value_to_sumvaluegrad = ValueDict(default_factory=list)
         # operation -> list(operation)
         self.op_to_opgrad = collections.defaultdict(list)
 
-        # opresult -> list(opresult)
+        # value -> list(value)
         self.valuegrad_to_value = ValueDict(default_factory=list)
         self.sumvaluegrad_to_value = ValueDict(default_factory=list)
         # operation -> list(operation)
@@ -213,7 +213,7 @@ class State:
         # operation -> list(operation)
         state.op_to_opgrad = self.op_to_opgrad.copy()
 
-        # opresult -> list(opresult)
+        # value -> list(value)
         state.valuegrad_to_value = self.valuegrad_to_value.copy()
         state.sumvaluegrad_to_value = self.sumvaluegrad_to_value.copy()
         # operation -> list(operation)
