@@ -564,6 +564,7 @@ class PartialProgramLayer:
             infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:
+            print(self.origin_runable_program.program)
             train_program: RunableProgram = self.origin_runable_program.clone()
             train_program = self._append_backward_desc(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.

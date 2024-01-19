@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.base.framework import Variable
+from paddle.pir import Value
 from paddle.utils import gast, is_sequence, map_structure
 
 from .utils import UndefinedVar, create_undefined_variable
@@ -50,8 +51,8 @@ def create_bool_as_type(x, value=True):
     '''
     Create a bool variable, which type is the same as x.
     '''
-    if isinstance(x, Variable):
-        return paddle.full(shape=[1], fill_value=value, dtype="bool")
+    if isinstance(x, (Variable, Value)):
+        return paddle.full(shape=[], fill_value=value, dtype="bool")
     else:
         return value
 

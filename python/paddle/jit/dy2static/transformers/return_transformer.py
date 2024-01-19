@@ -232,6 +232,9 @@ class SingleReturnTransformer(BaseTransformer):
             return node
 
         # Prepend initialization of final return and append final return statement
+        print(self.return_name)
+        print(self.return_value_name)
+        return_flag_names = self.return_name
         value_name = self.return_value_name
         if value_name is not None:
             node.body.append(
@@ -256,6 +259,20 @@ class SingleReturnTransformer(BaseTransformer):
                 value=gast.Constant(kind=None, value=None),
             )
             node.body.insert(0, assign_return_value_node)
+
+        for return_flag_name in return_flag_names:
+            assign_return_flag_node = gast.Assign(
+                targets=[
+                    gast.Name(
+                        id=return_flag_name,
+                        ctx=gast.Store(),
+                        annotation=None,
+                        type_comment=None,
+                    )
+                ],
+                value=gast.Constant(kind=None, value=False),
+            )
+            node.body.insert(0, assign_return_flag_node)
 
         # Prepend no value placeholders
         return node
