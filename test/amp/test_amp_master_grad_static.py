@@ -46,7 +46,7 @@ class TestStaticMasterGradProgramFP16(AmpTestBase):
         self.assertEqual(
             actual_num_mp,
             expected_num_mp,
-            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but received {actual_num_mp}.",
+            f"The number of optimizers with multi_precision = True is expected to be {expected_num_mp}, but received {actual_num_mp}.",
         )
 
     def amp_fp16_o2(self, use_master_grad):
@@ -107,7 +107,7 @@ class TestMasterGradAccuracy(AmpTestBase):
             x_f16 = x.astype(np.float16)
             x_f32 = x_f16.astype(np.float32)
         else:
-            raise AssertionError(f"unkown dtype:{dtype}")
+            raise AssertionError(f"unknown dtype:{dtype}")
         return x_f32, x_f16
 
     def test_compare_o1_and_o2_master_grad(self):

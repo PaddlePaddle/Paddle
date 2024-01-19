@@ -401,7 +401,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                       it->second.size(),
                       platform::errors::InvalidArgument(
                           "The number of dims is expected to be equal to the "
-                          "number of Outputs(%s). But receieved: the number of "
+                          "number of Outputs(%s). But received: the number of "
                           "dims = %d, the number of Outputs(%s) = %d.",
                           name,
                           dims.size(),

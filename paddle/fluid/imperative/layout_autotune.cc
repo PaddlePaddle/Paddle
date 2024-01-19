@@ -33,7 +33,7 @@ LayoutAutoTune::LayoutAutoTune() {
       continue;
     }
 
-    // only record forwrd operators
+    // only record forward operators
     if (info.first.find("_grad") != std::string::npos) {
       continue;
     }

@@ -16,69 +16,16 @@
 
 namespace cinn::adt {
 
-std::string ToTxtString(const DimExpr& loop_size);
+std::string ToTxtString(const DimExpr& dim_expr) { return ToString(dim_expr); }
 
-namespace {
-
-std::string ToTxtStringImpl(std::int64_t dim_expr) {
-  return std::to_string(dim_expr);
-}
-
-std::string ToTxtStringImpl(const SymbolicDim& dim_expr) {
-  return std::string("sym_") + std::to_string(dim_expr.value().unique_id());
-}
-
-std::string ToTxtStringImpl(const Negative<DimExpr>& dim_expr) {
-  const auto& [item] = dim_expr.tuple();
-  return std::string("-") + ToTxtString(item);
-}
-
-std::string ToTxtStringImpl(const Reciprocal<DimExpr>& dim_expr) {
-  const auto& [item] = dim_expr.tuple();
-  return std::string("1 / (") + ToTxtString(item) + std::string(")");
-}
-
-std::string ListDimExprToTxtString(const List<DimExpr>& dim_exprs) {
-  std::string ret;
-  for (std::size_t i = 0; i < dim_exprs->size(); ++i) {
-    if (i > 0) {
-      ret += ", ";
-    }
-    ret += ToTxtString(dim_exprs->at(i));
-  }
-  return ret;
-}
-
-std::string ToTxtStringImpl(const Sum<DimExpr>& dim_expr) {
-  const auto& [operands] = dim_expr;
-  return std::string() + "Sum(" + ListDimExprToTxtString(operands) + ")";
-}
-
-std::string ToTxtStringImpl(const Product<DimExpr>& dim_expr) {
-  const auto& [operands] = dim_expr;
-  return std::string() + "Prod(" + ListDimExprToTxtString(operands) + ")";
-}
-
-std::string ToTxtStringImpl(const BroadcastedDim<DimExpr>& dim_expr) {
-  const auto& [operands] = dim_expr;
-  return std::string() + "BD(" + ListDimExprToTxtString(operands) + ")";
-}
-
-}  // namespace
-
-std::string ToTxtString(const DimExpr& loop_size) {
-  return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
-                    loop_size.variant());
-}
-
-std::string ToTxtString(const List<DimExpr>& loop_sizes) {
+std::string ToTxtString(const List<DimExpr>& dim_exprs) {
   std::string ret;
   ret += "[";
-  for (std::size_t idx = 0; idx < loop_sizes->size(); ++idx) {
+  for (std::size_t idx = 0; idx < dim_exprs->size(); ++idx) {
     if (idx != 0) {
       ret += ", ";
     }
-    ret += ToTxtString(loop_sizes.Get(idx));
+    ret += ToString(dim_exprs.Get(idx));
   }
   ret += "]";
   return ret;

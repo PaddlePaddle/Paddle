@@ -113,6 +113,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
@@ -801,9 +802,10 @@ bool AnalysisPredictor::PrepareExecutor() {
 
         //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
-        gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
+        // gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
@@ -1787,6 +1789,12 @@ void AnalysisPredictor::PrepareArgument() {
         model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
+      pass_builder->AppendPass("map_op_to_another_pass");
+      pass_builder->AppendPass("simplify_with_basic_ops_pass");
+      pass_builder->AppendPass("is_test_pass");
+      if (!FLAGS_enable_pir_in_executor) {
+        pass_builder->AppendPass("constant_folding_pass");
+      }
       pass_builder->AppendPass("auto_mixed_precision_pass");
       if (!FLAGS_enable_pir_in_executor) {
         pass_builder->AppendPass("inplace_op_var_pass");
@@ -1818,7 +1826,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
 
-  // mixed precison.
+  // mixed precision.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
   argument_->SetMixedWhiteList(config_.mixed_white_list_);

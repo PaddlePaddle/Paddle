@@ -46,6 +46,7 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
     oss << "[";
     oss << "layout:" << x.layout() << " ,";
     oss << "dims:" << x.dims() << " ,";
+    oss << "dtype:" << x.dtype() << " ,";
     if (x.IsInitialized()) oss << "place:" << x.place();
     oss << "]";
 
