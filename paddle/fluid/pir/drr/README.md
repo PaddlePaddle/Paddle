@@ -8,9 +8,8 @@ DRR can reduce the development cost of PASS, allowing developers to focus on pro
 
 Taking PASS to eliminate redundant CastOp as an example, the code example developed using DRR is as follows:
 ~~~ c++
-// 1. Inherit specialized template class from DrPatternBase
-class RemoveRedundentCastPattern
-    : public paddle::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+// 1. Inherit class from DrPatternBase
+class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
   // 2. Overload operator()
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 3. Define a SourcePattern containing two consecutive CastOps using Op, Tensor, and Attribute
@@ -32,6 +31,8 @@ class RemoveRedundentCastPattern
         res.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 ~~~
 
@@ -165,7 +166,7 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 ## 3 Example
 Example 1: Matmul + Add -> FusedGemmEpilogue
 ~~~ c++
-class FusedLinearPattern : public paddle::drr::DrrPatternBase<FusedLinearPattern> {
+class FusedLinearPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
 	// Define SourcePattern
@@ -181,25 +182,22 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase<FusedLinearPattern
     // Define ResultPattern
     paddle::drr::ResultPattern res = pat.ResultPattern();
     // Define Constrain
-    const auto &act_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return "none";
-        });
     const auto &fused_gemm_epilogue = res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
                                              {{{"trans_x", pat.Attr("trans_x")},
                                                {"trans_y", pat.Attr("trans_y")},
-                                               {"activation", act_attr}}});
+                                               {"activation", res.StrAttr("none")}}});
     fused_gemm_epilogue(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
   }
+
+  std::string name() const override { return "FusedLinearPattern"; }
 };
 ~~~
 
 Example 2: Full + Expand -> Full
 ~~~ c++
-class FoldExpandToConstantPattern
-    : public paddle::drr::DrrPatternBase<FoldExpandToConstantPattern> {
+class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Define SourcePattern
@@ -226,5 +224,7 @@ class FoldExpandToConstantPattern
                                 {"place", pat.Attr("place_1")}});
     res.Tensor("ret") = full2();
   }
+
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 ~~~

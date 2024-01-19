@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
+
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
@@ -35,8 +37,7 @@ int getSMVersion() {
   return sm_version;
 }
 
-class FusedWeightOnlyLinearPattern
-    : public paddle::drr::DrrPatternBase<FusedWeightOnlyLinearPattern> {
+class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
@@ -63,21 +64,21 @@ class FusedWeightOnlyLinearPattern
           bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
           if (matmul_trans_x || matmul_trans_y) return false;
 
-          if (!(match_ctx.Tensor("w").Shape().size() == 2 &&
-                match_ctx.Tensor("x").Shape().size() >= 2 &&
-                match_ctx.Tensor("bias").Shape().size() == 1)) {
+          auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+          auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+          if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
+                bias_dims.size() == 1)) {
             return false;
           }
 
-          auto w_dims = match_ctx.Tensor("w").Shape();
           if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
 
-          auto w_dtype = match_ctx.Tensor("w").Dtype().get();
+          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
           if (!w_dtype.isa<pir::Float16Type>() &&
               !w_dtype.isa<pir::BFloat16Type>())
             return false;
 
-          auto x_dims = match_ctx.Tensor("x").Shape();
           if (x_dims.at(x_dims.size() - 1) != w_dims.at(1)) return false;
 
           return true;
@@ -87,45 +88,28 @@ class FusedWeightOnlyLinearPattern
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
 
-    // quantize weight
-    const auto &weight_only_int8_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return "weight_only_int8";
-        });
-
-    const auto &arch_attr =
-        res.Attr([&](const paddle::drr::MatchContext &match_ctx) -> int {
-          return getSMVersion();
-        });
-
-    const auto &group_size_attr = res.Attr(
-        [](const paddle::drr::MatchContext &match_ctx) -> int { return -1; });
-
     const auto &weight_quantize =
         res.Op(paddle::dialect::WeightQuantizeOp::name(),
-               {{"algo", weight_only_int8_attr},
-                {"arch", arch_attr},
-                {"group_size", group_size_attr}});
+               {{"algo", res.StrAttr("weight_only_int8")},
+                {"arch", res.Int32Attr(getSMVersion())},
+                {"group_size", res.Int32Attr(-1)}});
     weight_quantize({&res.Tensor("w")},
                     {&res.Tensor("quanted_weight_tensor"),
                      &res.Tensor("weight_scale_tensor")});
 
-    const auto &weight_dtype_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return "int8";
-        });
-
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
-               {{"weight_dtype", weight_dtype_attr},
-                {"arch", arch_attr},
-                {"group_size", group_size_attr}});
+               {{"weight_dtype", res.StrAttr("int8")},
+                {"arch", res.Int32Attr(getSMVersion())},
+                {"group_size", res.Int32Attr(-1)}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
                         &res.Tensor("bias"),
                         &res.Tensor("weight_scale_tensor")},
                        {&res.Tensor("add_out")});
   }
+
+  std::string name() const override { return "FusedWeightOnlyLinearPattern"; }
 };
 
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {

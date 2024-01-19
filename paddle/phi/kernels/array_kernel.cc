@@ -97,18 +97,6 @@ void ArrayToTensorKernel(const Context& dev_ctx,
                                    "but the received is %d",
                                    n));
 
-  auto out_dims = x[0].dims();
-  size_t in_zero_dims_size = out_dims.size();
-  for (size_t i = 1; i < n; i++) {
-    for (size_t j = 0; j < in_zero_dims_size; j++) {
-      if (j == static_cast<size_t>(axis)) {
-        out_dims[axis] += x[i].dims()[static_cast<int>(j)];
-      }
-    }
-  }
-  auto vec = common::vectorize<int>(out_dims);
-  vec.insert(vec.begin() + axis, x.size());  // NOLINT
-  out->Resize(common::make_ddim(vec));
   std::vector<DenseTensor> tmp_inputs(x.size());
   std::vector<const DenseTensor*> inputs;
 
@@ -124,8 +112,22 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   }
 
   if (use_stack) {
+    auto vec = common::vectorize<int>(x[0].dims());
+    vec.insert(vec.begin() + axis, x.size());  // NOLINT
+    out->Resize(common::make_ddim(vec));
     StackKernel<T, Context>(dev_ctx, inputs, axis, out);
   } else {
+    auto out_dims = x[0].dims();
+    size_t in_zero_dims_size = out_dims.size();
+    for (size_t i = 1; i < n; i++) {
+      for (size_t j = 0; j < in_zero_dims_size; j++) {
+        if (j == static_cast<size_t>(axis)) {
+          out_dims[axis] += x[i].dims()[static_cast<int>(j)];
+        }
+      }
+    }
+    auto vec = common::vectorize<int>(out_dims);
+    out->Resize(common::make_ddim(vec));
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 

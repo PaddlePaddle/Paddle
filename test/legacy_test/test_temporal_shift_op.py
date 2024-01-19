@@ -173,6 +173,7 @@ class TestTemporalShiftAPI(unittest.TestCase):
                     fetch_list=[y],
                 )
 
+    @test_with_pir_api
     def test_error(self):
         def attr_data_format():
             input = paddle.randn([6, 4, 2, 2])

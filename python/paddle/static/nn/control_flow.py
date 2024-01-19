@@ -283,7 +283,7 @@ class ConditionalBlock:
         `conditional_block_grad` is appended manually.
 
         Args:
-            parent_block (Block): The block that `conditional_block_op` blongs to.
+            parent_block (Block): The block that `conditional_block_op` belongs to.
             inside_block (Block): The sub block of `conditional_block_op`.
             conditional_block_op (Operator): The forward op conditional_block.
         '''
@@ -397,7 +397,7 @@ def get_inputs_outputs_in_block(
 
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
-    # but some variables are created without appendding a real op.
+    # but some variables are created without appending a real op.
     # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
     for op in current_block.ops:
         assert isinstance(op, Operator)
@@ -614,7 +614,7 @@ def assign_skip_lod_tensor_array(input, output):
             and has_shape_diff(input, output)
         ):
             warnings.warn(
-                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
+                "In dy2static mode, we attempt to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
                     input.shape, output.shape
                 )
             )
@@ -868,7 +868,6 @@ def case(pred_fn_pairs, default=None, name=None):
             ...     print(res_1, res_2)
             [[1. 1.]] [3 3 3]
     '''
-    helper = LayerHelper('case', **locals())
 
     def _case_check_args(pred_fn_pairs, default):
         '''
@@ -899,21 +898,13 @@ def case(pred_fn_pairs, default=None, name=None):
                 )
             pred, fn = pred_fn
 
-            if not isinstance(pred, Variable):
-                raise TypeError(
-                    _error_message(
-                        "The pred's type",
-                        "pred_fn_pairs",
-                        "case",
-                        "boolean Variable",
-                        type(pred),
-                    )
-                )
+            check_variable_and_dtype(
+                pred, 'pred', ['bool'], 'paddle.static.nn.case'
+            )
 
             if not callable(fn):
                 raise TypeError(
-                    f"The fn for {pred.name} of pred_fn_pairs in Op(case) must"
-                    " be callable."
+                    "The fn of pred_fn_pairs in Op(case) must" " be callable."
                 )
 
         if default is None:
@@ -1131,7 +1122,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     ``None`` in this case.
 
     ``true_fn`` and ``false_fn`` should return same nest structure of tensors
-    or both return ``None`` if user doens't like to return anything. A nest
+    or both return ``None`` if user doesn't like to return anything. A nest
     structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
     list of tensors.
 
@@ -1327,13 +1318,13 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     # Merge true and false output if they are not None
     if return_names is None:
-        is_dy2staic = False
+        is_dy2static = False
         return_names = ["no name"] * len(_to_sequence_except_dict(true_output))
     else:
         """
         dy2static will set the return_names and expand the return values to UndefinedVar.
         """
-        is_dy2staic = True
+        is_dy2static = True
 
         # TODO:  expand_undefined_var will replace None to Undefinedvar(), to fix cases like:
         #       a = None
@@ -1379,7 +1370,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     and f_true[idx] is not None
                 ):
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
                             f_name,
@@ -1396,7 +1387,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(return_names),
     )
 
-    if is_dy2staic:
+    if is_dy2static:
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output
         )
@@ -1550,7 +1541,7 @@ def select_input_with_buildin_type(inputs, mask, name):
             return select_input(inputs, mask)
         except Exception as e:
             raise RuntimeError(
-                f"Exceptions throwed while doing select_input on {name}:\n{e}"
+                f"Exceptions thrown while doing select_input on {name}:\n{e}"
             )
 
     if isinstance(false_var, UndefinedVar) and isinstance(
@@ -1648,7 +1639,7 @@ def expand_undefined_var(nest1, nest2, names):
             if n1 is None and n2 is not None:
                 if order == 0:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
                             name, type(n1), n1, type(n2), n2
@@ -1656,7 +1647,7 @@ def expand_undefined_var(nest1, nest2, names):
                     )
                 else:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
                             name, type(n2), n2, type(n1), n1
@@ -1734,7 +1725,7 @@ def Print(
         summarize (int, optional): Number of elements in the tensor to be print. If
                 it's value is -1, then all elements in the tensor will be print.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
-        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_type (bool, optional): Print the tensor type. Default: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.

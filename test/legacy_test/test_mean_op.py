@@ -102,7 +102,7 @@ class TestMeanOpError(unittest.TestCase):
 
         with paddle.pir_utils.IrGuard(), program_guard(Program(), Program()):
             input1 = 12
-            self.assertRaises(ValueError, paddle.mean, input1)
+            self.assertRaises(TypeError, paddle.mean, input1)
 
             input2 = paddle.static.data(
                 name='input2', shape=[2, 3, 4, 5], dtype="int32"

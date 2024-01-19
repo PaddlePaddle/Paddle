@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+
 #include "paddle/common/ddim.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
-#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/core/ir_printer.h"
 
@@ -136,9 +137,7 @@ CustomKernelDialect::CustomKernelDialect(pir::IrContext *context)
 }
 
 void CustomKernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
   RegisterOps<dialect::CustomKernelOp>();
-  RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
 void CustomKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
@@ -176,13 +175,9 @@ OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
 }
 
 void OneDNNKernelDialect::initialize() {
-  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
-                paddle::dialect::AllocatedSelectedRowsType,
-                paddle::dialect::AllocatedDenseTensorArrayType>();
   RegisterOps<dialect::OneDNNPhiKernelOp,
               dialect::OneDNNMixedPhiKernelOp,
               dialect::OneDNNLegacyKernelOp>();
-  RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
 void OneDNNKernelDialect::PrintType(pir::Type type, std::ostream &os) const {

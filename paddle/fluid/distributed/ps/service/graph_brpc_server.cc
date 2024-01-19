@@ -316,7 +316,7 @@ int32_t GraphBrpcService::LoadOneTable(Table *table,
     set_response_code(
         response,
         -1,
-        "PsRequestMessage.datas is requeired at least 2 for path & load_param");
+        "PsRequestMessage.datas is required at least 2 for path & load_param");
     return -1;
   }
   if (table->Load(request.params(0), request.params(1)) != 0) {

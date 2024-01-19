@@ -101,6 +101,8 @@
     {x : X, y : Y}
   outputs :
     {out : Out}
+  attrs :
+    {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -342,6 +344,8 @@
     saved_mean: SavedMean
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -364,6 +368,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -380,6 +386,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -424,6 +432,10 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : bn_act_xpu
+  attrs:
+    data_format: data_layout
 
 - op : box_coder
   inputs :
@@ -747,6 +759,14 @@
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
+
+- op : dequantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift}
 
 - op : dequantize_linear
   extra :
@@ -1534,6 +1554,8 @@
     y : Y
     mean : Mean
     variance : Variance
+  attrs:
+    data_format: data_layout
 
 - op : gru
   backward : gru_grad
@@ -1788,6 +1810,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1904,6 +1928,10 @@
 
 - op : lrn
   backward : lrn_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, mid_out : MidOut}
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
@@ -2220,6 +2248,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2441,6 +2471,14 @@
   outputs :
     out : Out
 
+- op : push_sparse_v2
+  inputs :
+    { x : Ids, W : w}
+  outputs :
+    out : Out
+  extra :
+    attrs : [int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, 'str[] inputnames = {}', bool is_distributed = true]
+
 - op : put_along_axis
   backward : put_along_axis_grad
   inputs :
@@ -2463,7 +2501,6 @@
     {q : Q, r : R}
 
 - op : quantize
-  backward : quantize_grad
   inputs :
     input : Input
   outputs :
@@ -2570,6 +2607,14 @@
     out : Out
   attrs:
     axis : dim
+
+- op : requantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, shift_in : Shift_in, shift_out : Shift_out}
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
@@ -2798,6 +2843,13 @@
   outputs :
     out : Out
     xout : XOut
+
+- op : shuffle_batch
+  backward: shuffle_batch_grad
+  inputs:
+    {x : X, seed : Seed}
+  outputs:
+    {out : Out, shuffle_idx : ShuffleIdx, seed_out : SeedOut}
 
 - op : shuffle_channel
   backward : shuffle_channel_grad
@@ -3082,6 +3134,8 @@
   outputs :
     {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -3120,6 +3174,12 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tdm_sampler
+  inputs:
+    {x : X, travel : Travel, layer : Layer}
+  outputs:
+    {out : Out, labels : Labels, mask : Mask}
 
 - op : thresholded_relu
   inputs :
@@ -3188,6 +3248,8 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
+  attrs:
+    data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3358,6 +3420,12 @@
   outputs :
     out: Out
 
+- op: c_allreduce_prod
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_sum
   inputs :
     x : X
@@ -3436,6 +3504,12 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op: ftrl
+  inputs:
+    {param: Param, squared_accumulator: SquaredAccumulator, linear_accumulator: LinearAccumulator, grad: Grad, learning_rate: LearningRate}
+  outputs:
+    {param_out: ParamOut, squared_accum_out: SquaredAccumOut, linear_accum_out: LinearAccumOut}
+
 - op: full_batch_size_like (fill_constant_batch_size_like)
   inputs:
     {input: Input}
@@ -3509,6 +3583,13 @@
     x : X
   outputs :
     out : Out
+
+- op: nce
+  backward: nce_grad
+  inputs:
+    {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
+  outputs:
+    {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
 
 - op: number_count
   inputs :

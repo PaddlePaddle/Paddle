@@ -102,6 +102,7 @@ class TestDygraphIfElse(Dy2StTestBase):
                 ret = self.dyfunc(x_v)
             return ret.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -113,6 +114,7 @@ class TestDygraphIfElse2(TestDygraphIfElse):
 
     # TODO(dev): fix AST mode
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -134,8 +136,7 @@ class TestDygraphIfElse3(Dy2StTestBase):
                 ret = self.dyfunc(x_v)
             return ret.numpy()
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
-    @test_legacy_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -173,8 +174,7 @@ class TestDygraphNestedIfElse(Dy2StTestBase):
                 ret = self.dyfunc(x_v)
             return ret.numpy()
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
-    @test_legacy_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -206,8 +206,7 @@ class TestDygraphNestedIfElse3(Dy2StTestBase):
                 ret = self.dyfunc(x_v)
             return ret.numpy()
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
-    @test_legacy_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -285,19 +284,11 @@ class TestDygraphIfElseWithAndOr2(TestDygraphIfElse):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_2
 
-    @test_legacy_and_pt_and_pir
-    def test_ast_to_func(self):
-        self.assertTrue((self._run_dygraph() == self._run_static()).all())
-
 
 class TestDygraphIfElseWithAndOr3(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_3
-
-    @test_legacy_and_pt_and_pir
-    def test_ast_to_func(self):
-        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class TestDygraphIfElseWithAndOr4(TestDygraphIfElse):
@@ -413,6 +404,7 @@ class TestNetWithExternalFunc(TestDygraphIfElseNet):
         self.x = np.random.random([10, 16]).astype('float32')
         self.Net = NetWithExternalFunc
 
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 

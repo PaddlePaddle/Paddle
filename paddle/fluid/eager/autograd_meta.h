@@ -45,7 +45,7 @@ using AbstractAutogradMeta = paddle::AbstractAutogradMeta;
  *
  * 4. overrided_stop_gradient_
  * This member is used to finish some auto-prune related work, which indicate
- * user set stop_gradient should overrided the result indicated by framework.
+ * user set stop_gradient should override the result indicated by framework.
  * All non-parameter tensor's stop_gradient properties should be true. We will
  * pass stop_gradient when we find one who need it.
  *

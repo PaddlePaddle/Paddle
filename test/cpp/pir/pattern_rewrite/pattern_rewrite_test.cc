@@ -412,15 +412,15 @@ TEST(pattern_rewrite, Patterns) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  //   pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       [](pir::Pass *pass, pir::Operation *op) {
-  //         return pass->name() == "constant_folding_pass";
-  //       },
-  //       true,
-  //       true));
+  // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     [](pir::Pass *pass, pir::Operation *op) {
+  //       return pass->name() == "constant_folding_pass";
+  //     },
+  //     true,
+  //     true));
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 17u);
@@ -445,10 +445,8 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("a"),
-                                                  dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("b"),
-                                                  dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
@@ -585,7 +583,7 @@ TEST(constant_folding, ConstantFolding_Combine) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 12u);
+  EXPECT_EQ(program.block()->size(), 2u);
 }
 
 void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {

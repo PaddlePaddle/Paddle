@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/platform/init_phi.h"
 
 REGISTER_FILE_SYMBOLS(gather_op_handle);
 

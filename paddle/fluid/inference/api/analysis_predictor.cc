@@ -112,8 +112,8 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
@@ -796,19 +796,19 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
         //----------------------------------------------------------------------------------------------//
+        // Functional pass
+        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
+        //----------------------------------------------------------------------------------------------//
+
+        //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
-        gpu_pm.AddPass(::pir::CreateFcWithSpecialOpFusePass());
+        gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
-        //----------------------------------------------------------------------------------------------//
-
-        //----------------------------------------------------------------------------------------------//
-        // Functional pass
-        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
         //----------------------------------------------------------------------------------------------//
 
         //----------------------------------------------------------------------------------------------//
@@ -828,9 +828,31 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//
-
-        // gpu_pm.EnableIRPrinting();
+        if (!config_.glog_info_disabled()) {
+          gpu_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          gpu_pm.EnableIRPrinting();
+        }
         gpu_pm.Run(pir_program_.get());
+      } else {
+        ::pir::PassManager cpu_pm(::pir::IrContext::Instance(), 2);
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        cpu_pm.AddPass(std::move(constant_folding_pass));
+        cpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        cpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        //----------------------------------------------------------------------------------------------//
+        if (!config_.glog_info_disabled()) {
+          cpu_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          cpu_pm.EnableIRPrinting();
+        }
+        cpu_pm.Run(pir_program_.get());
       }
 
       pir_program_ = std::move(
@@ -840,7 +862,15 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (FLAGS_pir_apply_inplace_pass) {
         lowered_pm.AddPass(::pir::CreateInplacePass());
       }
+      if (!config_.glog_info_disabled()) {
+        lowered_pm.EnablePrintStatistics();
+      }
+      if (config_.ir_debug_) {
+        lowered_pm.EnableIRPrinting();
+      }
       lowered_pm.Run(pir_program_.get());
+
+      LOG(INFO) << "======= pir optimization completed =======";
 
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
@@ -1678,8 +1708,8 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
   argument_->SetUseCustomDevice(config_.use_custom_device());
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (config_.use_custom_device()) {
     LOG(INFO) << "CustomDevice is enabled";
     argument_->SetCustomDeviceType(config_.custom_device_type());
@@ -1790,7 +1820,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
 
-  // mixed precison.
+  // mixed precision.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
   argument_->SetMixedWhiteList(config_.mixed_white_list_);
@@ -1863,7 +1893,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.reset(nullptr);
   }
 #endif
-  LOG(INFO) << "======= optimize end =======";
+  LOG(INFO) << "======= ir optimization completed =======";
 }
 
 template <>
@@ -2249,7 +2279,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   return res;
 }
 
-bool AnalysisPredictor::ZeroCopyRun() {
+bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   inference::DisplayMemoryInfo(place_, "before run");
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
@@ -2312,7 +2342,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
 
   if (config_.new_executor_enabled()) {
-    executor_->RunInterpreterCore();
+    executor_->RunInterpreterCore({}, false, switch_stream);
   } else {
     executor_->Run();
   }
@@ -2353,7 +2383,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
         "Please use config.SetExecStream to init gpu resources, and then we "
         "will bind gpu resources to execution stream."));
   }
-
+  bool switch_stream = false;
   if (stream != predictor_stream_) {
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
@@ -2383,9 +2413,9 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
         }));
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
+    switch_stream = true;
   }
-
-  return ZeroCopyRun();
+  return ZeroCopyRun(switch_stream);
 }
 #endif
 

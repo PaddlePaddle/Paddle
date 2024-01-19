@@ -138,7 +138,7 @@ void RpcAgent::SetAgentInstance(std::shared_ptr<RpcAgent> agent) {
       rpc_agent_instance_,
       nullptr,
       platform::errors::Fatal(
-          "RpcAgent has been set, please don't set rpc agent repeatly."));
+          "RpcAgent has been set, please don't set rpc agent repeatedly."));
   rpc_agent_instance_ = agent;
 }
 }  // namespace distributed
