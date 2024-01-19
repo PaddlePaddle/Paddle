@@ -3733,7 +3733,13 @@ def triplet_margin_with_distance_loss(
         swap_dist = distance_function(positive, negative)
         negative_dist = paddle.minimum(negative_dist, swap_dist)
 
-    if not paddle.all(positive_dist > 0) or not paddle.all(negative_dist > 0):
+    if (
+        not isinstance(positive_dist, (Variable, paddle.pir.Value))
+        and not paddle.all(positive_dist > 0)
+    ) or (
+        not isinstance(negative_dist, (Variable, paddle.pir.Value))
+        and not paddle.all(negative_dist > 0)
+    ):
         raise ValueError(
             "The positive distance or negative distance should be greater than 0, "
             "The distance functions should be checked."
