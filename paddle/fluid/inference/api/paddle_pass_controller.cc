@@ -169,7 +169,6 @@ PassType PassContorller::GetPassStatus(std::string pass_runtime_status,
 
 void PaddlePassContorller::LoadDefaultConfig() {
   LOG(INFO) << "[PaddlePassController]Load default configuration ！";
-
   ctrl_passes_.assign({"preln_residual_bias_fuse_pass",
                        "trt_skip_layernorm_fuse_pass",
                        "vit_attention_fuse_pass",
@@ -180,7 +179,6 @@ void PaddlePassContorller::LoadDefaultConfig() {
                        "add_support_int8_pass",
                        "merge_layernorm_fuse_pass",
                        "elementwiseadd_transpose_pass"});
-
   for (auto ctrl_pass_name : ctrl_passes_) {
     LOG(INFO) << "Load pass[" << ctrl_pass_name << "] default config!";
     pass_ctrl_map_.emplace(ctrl_pass_name, PassContorller(ctrl_pass_name));
