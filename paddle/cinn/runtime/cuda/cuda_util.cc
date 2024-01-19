@@ -78,7 +78,7 @@ class CublasHandle {
   cublasHandle_t cuhandle;
 };
 
-int32_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
+int64_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
   return args[idx].operator int64_t();
 }
@@ -2748,7 +2748,7 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   cudnnDestroyPoolingDescriptor(pooling_desc);
 }
 
-void infer_shape_set_value(int row, int col, int32_t value, int32_t **v) {
+void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
   v[row][col] = value;
 }
 void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
