@@ -2677,9 +2677,13 @@ void ArrayWrite_Op::Build(pir::Builder &builder,
   argument_outputs.push_back(out_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   constexpr char kStopGradientAttrName[] = "stop_gradient";
-  auto stop_gradient =
+  auto stop_gradient0 =
+      argument.inputs[0].attribute<pir::BoolAttribute>(kStopGradientAttrName);
+  auto stop_gradient1 =
       argument.inputs[1].attribute<pir::BoolAttribute>(kStopGradientAttrName);
-  argument.inputs[0].set_attribute(kStopGradientAttrName, stop_gradient);
+  auto stop_gradient = stop_gradient0.data() && stop_gradient1.data();
+  argument.inputs[0].set_attribute(kStopGradientAttrName,
+                                   builder.bool_attr(stop_gradient));
 }
 
 void ArrayWrite_Op::VerifySig() {
