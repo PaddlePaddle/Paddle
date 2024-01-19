@@ -1398,6 +1398,23 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+
+        if (for_if_block && (!new_in.type().isa<pir::VectorType>()) &&
+            (ParsePhiPlace(new_in.type()).GetType() !=
+             phi::AllocationType::UNDEFINED) &&
+            (ParsePhiPlace(new_in.type()) != place)) {
+          phi::KernelKey kernel_key(TransToPhiBackend(place),
+                                    phi::DataLayout::ALL_LAYOUT,
+                                    ParsePhiDType(new_in.type()));
+          new_in = AddPlaceTransferOp(
+              new_in,
+              ConvertOpTypeToKernelType(ctx, cur_in.type(), place),
+              ParsePhiPlace(new_in.type()),
+              place,
+              kernel_key,
+              block);
+        }
+
         vec_inputs.push_back(new_in);
       }
     }
@@ -1413,23 +1430,6 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-
-        if (for_if_block && op_item->isa<::pir::YieldOp>() &&
-            (!new_in.type().isa<pir::VectorType>()) &&
-            (ParsePhiPlace(new_in.type()).GetType() !=
-             phi::AllocationType::UNDEFINED) &&
-            (ParsePhiPlace(new_in.type()) != place)) {
-          phi::KernelKey kernel_key(TransToPhiBackend(place),
-                                    phi::DataLayout::ALL_LAYOUT,
-                                    ParsePhiDType(new_in.type()));
-          new_in = AddPlaceTransferOp(
-              new_in,
-              ConvertOpTypeToKernelType(ctx, cur_in.type(), place),
-              ParsePhiPlace(new_in.type()),
-              place,
-              kernel_key,
-              block);
-        }
 
         // layout transfer(only for onednn)
 #ifdef PADDLE_WITH_DNNL
