@@ -408,7 +408,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
     auto var_name = for_ir->loop_var->name;
     auto extent_i = for_ir->extent;
 
-    if (extent_i.is_constant() && extent_i.as_int32() == 1)
+    if (extent_i.is_constant() && extent_i.as_int64() == 1)
       loop_var_.insert(var_name);
     ir::IRMutator<>::Visit(op, expr);
     loop_var_.erase(var_name);
