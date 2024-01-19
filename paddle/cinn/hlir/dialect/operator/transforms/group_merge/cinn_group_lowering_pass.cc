@@ -271,7 +271,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     for (auto group : group_list) {
       auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
           *program, target, scope);
-      group->shape_analysis = shape_analysis_;
+      // group->shape_analysis = shape_analysis_;
 
       // unique group ops
       std::vector<::pir::Operation*> uniq_ops;

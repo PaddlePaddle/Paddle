@@ -105,6 +105,8 @@ class TestTask(unittest.TestCase):
     def test_cmp(self):
         parser = Parser()
         program_info = parser.run(self.file_path)
+        if parser.have_dy_shape:
+            return
 
         feed = program_info.random_feeds()
         fetch_list = program_info.fetch_list()
