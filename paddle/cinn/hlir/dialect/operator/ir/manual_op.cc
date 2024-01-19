@@ -27,6 +27,7 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 
 namespace cinn {
 namespace dialect {
@@ -41,6 +42,21 @@ void GroupOp::Build(pir::Builder& builder,
                     const std::vector<pir::Type>& output_types) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
+}
+
+void GroupOp::Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types,
+                    const std::unordered_map<::pir::Operation*, std::vector<cinn::hlir::framework::pir::ScheduleInfoNode> >& alignment_schedule_info )
+{
+    argument.AddRegion(nullptr);
+    argument.output_types = output_types;
+
+
+  cinn::dialect::GroupInfo group_info( {});
+  group_info.alignment_schedule_info = alignment_schedule_info;
+    argument.AddAttribute(
+    "group_info", cinn::dialect::GroupInfoAttribute::get(pir::IrContext::Instance(), group_info));
 }
 
 void GroupOp::Build(pir::Builder& builder,             // NOLINT

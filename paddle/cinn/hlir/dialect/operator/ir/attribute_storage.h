@@ -47,6 +47,7 @@ struct GroupInfo {
   std::vector<::pir::Operation*> ops;
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::unordered_map<::pir::Operation*, std::vector<cinn::hlir::framework::pir::ScheduleInfoNode> > alignment_schedule_info;
 
  private:
   void Initialize() {

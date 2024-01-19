@@ -23,6 +23,7 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 
 namespace cinn {
 namespace dialect {
@@ -40,6 +41,11 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     std::unique_ptr<pir::Block> &&block);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types,
+                    const std::unordered_map<::pir::Operation*, std::vector<cinn::hlir::framework::pir::ScheduleInfoNode> >& alignment_schedule_info );
 
   pir::Block *block();
   std::vector<pir::Operation *> ops();
