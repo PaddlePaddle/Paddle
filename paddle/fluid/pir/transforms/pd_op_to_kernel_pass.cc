@@ -973,8 +973,9 @@ phi::KernelKey GetKernelKey(
       if (!op_res) {
         continue;
       }
-      if (op_res.defining_op()->isa<DataOp>()) {
-        auto data_op = op->operand_source(i).defining_op();
+      auto res_def_op = op_res.defining_op();
+      if (res_def_op && res_def_op->isa<DataOp>()) {
+        auto& data_op = res_def_op;
         auto data_place = data_op->attribute<PlaceAttribute>("place").data();
 
         auto data_op_backend = paddle::experimental::ParseBackend(data_place);
@@ -986,16 +987,17 @@ phi::KernelKey GetKernelKey(
             paddle::experimental::BackendSet(data_op_backend);
         VLOG(8) << "Update kernel backend set from owner op (DataOp): "
                 << data_op_backend;
-      } else if (op_res.defining_op()->isa<pir::CombineOp>()) {
-        auto combine_op = op_res.defining_op();
+      } else if (res_def_op && res_def_op->isa<pir::CombineOp>()) {
+        auto& combine_op = res_def_op;
         for (size_t j = 0; j < combine_op->num_operands(); ++j) {
           auto combine_op_res = combine_op->operand_source(j);
           if (!combine_op_res) {
             continue;
           }
 
-          if (combine_op_res.defining_op()->isa<DataOp>()) {
-            auto data_op = combine_op_res.defining_op();
+          auto combine_op_res_def_op = combine_op_res.defining_op();
+          if (combine_op_res_def_op && combine_op_res_def_op->isa<DataOp>()) {
+            auto& data_op = combine_op_res_def_op;
             auto data_place =
                 data_op->attribute<PlaceAttribute>("place").data();
 
