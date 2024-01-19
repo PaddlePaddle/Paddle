@@ -1661,8 +1661,8 @@ void LoopComputeAt(
   int index = std::min(node_loops.size(), master_loops.size()) - 1;
   do {
     // if loop range is not equal.
-    if (node_loops[index].As<ir::For>()->extent.as_int32() !=
-        master_loops[index].As<ir::For>()->extent.as_int32()) {
+    if (node_loops[index].As<ir::For>()->extent !=
+        master_loops[index].As<ir::For>()->extent) {
       continue;
     }
     MergeLoops(

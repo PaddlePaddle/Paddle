@@ -263,6 +263,12 @@ inline Type type_of<int32_t**>() {
   return x;
 }
 template <>
+inline Type type_of<int64_t**>() {
+  Type x = Int(64);
+  x.set_cpp_handle2();
+  return x;
+}
+template <>
 inline Type type_of<void*>() {
   Type x = type_of<void>();
   x.set_cpp_handle();
