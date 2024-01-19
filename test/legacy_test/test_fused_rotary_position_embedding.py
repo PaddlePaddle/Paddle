@@ -93,6 +93,21 @@ def get_sin_cos_tensor(seq_len, head_dim, sign=1):
     return tensor_sin, tensor_cos
 
 
+def repeat_kv(hidden_states: paddle.Tensor, n_rep: int) -> paddle.Tensor:
+    """
+    This is the equivalent of paddle.repeat_interleave(hidden_states, n_rep, axis=1). The hidden states go from (batch,
+    num_key_value_heads, seqlen, head_dim) to (batch, num_attention_heads, seqlen, head_dim)
+    """
+    batch, slen, num_key_value_heads, head_dim = hidden_states.shape
+    if n_rep == 1:
+        return hidden_states
+
+    hidden_states = hidden_states.unsqueeze(-2).tile([1, 1, 1, n_rep, 1])
+    return hidden_states.reshape(
+        [batch, slen, num_key_value_heads * n_rep, head_dim]
+    )
+
+
 def paddle_fused_rotary_position_embedding(
     init_q,
     init_k,
@@ -131,6 +146,12 @@ def paddle_fused_rotary_position_embedding(
 
     # permute the result back to [batch_size, seq_len, num_heads, head_dim]
     r_query, r_key, r_value = deal_qkv(query, key, value)
+
+    # deal with MQA and GQA
+    num_key_value_groups = r_query.shape[2] // r_key.shape[2]
+    r_key = repeat_kv(r_key, num_key_value_groups)
+    r_value = repeat_kv(r_value, num_key_value_groups)
+
     return r_query, r_key, r_value
 
 
@@ -140,22 +161,24 @@ def paddle_fused_rotary_position_embedding(
 )
 class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def setUp(self):
-        self.shape = [2, 8, 2, 16]
+        self.shape_q = [2, 8, 2, 16]
+        self.shape_k = [2, 8, 2, 16]
+        self.shape_v = [2, 8, 2, 16]
         self.dtype = 'float32'
         self.training = True
         self.seed = 1203
 
-    def get_paddle_tensor(self):
-        tmp = paddle.randn(self.shape, self.dtype)
+    def get_paddle_tensor(self, shape):
+        tmp = paddle.randn(shape, self.dtype)
         tmp.stop_gradient = False
         return tmp
 
     def get_inputs(self, seed, with_sin_cos):
         paddle.disable_static()
         paddle.seed(seed)
-        tensor_q = self.get_paddle_tensor()
-        tensor_k = self.get_paddle_tensor()
-        tensor_v = self.get_paddle_tensor()
+        tensor_q = self.get_paddle_tensor(self.shape_q)
+        tensor_k = self.get_paddle_tensor(self.shape_k)
+        tensor_v = self.get_paddle_tensor(self.shape_v)
 
         tensor_sin, tensor_cos = (
             get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1)
@@ -337,6 +360,38 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         for i in range(3):
             np.testing.assert_allclose(p_fw[i].numpy(), outs[i], rtol=1e-05)
         paddle.disable_static()
+
+
+# TODO(MarioLulab): use parameterize to test more cases
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA ",
+)
+class TestFusedRotaryPositionEmbeddingMQA(TestFusedRotaryPositionEmbedding):
+    def setUp(self):
+        self.shape_q = [2, 8, 2, 16]
+        self.shape_k = [2, 1, 2, 16]
+        self.shape_v = [2, 1, 2, 16]
+
+        self.dtype = 'float32'
+        self.training = True
+        self.seed = 1203
+
+
+# TODO(MarioLulab): use parameterize to test more cases
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA ",
+)
+class TestFusedRotaryPositionEmbeddingGQA(TestFusedRotaryPositionEmbedding):
+    def setUp(self):
+        self.shape_q = [2, 8, 2, 16]
+        self.shape_k = [2, 2, 2, 16]
+        self.shape_v = [2, 2, 2, 16]
+
+        self.dtype = 'float32'
+        self.training = True
+        self.seed = 1203
 
 
 if __name__ == '__main__':
