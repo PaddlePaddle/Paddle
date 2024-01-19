@@ -228,11 +228,14 @@ isl::set _Tensor_::GenerateIslDomain() const {
     for (int i = 0; i < domain.size(); i++) {
       auto dim = domain[i];
       if (dim.is_constant()) {
-        dims.emplace_back(_axis_with_reduce[i]->name, 0, dim.as_int32() - 1);
-      } else {
         dims.emplace_back(_axis_with_reduce[i]->name,
-                          Expr(0),
-                          Sub::Make(dim, cinn::common::make_const(1)));
+                          static_cast<int64_t>(0),
+                          static_cast<int64_t>(dim.as_int64() - 1));
+      } else {
+        dims.emplace_back(
+            _axis_with_reduce[i]->name,
+            Expr(static_cast<int64_t>(0)),
+            Sub::Make(dim, cinn::common::make_const(static_cast<int64_t>(1))));
       }
     }
   }

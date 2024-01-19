@@ -103,11 +103,15 @@ Var _Buffer_::buffer_addr() const {
   return _Var_::Make(name, thetype);
 }
 
-int _Buffer_::numel() const {
-  int res = 1;
+int64_t _Buffer_::numel() const {
+  int64_t res = 1;
   for (auto &i : shape) {
     CHECK(i.is_constant());
-    res *= i.as_int32();
+    if (i->type() == Int(64)) {
+      res *= i.as_int64();
+    } else {
+      res *= i.as_int32();
+    }
   }
   return res;
 }

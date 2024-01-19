@@ -315,7 +315,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     argument_prepare_exprs.push_back(runtime::IntrinsicCall(
         Void(),
         runtime::intrinsic::print_debug_args_repr,
-        {pod_value_ptr, cinn::common::make_const(Int(32), args.size())}));
+        {pod_value_ptr, cinn::common::make_const(Int(64), args.size())}));
   }
 
   /*
@@ -333,7 +333,8 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     // cast arg to cinn_pod_value_t*
 
     // something like `_args[0]`
-    Expr load_expr = Load::Make(pod_value_ptr, {cinn::common::make_const(i)});
+    Expr load_expr = Load::Make(
+        pod_value_ptr, {cinn::common::make_const(static_cast<int64_t>(i))});
     CHECK_EQ(load_expr.type(), type_of<cinn_pod_value_t>());
     load_expr = ir::intrinsics::GetAddr::Make(load_expr);
 
@@ -404,6 +405,9 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     } else if (arg.type() == type_of<int32_t**>()) {
       pod_cast_expr =
           ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t**>());
+    } else if (arg.type() == type_of<int64_t**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int64_t**>());
     } else if (arg.type() == type_of<void**>()) {
       pod_cast_expr =
           ir::intrinsics::PodValueToX::Make(load_expr, type_of<void**>());
