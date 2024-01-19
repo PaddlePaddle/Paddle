@@ -60,7 +60,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
     const auto &in_num_col_dims_attr =
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          return x_dims.size() - 1;
+          return static_cast<int>(x_dims.size()) - 1;
         });
     const auto &false_attr = res.BoolAttr(false);
 
