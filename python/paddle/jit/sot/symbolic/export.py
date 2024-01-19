@@ -49,7 +49,7 @@ class NameGener:
         self.SIR = SIR
         self.name_map = {}
         self.param_name_generator = NameGenerator("self.parameter_")
-        self.non_param_name_generator = NameGenerator("self.var_")
+        self.non_param_name_generator = NameGenerator("var_")
 
     def __call__(self, var):
         if isinstance(var, Symbol):
@@ -77,8 +77,8 @@ class PyFileGen:
 
         self.name_gener = NameGener(self.SIR)
 
-        self.SIR_sig = ",".join(
-            f"{stmt.type}||{stmt.name}" for stmt in SIR.statements
+        self.SIR_sig = "||".join(
+            f"{stmt.type}:{stmt.name}" for stmt in SIR.statements
         )
 
     def new_root(self, *args):
