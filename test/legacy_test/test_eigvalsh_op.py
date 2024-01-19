@@ -204,6 +204,7 @@ class TestEigvalshBatchAPI(TestEigvalshAPI):
 
 
 class TestEigvalshAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
