@@ -271,6 +271,23 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     return effective_ops, uneffective_ops
 
 
+def remove_useless_ops(block, ops, state):
+    '''
+    remove ops which are not in use recursively,
+
+    '''
+    # from output to input
+    for op in inverse_sort_op(list(ops)):
+        if op.name() == 'pd_op.full_like':
+            if op.result(0).use_empty():
+                full_op = op.operand_source(1).get_defining_op()
+                remove_op(block, op, state)
+                remove_op(block, full_op, state)
+        elif op.name() == 'pd_op.if' or op.name() == 'pd_op.while':
+            for sub_block in op.blocks():
+                remove_useless_ops(sub_block, sub_block.ops, state)
+
+
 def update_no_grad_set_after_prune(
     total_ops, effective_forward_ops, no_grad_set, inputs, outputs
 ):
@@ -1100,18 +1117,28 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
 
+    remove_ops = []
     if not inplace_net(backward_ops) and inputs:
         _, remove_ops = prune_ops(
             backward_ops, inputs_set, outputs_set, no_gradvar_set
         )
+    state.turn_map()
+    remove_ops = set(remove_ops)
+    for op in inverse_sort_op(list(backward_ops)):
+        if op.name() == 'pd_op.full_like':
+            if op.result(0).use_empty():
+                remove_ops.add(op)
+                remove_ops.add(op.operand_source(1).get_defining_op())
+        elif op.name() == 'pd_op.if' or op.name() == 'pd_op.while':
+            for sub_block in op.blocks():
+                remove_useless_ops(sub_block, sub_block.ops, state)
 
-        state.turn_map()
-        for bwd_op in inverse_sort_op(remove_ops):
-            if bwd_op.result(0) in ValueSet(grad_outputs):
-                continue
-            if bwd_op.result(0).use_empty():
-                remove_op(block, bwd_op, state)
-        state.turn_map()
+    for bwd_op in inverse_sort_op(remove_ops):
+        if bwd_op.result(0) in ValueSet(grad_outputs):
+            continue
+        if bwd_op.result(0).use_empty():
+            remove_op(block, bwd_op, state)
+    state.turn_map()
 
     input_grad_map = state.value_to_valuegrad
 
