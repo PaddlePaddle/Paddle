@@ -207,7 +207,7 @@ class InputSpec:
     def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
-        # convert dtype into united represention
+        # convert dtype into united representation
         if dtype is not None:
             if isinstance(dtype, (np.dtype, str)):
                 dtype = convert_np_dtype_to_dtype_(dtype)

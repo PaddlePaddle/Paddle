@@ -63,7 +63,7 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::ops() {
+std::vector<pir::Operation*> GroupOp::GetOperators() {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -82,7 +82,46 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
+  for (auto& sub_op : GetOperators()) {
+    os << "\n";
+    printer.PrintOperation(sub_op);
+  }
+  os << " \n }";
+}
+
+void FusionOp::Build(pir::Builder& builder,
+                     pir::OperationArgument& argument,
+                     const std::vector<pir::Type>& output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+pir::Block* FusionOp::block() {
+  pir::Region& region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+std::vector<pir::Operation*> FusionOp::GetOperators() {
+  std::vector<pir::Operation*> rt_ops;
+  for (auto& op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
+}
+
+void FusionOp::VerifySig() {}
+
+void FusionOp::Print(pir::IrPrinter& printer) {
+  auto& os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = " << name();
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << " {";
+  for (auto& sub_op : GetOperators()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }
@@ -409,6 +448,7 @@ bool GenerateShapeOp::InferSymbolicShape(
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

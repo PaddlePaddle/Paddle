@@ -19,7 +19,6 @@
 #include <vector>
 #include "glog/logging.h"
 
-#include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
@@ -93,7 +92,7 @@ struct Group {
   }
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
-      const ::pir::Value& value) {
+      const ::pir::Value& value) const {
     CHECK(value_to_shape_or_data_exprs.count(value))
         << "value not found in value_to_shape_or_data_exprs";
     return value_to_shape_or_data_exprs.at(value);
@@ -260,22 +259,6 @@ struct Group {
     map_expr_ctx_ = map_expr_ctx;
   }
 
-  void set_graph_symbolic_dim_infer_ctx(
-      std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>&&
-          graph_symbolic_dim_infer_ctx) {
-    CHECK_EQ(this, graph_symbolic_dim_infer_ctx->group());
-    graph_symbolic_dim_infer_ctx_ = std::move(graph_symbolic_dim_infer_ctx);
-  }
-
-  const adt::config::GraphSymbolicDimInferCtx* graph_symbolic_dim_infer_ctx()
-      const {
-    return graph_symbolic_dim_infer_ctx_.get();
-  }
-
-  adt::config::GraphSymbolicDimInferCtx* mut_graph_symbolic_dim_infer_ctx() {
-    return graph_symbolic_dim_infer_ctx_.get();
-  }
-
  public:
   const std::unordered_set<std::shared_ptr<Group>,
                            SharedGroupHasher,
@@ -327,8 +310,6 @@ struct Group {
                      SharedGroupComparator>
       consumer_groups_;
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
-  std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>
-      graph_symbolic_dim_infer_ctx_;
 };
 
 }  // namespace pir
