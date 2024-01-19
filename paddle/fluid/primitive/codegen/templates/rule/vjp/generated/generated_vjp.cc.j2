@@ -44,7 +44,7 @@ return vjp_res;
 {% macro get_mutable_attribute(attrs, api_name) %}
   {% for i in attrs %}
     {%- if i is mutable_attribute -%}
-auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().dyn_cast<pir::OpResult>().owner();
+auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
       {% if i.typename is scalar %}
 if({{i.name}}_define_op->name() != "pd_op.full") {
   PADDLE_THROW(platform::errors::Unimplemented(

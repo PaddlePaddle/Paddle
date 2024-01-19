@@ -279,7 +279,7 @@ void TensorDimOp::Build(Builder &builder,
 }
 
 std::optional<int64_t> TensorDimOp::GetConstantIndex() {
-  auto op = index().dyn_cast<OpResult>().owner();
+  auto op = index().defining_op();
   int64_t index =
       op->dyn_cast<ConstantOp>().value().dyn_cast<pir::Int64Attribute>().data();
   return index;

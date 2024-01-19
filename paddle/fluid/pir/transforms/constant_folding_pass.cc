@@ -38,12 +38,12 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/region.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
@@ -346,8 +346,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                                           prev_op->name()));
         }
       } else {
-        op_inputs.push_back(
-            op->operand_source(i).dyn_cast<pir::OpResult>() /*nullptr*/);
+        op_inputs.push_back(pir::Value());
       }
     }
 

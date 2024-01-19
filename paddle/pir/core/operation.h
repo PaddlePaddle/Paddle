@@ -23,6 +23,7 @@
 #include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_info.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/visitors.h"
@@ -121,7 +122,7 @@ class IR_API alignas(8) Operation final
   /// \brief op ouput related public interfaces
   ///
   uint32_t num_results() const { return num_results_; }
-  OpResult result(uint32_t index) const { return op_result_impl(index); }
+  Value result(uint32_t index) const { return OpResult(op_result_impl(index)); }
   template <typename T = Type>
   T result_type(uint32_t index) const {
     return result(index).type().dyn_cast<T>();
@@ -220,8 +221,6 @@ class IR_API alignas(8) Operation final
 
   /// Replace all uses of results of this operation with the provided 'values'.
   void ReplaceAllUsesWith(const std::vector<Value> &values);
-
-  void ReplaceAllUsesWith(const std::vector<OpResult> &op_results);
 
   inline void ReplaceAllUsesWith(Value value) {
     ReplaceAllUsesWith(std::vector<Value>{value});

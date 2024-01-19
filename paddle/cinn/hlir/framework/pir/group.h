@@ -192,7 +192,7 @@ struct Group {
           continue;
         }
 
-        if (!ops_set.count(value.dyn_cast<::pir::OpResult>().owner())) {
+        if (!ops_set.count(value.defining_op())) {
           // if the input value owner op is not in OpSet, it's the group's input
           group_inputs.insert(value);
           continue;

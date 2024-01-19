@@ -763,12 +763,7 @@ void BindValue(py::module *m) {
            })
       .def(
           "get_defining_op",
-          [](Value self) -> pir::Operation * {
-            if (auto op_result = self.dyn_cast<pir::OpResult>()) {
-              return op_result.owner();
-            }
-            return nullptr;
-          },
+          [](Value self) -> pir::Operation * { return self.defining_op(); },
           return_value_policy::reference)
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)

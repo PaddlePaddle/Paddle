@@ -240,7 +240,7 @@ Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
                     bool force_persisable,
                     ValueExecutionInfo* value_exe_info) {
-  pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
+  pir::Operation* def_op = value.defining_op();
   bool is_persisable = false;
   if (def_op->isa<::pir::ParameterOp>()) {
     is_persisable = true;

@@ -386,9 +386,9 @@ def GenBuildOutputs(
 """
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_ && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-                          {name}_.dyn_cast<pir::OpResult>().owner()
+                          {name}_.defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                           .attribute("value"))));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
@@ -408,9 +408,9 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_ && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = paddle::dialect::GetInt64Vector(
-                    {name}_.dyn_cast<pir::OpResult>().owner()
+                    {name}_.defining_op()
                     ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                     .attribute("value"));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
@@ -428,8 +428,8 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {{
-    {name} = std::move(phi::Scalar({name}_.dyn_cast<pir::OpResult>().owner()
+  if ({name}_ && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
+    {name} = std::move(phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()

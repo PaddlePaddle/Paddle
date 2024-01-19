@@ -102,8 +102,7 @@ class MergeReshapeWithBroadcastPattern
   bool MatchAndRewrite(cinn::dialect::BroadcastOp op,
                        pir::PatternRewriter& rewriter) const override {
     auto reshape_op = op->operand_source(0)
-                          .dyn_cast<pir::OpResult>()
-                          .owner()
+                          .defining_op()
                           ->dyn_cast<cinn::dialect::ReshapeOp>();
 
     if (reshape_op && CanMerge(reshape_op)) {

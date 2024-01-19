@@ -525,8 +525,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
         need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
-          pir::OpResult defining_op_result =
-              param_map_[var_name].value.dyn_cast<pir::OpResult>();
+          pir::Value defining_op_result = param_map_[var_name].value;
           if (!defining_op_result) {
             continue;
           }
@@ -537,8 +536,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                                           program_->block(),
                                           param_map_[var_name],
                                           var_name);
-            defining_op_result =
-                param_map_.at(var_name).value.dyn_cast<pir::OpResult>();
+            defining_op_result = param_map_.at(var_name).value;
           }
 
           pir::Operation* op = InsertSetParamaterOp(
@@ -546,7 +544,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
 
           pir::Block* block = program_->block();
           pir::Block::Iterator insert_pos = std::find(
-              block->begin(), block->end(), *defining_op_result.owner());
+              block->begin(), block->end(), *defining_op_result.defining_op());
 
           IR_ENFORCE(
               insert_pos != block->end(),
@@ -577,9 +575,9 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
       continue;
     }
     for (const auto& value_info : value_list) {
-      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      pir::Value value = value_info.value;
       if (!value) continue;
-      auto* defining_op = value.owner();
+      auto* defining_op = value.defining_op();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
           phi::errors::PreconditionNotMet(
@@ -595,7 +593,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
         stop_gradients = std::vector<pir::Attribute>(
             defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
       }
-      stop_gradients[value.index()] =
+      stop_gradients[value.dyn_cast<pir::OpResult>().index()] =
           pir::BoolAttribute::get(ctx_, var->StopGradient());
       defining_op->set_attribute(
           kAttrStopGradients, pir::ArrayAttribute::get(ctx_, stop_gradients));
@@ -644,9 +642,9 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
       continue;
     }
     for (const auto& value_info : value_list) {
-      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      pir::Value value = value_info.value;
       if (!value) continue;
-      auto* defining_op = value.owner();
+      auto* defining_op = value.defining_op();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
           phi::errors::PreconditionNotMet(
@@ -662,7 +660,7 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
         is_persisable = std::vector<pir::Attribute>(
             defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
       }
-      is_persisable[value.index()] =
+      is_persisable[value.dyn_cast<pir::OpResult>().index()] =
           pir::BoolAttribute::get(ctx_, var->Persistable());
       defining_op->set_attribute(kAttrIsPersisable,
                                  pir::ArrayAttribute::get(ctx_, is_persisable));

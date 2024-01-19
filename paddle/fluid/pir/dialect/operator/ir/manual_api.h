@@ -18,7 +18,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace dialect {

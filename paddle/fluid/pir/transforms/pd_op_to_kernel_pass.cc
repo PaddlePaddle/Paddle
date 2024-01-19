@@ -387,7 +387,7 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   pir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
   pir::Operation* op =
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
-  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  auto in_op = in.defining_op();
   if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
     op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
   }
@@ -427,7 +427,7 @@ static pir::Value AddOneDNN2PaddleLayoutTransferOp(
   pir::Operation* op =
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
 
-  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  auto in_op = in.defining_op();
   if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
     op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
   }
@@ -614,7 +614,7 @@ pir::Value AddDtypeTransferOp(pir::Value in,
   pir::Operation* op = pir::Operation::Create(
       {in}, op_attribute, {output_types}, kernel_op_info);
 
-  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  auto in_op = in.defining_op();
   if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
     op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
   }
@@ -969,12 +969,12 @@ phi::KernelKey GetKernelKey(
       // don't know how to select the kernel in the next of op that
       // uses data op outout as inputs. So, we need set kernel backend
       // manually.
-      auto op_res = input_tmp.dyn_cast<pir::OpResult>();
+      auto op_res = input_tmp;
       if (!op_res) {
         continue;
       }
-      if (op_res.owner()->isa<DataOp>()) {
-        auto data_op = op->operand_source(i).dyn_cast<pir::OpResult>().owner();
+      if (op_res.defining_op()->isa<DataOp>()) {
+        auto data_op = op->operand_source(i).defining_op();
         auto data_place = data_op->attribute<PlaceAttribute>("place").data();
 
         auto data_op_backend = paddle::experimental::ParseBackend(data_place);
@@ -986,17 +986,16 @@ phi::KernelKey GetKernelKey(
             paddle::experimental::BackendSet(data_op_backend);
         VLOG(8) << "Update kernel backend set from owner op (DataOp): "
                 << data_op_backend;
-      } else if (op_res.owner()->isa<pir::CombineOp>()) {
-        auto combine_op = op_res.owner();
+      } else if (op_res.defining_op()->isa<pir::CombineOp>()) {
+        auto combine_op = op_res.defining_op();
         for (size_t j = 0; j < combine_op->num_operands(); ++j) {
-          auto combine_op_res =
-              combine_op->operand_source(j).dyn_cast<pir::OpResult>();
+          auto combine_op_res = combine_op->operand_source(j);
           if (!combine_op_res) {
             continue;
           }
 
-          if (combine_op_res.owner()->isa<DataOp>()) {
-            auto data_op = combine_op_res.owner();
+          if (combine_op_res.defining_op()->isa<DataOp>()) {
+            auto data_op = combine_op_res.defining_op();
             auto data_place =
                 data_op->attribute<PlaceAttribute>("place").data();
 
@@ -1956,7 +1955,7 @@ std::vector<pir::Value> BuildInputs(
       } else if (new_in_type.isa<pir::VectorType>()) {
         // [ todo need update here, support combine data transfomer]
         // deal with pre combine op
-        auto pre_define_op = cur_in.dyn_cast<pir::OpResult>().owner();
+        auto pre_define_op = cur_in.defining_op();
         if (pre_define_op->isa<::pir::CombineOp>()) {
           std::vector<pir::Value> inner_inputs;
           std::vector<pir::Type> types_in_vec;

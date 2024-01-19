@@ -1777,8 +1777,7 @@ void SplitGradOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType out_grad = out_grad_.type().dyn_cast<pir::VectorType>();
-  int axis = axis_.dyn_cast<pir::OpResult>()
-                 .owner()
+  int axis = axis_.defining_op()
                  ->dyn_cast<paddle::dialect::FullOp>()
                  .attribute<paddle::dialect::ScalarAttribute>("value")
                  .data()
@@ -1892,8 +1891,7 @@ std::vector<pir::Type> SplitGradOp::InferMeta(
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType out_grad = out_grad_.type().dyn_cast<pir::VectorType>();
-  int axis = axis_.dyn_cast<pir::OpResult>()
-                 .owner()
+  int axis = axis_.defining_op()
                  ->dyn_cast<paddle::dialect::FullOp>()
                  .attribute<paddle::dialect::ScalarAttribute>("value")
                  .data()
@@ -2451,11 +2449,9 @@ void ArrayReadOp::Build(pir::Builder &builder,
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   phi::Scalar i_scalar;
-  if (i.dyn_cast<pir::OpResult>() &&
-      i.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
+  if (i && i.defining_op()->isa<paddle::dialect::FullOp>()) {
     i_scalar =
-        std::move(phi::Scalar(i.dyn_cast<pir::OpResult>()
-                                  .owner()
+        std::move(phi::Scalar(i.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
@@ -2570,11 +2566,9 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   phi::Scalar i_scalar;
-  if (i_.dyn_cast<pir::OpResult>() &&
-      i_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
+  if (i_ && i_.defining_op()->isa<paddle::dialect::FullOp>()) {
     i_scalar =
-        std::move(phi::Scalar(i_.dyn_cast<pir::OpResult>()
-                                  .owner()
+        std::move(phi::Scalar(i_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
@@ -3531,12 +3525,9 @@ void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
 
   phi::IntArray starts_list;
-  if (starts.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (starts.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     starts_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        starts.dyn_cast<pir::OpResult>()
-            .owner()
+        starts.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"))));
   } else if (starts.type().isa<pir::VectorType>()) {
@@ -3620,12 +3611,9 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
 
   phi::IntArray starts_list;
-  if (starts.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (starts.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     starts_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        starts.dyn_cast<pir::OpResult>()
-            .owner()
+        starts.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"))));
   } else if (starts.type().isa<pir::VectorType>()) {
@@ -4123,12 +4111,9 @@ void ExpandOp::Build(pir::Builder &builder,
       x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
   (void)x;
   phi::IntArray shape;
-  if (shape_.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     shape = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        shape_.dyn_cast<pir::OpResult>()
-            .owner()
+        shape_.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"))));
   } else if (shape_.type().isa<pir::VectorType>()) {
@@ -4269,12 +4254,9 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   }
 
   phi::IntArray shape;
-  if (shape_.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     shape = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        shape_.dyn_cast<pir::OpResult>()
-            .owner()
+        shape_.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"))));
   } else if (shape_.type().isa<pir::VectorType>()) {

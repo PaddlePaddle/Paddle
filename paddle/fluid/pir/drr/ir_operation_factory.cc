@@ -35,10 +35,7 @@ void OperationFactory::RegisterManualOpCreator() {
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         return rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
-            inputs[0].dyn_cast<pir::OpResult>(),
-            inputs[1].dyn_cast<pir::OpResult>(),
-            inputs[2].dyn_cast<pir::OpResult>(),
-            attrs);
+            inputs[0], inputs[1], inputs[2], attrs);
       });
   RegisterOperationCreator(
       "pd_op.fused_gemm_epilogue_grad",
@@ -46,11 +43,7 @@ void OperationFactory::RegisterManualOpCreator() {
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         return rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
-            inputs[0].dyn_cast<pir::OpResult>(),
-            inputs[1].dyn_cast<pir::OpResult>(),
-            inputs[2].dyn_cast<pir::OpResult>(),
-            inputs[3].dyn_cast<pir::OpResult>(),
-            attrs);
+            inputs[0], inputs[1], inputs[2], inputs[3], attrs);
       });
   RegisterOperationCreator("builtin.combine",
                            [](const std::vector<pir::Value>& inputs,
@@ -64,8 +57,8 @@ void OperationFactory::RegisterManualOpCreator() {
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         return rewriter.Build<paddle::dialect::ScaleOp>(
-            inputs[0].dyn_cast<pir::OpResult>(),
-            inputs[1].dyn_cast<pir::OpResult>(),
+            inputs[0],
+            inputs[1],
             attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
             attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
       });

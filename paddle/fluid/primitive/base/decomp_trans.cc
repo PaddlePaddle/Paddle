@@ -101,7 +101,7 @@ bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
     auto value = item.source();
     // check if initialized in case of optional input.
     if (!paddle::dialect::IsEmptyValue(value)) {
-      pir::Operation* prev_op = value.dyn_cast<pir::OpResult>().owner();
+      pir::Operation* prev_op = value.defining_op();
       if (prev_op->name() == "builtin.combine") {
         for (pir::OpOperand& sub_item : prev_op->operands()) {
           if (check_dynamic_shape(sub_item, *op)) {

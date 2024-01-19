@@ -92,10 +92,10 @@ TEST(value_test, value_test) {
   op4->Print(std::cout);
 
   // Test 1:
-  EXPECT_EQ(op1->result(0).owner(), op1);
-  EXPECT_EQ(op2->result(0).owner(), op2);
-  EXPECT_EQ(op3->result(0).owner(), op3);
-  EXPECT_EQ(op4->result(6).owner(), op4);
+  EXPECT_EQ(op1->result(0).defining_op(), op1);
+  EXPECT_EQ(op2->result(0).defining_op(), op2);
+  EXPECT_EQ(op3->result(0).defining_op(), op3);
+  EXPECT_EQ(op4->result(6).defining_op(), op4);
 
   // Test 2: op1_first_output -> op4_first_input
   pir::Value op1_first_output = op1->result(0);
