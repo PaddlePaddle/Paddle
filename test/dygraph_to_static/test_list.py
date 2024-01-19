@@ -307,7 +307,6 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
             return self.result_to_numpy(res)
 
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
-    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 
@@ -320,6 +319,9 @@ class TestListInWhileLoopWithStack(TestListInWhileLoop):
 class TestTensorArraySlice(TestListInWhileLoop):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_tensor_array_slice]
+
+    def test_transformed_static_result(self):
+        self.compare_transformed_static_result()
 
 
 class TestListInForLoop(TestListInWhileLoop):
