@@ -239,15 +239,13 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == phi::Backend::GPUDNN) {
     auto iter = phi::KernelFactory::Instance().kernels().find(kernel_name);
-    PADDLE_ENFORCE_NE(iter,
-                      phi::KernelFactory::Instance().kernels().end(),
-                      phi::errors::NotFound(
-                          "The kernel `%s` is not registered.", kernel_name));
-    auto kernel_iter = iter->second.find({phi::Backend::GPUDNN,
-                                          phi::DataLayout::ALL_LAYOUT,
-                                          kernel_key.dtype()});
-    if (kernel_iter == iter->second.end()) {
-      return true;
+    if (iter != phi::KernelFactory::Instance().kernels().end()) {
+      auto kernel_iter = iter->second.find({phi::Backend::GPUDNN,
+                                            phi::DataLayout::ALL_LAYOUT,
+                                            kernel_key.dtype()});
+      if (kernel_iter == iter->second.end()) {
+        return true;
+      }
     }
   }
 #endif

@@ -87,11 +87,8 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
           "The size of variable_list and var_name_2_id map should be equal"));
 }
 
-void ValueExecutionInfo::Rename(pir::Value value,
-                                const std::string& new_name,
+void ValueExecutionInfo::Rename(const std::string& new_name,
                                 const std::string& orig_name) {
-  value_2_var_name_[value] = new_name;
-
   for (auto kv : value_2_var_name_) {
     if (kv.second == orig_name) {
       value_2_var_name_[kv.first] = new_name;
@@ -104,13 +101,15 @@ void ValueExecutionInfo::Rename(pir::Value value,
     }
   }
 
-  for (auto kv : var_name_2_id_) {
-    if (kv.first == orig_name) {
-      var_name_2_id_.emplace(new_name, kv.second);
-      id_2_var_name_[kv.second] = new_name;
+  if (var_name_2_id_.count(new_name) == 0) {
+    for (auto kv : var_name_2_id_) {
+      if (kv.first == orig_name) {
+        var_name_2_id_.emplace(new_name, kv.second);
+        var_name_2_id_.erase(orig_name);
+        id_2_var_name_[kv.second] = new_name;
+      }
     }
   }
-  var_name_2_id_.erase(orig_name);
 }
 
 int ValueExecutionInfo::GetIdByName(const std::string& name) const {
@@ -146,6 +145,11 @@ ValueExecutionInfo::GetValue2VarName() const {
 void ValueExecutionInfo::AddValue2VarName(::pir::Value value,
                                           const std::string& var_name) {
   value_2_var_name_.emplace(value, var_name);
+}
+
+void ValueExecutionInfo::UpdateValue2VarName(::pir::Value value,
+                                             const std::string& var_name) {
+  value_2_var_name_[value] = var_name;
 }
 
 const std::unordered_map<const Variable*, std::string>&
@@ -542,7 +546,7 @@ void HandleForSpecialOp(pir::Operation* op,
               << param_name;
     }
 
-    value_exe_info->Rename(value, param_name, orig_name);
+    value_exe_info->Rename(param_name, orig_name);
   } else if (op->isa<pir::ShadowOutputOp>()) {
     VLOG(6) << "Handle for builtin.shadow_ouptut";
     auto var_name = op->attributes()
@@ -558,14 +562,18 @@ void HandleForSpecialOp(pir::Operation* op,
       return;
     }
 
-    if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
-      const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
-      VLOG(1) << "var " << var_name << " has been removed from scope";
+    if (value_exe_info->HasVar(var_name)) {
+      value_exe_info->UpdateValue2VarName(value, var_name);
+    } else {
+      if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
+        const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
+        VLOG(1) << "var " << var_name << " has been removed from scope";
+      }
+      const_cast<Scope*>(value_exe_info->GetScope())
+          ->Rename(orig_name, var_name);
+      VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
+      value_exe_info->Rename(var_name, orig_name);
     }
-    const_cast<Scope*>(value_exe_info->GetScope())->Rename(orig_name, var_name);
-    VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
-
-    value_exe_info->Rename(value, var_name, orig_name);
   } else if (op->isa<pir::ParameterOp>()) {
     VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
