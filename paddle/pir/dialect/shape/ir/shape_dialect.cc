@@ -23,13 +23,7 @@ ShapeDialect::ShapeDialect(IrContext *context)
 }
 
 void ShapeDialect::initialize() {
-  RegisterOps<DimOp,
-              TensorDimOp,
-              ShapeOfOp,
-              FromElementsOp,
-              ExtractOp,
-              ConstantOp,
-              IndexCastOp>();
+  RegisterOps<DimOp>();
 
   RegisterAttributes<SymbolAttribute>();
 }
