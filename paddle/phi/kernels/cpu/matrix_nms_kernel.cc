@@ -24,7 +24,7 @@ namespace phi {
 template <class T>
 static inline T BBoxArea(const T* box, const bool normalized) {
   if (box[2] < box[0] || box[3] < box[1]) {
-    // If coordinate values are is invalid
+    // If coordinate values are invalid
     // (e.g. xmax < xmin or ymax < ymin), return 0.
     return static_cast<T>(0.);
   } else {

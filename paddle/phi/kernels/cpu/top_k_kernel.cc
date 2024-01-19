@@ -184,7 +184,7 @@ void TopkKernel(const Context& dev_ctx,
                          largest,
                          sorted);
   } else {
-    // if the topk dims is not last dim, will tranpose and do topk
+    // if the topk dims is not last dim, will transpose and do topk
     std::vector<int> trans;
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
