@@ -326,7 +326,7 @@ void SubGraphChecker::RemoveFetchOp(pir::Block* block) {
 void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
                                  pir::Block* block,
                                  paddle::framework::Scope* scope) {
-  // build a proram, init data and set parameter to scope
+  // build a program, init data and set parameter to scope
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 

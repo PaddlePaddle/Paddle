@@ -104,7 +104,7 @@ void BindCommunicator(py::module* m) {
               "unsupported communicator MODE"));
         }
 
-        return Communicator::GetInstantcePtr();
+        return Communicator::GetInstancePtr();
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
@@ -114,7 +114,7 @@ void BindCommunicator(py::module* m) {
 
 void BindLargeScaleKV(py::module* m) {
   py::class_<LargeScaleKV, std::shared_ptr<LargeScaleKV>>(*m, "LargeScaleKV")
-      .def(py::init([]() { return LargeScaleKV::GetInstantcePtr(); }))
+      .def(py::init([]() { return LargeScaleKV::GetInstancePtr(); }))
       .def("load",
            [](LargeScaleKV& self,
               const std::string& table_name,
