@@ -192,7 +192,7 @@ class LlamaRMSNorm(paddle.nn.Layer):
         div_by = paddle.full(shape_rst, hidden_states.shape[axis_rst])
         variance = paddle.divide(sum_rst, div_by)
 
-        # 2. paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
+        # 2. hidden_states = (paddle.rsqrt(variance + self.variance_epsilon) * hidden_states)
 
         # 2.1 decomp variance + self.variance_epsilon -> full + scale
         scale_tensor = paddle.full([1], 1.0)
@@ -203,10 +203,6 @@ class LlamaRMSNorm(paddle.nn.Layer):
         rsqrt_rst = paddle.pow(scale_rst, rsqrt_tensor)
 
         hidden_states = rsqrt_rst * hidden_states
-
-        # hidden_states = (
-        #     paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
-        # )
 
         return hidden_states * self.weight
 
