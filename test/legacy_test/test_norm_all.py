@@ -31,7 +31,7 @@ def p_norm_python_api(
         return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
 
 
-def linalg_vector_norm(x, axis, porder, keepdims=False, reduce_all=False):
+def np_linalg_vector_norm(x, axis, porder, keepdims=False):
     r = []
     if axis is None:
         x_f = x.flatten()
@@ -73,7 +73,13 @@ def linalg_vector_norm(x, axis, porder, keepdims=False, reduce_all=False):
     return r
 
 
-def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
+def np_linalg_matrix_norm(x, axis, porder, keepdims=False):
+    axis = tuple(axis)
+    r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
+    return r
+
+
+def np_linalg_norm(x, axis, porder, keepdims=False, reduce_all=False):
     r = []
     if axis is None or reduce_all:
         x = x.flatten()
@@ -83,10 +89,6 @@ def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
             r = np.amin(np.abs(x), keepdims=keepdims)
         else:
             r = np.linalg.norm(x, ord=porder, keepdims=keepdims)
-    elif isinstance(axis, list or tuple) and len(axis) == 2:
-        if isinstance(axis, list):
-            axis = tuple(axis)
-        r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
     else:
         if isinstance(axis, list):
             axis = tuple(axis)
@@ -176,7 +178,9 @@ class TestPnormOp(OpTest):
         self.init_test_case()
         self.init_dtype()
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
-        norm = p_norm(x, self.axis, self.porder, self.keepdim, self.asvector)
+        norm = np_linalg_norm(
+            x, self.axis, self.porder, self.keepdim, self.asvector
+        )
         self.inputs = {'X': x}
         self.attrs = {
             'epsilon': self.epsilon,
@@ -222,14 +226,14 @@ class TestPnormOp(OpTest):
         if porder == 0:
             grad = np.zeros(x.shape).astype(x.dtype)
         elif porder in [float("inf"), float("-inf")]:
-            norm = p_norm(
+            norm = np_linalg_norm(
                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
             )
             x_abs = np.abs(x)
             grad = np.sign(x)
             grad[x_abs != norm] = 0.0
         else:
-            norm = p_norm(
+            norm = np_linalg_norm(
                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
             )
             grad = (
@@ -372,7 +376,7 @@ class TestPnormBF16Op(OpTest):
         self.python_api = p_norm_python_api
         self.init_test_case()
         self.x = (np.random.random(self.shape) + 0.5).astype(np.float32)
-        self.norm = p_norm(
+        self.norm = np_linalg_norm(
             self.x, self.axis, self.porder, self.keepdim, self.asvector
         )
         self.gradient = self.calc_gradient()
@@ -427,14 +431,14 @@ class TestPnormBF16Op(OpTest):
         if porder == 0:
             grad = np.zeros(x.shape).astype(x.dtype)
         elif porder in [float("inf"), float("-inf")]:
-            norm = p_norm(
+            norm = np_linalg_norm(
                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
             )
             x_abs = np.abs(x)
             grad = np.sign(x)
             grad[x_abs != norm] = 0.0
         else:
-            norm = p_norm(
+            norm = np_linalg_norm(
                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
             )
             grad = (
@@ -507,7 +511,7 @@ def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         place = base.CPUPlace()
         exe = base.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
-        expected_result = p_norm(
+        expected_result = np_linalg_norm(
             np_input, porder=p, axis=axis, keepdims=keep_dim
         ).astype(dtype)
         (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
@@ -533,30 +537,61 @@ def check_linalg_vector_static(
         place = base.CPUPlace()
         exe = base.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
-        expected_result = linalg_vector_norm(
+        expected_result = np_linalg_vector_norm(
             np_input, porder=p, axis=axis, keepdims=keep_dim
         ).astype(dtype)
         (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
-    self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
     if keep_dim and check_dim:
-        self.assertEqual(
-            (
-                np.abs(np.array(result.shape) - np.array(expected_result.shape))
-                < 1e-6
-            ).all(),
-            True,
-        )
+        np.testing.assert_equal(result.shape, expected_result.shape)
 
 
 def check_linalg_vector_dygraph(
     self, p, axis, shape_x, dtype, keep_dim, check_dim=False
 ):
     x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
-    expected_result = linalg_vector_norm(
+    expected_result = np_linalg_vector_norm(
         x_numpy, porder=p, axis=axis, keepdims=keep_dim
     )
     x_paddle = paddle.to_tensor(x_numpy)
     result = paddle.linalg.vector_norm(
+        x=x_paddle, p=p, axis=axis, keepdim=keep_dim
+    )
+    result = result.numpy()
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
+def check_linalg_matrix_static(
+    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+):
+    with base.program_guard(base.Program()):
+        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
+        out = paddle.linalg.matrix_norm(
+            x=data, p=p, axis=axis, keepdim=keep_dim
+        )
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
+        expected_result = np_linalg_matrix_norm(
+            np_input, porder=p, axis=axis, keepdims=keep_dim
+        ).astype(dtype)
+        (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
+def check_linalg_matrix_dygraph(
+    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+):
+    x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+    expected_result = np_linalg_matrix_norm(
+        x_numpy, porder=p, axis=axis, keepdims=keep_dim
+    )
+    x_paddle = paddle.to_tensor(x_numpy)
+    result = paddle.linalg.matrix_norm(
         x=x_paddle, p=p, axis=axis, keepdim=keep_dim
     )
     result = result.numpy()
@@ -587,6 +622,7 @@ def run_graph(self, p, axis, shape_x, dtype):
     out_pnorm = paddle.norm(x, p=2)
     out_vector_norm = paddle.linalg.vector_norm(x, p=2, axis=[0, 1])
     out_vector_norm = paddle.linalg.vector_norm(x, p=2)
+    out_vector_norm = paddle.linalg.matrix_norm(x, p=2, axis=[0, 1])
     # out_pnorm = [17.43559577 16.91153453 16.73320053 16.91153453]
     # compute inf-order  norm
     out_pnorm = paddle.norm(x, p=np.inf)
@@ -885,6 +921,42 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
+            check_linalg_matrix_static(
+                self,
+                p=-np.inf,
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_static(
+                self,
+                p='fro',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_static(
+                self,
+                p='nuc',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_static(
+                self,
+                p=-2,
+                axis=[1, 2],
+                shape_x=[2, 3, 4, 5],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
 
     def test_dygraph(self):
         run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
@@ -1034,6 +1106,43 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
+            check_linalg_matrix_dygraph(
+                self,
+                p=-np.inf,
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_dygraph(
+                self,
+                p='fro',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_dygraph(
+                self,
+                p='nuc',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_dygraph(
+                self,
+                p=-2,
+                axis=[1, 2],
+                shape_x=[2, 3, 4, 5],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+
         paddle.enable_static()
 
     def test_name(self):

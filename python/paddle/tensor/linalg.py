@@ -285,7 +285,7 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
 
     Args:
-        x (Variable): Tensor, data type float32, float64.
+        x (Tensor): Tensor, data type float32, float64.
         p (float, optional): None for porder=2.0. Default None.
         axis (int|list, optional): None for last dimension. Default None.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
@@ -515,6 +515,18 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
 def matrix_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
+
+    Args:
+        x (Tensor): Tensor, data type float32, float64.
+        p (float|string, optional): None for porder=2.0. Default None.
+        axis (int|list, optional): None for last dimension. Default None.
+        keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: results of vector_norm operation on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
     """
 
     def _backshift_permutation(dim0, dim1, dimn):
@@ -926,7 +938,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
             >>> print(out_pnorm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
+            [15.75858021, 14.97979641, 14.69693565, 14.97979069])
 
             >>> # compute inf-order  norm
             >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"))
@@ -954,70 +966,31 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
              [4., 5., 6., 5.],
              [4., 3., 2., 1.]])
     """
-    # if axis is None and len(x.shape) == 2:
-    #     axis = (0,1)
-    #     return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
 
-    if axis is None and p is not None:
-        if isinstance(p, str):
-            if p == "fro":
-                return vector_norm(
-                    x,
-                    p=2,
-                    axis=axis,
-                    keepdim=keepdim,
-                    name=name,
-                )
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
-        elif isinstance(p, (int, float)):
-            return vector_norm(
-                x,
-                p=p,
-                axis=axis,
-                keepdim=keepdim,
-                name=name,
-            )
-        else:
-            raise ValueError(
-                f"only valid p type is string or float, found {type(p)}"
-            )
-
-    if isinstance(axis, tuple):
+    if axis is None:
+        pass
+    elif isinstance(axis, tuple):
         axis = list(axis)
-    if isinstance(axis, list) and len(axis) == 1:
+    elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
-    # calculate vector norm, where axis is int or list with only one integer
-    if isinstance(axis, int):
-        if isinstance(p, str):
+    # calculate vector norm, where axis is None, int or list with only one integer
+    if (axis is None and p is not None) or (isinstance(axis, int)):
+        if (isinstance(p, str) and p == "fro") or isinstance(p, (int, float)):
             if p == "fro":
-                return vector_norm(
-                    x,
-                    p=2,
-                    axis=axis,
-                    keepdim=keepdim,
-                    name=name,
-                )
-
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
-        elif isinstance(p, (int, float)):
+                p = 2
             return vector_norm(
                 x,
-                axis=axis,
                 p=p,
+                axis=axis,
                 keepdim=keepdim,
                 name=name,
             )
         else:
             raise ValueError(
-                f"unspport p for p-order vector norm. except float, found {p}"
+                f"only valid p type is string or float and only valid string values are 'fro', found {type(p)} and{p}"
             )
+
     # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
         return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
