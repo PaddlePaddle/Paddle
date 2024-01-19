@@ -32,7 +32,7 @@ inline uint8_t clip_to_uint8(float x) {
 
 }  // namespace
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ReQuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -134,9 +134,10 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(requantize,
-                   MKLDNN,
-                   ::phi::CPUPlace,
-                   ops::ReQuantOpKernel<int8_t>,
-                   ops::ReQuantOpKernel<uint8_t>,
-                   ops::ReQuantOpKernel<paddle::platform::bfloat16>);
+PD_REGISTER_STRUCT_KERNEL(requantize,
+                          OneDNN,
+                          ONEDNN,
+                          ops::ReQuantOpKernel,
+                          int8_t,
+                          uint8_t,
+                          paddle::platform::bfloat16) {}
