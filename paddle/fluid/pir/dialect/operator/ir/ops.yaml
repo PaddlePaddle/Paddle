@@ -24,6 +24,8 @@
     func : add
   inplace : (x -> out)
   backward : add_grad
+  data_transform :
+    support_trans_dtype : x, y
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : add_n
@@ -383,7 +385,10 @@
   kernel :
     func : divide
   inplace: (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : divide_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dropout
   args : (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
@@ -416,7 +421,10 @@
     spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : elementwise_pow
+  data_transform :
+    support_trans_dtype : x, y
   backward : elementwise_pow_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
@@ -474,6 +482,8 @@
     spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : exponential_
@@ -521,6 +531,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : floor_divide
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : frobenius_norm
@@ -543,6 +555,7 @@
     param : [shape, value, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_
   args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -592,6 +605,7 @@
   kernel :
     func : full_with_tensor
     data_type : dtype
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -664,6 +678,8 @@
     func : CompareInferMeta
   kernel :
     func : greater_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : greater_than
@@ -673,6 +689,8 @@
     func : CompareInferMeta
   kernel :
     func : greater_than
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : hardswish
@@ -712,6 +730,8 @@
     func : CompareInferMeta
   kernel :
     func : less_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : less_than
@@ -721,6 +741,8 @@
     func : CompareInferMeta
   kernel :
     func : less_than
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : linspace
@@ -786,6 +808,8 @@
     spmd_rule : MatmulInferSpmd
   kernel :
     func : matmul
+  data_transform :
+    support_trans_dtype : x, y
   backward : matmul_grad
 
 - op : matrix_rank
@@ -823,6 +847,8 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : maximum
+  data_transform :
+    support_trans_dtype : x, y
   backward : maximum_grad
 
 - op : mean
@@ -879,6 +905,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : minimum
+  data_transform :
+    support_trans_dtype : x, y
   backward : minimum_grad
 
 - op : mish
@@ -904,6 +932,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : multiply_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
@@ -922,6 +951,8 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : not_equal
+  data_transform :
+    support_trans_dtype : x, y
   inplace: (x -> out)
 
 - op : one_hot
@@ -1057,6 +1088,8 @@
     func : ElementwiseInferMeta
   kernel :
     func : remainder
+  data_transform :
+    support_trans_dtype : x, y
   inplace : (x -> out)
 
 - op : repeat_interleave
@@ -1274,6 +1307,8 @@
   kernel :
     func : subtract
   inplace : (x -> out)
+  data_transform :
+    support_trans_dtype : x, y
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -1287,6 +1322,7 @@
     func : sum
     data_type : x
   backward : sum_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)
@@ -1328,6 +1364,7 @@
   kernel :
     func : tile
   backward : tile_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : trans_layout
   args : (Tensor x, int[] perm)
@@ -1348,6 +1385,7 @@
     func : transpose
   inplace : (x -> out)
   backward : transpose_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril
   args : (Tensor x, int diagonal)

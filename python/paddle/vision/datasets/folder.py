@@ -130,7 +130,7 @@ class DatasetFolder(Dataset):
             ...             dirname = list(subpath.keys())[0]
             ...             make_directory(root / dirname, subpath[dirname])
 
-            >>> directory_hirerarchy = [
+            >>> directory_hierarchy = [
             ...     {"class_0": [
             ...         "abc.jpg",
             ...         "def.png"]},
@@ -146,7 +146,7 @@ class DatasetFolder(Dataset):
             >>> # You can replace this with any directory to explore the structure
             >>> # of generated data. e.g. fake_data_dir = "./temp_dir"
             >>> fake_data_dir = tempfile.mkdtemp()
-            >>> make_directory(fake_data_dir, directory_hirerarchy)
+            >>> make_directory(fake_data_dir, directory_hierarchy)
             >>> data_folder_1 = DatasetFolder(fake_data_dir)
             >>> print(data_folder_1.classes)
             ['class_0', 'class_1']

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import builtins
 import copy
@@ -47,7 +49,6 @@ from .utils_helper import (  # noqa: F401
     index_in_list,
     is_api_in_module,
     is_dygraph_api,
-    is_numpy_api,
     is_paddle_api,
 )
 
@@ -117,6 +118,14 @@ class BaseNodeVisitor(gast.NodeVisitor):
         ret = visitor(node)
         self.ancestor_nodes.pop()
         return ret
+
+
+def get_parent_mapping(root):
+    to_parent: dict[gast.AST, gast.AST] = {}
+    for node in gast.walk(root):
+        for child in gast.iter_child_nodes(node):
+            to_parent[child] = node
+    return to_parent
 
 
 dygraph_class_to_static_api = {

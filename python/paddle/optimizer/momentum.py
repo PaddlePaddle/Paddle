@@ -476,12 +476,12 @@ class Momentum(Optimizer):
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
                         if isinstance(
-                            found_inf, (core.eager.Tensor, paddle.pir.OpResult)
+                            found_inf, (core.eager.Tensor, paddle.pir.Value)
                         ):
                             self._set_auxiliary_var('found_inf', True)
                     else:
                         if isinstance(
-                            found_inf, (core.eager.Tensor, paddle.pir.OpResult)
+                            found_inf, (core.eager.Tensor, paddle.pir.Value)
                         ):
                             self._set_auxiliary_var('found_inf', False)
                         _, _, _ = _C_ops.merged_momentum_(

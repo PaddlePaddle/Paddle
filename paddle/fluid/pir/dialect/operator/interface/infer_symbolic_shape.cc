@@ -176,14 +176,30 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
   symbol::ShapeOrDataDimExprs operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
-  symbol::ShapeOrDataDimExprs extend_shape_or_data =
-      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(
-          operand_shape_or_data);
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
 
-  shape_analysis->SetShapeOrDataForValue(res, extend_shape_or_data);
+  // TODO(zhangbopd): check whether it's right for other cases
+  std::vector<symbol::DimExpr> sym_shape;
+  for (auto dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    sym_shape.push_back(dim_expr);
+  }
+
+  symbol::ShapeOrDataDimExprs shape_or_data{sym_shape,
+                                            operand_shape_or_data.shape()};
+
+  shape_analysis->SetShapeOrDataForValue(res, shape_or_data);
   op->set_attribute("symbolic_shape",
                     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
-                                                     extend_shape_or_data));
+                                                     shape_or_data));
   return true;
 }
 
@@ -208,14 +224,40 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
   symbol::ShapeOrDataDimExprs shape_data{out_dims};
   if (operand_shape_or_data.data().has_value()) {
-    shape_data =
-        symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+    shape_data.SetData(operand_shape_or_data.shape());
   }
 
   op->set_attribute(
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
   pir::OpResult res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  return true;
+}
+
+bool SumOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::OpResult res = op->result(0);
+
+  std::vector<int64_t> dims =
+      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
+
+  std::vector<symbol::DimExpr> shapes;
+  VLOG(1) << "SumOpInferSymbolicShape begin";
+  for (int64_t dim : dims) {
+    symbol::DimExpr dim_expr;
+    if (dim == -1) {
+      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+      dim_expr = res_dim_expr;
+    } else {
+      symbol::DimExpr res_dim_expr(dim);
+      dim_expr = res_dim_expr;
+    }
+    shapes.push_back(dim_expr);
+    VLOG(1) << "SumOpInferSymbolicShape dim_expr = " << dim_expr;
+  }
+
+  symbol::ShapeOrDataDimExprs shape_data{shapes};
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
@@ -262,8 +304,10 @@ bool FullIntArrayOpInferSymbolicShape(
     data.push_back(symbol::DimExpr(i));
   }
 
-  symbol::ShapeOrDataDimExprs shape_data =
-      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(data);
+  // TODO(zhangbopd): use op->result(0) to infer the shape
+  std::vector<symbol::DimExpr> shape(std::int64_t(data.size()));
+
+  symbol::ShapeOrDataDimExprs shape_data{shape, data};
 
   op->set_attribute(
       "symbolic_shape",
@@ -277,52 +321,153 @@ bool FullIntArrayOpInferSymbolicShape(
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // TODO(zhangbopd): Not implemented yet.
-  auto operand_source = op->operand_source(0);
-  auto operand_source_1 = op->operand_source(1);
-  auto operand_source_2 = op->operand_source(2);
+  pir::Value operand_source = op->operand_source(0);
+  pir::Value operand_starts = op->operand_source(1);
+  // pir::Value operand_ends = op->operand_source(2);
 
-  pir::OpResult res = op->result(0);
+  symbol::ShapeOrDataDimExprs operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  symbol::ShapeOrDataDimExprs starts_shape_data =
+      shape_analysis->GetShapeOrDataForValue(operand_starts);
 
-  std::vector<int64_t> dims =
-      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
-
-  // TODO(zhangbopd): check whether it's right for other cases
-  std::vector<symbol::DimExpr> shapes;
-  for (int64_t dim : dims) {
-    symbol::DimExpr dim_expr;
-    if (dim == -1) {
-      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
-      dim_expr = res_dim_expr;
-    } else {
-      symbol::DimExpr res_dim_expr(dim);
-      dim_expr = res_dim_expr;
-    }
-    shapes.push_back(dim_expr);
+  int64_t start = 0;
+  if (starts_shape_data.data().has_value()) {
+    start = starts_shape_data.data()->at(0).Get<int64_t>();
   }
 
-  auto starts_array =
-      shape_analysis->GetShapeOrDataForValue(operand_source_1).data();
-  auto start = starts_array->at(0).Get<int64_t>();
-
-  auto ends_array =
-      shape_analysis->GetShapeOrDataForValue(operand_source_2).data();
-  auto end = ends_array->at(0).Get<int64_t>();
-
-  std::vector<symbol::DimExpr> data;
-  auto source_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source).data();
-  if (source_data != std::nullopt) {
-    for (int i = start; i < end; i++) {
-      data.emplace_back(source_data->at(i));
-    }
+  std::vector<symbol::DimExpr> out_dims;
+  if (operand_shape_or_data.data().has_value()) {
+    out_dims.push_back(operand_shape_or_data.data().value()[start]);
   }
 
-  symbol::ShapeOrDataDimExprs shape_data{shapes, data};
+  symbol::ShapeOrDataDimExprs shape_data{out_dims};
+  if (operand_shape_or_data.data().has_value()) {
+    shape_data.SetData(operand_shape_or_data.shape());
+  }
   op->set_attribute(
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
 
+  pir::OpResult res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  return true;
+}
+
+bool FullOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool MultiplyOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool MultiplySrOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool Multiply_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+bool MultiplySr_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
+}
+
+bool ConcatOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool GatherNdOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool PowOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Pow_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return PowOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool RsqrtOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Rsqrt_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return RsqrtOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool ScaleOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Scale_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ScaleOpInferSymbolicShape(op, shape_analysis);
+}
+bool ScaleSrOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool ScaleSr_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ScaleSrOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool SqueezeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Squeeze_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SqueezeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool UnsqueezeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Unsqueeze_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return UnsqueezeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool TileOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool TransposeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Transpose_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return TransposeOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool DivideOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+bool Divide_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return DivideOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool ElementwisePowOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool FullWithTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return true;
 }
 
@@ -350,8 +495,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   symbol::ShapeOrDataDimExprs shape_data{out_dims};
   if (operand_shape_or_data.data().has_value()) {
-    shape_data =
-        symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+    shape_data.SetData(operand_shape_or_data.shape());
   }
   op->set_attribute(
       "symbolic_shape",
@@ -359,6 +503,11 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
   pir::OpResult res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  return true;
+}
+
+bool ScaleOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return true;
 }
 

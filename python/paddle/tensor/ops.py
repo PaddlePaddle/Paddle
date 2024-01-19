@@ -775,7 +775,7 @@ def reciprocal(x, name=None):
         out = \\frac{1}{x}
 
     Args:
-        x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1080,7 +1080,7 @@ def square(x, name=None):
        out = x^2
 
     Args:
-        x (Tensor): Input of Square operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Square operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
