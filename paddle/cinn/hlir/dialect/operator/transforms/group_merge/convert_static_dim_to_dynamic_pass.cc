@@ -13,15 +13,22 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
+
 #include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/utils/flags.h"
+
+PD_DECLARE_string(cinn_convert_static_dim_to_dynamic);
 
 namespace cinn::dialect::ir {
 
 namespace {
-
-PD_DEFINE_string(cinn_convert_static_dim_to_dynamic);
 
 template <typename DoEachT>
 void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
@@ -54,7 +61,8 @@ std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(
   const auto& IsDigit = [&](const char ch) { return ch >= '0' && ch <= '9'; };
   if (!IsWordOrUnderLine(symbol[0])) return std::nullopt;
   for (int i = 1; i < symbol.size(); ++i) {
-    if (!(IsWordOrUnderLine(symbol[i]) || IsDigit(symbol[i]))) return std::nullopt;
+    if (!(IsWordOrUnderLine(symbol[i]) || IsDigit(symbol[i])))
+      return std::nullopt;
   }
   return std::pair{int64_t{constant}, symbol};
 }
@@ -102,13 +110,14 @@ struct StaticDimToDynamicConverter {
 
   bool Convert() {
     bool converted_once = false;
-    RewriteEachDimExpr(
-        [&](const auto& dim_expr, int64_t c, const std::string& symbol) {
-          std::optional<symbol::DimExpr> converted =
-              ConvertDimExpr(dim_expr, c, symbol);
-          converted_once |= converted.has_value();
-          return converted;
-        });
+    RewriteEachDimExpr([&](const symbol::DimExpr& dim_expr,
+                           int64_t c,
+                           const std::string& symbol) {
+      std::optional<symbol::DimExpr> converted =
+          ConvertDimExpr(dim_expr, c, symbol);
+      converted_once |= converted.has_value();
+      return converted;
+    });
     return converted_once;
   }
 
@@ -129,8 +138,7 @@ struct StaticDimToDynamicConverter {
 
   template <typename T>
   bool AppliedOnceUnaryImpl(const T& dim_expr, const std::string& symbol) {
-    const auto& [operand] = dim_expr;
-    return AppliedOnce(operand, symbol);
+    return AppliedOnce(dim_expr->data, symbol);
   }
 
   bool AppliedOnceImpl(const symbol::Negative<symbol::DimExpr>& dim_expr,
@@ -206,7 +214,7 @@ struct StaticDimToDynamicConverter {
   template <typename T>
   std::optional<symbol::DimExpr> ConvertUnaryDimExprImpl(
       const T& dim_expr, int64_t c, const std::string& symbol) {
-    const auto& [operand] = dim_expr;
+    const auto& operand = dim_expr->data;
     const auto& converted_operand = ConvertDimExpr(operand, c, symbol);
     if (!converted_operand.has_value()) return std::nullopt;
     return T{converted_operand.value()};
@@ -217,7 +225,7 @@ struct StaticDimToDynamicConverter {
       const T& dim_expr, int64_t c, const std::string& symbol) {
     const auto& [operands] = dim_expr;
     symbol::List<symbol::DimExpr> ret_operands{};
-    ret_operands->reserve(operands.size());
+    ret_operands->reserve(operands->size());
     bool converted_once = false;
     for (const auto& operand : *operands) {
       const auto& converted_operand = ConvertDimExpr(operand, c, symbol);
@@ -285,9 +293,8 @@ struct StaticDimToDynamicConverter {
             fusion_op->GetParentProgram());
     ForEachConstantToSymbol([&](int64_t c, const std::string& symbol) {
       ForEachValue([&](pir::Value value) {
-        const symbol::ShapeOrDataDimExprs& opt_converted =
-            ConvertShapeOrDataDimExprs(
-                DoEach, *shape_analysis, value, c, symbol);
+        const auto& opt_converted = ConvertShapeOrDataDimExprs(
+            DoEach, shape_analysis, value, c, symbol);
         if (!opt_converted.has_value()) return;
         UpdateShapeOrDataDimExprs(
             &*shape_analysis, value, opt_converted.value());
@@ -305,23 +312,27 @@ struct StaticDimToDynamicConverter {
   template <typename ConverterT>
   std::optional<symbol::ShapeOrDataDimExprs> ConvertShapeOrDataDimExprs(
       const ConverterT& Converter,
-      const pir::ShapeConstraintIRAnalysis& shape_analysis,
+      pir::ShapeConstraintIRAnalysis* shape_analysis,
       pir::Value value,
       int64_t constant,
       const std::string& symbol) {
-    if (shape_analysis.HasShapeOrDataForValue(value)) {
-      const auto& old = shape_analysis.GetShapeOrDataForValue(value).shape();
+    if (shape_analysis->HasShapeOrDataForValue(value)) {
+      const auto& old = shape_analysis->GetShapeOrDataForValue(value).shape();
       return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
     } else {
       auto& dims = value.type().dyn_cast<::pir::DenseTensorType>().dims();
       const auto& int_dims = ::common::vectorize<int>(dims);
       std::vector<symbol::DimExpr> old{};
       for (int dim : int_dims) {
-        old.emplace_back(static_const<std::int64_t>(dim));
+        old.emplace_back(static_cast<std::int64_t>(dim));
       }
       const auto& opt_exprs =
           ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
-      return opt_exprs.value_or(old);
+      if (opt_exprs.has_value()) {
+        return opt_exprs.value();
+      } else {
+        return symbol::ShapeOrDataDimExprs{old};
+      }
     }
     LOG(FATAL) << "Dead code";
   }
@@ -360,7 +371,7 @@ struct StaticDimToDynamicConverter {
 
   template <typename DoEachT>
   void ForEachValue(const DoEachT& DoEach) {
-    ForEachOp([&](pir::Operator* op) {
+    ForEachOp([&](::pir::Operation* op) {
       for (int i = 0; i < op->num_operands(); ++i) {
         DoEach(op->operand_source(i));
       }
@@ -372,11 +383,11 @@ struct StaticDimToDynamicConverter {
 
   template <typename DoEachT>
   void ForEachOp(const DoEachT& DoEach) {
-    for (auto* op : this->fusion_op->GetOperators()) {
+    for (auto* op : this->fusion_op.GetOperators()) {
       DoEach(op);
     }
   }
-}
+};
 
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
