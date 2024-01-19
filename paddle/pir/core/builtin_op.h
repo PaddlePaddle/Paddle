@@ -223,6 +223,11 @@ class IR_API ConstantTensorOp : public ConstantOp {
   static ConstantTensorOp dyn_cast(Operation *op);
   static bool classof(const Operation *op);
 
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::string &name,
+                    Type output_type);
+
   void VerifySig() const;
 
   std::string tensor_name();

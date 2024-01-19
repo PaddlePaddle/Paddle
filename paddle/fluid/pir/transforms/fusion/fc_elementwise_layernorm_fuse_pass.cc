@@ -65,14 +65,8 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &x_num_col_dims_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return 1;
-        });
-    const auto &false_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
-        });
+    const auto &x_num_col_dims_attr = res.Int32Attr(1);
+    const auto &false_attr = res.BoolAttr(false);
 
     const auto &fused_fc_elementwise_op =
         res.Op(paddle::dialect::FusedFcElementwiseLayernormOp::name(),

@@ -354,15 +354,16 @@ void DeepCopyVariable(const Variable* src_var,
             "TensorArray shouldn't be null"));
       }
     }
-    dst_tensor_array->clear();
-    for (auto src_tensor : src_tensor_array) {
-      phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
-      if (src_tensor.numel() == 0) {
-        tmp_dst_tensor->set_meta(src_tensor.meta());
+    dst_tensor_array->resize(src_tensor_array.size());
+    for (size_t i = 0; i < src_tensor_array.size(); ++i) {
+      phi::DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
+      if (src_tensor_array.at(i).numel() == 0) {
+        tmp_dst_tensor.set_meta(src_tensor_array.at(i).meta());
         continue;
       }
-      framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-      dst_tensor_array->push_back(*tmp_dst_tensor);
+      framework::TensorCopy(src_tensor_array.at(i),
+                            src_tensor_array.at(i).place(),
+                            &tmp_dst_tensor);
     }
   } else if (src_var->IsType<VariableRefArray>()) {
     auto src_ref_array = src_var->Get<VariableRefArray>();
@@ -878,19 +879,20 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
   auto attr_name_list = op_yaml_info.AttrParams(true);
   for (auto& name : attr_name_list) {
     auto& val = op_attr_map.at(name);
+    auto legacy_arg_name = op_normalizer.GetLegacyAttrName(fluid_op_name, name);
 
     if (val.isa<pir::StrAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::StrAttribute>().AsString();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::StrAttribute>().AsString();
     } else if (val.isa<pir::Int32Attribute>()) {
-      attr_map[name] = val.dyn_cast<pir::Int32Attribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::Int32Attribute>().data();
     } else if (val.isa<pir::BoolAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::BoolAttribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::BoolAttribute>().data();
     } else if (val.isa<pir::FloatAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::FloatAttribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::FloatAttribute>().data();
     } else if (val.isa<pir::DoubleAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::DoubleAttribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::DoubleAttribute>().data();
     } else if (val.isa<pir::Int64Attribute>()) {
-      attr_map[name] = val.dyn_cast<pir::Int64Attribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::Int64Attribute>().data();
     } else if (val.isa<pir::ArrayAttribute>()) {
       auto array_list = val.dyn_cast<pir::ArrayAttribute>().AsVector();
       PADDLE_ENFORCE(
@@ -901,41 +903,41 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
         for (auto attribute : array_list) {
           vec_int.push_back(attribute.dyn_cast<pir::Int32Attribute>().data());
         }
-        attr_map[name] = vec_int;
+        attr_map[legacy_arg_name] = vec_int;
       } else if (array_list[0].isa<pir::Int64Attribute>()) {
         std::vector<int> vec_int64;
         for (auto attribute : array_list) {
           vec_int64.push_back(
               attribute.dyn_cast<pir::Int64Attribute>().data());  // NOLINT
         }
-        attr_map[name] = vec_int64;
+        attr_map[legacy_arg_name] = vec_int64;
       } else if (array_list[0].isa<pir::BoolAttribute>()) {
         std::vector<int> vec_bool;
         for (auto attribute : array_list) {
           vec_bool.push_back(attribute.dyn_cast<pir::BoolAttribute>().data());
         }
-        attr_map[name] = vec_bool;
+        attr_map[legacy_arg_name] = vec_bool;
       } else if (array_list[0].isa<pir::FloatAttribute>()) {
         std::vector<int> vec_float;
         for (auto attribute : array_list) {
           vec_float.push_back(
               attribute.dyn_cast<pir::FloatAttribute>().data());  // NOLINT
         }
-        attr_map[name] = vec_float;
+        attr_map[legacy_arg_name] = vec_float;
       } else if (array_list[0].isa<pir::DoubleAttribute>()) {
         std::vector<int> vec_double;
         for (auto attribute : array_list) {
           vec_double.push_back(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
         }
-        attr_map[name] = vec_double;
+        attr_map[legacy_arg_name] = vec_double;
       } else if (array_list[0].isa<pir::StrAttribute>()) {
         std::vector<std::string> vec_string;
         for (auto attribute : array_list) {
           vec_string.push_back(
               attribute.dyn_cast<pir::StrAttribute>().AsString());  // NOLINT
         }
-        attr_map[name] = vec_string;
+        attr_map[legacy_arg_name] = vec_string;
       } else {
         std::stringstream ss;
         val.Print(ss);
@@ -943,7 +945,7 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
         PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
       }
     } else if (val.isa<paddle::dialect::DataTypeAttribute>()) {
-      attr_map[name] = paddle::framework::TransToProtoVarType(
+      attr_map[legacy_arg_name] = paddle::framework::TransToProtoVarType(
           val.dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else {
       std::stringstream ss;
