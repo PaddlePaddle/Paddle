@@ -142,9 +142,7 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
   if (options.IsCloneOperands()) {
     // replace value by IRMapping inplacely.
     for (auto &value : inputs) {
-      std::cerr << "11\n"; 
       value = ir_mapping.Lookup(value);
-      std::cerr << "22\n";
     }
   }
 
