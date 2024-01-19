@@ -58,7 +58,7 @@ bool CondInterceptor::GetCondResult() {
                     microbatch_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "Step out of range. There are %ld "
-                        "microbatch_scopes, but recevice scope index %ld",
+                        "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
                         cur_scope_id_));
   auto* cond_var =

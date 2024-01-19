@@ -1,4 +1,4 @@
-#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1043,41 +1043,21 @@ class DistModel:
         # convert dygraph model to static model
         if isinstance(loader, ShardDataloader):
             (
-                inputs_spec,
-                labels_spec,
+                self._engine._inputs_spec,
+                self._engine._labels_spec,
             ) = self._engine._prepare_data_spec_from_dataloader(loader)
         else:
             batch_size = loader.batch_sampler.batch_size
-            inputs_spec, labels_spec = self._engine._prepare_data_spec(
+            (
+                self._engine._inputs_spec,
+                self._engine._labels_spec,
+            ) = self._engine._prepare_data_spec(
                 loader.dataset, None, batch_size
             )
 
-        if optimizer is not None and loss is not None:
-            # get the static graph in train mode
-            self._engine.prepare(
-                copy.deepcopy(inputs_spec),
-                copy.deepcopy(labels_spec),
-                mode="train",
-                init_parameters=False,
-            )
-        if loss is not None:
-            # get the static graph in eval mode
-            self._engine.prepare(
-                copy.deepcopy(inputs_spec),
-                copy.deepcopy(labels_spec),
-                mode="eval",
-                init_parameters=False,
-            )
-        # get the static graph in predict mode
-        self._engine.prepare(
-            copy.deepcopy(inputs_spec),
-            None,
-            mode="predict",
-            init_parameters=False,
-        )
         # paddle.enable_static() will be called implicitly in self._engine.prepare.
         # call paddle.disable_static to keep the outside of DistModel in dynamic graph mode
-        paddle.disable_static()
+
         # set the default mode
         if optimizer is not None and loss is not None:
             self.train()
@@ -1093,11 +1073,11 @@ class DistModel:
         parameters of the model and return the loss.
         """
         if not self._engine._has_prepared["train"]:
-            raise RuntimeError(
-                "The model for training has not been prepared, please set 'loss' and 'optimizer' when constructing DistModel."
-            )
+            self._engine._prepare_program(mode="train", init_parameters=False)
+
         self._mode = "train"
         self._engine.to_mode("train")
+        paddle.disable_static()
 
     def eval(self):
         """
@@ -1105,11 +1085,11 @@ class DistModel:
         executing ``__call__`` will return the loss.
         """
         if not self._engine._has_prepared["eval"]:
-            raise RuntimeError(
-                "The model for evaluation has not been prepared, please set 'loss' when constructing DistModel."
-            )
+            self._engine._prepare_program(mode="eval", init_parameters=False)
+
         self._mode = "eval"
         self._engine.to_mode("eval")
+        paddle.disable_static()
 
     def predict(self):
         """
@@ -1118,11 +1098,16 @@ class DistModel:
         outputs of the model.
         """
         if not self._engine._has_prepared["predict"]:
-            raise RuntimeError(
-                "The model for prediction has not been prepared."
+            self._engine.prepare(
+                copy.deepcopy(self._engine._inputs_spec),
+                None,
+                mode="predict",
+                init_parameters=False,
             )
+
         self._mode = "predict"
         self._engine.to_mode("predict")
+        paddle.disable_static()
 
     def __validate_mode(self, mode):
         if mode is None and self._mode is None:

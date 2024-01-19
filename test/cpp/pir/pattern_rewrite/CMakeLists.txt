@@ -23,7 +23,9 @@ cc_test(
   SRCS drr_fuse_linear_param_grad_add_test.cc
   DEPS pir_transforms drr gtest op_dialect_vjp pir)
 
-cc_test(
-  drr_attention_fuse_test
-  SRCS drr_attention_fuse_test.cc
-  DEPS pir_transforms drr gtest op_dialect_vjp pir)
+if(WITH_GPU)
+  cc_test(
+    drr_attention_fuse_test
+    SRCS drr_attention_fuse_test.cc
+    DEPS pir_transforms drr gtest op_dialect_vjp pir)
+endif()
