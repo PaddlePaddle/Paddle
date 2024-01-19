@@ -165,9 +165,15 @@ def as_numpy(tensor, copy=False):
         )
     if tensor._is_initialized():
         if copy:
-            return np.array(tensor)
+            if tensor._dtype() == core.VarDesc.VarType.BF16:
+                return np.array(tensor._as_type(core.VarDesc.VarType.FP32))
+            else:
+                return np.array(tensor)
         else:
-            return np.asarray(tensor)
+            if tensor._dtype() == core.VarDesc.VarType.BF16:
+                return np.asarray(tensor._as_type(core.VarDesc.VarType.FP32))
+            else:
+                return np.asarray(tensor)
     else:
         return None
 
