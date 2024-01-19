@@ -24,7 +24,7 @@ namespace operators {
 
 using dnnl::memory;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -125,7 +125,5 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(quantize,
-                   MKLDNN,
-                   ::phi::CPUPlace,
-                   ops::QuantOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(quantize, OneDNN, ONEDNN, ops::QuantOpKernel, float) {
+}

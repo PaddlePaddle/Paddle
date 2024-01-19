@@ -41,8 +41,6 @@ class DecoratorTransformer(BaseTransformer):
     def __init__(self, root):
         self.root = root
 
-        self.ancestor_nodes = []
-
     def transform(self):
         """
         Main function to transform AST.

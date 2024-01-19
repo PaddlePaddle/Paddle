@@ -83,7 +83,7 @@ def var_to_np_array_in_scope(scope, place, name):
 
 
 def make_jacobian(x, y_size, np_dtype):
-    if isinstance(x, (base.framework.Variable, paddle.pir.OpResult)):
+    if isinstance(x, (base.framework.Variable, paddle.pir.Value)):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
@@ -244,8 +244,8 @@ def _compute_numerical_jacobian_pir(
         where "x_size" is the number of elements in x and
         "y_size" is the number of elements in each y_i.
     """
-    if not isinstance(x, paddle.pir.OpResult):
-        raise TypeError('x is not OpResult')
+    if not isinstance(x, paddle.pir.Value):
+        raise TypeError('x is not Value')
 
     # To compute the jacobian, treat x and y as one-dimensional vectors.
     y = _as_list(y)
@@ -308,8 +308,8 @@ def _compute_analytical_jacobian_pir(
         where "x_size" is the number of elements in x_i and
         "dy_size" is the number of elements in y.
     """
-    if not isinstance(x, (list, paddle.pir.OpResult)):
-        raise TypeError('x is not OpResult or list of OpResult')
+    if not isinstance(x, (list, paddle.pir.Value)):
+        raise TypeError('x is not Value or list of Value')
 
     np_type = dtype_to_np_dtype(y[i].dtype)
     exe = paddle.static.Executor(place)

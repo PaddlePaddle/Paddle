@@ -68,6 +68,12 @@ void HeavisideKernel(const Context& dev_ctx,
                      DenseTensor* out);
 
 template <typename T, typename Context>
+void CopySignKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out);
+
+template <typename T, typename Context>
 DenseTensor Maximum(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y) {

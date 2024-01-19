@@ -924,15 +924,11 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         )
     elif in_pir_mode():
         check_type(
-            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'uniform/rand'
+            shape, 'shape', (list, tuple, paddle.pir.Value), 'uniform/rand'
         )
         check_dtype(dtype, 'dtype', supported_dtypes, 'uniform/rand')
-        check_type(
-            min, 'min', (float, int, paddle.pir.OpResult), 'uniform/rand'
-        )
-        check_type(
-            max, 'max', (float, int, paddle.pir.OpResult), 'uniform/rand'
-        )
+        check_type(min, 'min', (float, int, paddle.pir.Value), 'uniform/rand')
+        check_type(max, 'max', (float, int, paddle.pir.Value), 'uniform/rand')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(
                 shape, _current_expected_place()
@@ -1115,9 +1111,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             low, high, shape, dtype, _current_expected_place()
         )
     elif in_pir_mode():
-        check_type(
-            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'randint'
-        )
+        check_type(shape, 'shape', (list, tuple, paddle.pir.Value), 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(
@@ -1331,7 +1325,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             check_type(
                 shape,
                 'shape',
-                (list, tuple, paddle.pir.OpResult),
+                (list, tuple, paddle.pir.Value),
                 'randint_like',
             )
             check_dtype(
@@ -1416,7 +1410,7 @@ def randperm(n, dtype="int64", name=None):
             >>> #doctest: -SKIP
 
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():

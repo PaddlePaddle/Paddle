@@ -146,9 +146,9 @@ class TestArgSortOpAxisTest(TestCaseHelper):
         ]
 
 
-class TestArgSortOpDescedingTest(TestCaseHelper):
+class TestArgSortOpDescendingTest(TestCaseHelper):
     def init_attrs(self):
-        self.class_name = "ArgSortOpDescedingTest"
+        self.class_name = "ArgSortOpDescendingTest"
         self.cls = TestArgSortOp
         self.inputs = [
             {
@@ -168,4 +168,4 @@ if __name__ == "__main__":
     TestArgSortOpShapeTest().run()
     TestArgSortOpDtypeTest().run()
     TestArgSortOpAxisTest().run()
-    TestArgSortOpDescedingTest().run()
+    TestArgSortOpDescendingTest().run()

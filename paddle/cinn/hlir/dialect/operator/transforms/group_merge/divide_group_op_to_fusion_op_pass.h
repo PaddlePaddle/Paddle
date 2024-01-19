@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,14 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <memory>
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/pass/pass.h"
 
-namespace paddle {
-namespace framework {
+namespace cinn {
+namespace dialect {
 namespace ir {
-
-class FusedConv2dAddActLayoutTransferPass : public FusePassBase {
- public:
-  FusedConv2dAddActLayoutTransferPass() = default;
-  virtual ~FusedConv2dAddActLayoutTransferPass() = default;
-
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
+std::unique_ptr<::pir::Pass> CreateDivideGroupOpToFusionOpPass();
 }  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace dialect
+}  // namespace cinn

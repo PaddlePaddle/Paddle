@@ -21,11 +21,9 @@ namespace ir {
 const _Dim_* Dim::operator->() const { return As<_Dim_>(); }
 _Dim_* Dim::operator->() { return As<_Dim_>(); }
 
-bool _Dim_::IsDynamic() const { return sym_dim.isa<std::string>(); }
+bool _Dim_::IsUniSymbolic() const { return sym_dim.isa<std::string>(); }
 
-std::string _Dim_::GetSymbolName() const { return symbol::ToString(sym_dim); }
-
-int64_t _Dim_::GetRealDimSize() const { return sym_dim.dyn_cast<int64_t>(); }
+std::string _Dim_::ToString() const { return symbol::ToString(sym_dim); }
 
 Expr _Dim_::GetDimExpr() const { return dim_expr; }
 

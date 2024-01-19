@@ -19,6 +19,8 @@ from decorator_helper import prog_scope
 
 import paddle
 from paddle import base
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -231,11 +233,13 @@ class TestMathOpPatches(unittest.TestCase):
         self.assertEqual(c.dtype, base.core.VarDesc.VarType.BOOL)
 
     @prog_scope()
+    @test_with_pir_api
     def test_equal_and_cond(self):
         a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
-        a.desc.set_need_check_feed(False)
         b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
-        b.desc.set_need_check_feed(False)
+        if not in_pir_mode():
+            a.desc.set_need_check_feed(False)
+            b.desc.set_need_check_feed(False)
         one = paddle.ones(shape=[1], dtype='int32')
         zero = paddle.zeros(shape=[1], dtype='int32')
         cond = one == zero
@@ -245,8 +249,9 @@ class TestMathOpPatches(unittest.TestCase):
         exe = base.Executor(place)
         a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
         b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
+
         (c_np,) = exe.run(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             feed={"a": a_np, "b": b_np},
             fetch_list=[c],
         )
@@ -384,6 +389,14 @@ class TestMathOpPatches(unittest.TestCase):
             fetch_list=[c],
         )
         np.testing.assert_allclose(a_np @ b_np, c_np, rtol=1e-05)
+
+    @prog_scope()
+    def test_builtin_type_conversion(self):
+        a = paddle.static.data(name="a", shape=[])
+        with self.assertRaises(TypeError):
+            int(a)
+        with self.assertRaises(TypeError):
+            float(a)
 
 
 class TestDygraphMathOpPatches(unittest.TestCase):
