@@ -14,23 +14,13 @@
 
 #pragma once
 
-#include <vector>
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
-#include "paddle/cinn/adt/map_expr.h"
+namespace pir {
 
-namespace cinn::hlir::framework::pir {
+class Pass;
 
-struct Group;
-using GroupList = std::vector<std::shared_ptr<Group>>;
+IR_API std::unique_ptr<Pass> CreateMultiHeadMatmulFusePass();
 
-}  // namespace cinn::hlir::framework::pir
-
-namespace cinn::adt {
-
-MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::pir::Group>& group);
-
-void TryGenerateMapExprFromGroup(
-    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group);
-
-}  // namespace cinn::adt
+}  // namespace pir

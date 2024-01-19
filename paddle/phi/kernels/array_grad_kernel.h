@@ -14,13 +14,18 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/core/dll_decl.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/tensor_array.h"
 
-namespace pir {
+namespace phi {
 
-class Pass;
-
-IR_API std::unique_ptr<Pass> CreateAttentionFusePass();
-
-}  // namespace pir
+template <typename T, typename Context>
+void TensorToArrayKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         const DenseTensor& out_grad,
+                         int axis,
+                         bool use_stack,
+                         TensorArray* x_grad);
+}  // namespace phi

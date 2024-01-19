@@ -58,24 +58,18 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &in_num_col_dims_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           return x_dims.size() - 1;
         });
-    const auto &false_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
-        });
+    const auto &false_attr = res.BoolAttr(false);
 
-    const auto &fc =
-        res.Op(paddle::dialect::FcOp::name(),
-               {{
-                   {"in_num_col_dims", in_num_col_dims_attr},
-                   {"activation_type",
-                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                                 -> std::string { return ""; })},
-                   {"padding_weights", false_attr},
-               }});
+    const auto &fc = res.Op(paddle::dialect::FcOp::name(),
+                            {{
+                                {"in_num_col_dims", in_num_col_dims_attr},
+                                {"activation_type", res.StrAttr("")},
+                                {"padding_weights", false_attr},
+                            }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
        {&res.Tensor("add_out")});
   }
@@ -110,9 +104,7 @@ class FcWithReluPattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type",
-                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                                 -> std::string { return "relu"; })},
+                   {"activation_type", res.StrAttr("relu")},
                    {"padding_weights", pat.Attr("padding_weights")},
                }});
     fc_with_relu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},

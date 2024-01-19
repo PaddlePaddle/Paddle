@@ -256,8 +256,7 @@ CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
 
 class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
  public:
-  GroupOpPattern(
-      ::pir::IrContext* context,)
+  explicit GroupOpPattern(::pir::IrContext* context)
       : pir::OpRewritePattern<cinn::dialect::GroupOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::GroupOp group_op,
@@ -271,8 +270,10 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
       value2id[yeild_op->operand_source(i)] = i;
     }
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+
+    auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(
+        pir::ShapeAnalysisManager::Instance().Get(
+            group_op->GetParentProgram()));
 
     // op fusion
     auto group_list = cinn::dialect::ir::OpFusionPassInternal(
@@ -339,7 +340,6 @@ class DivideGroupOpToFusionOpPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
-
 };
 
 }  // namespace

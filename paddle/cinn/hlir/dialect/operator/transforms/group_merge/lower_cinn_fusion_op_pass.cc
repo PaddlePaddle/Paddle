@@ -94,8 +94,7 @@ CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
 
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
-  FusionOpPattern(
-      ::pir::IrContext* context)
+  explicit FusionOpPattern(::pir::IrContext* context)
       : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
@@ -114,12 +113,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // so a mapping is required.
     std::unordered_map<::pir::Value, size_t> value2id;
 
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(fusion_op->GetParentProgram());
-    if (shape_analysis) {
-      group->value_to_shape_or_data_exprs =
-          CreateGroupShapeOrDataExprs(group, shape_analysis);
-    }
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        fusion_op->GetParentProgram());
+    group->value_to_shape_or_data_exprs =
+        CreateGroupShapeOrDataExprs(group, &shape_analysis);
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
@@ -143,7 +140,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         vec_ins, op_attrs, vec_types);
 
-    auto yeild_op = fusion_op.ops().back();
+    auto yeild_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(
           fusion_op.result(i),
@@ -186,7 +183,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
 class LowerCinnFusionOpPass : public pir::PatternRewritePass {
  public:
-  LowerCinnFusionOpPass(): pir::PatternRewritePass("lower_cinn_fusion_op", 1) {}
+  LowerCinnFusionOpPass()
+      : pir::PatternRewritePass("lower_cinn_fusion_op", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();

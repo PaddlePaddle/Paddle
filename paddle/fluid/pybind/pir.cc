@@ -43,7 +43,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
@@ -55,6 +54,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
@@ -113,7 +113,7 @@ using pir::Value;
 using pybind11::return_value_policy;
 
 USE_PIR_PASS(dead_code_elimination_pass);
-USE_PIR_PASS(attention_fuse_pass);
+USE_PIR_PASS(multihead_matmul_fuse_pass);
 USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_weight_only_linear_pass);
@@ -1566,18 +1566,18 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
                         : nullptr;
 
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(pir::CreateBuildCinnPass());
-
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
     pass_manager->AddPass(std::move(pass.value()));
   }
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
           << ", shape_analysis: " << shape_analysis;
 #else
