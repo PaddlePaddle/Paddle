@@ -21,7 +21,7 @@ import collective.test_communication_api_base as test_base
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
-class TestCusomOp(test_base.CommunicationTestDistBase):
+class TestCustomOp(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=200, nnode=1)
         self._default_envs = {"dtype": "float32", "seed": "2023"}
