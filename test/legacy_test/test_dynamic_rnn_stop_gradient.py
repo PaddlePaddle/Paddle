@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.pit_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -77,7 +78,7 @@ class TestDynRNNStopGradient(unittest.TestCase):
         self.batch_size = 2
         self.beam_size = 2
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def run_main(self, place):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()

@@ -1058,6 +1058,21 @@ def all_stop_gradient_true(block):
     return True
 
 
+def update_total_ops(block):
+    '''
+    when block is sub_block, forward op should include its parent block ops
+    (sub block nest should Add on demand to aviod block copy)
+    '''
+    total_ops = []
+    if block.parent_block is not None:
+        if block.parent_block.parent_block:
+            total_ops += block.parent_block.parent_block.ops
+        total_ops += block.parent_block.ops
+    total_ops += block.ops
+
+    return total_ops
+
+
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
@@ -1067,16 +1082,14 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         )
         return state.value_to_valuegrad
 
-    total_ops = []
-    if block.parent_block is not None:
-        total_ops += block.parent_block.ops
-    total_ops += block.ops
+    total_ops = update_total_ops(block)
 
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
-    complete_outputs, backward_ops = prepare_grad_outputs(
-        grad_outputs, outputs, state
-    )
+    with block:
+        complete_outputs, backward_ops = prepare_grad_outputs(
+            grad_outputs, outputs, state
+        )
 
     inputs_set = ValueSet(inputs)
     stop_gradient_false_outputs = []
