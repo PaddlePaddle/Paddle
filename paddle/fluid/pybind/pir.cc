@@ -1573,6 +1573,9 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
+    pass_manager->AddPass(std::move(pass.value()));
+  }
   pass_manager->AddPass(
       cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
