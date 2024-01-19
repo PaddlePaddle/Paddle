@@ -13,8 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
 
 #include "paddle/phi/backends/device_manager.h"
 
@@ -28,6 +28,9 @@ class XCCLCommContext final : public CommContext {
                   int rank,
                   int size,
                   const ccl::CCLRootId& xccl_id);
+  ~XCCLCommContext();
+
+  static void ReleaseAll();
 
   ccl::CCLComm GetXcclComm() const { return xccl_comm_; }
 

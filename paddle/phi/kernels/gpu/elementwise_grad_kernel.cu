@@ -329,6 +329,7 @@ PD_REGISTER_KERNEL(divide_grad,
                    int16_t,
                    int,
                    int64_t,
+                   bool,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -342,6 +343,7 @@ PD_REGISTER_KERNEL(divide_double_grad,
                    double,
                    int,
                    int64_t,
+                   bool,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 

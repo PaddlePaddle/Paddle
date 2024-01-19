@@ -55,7 +55,7 @@ std::vector<std::vector<paddle::Tensor>> reshape_vjp(
   if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled() &&
       !need_skip) {
     FLAGS_tensor_operants_mode = "static";
-    VLOG(4) << "Call PIR Decomposed backward op reshape_grad";
+    VLOG(4) << "Call Pir Decomposed backward op reshape_grad";
     paddle::Tensor* x_grad = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
 
     details::reshape_grad<LazyTensor>(xshape, out_grad, x_grad);

@@ -19,18 +19,19 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 void OperationFactory::RegisterManualOpCreator() {
   RegisterOperationCreator(
       "pd_op.fused_gemm_epilogue",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         return rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
@@ -41,7 +42,7 @@ void OperationFactory::RegisterManualOpCreator() {
       });
   RegisterOperationCreator(
       "pd_op.fused_gemm_epilogue_grad",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         return rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
@@ -52,11 +53,22 @@ void OperationFactory::RegisterManualOpCreator() {
             attrs);
       });
   RegisterOperationCreator("builtin.combine",
-                           [](const std::vector<Value>& inputs,
+                           [](const std::vector<pir::Value>& inputs,
                               const pir::AttributeMap& attrs,
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
+  RegisterOperationCreator(
+      "pd_op.scale",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::ScaleOp>(
+            inputs[0].dyn_cast<pir::OpResult>(),
+            inputs[1].dyn_cast<pir::OpResult>(),
+            attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
+            attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
+      });
 }
 
 static pir::Attribute CreateIrAttribute(const std::any& obj) {
@@ -83,6 +95,12 @@ static pir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
     return IrAttrbuteCreator<std::vector<int64_t>>()(
         std::any_cast<std::vector<int64_t>>(obj));
+  } else if (obj.type() == typeid(std::vector<float>)) {
+    return IrAttrbuteCreator<std::vector<float>>()(
+        std::any_cast<std::vector<float>>(obj));
+  } else if (obj.type() == typeid(phi::IntArray)) {
+    return IrAttrbuteCreator<phi::IntArray>()(
+        std::any_cast<phi::IntArray>(obj));
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Type error. CreateIrAttribute for type(%s) "
@@ -113,18 +131,18 @@ pir::AttributeMap CreateAttributeMap(const OpCall& op_call,
   return attr_map;
 }
 
-Value GetIrValueByDrrTensor(const Tensor& tensor,
-                            const MatchContextImpl& res_match_ctx) {
+pir::Value GetIrValueByDrrTensor(const Tensor& tensor,
+                                 const MatchContextImpl& res_match_ctx) {
   if (tensor.is_none()) {
-    return Value{};
+    return pir::Value{};
   }
-  return res_match_ctx.GetIrValue(tensor.name()).get();
+  return res_match_ctx.GetIrValue(tensor.name());
 }
 
-std::vector<Value> GetIrValuesByDrrTensors(
+std::vector<pir::Value> GetIrValuesByDrrTensors(
     const std::vector<const Tensor*>& tensors,
     const MatchContextImpl& res_match_ctx) {
-  std::vector<Value> ir_values;
+  std::vector<pir::Value> ir_values;
   ir_values.reserve(tensors.size());
   for (const auto* tensor : tensors) {
     ir_values.push_back(GetIrValueByDrrTensor(*tensor, res_match_ctx));
@@ -136,11 +154,7 @@ void BindIrOutputs(const OpCall& op_call,
                    pir::Operation* op,
                    MatchContextImpl* match_ctx) {
   for (size_t i = 0; i < op_call.outputs().size(); ++i) {
-    std::shared_ptr<IrValue> ir_value = nullptr;
-    if (op->result(i)) {
-      ir_value = std::make_shared<IrValue>(op->result(i));
-    }
-    match_ctx->BindIrValue(op_call.outputs()[i]->name(), ir_value);
+    match_ctx->BindIrValue(op_call.outputs()[i]->name(), op->result(i));
   }
 }
 
@@ -150,7 +164,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
                                 MatchContextImpl* res_match_ctx) {
   VLOG(6) << "Drr create [" << op_call.name() << "] op...";
   const auto& inputs = op_call.inputs();
-  std::vector<Value> ir_values =
+  std::vector<pir::Value> ir_values =
       GetIrValuesByDrrTensors(inputs, *res_match_ctx);
   pir::Operation* op = OperationFactory::Instance().CreateOperation(
       op_call.name(),
@@ -158,9 +172,9 @@ pir::Operation* CreateOperation(const OpCall& op_call,
       CreateAttributeMap(op_call, src_match_ctx),
       rewriter);
   BindIrOutputs(op_call, op, res_match_ctx);
-  VLOG(6) << "Drr create [" << op_call.name() << "] op done.";
+  VLOG(6) << "Drr create [" << op_call.name() << " @" << op << "] op done.";
   return op;
 }
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

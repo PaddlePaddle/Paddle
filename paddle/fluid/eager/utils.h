@@ -242,6 +242,9 @@ class TEST_API EagerUtils {
   static void FillZeroForEmptyOptionalGradInput(
       std::vector<paddle::Tensor>* in_grads,
       const std::vector<GradSlotMeta>& grad_in_metas);
+  static void FillZeroForEmptyOptionalGradOutput(
+      std::vector<paddle::Tensor>* out_grads,
+      const std::vector<GradSlotMeta>& grad_out_metas);
   static void FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
                                         const GradSlotMeta& grad_in_meta);
   static void FillZeroForEmptyOptionalGradInput(

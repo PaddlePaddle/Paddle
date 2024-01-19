@@ -738,6 +738,11 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(tensor3.numpy(), arr2)
         self.assertTrue(tensor3._is_shared_buffer_with(tensor))
 
+    def test_0_size_tensor_share_buffert_to(self):
+        x = paddle.rand([0, 4])
+        y = paddle.rand([0, 4])
+        x._share_buffer_to(y)
+
     def test_share_underline_tensor_to(self):
         arr = np.ones([4, 16, 16, 32]).astype('float32')
         arr1 = np.zeros([4, 16]).astype('float32')
@@ -887,6 +892,15 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), y.numpy())
         y = x._use_gpudnn(True)
         np.testing.assert_array_equal(x.numpy(), y.numpy())
+
+    def test_md5sum(self):
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        y = paddle.to_tensor(np_x, dtype="float64")
+        self.assertEqual(x._md5sum(), y._md5sum())
+        x = paddle.to_tensor(np_x, dtype="bfloat16")
+        y = paddle.to_tensor(np_x, dtype="bfloat16")
+        self.assertEqual(x._md5sum(), y._md5sum())
 
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):

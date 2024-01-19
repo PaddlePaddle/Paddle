@@ -29,7 +29,7 @@ namespace cinn {
 namespace auto_schedule {
 
 float ExprCostModel::Predict(const ir::ModuleExpr& sample,
-                             const common::Target& target) const {
+                             const cinn::common::Target& target) const {
   if (trained_times_.load() == 0) {
     return SearchState::NOT_INIT_COST;
   }
@@ -42,7 +42,7 @@ float ExprCostModel::Predict(const ir::ModuleExpr& sample,
 
 void ExprCostModel::Train(const std::vector<const ir::ModuleExpr*>& samples,
                           const std::vector<float>& labels,
-                          const common::Target& target) {
+                          const cinn::common::Target& target) {
   trained_times_.store(1);
   size_t total_size = samples.size();
   CHECK_EQ(total_size, labels.size())
@@ -60,7 +60,7 @@ void ExprCostModel::Train(const std::vector<const ir::ModuleExpr*>& samples,
 
 void ExprCostModel::Update(const std::vector<const ir::ModuleExpr*>& samples,
                            const std::vector<float>& labels,
-                           const common::Target& target) {
+                           const cinn::common::Target& target) {
   ++trained_times_;
   size_t total_size = samples.size();
   CHECK_EQ(total_size, labels.size())

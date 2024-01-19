@@ -26,7 +26,7 @@ We provide users with four installation methods ,which are pip, conda, docker an
 - **Windows 7/8/10 Pro/Enterprise (64bit)**
   - **GPU version support CUDA 10.2/11.2/11.6/11.7**
   - **Only supports single card**
-- **Python version 3.7/3.8/3.9/3.10 (64 bit)**
+- **Python version 3.8/3.9/3.10/3.11/3.12 (64 bit)**
 - **pip version 9.0.1+ (64 bit)**
 
 ##### On Linux:
@@ -34,14 +34,14 @@ We provide users with four installation methods ,which are pip, conda, docker an
 - **Linux Version (64 bit)**
   - **CentOS 7 (GPUVersion Supports CUDA 10.2/11.2/11.6/11.7)**
   - **Ubuntu 16.04/18.04/20.04/22.04 (GPUVersion Supports CUDA 10.2/11.2/11.6/11.7)**
-- **Python Version: 3.7/3.8/3.9/3.10 (64 bit)**
+- **Python Version: 3.8/3.9/3.10/3.11/3.12 (64 bit)**
 - **pip or pip3 Version 20.2.2+ (64 bit)**
 
 ##### On macOS:
 
 - **MacOS version 10.11/10.12/10.13/10.14 (64 bit) (not support GPU version yet)**
 
-- **Python version 3.7/3.8/3.9/3.10 (64 bit)**
+- **Python version 3.8/3.9/3.10/3.11/3.12 (64 bit)**
 
 - **pip or pip3 version 9.0.1+ (64 bit)**
 

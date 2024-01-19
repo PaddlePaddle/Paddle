@@ -26,13 +26,14 @@
 #include "paddle/pir/core/type_name.h"
 #include "paddle/pir/core/type_util.h"
 #include "paddle/pir/core/utils.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 class TypeA {};
-IR_DECLARE_EXPLICIT_TYPE_ID(TypeA)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeA)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeA)
 
 class TypeB {};
-IR_DECLARE_EXPLICIT_TYPE_ID(TypeB)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeB)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeB)
 
 TEST(type_test, type_id) {
@@ -59,19 +60,18 @@ struct FakeDialect : pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<FakeDialect>()) {}
   static const char *name() { return "fake"; }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(FakeDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
 
 TEST(type_test, type_base) {
   // Test 1: Test the function of IrContext to register Dialect.
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
-  std::vector<pir::InterfaceValue> interface_map;
 
   // Test 2: Test the get method of AbstractType.
   pir::TypeId a_id = pir::TypeId::get<TypeA>();
   pir::AbstractType abstract_type_a =
-      pir::AbstractType::get(a_id, *fake_dialect, std::move(interface_map));
+      pir::AbstractType::get(a_id, *fake_dialect, {});
   EXPECT_EQ(abstract_type_a.type_id(), a_id);
 
   // Test 3: Test the constructor of TypeStorage.
@@ -95,6 +95,7 @@ TEST(type_test, built_in_type) {
 
   pir::Type index_1 = pir::IndexType::get(ctx);
   pir::Type index_2 = pir::IndexType::get(ctx);
+  EXPECT_TRUE(index_1.IsIndex());
   EXPECT_EQ(index_1, index_2);
   EXPECT_EQ(index_1.type_id(), index_2.type_id());
   EXPECT_EQ(&index_1.abstract_type(),
@@ -197,7 +198,7 @@ class IntegerType
  public:
   using Base::Base;
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(IntegerType)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(IntegerType)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerType)
 
 // Customize a Dialect IntegerDialect, registration type of IntegerType.
@@ -208,7 +209,7 @@ struct IntegerDialect : pir::Dialect {
   }
   static const char *name() { return "integer"; }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(IntegerDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(IntegerDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {
@@ -231,7 +232,7 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(int8.dialect().id(), pir::TypeId::get<IntegerDialect>());
 
   std::vector<pir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
-  EXPECT_EQ(dialect_list.size() == 4, 1);  // integer, builtin, fake
+  EXPECT_EQ(dialect_list.size() == 5, 1);  // integer, builtin, fake
 
   pir::Dialect *dialect_builtin1 = ctx->GetRegisteredDialect("builtin");
   pir::Dialect *dialect_builtin2 =

@@ -26,6 +26,7 @@ from paddle.base.framework import (
     Variable,
     default_main_program,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     name_scope,
     program_guard,
     static_only,
@@ -206,7 +207,6 @@ def fc(
             param_shape = [
                 reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
             ] + [size]
-
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
@@ -227,7 +227,7 @@ def fc(
                 type="sum",
                 inputs={"X": mul_results},
                 outputs={"Out": pre_bias},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
         # add bias
         pre_activation = helper.append_bias_op(
@@ -284,17 +284,17 @@ def instance_norm(
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
-             Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+            Default: None.
         bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If the bias_attr is set to False, instance_norm will not create bias_attr.
-         Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If the bias_attr is set to False, instance_norm will not create bias_attr.
+            Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -496,7 +496,7 @@ def data_norm(
             should do model average when model average is enabled. Default: True.
         slot_dim (int, optional): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode,
             we distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
-            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
+            place of the embedding is the historical show number (occurrence time of this feature id with a label 0).
             If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
@@ -708,7 +708,7 @@ def group_norm(
         ['float16', 'uint16', 'float32', 'float64'],
         'group_norm',
     )
-    # create intput and parameters
+    # create input and parameters
     inputs = {'X': input}
     input_shape = input.shape
     if len(input_shape) < 2:
@@ -860,7 +860,7 @@ def conv2d(
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`std` is :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -920,7 +920,7 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(str(input.shape), str(num_channels))
         )
     assert param_attr is not False, "param_attr should not be False here."
@@ -1055,7 +1055,6 @@ def conv2d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
@@ -1237,7 +1236,7 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(str(input.shape), str(num_channels))
         )
 
@@ -1351,7 +1350,6 @@ def conv3d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
         },
@@ -1661,7 +1659,7 @@ def conv2d_transpose(
         )
 
     if filter_size is None:
-        if output_size is []:
+        if output_size == []:
             raise ValueError("output_size must be set when filter_size is None")
         if not in_dygraph_mode():
             if isinstance(output_size, Variable) or paddle.utils._contain_var(
@@ -2064,9 +2062,7 @@ def conv3d_transpose(
     groups = 1 if groups is None else groups
     if groups <= 0:
         raise ValueError(
-            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_filters % groups != 0:
         raise ValueError(
@@ -2640,19 +2636,19 @@ def batch_norm(
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:input is the input features over a mini-batch.
+    :math:`input` is the input features over a mini-batch.
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\
         moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
 
 
@@ -2666,9 +2662,9 @@ def batch_norm(
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}}  \\
+        y_i &\gets \gamma \hat{x_i} + \beta
 
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use
@@ -2691,14 +2687,14 @@ def batch_norm(
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. Default: None.
+             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+             If the Initializer of the param_attr is not set, the parameter is initialized
+             with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-         Default: None.
+             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+             If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
              will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
              The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -2815,11 +2811,11 @@ def batch_norm(
     variance_out = variance
 
     if in_dygraph_mode():
-        inputs_has_MomemtumTensor = False
+        inputs_has_MomentumTensor = False
         attrs_has_momentum = False
         tmp_tensor_type = core.eager.Tensor
         if isinstance(momentum, tmp_tensor_type):
-            inputs_has_MomemtumTensor = True
+            inputs_has_MomentumTensor = True
         else:
             attrs_has_momentum = True
 
@@ -2834,8 +2830,6 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
-                False,
                 'fuse_with_relu',
                 False,
                 'use_global_stats',
@@ -2849,14 +2843,12 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
-                False,
                 'fuse_with_relu',
                 False,
                 'use_global_stats',
                 use_global_stats,
             )
-        if inputs_has_MomemtumTensor:
+        if inputs_has_MomentumTensor:
             batch_norm_out, _, _, _, _, _ = paddle._legacy_C_ops.batch_norm(
                 input,
                 scale,
@@ -2882,7 +2874,7 @@ def batch_norm(
             )
 
         return paddle.base.dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=act, use_mkldnn=False
+            batch_norm_out, act=act
         )
 
     saved_mean = helper.create_variable_for_type_inference(
@@ -2914,7 +2906,6 @@ def batch_norm(
         "epsilon": epsilon,
         "is_test": is_test,
         "data_layout": data_layout,
-        "use_mkldnn": False,
         "fuse_with_relu": False,
         "use_global_stats": use_global_stats,
     }
@@ -3435,7 +3426,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                   Input(Weight) is the weight of conv layer, default 0.
         power_iters(int): number of power iterations to calculate spectral norm, default 1.
         eps(float): epsilon for numerical stability in calculating norms, it will be added to
-                    the denominator to aviod divide zero. Default 1e-12.
+                    the denominator to avoid divide zero. Default 1e-12.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -3464,7 +3455,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     check_type(eps, 'eps', float, 'spectral_norm')
     dtype = weight.dtype
 
-    # create intput and parameters
+    # create input and parameters
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
 
@@ -3491,7 +3482,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     )
     v.stop_gradient = True
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
 
     inputs = {'Weight': weight}
@@ -3605,7 +3596,7 @@ def layer_norm(
     )
     dtype = helper.input_dtype()
 
-    # create intput and parameters
+    # create input and parameters
     inputs = {'X': input}
     input_shape = input.shape
     param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:], 1)]
@@ -3889,7 +3880,7 @@ def sparse_embedding(
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever
             lookup encounters :math:`padding\_idx` in id. And the padding data will not be updated
-            while training. If set None, it makes no efe mfect to output. Default: None.
+            while training. If set None, it makes no effect to output. Default: None.
         is_test(bool, optional): Training or prediction mode. In prediction mode (is_test=False),
             the output is not initialized and created, and it is filled with 0 and returned. Default: False.
         entry(str, optional): Entry config with parameter server whose value is ProbabilityEntry,

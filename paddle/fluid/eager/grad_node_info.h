@@ -21,6 +21,7 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/utils/test_macros.h"
 
 namespace egr {
@@ -166,7 +167,19 @@ class GradSlotMeta {
 
   void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
     dist_attr_ = dist_attr;
+    is_dist_meta_ = true;
   }
+
+  const phi::DDim& DistTensorGlobalDims() const {
+    return dist_tensor_global_dims_;
+  }
+
+  void SetDistTensorGlobalDims(const phi::DDim& dims) {
+    dist_tensor_global_dims_ = dims;
+    is_dist_meta_ = true;
+  }
+
+  bool IsDistMeta() const { return is_dist_meta_; }
 
  private:
   bool stop_gradient_{false};
@@ -177,6 +190,8 @@ class GradSlotMeta {
   // Save the dist attr of the forward input Tensor for proper resharding
   // operation when compute the input Tensor's gradient
   phi::distributed::TensorDistAttr dist_attr_;
+  phi::DDim dist_tensor_global_dims_;
+  bool is_dist_meta_{false};
 };
 
 class GradNodeBase {
@@ -278,14 +293,14 @@ class GradNodeBase {
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
   GetGradientHookFuntions() {
-    VLOG(7) << "GetGradientHookFuntions ";
+    VLOG(7) << "GetGradientHookFunctions ";
     return gradient_hooks_;
   }
 
   void SetGradientHookFuntions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
-    VLOG(7) << "SetGradientHookFuntions ";
+    VLOG(7) << "SetGradientHookFunctions ";
     gradient_hooks_ = hooks;
   }
 

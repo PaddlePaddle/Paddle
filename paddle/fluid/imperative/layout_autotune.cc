@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/imperative/layout_autotune.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/layout_transformer.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 namespace paddle {
 namespace imperative {
 
@@ -33,7 +33,7 @@ LayoutAutoTune::LayoutAutoTune() {
       continue;
     }
 
-    // only record forwrd operators
+    // only record forward operators
     if (info.first.find("_grad") != std::string::npos) {
       continue;
     }
@@ -207,7 +207,7 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
       VLOG(3) << "Tune the layout from "
               << PADDLE_GET_CONST(std::string, (*attrs)["data_format"])
               << " to "
-              << phi::DataLayoutToString(
+              << common::DataLayoutToString(
                      LayoutAutoTune::Instance().GetDesiredLayout());
     }
   }

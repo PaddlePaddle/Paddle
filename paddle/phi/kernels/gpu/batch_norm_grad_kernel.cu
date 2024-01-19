@@ -14,9 +14,9 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -508,7 +508,7 @@ void BatchNormGradFunctor(const Context &ctx,
                           DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 
@@ -967,7 +967,11 @@ void BatchNormGradFunctor(const Context &ctx,
         workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
         workspace_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
-
+        uint8_t *reserve_space_ptr = nullptr;
+        if (reserve_space_size != 0) {
+          reserve_space_ptr =
+              const_cast<uint8_t *>(reserve_space->template data<uint8_t>());
+        }
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnBatchNormalizationBackwardEx(
                 /*handle=*/ctx.cudnn_handle(),
@@ -1002,7 +1006,9 @@ void BatchNormGradFunctor(const Context &ctx,
                 /*workspace=*/workspace_ptr,
                 /*workSpaceSizeInBytes=*/workspace_size,
                 /*reserveSpace=*/
-                const_cast<uint8_t *>(reserve_space->template data<uint8_t>()),
+                // const_cast<uint8_t *>(reserve_space->template
+                // data<uint8_t>()),
+                reserve_space_ptr,
                 /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1353,7 +1359,7 @@ void BatchNormDoubleGradKernel(
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
   const DenseTensor *running_mean = nullptr;
   const DenseTensor *running_variance = nullptr;

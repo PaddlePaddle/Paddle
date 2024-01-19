@@ -21,6 +21,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_uint16_to_float
 from test_collective_base_xpu import DataTypeCast, TestDistBase
 
 import paddle
@@ -95,7 +96,7 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             self,
             model_file,
             col_type,
-            data_type,
+            dtype=None,
             check_error_log=False,
             need_envs={},
         ):
@@ -105,14 +106,15 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
                 "PYTHONPATH": os.getenv("PYTHONPATH", ""),
                 "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
                 "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-                "GLOG_v": "0",
-                "DATA_TYPE": data_type,
+                "GLOG_v": "3",
+                "DTYPE": dtype,
+                "FLAGS_dynamic_static_unified_comm": "0",
             }
             required_envs.update(need_envs)
             if check_error_log:
                 required_envs["GLOG_v"] = "3"
                 required_envs["GLOG_logtostderr"] = "1"
-            np_data_type = DataTypeCast(data_type)
+            np_dtype = DataTypeCast(dtype)
 
             tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
                 model_file, required_envs
@@ -125,20 +127,20 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             )
             loss_grad = np.random.uniform(
                 low=-10.0, high=10.0, size=(self.batch_size, 1)
-            ).astype(np_data_type)
+            ).astype(np_dtype)
 
             local_elements = int(self.num_class / 2)
             # get input data for rank 0
             np.random.seed(pid0)
             input0 = np.random.uniform(
                 low=-40.0, high=40.0, size=(self.batch_size, local_elements)
-            ).astype(np_data_type)
+            ).astype(np_dtype)
 
             # get input data for rank 1
             np.random.seed(pid1)
             input1 = np.random.uniform(
                 low=-40.0, high=40.0, size=(self.batch_size, local_elements)
-            ).astype(np_data_type)
+            ).astype(np_dtype)
 
             # get combined input data
             inputs = np.concatenate((input0, input1), axis=1)
@@ -153,15 +155,30 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             # get real result
             loss0, softmax0, logits_grad0 = tr0_out
             loss1, softmax1, logits_grad1 = tr1_out
+            if dtype == "bfloat16":
+                loss0 = convert_uint16_to_float(loss0)
+                softmax0 = convert_uint16_to_float(softmax0)
+                logits_grad0 = convert_uint16_to_float(logits_grad0)
+                loss1 = convert_uint16_to_float(loss1)
+                softmax1 = convert_uint16_to_float(softmax1)
+                logits_grad1 = convert_uint16_to_float(logits_grad1)
             softmax = np.concatenate((softmax0, softmax1), axis=1)
             logits_grad = np.concatenate((logits_grad0, logits_grad1), axis=1)
 
             # compare results
             rtol = 1e-6
-            np.testing.assert_allclose(loss0, need_loss, rtol=rtol)
-            np.testing.assert_allclose(loss1, need_loss, rtol=rtol)
-            np.testing.assert_allclose(softmax, need_softmax, rtol=rtol)
-            np.testing.assert_allclose(logits_grad, need_logits_grad, rtol=rtol)
+            atol = 0
+            if dtype == "bfloat16":
+                rtol = 0.1
+                atol = 0.1
+            np.testing.assert_allclose(loss0, need_loss, rtol=rtol, atol=atol)
+            np.testing.assert_allclose(loss1, need_loss, rtol=rtol, atol=atol)
+            np.testing.assert_allclose(
+                softmax, need_softmax, rtol=rtol, atol=atol
+            )
+            np.testing.assert_allclose(
+                logits_grad, need_logits_grad, rtol=rtol, atol=atol
+            )
 
 
 support_types = get_xpu_op_support_types('c_softmax_with_cross_entropy')
@@ -170,7 +187,7 @@ for stype in support_types:
         globals(),
         XPUTestCSoftmaxWithCEOP,
         stype,
-        ignore_device_version=[core.XPUVersion.XPU1],
+        ignore_device_version=[core.XPUVersion.XPU1, core.XPUVersion.XPU3],
     )
 
 if __name__ == '__main__':

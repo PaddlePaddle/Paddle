@@ -74,12 +74,12 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
     auto* le_n = node->condition.As<ir::LE>();
 
     if (lt_n) {
-      if (lt_n->b() != common::make_const(0)) {
+      if (lt_n->b() != cinn::common::make_const(0)) {
         node->condition = lt_n->a() - lt_n->b() < 0;
       }
     }
     if (le_n) {
-      if (le_n->b() != common::make_const(0)) {
+      if (le_n->b() != cinn::common::make_const(0)) {
         node->condition = le_n->a() - le_n->b() <= 0;
       }
     }
@@ -119,7 +119,7 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
 
     Expr lhs = lt_n ? lt_n->a() : le_n->a();
     Expr rhs = lt_n ? lt_n->b() : PlusOneWithMinMax(le_n->b());
-    rhs = common::AutoSimplify(rhs);
+    rhs = cinn::common::AutoSimplify(rhs);
 
     if (op->is_vectorized()) CHECK(op->vectorize_info().valid());
 

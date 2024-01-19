@@ -90,7 +90,6 @@
 #
 #   paddle_test(example SRCS example_test.cc)
 #
-
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # including io directory for inference lib paddle_api.h
@@ -596,9 +595,13 @@ function(paddle_test_build TARGET_NAME)
     add_executable(${TARGET_NAME} ${paddle_test_SRCS})
     get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
     target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:${paddle_lib}>
-                          ${paddle_test_DEPS} paddle_gtest_main_new)
-    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS}
+                          ${paddle_test_DEPS} common paddle_gtest_main_new)
+    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS} common
                      paddle_gtest_main_new)
+    if(WITH_MKLDNN)
+      target_link_libraries(${TARGET_NAME} mkldnn)
+      add_dependencies(${TARGET_NAME} mkldnn)
+    endif()
     if(WITH_SHARED_PHI)
       target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:phi>)
       add_dependencies(${TARGET_NAME} phi)
@@ -623,7 +626,7 @@ function(paddle_test_build TARGET_NAME)
     if(APPLE)
       target_link_libraries(
         ${TARGET_NAME}
-        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,$<TARGET_FILE_DIR:common>"
       )
     endif()
     common_link(${TARGET_NAME})
@@ -729,6 +732,7 @@ function(nv_test TARGET_NAME)
     # 2. cuda_add_executable does not support ccache.
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
                           ${os_dependency_modules} paddle_gtest_main phi)
@@ -833,7 +837,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       glog
       phi
@@ -843,7 +846,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)
@@ -940,7 +942,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog
@@ -950,7 +951,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)
@@ -1348,9 +1348,6 @@ function(math_library TARGET)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       list(APPEND math_common_deps cub)
-    elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
-           OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
-      list(APPEND math_common_deps cccl)
     else()
       list(APPEND math_common_deps)
     endif()

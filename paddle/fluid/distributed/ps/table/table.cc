@@ -48,6 +48,7 @@ REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradV2SGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseSharedAdamSGDRule);
 
 int32_t TableManager::Initialize() {
@@ -87,7 +88,7 @@ int32_t Table::InitializeAccessor() {
       CREATE_PSCORE_CLASS(ValueAccessor, _config.accessor().accessor_class());
 
   if (accessor == NULL) {
-    LOG(ERROR) << "accessor is unregisteg, table_id:" << _config.table_id()
+    LOG(ERROR) << "accessor is unregistered, table_id:" << _config.table_id()
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
   }

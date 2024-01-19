@@ -17,20 +17,39 @@ import unittest
 
 from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
-# os.environ["PADDLE_P2P_SYNC_SEND"] = "1"
-
 
 class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_pp_layer(self):
         self.run_mnist_2gpu(
-            os.path.abspath('../../legacy_test/hybrid_parallel_pp_layer.py')
+            os.path.abspath('../../legacy_test/hybrid_parallel_pp_layer.py'),
+            need_envs={
+                "PADDLE_P2P_SYNC_SEND": "1",
+            },
         )
 
     def test_hybrid_parallel_pp_tuple_inputs(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_embedding.py',
+            need_envs={
+                "PADDLE_P2P_SYNC_SEND": "1",
+            },
+        )
 
     def test_hybrid_parallel_shared_weight(self):
-        self.run_mnist_2gpu('hybrid_parallel_shared_weight.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_shared_weight.py',
+            need_envs={
+                "PADDLE_P2P_SYNC_SEND": "1",
+            },
+        )
+
+    def test_pipeline_parallel_amp(self):
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_amp.py',
+            need_envs={
+                "PADDLE_P2P_SYNC_SEND": "1",
+            },
+        )
 
 
 if __name__ == "__main__":

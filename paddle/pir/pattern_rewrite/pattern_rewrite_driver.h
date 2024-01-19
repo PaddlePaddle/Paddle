@@ -16,10 +16,10 @@
 
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/region.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace pir {
+
+class FrozenRewritePatternSet;
 
 /// This enum will control which ops will be added to the worklist during the
 /// match rewrite process
@@ -64,23 +64,18 @@ class IR_API GreedyRewriteConfig {
 /// apply the Pattern with the highest benefit, and repeat this process until
 /// convergence or the upper limit of iterations.
 ///
-/// Returns true if the iteration converges and no patterns can be applied.
-bool IR_API
+/// Returns pair<bool,int64_t>
+// the first is true if the iteration converges and no patterns can be applied.
+// the second is the number of total match count.
+std::pair<bool, int64_t> IR_API
 ApplyPatternsGreedily(Region& region,  // NOLINT
                       const FrozenRewritePatternSet& patterns,
                       GreedyRewriteConfig config = GreedyRewriteConfig());
 
 /// Perform a match and rewrite process for all regions of a given op.
-inline IR_API bool ApplyPatternsGreedily(
+IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
     Operation* op,
     const FrozenRewritePatternSet& patterns,
-    GreedyRewriteConfig config = GreedyRewriteConfig()) {
-  bool failed = false;
-  for (uint32_t i = 0; i < op->num_regions(); ++i) {
-    Region& region = op->region(i);
-    failed |= !ApplyPatternsGreedily(region, patterns, config);
-  }
-  return !failed;
-}
+    GreedyRewriteConfig config = GreedyRewriteConfig());
 
 }  // namespace pir

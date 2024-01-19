@@ -49,40 +49,73 @@ BACKENDS_BLACK_LIST = [
     "isclose",
     "send_v2",
     "assert",
-    "embedding_grad_sparse",
+    "embedding_sparse_grad",
+    "embedding_grad",
 ]
 
-
-PRIM_VJP = [
-    'divide_grad',
-    'sum_grad',
-    'cast_grad',
-    'add_grad',
-    'multiply_grad',
-    'elementwise_pow_grad',
-    'reshape_grad',
-    'split_grad',
-    'tanh_grad',
-    'transpose_grad',
-    'concat_grad',
+# prim op with one input and one output, with no attribute
+UNARY_PRIM_VJP_OPS = [
+    'abs_grad',
     'erf_grad',
     'exp_grad',
-    'expand_grad',
+    'floor_grad',
     'log_grad',
+    'sin_grad',
+    'cos_grad',
+    'tanh_grad',
+]
+
+# prim op with two inputs and one output, with no attribute
+BINARY_PRIM_VJP_OPS = [
+    'add_grad',
+    'divide_grad',
+    'subtract_grad',
+    'multiply_grad',
+    'elementwise_pow_grad',
+    'maximum_grad',
+]
+
+OTHER_PRIM_VJP_OPS = [
+    'assign_grad',
+    'cumsum_grad',
+    'sum_grad',
+    'cast_grad',
+    'reshape_grad',
+    'roll_grad',
+    'split_grad',
+    'transpose_grad',
+    'concat_grad',
+    'expand_grad',
+    'gather_grad',
     'gather_nd_grad',
     'pad_grad',
+    'prod_grad',
     'max_grad',
+    'scatter_grad',
+    'scatter_nd_add_grad',
     'slice_grad',
     'tile_grad',
-]  # vjp list of primitive op
+    'topk_grad',
+]
+
+# whole vjp list of primitive op vjp
+PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
+
 CUSTOM_VJP = [
-    'gelu_grad',
-    'layer_norm_grad',
     'dropout_grad',
+    'gelu_grad',
+    'hardswish_grad',
+    'instance_norm_grad',
+    'layer_norm_grad',
+    'leaky_relu_grad',
+    'minimum_grad',
+    'relu_grad',
+    'sigmoid_grad',
     'silu_grad',
     'softmax_grad',
     'sqrt_grad',
 ]  # custom vjp list of composite op
+
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 
@@ -303,14 +336,23 @@ def process_optional_output_info(apis):
                     output['optional'] = False
 
 
+def update_apis(op_yaml_items, update_yaml_file):
+    with open(update_yaml_file, "r") as f:
+        update_apis = yaml.safe_load(f)
+    for i in range(len(op_yaml_items)):
+        for update_api in update_apis:
+            if op_yaml_items[i]['name'] == update_api['name']:
+                op_yaml_items[i] = update_api
+                break
+
+
 def gen(
     prim_path: pathlib.Path,
     fwd_path: pathlib.Path,
-    fwd_legacy_path: pathlib.Path,
     rev_path: pathlib.Path,
-    rev_legacy_path: pathlib.Path,
     compat_path: pathlib.Path,
     fwd_pd_op_path: pathlib.Path,
+    update_fwd_pd_op_path: pathlib.Path,
     rev_pd_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
@@ -321,13 +363,10 @@ def gen(
     Args:
         prim_path (pathlib.Path): The YAML file path of the primitive API.
         fwd_path (pathlib.Path):  The YAML file path of the forwad API.
-        fwd_legacy_path (pathlib.Path): The YAML file path of the legacy
-            forwad API.
         rev_path (pathlib.Path): The YAML file path of the backward API.
-        rev_legacy_path (pathlib.Path): The YAML file path of the legacy
-            backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
         fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.
+        update_fwd_pd_op_path (pathlib.Path): The YAML file path of the ir update_ops.
         rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
         templates_dir (pathlib.Path): The directory of the templates.
         destination_dir (pathlib.Path): The Directory of the generated file.
@@ -338,27 +377,26 @@ def gen(
     (
         prims,
         fwds,
-        legacy_fwds,
         revs,
-        legacy_revs,
         compats,
         ir_fwds,
         ir_revs,
+        ir_update_fwds,
     ) = (
         load(prim_path),
         load(fwd_path),
-        load(fwd_legacy_path),
         load(rev_path),
-        load(rev_legacy_path),
         load(compat_path),
         load(fwd_pd_op_path),
         load(rev_pd_op_path),
+        load(update_fwd_pd_op_path),
     )
     filter_compat_info(compats)
-    apis = [{**api, **{'is_fwd': True}} for api in fwds + legacy_fwds + ir_fwds]
-    apis = apis + [
-        {**api, **{'is_fwd': False}} for api in revs + legacy_revs + ir_revs
-    ]
+
+    fwd_apis = fwds + ir_fwds + ir_update_fwds
+
+    apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
+    apis = apis + [{**api, **{'is_fwd': False}} for api in revs + ir_revs]
     apis = [
         {**api, **{'is_prim': True}}
         if api['name'] in prims
@@ -392,17 +430,7 @@ if __name__ == "__main__":
         '--fwd_path', type=str, help='The parsed ops yaml file.'
     )
     parser.add_argument(
-        '--fwd_legacy_path',
-        type=str,
-        help='The parsed ops yaml file.',
-    )
-    parser.add_argument(
         '--rev_path', type=str, help='The parsed ops yaml file.'
-    )
-    parser.add_argument(
-        '--rev_legacy_path',
-        type=str,
-        help='The parsed ops yaml file.',
     )
     parser.add_argument(
         '--compat_path',
@@ -413,6 +441,11 @@ if __name__ == "__main__":
         '--fwd_pd_op_path',
         type=str,
         help='The ir forward ops parsed  yaml file.',
+    )
+    parser.add_argument(
+        '--update_fwd_pd_op_path',
+        type=str,
+        help='The ir update forward ops parsed  yaml file.',
     )
     parser.add_argument(
         '--rev_pd_op_path',
@@ -434,11 +467,10 @@ if __name__ == "__main__":
     gen(
         pathlib.Path(args.prim_path),
         pathlib.Path(args.fwd_path),
-        pathlib.Path(args.fwd_legacy_path),
         pathlib.Path(args.rev_path),
-        pathlib.Path(args.rev_legacy_path),
         pathlib.Path(args.compat_path),
         pathlib.Path(args.fwd_pd_op_path),
+        pathlib.Path(args.update_fwd_pd_op_path),
         pathlib.Path(args.rev_pd_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),

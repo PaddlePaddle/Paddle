@@ -413,9 +413,9 @@ class TestFillConstantImperative(unittest.TestCase):
 
     def test_ninf(self):
         with base.dygraph.guard():
-            res = paddle.tensor.fill_constant([1], 'float32', np.NINF)
+            res = paddle.tensor.fill_constant([1], 'float32', -np.inf)
             self.assertTrue(np.isinf(res.numpy().item(0)))
-            self.assertEqual(np.NINF, res.numpy().item(0))
+            self.assertEqual(-np.inf, res.numpy().item(0))
 
 
 class TestFillConstantOpError(unittest.TestCase):
@@ -501,7 +501,7 @@ class TestFillConstantOpError(unittest.TestCase):
             )
 
             self.assertRaises(
-                ValueError,
+                TypeError,
                 paddle.tensor.fill_constant,
                 shape=[1.1],
                 value=5,
@@ -511,7 +511,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             x3 = np.random.randn(100, 100).astype('int32')
             self.assertRaises(
-                ValueError,
+                TypeError,
                 paddle.tensor.fill_constant,
                 shape=[100, 100],
                 value=5,
@@ -524,8 +524,8 @@ class TestFillConstantOpError(unittest.TestCase):
             # The shape dtype of fill_constant_op must be int32 or int64.
             # test_shape_tensor_dtype:
             with paddle.pir_utils.IrGuard():
-                new_ir_program = paddle.static.Program()
-                with paddle.static.program_guard(new_ir_program):
+                pir_program = paddle.static.Program()
+                with paddle.static.program_guard(pir_program):
                     shape = paddle.static.data(
                         name="shape_tensor", shape=[2], dtype="int32"
                     )

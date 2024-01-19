@@ -245,14 +245,10 @@ class DataParallelOptimizationPass(PassBase):
             ):
                 assert op.has_attr(
                     'rescale_grad'
-                ), "Unexpected: op [{}] is supported to have [rescale_grad] attribute.".format(
-                    str(op)
-                )
+                ), f"Unexpected: op [{str(op)}] is supported to have [rescale_grad] attribute."
                 assert (
                     len(op.input("Grad")) == 1
-                ), "Unexpected: op [{}] is supported to have only one input grad var.".format(
-                    str(op)
-                )
+                ), f"Unexpected: op [{str(op)}] is supported to have only one input grad var."
 
                 grad_name = op.input("Grad")[0]
                 dp_degree = len(

@@ -471,7 +471,7 @@ def main():
 if __name__ == '__main__':
     target_version = "15.0.2"
     try:
-        out = subprocess.check_output(['clang-tidy --version'], shell=True)
+        out = subprocess.check_output(['clang-tidy', '--version'], shell=True)
         version = out.decode('utf-8')
         if version.find(target_version) == -1:
             print(

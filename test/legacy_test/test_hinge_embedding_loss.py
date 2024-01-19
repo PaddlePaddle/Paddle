@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.static import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(42)
 
@@ -45,7 +45,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
     def run_dynamic_check(self, place=paddle.CPUPlace()):
         paddle.disable_static(place=place)
         input = paddle.to_tensor(self.input_np)
-        label = paddle.to_tensor(self.label_np, dtype=paddle.float64)
+        label = paddle.to_tensor(self.label_np, dtype="float64")
 
         dy_result = paddle.nn.functional.hinge_embedding_loss(input, label)
         expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
@@ -70,18 +70,21 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, list(self.shape))
 
+    @test_with_pir_api
     def run_static_check(self, place=paddle.CPUPlace):
         paddle.enable_static()
         for reduction in ['none', 'mean', 'sum']:
             expected = calc_hinge_embedding_loss(
                 self.input_np, self.label_np, reduction=reduction
             )
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input = paddle.static.data(
-                    name="input", shape=self.shape, dtype=paddle.float64
+                    name="input", shape=self.shape, dtype="float64"
                 )
                 label = paddle.static.data(
-                    name="label", shape=self.shape, dtype=paddle.float64
+                    name="label", shape=self.shape, dtype="float64"
                 )
                 st_result = paddle.nn.functional.hinge_embedding_loss(
                     input, label, reduction=reduction
@@ -104,6 +107,7 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
         self.run_static_check(place=paddle.CUDAPlace(0))
 
     # test case the raise message
+    @test_with_pir_api
     def test_reduce_errors(self):
         def test_value_error():
             loss = paddle.nn.functional.hinge_embedding_loss(
@@ -124,7 +128,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
     def run_dynamic_check(self, place=paddle.CPUPlace()):
         paddle.disable_static(place=place)
         input = paddle.to_tensor(self.input_np)
-        label = paddle.to_tensor(self.label_np, dtype=paddle.float64)
+        label = paddle.to_tensor(self.label_np, dtype="float64")
         hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss()
         dy_result = hinge_embedding_loss(input, label)
         expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
@@ -151,18 +155,21 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, list(self.shape))
 
+    @test_with_pir_api
     def run_static_check(self, place=paddle.CPUPlace):
         paddle.enable_static()
         for reduction in ['none', 'mean', 'sum']:
             expected = calc_hinge_embedding_loss(
                 self.input_np, self.label_np, reduction=reduction
             )
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input = paddle.static.data(
-                    name="input", shape=self.shape, dtype=paddle.float64
+                    name="input", shape=self.shape, dtype="float64"
                 )
                 label = paddle.static.data(
-                    name="label", shape=self.shape, dtype=paddle.float64
+                    name="label", shape=self.shape, dtype="float64"
                 )
                 hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(
                     reduction=reduction
@@ -186,6 +193,7 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         self.run_static_check(place=paddle.CUDAPlace(0))
 
     # test case the raise message
+    @test_with_pir_api
     def test_reduce_errors(self):
         def test_value_error():
             hinge_embedding_loss = paddle.nn.loss.HingeEmbeddingLoss(

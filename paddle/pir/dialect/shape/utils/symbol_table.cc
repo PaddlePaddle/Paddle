@@ -18,13 +18,13 @@ namespace pir {
 
 const std::string SymbolTable::insert(Operation* symbol) {
   std::string name;
-  if (symbol->isa<dialect::SymbolicDim>()) {
-    name = symbol->dyn_cast<SymbolicDim>().GetSymName();
+  if (symbol->isa<shape::SymbolicDimOp>()) {
+    name = symbol->dyn_cast<SymbolicDimOp>().GetSymName();
     symbol_table_map_.insert({name, symbol});
   }
 
-  // TODO(liujinnan): add more constraint_func name branch.
-  if (symbol->isa<dialect::TieProductEqualOp>()) {
+  // TODO(zhangbopd): add more constraint_func name branch.
+  if (symbol->isa<shape::TieProductEqualOp>()) {
     name = "tie_product_equal";
     symbol_func_map_[name].emplace_back(symbol);
   }

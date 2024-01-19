@@ -85,4 +85,5 @@ PD_REGISTER_KERNEL(slice_grad,
                    phi::SliceGradKernel,
                    float,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

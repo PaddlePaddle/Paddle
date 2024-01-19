@@ -45,7 +45,7 @@ class CinnBufferAllocHelper {
 
   template <typename T>
   T* mutable_data(const Target& target) {
-    if (target_ != common::UnkTarget()) {
+    if (target_ != cinn::common::UnkTarget()) {
       CHECK_EQ(target, target_)
           << "Cannot alloc twice, the memory had alloced at " << target_
           << "! Please check.";
@@ -53,9 +53,9 @@ class CinnBufferAllocHelper {
     }
 
     target_ = target;
-    if (target == common::DefaultHostTarget()) {
+    if (target == cinn::common::DefaultHostTarget()) {
       cinn_buffer_malloc(nullptr, buffer_);
-    } else if (target == common::DefaultNVGPUTarget()) {
+    } else if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
       cudaMalloc(&buffer_->memory, buffer_->num_elements() * sizeof(T));
 #else
@@ -72,7 +72,7 @@ class CinnBufferAllocHelper {
 
   template <typename T>
   const T* data() {
-    if (target_ == common::UnkTarget()) {
+    if (target_ == cinn::common::UnkTarget()) {
       LOG(FATAL) << "No memory had alloced! Please check.";
     }
     return reinterpret_cast<const T*>(buffer_->memory);
@@ -80,11 +80,11 @@ class CinnBufferAllocHelper {
 
   ~CinnBufferAllocHelper() {
     if (buffer_) {
-      if (target_ == common::UnkTarget()) {
+      if (target_ == cinn::common::UnkTarget()) {
         // pass
-      } else if (target_ == common::DefaultHostTarget()) {
+      } else if (target_ == cinn::common::DefaultHostTarget()) {
         cinn_buffer_free(nullptr, buffer_);
-      } else if (target_ == common::DefaultNVGPUTarget()) {
+      } else if (target_ == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
         cudaFree(buffer_->memory);
 #else
@@ -105,7 +105,7 @@ class CinnBufferAllocHelper {
 
  private:
   cinn_buffer_t* buffer_{nullptr};
-  Target target_{common::UnkTarget()};
+  Target target_{cinn::common::UnkTarget()};
 };
 
 template <typename T>
@@ -113,11 +113,11 @@ void SetInputValue(T* input,
                    const T* input_h,
                    size_t num,
                    const Target& target) {
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     for (int i = 0; i < num; ++i) {
       input[i] = input_h[i];
     }
-  } else if (target == common::DefaultNVGPUTarget()) {
+  } else if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     cudaMemcpy(input, input_h, num * sizeof(T), cudaMemcpyHostToDevice);
 #else
@@ -128,7 +128,7 @@ void SetInputValue(T* input,
 }
 
 TEST(CinnAssertTrue, test_true) {
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
 
   CinnBufferAllocHelper x(cinn_x86_device, cinn_bool_t(), {1});
 
@@ -151,10 +151,10 @@ TEST(CinnAssertTrue, test_true) {
   cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->SetMsg(msg_key, msg);
   cinn_assert_true(v_args, 2, msg_key, true, nullptr, target);
 
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     ASSERT_EQ(input[0], output[0])
         << "The output of AssertTrue should be the same as input";
-  } else if (target == common::DefaultNVGPUTarget()) {
+  } else if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     bool output_h = false;
     cudaMemcpy(&output_h, output, sizeof(bool), cudaMemcpyDeviceToHost);
@@ -166,7 +166,7 @@ TEST(CinnAssertTrue, test_true) {
 }
 
 TEST(CinnAssertTrue, test_false_only_warning) {
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
 
   CinnBufferAllocHelper x(cinn_x86_device, cinn_bool_t(), {1});
 
@@ -189,10 +189,10 @@ TEST(CinnAssertTrue, test_false_only_warning) {
   cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->SetMsg(msg_key, msg);
   cinn_assert_true(v_args, 2, msg_key, true, nullptr, target);
 
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     ASSERT_EQ(input[0], output[0])
         << "The output of AssertTrue should be the same as input";
-  } else if (target == common::DefaultNVGPUTarget()) {
+  } else if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     bool output_h = false;
     cudaMemcpy(&output_h, output, sizeof(bool), cudaMemcpyDeviceToHost);
@@ -204,7 +204,7 @@ TEST(CinnAssertTrue, test_false_only_warning) {
 }
 
 TEST(CustomCallGaussianRandom, test_target_nvgpu) {
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
 
   // Arg mean
   float mean = 0.0f;
@@ -220,9 +220,9 @@ TEST(CustomCallGaussianRandom, test_target_nvgpu) {
   int num_args = 1;
   cinn_pod_value_t v_args[1] = {cinn_pod_value_t(out.get())};
 
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     LOG(INFO) << "Op gaussian random only support on NVGPU";
-  } else if (target == common::DefaultNVGPUTarget()) {
+  } else if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     cinn::runtime::cuda::cinn_call_gaussian_random(
         v_args, num_args, mean, std, seed, nullptr);
@@ -240,7 +240,7 @@ TEST(CustomCallGaussianRandom, test_target_nvgpu) {
 }
 
 TEST(CustomCallUniformRandom, test_target_nvgpu) {
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
 
   // Arg min
   float min = -1.0f;
@@ -256,9 +256,9 @@ TEST(CustomCallUniformRandom, test_target_nvgpu) {
   int num_args = 1;
   cinn_pod_value_t v_args[1] = {cinn_pod_value_t(out.get())};
 
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     LOG(INFO) << "Op uniform random only support on NVGPU";
-  } else if (target == common::DefaultNVGPUTarget()) {
+  } else if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     cinn::runtime::cuda::cinn_call_uniform_random(
         v_args, num_args, min, max, seed, nullptr);
@@ -276,7 +276,7 @@ TEST(CustomCallUniformRandom, test_target_nvgpu) {
 }
 
 TEST(CustomCallCholesky, test) {
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
 
   // Batch size
   int batch_size = 1;
@@ -331,7 +331,7 @@ TEST(CustomCallCholesky, test) {
   cinn_pod_value_t v_args[2] = {cinn_pod_value_t(x.get()),
                                 cinn_pod_value_t(out.get())};
 
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
 #ifdef CINN_WITH_MKL_CBLAS
     cinn_call_cholesky_host(v_args, num_args, batch_size, m, upper);
     for (int i = 0; i < batch_size * m * m; i++) {
@@ -342,7 +342,7 @@ TEST(CustomCallCholesky, test) {
     LOG(INFO) << "Host Target only support on flag CINN_WITH_MKL_CBLAS ON! "
                  "Please check.";
 #endif
-  } else if (target == common::DefaultNVGPUTarget()) {
+  } else if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     cinn::runtime::cuda::cinn_call_cholesky_nvgpu(
         v_args, num_args, batch_size, m, upper);
@@ -364,7 +364,7 @@ TEST(CustomCallCholesky, test) {
 
 #ifdef CINN_WITH_CUDA
 TEST(CustomCallTriangularSolve, test) {
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   int batch_size = 1;
   int m = 3;

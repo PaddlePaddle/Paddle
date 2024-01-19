@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/common/registerer.h"
+#include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
@@ -81,8 +82,8 @@ class ValueAccessor {
             _config.table_accessor_save_param(i).converter();
         std::string deconverter =
             _config.table_accessor_save_param(i).deconverter();
-        _data_coverter_map[param] = std::make_shared<DataConverter>();
-        *(_data_coverter_map[param]) = {param, converter, deconverter};
+        _data_converter_map[param] = std::make_shared<DataConverter>();
+        *(_data_converter_map[param]) = {param, converter, deconverter};
       }
     }
     return 0;
@@ -95,8 +96,8 @@ class ValueAccessor {
   virtual bool HasMF(size_t size UNUSED) { return false; }
   // converter for save
   virtual std::string GetConverter(int param) {
-    auto itr = _data_coverter_map.find(param);
-    if (itr == _data_coverter_map.end()) {
+    auto itr = _data_converter_map.find(param);
+    if (itr == _data_converter_map.end()) {
       return "";
     } else {
       return (*itr).second->converter;
@@ -104,8 +105,8 @@ class ValueAccessor {
   }
   // deconverter for load
   virtual std::string GetDeconverter(int param) {
-    auto itr = _data_coverter_map.find(param);
-    if (itr == _data_coverter_map.end()) {
+    auto itr = _data_converter_map.find(param);
+    if (itr == _data_converter_map.end()) {
       return "";
     } else {
       return (*itr).second->deconverter;
@@ -123,6 +124,7 @@ class ValueAccessor {
   virtual bool SaveSSD(float* value) = 0;
   // 判断热启时是否过滤slot对应的feasign
   virtual bool FilterSlot(float* value UNUSED) { return false; }
+  virtual bool SaveFilterSlot(float* value UNUSED) { return false; }
 
   //
   virtual bool SaveCache(float* value,
@@ -179,6 +181,12 @@ class ValueAccessor {
   virtual float GetField(float* value UNUSED, const std::string& name UNUSED) {
     return 0.0;
   }
+  virtual robin_hood::unordered_set<float>* GetFilteredSlots() {
+    return nullptr;
+  }
+  virtual robin_hood::unordered_set<float>* GetSaveFilteredSlots() {
+    return nullptr;
+  }
 #define DEFINE_GET_INDEX(class, field) \
   virtual int get_##field##_index() { return class ::field##_index(); }
 
@@ -188,7 +196,7 @@ class ValueAccessor {
   size_t _update_value_size;
   TableAccessorParameter _config;
   std::unordered_map<int, std::shared_ptr<struct DataConverter>>
-      _data_coverter_map;
+      _data_converter_map;
   AccessorInfo _accessor_info;
 };
 REGISTER_PSCORE_REGISTERER(ValueAccessor);

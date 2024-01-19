@@ -78,8 +78,10 @@ def _to_static_mode_guard_(is_to_static=True):
     global global_var
     original_val = global_var._in_to_static_mode_
     global_var._in_to_static_mode_ = is_to_static
-    yield
-    global_var._in_to_static_mode_ = original_val
+    try:
+        yield
+    finally:
+        global_var._in_to_static_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -119,7 +121,7 @@ def _convert_into_variable(tensor):
     Convert Tensor into Variable.
     """
     if paddle.framework.use_pir_api():
-        return paddle.pir.core._convert_into_opresult(tensor)
+        return paddle.pir.core._convert_into_value(tensor)
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
@@ -928,7 +930,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             # (2): when used in flask framework, it may result in hang.
             # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
             # So, we temporally diable the zero_copy strategy.
-            if zero_copy == True:
+            if zero_copy is True:
                 warnings.warn(
                     "Currently, zero_copy is not supported, and it will be discarded."
                 )

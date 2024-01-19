@@ -14,95 +14,101 @@
 
 # TODO: define activation functions of neural network
 
-from . import rnn  # noqa: F401
-from . import transformer  # noqa: F401
-from . import container  # noqa: F401
-
-from .activation import CELU  # noqa: F401
-from .activation import PReLU  # noqa: F401
-from .activation import ReLU  # noqa: F401
-from .activation import ReLU6  # noqa: F401
-from .activation import LeakyReLU  # noqa: F401
-from .activation import Sigmoid  # noqa: F401
-from .activation import Softmax  # noqa: F401
-from .activation import LogSoftmax  # noqa: F401
-from .activation import RReLU  # noqa: F401
-from .activation import Softmax2D  # noqa: F401
-from .common import Bilinear  # noqa: F401
-from .common import Pad1D  # noqa: F401
-from .common import Pad2D  # noqa: F401
-from .common import ZeroPad2D  # noqa: F401
-from .common import Pad3D  # noqa: F401
-from .common import CosineSimilarity  # noqa: F401
-from .common import Embedding  # noqa: F401
-from .common import Linear  # noqa: F401
-from .common import Identity  # noqa: F401
-from .common import Flatten  # noqa: F401
-from .common import Upsample  # noqa: F401
-from .common import Dropout  # noqa: F401
-from .common import Dropout2D  # noqa: F401
-from .common import Dropout3D  # noqa: F401
-from .common import AlphaDropout  # noqa: F401
-from .common import UpsamplingBilinear2D  # noqa: F401
-from .common import UpsamplingNearest2D  # noqa: F401
-from .common import Fold  # noqa: F401
-from .common import Unflatten  # noqa: F401
-
-from .pooling import AvgPool1D  # noqa: F401
-from .pooling import AvgPool2D  # noqa: F401
-from .pooling import AvgPool3D  # noqa: F401
-from .pooling import MaxPool1D  # noqa: F401
-from .pooling import MaxPool2D  # noqa: F401
-from .pooling import MaxPool3D  # noqa: F401
-from .pooling import AdaptiveAvgPool1D  # noqa: F401
-from .pooling import AdaptiveAvgPool2D  # noqa: F401
-from .pooling import AdaptiveAvgPool3D  # noqa: F401
-from .pooling import AdaptiveMaxPool1D  # noqa: F401
-from .pooling import AdaptiveMaxPool2D  # noqa: F401
-from .pooling import AdaptiveMaxPool3D  # noqa: F401
-from .pooling import MaxUnPool1D  # noqa: F401
-from .pooling import MaxUnPool2D  # noqa: F401
-from .pooling import MaxUnPool3D  # noqa: F401
-from .conv import Conv1D  # noqa: F401
-from .conv import Conv2D  # noqa: F401
-from .conv import Conv3D  # noqa: F401
-from .conv import Conv1DTranspose  # noqa: F401
-from .conv import Conv2DTranspose  # noqa: F401
-from .conv import Conv3DTranspose  # noqa: F401
-from .loss import BCEWithLogitsLoss  # noqa: F401
-from .loss import CrossEntropyLoss  # noqa: F401
-from .loss import MSELoss  # noqa: F401
-from .loss import L1Loss  # noqa: F401
-from .loss import NLLLoss  # noqa: F401
-from .loss import PoissonNLLLoss  # noqa: F401
-from .loss import BCELoss  # noqa: F401
-from .loss import KLDivLoss  # noqa: F401
-from .loss import MarginRankingLoss  # noqa: F401
-from .loss import MultiLabelSoftMarginLoss
-from .loss import CTCLoss  # noqa: F401
-from .loss import RNNTLoss  # noqa: F401
-from .loss import SmoothL1Loss  # noqa: F401
-from .loss import HingeEmbeddingLoss  # noqa: F401
-from .loss import TripletMarginWithDistanceLoss
-from .loss import TripletMarginLoss
-from .loss import SoftMarginLoss
-from .loss import MultiMarginLoss
-from .loss import GaussianNLLLoss
-
-from .norm import BatchNorm1D  # noqa: F401
-from .norm import BatchNorm2D  # noqa: F401
-from .norm import BatchNorm3D  # noqa: F401
-from .norm import SyncBatchNorm  # noqa: F401
-from .norm import GroupNorm  # noqa: F401
-from .norm import LayerNorm  # noqa: F401
-from .norm import SpectralNorm  # noqa: F401
-from .norm import LocalResponseNorm  # noqa: F401
-
-from .vision import PixelShuffle  # noqa: F401
-from .vision import PixelUnshuffle  # noqa: F401
-from .vision import ChannelShuffle  # noqa: F401
-from .distance import PairwiseDistance  # noqa: F401
+from . import container, rnn, transformer  # noqa: F401
+from .activation import (  # noqa: F401
+    CELU,
+    LeakyReLU,
+    LogSoftmax,
+    PReLU,
+    ReLU,
+    ReLU6,
+    RReLU,
+    Sigmoid,
+    Softmax,
+    Softmax2D,
+)
+from .common import (  # noqa: F401
+    AlphaDropout,
+    Bilinear,
+    CosineSimilarity,
+    Dropout,
+    Dropout2D,
+    Dropout3D,
+    Embedding,
+    Flatten,
+    Fold,
+    Identity,
+    Linear,
+    Pad1D,
+    Pad2D,
+    Pad3D,
+    Unflatten,
+    Upsample,
+    UpsamplingBilinear2D,
+    UpsamplingNearest2D,
+    ZeroPad2D,
+)
 from .container import LayerDict  # noqa: F401
-from .layers import Layer
+from .conv import (  # noqa: F401
+    Conv1D,
+    Conv1DTranspose,
+    Conv2D,
+    Conv2DTranspose,
+    Conv3D,
+    Conv3DTranspose,
+)
+from .distance import PairwiseDistance  # noqa: F401
+from .layers import Layer  # noqa: F401
+from .loss import (  # noqa: F401
+    BCELoss,
+    BCEWithLogitsLoss,
+    CrossEntropyLoss,
+    CTCLoss,
+    GaussianNLLLoss,
+    HingeEmbeddingLoss,
+    KLDivLoss,
+    L1Loss,
+    MarginRankingLoss,
+    MSELoss,
+    MultiLabelSoftMarginLoss,
+    MultiMarginLoss,
+    NLLLoss,
+    PoissonNLLLoss,
+    RNNTLoss,
+    SmoothL1Loss,
+    SoftMarginLoss,
+    TripletMarginLoss,
+    TripletMarginWithDistanceLoss,
+)
+from .norm import (  # noqa: F401
+    BatchNorm1D,
+    BatchNorm2D,
+    BatchNorm3D,
+    GroupNorm,
+    LayerNorm,
+    LocalResponseNorm,
+    SpectralNorm,
+    SyncBatchNorm,
+)
+from .pooling import (  # noqa: F401
+    AdaptiveAvgPool1D,
+    AdaptiveAvgPool2D,
+    AdaptiveAvgPool3D,
+    AdaptiveMaxPool1D,
+    AdaptiveMaxPool2D,
+    AdaptiveMaxPool3D,
+    AvgPool1D,
+    AvgPool2D,
+    AvgPool3D,
+    FractionalMaxPool2D,
+    FractionalMaxPool3D,
+    MaxPool1D,
+    MaxPool2D,
+    MaxPool3D,
+    MaxUnPool1D,
+    MaxUnPool2D,
+    MaxUnPool3D,
+)
+from .vision import ChannelShuffle, PixelShuffle, PixelUnshuffle  # noqa: F401
 
 __all__ = []

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/stats.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/phi/core/macros.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     log_memory_stats,
@@ -116,6 +116,11 @@ void LogDeviceMemoryStats(const platform::Place& place,
             << "memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
                    "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB, "
+            << "memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Reserved", place.device)) /
                    1024 / 1024
             << " MB, "
             << "max_memory_allocated: "

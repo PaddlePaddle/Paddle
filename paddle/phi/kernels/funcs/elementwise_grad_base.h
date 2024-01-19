@@ -244,8 +244,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext &ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << phi::make_ddim(x_dims_array)
-          << " ydim:" << phi::make_ddim(y_dims_array);
+          << common::make_ddim(x_dims_array)
+          << " ydim:" << common::make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
@@ -393,7 +393,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
-  size_t N = static_cast<size_t>(phi::product(x_dim));
+  size_t N = static_cast<size_t>(common::product(x_dim));
   phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
@@ -1677,8 +1677,8 @@ void CommonElementwiseBroadcastBackward(const GPUContext &ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << phi::make_ddim(x_dims_array)
-          << " ydim:" << phi::make_ddim(y_dims_array);
+          << common::make_ddim(x_dims_array)
+          << " ydim:" << common::make_ddim(y_dims_array);
 
   CommonGradBroadcastCUDA<T, DX_OP, DY_OP, Tout>(x,
                                                  y,

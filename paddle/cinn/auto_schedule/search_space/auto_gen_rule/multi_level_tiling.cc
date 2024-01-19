@@ -38,7 +38,7 @@
 namespace cinn {
 namespace auto_schedule {
 
-MultiLevelTiling::MultiLevelTiling(const common::Target& target,
+MultiLevelTiling::MultiLevelTiling(const cinn::common::Target& target,
                                    const Config& config)
     : AutoGenRule(target), config_(config) {
   for (int i = 0; i < config_.tile_struct.size(); ++i) {
@@ -434,9 +434,9 @@ void MultiLevelTiling::ApplyCacheWrite(ir::IRSchedule* ir_schedule,
   }
 }
 
-const std::unordered_map<common::Target::Arch, MultiLevelTiling::Config>
+const std::unordered_map<cinn::common::Target::Arch, MultiLevelTiling::Config>
     MultiLevelTiling::kConfigs{
-        {common::Target::Arch::NVGPU,
+        {cinn::common::Target::Arch::NVGPU,
          MultiLevelTiling::Config{
              /*bind_axis*/ std::vector<std::string>{"blockIdx.x",
                                                     "threadIdx.x"},
@@ -446,7 +446,7 @@ const std::unordered_map<common::Target::Arch, MultiLevelTiling::Config>
              /*write_cache_memory_type*/ std::string("local"),
              /*write_cache_levels*/ std::vector<int>{3},
          }},
-        {common::Target::Arch::X86,
+        {cinn::common::Target::Arch::X86,
          MultiLevelTiling::Config{
              /*bind_axis*/ std::vector<std::string>{},
              /*tile_struct*/ std::string("SSRSRS"),

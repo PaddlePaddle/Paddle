@@ -18,9 +18,9 @@
 #include <ostream>
 #include <unordered_map>
 #include <unordered_set>
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/type_defs.h"
@@ -282,6 +282,8 @@ class Kernel {
   }
 
   GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
+  std::function<bool(const KernelContext* ctx)> check_if_onednn_kernel_support_{
+      nullptr};
 
  private:
   KernelFn fn_{nullptr};

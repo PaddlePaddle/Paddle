@@ -37,6 +37,9 @@ class EnvironmentVariable(Generic[T]):
     def delete(self) -> None:
         del os.environ[self.name]
 
+    def __repr__(self) -> str:
+        return f"Env({self.name}={self.get()!r})"
+
 
 class StringEnvironmentVariable(EnvironmentVariable[str]):
     def __init__(self, name: str, default: str):
@@ -47,6 +50,7 @@ class StringEnvironmentVariable(EnvironmentVariable[str]):
         return os.getenv(self.name, self.default)
 
     def set(self, value: str) -> None:
+        assert isinstance(value, str), "value must be a string"
         os.environ[self.name] = value
 
 
@@ -63,13 +67,16 @@ class BooleanEnvironmentVariable(EnvironmentVariable[bool]):
         return env_str in BooleanEnvironmentVariable.BOOLEAN_IS_SET
 
     def set(self, value: bool) -> None:
+        assert isinstance(value, bool), "value must be a boolean"
         os.environ[self.name] = str(value).lower()
 
 
 class IntegerEnvironmentVariable(EnvironmentVariable[int]):
     def __init__(self, name: str, default: int):
         super().__init__(name, default)
-        assert isinstance(default, int), "default must be an integer"
+        assert isinstance(default, int) and not isinstance(
+            default, bool
+        ), "default must be an integer"
 
     def get(self) -> int:
         try:
@@ -78,6 +85,9 @@ class IntegerEnvironmentVariable(EnvironmentVariable[int]):
             return self.default
 
     def set(self, value: int) -> None:
+        assert isinstance(value, int) and not isinstance(
+            value, bool
+        ), "value must be an integer"
         os.environ[self.name] = str(value)
 
 

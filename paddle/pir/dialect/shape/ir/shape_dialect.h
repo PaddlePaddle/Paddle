@@ -16,15 +16,18 @@
 
 #include "paddle/pir/core/dialect.h"
 
-namespace pir {
-namespace dialect {
+namespace pir::shape {
 ///
 /// \brief Shape Dialect:
 ///
 class IR_API ShapeDialect : public Dialect {
  public:
   explicit ShapeDialect(IrContext* context);
+
   static const char* name() { return "shape"; }
+
+  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+
   void PrintOperation(Operation* op,
                       IrPrinter& printer) const override;  // NOLINT
 
@@ -32,7 +35,6 @@ class IR_API ShapeDialect : public Dialect {
   void initialize();
 };
 
-}  // namespace dialect
-}  // namespace pir
+}  // namespace pir::shape
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::ShapeDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeDialect)

@@ -132,6 +132,7 @@ class BatchSampler(Sampler):
             isinstance(batch_size, int) and batch_size > 0
         ), f"batch_size should be a positive integer, but got {batch_size}"
         self.batch_size = batch_size
+        self.shuffle = shuffle
         assert isinstance(
             drop_last, bool
         ), f"drop_last should be a boolean value, but got {type(drop_last)}"
@@ -271,7 +272,15 @@ class DistributedBatchSampler(BatchSampler):
     def __iter__(self):
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
-        indices += indices[: (self.total_size - len(indices))]
+        # add extra samples to make it evenly divisible
+        padding_size = self.total_size - len(indices)
+        if padding_size <= len(indices):
+            indices += indices[:padding_size]
+        else:
+            indices += (indices * math.ceil(padding_size / len(indices)))[
+                :padding_size
+            ]
+
         assert len(indices) == self.total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)

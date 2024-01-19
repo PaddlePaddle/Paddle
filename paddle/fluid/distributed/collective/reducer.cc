@@ -879,7 +879,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         auto *dev_ctx =
             platform::DeviceContextPool::Instance().Get(inner_place_);
         group_tensor.Resize({static_cast<int64_t>(length)});
-        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0f);
       }
     }
   } else {
@@ -905,7 +905,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         grad_tensor.is_selected_rows(),
         true,
         platform::errors::PreconditionNotMet(
-            "The sparse parameter[%d][%s] must have a selectedrows gradient. "
+            "The sparse parameter[%d][%s] must have a selected rows gradient. "
             "Before forward pass, the parameter type is inferred to be "
             "SelectedRows, but after backward pass, its actual type becomes "
             "LodTensor. It is currently not supported by DataParallel. "

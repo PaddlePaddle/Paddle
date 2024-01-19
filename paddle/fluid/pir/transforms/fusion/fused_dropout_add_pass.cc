@@ -14,33 +14,33 @@
 
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class FusedDropoutAddPattern
-    : public pir::drr::DrrPatternBase<FusedDropoutAddPattern> {
+class FusedDropoutAddPattern : public paddle::drr::DrrPatternBase {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &dropout = pat.Op("pd_op.dropout",
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &dropout = pat.Op(paddle::dialect::DropoutOp::name(),
                                  {{"p", pat.Attr("p")},
                                   {"is_test", pat.Attr("is_test")},
                                   {"mode", pat.Attr("mod")},
                                   {"seed", pat.Attr("seed")},
                                   {"fix_seed", pat.Attr("fix_seed")}});
-    const auto &add = pat.Op("pd_op.add");
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
 
     dropout({&pat.Tensor("x"), &pat.Tensor("seed_tensor")},
             {&pat.Tensor("dropout_out"), &pat.Tensor("mask")});
     pat.Tensor("add_out") = add(pat.Tensor("dropout_out"), pat.Tensor("y"));
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &fused_dropout_add =
-        res.Op("pd_op.fused_dropout_add",
+        res.Op(paddle::dialect::FusedDropoutAddOp::name(),
                {{{"p", pat.Attr("p")},
                  {"is_test", pat.Attr("is_test")},
                  {"mode", pat.Attr("mod")},
@@ -50,23 +50,24 @@ class FusedDropoutAddPattern
         {&res.Tensor("x"), &res.Tensor("y"), &res.Tensor("seed_tensor")},
         {&res.Tensor("add_out"), &res.Tensor("mask")});
   }
+
+  std::string name() const override { return "FusedDropoutAddPattern"; }
 };
 
-class FusedDropoutGradAddGradPattern
-    : public pir::drr::DrrPatternBase<FusedDropoutAddPattern> {
+class FusedDropoutGradAddGradPattern : public paddle::drr::DrrPatternBase {
  public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &dropout = pat.Op("pd_op.dropout",
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &dropout = pat.Op(paddle::dialect::DropoutOp::name(),
                                  {{"p", pat.Attr("p")},
                                   {"is_test", pat.Attr("is_test")},
                                   {"mode", pat.Attr("mod")},
                                   {"seed", pat.Attr("seed")},
                                   {"fix_seed", pat.Attr("fix_seed")}});
-    const auto &add = pat.Op("pd_op.add");
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
 
-    const auto &add_grad = pat.Op("pd_op.add_grad");
-    const auto &dropout_grad = pat.Op("pd_op.dropout_grad",
+    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
+    const auto &dropout_grad = pat.Op(paddle::dialect::DropoutGradOp::name(),
                                       {{"p", pat.Attr("p")},
                                        {"is_test", pat.Attr("is_test")},
                                        {"mode", pat.Attr("mod")}});
@@ -81,9 +82,9 @@ class FusedDropoutGradAddGradPattern
     dropout_grad({&pat.Tensor("mask"), &pat.Tensor("dropout_out_grad")},
                  {&pat.Tensor("x_grad")});
 
-    pir::drr::ResultPattern res = pat.ResultPattern();
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &fused_dropout_add =
-        res.Op("pd_op.fused_dropout_add",
+        res.Op(paddle::dialect::FusedDropoutAddOp::name(),
                {{{"p", pat.Attr("p")},
                  {"is_test", pat.Attr("is_test")},
                  {"mode", pat.Attr("mod")},
@@ -91,7 +92,7 @@ class FusedDropoutGradAddGradPattern
                  {"fix_seed", pat.Attr("fix_seed")}}});
 
     const auto &fused_dropout_add_grad =
-        res.Op("pd_op.fused_dropout_add_grad",
+        res.Op(paddle::dialect::FusedDropoutAddGradOp::name(),
                {{{"p", pat.Attr("p")},
                  {"is_test", pat.Attr("is_test")},
                  {"mode", pat.Attr("mod")},
@@ -103,34 +104,22 @@ class FusedDropoutGradAddGradPattern
     fused_dropout_add_grad({&res.Tensor("mask"), &res.Tensor("add_out_grad")},
                            {&res.Tensor("x_grad"), &res.Tensor("y_grad")});
   }
+
+  std::string name() const override { return "FusedDropoutGradAddGradPattern"; }
 };
 
-class FusedDropoutAddPass : public pir::Pass {
+class FusedDropoutAddPass : public pir::PatternRewritePass {
  public:
-  FusedDropoutAddPass() : pir::Pass("fused_dropout_add_pass", 1) {}
+  FusedDropoutAddPass()
+      : pir::PatternRewritePass("fused_dropout_add_pass", 2) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-
     ps.Add(FusedDropoutAddPattern().Build(context));
     ps.Add(FusedDropoutGradAddGradPattern().Build(context));
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
 
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    return ps;
   }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace

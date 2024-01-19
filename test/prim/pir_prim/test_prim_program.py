@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.autograd.ir_backward import grad
-from paddle.decomposition import decompose
+from paddle.decomposition import decomp
 from paddle.framework import core
 
 paddle.enable_static()
@@ -47,7 +47,7 @@ class TestPrimMode(unittest.TestCase):
             y.stop_gradient = False
             divide_out = paddle.divide(x, y)
             sum_out = paddle.mean(divide_out, axis=0)
-            [new_out] = decompose(main_program, [sum_out])
+            [new_out] = decomp.decompose(main_program, [sum_out])
             gradients = grad(new_out, (x, y))
 
             exe = paddle.static.Executor()

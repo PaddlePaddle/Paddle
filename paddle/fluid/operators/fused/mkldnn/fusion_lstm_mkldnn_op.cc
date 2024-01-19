@@ -353,15 +353,15 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     cell = cell;
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                          ? phi::flatten_to_2d(x_dims, 1)
+                          ? common::flatten_to_2d(x_dims, 1)
                           : x_dims;
     // Get attributes
     const bool is_reverse = ctx.Attr<bool>("is_reverse");
     const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
     // Get tensor dimensions
-    const auto x_mat_dims_vec = phi::vectorize(x_mat_dims);
-    const auto weight_h_dims = phi::vectorize(weight_h->dims());
+    const auto x_mat_dims_vec = common::vectorize(x_mat_dims);
+    const auto weight_h_dims = common::vectorize(weight_h->dims());
     const auto& input_lod = input->lod()[0];
 
     // Calculate RNN dimensions

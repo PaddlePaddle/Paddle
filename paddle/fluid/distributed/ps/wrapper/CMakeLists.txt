@@ -11,8 +11,7 @@ cc_library(
        variable_helper
        scope
        op_registry
-       fs
-       shell
+       framework_io
        ps_gpu_wrapper
        ${RPC_DEPS})
 

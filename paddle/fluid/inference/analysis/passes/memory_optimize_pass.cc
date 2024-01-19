@@ -92,7 +92,7 @@ void MemoryOptimizePass::CollectLifeCycle(
 
           auto in_shape = node->Var()->GetShape();
           for (auto i : in_shape) {
-            CHECK_GT(i, 0);
+            CHECK_GE(i, 0);
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),
@@ -156,7 +156,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
     return true;
   };
 
-  // MemoryOptimizePass surppose input model is directed acyclic graph
+  // MemoryOptimizePass suppose input model is directed acyclic graph
   // although it's not always the case. so black list is the best compromise
   // between performance and underlying principle.
   std::unordered_set<std::string> black_list;

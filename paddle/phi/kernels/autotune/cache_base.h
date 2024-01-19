@@ -18,38 +18,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/errors.h"
+#include "paddle/common/hash_funcs.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_int32(search_cache_max_number);
-
-inline void HashCombine(std::size_t* seed UNUSED) {}
-
-// combine hash value
-// https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
-template <typename T, typename... Rest>
-inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
-  std::hash<T> hasher;
-  *seed ^= hasher(v) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
-  *seed *= 0x00000100000001B3;
-  HashCombine(seed, rest...);
-}
-
-// custom specialization of std::hash can be injected in namespace std
-// ref: https://en.cppreference.com/w/cpp/utility/hash
-namespace std {
-template <typename T>
-struct hash<std::vector<T>> {
-  std::size_t operator()(std::vector<T> const& vec) const noexcept {
-    std::size_t seed = 0xcbf29ce484222325;
-    for (auto val : vec) {
-      HashCombine(&seed, val);
-    }
-    return seed;
-  }
-};
-}  // namespace std
 
 namespace phi {
 namespace autotune {

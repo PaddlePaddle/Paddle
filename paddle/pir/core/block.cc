@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/region.h"
 
@@ -32,6 +32,12 @@ void Block::push_back(Operation *op) { insert(ops_.end(), op); }
 
 void Block::push_front(Operation *op) { insert(ops_.begin(), op); }
 
+void Block::pop_back() {
+  IR_ENFORCE(!ops_.empty(), "can't pop back from empty block.");
+  ops_.back()->Destroy();
+  ops_.pop_back();
+}
+
 Operation *Block::GetParentOp() const {
   return parent_ ? parent_->GetParent() : nullptr;
 }
@@ -43,28 +49,31 @@ Block::Iterator Block::insert(ConstIterator iterator, Operation *op) {
 }
 
 Block::Iterator Block::erase(ConstIterator position) {
-  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this block.");
-  (*position)->Destroy();
+  IR_ENFORCE(position->GetParent() == this, "iterator not own this block.");
+  position->Destroy();
   return ops_.erase(position);
 }
 
 void Block::clear() {
   while (!empty()) {
-    ops_.back()->Destroy();
-    ops_.pop_back();
+    pop_back();
   }
+}
+
+void Block::Assign(Iterator position, Operation *op) {
+  IR_ENFORCE(position->GetParent() == this, "position not own this block.");
+  position->Destroy();
+  position.set_underlying_pointer(op);
+  op->SetParent(this, position);
 }
 
 Operation *Block::Take(Operation *op) {
   IR_ENFORCE(op && op->GetParent() == this, "iterator not own this block.");
-  ops_.erase(*op);
+  ops_.erase(Iterator(*op));
   return op;
 }
 
-void Block::SetParent(Region *parent, Region::iterator position) {
-  parent_ = parent;
-  position_ = position;
-}
+void Block::SetParent(Region *parent) { parent_ = parent; }
 
 Block::UseIterator Block::use_begin() const { return first_use_; }
 
@@ -86,16 +95,23 @@ void Block::ResetOpListOrder(const OpListType &new_op_list) {
 
 void Block::ClearArguments() {
   for (auto &argument : arguments_) {
-    argument.Destroy();
+    argument.dyn_cast<BlockArgument>().Destroy();
   }
   arguments_.clear();
 }
-BlockArgument Block::AddArgument(Type type) {
+Value Block::AddArgument(Type type) {
   auto argument = BlockArgument::Create(type, this, arguments_.size());
   arguments_.emplace_back(argument);
   return argument;
 }
 
+void Block::EraseArgument(uint32_t index) {
+  auto argument = arg(index);
+  IR_ENFORCE(argument.use_empty(),
+             "Erase a block argument that is still in use.");
+  argument.dyn_cast<BlockArgument>().Destroy();
+  arguments_.erase(arguments_.begin() + index);
+}
 bool Block::TopoOrderCheck(const OpListType &op_list) {
   std::unordered_set<Value> visited_values;
   for (Operation *op : op_list) {

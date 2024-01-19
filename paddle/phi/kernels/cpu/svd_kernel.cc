@@ -28,7 +28,7 @@ void LapackSvd(
   char jobz = full ? 'A' : 'S';
   int mx = std::max(rows, cols);
   int mn = std::min(rows, cols);
-  T* a = const_cast<T*>(X);
+  T* a = const_cast<T*>(X);  // NOLINT
   int lda = rows;
   int ldu = rows;
   int ldvt = full ? cols : mn;

@@ -21,7 +21,7 @@ Type ShapedTypeInterface::GetElementType() const {
   return impl_->get_element_type(*this);
 }
 
-phi::DDim ShapedTypeInterface::GetShape() const {
+pir::DDim ShapedTypeInterface::GetShape() const {
   return impl_->get_shape(*this);
 }
 

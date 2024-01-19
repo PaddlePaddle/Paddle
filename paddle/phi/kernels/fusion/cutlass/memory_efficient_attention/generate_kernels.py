@@ -26,7 +26,6 @@ import argparse
 import collections
 import itertools
 import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, TypeVar
@@ -93,6 +92,12 @@ def parse_args():
         type=convert_to_arch_list,
         default=convert_to_arch_list("All"),
         help="The CUDA architecture to be generated.",
+    )
+    parser.add_argument(
+        "--gen_dir",
+        type=str,
+        default="autogen_variable",
+        help="The directory to save the generated files.",
     )
     args = parser.parse_args()
     args.max_arch = find_max_arch(args.cuda_arch)
@@ -425,7 +430,7 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
     declarations += "} // namespace phi\n"
     declarations += f"#endif // {enable_def}\n"
 
-    autogen_dir = Path(args.dst_path) / "autogen"
+    autogen_dir = Path(args.dst_path) / args.gen_dir
     os.makedirs(autogen_dir, exist_ok=True)
     declaration_path = autogen_dir / f"{family_name}.h"
     declaration_path.write_text(declarations)
@@ -530,14 +535,12 @@ inline int64_t DimStride(const phi::DDim &dims, int n) {{
 #endif
 '''
 
-    path = Path(args.dst_path) / "autogen"
+    path = Path(args.dst_path) / args.gen_dir
     os.makedirs(path, exist_ok=True)
     path = Path(path) / "memory_efficient_attention.h"
     path.write_text(main_header_content)
 
 
-if os.path.exists(Path(args.dst_path) / "autogen"):
-    shutil.rmtree(Path(args.dst_path) / "autogen")
 forward_impl = "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/kernel_forward.h"
 backward_impl = "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/kernel_backward.h"
 

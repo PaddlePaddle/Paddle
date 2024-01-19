@@ -103,7 +103,7 @@ def _get_valid_program(program=None):
         program = program._program
         if program is None:
             raise TypeError(
-                "The type of input program is invalid, expected tyep is Program, but received None"
+                "The type of input program is invalid, expected type is Program, but received None"
             )
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended."
@@ -197,7 +197,7 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
         feed_vars(Tensor | list[Tensor]): Variables needed by inference.
         fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
         kwargs: Supported keys including ``skip_prune_program``.
-            - skip_prune_program(bool): whether to skip prunning program. Defaults to False.
+            - skip_prune_program(bool): whether to skip pruning program. Defaults to False.
 
     Returns:
         Program: Normalized/Optimized program.
@@ -211,7 +211,7 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -283,10 +283,10 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
                 # remove backward block
                 copy_program.blocks.pop(backward_block_id)
                 # update attrs ``blocks``
-                reserverd_blocks = []
+                reserved_blocks = []
                 for block_id in sub_blocks_ids[:-1]:
-                    reserverd_blocks.append(copy_program.block(block_id))
-                op._update_desc_attr("blocks", reserverd_blocks)
+                    reserved_blocks.append(copy_program.block(block_id))
+                op._update_desc_attr("blocks", reserved_blocks)
 
     for idx in remove_op_idx[::-1]:
         global_block._remove_op(idx)
@@ -332,7 +332,7 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -391,7 +391,7 @@ def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -431,7 +431,7 @@ def _serialize_persistables(program, executor):
             "variables in your model to save"
         )
         return None
-    # create a new program and clone persitable vars to it
+    # create a new program and clone persistable vars to it
     save_program = Program()
     save_block = save_program.global_block()
     save_var_map = {}
@@ -543,7 +543,7 @@ def save_inference_model(
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -644,7 +644,7 @@ def deserialize_program(data):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -693,7 +693,7 @@ def deserialize_persistables(program, data, executor):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -950,9 +950,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning(
                 "The old way to load inference model is deprecated. Please specify path_prefix."
-                " model path: {}, params path: {}".format(
-                    model_path, params_path
-                )
+                f" model path: {model_path}, params path: {params_path}"
             )
 
         program_bytes = load_from_file(model_path)
@@ -1137,6 +1135,8 @@ def save_vars(
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
+        # flush to root_scope
+        executor.flush()
         executor.run(save_program)
         if save_to_memory:
             return global_scope().find_var(params_var_name).get_bytes()
@@ -1620,7 +1620,7 @@ def load(program, model_path, executor=None, var_list=None):
             program_var_list = program.list_vars()
             program_var_name_set = {var.name for var in program_var_list}
 
-            # check all the variable inlcuded in program
+            # check all the variable included in program
             for var in var_list:
                 if var.name not in program_var_name_set:
                     raise LookupError(
@@ -1804,7 +1804,7 @@ def set_program_state(program, state_dict):
             unused_para_list.append(k)
     if len(unused_para_list) > 0:
         warnings.warn(
-            "This list is not set, Because of Paramerter not found in program. There are: {}".format(
+            "This list is not set, Because of Parameter not found in program. There are: {}".format(
                 " ".join(unused_para_list)
             )
         )

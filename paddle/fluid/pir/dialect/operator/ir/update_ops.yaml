@@ -1,0 +1,26 @@
+# The operators contained in this file are:
+# Operators that are inconsistent with the dynamic graph definition currently,
+# but the final definition scheme of the static graph has been determined, after
+# the dynamic graph is simultaneously upgraded, the operators in this file will be migrated to paddle/phi/api/yaml/ops.yaml.
+
+- op : arange
+  args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeInferMeta
+    param : [start, end, step, dtype]
+  kernel :
+    func : arange
+    param : [start, end, step]
+    data_type : dtype
+    backend : place
+  support_tensor : [start, end, step]
+
+- op : sequence_mask
+  args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: SequenceMaskScalarInferMeta
+  kernel:
+    func: sequence_mask_scalar
+    data_type : x

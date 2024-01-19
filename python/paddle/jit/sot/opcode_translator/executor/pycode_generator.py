@@ -40,6 +40,7 @@ from ...utils import (
 )
 from ..instruction_utils import (
     analysis_inputs,
+    apply_instr_pass,
     calc_stack_effect,
     gen_instr,
     get_instructions,
@@ -433,6 +434,7 @@ class PyCodeGen:
         self._f_globals = frame.f_globals
         self._instructions = []
         self.disable_eval_frame = disable_eval_frame
+        self.hooks = []
         if self.disable_eval_frame:
             self.gen_disable_eval_frame()
 
@@ -493,16 +495,22 @@ class PyCodeGen:
         Returns:
             CodeType: The generated code object.
         """
+        for hook in self.hooks:
+            hook()
+        self.hooks.clear()
+
         self.insert_prefix_instructions()
+        apply_instr_pass(self._instructions, self._code_options)
         modify_instrs(self._instructions)
         modify_vars(self._instructions, self._code_options)
         new_code = gen_new_opcode(
             self._instructions, self._code_options, PYCODE_ATTRIBUTES
         )
+
         return new_code
 
     def gen_resume_fn_at(
-        self, index: int, stack_size: int = 0
+        self, index: int, stack_size: int
     ) -> tuple[None | types.FunctionType, OrderedSet[str]]:
         """
         Generates a resume function at the specified index in the instruction list.
@@ -515,6 +523,7 @@ class PyCodeGen:
             tuple: The resume function object and the inputs to the function.
 
         """
+
         self._instructions = get_instructions(self._origin_code)
         # TODO(dev): could give an example code here?
         if self._instructions[index].opname == 'RETURN_VALUE':
@@ -522,6 +531,7 @@ class PyCodeGen:
         inputs = analysis_inputs(self._instructions, index)
         fn_name = ResumeFnNameFactory().next()
         stack_arg_str = fn_name + '_stack_{}'
+
         self._instructions = (
             [
                 gen_instr('LOAD_FAST', argval=stack_arg_str.format(i))
@@ -538,13 +548,12 @@ class PyCodeGen:
             + list(inputs)
             + [
                 var_name
-                for var_name in self._origin_code.co_varnames
+                for var_name in self._code_options['co_varnames']
                 if var_name not in inputs
             ]
         )
 
         self.update_code_name(fn_name, is_resumed_fn=True)
-
         new_code = self.gen_pycode()
         if len(new_code.co_freevars) + len(new_code.co_cellvars) > 0:
             raise FallbackError("Break graph in closure is not support.")
@@ -820,20 +829,6 @@ class PyCodeGen:
         idx = self._code_options["co_names"].index(name)
         self._add_instr("IMPORT_NAME", arg=idx, argval=name)
 
-    def gen_push_null(self):
-        if sys.version_info >= (3, 11):
-            self._add_instr("PUSH_NULL")
-        else:
-            # There is no PUSH_NULL bytecode before python3.11, so we push
-            # a NULL element to the stack through the following bytecode
-            self.gen_load_const(0)
-            self.gen_load_const(None)
-            self.gen_import_name('sys')
-            self.gen_store_fast('sys')
-            self.gen_load_fast('sys')
-            self.gen_load_method('getsizeof')
-            self.gen_pop_top()
-
     def gen_store_fast(self, name):
         if name not in self._code_options["co_varnames"]:
             self._code_options["co_varnames"].append(name)
@@ -1019,11 +1014,26 @@ class PyCodeGen:
     def gen_get_iter(self):
         self._add_instr("GET_ITER")
 
-    def add_pure_instructions(self, instructions):
+    def gen_operator_only(self, op_name):
         """
-        add instructions and do nothing.
+        only generator operator instruction, do nothing for
+        operands.
         """
-        self._instructions.extend(instructions)
+        self._add_instr(op_name)
+
+    def gen_operator(self, op_name):
+        """
+        only generator operator instruction, do nothing for
+        operands.
+        """
+        self._add_instr(op_name)
+
+    def gen_compare(self, cmp_op):
+        """
+        only generator operator instruction, do nothing for
+        operands.
+        """
+        self._add_instr("COMPARE_OP", cmp_op)
 
     def _add_instr(self, *args, **kwargs):
         instr = gen_instr(*args, **kwargs)
@@ -1035,38 +1045,10 @@ class PyCodeGen:
         self._instructions.insert(index, instr)
 
     def pprint(self):
-        print('\n'.join(instrs_info(self._instructions)))
+        print(instrs_info(self._instructions))
 
     def extend_instrs(self, instrs):
         self._instructions.extend(instrs)
 
     def pop_instr(self):
         self._instructions.pop()
-
-    def replace_null_variable(self):
-        """
-        Replace all NullVariables in the bytecode.
-
-        Returns:
-            Optional[Tuple[Any, Callable]]: The new code object and its guard function, or None if no dummy variables are found.
-        """
-        from .variables.basic import NullVariable
-
-        instructions = get_instructions(self._origin_code)
-        has_null_variable = False
-        for instr in instructions:
-            if (
-                instr.opname == 'LOAD_FAST'
-                and instr.argval in self._frame.f_locals.keys()
-                and isinstance(self._frame.f_locals[instr.argval], NullVariable)
-            ):
-                has_null_variable = True
-                self._frame.f_locals[instr.argval].reconstruct(self)
-            else:
-                self.add_pure_instructions([instr])
-
-        if has_null_variable:
-            new_code = self.gen_pycode()
-            return new_code
-        else:
-            return None

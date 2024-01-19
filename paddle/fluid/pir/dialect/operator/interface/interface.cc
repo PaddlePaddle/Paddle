@@ -13,31 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
-namespace paddle {
-namespace dialect {
-std::vector<std::vector<pir::OpResult>> VjpInterface::Vjp(
-    pir::Operation* op,
-    const std::vector<std::vector<pir::Value>>& inputs,
-    const std::vector<std::vector<pir::OpResult>>& outputs,
-    const std::vector<std::vector<pir::OpResult>>& out_grads,
-    const std::vector<std::vector<bool>>& stop_gradients) {
-  std::vector<std::vector<pir::Value>> out_grads_value;
-  for (const auto& grad : out_grads) {
-    std::vector<pir::Value> grad_value;
-    for (auto op_result : grad) {
-      grad_value.emplace_back(op_result);
-    }
-    out_grads_value.emplace_back(std::move(grad_value));
-  }
-  return impl_->vjp_(op, inputs, outputs, out_grads_value, stop_gradients);
-}
-}  // namespace dialect
-}  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferMetaInterface)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::VjpInterface)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DecompInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::GetKernelTypeForVarInterface)

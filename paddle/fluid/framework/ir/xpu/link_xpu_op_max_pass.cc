@@ -67,6 +67,7 @@ struct LinkConv2dPattern : public PatternBase {
   PATTERN_DECL_NODE(fusion_op);
   // declare variable node's name
   PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(filter);
   PATTERN_DECL_NODE(branch);
 
  private:
@@ -79,14 +80,19 @@ LinkConv2dPattern::LinkConv2dPattern(PDPattern* pattern,
     : PatternBase(pattern, name_scope, name_scope), with_branch_(with_branch) {
   auto* fusion_op =
       pattern->NewNode(fusion_op_repr())->assert_is_op("conv2d_xpu");
+
   auto* x = pattern->NewNode(x_repr())->assert_is_op_input("conv2d_xpu", "x");
+  auto* filter = pattern->NewNode(filter_repr())
+                     ->assert_is_op_input("conv2d_xpu", "filter")
+                     ->assert_is_persistable_var();
   PDNode* branch = nullptr;
   if (with_branch_) {
     branch = pattern->NewNode(branch_repr())
                  ->assert_is_op_input("conv2d_xpu", "branch");
-    fusion_op->LinksFrom({branch});
+    fusion_op->LinksFrom({x, branch, filter});
+  } else {
+    fusion_op->LinksFrom({x, filter});
   }
-  fusion_op->LinksFrom({x});
 }
 
 struct LinkFcPattern : public PatternBase {
@@ -96,17 +102,29 @@ struct LinkFcPattern : public PatternBase {
   PATTERN_DECL_NODE(fusion_op);
   // declare variable node's name
   PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(w);
 };
 
 LinkFcPattern::LinkFcPattern(PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* fusion_op = pattern->NewNode(fusion_op_repr())->assert_is_op("fc_xpu");
-  auto* x = pattern->NewNode(x_repr())->assert_is_op_input("fc_xpu", "x");
 
-  fusion_op->LinksFrom({x});
+  auto* x = pattern->NewNode(x_repr())->assert_is_op_input("fc_xpu", "x");
+  auto* w = pattern->NewNode(w_repr())
+                ->assert_is_op_input("fc_xpu", "w")
+                ->assert_is_persistable_var();
+  fusion_op->LinksFrom({x, w});
 }
 
 }  // namespace patterns
+
+bool LinkXPUOpMaxPass::IsQuant(Node* weight_node) const {
+  auto w_dtype = param_scope()
+                     ->FindVar(weight_node->Name())
+                     ->GetMutable<phi::DenseTensor>()
+                     ->dtype();
+  return w_dtype == phi::DataType::INT8;
+}
 
 void LinkXPUOpMaxPass::LinkAddActMax(ir::Graph* graph) const {
   GraphPatternDetector gpd;
@@ -155,15 +173,18 @@ void LinkXPUOpMaxPass::LinkConv2dMax(ir::Graph* graph, bool with_branch) const {
   patterns::LinkConv2dPattern pattern(
       gpd.mutable_pattern(), name_scope_, with_branch);
   int found_subgraph_count = 0;
-
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     VLOG(4) << "handle LinkConv2dMax";
-    /* declare operator node's name */
+    /* get operator node's name */
     GET_IR_NODE(fusion_op);
-    /* declare variable node's name*/
+    /* get variable node's name*/
     GET_IR_NODE(x);
+    GET_IR_NODE(filter);
     GET_IR_NODE(branch);
+    if (IsQuant(filter)) {
+      return;
+    }
     auto* fusion_op_desc = fusion_op->Op();
     bool fusion_op_has_branch = fusion_op_desc->HasInput("branch");
     if (fusion_op_has_branch) {
@@ -177,7 +198,12 @@ void LinkXPUOpMaxPass::LinkConv2dMax(ir::Graph* graph, bool with_branch) const {
       auto preop_max_var_name = x_pre_op->Output("out_max");
       for (auto max_node : x->inputs[0]->outputs) {
         if (preop_max_var_name[0] == max_node->Name()) {
-          fusion_op_desc->SetInput("x_max", {max_node->Name()});
+          if (fusion_op_desc->HasInput("x_max")) {
+            auto x_max_old_name = fusion_op_desc->Input("x_max")[0];
+            fusion_op_desc->RenameInput(x_max_old_name, max_node->Name());
+          } else {
+            fusion_op_desc->SetInput("x_max", {max_node->Name()});
+          }
           IR_NODE_LINK_TO(max_node, fusion_op);
         }
       }
@@ -205,23 +231,31 @@ void LinkXPUOpMaxPass::LinkFcMax(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::LinkFcPattern pattern(gpd.mutable_pattern(), name_scope_);
   int found_subgraph_count = 0;
-
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     VLOG(4) << "handle LinkFcMax";
-    /* declare operator node's name */
+    /* get operator node's name */
     GET_IR_NODE(fusion_op);
-    /* declare variable node's name*/
+    /* get variable node's name*/
     GET_IR_NODE(x);
+    GET_IR_NODE(w);
+
+    if (IsQuant(w)) return;
     auto* fusion_op_desc = fusion_op->Op();
-    auto* x_pre_op = x->inputs[0]->Op();
-    if (x->inputs.size() > 0 && x->inputs[0]->IsOp() &&
-        x_pre_op->HasOutput("out_max")) {
-      auto preop_max_var_name = x_pre_op->Output("out_max");
-      for (auto max_node : x->inputs[0]->outputs) {
-        if (preop_max_var_name[0] == max_node->Name()) {
-          fusion_op_desc->SetInput("x_max", {max_node->Name()});
-          IR_NODE_LINK_TO(max_node, fusion_op);
+    if (x->inputs.size() > 0) {
+      auto* x_pre_op = x->inputs[0]->Op();
+      if (x->inputs[0]->IsOp() && x_pre_op->HasOutput("out_max")) {
+        auto preop_max_var_name = x_pre_op->Output("out_max");
+        for (auto max_node : x->inputs[0]->outputs) {
+          if (preop_max_var_name[0] == max_node->Name()) {
+            if (fusion_op_desc->HasInput("x_max")) {
+              auto x_max_old_name = fusion_op_desc->Input("x_max")[0];
+              fusion_op_desc->RenameInput(x_max_old_name, max_node->Name());
+            } else {
+              fusion_op_desc->SetInput("x_max", {max_node->Name()});
+            }
+            IR_NODE_LINK_TO(max_node, fusion_op);
+          }
         }
       }
     }

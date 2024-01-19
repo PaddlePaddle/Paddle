@@ -15,12 +15,14 @@
 import os
 import struct
 from collections import defaultdict
+from functools import partial
 
 import config
 import numpy as np
 from utils import dygraph_guard, static_guard
 
 import paddle
+from paddle.autograd.backward_utils import ValueSet
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core
 from paddle.base.executor import scope_guard
@@ -30,11 +32,13 @@ from paddle.base.framework import (
     canonicalize_attrs,
     in_dygraph_mode,
     in_pir_mode,
+    paddle_type_to_proto_type,
     use_pir_api,
 )
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
+from paddle.pir.core import vartype_to_datatype
 
 
 def flatten(nest_list):
@@ -95,11 +99,7 @@ class OpTestUtils:
 
     @classmethod
     def prepare_python_api_arguments(
-        cls,
-        api,
-        op_proto_ins,
-        op_proto_attrs,
-        kernel_sig,
+        cls, api, op_proto_ins, op_proto_attrs, kernel_sig, target_dtype=None
     ):
         """map from `op proto inputs and attrs` to `api input list and api attrs dict`
 
@@ -145,6 +145,21 @@ class OpTestUtils:
             else:
                 return Empty()
 
+        def convert_dtype(dtype, target_dtype):
+            if target_dtype is None:
+                return dtype
+            if (
+                isinstance(dtype, core.VarDesc.VarType)
+                and target_dtype is paddle.pir.core.DataType
+            ):
+                return vartype_to_datatype[dtype]
+            if (
+                isinstance(dtype, paddle.pir.core.DataType)
+                and target_dtype is core.VarDesc.VarType
+            ):
+                return paddle_type_to_proto_type[dtype]
+            return dtype
+
         # NOTE(xiongkun): the logic of constructing parameters:
         # for example:
         #    python api: cumprod(x, dim, dtype=None, name=None)
@@ -184,7 +199,12 @@ class OpTestUtils:
         idx_of_op_proto_arguments = 0
         for idx, arg_name in enumerate(api_params):
             if arg_name in api_ignore_param_list:
-                results.append(get_default(idx, api_defaults))
+                to_append = (
+                    get_default(idx, api_defaults)
+                    if arg_name not in op_proto_attrs
+                    else op_proto_attrs[arg_name]
+                )
+                results.append(to_append)
                 if idx_of_op_proto_arguments < len(input_arguments):
                     idx_of_op_proto_arguments += 1
             else:
@@ -192,13 +212,20 @@ class OpTestUtils:
                     tmp = input_arguments[idx_of_op_proto_arguments]
                     idx_of_op_proto_arguments += 1
                 else:
-                    tmp = Empty()  # use the default value
+                    # tmp = Empty()  # use the default value
+                    tmp = parse_attri_value(
+                        arg_name, op_proto_ins, op_proto_attrs
+                    )
 
                 if isinstance(tmp, Empty):
                     results.append(get_default(idx, api_defaults))
                 else:
                     results.append(tmp)
         assert len(results) == len(api_params)
+
+        results = paddle.utils.map_structure(
+            partial(convert_dtype, target_dtype=target_dtype), results
+        )
         return results
 
     @classmethod
@@ -457,6 +484,7 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -604,16 +632,31 @@ class PrimForwardChecker:
                     static_inputs,
                     attrs,
                     self.kernel_sig,
+                    target_dtype=paddle.pir.core.DataType
+                    if in_pir_mode()
+                    else paddle.core.VarDesc.VarType,
                 )
                 inputs_sig, _, _ = self.kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
                 ret = flatten(_as_list(self.public_python_api(*args)))
+
                 if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
+                    before_ops = [
+                        op.name() for op in main_program.global_block().ops
+                    ]
                     ret = decompose(main_program, ret)
+                    after_ops = [
+                        op.name() for op in main_program.global_block().ops
+                    ]
+
+                    assert (
+                        before_ops != after_ops
+                    ), f"For {after_ops} , since op which has been decomposed should not exist, the op list should differ from origin ones."
+
                 # ensure the operator not in program if check_prim is True
                 if not in_pir_mode():
                     forward_ops = [op.type for op in main_program.blocks[0].ops]
@@ -686,6 +729,9 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -780,6 +826,9 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -938,7 +987,7 @@ class PrimGradChecker(PrimForwardChecker):
     def gen_no_grad_set(self, var_dict):
         if self.no_grad_set is None:
             return None
-        no_grad_set = set()
+        no_grad_set = ValueSet() if in_pir_mode() else set()
         for name in self.no_grad_set:
             if name in var_dict:
                 no_grad_set.add(var_dict[name])
@@ -960,6 +1009,7 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             if hasattr(self.op_test, "python_out_sig"):
@@ -1067,6 +1117,9 @@ class PrimGradChecker(PrimForwardChecker):
                     static_inputs,
                     attrs,
                     self.kernel_sig,
+                    target_dtype=paddle.pir.core.DataType
+                    if in_pir_mode()
+                    else paddle.core.VarDesc.VarType,
                 )
                 inputs_sig, _, outputs_sig = self.kernel_sig
                 if hasattr(self.op_test, "python_out_sig"):
@@ -1112,6 +1165,14 @@ class PrimGradChecker(PrimForwardChecker):
                     assert backward_op_type not in ops, (
                         "%s shouldn't appear in program when check_prim is True"
                     ) % (backward_op_type)
+                elif self.prim_op_type == "prim":
+                    grad_ops = []
+                    for op in main_program.global_block().ops:
+                        if op.name().endswith("_grad"):
+                            grad_ops.append(op.name())
+                    assert (
+                        not grad_ops
+                    ), f"For {grad_ops} , grad op shouldn't appear in program when check_prim is True"
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_program)
                 actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -1188,6 +1249,9 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -1317,6 +1381,9 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.pir.core.DataType
+                if use_pir_api()
+                else paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(

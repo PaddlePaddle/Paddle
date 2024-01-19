@@ -156,6 +156,23 @@ class PSClient {
       const uint64_t *keys UNUSED,
       size_t num UNUSED,
       uint16_t pass_id UNUSED,
+      const std::vector<std::unordered_map<uint64_t, uint32_t>> &keys2rank_vec
+          UNUSED,
+      const uint16_t &dim_id UNUSED = 0) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+  virtual ::std::future<int32_t> PullSparseKey(
+      int shard_id UNUSED,
+      size_t table_id UNUSED,
+      const uint64_t *keys UNUSED,
+      size_t num UNUSED,
+      uint16_t pass_id UNUSED,
+      const std::vector<std::unordered_map<uint64_t, uint32_t>> &keys2rank_vec
+          UNUSED,
       const uint16_t &dim_id UNUSED = 0) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
@@ -216,8 +233,8 @@ class PSClient {
   // client2client消息处理，std::function<int32_t (int, int, const std::string&)
   // -> ret (msg_type, from_client_id, msg)
   typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;
-  virtual int RegisteClient2ClientMsgHandler(int msg_type,
-                                             MsgHandlerFunc handler) {
+  virtual int RegisterClient2ClientMsgHandler(int msg_type,
+                                              MsgHandlerFunc handler) {
     _msg_handler_map[msg_type] = handler;
     return 0;
   }

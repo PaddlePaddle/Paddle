@@ -15,33 +15,37 @@
 import argparse
 
 import yaml
-from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
+from op_gen import (
+    OpCompatParser,
+    OpInfoParser,
+    to_pascal_case,
+)
 
 CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+{op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
-namespace pir {{
+namespace paddle {{
 namespace drr {{
 
-void OperationFactory::RegisterGeneratedOpCreator() {{
+void OperationFactory::Register{dialect}GeneratedOpCreator() {{
 {body}
 }}
 
 }}  // namespace drr
-}}  // namespace pir
+}}  // namespace paddle
 
 """
 
 NORMAL_FUNCTION_TEMPLATE = """
   RegisterOperationCreator(
       "{op_name}",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {{
-        return rewriter.Build<paddle::dialect::{op_class_name}>(
+        return rewriter.Build<{namespace}::{op_class_name}>(
          {params_code});
       }});
 """
@@ -49,7 +53,7 @@ NORMAL_FUNCTION_TEMPLATE = """
 MUTABLE_ATTR_FUNCTION_TEMPLATE = """
   RegisterOperationCreator(
       "{op_name}",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {{
         // mutable_attr is tensor
@@ -62,6 +66,12 @@ MUTABLE_ATTR_FUNCTION_TEMPLATE = """
         }}
       }});
 """
+
+Dialect2NameSpaceMap = {"pd_op": "paddle::dialect", "cinn_op": "cinn::dialect"}
+Dialect2OpHeaderMap = {
+    "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
+    "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
+}
 
 
 class OpCreatorCodeGen:
@@ -77,6 +87,7 @@ class OpCreatorCodeGen:
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -104,9 +115,13 @@ class OpCreatorCodeGen:
                 if len(op_info_item.attribute_name_list) > 0:
                     params_no_mutable_attr.append("attrs")
 
-                if len(op_info_item.mutable_attribute_name_list) == 0:
+                if (
+                    self.dialect_name != "pd_op"
+                    or len(op_info_item.mutable_attribute_name_list) == 0
+                ):
                     body_code += NORMAL_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
+                        namespace=Dialect2NameSpaceMap[self.dialect_name],
                         op_class_name=(to_pascal_case(phi_op_name) + "Op"),
                         params_code=", ".join(params_no_mutable_attr),
                     )
@@ -139,7 +154,13 @@ class OpCreatorCodeGen:
                     )
 
         with open(cpp_file_path, 'w') as f:
-            f.write(CPP_FILE_TEMPLATE.format(body=body_code))
+            f.write(
+                CPP_FILE_TEMPLATE.format(
+                    dialect=to_pascal_case(self.dialect_name),
+                    op_header=Dialect2OpHeaderMap[self.dialect_name],
+                    body=body_code,
+                )
+            )
 
 
 def ParseArguments():

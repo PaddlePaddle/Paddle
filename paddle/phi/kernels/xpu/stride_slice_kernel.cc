@@ -49,7 +49,7 @@ void StridedSliceRawKernel(const Context& dev_ctx,
                              out_dims_vector.data(),
                              axes.size(),
                              false);
-  DDim out_dims(phi::make_ddim(out_dims_vector));
+  DDim out_dims(common::make_ddim(out_dims_vector));
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
@@ -171,4 +171,5 @@ PD_REGISTER_KERNEL(strided_slice_raw,
                    int16_t,
                    int64_t,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

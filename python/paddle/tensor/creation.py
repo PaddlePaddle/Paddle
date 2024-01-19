@@ -16,7 +16,6 @@
 
 import math
 import re
-import warnings
 
 import numpy as np
 
@@ -309,20 +308,20 @@ def linspace(start, stop, num, dtype=None, name=None):
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         check_type(num, 'num', (int), 'linspace')
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start, force_cpu=True)
-    if not isinstance(stop, Variable):
+    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -441,23 +440,23 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     tensor_start = start
     tensor_stop = stop
     tensor_base = base
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         check_type(num, 'num', (int), 'logspace')
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start)
-    if not isinstance(stop, Variable):
+    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if not isinstance(base, Variable):
+    if not isinstance(base, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logspace(
             tensor_start,
             tensor_stop,
@@ -893,6 +892,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
+
         if in_dynamic_mode():
             value = float(value)
             if isinstance(shape, (list, tuple)):
@@ -1183,7 +1185,9 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.eager.Tensor))):
+        if isinstance(
+            attr, ((Variable, core.eager.Tensor, paddle.pir.OpResult))
+        ):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
@@ -1192,14 +1196,14 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     if dtype is None:
         dtype = paddle.get_default_dtype()
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
     else:
         num_columns = num_rows
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.eye(
             num_rows, num_columns, dtype, _current_expected_place()
         )
@@ -1368,15 +1372,20 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                     dtype = 'int64'
 
     out_shape = None
-    if not in_dynamic_or_pir_mode() and (
+    is_value_input = (
         not isinstance(start, (Variable, paddle.pir.OpResult))
         and not isinstance(end, (Variable, paddle.pir.OpResult))
         and not isinstance(step, (Variable, paddle.pir.OpResult))
-    ):
+    )
+
+    if not in_dynamic_mode() and is_value_input:
         out_shape = [int(math.ceil((end - start) / step))]
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if is_value_input and in_pir_mode():
+        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
 
     if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
@@ -1427,7 +1436,17 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ],
         op_type,
     )
     if len(x.shape) < 2:
@@ -1466,7 +1485,7 @@ def tril(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
@@ -1541,7 +1560,7 @@ def triu(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
             retained. A positive value excludes just as many diagonals above the main
@@ -1643,7 +1662,7 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.meshgrid(list(args))
     else:
         name = kwargs.get("name", None)
@@ -1741,7 +1760,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     if not isinstance(input, Variable):
         input = assign(input)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diag_embed(input, offset, dim1, dim2)
 
     inputs = {'Input': [input]}
@@ -1818,7 +1837,7 @@ def diagflat(x, offset=0, name=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-1
+            :name: diagflat-example-1
 
             >>> import paddle
 
@@ -1847,7 +1866,7 @@ def diagflat(x, offset=0, name=None):
              [0, 0, 3, 0]])
 
         .. code-block:: python
-            :name: code-example-2
+            :name: diagflat-example-2
 
             >>> import paddle
 
@@ -1877,8 +1896,9 @@ def diagflat(x, offset=0, name=None):
              [0, 2, 0, 0, 0],
              [0, 0, 3, 0, 0],
              [0, 0, 0, 4, 0]])
+
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, 0)
         else:
@@ -1951,7 +1971,7 @@ def diag(x, offset=0, padding_value=0, name=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-1
+            :name: diag-example-1
 
             >>> import paddle
 
@@ -1980,7 +2000,7 @@ def diag(x, offset=0, padding_value=0, name=None):
              [6, 6, 3]])
 
         .. code-block:: python
-            :name: code-example-2
+            :name: diag-example-2
 
             >>> import paddle
 
@@ -2001,7 +2021,7 @@ def diag(x, offset=0, padding_value=0, name=None):
             Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [4])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diag(x, offset, padding_value)
     else:
         check_type(x, 'x', (Variable), 'diag_v2')
@@ -2180,6 +2200,15 @@ def empty_like(x, dtype=None, name=None):
         )
         out.stop_gradient = True
         return out
+    elif in_pir_mode():
+        shape = paddle.shape(x)
+        out = _C_ops.empty(
+            shape,
+            convert_np_dtype_to_dtype_(dtype),
+            _current_expected_place(),
+        )
+        out.stop_gradient = True
+        return out
     else:
         helper = LayerHelper("empty_like", **locals())
         check_variable_and_dtype(
@@ -2276,7 +2305,7 @@ def assign(x, output=None):
              [2.5 2.5]]
     """
     # speed up
-    if x is output and isinstance(x, (Variable, paddle.pir.OpResult)):
+    if x is output and isinstance(x, (Variable, paddle.pir.Value)):
         return x
 
     input = x
@@ -2286,7 +2315,7 @@ def assign(x, output=None):
         'input',
         (
             Variable,
-            paddle.pir.OpResult,
+            paddle.pir.Value,
             np.ndarray,
             list,
             tuple,
@@ -2306,7 +2335,7 @@ def assign(x, output=None):
     # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.OpResult)):
+    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.Value)):
         if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
@@ -2316,7 +2345,7 @@ def assign(x, output=None):
             if output is None:
                 output = _C_ops.assign(input)
             else:
-                output = _C_ops.assign_out_(input, output)
+                _C_ops.assign_out_(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -2331,6 +2360,8 @@ def assign(x, output=None):
                     'uint8',
                     'int8',
                     'bool',
+                    'complex64',
+                    'complex128',
                 ],
                 'assign',
                 '(When the type of input in assign is Variable.)',
@@ -2345,14 +2376,14 @@ def assign(x, output=None):
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(
-            isinstance(x, (Variable, paddle.pir.OpResult)) for x in input
+            isinstance(x, (Variable, paddle.pir.Value)) for x in input
         ):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 x.shape == (1,)
                 for x in input
                 if isinstance(
-                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                    x, (Variable, core.eager.Tensor, paddle.pir.Value)
                 )
             ):
                 raise TypeError(
@@ -2361,7 +2392,7 @@ def assign(x, output=None):
 
             def convert_scalar(x):
                 if not isinstance(
-                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                    x, (Variable, core.eager.Tensor, paddle.pir.Value)
                 ):
                     return assign(x)
                 return x
@@ -2378,44 +2409,23 @@ def assign(x, output=None):
             )
 
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == core.VarDesc.VarType.FP64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.VarDesc.VarType.FP32
-
-        if dtype == core.DataType.FLOAT64:
-            # Setting FP64 numpy data is not supported in Paddle, so we
-            # use FP32 here
-            warnings.warn(
-                "paddle.assign doesn't support float64 input now due "
-                "to current platform protobuf data limitation, we convert "
-                "it to float32"
-            )
-            dtype = core.DataType.FLOAT32
-
-        if dtype in [core.VarDesc.VarType.BOOL, core.DataType.BOOL]:
-            value_name = "bool_values"
-            values = [int(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.FP32, core.DataType.FLOAT32]:
-            value_name = "fp32_values"
-            values = [float(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.INT32, core.DataType.INT32]:
-            value_name = "int32_values"
-            values = [int(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
-            value_name = "int64_values"
-            values = [int(v) for v in input.flat]
-        else:
-            raise TypeError(
-                "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
-                "received %s." % convert_dtype(dtype)
-            )
+        check_dtype(
+            dtype,
+            'input',
+            [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'assign',
+            '(When the type of input in assign is numpy array.)',
+        )
+        value_name = "values"
+        values = input.ravel().tolist()
         if input.size > 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "
@@ -2603,7 +2613,7 @@ def complex(real, imag, name=None):
             [[0j    , 1j    , 2j    ],
              [(1+0j), (1+1j), (1+2j)]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.complex(real, imag)
     else:
         check_variable_and_dtype(
@@ -2678,7 +2688,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.tril_indices(
@@ -2757,7 +2767,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.triu_indices(

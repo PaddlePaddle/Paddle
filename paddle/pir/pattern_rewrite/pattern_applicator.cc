@@ -14,8 +14,8 @@
 
 #include <algorithm>
 
+#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace pir {
@@ -102,7 +102,7 @@ bool PatternApplicator::MatchAndRewrite(
 
     if (can_apply && !can_apply(*best_pattern)) continue;
 
-    rewriter.SetInsertionPoint(op);
+    rewriter.set_insertion_point(op);
 
     const auto* pattern = static_cast<const RewritePattern*>(best_pattern);
     result = pattern->MatchAndRewrite(op, rewriter);

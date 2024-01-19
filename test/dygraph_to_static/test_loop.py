@@ -13,15 +13,19 @@
 # limitations under the License.
 
 import inspect
+import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
-from paddle.jit.dy2static.loop_transformer import NameVisitor
+from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
 from paddle.utils import gast
 
 SEED = 2020
@@ -230,8 +234,7 @@ def for_loop_dufunc_with_listcomp(array):
     return res
 
 
-@dy2static_unittest
-class TestNameVisitor(unittest.TestCase):
+class TestNameVisitor(Dy2StTestBase):
     def setUp(self):
         self.loop_funcs = [
             while_loop_dyfunc,
@@ -249,6 +252,7 @@ class TestNameVisitor(unittest.TestCase):
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
+    @test_legacy_and_pt_and_pir
     def test_loop_vars(self):
         for i in range(len(self.loop_funcs)):
             func = self.loop_funcs[i]
@@ -264,6 +268,7 @@ class TestNameVisitor(unittest.TestCase):
                     self.assertEqual(loop_var_names, self.loop_var_names[i])
                     self.assertEqual(create_var_names, self.create_var_names[i])
 
+    @test_legacy_and_pt_and_pir
     def test_nested_loop_vars(self):
         func = self.nested_for_loop_func
         test_func = inspect.getsource(func)
@@ -301,13 +306,12 @@ class TestNameVisitor(unittest.TestCase):
                 i += 1
 
 
-@dy2static_unittest
-class TestTransformWhileLoop(unittest.TestCase):
+class TestTransformWhileLoop(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
@@ -322,17 +326,16 @@ class TestTransformWhileLoop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with base.dygraph.guard(self.place):
-            # Set the input of dyfunc to Tensor
-            tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
-            if to_static:
-                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
-            else:
-                ret = self.dyfunc(tensor_x)
-            if hasattr(ret, "numpy"):
-                return ret.numpy()
-            else:
-                return ret
+        # Set the input of dyfunc to Tensor
+        tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
+        if to_static:
+            ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
+        else:
+            ret = self.dyfunc(tensor_x)
+        if hasattr(ret, "numpy"):
+            return ret.numpy()
+        else:
+            return ret
 
     def test_ast_to_func(self):
         static_numpy = self._run_static()
@@ -381,13 +384,12 @@ class TestLoopVarContainsProperty(TestTransformWhileLoop):
         self.dyfunc = loop_var_contains_property
 
 
-@dy2static_unittest
-class TestTransformForLoop(unittest.TestCase):
+class TestTransformForLoop(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.len = 100
         self._init_dyfunc()
@@ -402,12 +404,11 @@ class TestTransformForLoop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with base.dygraph.guard(self.place):
-            if to_static:
-                ret = paddle.jit.to_static(self.dyfunc)(self.len)
-            else:
-                ret = self.dyfunc(self.len)
-            return ret.numpy()
+        if to_static:
+            ret = paddle.jit.to_static(self.dyfunc)(self.len)
+        else:
+            ret = self.dyfunc(self.len)
+        return ret.numpy()
 
     def test_ast_to_func(self):
         np.testing.assert_allclose(
@@ -464,8 +465,7 @@ class Net(paddle.nn.Layer):
         return out
 
 
-@dy2static_unittest
-class TestForLoopMeetDict(unittest.TestCase):
+class TestForLoopMeetDict(Dy2StTestBase):
     def test_start(self):
         net = Net()
         model = paddle.jit.to_static(
@@ -476,7 +476,9 @@ class TestForLoopMeetDict(unittest.TestCase):
                 )
             ],
         )
-        paddle.jit.save(model, "./inference/inference")
+        temp_dir = tempfile.TemporaryDirectory()
+        paddle.jit.save(model, temp_dir.name)
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':

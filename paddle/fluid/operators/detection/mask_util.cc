@@ -194,13 +194,24 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
   w = std::max(w, static_cast<float>(1.));
   h = std::max(h, static_cast<float>(1.));
 
-  uint8_t* msk = nullptr;
+  // short-circuit for case "polygons.size() == 1"
   if (polygons.size() == 1UL) {
-    msk = mask;
-  } else {
-    msk = reinterpret_cast<uint8_t*>(
-        malloc(M * M * polygons.size() * sizeof(uint8_t)));  // NOLINT
+    int k = static_cast<int>(polygons[0].size() / 2);
+    std::vector<float> p;
+    for (int j = 0; j < k; ++j) {
+      float pw = (polygons[0][2 * j] - box[0]) * M / w;      // NOLINT
+      float ph = (polygons[0][2 * j + 1] - box[1]) * M / h;  // NOLINT
+      p.push_back(pw);
+      p.push_back(ph);
+    }
+    Poly2Mask(p.data(), k, M, M, mask);
+
+    return;
   }
+
+  uint8_t* msk = reinterpret_cast<uint8_t*>(
+      malloc(M * M * polygons.size() * sizeof(uint8_t)));  // NOLINT
+
   for (size_t i = 0; i < polygons.size(); ++i) {
     int k = static_cast<int>(polygons[i].size() / 2);
     std::vector<float> p;
@@ -214,19 +225,17 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
     Poly2Mask(p.data(), k, M, M, msk_i);
   }
 
-  if (polygons.size() > 1UL) {
-    for (size_t i = 0; i < polygons.size(); ++i) {
-      uint8_t* msk_i = msk + i * M * M;
-      for (int j = 0; j < M * M; ++j) {
-        if (i == 0) {
-          mask[j] = msk_i[j];
-        } else {
-          mask[j] = (mask[j] + msk_i[j]) > 0 ? 1 : 0;
-        }
+  for (size_t i = 0; i < polygons.size(); ++i) {
+    uint8_t* msk_i = msk + i * M * M;
+    for (int j = 0; j < M * M; ++j) {
+      if (i == 0) {
+        mask[j] = msk_i[j];
+      } else {
+        mask[j] = (mask[j] + msk_i[j]) > 0 ? 1 : 0;
       }
     }
-    free(msk);  // NOLINT
   }
+  free(msk);  // NOLINT
 }
 
 }  // namespace operators

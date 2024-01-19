@@ -36,13 +36,13 @@ namespace cinn {
 namespace hlir {
 namespace pe {
 
-ScheduleParam::ScheduleParam(common::Target::Arch arch) {
+ScheduleParam::ScheduleParam(cinn::common::Target::Arch arch) {
   switch (arch) {
-    case common::Target::Arch::X86: {
+    case cinn::common::Target::Arch::X86: {
       param_data = CreateX86Params();
       break;
     }
-    case common::Target::Arch::NVGPU: {
+    case cinn::common::Target::Arch::NVGPU: {
       param_data = CreateCudaParams();
       break;
     }
@@ -85,7 +85,7 @@ int SplitEven(int origin) {
   return res;
 }
 
-int GetBasicFactor(const Type &type, const common::Target &target) {
+int GetBasicFactor(const Type &type, const cinn::common::Target &target) {
   int target_native_vector_bits = target.get_target_bits() * 8;
   int type_bits = type.bits();
   return target_native_vector_bits / type_bits;
@@ -114,7 +114,7 @@ int GetVectorizeFactor(int shape, int split_factor) {
 
 void ScheduleInjectiveCPU(poly::Stage *stage,
                           const std::vector<int> &output_shape,
-                          const common::Target &target,
+                          const cinn::common::Target &target,
                           bool vectorizable) {
   int dims = stage->n_out_dims();
   int factor = GetBasicFactor(stage->tensor()->type(), target);
@@ -142,7 +142,7 @@ void ScheduleInjectiveCPU(poly::Stage *stage,
 
 void ScheduleInjectiveCPU1(poly::Stage *stage,
                            const std::vector<int> &output_shape,
-                           const common::Target &target,
+                           const cinn::common::Target &target,
                            bool vectorizable) {
   int dims = stage->n_out_dims();
   if (dims > 1) {
@@ -187,7 +187,7 @@ void ScheduleInjectiveCPU1(poly::Stage *stage,
 
 int GetArrayPackingFactor(int shape,
                           const Type &type,
-                          const common::Target &target) {
+                          const cinn::common::Target &target) {
   int split_base = GetBasicFactor(type, target);
   int split_factor = 1;
   // temporily use shape-1 instead of shape for isl wrong for1 elimination
@@ -203,7 +203,7 @@ int GetArrayPackingFactor(int shape,
 
 void MatmulScheduleCUDA(poly::StageMap stages,
                         const ir::Tensor &output,
-                        const common::Target &target) {
+                        const cinn::common::Target &target) {
   stages[output]->Split(1, 2);
   stages[output]->Bind(0, "blockIdx.x");
   stages[output]->Bind(1, "threadIdx.x");
@@ -212,7 +212,7 @@ void MatmulScheduleCUDA(poly::StageMap stages,
 void MatmulScheduleCPU(poly::StageMap stages,
                        const ir::Tensor &output,
                        const ir::Tensor &packedB,
-                       const common::Target &target) {
+                       const cinn::common::Target &target) {
   CHECK_EQ(output->type(), packedB->type());
   int basic_split_factor = GetBasicFactor(packedB->type(), target);
   // packedB
@@ -324,7 +324,7 @@ void MatmulScheduleCPU(poly::StageMap stages,
 void MulScheduleCPU(poly::StageMap stages,
                     const ir::Tensor &output,
                     const ir::Tensor &reduce_first,
-                    const common::Target &target) {
+                    const cinn::common::Target &target) {
   int split_factor = GetBasicFactor(output->type(), target);
   auto out_reduce_axis = output->reduce_axis;
   std::vector<Expr> reduce_first_shape = reduce_first->shape;
@@ -384,7 +384,7 @@ int GetBlockBindAxis(const std::vector<ir::Expr> &shape,
 void CudaReduceSchedule(poly::StageMap stages,
                         ir::Tensor output,
                         int last_dimension_num,
-                        const common::Target &target) {
+                        const cinn::common::Target &target) {
   int parallel_thread_num = 1;
   for (int idx = output->shape.size() - 1;
        idx >= static_cast<int>(output->shape.size()) - last_dimension_num;
@@ -419,7 +419,7 @@ void CudaReduceSchedule(poly::StageMap stages,
 void CudaWarpReduceSchedule(poly::StageMap stages,
                             ir::Tensor tmp_out,
                             ir::Tensor out,
-                            const common::Target &target) {
+                            const cinn::common::Target &target) {
   int sum_out_dim = 1;
   for (int idx = 0; idx < static_cast<int>(tmp_out->shape.size()) - 2; ++idx) {
     stages[out]->Fuse(0, 1);
@@ -456,7 +456,7 @@ void CudaWarpReduceSchedule(poly::StageMap stages,
 void CudaBlockReduceInternalSchedule(poly::StageMap stages,
                                      ir::Tensor tmp_out,
                                      ir::Tensor out,
-                                     const common::Target &target) {
+                                     const cinn::common::Target &target) {
   for (int idx = 0; idx < static_cast<int>(tmp_out->shape.size()) - 2; ++idx) {
     stages[tmp_out]->Fuse(0, 1);
     stages[out]->Fuse(0, 1);
@@ -479,7 +479,7 @@ void CudaBlockReduceSchedule(poly::StageMap stages,
                              ir::Tensor reduce_tmp_out,
                              ir::Tensor tmp_out,
                              ir::Tensor out,
-                             const common::Target &target) {
+                             const cinn::common::Target &target) {
   int output_shape_size_without_reduce = tmp_out->shape.size() - 1;
   // fuse last parallel dimension
   for (int idx = 0; idx < reduce_tmp_out->shape.size() - tmp_out->shape.size();
@@ -518,7 +518,7 @@ void CudaBlockShuffleReduceSchedule(poly::StageMap stages,
                                     ir::Tensor reshape,
                                     ir::Tensor internal,
                                     ir::Tensor out,
-                                    const common::Target &target) {
+                                    const cinn::common::Target &target) {
   int fuse_times = internal->shape.size() - 2;
   for (int idx = 0; idx < fuse_times; ++idx) {
     stages[internal]->Fuse(0, 1);
@@ -557,7 +557,7 @@ void CudaTwoStepReduceSchedule(poly::StageMap stages,
                                ir::Tensor internal,
                                ir::Tensor tmp_out,
                                ir::Tensor out,
-                               const common::Target &target) {
+                               const cinn::common::Target &target) {
   // fuse axis
   for (int idx = 0; idx < static_cast<int>(internal->shape.size()) - 2; ++idx) {
     stages[internal]->Fuse(0, 1);
@@ -604,7 +604,7 @@ void SoftmaxScheduleCPU(poly::StageMap stage,
 
 void GlobalPoolScheduleGPU(poly::StageMap stages,
                            const std::vector<ir::Tensor> &output,
-                           const common::Target &target) {
+                           const cinn::common::Target &target) {
   auto &out = output[0];
   auto &reduce = output[1];
   stages[out]->Fuse(0, 1);
@@ -617,7 +617,7 @@ void GlobalPoolScheduleGPU(poly::StageMap stages,
 }
 void PoolScheduleCPU(poly::StageMap stages,
                      const ir::Tensor &output,
-                     const common::Target &target) {
+                     const cinn::common::Target &target) {
   CHECK_GE(stages[output]->n_out_dims(), 2);
   stages[output]->Fuse({0, 1});
   stages[output]->Parallel(0);
@@ -625,7 +625,7 @@ void PoolScheduleCPU(poly::StageMap stages,
 
 void PoolScheduleGPU(poly::StageMap stages,
                      const ir::Tensor &output,
-                     const common::Target &target) {
+                     const cinn::common::Target &target) {
   CHECK_GE(stages[output]->axis_names().size(), 4);
   stages[output]->Fuse({0, 1, 2, 3});
   stages[output]->Split(0, 1024);
@@ -640,7 +640,7 @@ void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
                       int oh,
                       int ow,
                       const Type &type,
-                      const common::Target &target,
+                      const cinn::common::Target &target,
                       const std::string &key,
                       bool import_params) {
   if (import_params) {
@@ -742,7 +742,7 @@ void GetConv2d1x1Factors(absl::flat_hash_map<std::string, int> *factors,
                          int oh,
                          int ow,
                          const Type &type,
-                         const common::Target &target) {
+                         const cinn::common::Target &target) {
   int bn_base = GetBasicFactor(type, target);
   int oc_bn = 1;
   for (int i = bn_base; i > 1; i--) {
@@ -870,7 +870,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
                                    const ir::Tensor &input_pad,
                                    const ir::Tensor &weights_dilation,
                                    const ir::Tensor &data,
-                                   const common::Target &target,
+                                   const cinn::common::Target &target,
                                    const std::string &key,
                                    bool do_padding) {
   CHECK(target.arch == Target::Arch::X86)
@@ -881,8 +881,8 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
   absl::flat_hash_map<std::string, int> conv2d_factors;
   CHECK_EQ(packed_out->shape.size(), 5U)
       << "packed_out's shape size should be 5";
-  Expr h_out = common::AutoSimplify(packed_out->shape[2]);
-  Expr w_out = common::AutoSimplify(packed_out->shape[3]);
+  Expr h_out = cinn::common::AutoSimplify(packed_out->shape[2]);
+  Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int oh = h_out.as_int32();
   int ow = w_out.as_int32();
   int basic_split_factor = GetBasicFactor(type, target);
@@ -892,8 +892,8 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
 
   auto input_shape = input_pad->shape;
   CHECK_EQ(input_shape.size(), 5U) << "input shape size should be 5";
-  Expr oc_bn = common::AutoSimplify(packed_out->shape.back());
-  Expr ic_bn = common::AutoSimplify(input_shape.back());
+  Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
+  Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
   int ic_bn_size = ic_bn.as_int32();
   VLOG(3) << "oh_bn_size " << oh_bn_size;
@@ -1021,7 +1021,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
                                           const ir::Tensor &input_pad,
                                           const ir::Tensor &weights_dilation,
                                           const ir::Tensor &data,
-                                          const common::Target &target) {
+                                          const cinn::common::Target &target) {
   CHECK(target.arch == Target::Arch::X86)
       << "Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
@@ -1030,8 +1030,8 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
   absl::flat_hash_map<std::string, int> conv2d_factors;
   CHECK_EQ(packed_out->shape.size(), 5U)
       << "packed_out's shape size should be 5";
-  Expr h_out = common::AutoSimplify(packed_out->shape[2]);
-  Expr w_out = common::AutoSimplify(packed_out->shape[3]);
+  Expr h_out = cinn::common::AutoSimplify(packed_out->shape[2]);
+  Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int oh = h_out.as_int32();
   int ow = w_out.as_int32();
   int basic_split_factor = GetBasicFactor(type, target);
@@ -1042,8 +1042,8 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
   CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
-  Expr oc_bn = common::AutoSimplify(packed_out->shape.back());
-  Expr ic_bn = common::AutoSimplify(input_shape.back());
+  Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
+  Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
   int ic_bn_size = ic_bn.as_int32();
   VLOG(3) << "ow_bn_size" << ow_bn_size;
@@ -1143,7 +1143,7 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
                                       const ir::Tensor &input_pad,
                                       const ir::Tensor &weights_dilation,
                                       const ir::Tensor &data,
-                                      const common::Target &target) {
+                                      const cinn::common::Target &target) {
   CHECK(target.arch == Target::Arch::X86)
       << "Conv2d_NCHWc_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
@@ -1152,7 +1152,7 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
   absl::flat_hash_map<std::string, int> conv2d_factors;
   CHECK_EQ(packed_out->shape.size(), 5U)
       << "packed_out's shape size should be 5";
-  Expr w_out = common::AutoSimplify(packed_out->shape[3]);
+  Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int ow = w_out.as_int32();
   int basic_split_factor = GetBasicFactor(type, target);
   GetConv2dFactors(&conv2d_factors, -1, -1, -1, -1, ow, type, target);
@@ -1161,8 +1161,8 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
   CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
-  Expr oc_bn = common::AutoSimplify(packed_out->shape.back());
-  Expr ic_bn = common::AutoSimplify(input_shape.back());
+  Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
+  Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
   int ic_bn_size = ic_bn.as_int32();
   VLOG(3) << "ow_bn_size " << ow_bn_size;
@@ -1248,7 +1248,7 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
                                const ir::Tensor &input_pad,
                                const ir::Tensor &weights_dilation,
                                const ir::Tensor &data,
-                               const common::Target &target,
+                               const cinn::common::Target &target,
                                const std::string &key,
                                bool do_padding) {
   CHECK(target.arch == Target::Arch::X86)
@@ -1258,13 +1258,13 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
   auto type = packed_out->type();
   CHECK_EQ(packed_out->shape.size(), 5U)
       << "packed_out's shape size should be 5";
-  Expr w_out = common::AutoSimplify(packed_out->shape[3]);
+  Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int ow = w_out.as_int32();
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
   CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
-  Expr oc_bn = common::AutoSimplify(packed_out->shape.back());
-  Expr ic_bn = common::AutoSimplify(input_shape.back());
+  Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
+  Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
   int ic_bn_size = ic_bn.as_int32();
 
@@ -1381,7 +1381,7 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
     const ir::Tensor &input_pad,
     const ir::Tensor &weights_dilation,
     const ir::Tensor &data,
-    const common::Target &target,
+    const cinn::common::Target &target,
     bool do_padding) {
   CHECK(target.arch == Target::Arch::X86)
       << "Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse schedule only used in x86";
@@ -1391,7 +1391,7 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
   absl::flat_hash_map<std::string, int> conv2d_factors;
   CHECK_EQ(packed_out->shape.size(), 5U)
       << "packed_out's shape size should be 5";
-  Expr w_out = common::AutoSimplify(packed_out->shape[3]);
+  Expr w_out = cinn::common::AutoSimplify(packed_out->shape[3]);
   int ow = w_out.as_int32();
   int basic_split_factor = GetBasicFactor(type, target);
   GetConv2dFactors(&conv2d_factors, -1, -1, -1, -1, ow, type, target);
@@ -1400,8 +1400,8 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
   auto input_shape = input_pad->shape;
   int shape_size = input_shape.size();
   CHECK_EQ(shape_size, 5U) << "input shape size should be 5";
-  Expr oc_bn = common::AutoSimplify(packed_out->shape.back());
-  Expr ic_bn = common::AutoSimplify(input_shape.back());
+  Expr oc_bn = cinn::common::AutoSimplify(packed_out->shape.back());
+  Expr ic_bn = cinn::common::AutoSimplify(input_shape.back());
   int oc_bn_size = oc_bn.as_int32();
   int ic_bn_size = ic_bn.as_int32();
   VLOG(3) << "ow_bn_size " << ow_bn_size;
@@ -1482,7 +1482,7 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
 void CudaScheduleMul(poly::StageMap stages,
                      ir::Tensor output,
                      const std::vector<int> &output_shape,
-                     const common::Target &target) {
+                     const cinn::common::Target &target) {
   stages[output]->Split(1, 2);
   stages[output]->Bind(0, "blockIdx.x");
   stages[output]->Bind(1, "threadIdx.x");
@@ -2301,7 +2301,7 @@ void SaveSerialData(
 
 void CudaScheduleDepthwiseConv(poly::StageMap stages,
                                ir::Tensor &output,  // NOLINT
-                               const common::Target &target) {
+                               const cinn::common::Target &target) {
   auto OL = stages[output]->CacheWrite("local", stages, output);
   stages[output]->Bind(0, "blockIdx.x");
   stages[output]->Bind(1, "blockIdx.y");
@@ -2316,7 +2316,7 @@ void CudaScheduleConv(poly::StageMap stages,
                       ir::Tensor &input_pad,  // NOLINT
                       ir::Tensor &weights,    // NOLINT
                       ir::Tensor &output,     // NOLINT
-                      const common::Target &target) {
+                      const cinn::common::Target &target) {
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
   int n = output->shape[0].as_int32();
   int c = output->shape[1].as_int32();
@@ -2385,7 +2385,7 @@ void CudaScheduleConv2(poly::StageMap stages,
                        ir::Tensor &input_pad,  // NOLINT
                        ir::Tensor &weights,    // NOLINT
                        ir::Tensor &output,     // NOLINT
-                       const common::Target &target,
+                       const cinn::common::Target &target,
                        const std::string &key) {
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
   stages[input_pad]->ComputeInline();
@@ -2517,7 +2517,7 @@ void CudaScheduleConv2(poly::StageMap stages,
 
 void CudaScheduleWinogradConv(poly::StageMap wino_stages,
                               std::vector<ir::Tensor> &all_tensors,  // NOLINT
-                              const common::Target &target) {
+                              const cinn::common::Target &target) {
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
   auto &wino_weights_dilation = all_tensors[0];
   auto &wino_input_pad = all_tensors[1];
@@ -2673,7 +2673,7 @@ int MaxFactorLessThan(int a, int b) {
 
 void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
                                         const std::vector<int> &output_shape,
-                                        const common::Target &target) {
+                                        const cinn::common::Target &target) {
   int dims = stage->n_out_dims();
   int prod_size = std::accumulate(
       output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
@@ -2745,7 +2745,7 @@ void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
 
 void CudaScheduleInjective(poly::Stage *stage,
                            const std::vector<int> &output_shape,
-                           const common::Target &target) {
+                           const cinn::common::Target &target) {
   CHECK_EQ(stage->n_out_dims(), stage->n_in_dims())
       << "The dims of op are not equal";
   if (FLAGS_cinn_use_cuda_vectorize) {
@@ -2777,10 +2777,10 @@ void CudaScheduleInjective(poly::Stage *stage,
   stage->Bind(1, "threadIdx.x");
 }
 
-void CudaSplitSchedule(common::CINNValuePack *arg_pack,
+void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
                        const std::vector<std::vector<int>> &output_shapes,
                        int axis,
-                       const common::Target &target) {
+                       const cinn::common::Target &target) {
   poly::StageMap stages = arg_pack->back();
   std::vector<ir::Tensor> out_tensors;
   int dims = output_shapes[0].size();

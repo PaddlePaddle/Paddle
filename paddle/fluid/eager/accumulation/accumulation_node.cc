@@ -113,6 +113,24 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
                                                           &tensor_values);
           }
         }
+      } else if (LIKELY(t.is_dist_tensor())) {
+        PADDLE_ENFORCE(
+            tensor->is_dist_tensor(),
+            paddle::platform::errors::Fatal("A DistTensor can only do gradient "
+                                            "merge with another DistTensor."));
+        PADDLE_ENFORCE(!t.is_custom_device(),
+                       paddle::platform::errors::Fatal(
+                           "DistTensor doesn't support custom device."));
+        auto t_dist =
+            std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl());
+        paddle::Tensor t_values(
+            std::make_shared<phi::DenseTensor>(t_dist->value()));
+        auto tensor_dist =
+            std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                tensor->impl());
+        paddle::Tensor tensor_values(
+            std::make_shared<phi::DenseTensor>(tensor_dist->value()));
+        paddle::imperative::TensorAdd<paddle::Tensor>(t_values, &tensor_values);
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with
@@ -160,7 +178,8 @@ GradNodeAccumulation::operator()(
 
   if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
-    if (grad_out.defined() && grad_out.initialized()) {
+    if (grad_out.defined() &&
+        (grad_out.is_dist_tensor() || grad_out.initialized())) {
       CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
     }
     // else { do nothing since there is no valid value in grad out tensor }

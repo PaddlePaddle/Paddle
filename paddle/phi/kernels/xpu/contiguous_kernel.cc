@@ -39,8 +39,8 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::as_strided<float>(dev_ctx.x_context(),
                                  input_data,
                                  output_data,
-                                 phi::vectorize<int64_t>(input.dims()),
-                                 phi::vectorize<int64_t>(input.strides()),
+                                 common::vectorize<int64_t>(input.dims()),
+                                 common::vectorize<int64_t>(input.strides()),
                                  0);
     }
   } else if (std::is_same<T, double>::value) {
@@ -53,8 +53,8 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::as_strided<int64_t>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
-                                   phi::vectorize<int64_t>(input.dims()),
-                                   phi::vectorize<int64_t>(input.strides()),
+                                   common::vectorize<int64_t>(input.dims()),
+                                   common::vectorize<int64_t>(input.strides()),
                                    0);
     }
   } else if (std::is_same<T, ::phi::dtype::float16>::value) {
@@ -66,12 +66,13 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::copy<XPUFLOAT16>(
           dev_ctx.x_context(), input_data, output_data, 1);
     } else {
-      r = xpu::as_strided<XPUFLOAT16>(dev_ctx.x_context(),
-                                      input_data,
-                                      output_data,
-                                      phi::vectorize<int64_t>(input.dims()),
-                                      phi::vectorize<int64_t>(input.strides()),
-                                      0);
+      r = xpu::as_strided<XPUFLOAT16>(
+          dev_ctx.x_context(),
+          input_data,
+          output_data,
+          common::vectorize<int64_t>(input.dims()),
+          common::vectorize<int64_t>(input.strides()),
+          0);
     }
   } else if (std::is_same<T, ::phi::dtype::bfloat16>::value) {
     using XPUFLOAT16 = typename XPUTypeTrait<float16>::Type;
@@ -82,12 +83,13 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::copy<XPUFLOAT16>(
           dev_ctx.x_context(), input_data, output_data, 1);
     } else {
-      r = xpu::as_strided<XPUFLOAT16>(dev_ctx.x_context(),
-                                      input_data,
-                                      output_data,
-                                      phi::vectorize<int64_t>(input.dims()),
-                                      phi::vectorize<int64_t>(input.strides()),
-                                      0);
+      r = xpu::as_strided<XPUFLOAT16>(
+          dev_ctx.x_context(),
+          input_data,
+          output_data,
+          common::vectorize<int64_t>(input.dims()),
+          common::vectorize<int64_t>(input.strides()),
+          0);
     }
   } else if (std::is_same<T, int16_t>::value) {
     using XPUFLOAT16 = typename XPUTypeTrait<float16>::Type;
@@ -98,12 +100,13 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::copy<XPUFLOAT16>(
           dev_ctx.x_context(), input_data, output_data, 1);
     } else {
-      r = xpu::as_strided<XPUFLOAT16>(dev_ctx.x_context(),
-                                      input_data,
-                                      output_data,
-                                      phi::vectorize<int64_t>(input.dims()),
-                                      phi::vectorize<int64_t>(input.strides()),
-                                      0);
+      r = xpu::as_strided<XPUFLOAT16>(
+          dev_ctx.x_context(),
+          input_data,
+          output_data,
+          common::vectorize<int64_t>(input.dims()),
+          common::vectorize<int64_t>(input.strides()),
+          0);
     }
   } else if (std::is_same<T, uint8_t>::value) {
     auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
@@ -115,8 +118,8 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::as_strided<int8_t>(dev_ctx.x_context(),
                                   input_data,
                                   output_data,
-                                  phi::vectorize<int64_t>(input.dims()),
-                                  phi::vectorize<int64_t>(input.strides()),
+                                  common::vectorize<int64_t>(input.dims()),
+                                  common::vectorize<int64_t>(input.strides()),
                                   0);
     }
   } else if (std::is_same<T, int8_t>::value) {
@@ -129,8 +132,8 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::as_strided<int8_t>(dev_ctx.x_context(),
                                   input_data,
                                   output_data,
-                                  phi::vectorize<int64_t>(input.dims()),
-                                  phi::vectorize<int64_t>(input.strides()),
+                                  common::vectorize<int64_t>(input.dims()),
+                                  common::vectorize<int64_t>(input.strides()),
                                   0);
     }
   } else if (std::is_same<T, int32_t>::value) {
@@ -143,8 +146,8 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::as_strided<int32_t>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
-                                   phi::vectorize<int64_t>(input.dims()),
-                                   phi::vectorize<int64_t>(input.strides()),
+                                   common::vectorize<int64_t>(input.dims()),
+                                   common::vectorize<int64_t>(input.strides()),
                                    0);
     }
   } else if (std::is_same<T, int64_t>::value) {
@@ -157,8 +160,8 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::as_strided<int64_t>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
-                                   phi::vectorize<int64_t>(input.dims()),
-                                   phi::vectorize<int64_t>(input.strides()),
+                                   common::vectorize<int64_t>(input.dims()),
+                                   common::vectorize<int64_t>(input.strides()),
                                    0);
     }
   } else if (std::is_same<T, bool>::value) {
@@ -170,8 +173,8 @@ void ContiguousKernel(const Context& dev_ctx,
       r = xpu::as_strided<bool>(dev_ctx.x_context(),
                                 input_data,
                                 output_data,
-                                phi::vectorize<int64_t>(input.dims()),
-                                phi::vectorize<int64_t>(input.strides()),
+                                common::vectorize<int64_t>(input.dims()),
+                                common::vectorize<int64_t>(input.strides()),
                                 0);
     }
   } else {

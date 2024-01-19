@@ -53,6 +53,8 @@ def replace_symbol(
 def _append_opstack_between(start, end, stack):
     # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
+    if paddle.base.framework.use_pir_api():
+        return
     from paddle.framework import core
 
     op_maker = core.op_proto_and_checker_maker
@@ -65,14 +67,14 @@ def for_each_ops_between(start, end):
     # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
     program = paddle.static.default_main_program()
-    ops = program.current_block().ops[start:end]
+    ops = program.global_block().ops[start:end]
     yield from ops
 
 
 def opnum_in_program():
     # NOTE(xiongkun): we don't sync for speed. careful!!
     program = paddle.static.default_main_program()
-    return len(program.current_block().ops)
+    return len(program.global_block().ops)
 
 
 class Interpreter:
@@ -153,6 +155,10 @@ class Interpreter:
         assert layer is not None, "SIR bound layer is None."
         return layer(*args, **kwargs)
 
+    def AST(self, stmt, inputs):
+        args, kwargs = inputs
+        return stmt.converted_func(*args, **kwargs)
+
 
 def compile_sir(context: SymbolicTraceContext, name: str):
     """
@@ -182,7 +188,7 @@ def prepare_state(SIR, inputs):
     state = {}
 
     # update free vars if exsits
-    if SIRRuntimeCache().has_key(SIR.name):  # noqa: W601
+    if SIRRuntimeCache().has_key(SIR.name):
         free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
         if free_var_seeker:
             state = free_var_seeker()

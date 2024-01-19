@@ -102,7 +102,7 @@ class TestMeanOpError(unittest.TestCase):
 
         with paddle.pir_utils.IrGuard(), program_guard(Program(), Program()):
             input1 = 12
-            self.assertRaises(ValueError, paddle.mean, input1)
+            self.assertRaises(TypeError, paddle.mean, input1)
 
             input2 = paddle.static.data(
                 name='input2', shape=[2, 3, 4, 5], dtype="int32"
@@ -568,6 +568,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
     def mean_wrapper(self, x):
         return paddle.mean(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -599,6 +600,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
     def mean_wrapper(self, x):
         return paddle.mean(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

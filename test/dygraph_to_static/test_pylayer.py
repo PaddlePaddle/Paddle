@@ -17,6 +17,8 @@ Only test simple cases here."""
 import sys
 from pathlib import Path
 
+from dygraph_to_static_utils import enable_to_static_guard
+
 sys.path.append(
     str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
 )
@@ -26,7 +28,6 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
 from test_jit_save_load import train
 
 import paddle
@@ -263,22 +264,21 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
         return out
 
 
-@dy2static_unittest
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
-        self.to_static = False
+        self.to_static: bool = False
 
     def _run(self, *input_args, **input_kwargs):
         assert getattr(
             self, "dygraph_func", None
         ), "Please setting `self.dygraph_func` before calling `self._run`"
 
-        paddle.jit.enable_to_static(self.to_static)
-        paddle.set_device(self.place)
-        result = self.dygraph_func(*input_args, **input_kwargs)
-        result.mean().backward()
-        return result
+        with enable_to_static_guard(self.to_static):
+            paddle.set_device(self.place)
+            result = self.dygraph_func(*input_args, **input_kwargs)
+            result.mean().backward()
+            return result
 
     def _run_dygraph(self, *args, **kwargs):
         self.to_static = False
@@ -514,17 +514,14 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         self._run_and_compare(input1, input2)
 
 
-@dy2static_unittest
 class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
 
-    def _run_train(self, to_static, layer_builder, build_strategy=None):
+    def _run_train(self, to_static: bool, layer_builder, build_strategy=None):
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        paddle.jit.enable_to_static(to_static)
-
         paddle.set_device(self.place)
         np.random.seed(SEED)
         paddle.seed(SEED)
@@ -588,7 +585,6 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
         )
 
 
-@dy2static_unittest
 class TestPyLayerJitSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

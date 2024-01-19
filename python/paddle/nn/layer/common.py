@@ -202,7 +202,7 @@ class Upsample(Layer):
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
-    in_d is the depth of the intput tensor.
+    in_d is the depth of the input tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -1401,7 +1401,7 @@ class Embedding(Layer):
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these case, sparse must be False. Default: False.
         weight_attr(ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`

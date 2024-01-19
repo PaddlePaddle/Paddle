@@ -24,6 +24,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -48,7 +49,9 @@ class TestAssignOp(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
         paddle.disable_static()
 
 
@@ -77,7 +80,9 @@ class TestAssignFP16Op(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
         paddle.disable_static()
 
 
@@ -103,16 +108,19 @@ class TestAssignBFP16Op(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
         paddle.disable_static()
 
 
-class TestAssignOpWithLoDTensorArray(unittest.TestCase):
-    def test_assign_LoDTensorArray(self):
+class TestAssignOpWithTensorArray(unittest.TestCase):
+    @test_with_pir_api
+    def test_assign_tensor_array(self):
         paddle.enable_static()
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
             y = paddle.tensor.fill_constant(
@@ -121,25 +129,41 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             z = paddle.add(x=x, y=y)
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
+            # TODO(xiaoguoguo626807): Remove this stop_gradient=False.
+            init_array.stop_gradient = False
             array = paddle.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
             append_backward(mean)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
-        exe = base.Executor(place)
+        exe = paddle.static.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
         feed_add = feed_x + ones
-        res = exe.run(
-            main_program,
-            feed={'x': feed_x},
-            fetch_list=[sums.name, x.grad_name],
-        )
+        if in_pir_mode():
+            x_grad = None
+            for op in main_program.global_block().ops:
+                if "grad" not in op.name():
+                    continue
+                if op.operands()[0].source().is_same(x):
+                    x_grad = op.results()[0]
+            assert x_grad is not None, "Can not find x_grad in main_program"
+            res = exe.run(
+                main_program,
+                feed={'x': feed_x},
+                fetch_list=[sums, x_grad],
+            )
+        else:
+            res = exe.run(
+                main_program,
+                feed={'x': feed_x},
+                fetch_list=[sums.name, x.grad_name],
+            )
         np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
         np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
         paddle.disable_static()
@@ -160,44 +184,8 @@ class TestAssignOpError(unittest.TestCase):
         paddle.disable_static()
 
 
-class TestAssignOApi(unittest.TestCase):
-    def test_assign_LoDTensorArray(self):
-        paddle.enable_static()
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program):
-            x = paddle.static.data(name='x', shape=[100, 10], dtype='float32')
-            x.stop_gradient = False
-            y = paddle.tensor.fill_constant(
-                shape=[100, 10], dtype='float32', value=1
-            )
-            z = paddle.add(x=x, y=y)
-            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
-            init_array = paddle.tensor.array_write(x=z, i=i)
-            array = paddle.assign(init_array)
-            sums = paddle.tensor.array_read(array=init_array, i=i)
-            mean = paddle.mean(sums)
-            append_backward(mean)
-
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-        exe = base.Executor(place)
-        feed_x = np.random.random(size=(100, 10)).astype('float32')
-        ones = np.ones((100, 10)).astype('float32')
-        feed_add = feed_x + ones
-        res = exe.run(
-            main_program,
-            feed={'x': feed_x},
-            fetch_list=[sums.name, x.grad_name],
-        )
-        np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
-        np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
-        paddle.disable_static()
-
-    def test_assign_NumpyArray(self):
+class TestAssignOpApi(unittest.TestCase):
+    def test_assign_numpy_array(self):
         for dtype in [np.bool_, np.float32, np.int32, np.int64]:
             with base.dygraph.guard():
                 array = np.random.random(size=(100, 10)).astype(dtype)
@@ -253,7 +241,7 @@ class TestAssignOApi(unittest.TestCase):
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
 )
-class TestAssignOApiFP16(unittest.TestCase):
+class TestAssignOpApiFP16(unittest.TestCase):
     def test_assign_fp16(self):
         x = np.random.uniform(0, 10, [3, 3]).astype(np.float16)
         x = paddle.to_tensor(x)
@@ -308,6 +296,7 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
     def assign_wrapper(self, x):
         return paddle.assign(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -340,6 +329,7 @@ class TestAssignTripleGradCheck(unittest.TestCase):
     def assign_wrapper(self, x):
         return paddle.assign(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

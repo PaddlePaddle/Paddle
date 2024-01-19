@@ -23,27 +23,27 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-
 namespace pir {
 
-using dialect::SymbolicDim;
-class SymbolTable {
+using shape::SymbolicDimOp;
+class IR_API SymbolTable {
  public:
   explicit SymbolTable(Operation* symbol_table_op)
       : symbol_table_op_(symbol_table_op) {}
   SymbolTable() = default;
   template <typename T>
-  typename std::enable_if<std::is_same<T, SymbolicDim>::value,
-                          SymbolicDim>::type
+  typename std::enable_if<std::is_same<T, SymbolicDimOp>::value,
+                          SymbolicDimOp>::type
   Lookup(const std::string& name) const {
     auto it = symbol_table_map_.find(name);
-    return it != symbol_table_map_.end() ? it->second->dyn_cast<SymbolicDim>()
-                                         : SymbolicDim(nullptr);
+    return it != symbol_table_map_.end() ? it->second->dyn_cast<SymbolicDimOp>()
+                                         : SymbolicDimOp(nullptr);
   }
   template <typename T>
-  typename std::enable_if<!std::is_same<T, SymbolicDim>::value,
+  typename std::enable_if<!std::is_same<T, SymbolicDimOp>::value,
                           std::vector<T>>::type
   Lookup(const std::string& name) const {
     std::vector<T> res;

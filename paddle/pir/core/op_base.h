@@ -15,7 +15,7 @@
 #pragma once
 #include <type_traits>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_support.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
@@ -24,6 +24,7 @@
 namespace pir {
 class Builder;
 class IrPrinter;
+class Block;
 
 class IR_API OpBase {
  public:
@@ -46,28 +47,37 @@ class IR_API OpBase {
 
   uint32_t num_operands() const { return operation()->num_operands(); }
 
+  Block *parent() const { return operation()->GetParent(); }
+
+  // Attribtue related interfaces
   const AttributeMap &attributes() const { return operation()->attributes(); }
+  Attribute attribute(const std::string &key) const {
+    return operation()->attribute(key);
+  }
+  template <typename T>
+  T attribute(const std::string &key) const {
+    return operation()->attribute<T>(key);
+  }
 
   Value operand_source(uint32_t index) const {
     return operation()->operand_source(index);
   }
+  Type operand_type(uint32_t index) const {
+    return operation()->operand_type(index);
+  }
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
 
-  pir::Attribute attribute(const std::string &name) {
-    return operation()->attribute(name);
-  }
-
-  template <typename T>
-  T attribute(const std::string &name) {
-    return operation()->attribute<T>(name);
+  template <typename T = Type>
+  T result_type(uint32_t index) const {
+    return operation()->result_type<T>(index);
   }
 
   void VerifySig() {}
 
   void VerifyRegion() {}
 
- private:
+ protected:
   Operation *operation_;  // Not owned
 };
 
@@ -77,6 +87,7 @@ class IR_API OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
+  using Base = OpTraitBase<ConcreteTrait>;
   explicit OpTraitBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
@@ -141,6 +152,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
@@ -152,8 +164,8 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<InterfaceValue> GetInterfaceMap() {
-    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {

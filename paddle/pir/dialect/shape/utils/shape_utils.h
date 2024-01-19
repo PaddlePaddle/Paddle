@@ -14,13 +14,14 @@
 
 #pragma once
 
+#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
 
 // Helper class to query and manipulate shape constraint IR on buffer level.
-class ShapeAnalysis {
+class IR_API ShapeAnalysis {
  public:
   virtual ~ShapeAnalysis() = default;
 
@@ -46,20 +47,29 @@ class ShapeAnalysis {
 
   // Returns true if the two value have the same number elements.
   virtual bool IsSameNumElements(Value lhs, Value rhs);
+
+  virtual symbol::DimExprBuilder CreateDimExprBuilder() = 0;
 };
 
 // A subclass to impement `ShapeAnalysis` on buffer level.
 // The implementation is based on shape constraint ir.
-class ShapeConstraintIRAnalysis : public ShapeAnalysis {
+class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
  public:
   explicit ShapeConstraintIRAnalysis(ModuleOp m);
-
-  // auto-save updated shape constriant ir when destroying.
+  // Auto-save updated shape constriant ir when destroying.
   ~ShapeConstraintIRAnalysis();
+
+  void Init() {
+    value_to_shape_or_data_.clear();
+    next_sym_idx_ = 0;
+  }
 
   // Returns the `SymbolicDimMgr` this object holds.
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
+
+  std::vector<shape::SymbolicDimOp>& GetOrCreateSymbolicDimsForRankedValue(
+      const Value& value);
 
   // Returns true if the two value have the same symbolic shape.
   bool IsShapeEqual(Value lhs, Value rhs) override;
@@ -69,15 +79,62 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
 
+  inline const std::string GetNextSymName() {
+    return "S" + std::to_string(next_sym_idx_++);
+  }
+
+  bool HasShapeOrDataForValue(Value val) const;
+
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+
+  void SetShapeOrDataForValue(Value val,
+                              const symbol::ShapeOrDataDimExprs& shape_or_data);
+
+  symbol::DimExprBuilder CreateDimExprBuilder() override;
+
+  // Used to debug
+  void PrintShapeOrDatas() const;
+
  private:
+  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_;
   // The operation this analysis runs on.
   ModuleOp m_;
   // The `SymbolicDimMgr` this analysis holds.
   SymbolicDimMgr mgr_;
   // Map a ranked memref value to an array of symbolicDims, each represents one
   // dimension size of the memref value.
-  std::unordered_map<Value, std::vector<dialect::SymbolicDim>>
+  std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+
+  int64_t next_sym_idx_ = 0;
+  std::vector<symbol::DimExprConstraint> constraints_;
+
+ public:
+  explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
+      : ShapeConstraintIRAnalysis(program->module_op()) {
+    program_ = std::move(program);
+  }
+
+  explicit ShapeConstraintIRAnalysis(pir::IrContext* ctx)
+      : ShapeConstraintIRAnalysis(std::make_shared<pir::Program>(ctx)) {}
+
+ private:
+  std::shared_ptr<pir::Program> program_;
+};
+
+class IR_API ShapeAnalysisManager {
+ public:
+  static ShapeAnalysisManager& Instance();
+  ShapeConstraintIRAnalysis& Get(pir::Program* program);
+
+  ShapeAnalysisManager(const ShapeAnalysisManager&) = delete;
+  ShapeAnalysisManager(ShapeAnalysisManager&&) = delete;
+  ShapeAnalysisManager& operator=(const ShapeAnalysisManager&) = delete;
+
+ private:
+  ShapeAnalysisManager() {}
+  std::unordered_map<uint64_t, ShapeConstraintIRAnalysis> tables_;
 };
 
 }  // namespace pir

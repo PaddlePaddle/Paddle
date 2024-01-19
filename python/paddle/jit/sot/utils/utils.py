@@ -44,6 +44,7 @@ from .paddle_api_config import (
 )
 
 T = TypeVar("T")
+ConstTypes = (int, float, str, bool, type(None))
 
 
 class Singleton(Generic[T]):
@@ -125,6 +126,12 @@ def log_do(level, fn):
     cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         fn()
+
+
+def log_format(level, str, *args):
+    cur_level = ENV_SOT_LOG_LEVEL.get()
+    if level <= cur_level:
+        print(str.format(*args), end="")
 
 
 def no_eval_frame(func):
@@ -330,12 +337,11 @@ class GraphLogger:
         self.graph_num += 1
         self.graphs.append(program)
 
-        for block in program.blocks:
-            sub_op = []
-            for op in block.ops:
-                self.op_num += 1
-                sub_op.append(op)
-            self.ops.append(sub_op)
+        sub_op_num = 0
+        for op in program.global_block().ops:
+            self.op_num += 1
+            sub_op_num += 1
+        self.ops.append(sub_op_num)
 
     def add_subgprah_info(self, strs):
         for i in range(len(self.graphs)):
@@ -343,7 +349,7 @@ class GraphLogger:
                 "------------------------------------------------------"
             )
 
-            strs.append(f"subgraph {i}, OpNum: {len(self.ops[i])}")
+            strs.append(f"subgraph {i}, OpNum: {self.ops[i]}")
             strs.append(f"{self.graphs[i]}")
 
     def __str__(self):

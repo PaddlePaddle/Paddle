@@ -16,6 +16,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -99,7 +100,7 @@ class TestViterbiOp(OpTest):
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestViterbiAPI(unittest.TestCase):
@@ -123,7 +124,9 @@ class TestViterbiAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         bz, length, ntags = self.bz, self.len, self.ntags
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             Input = paddle.static.data(
                 name="Input", shape=[bz, length, ntags], dtype="float32"
             )
@@ -145,6 +148,7 @@ class TestViterbiAPI(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], self.scores, rtol=1e-5)
             np.testing.assert_allclose(fetches[1], self.path)
 
+    @test_with_pir_api
     def test_static_net(self):
         for place in self.places:
             self.check_static_result(place)

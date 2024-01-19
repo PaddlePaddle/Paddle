@@ -90,9 +90,9 @@ TEST(net_build, TestTransValidVarName) {
 TEST(net_build, program_execute_multi_elementwise_add) {
   auto program = CreateAddProgram();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -131,9 +131,9 @@ TEST(net_build, program_execute_fc) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -176,9 +176,9 @@ TEST(net_build, program_execute_multi_elementwise_add_bf16) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -218,9 +218,9 @@ TEST(net_build, program_execute_fc_bf16) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -282,9 +282,9 @@ TEST(net_build, program_execute_pool2d) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -314,9 +314,9 @@ TEST(net_build, program_execute_reverse) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -348,9 +348,9 @@ TEST(net_build, program_execute_gather) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -408,9 +408,9 @@ TEST(net_build, program_execute_gather_nd) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -470,9 +470,9 @@ TEST(net_build, program_execute_cast) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -525,9 +525,9 @@ TEST(net_build, program_execute_squeeze_case0) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -585,9 +585,9 @@ TEST(net_build, program_execute_squeeze_case1) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -645,9 +645,9 @@ TEST(net_build, program_execute_squeeze_case2) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -704,9 +704,9 @@ TEST(net_build, program_execute_squeeze_case3) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -763,9 +763,9 @@ TEST(net_build, program_execute_squeeze_case4) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -820,9 +820,9 @@ TEST(net_build, program_execute_argsort) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -882,9 +882,9 @@ TEST(net_build, program_execute_sort) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -943,9 +943,9 @@ TEST(net_build, program_execute_arange_float) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -985,9 +985,9 @@ TEST(net_build, program_execute_arange_int) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -1029,9 +1029,9 @@ TEST(net_build, program_argmax_case1) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -1107,7 +1107,7 @@ TEST(net_build, program_argmax_case2) {
   Variable output = builder.Argmax(input, 1, false);
   auto program = builder.Build();
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
 
@@ -1182,9 +1182,9 @@ TEST(net_build, program_argmin_case1) {
   Variable output = builder.Argmin(input, 1, true);
   auto program = builder.Build();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::unordered_set<std::string> fetch_ids;
@@ -1261,9 +1261,9 @@ TEST(net_build, program_argmin_case2) {
   Variable output = builder.Argmin(input, 1, false);
   auto program = builder.Build();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -1339,9 +1339,9 @@ TEST(net_build, program_execute_repeat_axis_0) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -1395,9 +1395,9 @@ TEST(net_build, program_execute_repeat_axis_1) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -1457,9 +1457,9 @@ TEST(net_build, program_execute_one_hot) {
   auto program = builder.Build();
 
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);

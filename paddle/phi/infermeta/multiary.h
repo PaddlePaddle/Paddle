@@ -308,6 +308,18 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
 
+void FtrlInferMeta(const MetaTensor& param,
+                   const MetaTensor& squared_accumulator,
+                   const MetaTensor& linear_accumulator,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   float l1,
+                   float l2,
+                   float lr_power,
+                   MetaTensor* param_out,
+                   MetaTensor* squared_accum_out,
+                   MetaTensor* linear_accum_out);
+
 void FusedBatchNormActInferMeta(const MetaTensor& x,
                                 const MetaTensor& scale,
                                 const MetaTensor& bias,
@@ -544,17 +556,6 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                                        MetaTensor* logsumexp,
                                        MetaTensor* seed_and_offset);
 
-void VariableLengthMemoryEfficientAttentionInferMeta(
-    const MetaTensor& query,
-    const MetaTensor& key,
-    const MetaTensor& value,
-    const MetaTensor& seq_lens,
-    const MetaTensor& kv_seq_lens,
-    const MetaTensor& mask,
-    float scale,
-    bool causal,
-    MetaTensor* out);
-
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
@@ -579,6 +580,27 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
 void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out);
+
+void NceInferMeta(const MetaTensor& input,
+                  const MetaTensor& label,
+                  const MetaTensor& weight,
+                  const MetaTensor& bias,
+                  const MetaTensor& sample_weight,
+                  const MetaTensor& custom_dist_probs,
+                  const MetaTensor& custom_dist_alias,
+                  const MetaTensor& custom_dist_alias_probs,
+                  int num_total_classes,
+                  const std::vector<int>& custom_neg_classes,
+                  int num_neg_samples,
+                  int sampler,
+                  int seed,
+                  bool is_sparse,
+                  bool remote_prefetch,
+                  bool is_test,
+                  MetaTensor* cost,
+                  MetaTensor* sample_logits,
+                  MetaTensor* sample_labels,
+                  MetaConfig config = MetaConfig());
 
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
@@ -637,6 +659,19 @@ void RnnInferMeta(const MetaTensor& x,
                   MetaTensor* dropout_state,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
+
+void RpropInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& prev,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& master_param,
+                    const MetaTensor& learning_rate_range,
+                    const MetaTensor& etas,
+                    bool multi_precision,
+                    MetaTensor* param_out,
+                    MetaTensor* prev_out,
+                    MetaTensor* learning_rate_out,
+                    MetaTensor* master_param_out);
 
 void SendUERecvInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
@@ -717,6 +752,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const MetaTensor& bias,
                                const MetaTensor& weight_scale,
                                const std::string& weight_dtype,
+                               const int32_t arch,
+                               const int32_t group_size,
                                MetaTensor* out);
 
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,

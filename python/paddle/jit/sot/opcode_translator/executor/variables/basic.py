@@ -22,11 +22,14 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 import paddle
+from paddle.framework import use_pir_api
+from paddle.pir.core import vartype_to_datatype
 
 from ....infer_meta import MetaInfo
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     BreakGraphError,
+    ConstTypes,
     FallbackError,
     NameGenerator,
     paddle_tensor_methods,
@@ -50,7 +53,7 @@ from ..tracker import (
     GlobalTracker,
     Tracker,
 )
-from .base import ConstTypes, VariableBase, VariableFactory
+from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
@@ -267,6 +270,20 @@ class TensorDtypeVariable(DataVariable):
         else:
             return object_equal_stringify_guard(self)
 
+    def get_py_value(self, allow_tensor=False):
+        if use_pir_api() and isinstance(
+            self.value, paddle.base.core.VarDesc.VarType
+        ):
+            return vartype_to_datatype[self.value]
+        return super().get_py_value(allow_tensor)
+
+    def get_py_type(self):
+        if use_pir_api() and isinstance(
+            self.value, paddle.base.core.VarDesc.VarType
+        ):
+            return paddle.pir.core.DataType
+        return super().get_py_type()
+
     @property
     def main_info(self) -> dict[str, Any]:
         return {
@@ -334,6 +351,9 @@ class TensorVariable(VariableBase):
                         return False
                     else:
                         return self.id == var.id
+
+                def __hash__(self):
+                    return hash(self.id)
 
             return SotTensor(self.id)
 
@@ -543,6 +563,22 @@ class TensorVariable(VariableBase):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.Tensor, MetaInfo)):
             return TensorVariable(value, graph, tracker)
+        return None
+
+
+class ParameterVariable(TensorVariable):
+    def __init__(
+        self,
+        param: paddle.Tensor | MetaInfo,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(param, graph, tracker)
+
+    @VariableFactory.register_from_value(successor="TensorVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, (paddle.base.framework.EagerParamBase)):
+            return ParameterVariable(value, graph, tracker)
         return None
 
 
@@ -782,8 +818,13 @@ class NullVariable(VariableBase):
         # TODO: graph should be not None
         super().__init__(None, DanglingTracker())
 
+    def __call__(self, *args, **kwargs):
+        func = args[0]
+        assert callable(func)
+        return func(*args[1:], **kwargs)
+
     def reconstruct(self, codegen: PyCodeGen):
-        codegen.gen_push_null()
+        codegen.gen_load_null_variable()
 
 
 class CellVariable(VariableBase):

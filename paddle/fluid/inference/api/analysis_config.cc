@@ -102,6 +102,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
+  use_new_executor_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
@@ -540,7 +541,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
-  CP_MEMBER(use_feed_fetch_ops_);
   CP_MEMBER(ir_debug_);
   CP_MEMBER(specify_input_name_);
 
@@ -576,6 +576,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // JITLayer relate
   CP_MEMBER(apply_optim_);
   CP_MEMBER(skip_load_params_);
+
+  CP_MEMBER(use_new_executor_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -653,6 +655,11 @@ void AnalysisConfig::EnableMKLDNN() {
   use_mkldnn_ = false;
 #endif
 
+  Update();
+}
+
+void AnalysisConfig::DisableMKLDNN() {
+  use_mkldnn_ = false;
   Update();
 }
 
@@ -809,7 +816,7 @@ void AnalysisConfig::EnableDlnne(
     int max_batch_size,
     bool use_static_batch,
     std::string weight_share_mode,
-    std::unordered_set<std::string> disable_nodes_by_ouputs,
+    std::unordered_set<std::string> disable_nodes_by_outputs,
     std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
     bool use_calib_mode,
     Precision precision_mode) {
@@ -818,7 +825,7 @@ void AnalysisConfig::EnableDlnne(
   dlnne_max_batchsize_ = max_batch_size;
   dlnne_use_static_batch_ = use_static_batch;
   dlnne_weight_share_mode_ = weight_share_mode;
-  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_ouputs;
+  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_outputs;
   dlnne_input_shape_dict_ = dlnne_input_shape_dict;
   dlnne_use_calib_mode_ = use_calib_mode;
   dlnne_precision_mode_ = precision_mode;
@@ -931,6 +938,26 @@ void AnalysisConfig::Update() {
     }
   }
 
+#ifdef PADDLE_WITH_DNNL
+  // Since EnableMKLDNN is default, the pass_builder has created in the first
+  // time.
+  // Case1: User manually disable mkldnn after pass_builder
+  // create.(config.disable_mkldnn())
+  // Case2: User device is gpu/ipu/xpu, use
+  // EnableXpu(), EnableCUDNN(), PassStrategy has been reset in the above code
+  // block
+  //  Case3: pass_builder_ has been created and belongs to
+  // GpuPassStrategy(or IpuPassStrategy), neither enable mkldnn and
+  // disable mkldnn will be executed
+  if ((!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) ||
+      (use_mkldnn_ &&
+       !phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2))) {
+    // User manually disable mkldnn or disable when not support AVX2
+    use_mkldnn_ = false;
+    pass_builder()->DisableMKLDNN();
+  }
+#endif
+
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
@@ -974,15 +1001,13 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-  if (use_mkldnn_) {
+  if (!use_gpu() && !use_xpu() && !use_ipu()) {
+    if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableMKLDNN() only works when IR optimization is enabled.";
-    } else {
+      // default enable mkldnn when device is cpu and enable_ir_optim
       pass_builder()->EnableMKLDNN();
-    }
 #endif
+    }
   }
 
   // Quantization passes must come after all other optimization passes
@@ -1122,7 +1147,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << with_glog_info_;
 
   ss << enable_ir_optim_;
-  ss << use_feed_fetch_ops_;
   ss << ir_debug_;
 
   ss << specify_input_name_;

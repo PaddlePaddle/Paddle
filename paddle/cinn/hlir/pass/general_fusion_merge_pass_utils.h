@@ -143,7 +143,7 @@ static int GetSharedSize(const api::OpNode& op_node) {
     for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
       lane = inshape[idx];
     }
-    int max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+    int max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
     if (lane > max_num_threads / 2) {
       return 0;
     }

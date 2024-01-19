@@ -31,7 +31,7 @@ struct _SearchState_;
 class AutoGenRule;
 
 //! Shared Wrapper for _SearchState_
-class SearchState : public common::Shared<_SearchState_> {
+class SearchState : public cinn::common::Shared<_SearchState_> {
  public:
   SearchState() = default;
   // create a new SearchState
@@ -49,7 +49,7 @@ class SearchState : public common::Shared<_SearchState_> {
 };
 
 //! Class to store immediate states during search
-struct _SearchState_ : public common::Object {
+struct _SearchState_ : public cinn::common::Object {
   // IRSchedule contains ir::ModuleExpr and trace scheduling process
   ir::IRSchedule ir_schedule;
   // Cost model predicted cost

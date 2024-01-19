@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ...tensor import linalg, manipulation, math
-from .. import Layer
+from ..layer.layers import Layer
 
 __all__ = []
 

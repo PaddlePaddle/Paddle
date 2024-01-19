@@ -746,7 +746,7 @@ class PipelineOptimizer:
                     is_backward = self._is_backward_op(op)
                     assert is_forward or is_backward, (
                         'send/recv in pipeline should only be inserted in forward or backward,'
-                        'please check the op_role of op={}'.format(op)
+                        f'please check the op_role of op={op}'
                     )
 
                     if is_forward:
@@ -1013,7 +1013,7 @@ class PipelineOptimizer:
             # append "MERGED" to the names of parameter gradients,
             # and mofify the op_role_var attribute (by rename_arg func).
             for name in in_out_names:
-                if not core.grad_var_suffix() in name:
+                if core.grad_var_suffix() not in name:
                     continue
                 param_name = name.strip(core.grad_var_suffix())
                 new_grad_name = name + "@MERGED"

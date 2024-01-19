@@ -18,18 +18,18 @@ or nested loop have been covered in file test_ifelse.py and test_loop.py"""
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
-from paddle import base
-from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
+from paddle.jit.dy2static.transformers.logical_transformer import (
+    cmpop_node_to_str,
+)
 from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(22)
 
 
-@paddle.jit.to_static
 def test_logical_not(x):
     x = paddle.to_tensor(x)
     if not x:
@@ -51,7 +51,6 @@ def test_logical_not(x):
     return x
 
 
-@paddle.jit.to_static
 def test_logical_not_2(x):
     x = paddle.to_tensor(x)
 
@@ -64,7 +63,6 @@ def test_logical_not_2(x):
     return x
 
 
-@paddle.jit.to_static
 def test_logical_and(x):
     x = paddle.to_tensor(x)
 
@@ -82,7 +80,6 @@ def test_logical_and(x):
     return x
 
 
-@paddle.jit.to_static
 def test_logical_and_2(x):
     x = paddle.to_tensor(x)
 
@@ -106,7 +103,6 @@ def test_logical_and_2(x):
     return x
 
 
-@paddle.jit.to_static
 def test_logical_or(x):
     x = paddle.to_tensor(x)
 
@@ -124,7 +120,6 @@ def test_logical_or(x):
     return x
 
 
-@paddle.jit.to_static
 def test_logical_or_2(x):
     x = paddle.to_tensor(x)
 
@@ -136,7 +131,6 @@ def test_logical_or_2(x):
     return x
 
 
-@paddle.jit.to_static
 def test_logical_not_and_or(x):
     x = paddle.to_tensor(x)
 
@@ -148,7 +142,6 @@ def test_logical_not_and_or(x):
     return x
 
 
-@paddle.jit.to_static
 def test_shape_equal(x):
     x = paddle.to_tensor(x)
     y = paddle.zeros([1, 2, 3])
@@ -158,7 +151,6 @@ def test_shape_equal(x):
         return paddle.ones([1, 2, 3])
 
 
-@paddle.jit.to_static
 def test_shape_not_equal(x):
     x = paddle.to_tensor(x)
     y = paddle.zeros([1, 2, 3])
@@ -168,15 +160,9 @@ def test_shape_not_equal(x):
         return paddle.ones([1, 2, 3])
 
 
-@dy2static_unittest
-class TestLogicalBase(unittest.TestCase):
+class TestLogicalBase(Dy2StTestBase):
     def setUp(self):
         self.input = np.array([3]).astype('int32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
         self._set_test_func()
 
     def _set_test_func(self):
@@ -184,10 +170,9 @@ class TestLogicalBase(unittest.TestCase):
             "Method 'set_test_func' should be implemented."
         )
 
-    def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        with base.dygraph.guard(self.place):
-            result = self.dygraph_func(self.input)
+    def _run(self, to_static: bool):
+        with enable_to_static_guard(to_static):
+            result = paddle.jit.to_static(self.dygraph_func)(self.input)
             return result.numpy()
 
     def _run_dygraph(self):
@@ -264,8 +249,7 @@ class TestShapeNotEqual(TestLogicalNot):
         self.dygraph_func = test_shape_not_equal
 
 
-@dy2static_unittest
-class TestCmpopNodeToStr(unittest.TestCase):
+class TestCmpopNodeToStr(Dy2StTestBase):
     def test_exception(self):
         with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())

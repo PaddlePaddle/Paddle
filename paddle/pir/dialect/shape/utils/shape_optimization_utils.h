@@ -14,16 +14,17 @@
 
 #pragma once
 #include <vector>
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
-using dialect::SymbolicDim;
+using shape::SymbolicDimOp;
 
 // Represents a product of symbolic and concrete factors.
 // Used to prove product equalities symbolically.
-struct SymbolicDimProduct {
+struct IR_API SymbolicDimProduct {
   // List all symbolic factors that can not be aggregated.
-  std::vector<SymbolicDim> symbols;
+  std::vector<SymbolicDimOp> symbols;
 
   // Product of all const factors.
   int64_t factor = 1;
@@ -43,7 +44,7 @@ inline bool operator!=(const SymbolicDimProduct& lhs,
 }
 
 struct SymDimHasher {
-  size_t operator()(const dialect::SymbolicDim& symbol) const noexcept {
+  size_t operator()(const SymbolicDimOp& symbol) const noexcept {
     return std::hash<Operation*>{}(symbol.operation());
   }
 };
@@ -60,33 +61,30 @@ struct SymProductHasher {
 };
 
 // A class to manage shape-constraint related IR
-class SymbolicDimMgr {
+class IR_API SymbolicDimMgr {
  public:
   explicit SymbolicDimMgr(ModuleOp m);
 
-  // Loads pre-defined SymbolicDim ops from the module this mgr runs on.
-  bool Load();
-
   // Create a new symbolicDim instance owned by this mgr.
-  SymbolicDim NewSymbolicDim(const std::string& name = {});
+  SymbolicDimOp NewSymbolicDim(const std::string& name = {});
 
   // Create a symbolicDim with static dim size == `val`.
-  SymbolicDim NewConstantSymbolicDim(int64_t val);
+  SymbolicDimOp NewConstantSymbolicDim(int64_t val);
 
   // Create a symbolicDim with given value.
-  std::vector<SymbolicDim> CreateSymbolicDimsForRankedValue(Value value);
+  std::vector<SymbolicDimOp> CreateSymbolicDimsForRankedValue(Value value);
 
   // All symbolic-equal dims form a group.
-  // Returns the root SymbolicDim of the symbolic-equal symbolic dim group which
-  // this SymbolicDim belongs to.
-  SymbolicDim GetRootSymbolicDim(SymbolicDim symbol);
+  // Returns the root SymbolicDimOp of the symbolic-equal symbolic dim group
+  // which this SymbolicDimOp belongs to.
+  SymbolicDimOp GetRootSymbolicDim(SymbolicDimOp symbol);
 
   // Returns true if lhs and rhs are known to be equal.
-  bool IsSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
+  bool IsSymbolicDimEqual(SymbolicDimOp lhs, SymbolicDimOp rhs);
 
   // Marks lhs and rhs have same size and try to merge lhs & rhs static known
   // info. Returns false if failed to merge lhs & rhs.
-  bool MapSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
+  bool MapSymbolicDimEqual(SymbolicDimOp lhs, SymbolicDimOp rhs);
 
   // Returns the simplified version of SymbolicDimProduct.
   // This will try to fold some symbolicDim ops with const values.
@@ -116,16 +114,11 @@ class SymbolicDimMgr {
   bool MapSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
                                   const SymbolicDimProduct& rhs);
 
-  // Saves the updated shape constraint IR
-  bool Save();
-
   // retuns the SymbolTable.
   SymbolTable& symbolTable() { return symbol_table_; }
 
  private:
   const std::string GetNextName();
-  bool SaveShapeConstraintGraph();
-  bool LoadShapeConstraintGraph();
   bool UpdateProductEqualityMap();
   bool IsMultipleOfKnownSymbolicDimProductEqualPair(
       const SymbolicDimProduct& lhs, const SymbolicDimProduct& rhs);
@@ -139,10 +132,10 @@ class SymbolicDimMgr {
 
   std::unordered_set<std::string> symbol_name_set_;
 
-  std::unordered_map<SymbolicDim, SymbolicDim, SymDimHasher>
+  std::unordered_map<SymbolicDimOp, SymbolicDimOp, SymDimHasher>
       symbol_dim_union_set_;
 
-  std::unordered_map<int64_t, SymbolicDim> constant_symbolic_dim_map_;
+  std::unordered_map<int64_t, SymbolicDimOp> constant_symbolic_dim_map_;
 
   // product_equality_map_[A][B] == true : Product[A] == Product[B]
   using SymbolicDimProductMap = std::unordered_map<

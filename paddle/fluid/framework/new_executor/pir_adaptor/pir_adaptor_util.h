@@ -43,11 +43,11 @@
 namespace paddle {
 namespace framework {
 
-class CondInstruction;
+class IfInstruction;
 class WhileInstruction;
 class ValueExecutionInfo {
  public:
-  friend class CondInstruction;
+  friend class IfInstruction;
   friend class WhileInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
@@ -56,13 +56,17 @@ class ValueExecutionInfo {
 
   Scope* GetScope() const { return scope_; }
 
-  void Add(::pir::Value value, std::string var_name);
+  void Add(::pir::Value value, const std::string& var_name);
 
-  void Rename(pir::Value value, std::string new_name, std::string orig_name);
+  void Rename(pir::Value value,
+              const std::string& new_name,
+              const std::string& orig_name);
 
   int GetIdByName(const std::string& name) const;
 
   std::string GetNameById(int id) const;
+
+  Variable* GetVarByValue(pir::Value value) const;
 
   const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 
@@ -120,9 +124,21 @@ inline bool IsInvalid(pir::Value value) {
   return true;
 }
 
+Variable* CreateVar(pir::Value value,
+                    const std::string& var_name_prefix,
+                    bool force_persisable,
+                    ValueExecutionInfo* value_exe_info);
+
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
                 ValueExecutionInfo* value_exe_info = nullptr);
+
+void DeepCopyVariable(const Variable* src_var,
+                      Variable** dst_var,
+                      ValueExecutionInfo* value_exe_info,
+                      uint32_t stack_size,
+                      bool is_optional,
+                      std::map<const Variable*, Variable*>* src_to_dst_map);
 
 void BuildRuntimeContext(pir::Operation* op,
                          const ValueExecutionInfo& value_exec_info,
@@ -185,6 +201,9 @@ void BuildPhiContext(pir::Operation* op,
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
+    } else if (var->IsType<phi::TensorArray>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::TensorArray>());
+      ctx->EmplaceBackInput(InType(tensor_in));
     } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
       auto& variable_array = var->Get<VariableRefArray>();
@@ -195,20 +214,27 @@ void BuildPhiContext(pir::Operation* op,
         } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
           inputs.emplace_back(InType(const_cast<phi::SelectedRows*>(
               &(variable_array[i]->Get<phi::SelectedRows>()))));
+        } else if (variable_array[i]->IsType<phi::TensorArray>()) {
+          inputs.emplace_back(InType(const_cast<phi::TensorArray*>(
+              &(variable_array[i]->Get<phi::TensorArray>()))));
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
-              "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
+              "Only support Vector<DenseTensor> and vector<SelectedRows> "
+              "and vector<TensorArray> now "
               "not support vector<%d>.",
               variable_array[i]->Type()));
         }
       }
       ctx->EmplaceBackInputs(inputs);
+    } else if (var->IsType<phi::SelectedRows>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::SelectedRows>());
+      ctx->EmplaceBackInput(InType(tensor_in));
     } else {
       PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
                                               var->Type()));
     }
   }
-
+  VLOG(8) << "EmplaceBackInput done";
   // EmplaceBackAttributes
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
@@ -365,6 +391,25 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackAttr(vec_res);
+
+    } else if (attr_type_name == "pir::ArrayAttribute<pir::StrAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<pir::ArrayAttribute>().AsVector();
+
+      std::vector<std::string> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<pir::StrAttribute>(),
+            true,
+            phi::errors::PreconditionNotMet(
+                "Element in array list MUST be pir::StrAttribute "));
+
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[i].dyn_cast<pir::StrAttribute>().AsString());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
+
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
       ctx->EmplaceBackAttr(
           attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
@@ -377,8 +422,10 @@ void BuildPhiContext(pir::Operation* op,
     }
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
+  VLOG(8) << "EmplaceBackBackAttributes done";
 
   // EmplaceBackOutputs
+  VLOG(8) << "ctx->EmplaceBackOutput: ";
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value out_ptr = op->result(i);
     if (!IsInvalid(out_ptr)) {
@@ -399,11 +446,22 @@ void BuildPhiContext(pir::Operation* op,
       ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::DenseTensor>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput DenseTensor: "
+              << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::TensorArray*>(
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+                ->Get<phi::TensorArray>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput TensorArray: "
+              << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;
       auto& variable_array =
@@ -423,12 +481,15 @@ void BuildPhiContext(pir::Operation* op,
               variable_array[i]->Type()));
         }
       }
+      VLOG(8) << "ctx->EmplaceBackOutput VariableRefArray: "
+              << value_exec_info.GetVarName(out_ptr);
       ctx->EmplaceBackOutputs(outputs);
     } else {
       PADDLE_THROW(
           phi::errors::Unimplemented("only support DenseTensor and vector "));
     }
   }
+  VLOG(8) << "EmplaceBackOutputs done";
 
   VLOG(6) << "Done build phi context";
 }

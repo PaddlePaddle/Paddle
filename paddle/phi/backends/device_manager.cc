@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
 
 #if !defined(_WIN32)
 #include <dirent.h>
@@ -183,7 +184,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                    phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
-                   reinterpret_cast<void*>(const_cast<T*>(x)),
+                   reinterpret_cast<void*>(const_cast<T*>(x)),  // NOLINT
                    beta,
                    reinterpret_cast<void*>(y));
 }
@@ -699,6 +700,9 @@ DeviceManager& DeviceManager::Instance() {
 void DeviceManager::Release() {
   event::Event::ReleaseAll();
   stream::Stream::ReleaseAll();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  phi::distributed::XCCLCommContext::ReleaseAll();
+#endif
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }

@@ -23,12 +23,13 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
 namespace pe {
 
-using common::make_zero;
+using cinn::common::make_zero;
 using ir::Tensor;
 using lang::Compute;
 
@@ -248,6 +249,7 @@ Tensor Broadcast(const FuncOp& op,
                     &broadcast_flags2,
                     &axis_offset,
                     axis);
+
   auto fn = [=](const std::vector<Expr>& indice) {
     std::vector<Expr> broadcast_indice1;
     std::vector<Expr> broadcast_indice2;
@@ -313,8 +315,8 @@ Tensor Atan2(const Tensor& A,
 
   auto fn = [&](const Expr& elem_a, const Expr& elem_b) {
     auto atan = lang::Atan(elem_a / elem_b);
-    auto pi = common::make_const(atan->type(), PI);
-    auto half_pi = common::make_const(atan->type(), PI / 2);
+    auto pi = cinn::common::make_const(atan->type(), PI);
+    auto half_pi = cinn::common::make_const(atan->type(), PI / 2);
     auto zero = ir::Zero(atan->type());
     return ir::Select::Make(
         ir::EQ::Make(elem_b, zero),
@@ -359,6 +361,45 @@ Tensor BroadcastTo(const Tensor& A,
           if (a_shape_i == 1) {
             broadcast_indice.push_back(ir::Expr(0));
           } else if (a_shape_i == out_shape[axes[idx]]) {
+            broadcast_indice.push_back(indice[axes[idx]]);
+          } else {
+            LOG(FATAL) << "fail to broad cast input shape " << a_shape_i
+                       << " to output shape " << out_shape[axes[idx]];
+          }
+        }
+        return A(broadcast_indice);
+      },
+      out_name);
+}
+
+Tensor BroadcastTo(const Tensor& A,
+                   const std::vector<ir::Expr>& out_shape,
+                   const std::vector<int>& broadcast_axes,
+                   const std::string& out_name) {
+  auto A_shape = A->shape;
+  CHECK_EQ(A_shape.size(), broadcast_axes.size())
+      << "broadcast_axes's size should be same with the input shape's size";
+  CHECK_GE(out_shape.size(), broadcast_axes.size())
+      << "broadcast_axes's size should be no more than out_shape's size";
+  auto axes = broadcast_axes;
+  for (auto& axis : axes) {
+    // if axis < 0, plus out_shape.size
+    if (axis < 0) {
+      axis = out_shape.size() + axis;
+    }
+    CHECK_LT(axis, out_shape.size());
+  }
+  std::sort(axes.begin(), axes.end());
+
+  return Compute(
+      ToCinnExprs(out_shape),
+      [=](const std::vector<Expr>& indice) {
+        std::vector<Expr> broadcast_indice;
+        for (int idx = 0; idx < axes.size(); ++idx) {
+          ir::Expr a_shape_i = A_shape[idx];
+          if (MathEqual(a_shape_i, ir::Expr(1))) {
+            broadcast_indice.push_back(ir::Expr(0));
+          } else if (MathEqual(a_shape_i, out_shape[axes[idx]])) {
             broadcast_indice.push_back(indice[axes[idx]]);
           } else {
             LOG(FATAL) << "fail to broad cast input shape " << a_shape_i

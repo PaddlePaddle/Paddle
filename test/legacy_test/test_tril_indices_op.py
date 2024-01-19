@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestTrilIndicesOp(OpTest):
@@ -31,7 +32,7 @@ class TestTrilIndicesOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_config(self):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': -1}
@@ -58,6 +59,7 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
 
 
 class TestTrilIndicesAPICaseStatic(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         places = (
             [paddle.CPUPlace(), paddle.base.CUDAPlace(0)]
@@ -109,6 +111,7 @@ class TestTrilIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseDefault(unittest.TestCase):
+    @test_with_pir_api
     def test_default_CPU(self):
         paddle.enable_static()
         with paddle.static.program_guard(

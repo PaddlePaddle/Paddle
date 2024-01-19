@@ -30,21 +30,38 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const paddle::optional<DenseTensor>& bias,
                             const DenseTensor& weight_scale,
                             const std::string& weight_dtype,
+                            const int32_t arch,
+                            const int32_t group_size,
                             DenseTensor* out) {
+#if defined(PADDLE_WITH_CUTLASS)
+  PADDLE_ENFORCE_EQ(
+      ((arch == 80) || (arch == 70) || (arch == 75) || (arch == 86)),
+      true,
+      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Please compile with cutlass to make cutlass available"));
+#endif
+
   dev_ctx.template Alloc<T>(out);
   const T* x_data = x.data<T>();
   const int8_t* weight_data = weight.data<int8_t>();
   const T* bias_data = bias ? bias.get().data<T>() : nullptr;
-  const float* weight_scale_data = weight_scale.data<float>();
+  const T* weight_scale_data = weight_scale.data<T>();
   T* out_data = out->data<T>();
   const auto x_dims = x.dims();
   const auto w_dims = weight.dims();
-  int n = weight_scale.dims()[0];
+  int n = group_size > 0 ? weight_scale.dims()[1] : weight_scale.dims()[0];
   int k = w_dims[1];
   int m = x.numel() / k;
 
-  // m > 1: run gemm
-  if (m > 1 || weight_dtype == "int4") {
+  // m > 3: run gemm.
+  if (m > 3 || (arch == 70)) {
+/*
+Note(Zhengzekang):
+If using arch = 70, we always dispatch to weightonly Gemm,
+we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
+*/
 #if defined(PADDLE_WITH_CUTLASS)
     if (weight_dtype == "int8") {
       auto mixed_gemm_runner =
@@ -54,7 +71,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
       DenseTensor mixgemm_workspace;
       int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
           m, mixgemm_max_size, mixgemm_max_size);
-
+      mixgemm_workspace_size_bytes = 100 * 1024 * 1024;
       mixgemm_workspace.Resize({mixgemm_workspace_size_bytes});
       dev_ctx.template Alloc<uint8_t>(&mixgemm_workspace);
       char* mixgemm_workspace_data =
@@ -64,13 +81,15 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const uint8_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
+                weight_scale_data),
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 bias_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
             m,
             n,
             k,
+            group_size,
             "none",
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
@@ -80,11 +99,13 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const uint8_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
+                weight_scale_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
             m,
             n,
             k,
+            group_size,
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
             dev_ctx.stream());
@@ -97,7 +118,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
       DenseTensor mixgemm_workspace;
       int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
           m, mixgemm_max_size, mixgemm_max_size);
-
+      mixgemm_workspace_size_bytes = 100 * 1024 * 1024;
       mixgemm_workspace.Resize({mixgemm_workspace_size_bytes});
       dev_ctx.template Alloc<uint8_t>(&mixgemm_workspace);
       char* mixgemm_workspace_data =
@@ -107,13 +128,15 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const cutlass::uint4b_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
+                weight_scale_data),
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 bias_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
             m,
             n,
             k,
+            group_size,
             "none",
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
@@ -123,11 +146,13 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
                 x_data),
             reinterpret_cast<const cutlass::uint4b_t*>(weight_data),
-            weight_scale_data,
+            reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
+                weight_scale_data),
             reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out_data),
             m,
             n,
             k,
+            group_size,
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
             dev_ctx.stream());
@@ -137,18 +162,39 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
     PADDLE_THROW(phi::errors::Unimplemented(
         "Please compile with cutlass to make cutlass available"));
 #endif
-  } else {  // m == 1: gemv
+  } else {  // m <= 3: gemv
     if (weight_dtype == "int8") {
-      GemvWeightonlyInt8Wrapper<T, Context>(dev_ctx,
-                                            x_data,
-                                            weight_data,
-                                            bias_data,
-                                            weight_scale_data,
-                                            n,
-                                            k,
-                                            "None",
-                                            out->data<T>());
-    }  // TODO(lizhenyun) support weight_only_gemv for int4.
+      WeightOnlyGemvWrapper<T, Context>(
+          dev_ctx,
+          x_data,
+          weight_data,
+          bias_data,
+          weight_scale_data,
+          m,
+          n,
+          k,
+          group_size,
+          "int8",
+          group_size > 0 ? "group_wise" : "per_channel",
+          "None",
+          out->data<T>());
+
+    } else if (weight_dtype == "int4") {
+      WeightOnlyGemvWrapper<T, Context>(
+          dev_ctx,
+          x_data,
+          weight_data,
+          bias_data,
+          weight_scale_data,
+          m,
+          n,
+          k,
+          group_size,
+          "int4",
+          group_size > 0 ? "group_wise" : "per_channel",
+          "None",
+          out->data<T>());
+    }
   }
 }
 }  // namespace phi

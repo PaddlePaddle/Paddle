@@ -64,7 +64,7 @@ int ConvertActivationType(std::string act_type) {
 
 Node* FindNodeWithName(Graph* graph, std::string name) {
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() && node->Var()->Name() == name) {
+    if (node->IsVar() && node->Var() && node->Var()->Name() == name) {
       return node;
     }
   }
@@ -105,7 +105,7 @@ size_t HashTensor(const phi::DenseTensor& in) {
   auto in_dims = in.dims();
   HashCombine(&ret,
               phi::DataTypeToString(in.dtype()),
-              phi::DataLayoutToString(in.layout()),
+              common::DataLayoutToString(in.layout()),
               in_dims.size());
   for (int i = 0; i < in_dims.size(); i++) {
     HashCombine(&ret, in_dims[i]);
@@ -121,102 +121,188 @@ size_t HashTensor(const phi::DenseTensor& in) {
 
 template size_t HashTensor<int16_t>(const phi::DenseTensor& in);
 template size_t HashTensor<float>(const phi::DenseTensor& in);
+template size_t HashTensor<int8_t>(const phi::DenseTensor& in);
 
 std::string GetPrefixWithoutHash(const std::string& name) {
   std::size_t found = name.find("_#");
   return found == std::string::npos ? name : name.substr(0, found);
 }
 
-template <typename T>
+template <typename Tcpu, typename Txpu>
 void PrepareWeight(Graph* graph,
                    Scope* scope,
                    BlockDesc* block,
-                   Node* src,
-                   Node** dst,
-                   Node** dst_max,
-                   bool transpose) {
-  auto src_name = src->Name();
-  auto* src_tensor = scope->Var(src_name)->GetMutable<phi::DenseTensor>();
-  phi::DenseTensor dst_tensor;
-  Assign(*src_tensor, &dst_tensor);
-  phi::DenseTensor dst_max_tensor;
-  PrepareWeight<T>(&dst_tensor, &dst_max_tensor, transpose);
+                   Node* weight,
+                   Node** dst_weight,
+                   Node** dst_weight_max,
+                   Node** dst_scale_max,
+                   bool transpose,
+                   const std::vector<float>& weight_scales,
+                   bool per_channel_quant) {
+  auto weight_name = weight->Name();
+  auto* weight_tensor = scope->Var(weight_name)->GetMutable<phi::DenseTensor>();
+  phi::DenseTensor dst_weight_tensor;
+  Assign(*weight_tensor, &dst_weight_tensor);
+  phi::DenseTensor dst_weight_max_tensor;
+  phi::DenseTensor dst_scale_max_tensor;
+  ConvertWeightWrapper<Tcpu, Txpu>(&dst_weight_tensor,
+                                   &dst_weight_max_tensor,
+                                   &dst_scale_max_tensor,
+                                   transpose,
+                                   weight_scales,
+                                   per_channel_quant);
 
-  size_t dst_hash = HashTensor<T>(dst_tensor);
-  size_t dst_max_hash = HashTensor<float>(dst_max_tensor);
-  std::string pre_name = GetPrefixWithoutHash(src_name);
-  std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
-  std::string dst_max_name = pre_name + "_max_#" + std::to_string(dst_max_hash);
-  *dst = FindNodeWithName(graph, dst_name);
-  if (*dst == nullptr) {
-    // Create dst node
-    // Update dst var_desc in block
-    VarDesc dst_desc(dst_name);
-    dst_desc.SetPersistable(true);
-    dst_desc.SetShape(vectorize(dst_tensor.dims()));
-    dst_desc.SetDataType(framework::TransToProtoVarType(dst_tensor.dtype()));
-    *dst = graph->CreateVarNode(&dst_desc);
-    auto* block_dst_desc = block->Var(dst_name);
-    block_dst_desc->SetPersistable(dst_desc.Persistable());
-    block_dst_desc->SetShape(dst_desc.GetShape());
-    block_dst_desc->SetDataType(dst_desc.GetDataType());
-    // Create dst_max node
-    // Update dst_max var_desc in block
-    VarDesc dst_max_desc(dst_max_name);
-    dst_max_desc.SetPersistable(true);
-    dst_max_desc.SetShape(vectorize(dst_max_tensor.dims()));
-    dst_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
-    *dst_max = graph->CreateVarNode(&dst_max_desc);
-    auto* block_dst_max_desc = block->Var(dst_max_name);
-    block_dst_max_desc->SetPersistable(dst_max_desc.Persistable());
-    block_dst_max_desc->SetShape(dst_max_desc.GetShape());
-    block_dst_max_desc->SetDataType(dst_max_desc.GetDataType());
+  size_t dst_weight_hash = HashTensor<Txpu>(dst_weight_tensor);
+  size_t dst_weight_max_hash = HashTensor<float>(dst_weight_max_tensor);
+  std::string pre_name = GetPrefixWithoutHash(weight_name);
+  std::string dst_weight_name =
+      pre_name + "_#" + std::to_string(dst_weight_hash);
+  std::string dst_weight_max_name =
+      pre_name + "_max_#" + std::to_string(dst_weight_max_hash);
 
+  *dst_weight = FindNodeWithName(graph, dst_weight_name);
+  if (*dst_weight == nullptr) {
+    // Create dst_weight node
+    // Update dst_weight var_desc in block
+    VarDesc dst_weight_desc(dst_weight_name);
+    dst_weight_desc.SetPersistable(true);
+    dst_weight_desc.SetShape(common::vectorize(dst_weight_tensor.dims()));
+    dst_weight_desc.SetDataType(
+        framework::TransToProtoVarType(dst_weight_tensor.dtype()));
+    *dst_weight = graph->CreateVarNode(&dst_weight_desc);
+    auto* block_dst_weight_desc = block->Var(dst_weight_name);
+    block_dst_weight_desc->SetPersistable(dst_weight_desc.Persistable());
+    block_dst_weight_desc->SetShape(dst_weight_desc.GetShape());
+    block_dst_weight_desc->SetDataType(dst_weight_desc.GetDataType());
+    // Create dst_weight_max node
+    // Update dst_weight_max var_desc in block
+    VarDesc dst_weight_max_desc(dst_weight_max_name);
+    dst_weight_max_desc.SetPersistable(true);
+    dst_weight_max_desc.SetShape(
+        common::vectorize(dst_weight_max_tensor.dims()));
+    dst_weight_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+    *dst_weight_max = graph->CreateVarNode(&dst_weight_max_desc);
+    auto* block_dst_weight_max_desc = block->Var(dst_weight_max_name);
+    block_dst_weight_max_desc->SetPersistable(
+        dst_weight_max_desc.Persistable());
+    block_dst_weight_max_desc->SetShape(dst_weight_max_desc.GetShape());
+    block_dst_weight_max_desc->SetDataType(dst_weight_max_desc.GetDataType());
     // Find dst/dst_max variable in scope
-    auto* dst_var = scope->FindVar(dst_name);
-    if (dst_var == nullptr) {
-      // Create dst/dst_max variable/tensor
-      Assign(dst_tensor, scope->Var(dst_name)->GetMutable<phi::DenseTensor>());
-      Assign(dst_max_tensor,
-             scope->Var(dst_max_name)->GetMutable<phi::DenseTensor>());
+    auto* dst_weight_var = scope->FindVar(dst_weight_name);
+    if (dst_weight_var == nullptr) {
+      // Create dst_weight/dst_weight_max variable/tensor
+      Assign(dst_weight_tensor,
+             scope->Var(dst_weight_name)->GetMutable<phi::DenseTensor>());
+      Assign(dst_weight_max_tensor,
+             scope->Var(dst_weight_max_name)->GetMutable<phi::DenseTensor>());
     } else {
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
-          scope->FindVar(dst_max_name),
-          platform::errors::Fatal(
-              "dst_max(%s) variable should not be nullptr if dst(%s) "
-              "variable is exist. (src_name is %s)",
-              dst_max_name,
-              dst_name,
-              src_name));
+          scope->FindVar(dst_weight_max_name),
+          platform::errors::Fatal("dst_weight_max(%s) variable should not be "
+                                  "nullptr if dst_weight(%s) "
+                                  "variable is exist. (weight_name is %s)",
+                                  dst_weight_max_name,
+                                  dst_weight_name,
+                                  weight_name));
     }
   } else {
-    *dst_max = FindNodeWithName(graph, dst_max_name);
+    *dst_weight_max = FindNodeWithName(graph, dst_weight_max_name);
     PADDLE_ENFORCE_NOT_NULL(
-        *dst_max,
-        platform::errors::Fatal(
-            "dst_max(%s) variable should not be nullptr if dst(%s) "
-            "variable is exist. (src_name is %s)",
-            dst_max_name,
-            dst_name,
-            src_name));
+        *dst_weight_max,
+        platform::errors::Fatal("dst_weight_max(%s) variable should not be "
+                                "nullptr if dst_weight(%s) "
+                                "variable is exist. (weight_name is %s)",
+                                dst_weight_max_name,
+                                dst_weight_name,
+                                weight_name));
+  }
+
+  if (dst_scale_max_tensor.initialized()) {
+    size_t dst_scale_max_hash = HashTensor<float>(dst_scale_max_tensor);
+    std::string dst_scale_max_name =
+        pre_name + "_scale_max_#" + std::to_string(dst_scale_max_hash);
+    if (*dst_scale_max == nullptr) {
+      // Create dst_scale_max node
+      // Update dst_scale_max var_desc in block
+      VarDesc dst_scale_max_desc(dst_scale_max_name);
+      dst_scale_max_desc.SetPersistable(true);
+      dst_scale_max_desc.SetShape(
+          common::vectorize(dst_weight_max_tensor.dims()));
+      dst_scale_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+      *dst_scale_max = graph->CreateVarNode(&dst_scale_max_desc);
+      auto* block_dst_scale_max_desc = block->Var(dst_scale_max_name);
+      block_dst_scale_max_desc->SetPersistable(
+          dst_scale_max_desc.Persistable());
+      block_dst_scale_max_desc->SetShape(dst_scale_max_desc.GetShape());
+      block_dst_scale_max_desc->SetDataType(dst_scale_max_desc.GetDataType());
+      // Find dst/dst_max variable in scope
+      auto* dst_scale_max_var = scope->FindVar(dst_scale_max_name);
+      if (dst_scale_max_var == nullptr) {
+        Assign(dst_scale_max_tensor,
+               scope->Var(dst_scale_max_name)->GetMutable<phi::DenseTensor>());
+      } else {
+        // Share the same variable
+        PADDLE_ENFORCE_NOT_NULL(
+            scope->FindVar(dst_scale_max_name),
+            platform::errors::Fatal("dst_scale_max(%s) variable should not be "
+                                    "nullptr if dst_weight(%s) "
+                                    "variable is exist. (weight_name is %s)",
+                                    dst_scale_max_name,
+                                    dst_weight_name,
+                                    weight_name));
+      }
+    }
   }
 }
 
-template void PrepareWeight<int16_t>(Graph* graph,
-                                     Scope* scope,
-                                     BlockDesc* block,
-                                     Node* src,
-                                     Node** dst,
-                                     Node** dst_max,
-                                     bool transpose);
-template void PrepareWeight<int8_t>(Graph* graph,
-                                    Scope* scope,
-                                    BlockDesc* block,
-                                    Node* src,
-                                    Node** dst,
-                                    Node** dst_max,
-                                    bool transpose);
+template void PrepareWeight<float, float>(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    Node* weight,
+    Node** dst_weight,
+    Node** dst_weight_max,
+    Node** dst_scale_max,
+    bool transpose,
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
+
+template void PrepareWeight<float, int16_t>(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    Node* weight,
+    Node** dst_weight,
+    Node** dst_weight_max,
+    Node** dst_scale_max,
+    bool transpose,
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
+
+template void PrepareWeight<float, int8_t>(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    Node* weight,
+    Node** dst_weight,
+    Node** dst_weight_max,
+    Node** dst_scale_max,
+    bool transpose,
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
+
+template void PrepareWeight<int8_t, int8_t>(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    Node* weight,
+    Node** dst_weight,
+    Node** dst_weight_max,
+    Node** dst_scale_max,
+    bool transpose,
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
 
 void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst) {
@@ -237,7 +323,7 @@ void PrepareBias(
     // Update dst var_desc in block
     VarDesc dst_desc(dst_name);
     dst_desc.SetPersistable(true);
-    dst_desc.SetShape(vectorize(dst_tensor.dims()));
+    dst_desc.SetShape(common::vectorize(dst_tensor.dims()));
     dst_desc.SetDataType(framework::TransToProtoVarType(dst_tensor.dtype()));
     *dst = graph->CreateVarNode(&dst_desc);
     auto* block_dst_desc = block->Var(dst_name);

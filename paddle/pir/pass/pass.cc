@@ -14,6 +14,7 @@
 
 #include "paddle/pir/pass/pass.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
@@ -22,6 +23,8 @@
 #include "paddle/pir/pass/pass_adaptor.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 
@@ -31,6 +34,35 @@ namespace pir {
 Pass::~Pass() = default;
 
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
+
+detail::PassExecutionState& Pass::pass_state() {
+  IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
+  return *pass_state_;
+}
+
+//===----------------------------------------------------------------------===//
+// PatternRewritePass
+//===----------------------------------------------------------------------===//
+bool PatternRewritePass::Initialize(IrContext* context) {
+  RewritePatternSet ps = InitializePatterns(context);
+  IR_ENFORCE(ps.Empty() == false,
+             "Pass creation failed."
+             "When using PatternRewritePass to create a Pass, the number of "
+             "customized Patterns is required to be greater than zero."
+             "Suggested fix: Check whether Pattern is added to the "
+             "InitializePatterns() function of class [%s]",
+             name());
+  patterns_ = FrozenRewritePatternSet(std::move(ps));
+  return true;
+}
+
+void PatternRewritePass::Run(Operation* op) {
+  GreedyRewriteConfig cfg;
+  cfg.use_top_down_traversal = true;
+  cfg.max_iterations = 10;
+  auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
+  AddStatistics(num_rewrites);
+}
 
 //----------------------------------------------------------------------------------------------//
 // PassAdaptor
@@ -46,10 +78,10 @@ void detail::PassAdaptor::RunImpl(Operation* op,
 
   for (size_t i = 0; i < op->num_regions(); ++i) {
     auto& region = op->region(i);
-    for (auto* block : region) {
-      for (auto op : *block) {
-        AnalysisManagerHolder am(op, last_am.GetPassInstrumentor());
-        if (!RunPipeline(*pm_, op, am, opt_level, verify))
+    for (auto& block : region) {
+      for (auto& op : block) {
+        AnalysisManagerHolder am(&op, last_am.GetPassInstrumentor());
+        if (!RunPipeline(*pm_, &op, am, opt_level, verify))
           return SignalPassFailure();
       }
     }

@@ -15,10 +15,9 @@
 import inspect
 import warnings
 
-from paddle.base.dygraph.base import in_to_static_mode
-
 from .. import core
-from ..framework import Variable, static_only, unique_name
+from ..dygraph.base import in_to_static_mode
+from ..framework import Variable, default_main_program, static_only
 from .layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
@@ -31,6 +30,15 @@ _supported_int_dtype_ = [
 ]
 
 compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
+
+SUPPORT_PROMOTION_OPS = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+]
 
 EXPRESSION_MAP = {
     "__add__": "A + B",
@@ -61,7 +69,7 @@ _already_patch_variable = False
 
 def monkey_patch_variable():
     def unique_tmp_name():
-        return unique_name.generate("tmp")
+        return default_main_program()._name_generator.generate("tmp")
 
     def safe_get_dtype(var):
         try:
@@ -302,8 +310,9 @@ def monkey_patch_variable():
     @static_only
     def append(self, var):
         """
-        **Notes**:
-           **The type variable must be LoD Tensor Array.
+
+        Note:
+           The type variable must be LoD Tensor Array.
 
         """
         if not isinstance(var, Variable):
@@ -519,10 +528,33 @@ def monkey_patch_variable():
                         current_block(self), value=other_var, dtype=lhs_dtype
                     )
 
-            # 3. unify right var type to left var
+            # 3. type promotion
             rhs_dtype = safe_get_dtype(other_var)
+
             if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+                if method_name in SUPPORT_PROMOTION_OPS:
+                    if core.need_type_promotion(lhs_dtype, rhs_dtype):
+                        common_dtype = core.get_promote_dtype(
+                            op_type, lhs_dtype, rhs_dtype
+                        )
+                        warnings.warn(
+                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted to {common_dtype}"
+                        )
+                        warnings.filterwarnings(
+                            "ignore", message="The input dtypes of OP"
+                        )
+                        if rhs_dtype != common_dtype:
+                            other_var = astype(other_var, common_dtype)
+                        if lhs_dtype != common_dtype:
+                            self = astype(self, common_dtype)
+                    else:
+                        # NOTE(zoooo0820): Currently, we still keep the old illogical \
+                        # logic for compatibility reasons
+                        other_var = astype(other_var, lhs_dtype)
+
+                else:
+                    other_var = astype(other_var, lhs_dtype)
+
             if reverse:
                 tmp = self
                 self = other_var
@@ -581,6 +613,20 @@ def monkey_patch_variable():
         """
         __impl__.__name__ = method_name
         return __impl__
+
+    def _int_(self):
+        raise TypeError(
+            "int(Variable) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Variable, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Variable.astype(paddle.int32), and do not use int(Variable)."
+        )
+
+    def _float_(self):
+        raise TypeError(
+            "float(Variable) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Variable, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Variable directly, and do not use float(Variable)."
+        )
 
     def values(var):
         block = current_block(var)
@@ -707,6 +753,8 @@ def monkey_patch_variable():
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('__float__', _float_),
+        ('__int__', _int_),
         ('values', values),
         ('indices', indices),
         ('to_dense', to_dense),

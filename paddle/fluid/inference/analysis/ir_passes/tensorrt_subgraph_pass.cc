@@ -129,11 +129,20 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
+  VLOG(3) << "Running tensorrt_subgraph_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running tensorrt_subgraph_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running tensorrt_subgraph_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {
     LOG(WARNING)
-        << "Paddle-TRT not support bf16 mixed precison, just fallback.";
+        << "Paddle-TRT not support bf16 mixed precision, just fallback.";
     return;
   }
 
@@ -184,6 +193,12 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
   std::vector<std::string> engine_names;
   for (auto *node : graph->Nodes()) {
+    // load optimized model may update shape_range_info_path
+    auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
+    if (node->IsOp() && node->Op()->Type() == "tensorrt_engine" &&
+        !shape_range_info_path.empty()) {
+      node->Op()->SetAttr("shape_range_info_path", shape_range_info_path);
+    }
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       engine_names.push_back(CreateTensorRTOp(
           node, graph, graph_param_names, &repetitive_params, use_cuda_graph));
@@ -218,7 +233,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               .Has(name),
           true,
           platform::errors::PreconditionNotMet(
-              "TRTEnegineManager shoud has engine %s, but not found.", name));
+              "TRTEngineManager should has engine %s, but not found.", name));
       paddle::inference::Singleton<
           inference::tensorrt::TRTEngineManager>::Global()
           .Get(name)
@@ -358,7 +373,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // so we must find all the var_name+id.
   // https://github.com/PaddlePaddle/Paddle/pull/53184
   for (auto *n : graph->Nodes()) {
-    if (n->IsVar() && input_names.count(n->Name())) {
+    if (n->IsVar() &&
+        find(graph_params.begin(), graph_params.end(), n->Name()) !=
+            graph_params.end()) {
       input_names_with_id.insert(
           RenameVarBeUnique(n->Name(), std::to_string(n->id())));
     }
@@ -827,7 +844,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
             << GetTrtEngineSerializedPath(
                    Get<std::string>("model_opt_cache_dir"), engine_key)
             << ". Engine deserialization failed: Serialized Engine Version "
-               "does not match Current Version, TRT engine will be rebuilded";
+               "does not match Current Version, TRT engine will be rebuilt";
       }
     }
   }
@@ -839,7 +856,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   // the following code will NOT run in following situation:
-  // 1. calibraion mode (generate trt int8 calibraiton table data)
+  // 1. calibration mode (generate trt int8 calibration table data)
   // 2. already load serialized trt engine info.
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                "kernel etc). This process may cost a lot of time.";

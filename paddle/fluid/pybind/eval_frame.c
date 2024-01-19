@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eval_frame.h"
+#include "paddle/fluid/pybind/eval_frame_tools.h"
 
 #include <Python.h>
 #include <frameobject.h>
@@ -458,6 +459,7 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   // Create a new function object from code object. Refer to MAKE_FUNCTION.
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
+  Py_INCREF(func);
 #if PY_VERSION_HEX < 0x030c0000
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
@@ -559,10 +561,19 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
                                     FrameObject *frame,
                                     int throw_flag,
                                     PyObject *callback) {
+  PyObject *out;
+  eval_frame_callback_set(Py_None);
+
 // https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
 // https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
 #if PY_VERSION_HEX >= 0x030b0000
   if (frame->owner == FRAME_OWNED_BY_GENERATOR) {
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
+    return out;
+  }
+  if (PyBytes_GET_SIZE(frame->f_code->co_exceptiontable)) {
+    eval_frame_callback_set(callback);
     return eval_frame_default(tstate, frame, throw_flag);
   }
   // PyFrame_FastToLocalsWithError receives a PyFrameObject, but if we created a
@@ -577,6 +588,11 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
 #else
+  if (frame->f_code->co_flags & 0x20) {
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
+    return out;
+  }
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
     return NULL;
@@ -593,58 +609,70 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   //                  # <--- which Cause the PyObject_CallObject raise
   //                  SystemError.
   if (PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
-    return eval_frame_default(tstate, frame, throw_flag);
-  }
-
-  // We don't run the current custom_eval_frame behavior for guards.
-  // So we temporarily set the callback to Py_None to drive the correct behavior
-  // in the shim.
-  eval_frame_callback_set(Py_None);
-
-#if PY_VERSION_HEX >= 0x030b0000
-  PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
-#else
-  PyObject *args = Py_BuildValue("(O)", frame);
-#endif
-  PyObject *result = PyObject_CallObject(callback, args);
-  Py_DECREF(args);
-  // VLOG(7) << "After call eval_frame_function and decrease frame.";
-  // class CustomCode(Protocal):
-  //     code: CodeType | None
-  //     disable_eval_frame: bool
-  // result: CustomCode
-  if (result == NULL) {
-    // internal exception
-    // VLOG(7) << "Error happened.";
-    return NULL;
-  } else {
-    //  NOTE: Cache is not supported now
-    PyCodeObject *code = (PyCodeObject *)PyObject_GetAttrString(result, "code");
-    PyObject *disable_eval_frame =
-        PyObject_GetAttrString(result, "disable_eval_frame");
-    PyObject *out = NULL;
-    // VLOG(7) << "Start eval new frame and code.";
-    if (disable_eval_frame != Py_True) {
-      // Re-enable custom behavior
-      eval_frame_callback_set(callback);
-      if ((PyObject *)code != Py_None) {
-        out = eval_custom_code(tstate, frame, code, throw_flag);
-      } else {
-        out = eval_frame_default(tstate, frame, throw_flag);
-      }
-    } else {
-      if ((PyObject *)code != Py_None) {
-        out = eval_custom_code(tstate, frame, code, throw_flag);
-      } else {
-        out = eval_frame_default(tstate, frame, throw_flag);
-      }
-      // Re-enable custom behavior
-      eval_frame_callback_set(callback);
-    }
-    Py_DECREF(result);
-    Py_DECREF(code);
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
     return out;
   }
+
+  PyObject *code;
+  PyObject *disable_eval_frame;
+
+  // get code & disable_eval_frame
+  if (need_skip(frame)) {
+    Py_INCREF(Py_None);
+    code = Py_None;
+    Py_INCREF(Py_False);
+    disable_eval_frame = Py_False;
+  } else {
+    /* should calculate guards here if we want */
+#if PY_VERSION_HEX >= 0x030b0000
+    PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
+#else
+    PyObject *args = Py_BuildValue("(O)", frame);
+#endif
+    PyObject *result = PyObject_CallObject(callback, args);
+    Py_DECREF(args);
+    if (result == NULL) {
+      return NULL;
+    }
+    code = PyObject_GetAttrString(result, "code");
+    disable_eval_frame = PyObject_GetAttrString(result, "disable_eval_frame");
+    Py_DECREF(result);
+  }
+
+  // code status
+  if (is_code_without_graph(code == Py_None ? frame->f_code
+                                            : (PyCodeObject *)code) &&
+      disable_eval_frame == Py_False) {
+    out = eval_frame_default(tstate, frame, throw_flag);
+    eval_frame_callback_set(callback);
+    Py_DECREF(code);
+    Py_DECREF(disable_eval_frame);
+    return out;
+  }
+
+  // run code
+  if (disable_eval_frame != Py_True) {
+    // Re-enable custom behavior
+    eval_frame_callback_set(callback);
+    if (code != Py_None) {
+      out = eval_custom_code(tstate, frame, (PyCodeObject *)code, throw_flag);
+    } else {
+      out = eval_frame_default(tstate, frame, throw_flag);
+    }
+  } else {
+    if (code != Py_None) {
+      out = eval_custom_code(tstate, frame, (PyCodeObject *)code, throw_flag);
+    } else {
+      out = eval_frame_default(tstate, frame, throw_flag);
+    }
+    // Re-enable custom behavior
+    eval_frame_callback_set(callback);
+  }
+
+  Py_DECREF(code);
+  Py_DECREF(disable_eval_frame);
+  return out;
 }
 
 static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
