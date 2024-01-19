@@ -639,14 +639,16 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 
 template <typename T>
 std::tuple<Tensor, Tensor, Tensor>
-paddle::primitive::details::group_norm_decomp<primitive::LazyTensor>(
+paddle::primitive::details::group_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,
     const paddle::optional<Tensor>& bias,
     const float epsilon,
     const int groups,
     const std::string& data_format) {
-  ASSERT_EQ(data_format, "NCHW");
+  if (data_format != "NCHW") {
+    PADDLE_THROW(phi::errors::Unimplemented("Only support NCHW format."));
+  }
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 
@@ -663,8 +665,9 @@ paddle::primitive::details::group_norm_decomp<primitive::LazyTensor>(
   auto mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
   auto var_tmp_ =
       mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) - mean_ * mean_;
-  auto var_ =
-      maximum<T>(var_tmp_, full<T>(var_tmp_.dims(), 0, var_tmp_.dtype()));
+  auto var_ = maximum<T>(
+      var_tmp_,
+      full<T>(common::vectorize(var_tmp_.dims()), 0, var_tmp_.dtype()));
   auto var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
   auto res = (x_cast - mean_) * var_inv;
   auto out = reshape<T>(res, x_dim);
@@ -707,30 +710,6 @@ paddle::primitive::details::group_norm_decomp<primitive::LazyTensor>(
   }
 
   return std::make_tuple(out, mean_out, var_out);
-}
-
-template <typename T>
-Tensor meshgrid_decomp(const std::vector<Tensor>& input) {
-  int size = input.size();
-  std::vector<int64_t> shape(size, 1);
-
-  for (int i = 0; i < size; ++i) {
-    int dim = input[i].dims().size();
-    ASSERT_TRUE(dim == 1 || dim == 2);
-
-    if (dim == 1) {
-      shape[i] = input[i].dims()[0];
-    }
-  }
-
-  std::vector<Tensor> out_tensors;
-  for (int i = 0; i < size; ++i) {
-    std::vector<int64_t> view_shape(size, 1);
-    view_shape[i] = shape[i];
-    auto out = reshape<T>(input[i], view_shape).broadcast(shape);
-    out_tensors.push_back(out);
-  }
-  return out_tensors;
 }
 
 }  // namespace details

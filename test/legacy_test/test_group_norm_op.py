@@ -83,7 +83,9 @@ def group_norm_wrapper(
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.prim_op_type = "prim"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.float64
