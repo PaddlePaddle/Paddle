@@ -14,12 +14,13 @@
 
 #pragma once
 
-#include <string>
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace cinn::adt {
+namespace phi {
 
-class ScheduleMesh;
-
-std::string ToTxtString(const ScheduleMesh& schedule_mesh);
-
-}  // namespace cinn::adt
+template <typename T, typename Context>
+void ApplyPerChannelScaleKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& scales,
+                                DenseTensor* out);
+}  // namespace phi

@@ -475,9 +475,9 @@ SymbolicDim GetOrNewSymbolicDim(
   const auto& target_symbolic_dim_op =
       GetSymbolicDimOp4TensorDim(target_tensor_dim, shape_analysis);
   for (const auto& [tensor_dim, symbolic_dim] : tensor_dim2symbolic_Dim) {
-    const auto& cur_symblic_dim_op =
+    const auto& cur_symbolic_dim_op =
         GetSymbolicDimOp4TensorDim(tensor_dim, shape_analysis);
-    if (target_symbolic_dim_op == cur_symblic_dim_op) {
+    if (target_symbolic_dim_op == cur_symbolic_dim_op) {
       return symbolic_dim;
     }
   }
