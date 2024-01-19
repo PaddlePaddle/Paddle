@@ -2100,7 +2100,8 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   phi::Scalar i_scalar;
-  if (i_ && i_.defining_op()->isa<paddle::dialect::FullOp>()) {
+  if (i_.isa<pir::OpResult>() &&
+      i_.defining_op()->isa<paddle::dialect::FullOp>()) {
     i_scalar =
         std::move(phi::Scalar(i_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()

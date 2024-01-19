@@ -389,7 +389,7 @@ def GenBuildOutputs(
 """
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
-  if ({name}_ && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
                           {name}_.defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
@@ -411,7 +411,7 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
-  if ({name}_ && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = paddle::dialect::GetInt64Vector(
                     {name}_.defining_op()
                     ->dyn_cast<paddle::dialect::FullIntArrayOp>()
@@ -431,7 +431,7 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
-  if ({name}_ && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
     {name} = std::move(phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")

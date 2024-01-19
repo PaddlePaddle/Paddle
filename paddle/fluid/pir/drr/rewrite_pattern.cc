@@ -427,7 +427,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
         continue;
       }
       auto ir_val = res_match_ctx.GetIrValue(input->name());
-      if (ir_val) {
+      if (ir_val.isa<pir::OpResult>()) {
         pir::Operation* ir_input_op = ir_val.defining_op();
         if (op_2_temp_program_index.count(ir_input_op) == 0) {
           max_input_op_index = 0UL;
@@ -529,7 +529,7 @@ void DrrRewritePattern::DeleteSourcePatternOp(
             << ") in source_pattern_graph.";
     rewriter.EraseOp(op);
     for (const auto& input : inputs) {
-      if (input && input.defining_op()->use_empty() &&
+      if (input.isa<pir::OpResult>() && input.defining_op()->use_empty() &&
           delete_ops_set.count(input.defining_op()) == 0) {
         delete_ops_set.insert(input.defining_op());
         delete_ops_que.push(input.defining_op());

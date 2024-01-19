@@ -526,7 +526,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
           pir::Value defining_op_result = param_map_[var_name].value;
-          if (!defining_op_result) {
+          if (!defining_op_result.isa<pir::OpResult>()) {
             continue;
           }
 
@@ -576,7 +576,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
     for (const auto& value_info : value_list) {
       pir::Value value = value_info.value;
-      if (!value) continue;
+      if (!value.isa<pir::OpResult>()) continue;
       auto* defining_op = value.defining_op();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
@@ -643,7 +643,7 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
     }
     for (const auto& value_info : value_list) {
       pir::Value value = value_info.value;
-      if (!value) continue;
+      if (!value.isa<pir::OpResult>()) continue;
       auto* defining_op = value.defining_op();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
