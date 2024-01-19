@@ -163,7 +163,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Free *op) {
       return false;
     });
   }
-  if (has_symbolic_constant) {
+  if (has_symbolic_constant &&
+      buffer->memory_type == ir::MemoryType::GPULocal) {
     str_ += "delete [] ";
     str_ += op->destination.As<ir::_Buffer_>()->name;
     str_ += ";\n";
