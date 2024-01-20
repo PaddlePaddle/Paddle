@@ -120,6 +120,7 @@ struct StaticDimToDynamicConverter {
       converted_once |= converted.has_value();
       return converted;
     });
+    VLOG(4) << "Finish StaticDimToDynamic Convert, Begin UpdateValueDim";
     UpdateValueDim();
     return converted_once;
   }
