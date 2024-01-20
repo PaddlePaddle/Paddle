@@ -48,7 +48,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
         "corresponding to Input(ids). If Input(ids) is not nullptr, its "
         "shape is the same as that of Input(ids)."
         "If is_accumulated is true, Input(scores) is accumulated scores "
-        "and will be used derectedly. Else, each score will be "
+        "and will be used directly. Else, each score will be "
         "transformed to the log field and accumulate Input(pre_sores) "
         "first.");
     AddOutput("selected_ids",

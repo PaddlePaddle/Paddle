@@ -48,12 +48,12 @@ class BlockingQueue {
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
     if (killed_) {
       VLOG(3)
-          << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+          << "WARNING:: Sending an element to a killed reader::BlockingQueue";
       return false;
     }
     if (closed_) {
       VLOG(5)
-          << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
+          << "WARNING: Sending an element to a closed reader::BlockingQueue.";
       return false;
     }
     PADDLE_ENFORCE_LT(
@@ -75,12 +75,12 @@ class BlockingQueue {
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
     if (killed_) {
       VLOG(3)
-          << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+          << "WARNING:: Sending an element to a killed reader::BlockingQueue";
       return false;
     }
     if (closed_) {
       VLOG(5)
-          << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
+          << "WARNING: Sending an element to a closed reader::BlockingQueue.";
       return false;
     }
     PADDLE_ENFORCE_LT(

@@ -70,7 +70,7 @@ The output of this operator changes according to whether Input(Label) is given:
    This happens in training. This operator is used to co-work with the chunk_eval
    operator.
    When Input(Label) is given, the crf_decoding operator returns tensor with the
-   sampe shape as Input(Label) whose values are fixed to be 0, indicating an
+   same shape as Input(Label) whose values are fixed to be 0, indicating an
    incorrect prediction, or 1 indicating a tag is correctly predicted. Such an
    output is the input to chunk_eval operator.
 

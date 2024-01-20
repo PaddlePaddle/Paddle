@@ -62,7 +62,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   }
 };
 
-class LogsumexpGrapOp : public framework::OperatorWithKernel {
+class LogsumexpGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -105,4 +105,4 @@ REGISTER_OPERATOR(logsumexp,
                   ops::LogsumexpGradOpMaker<paddle::framework::OpDesc>,
                   ops::LogsumexpGradOpMaker<paddle::imperative::OpBase>,
                   LogsumexpInferShapeFunctor);
-REGISTER_OPERATOR(logsumexp_grad, ops::LogsumexpGrapOp);
+REGISTER_OPERATOR(logsumexp_grad, ops::LogsumexpGradOp);
