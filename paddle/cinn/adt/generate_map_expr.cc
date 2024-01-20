@@ -32,7 +32,6 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 
 #include "glog/logging.h"
 
