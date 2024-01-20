@@ -12,12 +12,8 @@ endif()
 
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
-  PATHS
-    ${CUDNN_ROOT}/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/include/
-    ${CUDNN_ROOT}/include
-    $ENV{CUDNN_ROOT}
-    $ENV{CUDNN_ROOT}/include
-    ${CUDA_TOOLKIT_INCLUDE}
+  PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include $ENV{CUDNN_ROOT}
+        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
   NO_DEFAULT_PATH)
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
@@ -32,7 +28,6 @@ list(
   CUDNN_CHECK_LIBRARY_DIRS
   ${CUDNN_ROOT}
   ${CUDNN_ROOT}/lib64
-  ${CUDNN_ROOT}/local/lib/python${PY_VERSION}/dist-packages/nvidia/cudnn/lib/
   ${CUDNN_ROOT}/lib
   ${CUDNN_ROOT}/lib/x64
   ${CUDNN_ROOT}/lib/${TARGET_ARCH}-linux-gnu
@@ -47,8 +42,7 @@ list(
 set(CUDNN_LIB_NAME "")
 
 if(LINUX)
-  set(CUDNN_LIB_NAME "libcudnn.so.8")
-  set(CUDNN_OPS_INFER_LIB_NAME "libcudnn_ops_infer.so.8")
+  set(CUDNN_LIB_NAME "libcudnn.so")
 endif()
 
 if(WIN32)
@@ -62,17 +56,10 @@ endif()
 
 find_library(
   CUDNN_LIBRARY
-  NAMES ${CUDNN_LIB_NAME}
+  NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
   PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
   NO_DEFAULT_PATH
   DOC "Path to cuDNN library.")
-
-find_library(
-  CUDNN_OPS_INFER_LIBRARY
-  NAMES ${CUDNN_OPS_INFER_LIB_NAME}
-  PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
-  NO_DEFAULT_PATH
-  DOC "Path to cuDNN_ops_infer library.")
 
 if(CUDNN_INCLUDE_DIR AND CUDNN_LIBRARY)
   set(CUDNN_FOUND ON)

@@ -228,7 +228,6 @@ static inline void* GetDsoHandleFromSearchPath(
   for (auto const& dso : dso_names) {
     // 1. search in user config path by FLAGS
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
-    VLOG(1) << "dso:" << dso << "dyload_flags:" << dynload_flags;
     // 2. search in system default path
     if (nullptr == dso_handle) {
       dso_handle = GetDsoHandleFromDefaultPath(dso, dynload_flags);
