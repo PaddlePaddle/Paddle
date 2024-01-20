@@ -17,7 +17,7 @@
 
 enum Token_type {
   EOF_ = -1,
-  IDENTIFER = 0,
+  IDENTIFIER = 0,
   DIGIT = 1,
   SDIGIT = 2,
   ENDTAG = 3,

@@ -27,7 +27,7 @@ uint32_t OpResultImpl::index() const {
 
 OpResultImpl::~OpResultImpl() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destoryed a op_result that is still in use. \n"
+    LOG(FATAL) << "Destroyed a op_result that is still in use. \n"
                << "The owner op type is:" << owner()->name();
   }
 }
@@ -72,7 +72,7 @@ void OpResultImpl::set_attribute(const std::string &key, Attribute value) {
   auto attr = owner->attribute(key);
   if (attr && !attr.isa<ArrayAttribute>()) {
     IR_THROW(
-        "The %s attribute has existed as operation attriubute. Can't set it as "
+        "The %s attribute has existed as operation attribute. Can't set it as "
         "value attribute. ");
   }
   auto array_attr = attr.dyn_cast<ArrayAttribute>();

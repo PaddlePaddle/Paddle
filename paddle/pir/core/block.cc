@@ -23,7 +23,7 @@
 namespace pir {
 Block::~Block() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destoryed a block that is still in use.";
+    LOG(FATAL) << "Destroyed a block that is still in use.";
   }
   clear();
   ClearArguments();

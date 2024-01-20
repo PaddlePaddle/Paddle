@@ -398,12 +398,12 @@ int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
                               sizeof(Operation));
 }
 
-#define COMPONENT_IMPL(component_lower, componnent_upper)                   \
-  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) \
-      const {                                                               \
-    int32_t offset = Compute##componnent_upper##Offset(index);              \
-    return reinterpret_cast<componnent_upper##Impl *>(                      \
-        reinterpret_cast<char *>(const_cast<Operation *>(this)) + offset);  \
+#define COMPONENT_IMPL(component_lower, component_upper)                   \
+  component_upper##Impl *Operation::component_lower##_impl(uint32_t index) \
+      const {                                                              \
+    int32_t offset = Compute##component_upper##Offset(index);              \
+    return reinterpret_cast<component_upper##Impl *>(                      \
+        reinterpret_cast<char *>(const_cast<Operation *>(this)) + offset); \
   }
 
 COMPONENT_IMPL(op_result, OpResult)

@@ -49,7 +49,7 @@ class IR_API OpBase {
 
   Block *parent() const { return operation()->GetParent(); }
 
-  // Attribtue related interfaces
+  // Attribute related interfaces
   const AttributeMap &attributes() const { return operation()->attributes(); }
   Attribute attribute(const std::string &key) const {
     return operation()->attribute(key);

@@ -24,8 +24,8 @@ void OpInfo::AttachInterface(InterfaceValue &&interface_value) {
 }
 
 void OpInfoImpl::AttachInterface(InterfaceValue &&interface_value) {
-  auto suceess = interface_set_.insert(std::move(interface_value)).second;
-  IR_ENFORCE(suceess,
+  auto success = interface_set_.insert(std::move(interface_value)).second;
+  IR_ENFORCE(success,
              "Interface: id[%u] is already registered. inset failed",
              interface_value.type_id());
   VLOG(10) << "Attach a interface: id[" << interface_value.type_id() << "]. to "
@@ -93,7 +93,7 @@ void OpInfoImpl::Destroy(OpInfo info) {
   if (info.impl_) {
     info.impl_->Destroy();
   } else {
-    LOG(WARNING) << "A nullptr OpInfo is destoryed.";
+    LOG(WARNING) << "A nullptr OpInfo is destroyed.";
   }
 }
 
@@ -128,7 +128,7 @@ void OpInfoImpl::Destroy() {
       reinterpret_cast<char *>(this) - sizeof(pir::TypeId) * num_traits_;
   // (2)free interfaces
   this->~OpInfoImpl();
-  // (3) free memeory
+  // (3) free memory
   VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
   ::operator delete(base_ptr);
 }

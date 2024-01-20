@@ -256,7 +256,7 @@ std::vector<std::string> IrParser::ParseValueList() {
   return value_index;
 }
 
-// OpName := "\"" StringIdentifer "." StringIdentifer "\""
+// OpName := "\"" StringIdentifier "." StringIdentifier "\""
 OpInfo IrParser::ParseOpInfo() {
   Token opname_token = ConsumeToken();
   std::string opname =
@@ -288,7 +288,7 @@ std::vector<Value> IrParser::ParseOperandList() {
 }
 
 // AttributeMap := "{" AttributeEntry,(,AttributeEntry)* "}"
-// AttributeEntry := StringIdentifer:Attribute
+// AttributeEntry := StringIdentifier:Attribute
 AttributeMap IrParser::ParseAttributeMap() {
   AttributeMap attribute_map{};
   ConsumeAToken("{");
