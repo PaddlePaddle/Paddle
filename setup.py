@@ -1454,7 +1454,7 @@ def get_headers():
 def get_setup_parameters():
     # get setup_requires
     setup_requires = get_setup_requires()
-    if platform.system == 'Linux' and platform.machine() == 'x86_64':
+    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
         paddle_cuda_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
 

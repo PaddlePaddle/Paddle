@@ -400,7 +400,6 @@ def get_paddle_extra_install_requirements():
         "PADDLE_CUDA_INSTALL_REQUIREMENTS", ""
     )
     if paddle_cuda_install_requirements is not None:
-
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-nvrtc-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -626,8 +625,7 @@ if sys.version_info >= (3,8):
             continue
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
-    
-    if platform.system == 'Linux' and platform.machine() == 'x86_64':
+    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
         paddle_cuda_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
     
