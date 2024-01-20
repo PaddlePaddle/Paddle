@@ -165,11 +165,6 @@ __global__ void masked_multihead_attention_kernel(
   int end_seq = (split_index + 1) * steps_per_block;
   end_seq = end_seq > act_time_step ? act_time_step : end_seq;
 
-  // if (blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0) {
-  //   printf("start_seq %d\n", start_seq);
-  //   printf("end_seq %d\n", end_seq);
-  // }
-
   // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
   // this hi means the head index in query!
   int qkv_base_offset = bi * (params.num_head + 2 * kv_num_head) * Dh + hi * Dh;
@@ -472,12 +467,6 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
-
-  // if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 1 && threadIdx.x == 0) {
-  //   printf("qk_smem0 %f\n", qk_smem[0]);
-  //   printf("qk_smem1 %f\n", qk_smem[1]);
-  // }
-
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
@@ -640,18 +629,9 @@ __global__ void masked_multihead_attention_kernel(
   
   if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
     for(int tmp=0;tmp<8;++tmp) {
-      params.split_out[bhi * Dh*2 + vi*2 + tmp*2 + split_index] = ((float*)(&out))[tmp];
-      //if(split_index == 0){
-      //params.split_out[bhi * Dh + vi + tmp] = ((float*)(&out))[tmp];}
+      params.split_out[(bhi*2 + split_index) * Dh + vi + tmp] = ((float*)(&out))[tmp];
     }
   }
-  
-  // if (blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0 && split_index == 0) {
-  //   printf("params.split_out[0] %f \n", params.split_out[0]);
-  //   printf("params.split_out[1] %f \n", ((float*)(&out))[1]);
-  //   printf("params.split_out[2] %f \n", ((float*)(&out))[2]);
-  //   printf("params.split_out[2] %f \n", ((float*)(&out))[3]);
-  // }
 
   return;
 
@@ -949,9 +929,8 @@ __global__ void post_process_kernel(Masked_multihead_attention_params<T> params)
   float sum0 = params.qk_sum_split_seq[bhi * 2 + 0];
   float sum1 = params.qk_sum_split_seq[bhi * 2 + 1];
 
-  float v0 = params.split_out[bhi * 128*2 + tid*2];
-  //float v0 = params.split_out[bhi * 128 + tid];
-  float v1 = params.split_out[bhi * 128*2 + tid*2+1];
+  float v0 = params.split_out[bhi*2 * 128 + tid];
+  float v1 = params.split_out[(bhi*2+1) * 128 + tid];
   
   float max = max0 > max1 ? max0 : max1;
   float real_sum0 = sum0 * __expf(max0 - max);
