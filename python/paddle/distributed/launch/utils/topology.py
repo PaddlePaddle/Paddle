@@ -133,6 +133,8 @@ class SingleNodeTopology:
             return 48000, 24000
         elif "A100" in model:
             return 19500, 9700
+        elif "A800" in model:
+            return 19500, 9700
         elif "V100" in model:
             return 15700, 7800
         elif "P100" in model:

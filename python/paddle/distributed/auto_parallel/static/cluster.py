@@ -1275,7 +1275,7 @@ def get_default_cluster(json_config=None, auto_config=None):
             node = Node()
             master_ip, _ = master_endpoint.split(":")
             # TODO how to generate the same free port in all process
-            free_port = 12345
+            free_port = 12346
             server_endpoint = f"{master_ip}:{free_port}"
 
             if local_rank == 0 and master_ip in curr_endpoint:
@@ -1302,8 +1302,15 @@ def get_default_cluster(json_config=None, auto_config=None):
                     for key, value in global_topo.items():
                         _, _, _, mesh_type, idx = key.split("/")
                         if mesh_type not in topo_dict:
-                            topo_dict[mesh_type] = {}
-                        topo_dict[mesh_type][int(idx)] = json.loads(value)
+                            topo_dict[mesh_type] = []
+                        mesh_idx = len(topo_dict[mesh_type])
+                        global_topo_value = json.loads(value)
+                        for device in global_topo_value["devices"]:
+                            device["global_id"] += mesh_idx*8
+                        for link in global_topo_value["links"]:
+                            link["source_global_id"] += mesh_idx*8
+                            link["target_global_id"] += mesh_idx*8
+                        topo_dict[mesh_type].append(global_topo_value)
                     cluster._build_from_topo(topo_dict, local_size)
                     retry = False
                 else:
@@ -1332,6 +1339,7 @@ def get_default_cluster(json_config=None, auto_config=None):
                     else:
                         logger.info("server stoped failed! retry later")
                         time.sleep(1)
+            logger.info(f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}')
             return cluster
         else:
             # when single machine, use topo directory
@@ -1341,6 +1349,7 @@ def get_default_cluster(json_config=None, auto_config=None):
                 }
             }
             cluster._build_from_topo(topo_dict, local_size)
+            logger.info(f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}')
             return cluster
     else:
         # Get GPU info by get_device_properties

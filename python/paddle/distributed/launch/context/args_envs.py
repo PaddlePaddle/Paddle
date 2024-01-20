@@ -42,7 +42,7 @@ env_args_mapping = {
     'PADDLE_START_PORT': ('start_port', int),
     'PADDLE_IPS': ('ips', str),
     "PADDLE_AUTO_PARALLEL_CONFIG": ('auto_parallel_config', str),
-    'PADDLE_AUTO_CLUSTER': 'auto_cluster_config',
+    'PADDLE_AUTO_CLUSTER': ('auto_cluster_config', strtobool),
 }
 
 
