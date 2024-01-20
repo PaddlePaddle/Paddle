@@ -6,17 +6,11 @@ if(NOT WITH_CINN)
     ${CMAKE_CURRENT_SOURCE_DIR}/sub_graph_detector.cc)
 endif()
 
-set(transforms_deps
-    drr
-    op_dialect
-    op_dialect_vjp
-    standalone_executor
-    pir
-    device_event_base
-    common)
+set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir
+                    device_event_base)
 
 if(WITH_CINN)
-  set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi)
+  set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi common)
 endif()
 
 cc_library(
