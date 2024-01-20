@@ -32,7 +32,7 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 
