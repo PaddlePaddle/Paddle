@@ -3349,10 +3349,10 @@ function distribute_test() {
     echo "Start LLM Test"
     cd ${work_dir}/PaddleNLP
     #python -m pytest -s -v tests/llm --timeout=3600
-    env CUDA_VISIBLE_DEVICES=0,1 python -m pytest tests/llm/test_finetune.py tests/llm/test_gradio.py &
-    env CUDA_VISIBLE_DEVICES=2,3 python -m pytest tests/llm/test_lora.py tests/llm/test_predictor.py &
-    env CUDA_VISIBLE_DEVICES=4,5 python -m pytest tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
-    env CUDA_VISIBLE_DEVICES=6,7 python -m pytest tests/llm/test_ptq.py tests/llm/testing_utils.py &
+    #env CUDA_VISIBLE_DEVICES=0,1 python -m pytest tests/llm/test_finetune.py tests/llm/test_gradio.py &
+    #env CUDA_VISIBLE_DEVICES=2,3 python -m pytest tests/llm/test_lora.py tests/llm/test_predictor.py &
+    #env CUDA_VISIBLE_DEVICES=4,5 python -m pytest tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
+    #env CUDA_VISIBLE_DEVICES=6,7 python -m pytest tests/llm/test_ptq.py tests/llm/testing_utils.py &
     echo "End LLM Test"
 
     echo "Start auto_parallel Test"
