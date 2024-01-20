@@ -159,7 +159,7 @@ void MultiGRUOpMaker::Make() {
   AddInput("WeightH",
            "(MultiTensor) (D x 3D) Same as GRUOp, where D is the hidden size. "
            "This weight is not exactly D x 3D as: {W_update, W_reset, W_state}"
-           "Acutally they are D x 2D and D x D two part weights."
+           "Actually they are D x 2D and D x D two part weights."
            "{W_update, W_reset; W_state}"
            "{D x (D + D); D x D}")
       .AsDuplicable();
