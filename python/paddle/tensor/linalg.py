@@ -913,7 +913,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
         )
 
 
-def norm(x, p='fro', axis=None, keepdim=False, name=None):
+def norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
 
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
@@ -1008,8 +1008,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
     # calculate vector norm, where axis is None, int or list with only one integer
     if axis is None or (isinstance(axis, int)):
-        if isinstance(p, str) and p == 'fro':
-            p = 2
         if isinstance(p, (int, float)):
             return vector_norm(
                 x,

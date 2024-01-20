@@ -159,7 +159,7 @@ def numpy_frobenius_norm(x, axis=None, keepdims=False):
     if isinstance(axis, list):
         axis = tuple(axis)
     if axis is None:
-        x = x.reshape(1, x.size)
+        axis = (-2, -1)
     r = np.linalg.norm(x, ord='fro', axis=axis, keepdims=keepdims).astype(
         x.dtype
     )
@@ -669,8 +669,6 @@ def run_graph(self, p, axis, shape_x, dtype):
     out_vector_norm = paddle.linalg.vector_norm(x, p=2, axis=-1)
 
     # compute frobenius norm along last two dimensions.
-    out_fro = paddle.norm(x, p='fro')
-    out_fro = paddle.norm(x, p='fro', axis=0)
     out_fro = paddle.norm(x, p='fro', axis=[0, 1])
     # compute nuclear norm.
     out_nuc = paddle.norm(x, p='nuc', axis=[0, 1])
@@ -706,7 +704,7 @@ class API_NormTest(unittest.TestCase):
             run_fro(
                 self,
                 p='fro',
-                axis=None,
+                axis=[-2, -1],
                 shape_x=[2, 3, 4],
                 dtype="float32",
                 keep_dim=keep,
@@ -1016,7 +1014,7 @@ class API_NormTest(unittest.TestCase):
             )
 
     def test_dygraph(self):
-        run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
+        run_graph(self, p=2, axis=None, shape_x=[2, 3, 4], dtype="float32")
 
         paddle.disable_static()
         keep_dims = {False, True}
@@ -1206,7 +1204,7 @@ class API_NormTest(unittest.TestCase):
         paddle.enable_static()
         with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
-            y_1 = paddle.norm(x, p='fro', name='frobenius_name')
+            y_1 = paddle.norm(x, p='fro', axis=[-2, -1], name='frobenius_name')
             y_2 = paddle.norm(x, p=2, name='pnorm_name')
             y_3 = paddle.norm(x, p='nuc', axis=[0, 1], name='nuclear_name')
             y_4 = paddle.norm(x, p=2, axis=[0, 1], name='p_matrix_norm_name')
