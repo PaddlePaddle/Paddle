@@ -512,21 +512,61 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             )
 
 
-def matrix_norm(x, p=2.0, axis=None, keepdim=False, name=None):
+def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
     """
-    Calculate the p-order vector norm for certain  dimension of Tensor `input`.
+    Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
 
     Args:
         x (Tensor): Tensor, data type float32, float64.
         p (float|string, optional): None for porder=2.0. Default None.
-        axis (int|list, optional): None for last dimension. Default None.
+        axis (list, optional): The axis is a list(int)/tuple(int) with two elements. Default last two dimensions.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: results of vector_norm operation on the specified axis of input tensor,
+        Tensor: results of matrix_norm operation on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            >>> print(x)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[[-12., -11., -10., -9. ],
+              [-8. , -7. , -6. , -5. ],
+              [-4. , -3. , -2. , -1. ]],
+             [[ 0. ,  1. ,  2. ,  3. ],
+              [ 4. ,  5. ,  6. ,  7. ],
+              [ 8. ,  9. ,  10.,  11.]]])
+
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=2,axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [15.75858021, 14.97979641, 14.69693565, 14.97979069])
+
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='fro',axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
+
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [42., 38.])
+
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=-1,axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [12., 12., 12., 12.])
+
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='nuc',axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [23.21962929, 22.82873917, 22.69693565, 22.82873344])
+
     """
 
     def _backshift_permutation(dim0, dim1, dimn):
@@ -869,7 +909,7 @@ def matrix_norm(x, p=2.0, axis=None, keepdim=False, name=None):
 
     else:
         raise ValueError(
-            f"except axis type int or list (length of list == 2), found {axis}"
+            f"except axis type int or list (length of list == 2), found {len(axis)}"
         )
 
 
@@ -877,19 +917,13 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     """
 
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
-    or 2-norm, and in general the p-norm for p > 0) of a given tensor.
-
-    Note:
-        This norm API is different from `numpy.linalg.norm`.
-        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
-        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
-        For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
+    or 2-norm, and in general the p-norm) of a given tensor.
 
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
         p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0.
+            `inf`, `-inf` and any positive real number yielding the corresponding p-norm.
             Default value is `fro`.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
@@ -967,18 +1001,16 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
              [4., 3., 2., 1.]])
     """
 
-    if axis is None:
-        pass
-    elif isinstance(axis, tuple):
+    if isinstance(axis, tuple):
         axis = list(axis)
     elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
     # calculate vector norm, where axis is None, int or list with only one integer
-    if (axis is None and p is not None) or (isinstance(axis, int)):
-        if (isinstance(p, str) and p == "fro") or isinstance(p, (int, float)):
-            if p == "fro":
-                p = 2
+    if axis is None or (isinstance(axis, int)):
+        if isinstance(p, str) and p == 'fro':
+            p = 2
+        if isinstance(p, (int, float)):
             return vector_norm(
                 x,
                 p=p,
@@ -988,7 +1020,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                f"only valid p type is string or float and only valid string values are 'fro', found {type(p)} and{p}"
+                f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
             )
 
     # calculate matrix norm, where axis is list with two integers

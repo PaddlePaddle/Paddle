@@ -31,44 +31,101 @@ def p_norm_python_api(
         return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
 
 
+# def np_linalg_vector_norm(x, axis, porder, keepdims=False):
+#     r = []
+#     if axis is None:
+#         x_f = x.flatten()
+#         if porder == np.inf:
+#             r = np.amax(np.abs(x_f), keepdims=keepdims)
+#         elif porder == -np.inf:
+#             r = np.amin(np.abs(x_f), keepdims=keepdims)
+#         else:
+#             r = np.linalg.norm(x_f, ord=porder, keepdims=keepdims)
+#         if keepdims:
+#             r = np.squeeze(r)
+#             for i in range(len(x.shape)):
+#                 r = np.expand_dims(r, 0)
+#     elif isinstance(axis, list or tuple) and len(axis) >= 2:
+#         if porder == np.inf:
+#             axis = tuple(axis)
+#             r = np.amax(np.abs(x), axis=axis, keepdims=keepdims)
+#         elif porder == -np.inf:
+#             axis = tuple(axis)
+#             r = np.amin(np.abs(x), axis=axis, keepdims=keepdims)
+#         elif porder == 0:
+#             axis = tuple(axis)
+#             r = x.astype(bool)
+#             r = np.sum(r, axis, keepdims=keepdims)
+#         elif porder == 1:
+#             axis = tuple(axis)
+#             r = np.sum(np.abs(x), axis, keepdims=keepdims)
+#         else:
+#             axis = tuple(axis)
+#             xp = np.power(np.abs(x), porder)
+#             s = np.sum(xp, axis=axis, keepdims=keepdims)
+#             r = np.power(s, 1.0 / porder)
+#     else:
+#         if isinstance(axis, list):
+#             axis = tuple(axis)
+#         r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
+#     r = r.astype(x.dtype)
+
+#     return r
+
+
 def np_linalg_vector_norm(x, axis, porder, keepdims=False):
-    r = []
-    if axis is None:
-        x_f = x.flatten()
-        if porder == np.inf:
-            r = np.amax(np.abs(x_f), keepdims=keepdims)
-        elif porder == -np.inf:
-            r = np.amin(np.abs(x_f), keepdims=keepdims)
-        else:
-            r = np.linalg.norm(x_f, ord=porder, keepdims=keepdims)
-        if keepdims:
-            r = np.squeeze(r)
-            for i in range(len(x.shape)):
-                r = np.expand_dims(r, 0)
-    elif isinstance(axis, list or tuple) and len(axis) >= 2:
-        if porder == np.inf:
-            axis = tuple(axis)
-            r = np.amax(np.abs(x), axis=axis, keepdims=keepdims)
-        elif porder == -np.inf:
-            axis = tuple(axis)
-            r = np.amin(np.abs(x), axis=axis, keepdims=keepdims)
-        elif porder == 0:
-            axis = tuple(axis)
-            r = x.astype(bool)
-            r = np.sum(r, axis, keepdims=keepdims)
-        elif porder == 1:
-            axis = tuple(axis)
-            r = np.sum(np.abs(x), axis, keepdims=keepdims)
-        else:
-            axis = tuple(axis)
-            xp = np.power(np.abs(x), porder)
-            s = np.sum(xp, axis=axis, keepdims=keepdims)
-            r = np.power(s, 1.0 / porder)
+    x_shape = list(x.shape)
+
+    axis_static = axis
+    if axis_static is None:
+        pass
+    elif isinstance(axis_static, int):
+        axis_static = [axis_static]
     else:
-        if isinstance(axis, list):
-            axis = tuple(axis)
-        r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
-    r = r.astype(x.dtype)
+        axis_static = list(axis_static)
+
+    if axis is None:
+        x = x.ravel()
+        axis = -1
+
+    if not isinstance(axis, int) and len(axis) > 1:
+        for i in range(len(axis)):
+            if axis[i] < 0:
+                axis[i] += len(x.shape)
+        tmp_axis = []
+        for i in range(len(axis)):
+            tmp_axis.append(-1 - i)
+        x = np.moveaxis(x, axis, tmp_axis)
+
+        front_dim = 1
+        for i in range(0, len(x.shape) - len(axis)):
+            front_dim = front_dim * x.shape[i]
+        back_dim = 1
+        for i in range(len(x.shape) - len(axis), len(x.shape)):
+            back_dim = back_dim * x.shape[i]
+
+        x = x.reshape(front_dim, back_dim)
+        axis = -1
+    if isinstance(axis, list):
+        axis = tuple(axis)
+
+    r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
+
+    if axis_static is None:
+        if keepdims:
+            r_shape = np.ones_like(x_shape)
+            r = r.reshape(r_shape)
+    elif len(axis_static) > 1 and keepdims:
+        r_shape = x_shape
+        for i in axis_static:
+            r_shape[i] = 1
+        r = r.reshape(r_shape)
+    elif len(axis_static) > 1 and not keepdims:
+        r_shape = []
+        for i in range(len(x_shape)):
+            if i not in axis_static:
+                r_shape.append(x_shape[i])
+        r = r.reshape(r_shape)
 
     return r
 
