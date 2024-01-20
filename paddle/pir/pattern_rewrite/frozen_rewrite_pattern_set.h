@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// The design and code is mainly from MLIR, thanks to the greate project.
+/// The design and code is mainly from MLIR, thanks to the great project.
 
 #pragma once
 

@@ -87,7 +87,7 @@ std::pair<std::vector<DimExpr>, std::vector<DimExpr>> DimExprBuilder::SplitAt(
   SYMBOL_NOT_IMPLEMENTED;
 }
 
-const std::vector<DimExprConstraint>& DimExprBuilder::constaints() const {
+const std::vector<DimExprConstraint>& DimExprBuilder::constraints() const {
   SYMBOL_NOT_IMPLEMENTED;
 }
 
