@@ -55,7 +55,7 @@
 #endif
 
 PHI_DECLARE_bool(print_ir);
-PHI_DECLARE_string(pir_onednn_kernel_blacklist);
+// PHI_DECLARE_string(pir_onednn_kernel_blacklist);
 
 namespace paddle {
 namespace dialect {
@@ -1087,6 +1087,7 @@ phi::KernelKey GetKernelKey(
 
 #ifdef PADDLE_WITH_DNNL
   std::regex reg(",");
+  std::string FLAGS_pir_onednn_kernel_blacklist;
   std::unordered_set<std::string> elems{
       std::sregex_token_iterator(FLAGS_pir_onednn_kernel_blacklist.begin(),
                                  FLAGS_pir_onednn_kernel_blacklist.end(),
