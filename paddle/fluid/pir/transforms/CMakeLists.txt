@@ -10,7 +10,7 @@ set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir
                     device_event_base)
 
 if(WITH_CINN)
-  set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi common)
+  set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi)
 endif()
 
 cc_library(
