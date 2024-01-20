@@ -83,8 +83,8 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
             fixed_sizes.size(),
             densities.size()));
     size_t num_priors = 0;
-    for (auto densitie : densities) {
-      num_priors += (fixed_ratios.size()) * (pow(densitie, 2));  // NOLINT
+    for (auto density : densities) {
+      num_priors += (fixed_ratios.size()) * (pow(density, 2));  // NOLINT
     }
     if (!flatten) {
       std::vector<int64_t> dim_vec(4);

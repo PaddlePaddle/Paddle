@@ -79,7 +79,7 @@ y = opB(x)
 
 if tensor b and tensor x has some inner dependency, for example, x share data with b,
 we need to add explicit dependency for x <- b, otherwise the these two operators may
-be executed parellel in static graph. We can use depend op as below,
+be executed parallel in static graph. We can use depend op as below,
 
 b = opA(a)
 x = depend(x, b)

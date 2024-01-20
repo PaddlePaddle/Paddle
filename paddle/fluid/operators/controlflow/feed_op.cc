@@ -155,7 +155,7 @@ class FeedOp : public framework::OperatorWithKernel {
             feed_sparse_tensor.GetIndicesDict());
       } else {
         PADDLE_THROW(
-            phi::errors::Unimplemented("Only support DenseTnesor, Strings, and "
+            phi::errors::Unimplemented("Only support DenseTensor, Strings, and "
                                        "SparseCooTensor for feed op now."));
       }
     }
