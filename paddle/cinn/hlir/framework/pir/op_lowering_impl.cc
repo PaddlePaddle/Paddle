@@ -550,15 +550,18 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       std::vector<Type> out_types;
       std::vector<std::vector<ir::Dim>> out_shapes;
       CollectOutputInfo(op, &out_types, &out_shapes, group);
+      CHECK_EQ(out_types.size(), out_shapes.size());
       VLOG(4) << "out_types.size(): " << out_types.size();
       NodeAttr node_attrs = details::CollectAttrs(*op);
-      auto& strategy =
+      auto& strategy_map =
           Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
-      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
-                                                         op_func_arg_tensors,
-                                                         out_types,
-                                                         out_shapes,
-                                                         this->target_));
+      StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
+      CHECK(static_cast<bool>(strategy)) << " cinn_op_name: " << cinn_op_name;
+      op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
+                                                op_func_arg_tensors,
+                                                out_types,
+                                                out_shapes,
+                                                this->target_));
     } else {
       std::vector<Type> out_types;
       std::vector<std::vector<int>> out_shapes;
@@ -797,14 +800,26 @@ void OpLowererImpl::CollectOutputInfo(
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    if (!group->value_to_shape_or_data_exprs.empty()) {
-      auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
-      std::vector<ir::Dim> sym_shape;
-      for (auto& sym : sym_vec) {
-        sym_shape.emplace_back(output_id, sym);
+    
+    auto ForEachDimExpr = [&](const auto& DoEach) {
+      if (!group->value_to_shape_or_data_exprs.empty()) {
+        auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+        std::vector<ir::Dim> sym_shape;
+        for (const auto& sym : sym_vec) {
+          DoEach(sym);
+        }
+      } else {
+        auto out_shape = ::common::vectorize<int64_t>(type_info.dims());
+        for (int64_t dim : out_shape) {
+          DoEach(symbol::DimExpr{dim});
+        }
       }
-      out_shapes->push_back(std::move(sym_shape));
-    }
+    };
+    std::vector<ir::Dim> sym_shape;
+    ForEachDimExpr([&](const auto& sym){
+      sym_shape.emplace_back(output_id, sym);
+    });
+    out_shapes->emplace_back(std::move(sym_shape));
   }
 }
 
