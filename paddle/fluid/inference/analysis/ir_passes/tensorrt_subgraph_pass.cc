@@ -142,7 +142,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {
     LOG(WARNING)
-        << "Paddle-TRT not support bf16 mixed precison, just fallback.";
+        << "Paddle-TRT not support bf16 mixed precision, just fallback.";
     return;
   }
 
@@ -233,7 +233,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               .Has(name),
           true,
           platform::errors::PreconditionNotMet(
-              "TRTEnegineManager shoud has engine %s, but not found.", name));
+              "TRTEngineManager should has engine %s, but not found.", name));
       paddle::inference::Singleton<
           inference::tensorrt::TRTEngineManager>::Global()
           .Get(name)
@@ -844,7 +844,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
             << GetTrtEngineSerializedPath(
                    Get<std::string>("model_opt_cache_dir"), engine_key)
             << ". Engine deserialization failed: Serialized Engine Version "
-               "does not match Current Version, TRT engine will be rebuilded";
+               "does not match Current Version, TRT engine will be rebuilt";
       }
     }
   }
@@ -856,7 +856,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   // the following code will NOT run in following situation:
-  // 1. calibraion mode (generate trt int8 calibraiton table data)
+  // 1. calibration mode (generate trt int8 calibration table data)
   // 2. already load serialized trt engine info.
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                "kernel etc). This process may cost a lot of time.";

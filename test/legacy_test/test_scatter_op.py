@@ -711,25 +711,36 @@ class TestScatterAPI(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-                index_t = paddle.static.data(
-                    name="index", dtype=index.dtype, shape=index.shape
-                )
-                updates_t = paddle.static.data(
-                    name="updates", dtype=updates.dtype, shape=updates.shape
-                )
-                out_t = paddle.scatter(x_t, index_t, updates_t)
-                feed = {
-                    x_t.name: x,
-                    index_t.name: index,
-                    updates_t.name: updates,
-                }
-                fetch = [out_t]
-                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
-                return gpu_value
+                scope = paddle.static.Scope()
+                with paddle.static.scope_guard(scope):
+                    x_t = paddle.static.data(
+                        name="x", dtype=x.dtype, shape=x.shape
+                    )
+                    index_t = paddle.static.data(
+                        name="index", dtype=index.dtype, shape=index.shape
+                    )
+                    updates_t = paddle.static.data(
+                        name="updates", dtype=updates.dtype, shape=updates.shape
+                    )
+                    out_t = paddle.scatter(x_t, index_t, updates_t)
+                    feed = {
+                        x_t.name: x,
+                        index_t.name: index,
+                        updates_t.name: updates,
+                    }
+                    fetch = [out_t]
+                    gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                    gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                    scope._remove_from_pool()
+                    return gpu_value
 
-        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
+        def test_pir_static_graph():
+            with paddle.pir_utils.IrGuard():
+                return test_static_graph()
+
+        dy_out = test_dygraph()
+        np.testing.assert_array_equal(dy_out, test_static_graph())
+        np.testing.assert_array_equal(dy_out, test_pir_static_graph())
 
 
 @unittest.skipIf(

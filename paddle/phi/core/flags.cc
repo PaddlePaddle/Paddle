@@ -1413,19 +1413,6 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
 
-/**
- * Apply shape optimization pass to new IR FLAG
- * Name: pir_apply_shape_optimization_pass
- * Since Version: 3.0.0
- * Value Range: bool, default=false
- * Example:
- * Note: If Ture, will apply shape_optimization pass to new IR.
- */
-PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
-                         false,
-                         "Whether to apply shape_optimization pass "
-                         "to infer symbolic shape");
-
 PHI_DEFINE_EXPORTED_string(
     ir_inplace_kernel_blacklist,
     "",
@@ -1442,6 +1429,20 @@ PHI_DEFINE_EXPORTED_string(
     pir_subgraph_saving_dir,
     "",
     "Specify the directory of saving PIR sugraph from @to_static.");
+
+/**
+ * PIR use OneDNN kernel black list FLAG
+ * Name: pir_onednn_kernel_blacklist
+ * Since Version: 2.7.0
+ * Value Range: str, default=""
+ * Example:
+ * Note: This environment variable controls the partial operators not using
+ * onednn.
+ */
+PHI_DEFINE_EXPORTED_string(pir_onednn_kernel_blacklist,
+                           "",
+                           "This environment variable controls the partial "
+                           "operators not using onednn.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 

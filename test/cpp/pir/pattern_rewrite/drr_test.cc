@@ -18,13 +18,12 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-class RemoveRedundentReshapePattern
-    : public paddle::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
+class RemoveRedundentReshapePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source patterns
@@ -42,10 +41,11 @@ class RemoveRedundentReshapePattern
     res.Op("pd_op.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
                             {&res.Tensor("ret"), &res.Tensor("xshape_1")});
   }
+
+  std::string name() const override { return "RemoveRedundentReshapePattern"; }
 };
 
-class FoldExpandToConstantPattern
-    : public paddle::drr::DrrPatternBase<FoldExpandToConstantPattern> {
+class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
@@ -65,7 +65,7 @@ class FoldExpandToConstantPattern
 
     // Result patterns
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr = res.Attr(
+    const auto &new_perm_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> phi::IntArray {
           auto shape =
               match_ctx.Attr<std::vector<int64_t>>("expand_shape_value");
@@ -79,10 +79,11 @@ class FoldExpandToConstantPattern
                                 {"place", pat.Attr("place_1")}});
     res.Tensor("ret") = full2();
   }
+
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 
-class RemoveRedundentTransposePattern
-    : public paddle::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
+class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -94,7 +95,7 @@ class RemoveRedundentTransposePattern
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr = res.Attr(
+    const auto &new_perm_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
           const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");
@@ -109,10 +110,13 @@ class RemoveRedundentTransposePattern
 
     res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
   }
+
+  std::string name() const override {
+    return "RemoveRedundentTransposePattern";
+  }
 };
 
-class RemoveRedundentCastPattern
-    : public paddle::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") = pat.Op(
@@ -123,10 +127,11 @@ class RemoveRedundentCastPattern
     res.Tensor("ret") = res.Op(
         "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 
-class RemoveUselessCastPattern
-    : public paddle::drr::DrrPatternBase<RemoveUselessCastPattern> {
+class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
@@ -135,6 +140,8 @@ class RemoveUselessCastPattern
     auto res = pat.ResultPattern();
     res.Tensor("ret").Assign(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "RemoveUselessCastPattern"; }
 };
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT

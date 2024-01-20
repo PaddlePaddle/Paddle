@@ -23,6 +23,7 @@ import paddle
 from paddle import base, regularizer
 from paddle.base import core, framework
 from paddle.base.backward import append_backward
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestL2Decay(unittest.TestCase):
@@ -295,15 +296,19 @@ class TestRegularizer(unittest.TestCase):
                     rtol=5e-5,
                 )
 
+    @test_with_pir_api
     def test_repeated_regularization(self):
         l1 = paddle.regularizer.L1Decay(coeff=0.1)
         l2 = paddle.regularizer.L2Decay(coeff=0.01)
         fc_param_attr = paddle.ParamAttr(
             regularizer=paddle.regularizer.L1Decay()
         )
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.uniform([2, 2, 3])
-            out = paddle.static.nn.fc(x, 5, weight_attr=fc_param_attr)
+            linear = paddle.nn.Linear(3, 5, weight_attr=fc_param_attr)
+            out = linear(x)
             loss = paddle.sum(out)
             sgd = paddle.optimizer.SGD(learning_rate=0.1, weight_decay=l2)
             sgd.minimize(loss)

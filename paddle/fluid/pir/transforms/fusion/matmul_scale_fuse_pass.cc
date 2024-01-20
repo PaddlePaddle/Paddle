@@ -13,22 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
-#include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class MatmulScaleFusePattern
-    : public paddle::drr::DrrPatternBase<MatmulScaleFusePattern> {
+class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -60,13 +55,10 @@ class MatmulScaleFusePattern
                                       {"value", pat.Attr("value")},
                                       {"dtype", pat.Attr("dtype")},
                                       {"place", pat.Attr("place")}});
-    const auto &scale_op_res = res.Op(
-        paddle::dialect::ScaleOp::name(),
-        {{"bias",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-            return 0.0;
-          })},
-         {"bias_after_scale", pat.Attr("bias_after_scale")}});
+    const auto &scale_op_res =
+        res.Op(paddle::dialect::ScaleOp::name(),
+               {{"bias", res.Float32Attr(0.0)},
+                {"bias_after_scale", pat.Attr("bias_after_scale")}});
     const auto &matmul_op_res =
         res.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", pat.Attr("transpose_x")},
@@ -76,6 +68,8 @@ class MatmulScaleFusePattern
     matmul_op_res({&res.Tensor("x"), &res.Tensor("scale_res_out")},
                   {&res.Tensor("scale_out")});
   }
+
+  std::string name() const override { return "MatmulScaleFusePattern"; }
 };
 
 class MatmulScaleFusePass : public pir::PatternRewritePass {

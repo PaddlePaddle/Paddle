@@ -985,6 +985,8 @@ class TestLayer(LayerTest):
                 self.assertRaises(TypeError, test_type)
 
         _test_errors()
+        with paddle.pir_utils.IrGuard():
+            _test_errors()
 
     @test_with_pir_api
     def test_spectral_norm(self):
@@ -1119,6 +1121,7 @@ class TestLayer(LayerTest):
                 conv3d1.bias.numpy(), conv3d2.bias.numpy()
             )
 
+    @test_with_pir_api
     def test_while_loop(self):
         with self.static_graph():
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
@@ -1259,6 +1262,7 @@ class TestLayer(LayerTest):
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
 
+    @test_with_pir_api
     def test_cond(self):
         def less_than_branch(a, b):
             return paddle.add(a, b)
@@ -1310,10 +1314,11 @@ class TestLayer(LayerTest):
 
         np.testing.assert_array_equal(static_res, dynamic_res)
 
+    @test_with_pir_api
     def test_case(self):
         def fn_1():
             return paddle.tensor.fill_constant(
-                shape=[1, 2], dtype='float32', value=1
+                shape=[1, 2], dtype='int32', value=1
             )
 
         def fn_2():
@@ -1323,7 +1328,7 @@ class TestLayer(LayerTest):
 
         def fn_3():
             return paddle.tensor.fill_constant(
-                shape=[3], dtype='int32', value=3
+                shape=[3, 2], dtype='int32', value=3
             )
 
         with self.static_graph():
@@ -1383,10 +1388,11 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_res1, dynamic_res1)
         np.testing.assert_array_equal(static_res2, dynamic_res2)
 
+    @test_with_pir_api
     def test_switch_case(self):
         def fn_1():
             return paddle.tensor.fill_constant(
-                shape=[1, 2], dtype='float32', value=1
+                shape=[1, 2], dtype='int32', value=1
             )
 
         def fn_2():
@@ -1396,7 +1402,7 @@ class TestLayer(LayerTest):
 
         def fn_3():
             return paddle.tensor.fill_constant(
-                shape=[3], dtype='int32', value=3
+                shape=[3, 2], dtype='int32', value=3
             )
 
         with self.static_graph():
@@ -2205,6 +2211,7 @@ class TestBook(LayerTest):
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
 
+    @test_with_pir_api
     def test_stridedslice(self):
         axes = [0, 1, 2]
         starts = [1, 0, 2]

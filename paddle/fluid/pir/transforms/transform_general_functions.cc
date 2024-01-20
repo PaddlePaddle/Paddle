@@ -16,6 +16,8 @@
 
 #include <unordered_set>
 
+#include "paddle/common/ddim.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -75,13 +77,17 @@ std::string GetParameterNameFromValue(pir::Value value) {
   return name;
 }
 
-const phi::DDim& GetShapeFromValue(pir::Value value) {
-  // TODO(dev): Support other types like DenseTensor.
-  PADDLE_ENFORCE_EQ(
-      value.type().isa<paddle::dialect::DenseTensorType>(),
-      true,
-      phi::errors::InvalidArgument("Value's type must be a DenseTensorType."));
-  return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+std::vector<int64_t> GetShapeFromValue(pir::Value value) {
+  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense_tensor or selected_rows."));
+  }
 }
 
 pir::Type GetDataTypeFromValue(pir::Value value) {

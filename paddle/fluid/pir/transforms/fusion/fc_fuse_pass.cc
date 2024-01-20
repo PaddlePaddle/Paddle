@@ -13,15 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class MatmulAddPattern : public paddle::drr::DrrPatternBase<MatmulAddPattern> {
+class MatmulAddPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -33,25 +35,22 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase<MatmulAddPattern> {
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("y"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      if (match_ctx.Tensor("w").Shape().size() != 2 ||
-          match_ctx.Tensor("x").Shape().size() < 2) {
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
+      if (w_dims.size() != 2 || x_dims.size() < 2) {
         return false;
       }
-      if (match_ctx.Tensor("x").Shape().at(
-              match_ctx.Tensor("x").Shape().size() - 1) !=
-              match_ctx.Tensor("w").Shape().at(0) ||
+      if (x_dims.at(x_dims.size() - 1) != w_dims.at(0) ||
           match_ctx.Attr<bool>("transpose_x") == true ||
           match_ctx.Attr<bool>("transpose_y") == true) {
         return false;
       }
-      if (match_ctx.Tensor("y").Shape().size() == 1) {
-        return match_ctx.Tensor("y").Shape().at(0) ==
-               match_ctx.Tensor("w").Shape().at(1);
+      if (y_dims.size() == 1) {
+        return y_dims.at(0) == w_dims.at(1);
       }
-      if (match_ctx.Tensor("y").Shape().size() == 2) {
-        return match_ctx.Tensor("y").Shape().at(0) == 1 &&
-               match_ctx.Tensor("y").Shape().at(1) ==
-                   match_ctx.Tensor("w").Shape().at(1);
+      if (y_dims.size() == 2) {
+        return y_dims.at(0) == 1 && y_dims.at(1) == w_dims.at(1);
       }
       return false;
     });
@@ -59,30 +58,26 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase<MatmulAddPattern> {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &in_num_col_dims_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return match_ctx.Tensor("x").Shape().size() - 1;
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
+          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+          return static_cast<int>(x_dims.size()) - 1;
         });
-    const auto &false_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
-        });
+    const auto &false_attr = res.BoolAttr(false);
 
-    const auto &fc =
-        res.Op(paddle::dialect::FcOp::name(),
-               {{
-                   {"in_num_col_dims", in_num_col_dims_attr},
-                   {"activation_type",
-                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                                 -> std::string { return ""; })},
-                   {"padding_weights", false_attr},
-               }});
+    const auto &fc = res.Op(paddle::dialect::FcOp::name(),
+                            {{
+                                {"in_num_col_dims", in_num_col_dims_attr},
+                                {"activation_type", res.StrAttr("")},
+                                {"padding_weights", false_attr},
+                            }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
        {&res.Tensor("add_out")});
   }
+
+  std::string name() const override { return "MatmulAddPattern"; }
 };
 
-class FcWithReluPattern
-    : public paddle::drr::DrrPatternBase<FcWithReluPattern> {
+class FcWithReluPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -109,14 +104,14 @@ class FcWithReluPattern
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type",
-                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                                 -> std::string { return "relu"; })},
+                   {"activation_type", res.StrAttr("relu")},
                    {"padding_weights", pat.Attr("padding_weights")},
                }});
     fc_with_relu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
                  {&res.Tensor("relu_out")});
   }
+
+  std::string name() const override { return "FcWithReluPattern"; }
 };
 
 class FcFusePass : public pir::PatternRewritePass {

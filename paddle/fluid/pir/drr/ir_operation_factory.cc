@@ -19,6 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/operation.h"
@@ -70,7 +71,7 @@ void OperationFactory::RegisterManualOpCreator() {
       });
 }
 
-static pir::Attribute CreateIrAttribute(const std::any& obj) {
+pir::Attribute CreateIrAttribute(const std::any& obj) {
   if (obj.type() == typeid(bool)) {
     return IrAttrbuteCreator<bool>()(std::any_cast<bool>(obj));
   } else if (obj.type() == typeid(int32_t)) {
@@ -135,7 +136,7 @@ pir::Value GetIrValueByDrrTensor(const Tensor& tensor,
   if (tensor.is_none()) {
     return pir::Value{};
   }
-  return res_match_ctx.GetIrValue(tensor.name()).get();
+  return res_match_ctx.GetIrValue(tensor.name());
 }
 
 std::vector<pir::Value> GetIrValuesByDrrTensors(
@@ -153,11 +154,7 @@ void BindIrOutputs(const OpCall& op_call,
                    pir::Operation* op,
                    MatchContextImpl* match_ctx) {
   for (size_t i = 0; i < op_call.outputs().size(); ++i) {
-    std::shared_ptr<IrValue> ir_value = nullptr;
-    if (op->result(i)) {
-      ir_value = std::make_shared<IrValue>(op->result(i));
-    }
-    match_ctx->BindIrValue(op_call.outputs()[i]->name(), ir_value);
+    match_ctx->BindIrValue(op_call.outputs()[i]->name(), op->result(i));
   }
 }
 

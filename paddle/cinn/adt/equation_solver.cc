@@ -109,7 +109,7 @@ bool IsReplicatedSymbolicValues(const Value& lhs, const Value& rhs) {
       rhs.variant());
 }
 
-bool HasReplicatedSimbolicValues(const List<Value>& values) {
+bool HasReplicatedSymbolicValues(const List<Value>& values) {
   for (std::size_t i = 0; i < values->size(); ++i) {
     for (std::size_t j = i + 1; j < values->size(); ++j) {
       if (IsReplicatedSymbolicValues(values->at(i), values->at(j))) {
@@ -128,7 +128,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   for (const auto& iter : *in_iters.value()) {
     in_values->emplace_back(ctx->GetValue(iter));
   }
-  if (HasReplicatedSimbolicValues(in_values)) {
+  if (HasReplicatedSymbolicValues(in_values)) {
     return {{out_index.value(), Undefined{}}};
   }
   List<DimExpr> dim_constants{};
