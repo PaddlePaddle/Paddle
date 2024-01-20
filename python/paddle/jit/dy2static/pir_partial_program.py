@@ -551,7 +551,7 @@ class PartialProgramLayer:
 
             def pass_fn(forward_program, backward_program):
                 pm = paddle.base.libpaddle.pir.PassManager()
-                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm)
+                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, forward_program)
                 if self._build_strategy.build_cinn_pass:
                     paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
                 pm.run(forward_program)
