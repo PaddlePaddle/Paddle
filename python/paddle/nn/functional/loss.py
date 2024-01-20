@@ -3734,10 +3734,10 @@ def triplet_margin_with_distance_loss(
         negative_dist = paddle.minimum(negative_dist, swap_dist)
 
     if (
-        not isinstance(positive_dist, (Variable, paddle.pir.Value))
+        not isinstance(positive_dist, paddle.pir.Value)
         and not paddle.all(positive_dist > 0)
     ) or (
-        not isinstance(negative_dist, (Variable, paddle.pir.Value))
+        not isinstance(negative_dist, paddle.pir.Value)
         and not paddle.all(negative_dist > 0)
     ):
         raise ValueError(

@@ -175,20 +175,11 @@ class AdamW(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if (
-            not isinstance(beta1, (framework.Variable, Value))
-            and not 0 <= beta1 < 1
-        ):
+        if not isinstance(beta1, Value) and not 0 <= beta1 < 1:
             raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
-        if (
-            not isinstance(beta1, (framework.Variable, Value))
-            and not 0 <= beta2 < 1
-        ):
+        if not isinstance(beta1, Value) and not 0 <= beta2 < 1:
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
-        if (
-            not isinstance(beta1, (framework.Variable, Value))
-            and not 0 <= epsilon
-        ):
+        if not isinstance(beta1, Value) and not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
             weight_decay, (framework.Variable, Value)
