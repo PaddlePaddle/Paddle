@@ -22,6 +22,11 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
+#ifdef PADDLE_WITH_XPU_XHPC
+#include "xblas/cublasLt.h"
+#endif
+
+namespace xblas = baidu::xpu::xblas;
 namespace phi {
 
 using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
@@ -33,12 +38,15 @@ enum XPUFCCalcType {
   FC_FLOAT,
   FC_INT32_WITH_LL,
   FC_TF32,
+  FC_FLOAT16,
 };
 
 template <typename T>
 XPUFCCalcType FCCalcType() {
-  if (std::is_same<phi::dtype::float16, T>::value ||
-      std::is_same<XPUTypeFP16, T>::value) {
+  if (std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr) {
+    return XPUFCCalcType::FC_FLOAT16;
+  } else if (std::is_same<phi::dtype::float16, T>::value ||
+             std::is_same<XPUTypeFP16, T>::value) {
     return XPUFCCalcType::FC_INT16;
   } else if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
     return XPUFCCalcType::FC_INT32;
@@ -50,7 +58,6 @@ XPUFCCalcType FCCalcType() {
              std::is_same<XPUTypeBF16, T>::value) {
     return XPUFCCalcType::FC_TF32;
   }
-
   return XPUFCCalcType::FC_INT16;
 }
 
@@ -68,6 +75,11 @@ struct XpuFcInfo {
   float* max_y;
   float* max_out;
   bool is_x_need_broadcast;
+  const float* scale_x;
+  const float* scale_y;
+  int scale_x_mode;
+  int scale_y_mode;
+
   XpuFcInfo()
       : bs(0),
         m(0),
@@ -81,7 +93,11 @@ struct XpuFcInfo {
         max_x(nullptr),
         max_y(nullptr),
         max_out(nullptr),
-        is_x_need_broadcast(false) {}
+        is_x_need_broadcast(false),
+        scale_x(nullptr),
+        scale_y(nullptr),
+        scale_x_mode(0),
+        scale_y_mode(0) {}
   void InitFcInfo(int bs,
                   int m,
                   int n,
@@ -278,101 +294,165 @@ static void xpu_fc_wrapper(xpu::Context* ctx,
   }
 }
 
-template <>
-void xpu_fc_wrapper<XPUTypeBF16, int_with_ll_t>(xpu::Context* ctx,
-                                                const XPUTypeBF16* x,
-                                                const XPUTypeBF16* w,
-                                                XPUTypeBF16* y,
-                                                int m,
-                                                int n,
-                                                int k,
-                                                bool x_trans,
-                                                bool w_trans,
-                                                const float* x_maxptr,
-                                                const float* w_maxptr,
-                                                float* y_maxptr,
-                                                int ldx,
-                                                int ldw,
-                                                int ldy,
-                                                float alpha,
-                                                float beta,
-                                                const float* bias,
-                                                const xpu::Activation_t& act) {
+template <typename XPUType, typename FCT>
+static void xblas_fc_wrapper(xpu::Context* ctx,
+                             const XPUType* x,
+                             const XPUType* w,
+                             XPUType* y,
+                             int m,
+                             int n,
+                             int k,
+                             bool x_trans,
+                             bool w_trans,
+                             const float* x_maxptr,
+                             const float* w_maxptr,
+                             float* y_maxptr,
+                             int ldx,
+                             int ldw,
+                             int ldy,
+                             float alpha,
+                             float beta,
+                             const float* bias,
+                             const xpu::Activation_t& act,
+                             const float* scale_x,
+                             const float* scale_w,
+                             int scale_x_mode,
+                             int scale_w_mode) {
   int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_wrapper");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_wrapper");
 }
 
-template <>
-void xpu_fc_wrapper<XPUTypeBF16, int16_t>(xpu::Context* ctx,
-                                          const XPUTypeBF16* x,
-                                          const XPUTypeBF16* w,
-                                          XPUTypeBF16* y,
-                                          int m,
-                                          int n,
-                                          int k,
-                                          bool x_trans,
-                                          bool w_trans,
-                                          const float* x_maxptr,
-                                          const float* w_maxptr,
-                                          float* y_maxptr,
-                                          int ldx,
-                                          int ldw,
-                                          int ldy,
-                                          float alpha,
-                                          float beta,
-                                          const float* bias,
-                                          const xpu::Activation_t& act) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_wrapper");
-}
+#define DECLEAR_UNSUPPORTED_XPU_FC_WRAPPER(XPUType, XPUTGEMM)            \
+  template <>                                                            \
+  void xpu_fc_wrapper<XPUType, XPUTGEMM>(xpu::Context * ctx,             \
+                                         const XPUType* x,               \
+                                         const XPUType* w,               \
+                                         XPUType* y,                     \
+                                         int m,                          \
+                                         int n,                          \
+                                         int k,                          \
+                                         bool x_trans,                   \
+                                         bool w_trans,                   \
+                                         const float* x_maxptr,          \
+                                         const float* w_maxptr,          \
+                                         float* y_maxptr,                \
+                                         int ldx,                        \
+                                         int ldw,                        \
+                                         int ldy,                        \
+                                         float alpha,                    \
+                                         float beta,                     \
+                                         const float* bias,              \
+                                         const xpu::Activation_t& act) { \
+    int r = xpu::Error_t::INVALID_PARAM;                                 \
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_wrapper");                    \
+  }
 
-template <>
-void xpu_fc_wrapper<XPUTypeBF16, int32_t>(xpu::Context* ctx,
-                                          const XPUTypeBF16* x,
-                                          const XPUTypeBF16* w,
-                                          XPUTypeBF16* y,
-                                          int m,
-                                          int n,
-                                          int k,
-                                          bool x_trans,
-                                          bool w_trans,
-                                          const float* x_maxptr,
-                                          const float* w_maxptr,
-                                          float* y_maxptr,
-                                          int ldx,
-                                          int ldw,
-                                          int ldy,
-                                          float alpha,
-                                          float beta,
-                                          const float* bias,
-                                          const xpu::Activation_t& act) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_wrapper");
-}
+DECLEAR_UNSUPPORTED_XPU_FC_WRAPPER(XPUTypeBF16, int_with_ll_t)
+DECLEAR_UNSUPPORTED_XPU_FC_WRAPPER(XPUTypeBF16, int16_t)
+DECLEAR_UNSUPPORTED_XPU_FC_WRAPPER(XPUTypeBF16, int32_t)
+DECLEAR_UNSUPPORTED_XPU_FC_WRAPPER(XPUTypeFP16, int32_t)
+DECLEAR_UNSUPPORTED_XPU_FC_WRAPPER(XPUTypeFP16, tfloat32)
 
-template <>
-void xpu_fc_wrapper<XPUTypeFP16, int32_t>(xpu::Context* ctx,
-                                          const XPUTypeFP16* x,
-                                          const XPUTypeFP16* w,
-                                          XPUTypeFP16* y,
-                                          int m,
-                                          int n,
-                                          int k,
-                                          bool x_trans,
-                                          bool w_trans,
-                                          const float* x_maxptr,
-                                          const float* w_maxptr,
-                                          float* y_maxptr,
-                                          int ldx,
-                                          int ldw,
-                                          int ldy,
-                                          float alpha,
-                                          float beta,
-                                          const float* bias,
-                                          const xpu::Activation_t& act) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_wrapper");
-}
+#define DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(XPUType, FCT)                  \
+  template <>                                                             \
+  void xblas_fc_wrapper<XPUType, FCT>(xpu::Context * ctx,                 \
+                                      const XPUType* x,                   \
+                                      const XPUType* w,                   \
+                                      XPUType* y,                         \
+                                      int m,                              \
+                                      int n,                              \
+                                      int k,                              \
+                                      bool x_trans,                       \
+                                      bool w_trans,                       \
+                                      const float* x_maxptr,              \
+                                      const float* w_maxptr,              \
+                                      float* y_maxptr,                    \
+                                      int ldx,                            \
+                                      int ldw,                            \
+                                      int ldy,                            \
+                                      float alpha,                        \
+                                      float beta,                         \
+                                      const float* bias,                  \
+                                      const xpu::Activation_t& act,       \
+                                      const float* scale_x,               \
+                                      const float* scale_w,               \
+                                      int scale_x_mode,                   \
+                                      int scale_w_mode) {                 \
+    int r = 0;                                                            \
+    if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&     \
+        std::is_same<float, XPUType>::value) {                            \
+      XPUType* l3_addr = nullptr;                                         \
+      xpu::ctx_guard RAII_GUARD(ctx);                                     \
+      l3_addr = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * k);                \
+      PADDLE_ENFORCE_XDNN_NOT_NULL(l3_addr);                              \
+                                                                          \
+      std::vector<int> shape = {k, m};                                    \
+      std::vector<int> axis = {1, 0};                                     \
+      r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);          \
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");                        \
+                                                                          \
+      r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,           \
+                                                           l3_addr,       \
+                                                           w,             \
+                                                           y,             \
+                                                           m,             \
+                                                           n,             \
+                                                           k,             \
+                                                           false,         \
+                                                           w_trans,       \
+                                                           x_maxptr,      \
+                                                           w_maxptr,      \
+                                                           y_maxptr,      \
+                                                           k,             \
+                                                           ldw,           \
+                                                           ldy,           \
+                                                           alpha,         \
+                                                           beta,          \
+                                                           bias,          \
+                                                           act,           \
+                                                           scale_x,       \
+                                                           scale_w,       \
+                                                           scale_x_mode,  \
+                                                           scale_w_mode); \
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");                  \
+    } else {                                                              \
+      r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,           \
+                                                           x,             \
+                                                           w,             \
+                                                           y,             \
+                                                           m,             \
+                                                           n,             \
+                                                           k,             \
+                                                           x_trans,       \
+                                                           w_trans,       \
+                                                           x_maxptr,      \
+                                                           w_maxptr,      \
+                                                           y_maxptr,      \
+                                                           ldx,           \
+                                                           ldw,           \
+                                                           ldy,           \
+                                                           alpha,         \
+                                                           beta,          \
+                                                           bias,          \
+                                                           act,           \
+                                                           scale_x,       \
+                                                           scale_w,       \
+                                                           scale_x_mode,  \
+                                                           scale_w_mode); \
+                                                                          \
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");                  \
+    }                                                                     \
+  }
+
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, float)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, float)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(float, float)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(float, XPUTypeFP16)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, XPUTypeFP16)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(XPUTypeBF16, tfloat32)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(float, int32_t)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(XPUTypeFP16, int16_t)
+DECLEAR_SUPPORTED_XBLAS_FC_WRAPPER(float, int16_t)
 
 template <typename XPUType, typename FCT>
 static void xpu_fc_batch_wrapper(xpu::Context* xpu_ctx,
@@ -413,137 +493,103 @@ static void xpu_fc_batch_wrapper(xpu::Context* xpu_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_batched");
 }
 
-template <>
-void xpu_fc_batch_wrapper<XPUTypeBF16, int_with_ll_t>(xpu::Context* xpu_ctx,
-                                                      int bs,
-                                                      bool trans_x,
-                                                      bool trans_w,
-                                                      int m,
-                                                      int n,
-                                                      int k,
-                                                      float alpha,
-                                                      const XPUTypeBF16* x,
-                                                      int stride_x,
-                                                      const XPUTypeBF16* w,
-                                                      int stride_w,
-                                                      float beta,
-                                                      XPUTypeBF16* y,
-                                                      int stride_y,
-                                                      const float* x_maxptr,
-                                                      const float* w_maxptr) {
+template <typename XPUType, typename FCT>
+static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
+                                   int bs,
+                                   bool trans_x,
+                                   bool trans_w,
+                                   int m,
+                                   int n,
+                                   int k,
+                                   float alpha,
+                                   const XPUType* x,
+                                   int stride_x,
+                                   const XPUType* w,
+                                   int stride_w,
+                                   float beta,
+                                   XPUType* y,
+                                   int stride_y,
+                                   const float* x_maxptr,
+                                   const float* w_maxptr) {
   int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batched");
 }
 
-template <>
-void xpu_fc_batch_wrapper<XPUTypeBF16, tfloat32>(xpu::Context* xpu_ctx,
-                                                 int bs,
-                                                 bool trans_x,
-                                                 bool trans_w,
-                                                 int m,
-                                                 int n,
-                                                 int k,
-                                                 float alpha,
-                                                 const XPUTypeBF16* x,
-                                                 int stride_x,
-                                                 const XPUTypeBF16* w,
-                                                 int stride_w,
-                                                 float beta,
-                                                 XPUTypeBF16* y,
-                                                 int stride_y,
-                                                 const float* x_maxptr,
-                                                 const float* w_maxptr) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
-}
+#define DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUType, XPUTGEMM)     \
+  template <>                                                           \
+  void xpu_fc_batch_wrapper<XPUType, XPUTGEMM>(xpu::Context * ctx,      \
+                                               int bs,                  \
+                                               bool trans_x,            \
+                                               bool trans_w,            \
+                                               int m,                   \
+                                               int n,                   \
+                                               int k,                   \
+                                               float alpha,             \
+                                               const XPUType* x,        \
+                                               int stride_x,            \
+                                               const XPUType* w,        \
+                                               int stride_w,            \
+                                               float beta,              \
+                                               XPUType* y,              \
+                                               int stride_y,            \
+                                               const float* x_maxptr,   \
+                                               const float* w_maxptr) { \
+    int r = xpu::Error_t::INVALID_PARAM;                                \
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");             \
+  }
 
-template <>
-void xpu_fc_batch_wrapper<XPUTypeBF16, float>(xpu::Context* xpu_ctx,
-                                              int bs,
-                                              bool trans_x,
-                                              bool trans_w,
-                                              int m,
-                                              int n,
-                                              int k,
-                                              float alpha,
-                                              const XPUTypeBF16* x,
-                                              int stride_x,
-                                              const XPUTypeBF16* w,
-                                              int stride_w,
-                                              float beta,
-                                              XPUTypeBF16* y,
-                                              int stride_y,
-                                              const float* x_maxptr,
-                                              const float* w_maxptr) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
-}
+DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeBF16, int_with_ll_t)
+DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeBF16, tfloat32)
+DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeFP16, tfloat32)
+DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeBF16, float)
+DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t)
+DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t)
+DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t)
 
-template <>
-void xpu_fc_batch_wrapper<XPUTypeBF16, int32_t>(xpu::Context* xpu_ctx,
-                                                int bs,
-                                                bool trans_x,
-                                                bool trans_w,
-                                                int m,
-                                                int n,
-                                                int k,
-                                                float alpha,
-                                                const XPUTypeBF16* x,
-                                                int stride_x,
-                                                const XPUTypeBF16* w,
-                                                int stride_w,
-                                                float beta,
-                                                XPUTypeBF16* y,
-                                                int stride_y,
-                                                const float* x_maxptr,
-                                                const float* w_maxptr) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
-}
+#define DECLEAR_SUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUType, FCT)           \
+  template <>                                                            \
+  void xblas_fc_batch_wrapper<XPUType, FCT>(xpu::Context * xpu_ctx,      \
+                                            int bs,                      \
+                                            bool trans_x,                \
+                                            bool trans_w,                \
+                                            int m,                       \
+                                            int n,                       \
+                                            int k,                       \
+                                            float alpha,                 \
+                                            const XPUType* x,            \
+                                            int stride_x,                \
+                                            const XPUType* w,            \
+                                            int stride_w,                \
+                                            float beta,                  \
+                                            XPUType* y,                  \
+                                            int stride_y,                \
+                                            const float* x_maxptr,       \
+                                            const float* w_maxptr) {     \
+    int r = xblas::fc_batched<XPUType, XPUType, XPUType, FCT, float, 0>( \
+        xpu_ctx,                                                         \
+        bs,                                                              \
+        trans_x,                                                         \
+        trans_w,                                                         \
+        m,                                                               \
+        n,                                                               \
+        k,                                                               \
+        alpha,                                                           \
+        reinterpret_cast<const XPUType*>(x),                             \
+        stride_x,                                                        \
+        reinterpret_cast<const XPUType*>(w),                             \
+        stride_w,                                                        \
+        0.0,                                                             \
+        reinterpret_cast<XPUType*>(y),                                   \
+        stride_y,                                                        \
+        x_maxptr,                                                        \
+        w_maxptr);                                                       \
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batch_wrapper");            \
+  }
 
-template <>
-void xpu_fc_batch_wrapper<XPUTypeBF16, int16_t>(xpu::Context* xpu_ctx,
-                                                int bs,
-                                                bool trans_x,
-                                                bool trans_w,
-                                                int m,
-                                                int n,
-                                                int k,
-                                                float alpha,
-                                                const XPUTypeBF16* x,
-                                                int stride_x,
-                                                const XPUTypeBF16* w,
-                                                int stride_w,
-                                                float beta,
-                                                XPUTypeBF16* y,
-                                                int stride_y,
-                                                const float* x_maxptr,
-                                                const float* w_maxptr) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
-}
-
-template <>
-void xpu_fc_batch_wrapper<XPUTypeFP16, float>(xpu::Context* xpu_ctx,
-                                              int bs,
-                                              bool trans_x,
-                                              bool trans_w,
-                                              int m,
-                                              int n,
-                                              int k,
-                                              float alpha,
-                                              const XPUTypeFP16* x,
-                                              int stride_x,
-                                              const XPUTypeFP16* w,
-                                              int stride_w,
-                                              float beta,
-                                              XPUTypeFP16* y,
-                                              int stride_y,
-                                              const float* x_maxptr,
-                                              const float* w_maxptr) {
-  int r = xpu::Error_t::INVALID_PARAM;
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_batch_wrapper");
-}
+DECLEAR_SUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, float)
+DECLEAR_SUPPORTED_XBLAS_FC_BATCH_WRAPPER(float, float)
+DECLEAR_SUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, XPUTypeFP16)
+DECLEAR_SUPPORTED_XBLAS_FC_BATCH_WRAPPER(float, XPUTypeFP16)
 
 template <typename T>
 static void MatMulXPUFunction(xpu::Context* xpu_ctx,
@@ -563,6 +609,14 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
       &xpu_fc_wrapper<XPUType, int_with_ll_t>,
       &xpu_fc_wrapper<XPUType, tfloat32>,
   };
+  decltype(&xblas_fc_wrapper<XPUType, int16_t>) xblas_fc_api_list[6] = {
+      &xblas_fc_wrapper<XPUType, int16_t>,
+      &xblas_fc_wrapper<XPUType, int32_t>,
+      &xblas_fc_wrapper<XPUType, float>,
+      &xblas_fc_wrapper<XPUType, int_with_ll_t>,
+      &xblas_fc_wrapper<XPUType, tfloat32>,
+      &xblas_fc_wrapper<XPUType, XPUTypeFP16>,
+  };
   decltype(&xpu_fc_batch_wrapper<XPUType, int16_t>) fc_batch_api_list[5] = {
       &xpu_fc_batch_wrapper<XPUType, int16_t>,
       &xpu_fc_batch_wrapper<XPUType, int32_t>,
@@ -570,8 +624,19 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
       &xpu_fc_batch_wrapper<XPUType, int_with_ll_t>,
       &xpu_fc_batch_wrapper<XPUType, tfloat32>,
   };
+  decltype(&xblas_fc_batch_wrapper<XPUType, int16_t>)
+      xblas_fc_batch_api_list[6] = {
+          &xblas_fc_batch_wrapper<XPUType, int16_t>,
+          &xblas_fc_batch_wrapper<XPUType, int32_t>,
+          &xblas_fc_batch_wrapper<XPUType, float>,
+          &xblas_fc_batch_wrapper<XPUType, int_with_ll_t>,
+          &xblas_fc_batch_wrapper<XPUType, tfloat32>,
+          &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16>,
+      };
 
   auto fc_api = fc_api_list[fccal_type];
+  auto xblas_fc_api = xblas_fc_api_list[fccal_type];
+
   if (std::getenv("XPU_PADDLE_FC_GRAD_LOCAL") != nullptr) {
     if (is_grad) {
       fc_api = fc_api_list[2];
@@ -579,7 +644,7 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
   }
 
   auto fc_batch_api = fc_batch_api_list[fccal_type];
-
+  auto xblas_fc_batch_api = xblas_fc_batch_api_list[fccal_type];
   int m = fcinfo.m;
   int n = fcinfo.n;
   int k = fcinfo.k;
@@ -593,27 +658,57 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
   float* max_y = fcinfo.max_y;
   float* max_out = fcinfo.max_out;
   bool is_x_need_broadcast = fcinfo.is_x_need_broadcast;
+  const float* scale_x = fcinfo.scale_x;
+  const float* scale_y = fcinfo.scale_y;
+  int scale_x_mode = fcinfo.scale_x_mode;
+  int scale_y_mode = fcinfo.scale_y_mode;
 
   if (batch_size <= 1) {
-    fc_api(xpu_ctx,
-           reinterpret_cast<const XPUType*>(x),
-           reinterpret_cast<const XPUType*>(y),
-           reinterpret_cast<XPUType*>(out),
-           m,
-           n,
-           k,
-           trans_x,
-           trans_y,
-           max_x,
-           max_y,
-           max_out,
-           ldx,
-           ldy,
-           ldout,
-           alpha,
-           0,
-           nullptr,
-           xpu::Activation_t::LINEAR);
+    if (std::getenv("PADDLE_USE_XBLAS_FC") == nullptr) {
+      fc_api(xpu_ctx,
+             reinterpret_cast<const XPUType*>(x),
+             reinterpret_cast<const XPUType*>(y),
+             reinterpret_cast<XPUType*>(out),
+             m,
+             n,
+             k,
+             trans_x,
+             trans_y,
+             max_x,
+             max_y,
+             max_out,
+             ldx,
+             ldy,
+             ldout,
+             alpha,
+             0,
+             nullptr,
+             xpu::Activation_t::LINEAR);
+    } else {
+      xblas_fc_api(xpu_ctx,
+                   reinterpret_cast<const XPUType*>(x),
+                   reinterpret_cast<const XPUType*>(y),
+                   reinterpret_cast<XPUType*>(out),
+                   m,
+                   n,
+                   k,
+                   trans_x,
+                   trans_y,
+                   max_x,
+                   max_y,
+                   max_out,
+                   ldx,
+                   ldy,
+                   ldout,
+                   alpha,
+                   0,
+                   nullptr,
+                   xpu::Activation_t::LINEAR,
+                   scale_x,
+                   scale_y,
+                   scale_x_mode,
+                   scale_y_mode);
+    }
   } else {
     const XPUType* x_data = reinterpret_cast<const XPUType*>(x);
     if (is_x_need_broadcast) {
@@ -629,23 +724,43 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
       x_data = x_broadcast_data;
     }
     // batch matmul
-    fc_batch_api(xpu_ctx,                              // Context* ctx,
-                 batch_size,                           // int batch_size,
-                 trans_x,                              // bool x_trans,
-                 trans_y,                              // bool w_trans,
-                 m,                                    // int m,
-                 n,                                    // int n,
-                 k,                                    // int k,
-                 alpha,                                // float alpha,
-                 x_data,                               // const TX* x,
-                 ldx,                                  // int stride_a,
-                 reinterpret_cast<const XPUType*>(y),  // const TW* w,
-                 ldy,                                  // int stride_b,
-                 0.0,                                  // float beta,
-                 reinterpret_cast<XPUType*>(out),      // TY* y,
-                 ldout,                                // int stride_c,
-                 max_x,                                // const float* x_maxptr,
-                 max_y);                               // const float* w_maxptr
+    if (std::getenv("PADDLE_USE_XBLAS_FC") == nullptr) {
+      fc_batch_api(xpu_ctx,                              // Context* ctx,
+                   batch_size,                           // int batch_size,
+                   trans_x,                              // bool x_trans,
+                   trans_y,                              // bool w_trans,
+                   m,                                    // int m,
+                   n,                                    // int n,
+                   k,                                    // int k,
+                   alpha,                                // float alpha,
+                   x_data,                               // const TX* x,
+                   ldx,                                  // int stride_a,
+                   reinterpret_cast<const XPUType*>(y),  // const TW* w,
+                   ldy,                                  // int stride_b,
+                   0.0,                                  // float beta,
+                   reinterpret_cast<XPUType*>(out),      // TY* y,
+                   ldout,                                // int stride_c,
+                   max_x,   // const float* x_maxptr,
+                   max_y);  // const float* w_maxptr
+    } else {
+      xblas_fc_batch_api(xpu_ctx,     // Context* ctx,
+                         batch_size,  // int batch_size,
+                         trans_x,     // bool x_trans,
+                         trans_y,     // bool w_trans,
+                         m,           // int m,
+                         n,           // int n,
+                         k,           // int k,
+                         alpha,       // float alpha,
+                         x_data,      // const TX* x,
+                         ldx,         // int stride_a,
+                         reinterpret_cast<const XPUType*>(y),  // const TW* w,
+                         ldy,                                  // int stride_b,
+                         0.0,                                  // float beta,
+                         reinterpret_cast<XPUType*>(out),      // TY* y,
+                         ldout,                                // int stride_c,
+                         max_x,   // const float* x_maxptr,
+                         max_y);  // const float* w_maxptr
+    }
   }
 }
 
