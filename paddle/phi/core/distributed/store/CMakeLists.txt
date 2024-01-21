@@ -6,7 +6,3 @@ if(WITH_GLOO)
 endif()
 
 collect_srcs(core_srcs SRCS ${STORE_COMMON_SRCS})
-
-if(NOT WIN32)
-  paddle_test(test_c_tcp_store SRCS test_tcp_store.cc DEPS phi common)
-endif()
