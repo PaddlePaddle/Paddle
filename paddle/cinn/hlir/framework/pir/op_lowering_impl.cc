@@ -159,7 +159,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
                                                    apply_op_schedule,
-                                                   //  apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
@@ -467,7 +466,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         if (args_set.count("_" + tensor->name) != 0) {
           continue;
         }
-
         group->output_values.push_back(opresult);
         group_func_arg_tensors->push_back(tensor);
         group->output_names.push_back(tensor->name);
