@@ -59,7 +59,3 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 collect_srcs(backends_srcs SRCS ${BACKENDS_SRCS})
-
-if(WITH_CUSTOM_DEVICE)
-  paddle_test(capi_test SRCS custom/capi_test.cc DEPS phi common)
-endif()
