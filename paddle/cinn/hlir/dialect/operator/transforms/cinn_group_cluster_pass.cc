@@ -35,7 +35,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
@@ -328,12 +327,12 @@ std::vector< GroupClusterNode > GroupSplit( ::pir::Operation* input_op)
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto target = cinn::common::DefaultNVGPUTarget();      
     
-    auto inner_values = GetInnerGeneValue( group_op.ops() );
+    auto inner_values = GetInnerGeneValue( group_op.GetOperators() );
        
     std::unordered_map<::pir::Operation*, GroupClusterNode > op_path;
 
 
-    auto op_list = group_op.ops();
+    auto op_list = group_op.GetOperators();
 
     std::vector< GroupClusterNode  > first_stage_output;
 
@@ -580,7 +579,7 @@ class CinnGroupClusterPass : public pir::Pass {
         ::pir::IrMapping ir_mapping;
         cinn::dialect::GroupOp group_op = base_it->dyn_cast<cinn::dialect::GroupOp>();
 
-        auto group_outside_input = GetListOutsideInput( group_op.ops());
+        auto group_outside_input = GetListOutsideInput( group_op.GetOperators());
         for( auto val : group_outside_input)
         {
           ir_mapping.Add( val, val);
@@ -599,11 +598,11 @@ class CinnGroupClusterPass : public pir::Pass {
         size_t index = 0;
         std::unordered_map<pir::Operation*, size_t> op2id;
          
-        for (auto op1 : group_op.ops() ) {
+        for (auto op1 : group_op.GetOperators() ) {
           op2id[op1] = index++;
         }
 
-        auto yield_op = group_op.ops().back();
+        auto yield_op = group_op.GetOperators().back();
         for( size_t i = 0; i < yield_op->num_operands(); ++i )
         {
           all_ouput_values.insert( yield_op->operand_source(i));

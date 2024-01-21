@@ -382,8 +382,6 @@ TEST(IROpFusionPass, reduce_test_4) {
   pm.AddPass(pir::CreateBuildCinnPass());
   
   pm.AddPass( cinn::dialect::ir::CreateCinnGroupClusterPass() );
-
-  pm.EnableIRPrinting();
   
     CHECK_EQ(pm.Run(&program), true);
  ASSERT_EQ(program.block()->size(), 4u);

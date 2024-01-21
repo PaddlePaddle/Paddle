@@ -22,7 +22,6 @@
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/operation_utils.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
