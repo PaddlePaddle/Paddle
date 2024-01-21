@@ -48,17 +48,23 @@ static void MatMulXPUFunction(const DenseTensor& x,
       &xpu_fc_batch_wrapper<XPUType, int_with_ll_t>,
       &xpu_fc_batch_wrapper<XPUType, tfloat32>,
   };
-  decltype(&xblas_fc_batch_wrapper<XPUType, int16_t>)
+  decltype(&xblas_fc_batch_wrapper<XPUType, int16_t, float>)
       xblas_fc_batch_api_list[6] = {
-          &xblas_fc_batch_wrapper<XPUType, int16_t>,
-          &xblas_fc_batch_wrapper<XPUType, int32_t>,
-          &xblas_fc_batch_wrapper<XPUType, float>,
-          &xblas_fc_batch_wrapper<XPUType, int_with_ll_t>,
-          &xblas_fc_batch_wrapper<XPUType, tfloat32>,
-          &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16>,
+          &xblas_fc_batch_wrapper<XPUType, int16_t, float>,
+          &xblas_fc_batch_wrapper<XPUType, int32_t, float>,
+          &xblas_fc_batch_wrapper<XPUType, float, float>,
+          &xblas_fc_batch_wrapper<XPUType, int_with_ll_t, float>,
+          &xblas_fc_batch_wrapper<XPUType, tfloat32, float>,
+          &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, float>,
       };
+
   auto fc_batch_api = fc_batch_api_list[fccal_type];
   auto xblas_fc_batch_api = xblas_fc_batch_api_list[fccal_type];
+  if (fccal_type == XPUFCCalcType::FC_FLOAT16 &&
+      std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr) {
+    xblas_fc_batch_api =
+        &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, XPUTypeFP16>;
+  }
   if (std::getenv("PADDLE_USE_XBLAS_FC") == nullptr) {
     fc_batch_api(xpu_ctx,
                  batch_size,

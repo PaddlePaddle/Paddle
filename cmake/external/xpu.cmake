@@ -29,7 +29,7 @@ if(NOT DEFINED XPU_BASE_DATE)
   set(XPU_BASE_DATE "20240104")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240121")
+  set(XPU_XHPC_BASE_DATE "20240125")
 endif()
 set(XPU_XCCL_BASE_VERSION "1.1.8.1")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
@@ -120,7 +120,7 @@ set(XPU_XFT_GET_DEPENCE_URL
 
 if(WITH_XPU_XHPC)
   set(XPU_XHPC_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
+      "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/20240125/xhpc-ubuntu_x86_64.tar.gz"
       CACHE STRING "" FORCE)
 endif()
 
