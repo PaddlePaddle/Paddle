@@ -33,7 +33,7 @@ struct Masked_multihead_attention_params {
   float *qk_max_split_seq;
   float *qk_sum_split_seq;
   /* 现在假设每个seq被拆成2部分来做 */
-  int split_seq = 2;
+  int split_seq = 4;
   float *split_out;
 
   // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
@@ -97,7 +97,7 @@ __global__ void masked_multihead_attention_kernel(
     LoadFunc load_func,
     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  const int bi = blockIdx.y;
+  const int bi = blockIdx.z;
   // params.sequence_lengths[bi] means how many k and v we have cached in
   // cache_kv.
   if (params.sequence_lengths && params.sequence_lengths[bi] < 0) {
@@ -132,7 +132,7 @@ __global__ void masked_multihead_attention_kernel(
   const int beami = bi % params.beam_width;
   // real batch id
   const int bbi = bi / params.beam_width;
-  const int hi = blockIdx.x;
+  const int hi = blockIdx.y;
   const int bhi = bi * params.num_head + hi;
 
   const int kv_num_head = params.kv_num_head;
@@ -157,13 +157,31 @@ __global__ void masked_multihead_attention_kernel(
                           ? params.timestep
                           : params.sequence_lengths[bi];
   
-  const int split_k = gridDim.z;
-  const int steps_per_block = (act_time_step + split_k - 1) / split_k;
+  const int split_k = gridDim.x;
+  //const int steps_per_block = (act_time_step + split_k - 1) / split_k;
+  const int steps_per_block = 128;
   // 最后的单独的那个q*k*v让split_index的最后的那个cuda thread block来计算！
-  const int split_index = blockIdx.z;
+  const int split_index = blockIdx.x;
   const int start_seq = split_index * steps_per_block;
+  if (act_time_step == 0) {
+    if (start_seq > 0) return;  
+  } else {
+    if (start_seq >= act_time_step) return;
+  }
+
   int end_seq = (split_index + 1) * steps_per_block;
-  end_seq = end_seq > act_time_step ? act_time_step : end_seq;
+  bool is_last_block = false;
+  if (end_seq >= act_time_step) {
+    end_seq = act_time_step;
+    is_last_block = true;
+  }
+  // end_seq = end_seq > act_time_step ? act_time_step : end_seq;
+
+  // if (blockIdx.y == 0 && blockIdx.z == 0 && threadIdx.x == 0) {
+  //   printf("start_seq %d \n", start_seq);
+  //   printf("end_seq %d \n", end_seq);
+  //   printf("split_index %d \n", split_index);
+  // }
 
   // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
   // this hi means the head index in query!
@@ -361,11 +379,6 @@ __global__ void masked_multihead_attention_kernel(
       }
     }
   }
-  
-  // debug code.
-  if (blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0) {
-    //printf("qkqk %f\n", qk);
-  }
 
   // when QK_VECS_PER_WARP > WARP_SIZE, we need to reduce the qk in smem!
   if (QK_VECS_PER_WARP > WARP_SIZE) {
@@ -375,7 +388,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   // 只让最后一个cuda Therad Block计算最后的q*k.
-  if (tid == 0 && split_index == split_k - 1) {
+  if (tid == 0 && is_last_block) {
     // NOTE(wangxi): mask must be 0.0
     // T mask = params.attn_mask[
     //    bi * (params.timestep + 1) + params.timestep];
@@ -490,7 +503,8 @@ __global__ void masked_multihead_attention_kernel(
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
   
   int useful_smem_index = end_seq - start_seq;
-  if (split_index < split_k - 1) {
+  //if (split_index < split_k - 1) {
+  if (!is_last_block) {
     useful_smem_index = end_seq - start_seq - 1;
   }
   // 下面的意思原本是要计算这qk_smem个数字的！
@@ -506,8 +520,8 @@ __global__ void masked_multihead_attention_kernel(
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
   
   if (tid == 0) {
-    params.qk_max_split_seq[bhi*2 + split_index] = qk_max;
-    params.qk_sum_split_seq[bhi*2 + split_index] = sum;
+    params.qk_max_split_seq[bhi*params.split_seq + split_index] = qk_max;
+    params.qk_sum_split_seq[bhi*params.split_seq + split_index] = sum;
   }
 
   // FIXME(wangxi): need add 1.e-6f?
@@ -576,7 +590,7 @@ __global__ void masked_multihead_attention_kernel(
   V_vec v_bias;
   zero(v_bias);
   // now we process the last v.  
-  if (vo == (act_time_step % V_PER_ITER + start_seq) && (Dh == Dh_MAX || vi < Dh) && split_index == split_k - 1) {   
+  if (vo == (act_time_step % V_PER_ITER + start_seq) && (Dh == Dh_MAX || vi < Dh) && is_last_block) {   
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v;
@@ -629,7 +643,7 @@ __global__ void masked_multihead_attention_kernel(
   
   if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
     for(int tmp=0;tmp<8;++tmp) {
-      params.split_out[(bhi*2 + split_index) * Dh + vi + tmp] = ((float*)(&out))[tmp];
+      params.split_out[(bhi*params.split_seq + split_index) * Dh + vi + tmp] = ((float*)(&out))[tmp];
     }
   }
 
@@ -703,7 +717,7 @@ inline size_t smem_size_in_bytes(
     cudaFuncSetAttribute(                                                 \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
   }                                                                       \
-  dim3 grid(params.num_head, params.batch_size, params.split_seq);               \
+  dim3 grid(params.split_seq, params.num_head, params.batch_size);               \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
       params, load_func, store_func)
 
@@ -922,23 +936,30 @@ __global__ void post_process_kernel(Masked_multihead_attention_params<T> params)
   const int bi = blockIdx.y;
   const int tid = threadIdx.x;
   const int hi = blockIdx.x;
-  const int bhi = bi * params.num_head + hi;
-  float max0 = params.qk_max_split_seq[bhi * 2 + 0];
-  float max1 = params.qk_max_split_seq[bhi * 2 + 1];
+  const int bhi = (bi * params.num_head + hi);
+  const int bhsi = (bi * params.num_head + hi) * params.split_seq;
 
-  float sum0 = params.qk_sum_split_seq[bhi * 2 + 0];
-  float sum1 = params.qk_sum_split_seq[bhi * 2 + 1];
-
-  float v0 = params.split_out[bhi*2 * 128 + tid];
-  float v1 = params.split_out[(bhi*2+1) * 128 + tid];
+  float max0 = params.qk_max_split_seq[bhsi + 0];
+  float max = max0;
   
-  float max = max0 > max1 ? max0 : max1;
-  float real_sum0 = sum0 * __expf(max0 - max);
-  float real_sum1 = sum1 * __expf(max1 - max);
+  for (int i = 1; i < params.split_seq; ++i) {
+    float tmp_max = params.qk_max_split_seq[bhsi + i];
+    max = tmp_max > max ? tmp_max : max;
+  }
+  
+  float sum = 0;
+  float v = 0;
+  for (int i = 0; i < params.split_seq; ++i) {
+    float this_max = params.qk_max_split_seq[bhsi + i];
+    float this_sum = params.qk_sum_split_seq[bhsi + i];
+    float this_v = params.split_out[(bhsi + i) * 128 + tid];
 
-  float sum = real_sum0 + real_sum1;
+    float real_this_sum = this_sum * __expf(this_max - max);
+    v += real_this_sum * this_v;
+    sum += real_this_sum;
+  }
 
-  float v = (v0 * real_sum0) / sum +  (v1 * real_sum1) / sum;
+  v /= sum;
 
   params.out[bhi * 128 + tid] = (T)(v);
 
@@ -983,7 +1004,8 @@ void DispatchWithDtype(const Context &dev_ctx,
       x.dims()[x.dims().size() - 1] / dim_head - k_num_head - v_num_head;
 
   Masked_multihead_attention_params<T> params;
-
+  
+  params.split_seq = (max_seq_len + 127) / 128;
   int split_seq = params.split_seq;
   phi::DenseTensor qk_max_split_seq;
   qk_max_split_seq.Resize({{bsz, num_head, split_seq}});
@@ -996,7 +1018,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.qk_sum_split_seq = qk_sum_split_seq.data<float>();
 
   phi::DenseTensor split_out;
-  split_out.Resize({{bsz * num_head * dim_head * split_seq}});
+  split_out.Resize({{bsz , num_head, split_seq, dim_head}});
   dev_ctx.template Alloc<float>(&split_out, split_out.numel() * sizeof(float));
   params.split_out = split_out.data<float>();
 
