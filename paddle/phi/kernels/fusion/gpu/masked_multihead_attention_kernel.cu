@@ -159,7 +159,7 @@ __global__ void masked_multihead_attention_kernel(
   
   const int split_k = gridDim.x;
   //const int steps_per_block = (act_time_step + split_k - 1) / split_k;
-  const int steps_per_block = 128;
+  constexpr int steps_per_block = 128;
   // 最后的单独的那个q*k*v让split_index的最后的那个cuda thread block来计算！
   const int split_index = blockIdx.x;
   const int start_seq = split_index * steps_per_block;
@@ -519,9 +519,10 @@ __global__ void masked_multihead_attention_kernel(
 
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
   
+  int bhsi = bhi*params.split_seq;
   if (tid == 0) {
-    params.qk_max_split_seq[bhi*params.split_seq + split_index] = qk_max;
-    params.qk_sum_split_seq[bhi*params.split_seq + split_index] = sum;
+    params.qk_max_split_seq[bhsi + split_index] = qk_max;
+    params.qk_sum_split_seq[bhsi + split_index] = sum;
   }
 
   // FIXME(wangxi): need add 1.e-6f?
@@ -643,7 +644,7 @@ __global__ void masked_multihead_attention_kernel(
   
   if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
     for(int tmp=0;tmp<8;++tmp) {
-      params.split_out[(bhi*params.split_seq + split_index) * Dh + vi + tmp] = ((float*)(&out))[tmp];
+      params.split_out[(bhsi + split_index) * Dh + vi + tmp] = ((float*)(&out))[tmp];
     }
   }
 
@@ -956,6 +957,7 @@ __global__ void post_process_kernel(Masked_multihead_attention_params<T> params)
 
     float real_this_sum = this_sum * __expf(this_max - max);
     v += real_this_sum * this_v;
+    // v += this_v * __expf(this_max - max);
     sum += real_this_sum;
   }
 
