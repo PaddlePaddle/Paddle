@@ -77,6 +77,7 @@ void CompilationTask::CodegenAndJit() {
   }
   builder.SetInferShapeFunc(context_->infer_shape_lowered_func_);
   ir::Module ir_module = builder.Build();
+
   context_->backend_compiler_ = backends::Compiler::Create(context_->target_);
   context_->backend_compiler_->Build(ir_module, "");
 }

@@ -556,7 +556,9 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       auto& strategy_map =
           Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
       StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
-      CHECK(static_cast<bool>(strategy)) << " cinn_op_name: " << cinn_op_name << "has no CINNStrategySymbolic registered.";
+      CHECK(static_cast<bool>(strategy))
+          << " cinn_op_name: " << cinn_op_name
+          << "has no CINNStrategySymbolic registered.";
       op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
                                                 op_func_arg_tensors,
                                                 out_types,
@@ -800,7 +802,7 @@ void OpLowererImpl::CollectOutputInfo(
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    
+
     auto ForEachDimExpr = [&](const auto& DoEach) {
       if (!group->value_to_shape_or_data_exprs.empty()) {
         auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
@@ -816,9 +818,8 @@ void OpLowererImpl::CollectOutputInfo(
       }
     };
     std::vector<ir::Dim> sym_shape;
-    ForEachDimExpr([&](const auto& sym){
-      sym_shape.emplace_back(output_id, sym);
-    });
+    ForEachDimExpr(
+        [&](const auto& sym) { sym_shape.emplace_back(output_id, sym); });
     out_shapes->emplace_back(std::move(sym_shape));
   }
 }

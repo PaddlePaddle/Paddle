@@ -1591,7 +1591,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
 void InferSymbolicShapePass(
     std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-    Program &program) {  // NOLINT
+    Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   if (HasDynamicShape(program)) {

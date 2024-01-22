@@ -315,10 +315,7 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(scale_compute,
-                    lang::PackedFunc(),
-                    "strategy.scale.x86",
-                    1);
+  strategy->AddImpl(scale_compute, lang::PackedFunc(), "strategy.scale.x86", 1);
 
   return strategy;
 }
@@ -1353,7 +1350,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForFillConstant)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
-          "CINNStrategySymbolic", cinn::hlir::op::StrategyForFillConstantSymbolic)
+          "CINNStrategySymbolic",
+          cinn::hlir::op::StrategyForFillConstantSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForFillConstant))
       .set_attr("inferdtype",
