@@ -15,7 +15,6 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace cinn {
