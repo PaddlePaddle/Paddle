@@ -200,7 +200,7 @@ class DoubleLevelContainer {
   Iterator end();
 
  protected:
-  // only support constructed by derived class : ConstainerT;
+  // only support constructed by derived class : ContainerT;
   DoubleLevelContainer() = default;
   DISABLE_COPY_AND_ASSIGN(DoubleLevelContainer);
   const ContainerT& container() const {

@@ -172,7 +172,7 @@ void BindDistCommunicator(py::module* m) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "unsupported communicator MODE"));
         }
-        return Communicator::GetInstantcePtr();
+        return Communicator::GetInstancePtr();
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)

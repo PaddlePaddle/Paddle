@@ -68,7 +68,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
     unique_label.insert(label_ptr[i]);
   }
 
-  // constrcut a lookup table and get sampled_local_class_center
+  // construct a lookup table and get sampled_local_class_center
   std::vector<T> actual_sampled;
   std::map<T, T> new_class_dict;
   T idx = 0;
@@ -112,9 +112,9 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   }
 
   // remap the input label to sampled class
-  auto* remmaped_label_ptr = dev_ctx.template Alloc<T>(remapped_label);
+  auto* remapped_label_ptr = dev_ctx.template Alloc<T>(remapped_label);
   for (int64_t i = 0; i < numel; ++i) {
-    remmaped_label_ptr[i] = new_class_dict[label_ptr[i]];
+    remapped_label_ptr[i] = new_class_dict[label_ptr[i]];
   }
 }
 

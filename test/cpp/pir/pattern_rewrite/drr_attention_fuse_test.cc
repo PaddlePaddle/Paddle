@@ -21,10 +21,16 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 
+#include "paddle/phi/common/place.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass_manager.h"
+
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(multihead_matmul, GPU, ALL_LAYOUT);
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp matmul_1_in_1 =
@@ -144,16 +150,16 @@ TEST(DrrTest, AttentionFuse) {
   EXPECT_EQ(program.block()->size(), 33u);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateAttentionFusePass());
+  pm.AddPass(pir::CreateMultiHeadMatmulFusePass());
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
-  phi::Place place = phi::CPUPlace();
-  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::kPlaceAttr, new phi::Place{phi::GPUPlace{}});
   constant_folding_pass->Set(pir::kParamScopeAttr,
-                             new paddle::framework::Scope());
+                             new paddle::framework::Scope{});
   pm.AddPass(std::move(constant_folding_pass));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 20u);
+  EXPECT_EQ(program.block()->size(), 2u);
 }

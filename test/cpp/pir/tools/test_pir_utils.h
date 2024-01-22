@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
 namespace test {
 

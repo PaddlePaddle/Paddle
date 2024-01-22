@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateAttentionFusePass();
+IR_API std::unique_ptr<Pass> CreateMultiHeadMatmulFusePass();
 
 }  // namespace pir

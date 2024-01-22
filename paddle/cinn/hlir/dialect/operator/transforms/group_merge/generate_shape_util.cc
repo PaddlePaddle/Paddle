@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/generate_shape_util.h"
+#include <unordered_set>
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/core/block.h"

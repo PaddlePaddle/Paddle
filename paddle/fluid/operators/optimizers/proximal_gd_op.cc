@@ -47,7 +47,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
         common::product(lr_dim),
         1,
         platform::errors::InvalidArgument(
-            "Learning Rate should be a scalar. But received dimmensions:[%s]",
+            "Learning Rate should be a scalar. But received dimensions:[%s]",
             lr_dim));
 
     ctx->SetOutputDim("ParamOut", param_dim);

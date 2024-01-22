@@ -238,7 +238,7 @@ def is_integer(x):
             True
     """
     if not isinstance(
-        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.OpResult)
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
     ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype

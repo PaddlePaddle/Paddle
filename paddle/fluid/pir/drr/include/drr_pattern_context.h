@@ -15,6 +15,7 @@
 #pragma once
 
 #include <any>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -280,10 +281,46 @@ class ResultPattern {
     return ctx_->ResultTensorPattern(Tensor::NONE_TENSOR_NAME);
   }
 
-  Attribute Attr(const std::string& attr_name) const {
-    return NormalAttribute(attr_name);
+  Attribute StrAttr(const std::string& value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> std::string { return value; });
   }
-  Attribute Attr(const AttrComputeFunc& attr_compute_func) const {
+
+  Attribute BoolAttr(bool value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> bool { return value; });
+  }
+
+  Attribute Int32Attr(int32_t value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> int32_t { return value; });
+  }
+
+  Attribute Int64Attr(int64_t value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> int64_t { return value; });
+  }
+
+  Attribute Float32Attr(float value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> float { return value; });
+  }
+
+  Attribute VectorInt64Attr(const std::vector<int64_t>& value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> std::vector<int64_t> {
+          return value;
+        });
+  }
+
+  Attribute VectorInt32Attr(const std::vector<int32_t>& value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> std::vector<int32_t> {
+          return value;
+        });
+  }
+
+  Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const {
     return ComputeAttribute(attr_compute_func);
   }
 

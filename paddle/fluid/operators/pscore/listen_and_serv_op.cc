@@ -89,9 +89,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
     AddAttr<int>(kCheckpointBlockId,
-                 "BolckID to run save checkpoint on pserer.")
+                 "BlockID to run save checkpoint on pserver.")
         .SetDefault(-1);
-    AddAttr<int>(kLRDecayBlockId, "BolckID to run lr decay on pserer.")
+    AddAttr<int>(kLRDecayBlockId, "BlockID to run lr decay on pserver.")
         .SetDefault(-1);
     AddAttr<int>("rpc_get_thread_num", "pserver get thread num.").SetDefault(1);
     AddAttr<int>("rpc_send_thread_num", "pserver send thread num.")

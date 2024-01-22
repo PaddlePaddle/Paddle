@@ -226,7 +226,7 @@ void BindCudaStream(py::module *m_ptr) {
             return reinterpret_cast<std::uintptr_t>(self.raw_stream());
           },
           R"DOC(
-          retrun the raw cuda stream of type cudaStream_t as type int.
+          return the raw cuda stream of type cudaStream_t as type int.
 
           Examples:
               .. code-block:: python

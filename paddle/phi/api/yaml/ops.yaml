@@ -549,6 +549,7 @@
     func : concat
     data_type : x
   backward : concat_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conj
   args : (Tensor x)
@@ -1130,6 +1131,7 @@
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -2090,6 +2092,7 @@
     data_type : x
   inplace: (x -> out)
   backward : pow_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prelu
   args : (Tensor x, Tensor alpha, str data_format="NCHW", str mode="all")
@@ -2301,6 +2304,7 @@
     func : rsqrt
   inplace : (x -> out)
   backward : rsqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
   args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
@@ -2315,6 +2319,7 @@
     data_type : x
   inplace : (x -> out)
   backward : scale_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
@@ -2599,6 +2604,7 @@
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stack
   args : (Tensor[] x, int axis = 0)
@@ -2834,6 +2840,7 @@
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unstack
   args : (Tensor x, int axis=0, int num=0)

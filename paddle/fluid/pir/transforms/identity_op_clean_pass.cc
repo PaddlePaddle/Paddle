@@ -81,8 +81,8 @@ class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &bais_res =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &bais_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           float res_bias_1 = 0.f;
           float res_bias_2 = 0.f;
           if (match_ctx.Attr<bool>("bias_after_scale_1")) {
@@ -100,8 +100,8 @@ class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
           }
           return res_bias_2;
         });
-    const auto &res_scale_input =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &res_scale_input = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("value_1") *
                  match_ctx.Attr<float>("value_2");
         });
@@ -111,13 +111,9 @@ class RemoveRedundentScalePattern : public paddle::drr::DrrPatternBase {
                                       {"value", res_scale_input},
                                       {"dtype", pat.Attr("dtype_1")},
                                       {"place", pat.Attr("place_1")}});
-    const auto &scale_op_res = res.Op(
-        "pd_op.scale",
-        {{"bias", bais_res},
-         {"bias_after_scale",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-            return true;
-          })}});
+    const auto &scale_op_res =
+        res.Op("pd_op.scale",
+               {{"bias", bais_attr}, {"bias_after_scale", res.BoolAttr(true)}});
     scale_op_res({&res.Tensor("x"), &full_op_res()},
                  {&res.Tensor("scale_2_out")});
   }
@@ -216,33 +212,29 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
 
     auto res = pat.ResultPattern();
 
-    const auto &res_scale_input =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &res_scale_input = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return 1.f - match_ctx.Attr<float>("p");
         });
 
     const auto &full_op_res = res.Op(
         paddle::dialect::FullOp::name(),
         {{"shape",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                       -> phi::IntArray { return {1}; })},
+          res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx)
+                              -> phi::IntArray { return {1}; })},
          {"value", res_scale_input},
          {"dtype",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                       -> phi::DataType { return phi::DataType::FLOAT32; })},
+          res.ComputeAttr(
+              [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+                return phi::DataType::FLOAT32;
+              })},
          {"place",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                       -> phi::Place { return phi::CPUPlace{}; })}});
-    const auto &scale_op_res = res.Op(
-        "pd_op.scale",
-        {{"bias",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-            return 0;
-          })},
-         {"bias_after_scale",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-            return true;
-          })}});
+          res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx)
+                              -> phi::Place { return phi::CPUPlace{}; })}});
+    const auto &scale_op_res =
+        res.Op("pd_op.scale",
+               {{"bias", res.Float32Attr(0)},
+                {"bias_after_scale", res.BoolAttr(true)}});
     scale_op_res({&res.Tensor("dropout_in"), &full_op_res()},
                  {&res.Tensor("dropout_out")});
   }
@@ -262,7 +254,7 @@ class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr = res.Attr(
+    const auto &new_perm_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
           const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");

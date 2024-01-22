@@ -112,7 +112,7 @@ class TestPaddleModel(OpMapperTest):
         self.init_case()
 
     @staticmethod
-    def eliminate_unkown_shape(shape):
+    def eliminate_unknown_shape(shape):
         return [1 if dim == -1 else dim for dim in shape]
 
     def get_paddle_op_attrs(self, op):
@@ -138,7 +138,7 @@ class TestPaddleModel(OpMapperTest):
 
             # the paddle's feed list need dict not list
             self.feed_data[self.feed_names[i]] = self.random(
-                self.eliminate_unkown_shape(self.feed_shapes[i]),
+                self.eliminate_unknown_shape(self.feed_shapes[i]),
                 dtype,
                 high=high,
             )
@@ -289,6 +289,6 @@ class TestPaddleModel(OpMapperTest):
 
 if __name__ == "__main__":
     tester = unittest.defaultTestLoader.loadTestsFromTestCase(TestPaddleModel)
-    test_runer = unittest.TextTestRunner()
-    res = test_runer.run(tester)
+    test_runner = unittest.TextTestRunner()
+    res = test_runner.run(tester)
     sys.exit(not res.wasSuccessful())

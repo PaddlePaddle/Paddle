@@ -137,7 +137,7 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   Gather<T, IntT>(
       x.values().data<T>(), rulebook_ptr + n, n, in_channels, in_features_ptr);
 
-  // 3. call gemm for every werght
+  // 3. call gemm for every weight
   auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
   int offset = 0;
   for (int i = 0; i < kernel_size; i++) {

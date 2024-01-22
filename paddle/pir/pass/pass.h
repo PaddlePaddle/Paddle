@@ -111,7 +111,7 @@ class IR_API Pass {
         return info.name();
       };
 
-      IR_THROW("Invalid type for attritube %s, expected: %s, actual: %s.",
+      IR_THROW("Invalid type for attribute %s, expected: %s, actual: %s.",
                attr_name,
                TypeToString(typeid(AttrType*)),
                TypeToString(attrs_.at(attr_name).type()));

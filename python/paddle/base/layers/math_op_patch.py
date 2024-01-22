@@ -534,19 +534,13 @@ def monkey_patch_variable():
             if lhs_dtype != rhs_dtype:
                 if method_name in SUPPORT_PROMOTION_OPS:
                     if core.need_type_promotion(lhs_dtype, rhs_dtype):
-                        common_dtype = core.get_promote_dtype(
-                            op_type, lhs_dtype, rhs_dtype
-                        )
+                        # only report warning here, real promotion deal in Executor
                         warnings.warn(
-                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted to {common_dtype}"
+                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted"
                         )
                         warnings.filterwarnings(
                             "ignore", message="The input dtypes of OP"
                         )
-                        if rhs_dtype != common_dtype:
-                            other_var = astype(other_var, common_dtype)
-                        if lhs_dtype != common_dtype:
-                            self = astype(self, common_dtype)
                     else:
                         # NOTE(zoooo0820): Currently, we still keep the old illogical \
                         # logic for compatibility reasons

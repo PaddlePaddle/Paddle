@@ -1889,15 +1889,15 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-        dist_foward_api = DistForwardAPI(api)
-        if dist_foward_api.is_dygraph_api:
-            dist_foward_api.is_dygraph_api = False
+        dist_forward_api = DistForwardAPI(api)
+        if dist_forward_api.is_dygraph_api:
+            dist_forward_api.is_dygraph_api = False
 
-        header_file.write(dist_foward_api.gene_api_declaration())
+        header_file.write(dist_forward_api.gene_api_declaration())
         if is_fused_ops_yaml is True:
-            source_file.write(dist_foward_api.gene_api_code())
+            source_file.write(dist_forward_api.gene_api_code())
         else:
-            source_file.write(dist_foward_api.gene_api_code())
+            source_file.write(dist_forward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

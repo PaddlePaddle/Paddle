@@ -221,7 +221,7 @@ std::pair<bool, int64_t> ApplyPatternsGreedily(
   GreedyPatternRewriteDriver driver(region.ir_context(), patterns, config);
   auto [converged, num_rewrites] = driver.Simplify();
   if (!converged) {
-    LOG(WARNING) << "The pattern rewrite did not converge after scaning "
+    LOG(WARNING) << "The pattern rewrite did not converge after scanning "
                  << config.max_iterations << " times";
   }
   return std::make_pair(converged, num_rewrites);

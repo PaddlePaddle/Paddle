@@ -19,6 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/operation.h"
@@ -70,7 +71,7 @@ void OperationFactory::RegisterManualOpCreator() {
       });
 }
 
-static pir::Attribute CreateIrAttribute(const std::any& obj) {
+pir::Attribute CreateIrAttribute(const std::any& obj) {
   if (obj.type() == typeid(bool)) {
     return IrAttrbuteCreator<bool>()(std::any_cast<bool>(obj));
   } else if (obj.type() == typeid(int32_t)) {

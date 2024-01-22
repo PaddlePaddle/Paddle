@@ -245,8 +245,8 @@ struct GPUContext::Impl {
   ~Impl() {
     backends::gpu::GPUDeviceGuard guard(place_.device);
     if (owned_) {
-      DestoryInternalWorkspace();
-      DestoryInternalEigenDevice();
+      DestroyInternalWorkspace();
+      DestroyInternalEigenDevice();
       phi::DestroySparseHandle(sparse_handle_);
       phi::DestroySolverHandle(solver_handle_);
       phi::DestroyDnnHandle(dnn_handle_);
@@ -283,7 +283,7 @@ struct GPUContext::Impl {
     workspace_ = new DnnWorkspaceHandle(allocator_, stream());
   }
 
-  void DestoryInternalWorkspace() {
+  void DestroyInternalWorkspace() {
     if (owned_ && workspace_ != nullptr) {
       delete workspace_;
       workspace_ = nullptr;
@@ -338,7 +338,7 @@ struct GPUContext::Impl {
     eigen_device_ = new Eigen::GpuDevice(eigen_stream_.get());
   }
 
-  void DestoryInternalEigenDevice() {
+  void DestroyInternalEigenDevice() {
     if (owned_ && eigen_device_ != nullptr) {
       delete eigen_device_;
       eigen_device_ = nullptr;
@@ -479,7 +479,7 @@ struct GPUContext::Impl {
   }
 
   solverHandle_t GetSolverHandle() {
-    std::call_once(flag_slover_, [&]() {
+    std::call_once(flag_solver_, [&]() {
       if (!solver_handle_) {
         if (!solver_handle_creator_) {
           phi::InitSolverHandle(&solver_handle_, stream());
@@ -778,7 +778,7 @@ struct GPUContext::Impl {
   std::once_flag flag_blas_;
   std::once_flag flag_blaslt_;
   std::once_flag flag_dnn_;
-  std::once_flag flag_slover_;
+  std::once_flag flag_solver_;
   std::once_flag flag_cublas_;
   std::once_flag flag_tensorcore_cublas_;
   std::once_flag flag_eigen_device_;

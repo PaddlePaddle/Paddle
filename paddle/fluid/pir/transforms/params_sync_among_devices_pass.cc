@@ -89,6 +89,10 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
           param_tensor->clear();
           paddle::framework::TensorCopySync(temp_tensor, place_, param_tensor);
           num_rewrites_++;
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "params_sync_among_devices_pass only support DenseTensor type of "
+              "parameter var."));
         }
       }
     }

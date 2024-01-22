@@ -343,8 +343,12 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
     }
     if (!modify) break;
   }
-  LOG(INFO) << "move down " << move_down_count << " transfer_layout";
-  LOG(INFO) << "eliminate " << elim_count << " pair of transfer_layout";
+  if (move_down_count > 0) {
+    LOG(INFO) << "move down " << move_down_count << " transfer_layout";
+  }
+  if (elim_count > 0) {
+    LOG(INFO) << "eliminate " << elim_count << " pair of transfer_layout";
+  }
 }
 
 }  // namespace ir

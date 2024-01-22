@@ -543,6 +543,7 @@ class TestAPICase_Nested(unittest.TestCase):
 
 
 class TestAPICase_Error(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(

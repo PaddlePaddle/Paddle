@@ -135,7 +135,7 @@ def _get_reduce_axis(axis, x):
 
 
 def _get_reduce_axis_with_tensor(axis, x):
-    if isinstance(axis, (Variable, paddle.pir.OpResult)):
+    if isinstance(axis, (Variable, paddle.pir.Value)):
         if axis.shape[0] == len(x.shape):
             reduce_all = True
         else:
@@ -515,11 +515,11 @@ def pow(x, y, name=None):
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.OpResult)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar , Tensor(in dygraph mode), OpResult(in pir mode) but received: %s '
+                'y must be scalar , Tensor(in dygraph mode), Value(in pir mode) but received: %s '
                 % (y.dtype)
             )
     else:

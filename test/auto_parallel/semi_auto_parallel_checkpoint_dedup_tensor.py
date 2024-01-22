@@ -24,7 +24,7 @@ class TestSaveStateDict:
     def __init__(self):
         self._ckpt_path = os.getenv("ckpt_path")
 
-    def test_dedup_tesnor(self):
+    def test_dedup_tensor(self):
         w1 = paddle.arange(32).reshape([4, 8])
         w2 = paddle.arange(32, 36).reshape([2, 2])
         mesh = dist.ProcessMesh([0, 1])
@@ -61,7 +61,7 @@ class TestSaveStateDict:
                 assert rank == 0
 
     def run_test_case(self):
-        self.test_dedup_tesnor()
+        self.test_dedup_tensor()
 
 
 if __name__ == '__main__':

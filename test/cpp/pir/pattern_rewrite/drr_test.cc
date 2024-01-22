@@ -65,7 +65,7 @@ class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
 
     // Result patterns
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr = res.Attr(
+    const auto &new_perm_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> phi::IntArray {
           auto shape =
               match_ctx.Attr<std::vector<int64_t>>("expand_shape_value");
@@ -95,7 +95,7 @@ class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr = res.Attr(
+    const auto &new_perm_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
           const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");

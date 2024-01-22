@@ -74,7 +74,7 @@ class TestASPAddSupportedLayer(unittest.TestCase):
         )
 
 
-class TestASPDynamicCustomerizedPruneFunc(unittest.TestCase):
+class TestASPDynamicCustomizedPruneFunc(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
 
@@ -184,7 +184,7 @@ class TestASPDynamicCustomerizedPruneFunc(unittest.TestCase):
         self.assertEqual(supported_layer_count, self.supported_layer_count_ref)
 
 
-class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
+class TestASPStaticCustomizedPruneFunc(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 

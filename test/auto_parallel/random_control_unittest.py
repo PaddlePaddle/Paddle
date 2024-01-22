@@ -78,9 +78,9 @@ class TestRandomControl(unittest.TestCase):
         return engine
 
     def compare_mask_between_ranks(
-        self, rank, mask_np_list, comapre_idx, equal
+        self, rank, mask_np_list, compare_idx, equal
     ):
-        for np_mask in [mask_np_list[i] for i in comapre_idx]:
+        for np_mask in [mask_np_list[i] for i in compare_idx]:
             mask_tensor_local = paddle.to_tensor([np_mask.astype("float32")])
             if rank == 0:
                 mask_tensor_remote = paddle.ones_like(mask_tensor_local)
@@ -120,13 +120,13 @@ class TestRandomControl(unittest.TestCase):
 
         paddle.disable_static()
         rank = paddle.distributed.get_rank()
-        # check globl mask consistent across ranks
+        # check global mask consistent across ranks
         global_index = [0, 2, 3, 5, 6]
         self.compare_mask_between_ranks(
             rank, mask_np_list, global_index, equal=True
         )
         local_index = [1, 4]
-        # check loacl mask different across ranks
+        # check local mask different across ranks
         self.compare_mask_between_ranks(
             rank, mask_np_list, local_index, equal=False
         )
@@ -211,14 +211,14 @@ class TestRandomControl(unittest.TestCase):
             )
 
         paddle.disable_static()
-        # check globl mask consistent across ranks
+        # check global mask consistent across ranks
         rank = paddle.distributed.get_rank()
         global_index = [0, 2, 3, 5, 6]
         self.compare_mask_between_ranks(
             rank, mask_np_list, global_index, equal=True
         )
         local_index = [1, 4]
-        # check loacl mask different across ranks
+        # check local mask different across ranks
         self.compare_mask_between_ranks(
             rank, mask_np_list, local_index, equal=False
         )

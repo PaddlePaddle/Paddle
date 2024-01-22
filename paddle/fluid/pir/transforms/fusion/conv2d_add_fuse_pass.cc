@@ -41,34 +41,21 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &fused_conv2d_add_act = res.Op(
-        paddle::dialect::FusedConv2dAddActOp::name(),
-        {{
-            {"strides", pat.Attr("strides")},
-            {"paddings", pat.Attr("paddings")},
-            {"padding_algorithm", pat.Attr("padding_algorithm")},
-            {"dilations", pat.Attr("dilations")},
-            {"groups", pat.Attr("groups")},
-            {"data_format", pat.Attr("data_format")},
-            {"activation",
-             res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                          -> std::string { return "identity"; })},
-            {"split_channels",
-             res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                          -> std::vector<int> { return {}; })},
-            {"exhaustive_search",
-             res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-               return false;
-             })},
-            {"workspace_size_MB",
-             res.Attr([](const paddle::drr::MatchContext &match_ctx) -> int {
-               return 32;
-             })},
-            {"fuse_alpha",
-             res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-               return 0.0f;
-             })},
-        }});
+    const auto &fused_conv2d_add_act =
+        res.Op(paddle::dialect::FusedConv2dAddActOp::name(),
+               {{
+                   {"strides", pat.Attr("strides")},
+                   {"paddings", pat.Attr("paddings")},
+                   {"padding_algorithm", pat.Attr("padding_algorithm")},
+                   {"dilations", pat.Attr("dilations")},
+                   {"groups", pat.Attr("groups")},
+                   {"data_format", pat.Attr("data_format")},
+                   {"activation", res.StrAttr("identity")},
+                   {"split_channels", res.VectorInt32Attr({})},
+                   {"exhaustive_search", res.BoolAttr(false)},
+                   {"workspace_size_MB", res.Int32Attr(32)},
+                   {"fuse_alpha", res.Float32Attr(0.0f)},
+               }});
 
     fused_conv2d_add_act({&res.Tensor("input"),
                           &res.Tensor("filter"),

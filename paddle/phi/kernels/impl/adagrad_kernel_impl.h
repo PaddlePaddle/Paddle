@@ -110,13 +110,13 @@ void AdagradSparseKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(param_tensor,
                     param_out_tensor,
                     phi::errors::InvalidArgument(
-                        "the input tensor not euqal with output tensor"));
+                        "the input tensor not equal with output tensor"));
 
   auto* moment_tensor = &moment_t;
   PADDLE_ENFORCE_EQ(moment_tensor,
                     moment_out_tensor,
                     phi::errors::InvalidArgument(
-                        "the input moment not eual with output moment"));
+                        "the input moment not equal with output moment"));
 
   SparseAdagradFunctor<Context, T> functor;
   functor(

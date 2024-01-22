@@ -55,7 +55,7 @@ class PassInstrumentation {
                                 Operation* op) {}
 };
 
-/// This class holds a collection of PassInstrumentation obejcts, and invokes
+/// This class holds a collection of PassInstrumentation objects, and invokes
 /// their respective callbacks.
 class IR_API PassInstrumentor {
  public:

@@ -319,7 +319,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
   }
 };
 
-template <typename T, typename DeivceContext>
+template <typename T, typename DeviceContext>
 class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

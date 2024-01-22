@@ -29,7 +29,7 @@ import custom_relu  # pylint: disable=unused-import # isort:skip
 assert core.contains_spmd_rule("custom_relu")
 
 
-class TestCusomOpSemiAutoParallel(SemiAutoParallelTestBase):
+class TestCustomOpSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
         self._backend = os.getenv("backend")
@@ -86,4 +86,4 @@ class TestCusomOpSemiAutoParallel(SemiAutoParallelTestBase):
 
 
 if __name__ == '__main__':
-    TestCusomOpSemiAutoParallel().run_test_case()
+    TestCustomOpSemiAutoParallel().run_test_case()

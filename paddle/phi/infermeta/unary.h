@@ -744,7 +744,7 @@ void UnbindInferMeta(const MetaTensor& x,
                      std::vector<MetaTensor*> outs);
 
 void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
-
+void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
 

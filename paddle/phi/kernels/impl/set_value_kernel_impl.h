@@ -273,13 +273,13 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  std::vector<T> assgin_values;
-  assgin_values.reserve(values.size());
+  std::vector<T> assign_values;
+  assign_values.reserve(values.size());
   for (const auto& val : values) {
-    assgin_values.push_back(val.to<T>());
+    assign_values.push_back(val.to<T>());
   }
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
+  phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
   value_tensor.Resize(common::make_ddim(shape));
 
   SetTensorValueKernel<T, Context>(dev_ctx,

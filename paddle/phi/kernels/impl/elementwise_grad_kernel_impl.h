@@ -978,4 +978,31 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }
 
+/*
+******************************
+    Copysign Grad
+******************************
+*/
+template <typename T>
+HOSTDEVICE T compute_copysign_grad_dx(T x, T y, T out, T dout) {
+  if (x == static_cast<T>(0))
+    return x;
+  else
+    return static_cast<T>(dout * (funcs::copysign_func(x, y) / x));
+}
+
+template <typename T>
+struct CopySignGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return compute_copysign_grad_dx<T>(x, y, out, dout);
+  }
+};
+
+template <typename T>
+struct CopySignGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return static_cast<T>(0);
+  }
+};
+
 }  // namespace phi

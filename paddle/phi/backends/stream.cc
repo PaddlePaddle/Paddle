@@ -44,7 +44,7 @@ const stream_t& Stream::raw_stream() const { return stream_; }
 
 void Stream::set_stream(stream_t stream) { stream_ = stream; }
 
-// For compatiable
+// For compatible
 Stream::Stream(const Place& place, stream_t stream)
     : place_(place),
       device_(phi::DeviceManager::GetDeviceWithPlace(place)),

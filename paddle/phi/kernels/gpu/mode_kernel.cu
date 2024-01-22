@@ -93,7 +93,7 @@ void ModeKernel(const Context& dev_ctx,
     }
     trans_out_shape[in_dims.size() - 1] = 1;
 
-    // second step, tranpose the input
+    // second step, transpose the input
     DenseTensor trans_input;
     trans_input.Resize(trans_shape);
     dev_ctx.template Alloc<T>(&trans_input);
@@ -118,7 +118,7 @@ void ModeKernel(const Context& dev_ctx,
                             input_height,
                             trans_out_data,
                             trans_ind_data);
-    // last step, tranpose back the indices and output
+    // last step, transpose back the indices and output
     funcs::TransCompute<Context, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans_axis);
     funcs::TransCompute<Context, T>(ndims, dev_ctx, trans_out, out, trans_axis);

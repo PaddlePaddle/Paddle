@@ -135,7 +135,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
 #endif
 
   int driver_version = 0;
-  int dirver_major = 0;
+  int driver_major = 0;
   int driver_minor = 0;
 #ifdef PADDLE_WITH_HIP
   hipError_t driver_result = dynload::hipDriverGetVersion(&driver_version);
@@ -144,11 +144,11 @@ void GPUDeviceCode::CheckAvailableStatus() {
   CUresult driver_result = dynload::cuDriverGetVersion(&driver_version);
   if (driver_result == CUDA_SUCCESS) {
 #endif
-    dirver_major = driver_version / 1000;
+    driver_major = driver_version / 1000;
     driver_minor = (driver_version % 1000) / 10;
   }
 
-  LOG_FIRST_N(INFO, 1) << "CUDA Driver Version: " << dirver_major << "."
+  LOG_FIRST_N(INFO, 1) << "CUDA Driver Version: " << driver_major << "."
                        << driver_minor << "; NVRTC Version: " << nvrtc_major
                        << "." << nvrtc_minor;
 #ifdef PADDLE_WITH_HIP

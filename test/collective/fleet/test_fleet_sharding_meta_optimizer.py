@@ -839,7 +839,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         startup_prog_ops = startup_prog.global_block().ops
         main_prog_ops = train_prog.global_block().ops
 
-        # check ring id for outter dp
+        # check ring id for outer dp
         created_ring_ids = [
             op.desc.attr("ring_id")
             for op in startup_prog_ops
@@ -959,7 +959,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         startup_prog_ops = startup_prog.global_block().ops
         main_prog_ops = train_prog.global_block().ops
 
-        # check ring id for outter dp
+        # check ring id for outer dp
         created_ring_ids = [
             op.desc.attr("ring_id")
             for op in startup_prog_ops

@@ -82,3 +82,7 @@ else()
     SRCS test_mixed_vector.cc
     DEPS place phi common tensor)
 endif()
+
+if(NOT WIN32)
+  paddle_test(test_c_tcp_store SRCS test_tcp_store.cc DEPS phi common)
+endif()

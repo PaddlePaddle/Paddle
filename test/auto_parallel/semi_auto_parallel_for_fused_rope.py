@@ -101,17 +101,17 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
             (self._bs, self._seq_len)
         )
         position_ids.stop_gradient = True
-        dist_postion_ids = dist.shard_tensor(
+        dist_position_ids = dist.shard_tensor(
             position_ids, self._mesh, dist.Shard(0)
         )
-        dist_postion_ids.stop_gradient = True
+        dist_position_ids.stop_gradient = True
 
         dist_out_q, dist_out_k, _ = fused_rotary_position_embedding(
             q=dist_q,
             k=dist_k,
             sin=dist_sin,
             cos=dist_cos,
-            position_ids=dist_postion_ids,
+            position_ids=dist_position_ids,
             use_neox_rotary_style=False,
         )
         out_q, out_k, _ = fused_rotary_position_embedding(

@@ -59,9 +59,9 @@ inline CCLReduceOp ToXCCLReduceOp(int reduce_type) {
       red_type = phi::ccl::CCLReduceOp::AVG;
       break;
     default:
-      PADDLE_THROW(
-          errors::Unavailable("Unsuppored reduce type. Reduce type must be one "
-                              "of SUM, MAX, MIN, PRODUCT and AVG."));
+      PADDLE_THROW(errors::Unavailable(
+          "Unsupported reduce type. Reduce type must be one "
+          "of SUM, MAX, MIN, PRODUCT and AVG."));
   }
   return red_type;
 }

@@ -70,7 +70,7 @@ bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
     return false;
   }
   std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
-  // Fast but not exhustive check
+  // Fast but not exhaustive check
   return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
           (src_tz[src_tz.size() - 2] % ksize[0] == 0));
 }

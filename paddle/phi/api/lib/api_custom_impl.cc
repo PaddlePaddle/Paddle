@@ -179,13 +179,13 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     }
 #endif
     std::vector<const phi::TensorBase*> input_x(x.size());
-    std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensots;
-    temp_dense_tensots.reserve(x.size());
+    std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensors;
+    temp_dense_tensors.reserve(x.size());
     for (size_t i = 0; i < input_x.size(); ++i) {
       if (phi::DenseTensor::classof(x[i].impl().get())) {
-        temp_dense_tensots.push_back(
+        temp_dense_tensors.push_back(
             PrepareData(x[i], kernel.InputAt(0), {}, false));
-        input_x[i] = temp_dense_tensots.back().get();
+        input_x[i] = temp_dense_tensors.back().get();
       } else {
         input_x[i] = x[i].impl().get();
       }

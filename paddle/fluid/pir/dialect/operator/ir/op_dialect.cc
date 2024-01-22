@@ -93,6 +93,43 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct ParameterOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::OpResult res0 = op->result(0);
+
+    std::vector<int64_t> dims =
+        common::vectorize(res0.type().dyn_cast<pir::DenseTensorType>().dims());
+
+    // TODO(zhangbopd): check whether it's right for other cases
+    std::vector<symbol::DimExpr> sym_shape;
+    for (int64_t dim : dims) {
+      symbol::DimExpr dim_expr;
+      if (dim == -1) {
+        symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+        dim_expr = res_dim_expr;
+      } else {
+        symbol::DimExpr res_dim_expr(dim);
+        dim_expr = res_dim_expr;
+      }
+      sym_shape.push_back(dim_expr);
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{sym_shape};
+    op->set_attribute("symbolic_shape",
+                      pir::shape::SymbolAttribute::get(
+                          pir::IrContext::Instance(), shape_data));
+
+    shape_analysis->SetShapeOrDataForValue(res0, shape_data);
+
+    return true;
+  }
+
+  ParameterOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 OperatorDialect::OperatorDialect(pir::IrContext* ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
@@ -105,6 +142,11 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(std::move(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               ParameterOpInferSymbolicShapeInterfaceModel>()));
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {

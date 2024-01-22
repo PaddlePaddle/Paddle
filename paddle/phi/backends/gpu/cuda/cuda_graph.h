@@ -174,7 +174,7 @@ class CUDAGraphNodeLauncher {
   CUDAGraphNodeLauncher() : id(0) {}
   DISABLE_COPY_AND_ASSIGN(CUDAGraphNodeLauncher);
 
-  unsigned int GenerateIndentifier() { return id++; }
+  unsigned int GenerateIdentifier() { return id++; }
 
   unsigned int id;
   std::unordered_map<cudaFunction_t, std::map<unsigned int, parameterSetter_t>>

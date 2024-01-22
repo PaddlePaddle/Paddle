@@ -49,6 +49,28 @@ void MinimumGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, dout, dout, axis, dx, dy, MinGradDx<T>(), MinGradDy<T>());
 }
 
+template <typename T, typename Context>
+void CopySignGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out_grad,
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  int axis = -1;
+  phi::funcs::
+      ElemwiseGradCompute<Context, T, CopySignGradDX<T>, CopySignGradDY<T>>(
+          dev_ctx,
+          x,
+          y,
+          out_grad,
+          out_grad,
+          axis,
+          x_grad,
+          y_grad,
+          CopySignGradDX<T>(),
+          CopySignGradDY<T>());
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fmax_grad,
@@ -106,4 +128,19 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    double,
                    int,
                    int64_t,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(copysign_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CopySignGradKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}

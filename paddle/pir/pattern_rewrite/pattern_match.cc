@@ -155,7 +155,7 @@ void RewriterBase::ReplaceUseIf(Value from,
   }
 }
 
-// Replace theuses of op with uses of new_op.
+// Replace the uses of op with uses of new_op.
 // 'op' and 'new_op' are known to have the same number of results
 void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {

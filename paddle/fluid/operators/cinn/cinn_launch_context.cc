@@ -199,7 +199,7 @@ void CinnLaunchContext::BuildVarNameMap(
       paddle2cinn_varmap_.size(),
       cinn2paddle_varmap_.size(),
       platform::errors::PreconditionNotMet(
-          "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
+          "Size of variables is not equal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
 }
@@ -426,7 +426,7 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   //   to the new VarDesc.
   //   (2) For all variables, the shape, data type of their VarDescs
   //   are set by values of the corresponding compiled tensors,
-  //   including the in/out variables where the equiality between their tensors
+  //   including the in/out variables where the equality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);

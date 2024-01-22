@@ -124,7 +124,7 @@ void TopkGradKernel(const Context& dev_ctx,
         common::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
     const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
 
-    // Assign the out_grad to tranpose input_grad
+    // Assign the out_grad to transpose input_grad
     DenseTensor tmp_out;
     tmp_out.Resize(trans_in_dims);
     T* t_out = dev_ctx.template Alloc<T>(&tmp_out);

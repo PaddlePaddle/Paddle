@@ -317,7 +317,7 @@ def create_parameter(
 
 def _convert_into_value(tensor):
     """
-    Convert Tensor into OpResult.
+    Convert Tensor into Value.
     """
     import paddle
     from paddle.jit.pir_dy2static.parameter_recorder import (

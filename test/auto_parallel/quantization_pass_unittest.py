@@ -71,13 +71,13 @@ class TestQuantizationPassTrain(unittest.TestCase):
         quantized_ops = set()
         for block in program.blocks:
             for idx, op in enumerate(block.ops):
-                is_quntized = False
+                is_quantized = False
                 if op.type in quantizable_op_and_inputs:
                     for arg_name in op.input_arg_names:
                         if ".quantized" in arg_name:
-                            is_quntized = True
+                            is_quantized = True
 
-                if not is_quntized:
+                if not is_quantized:
                     continue
 
                 # check forward
@@ -89,14 +89,14 @@ class TestQuantizationPassTrain(unittest.TestCase):
                         quantized_ops.add(arg_name)
 
             for op in block.ops:
-                is_quntized = False
+                is_quantized = False
                 if op.type in quantizable_grad_op_inputs:
                     for pname in quantizable_grad_op_inputs[op.type]:
                         arg_name = op.input(pname)[0]
                         if ".quantized" in arg_name:
-                            is_quntized = True
+                            is_quantized = True
 
-                if not is_quntized:
+                if not is_quantized:
                     continue
 
                 # check backward

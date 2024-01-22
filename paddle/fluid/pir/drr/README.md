@@ -182,14 +182,10 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
     // Define ResultPattern
     paddle::drr::ResultPattern res = pat.ResultPattern();
     // Define Constrain
-    const auto &act_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return "none";
-        });
     const auto &fused_gemm_epilogue = res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
                                              {{{"trans_x", pat.Attr("trans_x")},
                                                {"trans_y", pat.Attr("trans_y")},
-                                               {"activation", act_attr}}});
+                                               {"activation", res.StrAttr("none")}}});
     fused_gemm_epilogue(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
