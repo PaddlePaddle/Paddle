@@ -30,8 +30,8 @@ template <typename T>
 struct Masked_multihead_attention_params {
   // output buffer, [B, 1(seq_len), num_head * dim_head]
   T *out;
-  float *qk_max_split_seq;
-  float *qk_sum_split_seq;
+  float *qk_sum_max_split_seq;
+  int * real_split_each_batch;
   /* 现在假设每个seq被拆成2部分来做 */
   int split_seq = 4;
   float *split_out;
@@ -164,6 +164,8 @@ __global__ void masked_multihead_attention_kernel(
   const int split_index = blockIdx.x;
   const int start_seq = split_index * steps_per_block;
   if (act_time_step == 0) {
+    if (tid == 0 && hi == 0)
+    params.real_split_each_batch[bi] = 1;
     if (start_seq > 0) return;  
   } else {
     if (start_seq >= act_time_step) return;
@@ -172,6 +174,8 @@ __global__ void masked_multihead_attention_kernel(
   int end_seq = (split_index + 1) * steps_per_block;
   bool is_last_block = false;
   if (end_seq >= act_time_step) {
+    if (tid == 0 && hi == 0)
+    params.real_split_each_batch[bi] = split_index + 1;
     end_seq = act_time_step;
     is_last_block = true;
   }
@@ -521,8 +525,8 @@ __global__ void masked_multihead_attention_kernel(
   
   int bhsi = bhi*params.split_seq;
   if (tid == 0) {
-    params.qk_max_split_seq[bhsi + split_index] = qk_max;
-    params.qk_sum_split_seq[bhsi + split_index] = sum;
+    params.qk_sum_max_split_seq[(bhsi + split_index) * 2] = sum;
+    params.qk_sum_max_split_seq[(bhsi + split_index) * 2 + 1] = qk_max;
   }
 
   // FIXME(wangxi): need add 1.e-6f?
@@ -940,22 +944,20 @@ __global__ void post_process_kernel(Masked_multihead_attention_params<T> params)
   const int bhi = (bi * params.num_head + hi);
   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
 
-  float max0 = params.qk_max_split_seq[bhsi + 0];
+  float max0 = params.qk_sum_max_split_seq[bhsi * 2 + 1];
   float max = max0;
   
-  for (int i = 1; i < params.split_seq; ++i) {
-    float tmp_max = params.qk_max_split_seq[bhsi + i];
-    float this_sum = params.qk_sum_split_seq[bhsi + i];
-    if (this_sum < 1e-6) break;
+  for (int i = 1; i < params.real_split_each_batch[bi]; ++i) {
+    float this_sum = params.qk_sum_max_split_seq[(bhsi + i) * 2];
+    float tmp_max = params.qk_sum_max_split_seq[(bhsi + i) * 2 + 1];
     max = tmp_max > max ? tmp_max : max;
   }
   
   float sum = 0;
   float v = 0;
-  for (int i = 0; i < params.split_seq; ++i) {
-    float this_max = params.qk_max_split_seq[bhsi + i];
-    float this_sum = params.qk_sum_split_seq[bhsi + i];
-    if (this_sum < 1e-6) break;
+  for (int i = 0; i < params.real_split_each_batch[bi]; ++i) {
+    float this_sum = params.qk_sum_max_split_seq[(bhsi + i) * 2 + 0];
+    float this_max = params.qk_sum_max_split_seq[(bhsi + i) * 2 + 1];
     float this_v = params.split_out[(bhsi + i) * 128 + tid];
 
     float real_this_sum = this_sum * __expf(this_max - max);
@@ -1012,16 +1014,17 @@ void DispatchWithDtype(const Context &dev_ctx,
   
   params.split_seq = (max_seq_len + 127) / 128;
   int split_seq = params.split_seq;
-  phi::DenseTensor qk_max_split_seq;
-  qk_max_split_seq.Resize({{bsz, num_head, split_seq}});
-  dev_ctx.template Alloc<float>(&qk_max_split_seq, qk_max_split_seq.numel() * sizeof(float));
-  params.qk_max_split_seq = qk_max_split_seq.data<float>();
+  phi::DenseTensor qk_sum_max_split_seq;
+  // 2 means sum and max.
+  qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
+  dev_ctx.template Alloc<float>(&qk_sum_max_split_seq, qk_sum_max_split_seq.numel() * sizeof(float));
+  params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
+  cudaMemset(params.qk_sum_max_split_seq, 0, sizeof(float) * qk_sum_max_split_seq.numel());
 
-  phi::DenseTensor qk_sum_split_seq;
-  qk_sum_split_seq.Resize({{bsz, num_head, split_seq}});
-  dev_ctx.template Alloc<float>(&qk_sum_split_seq, qk_max_split_seq.numel() * sizeof(float));
-  params.qk_sum_split_seq = qk_sum_split_seq.data<float>();
-  cudaMemset(params.qk_sum_split_seq, 0, sizeof(float) * qk_max_split_seq.numel());
+  phi::DenseTensor real_split_each_batch;
+  real_split_each_batch.Resize({{bsz}});
+  dev_ctx.template Alloc<int>(&real_split_each_batch, real_split_each_batch.numel() * sizeof(int));
+  params.real_split_each_batch = real_split_each_batch.data<int>();
 
   phi::DenseTensor split_out;
   split_out.Resize({{bsz , num_head, split_seq, dim_head}});
