@@ -1755,9 +1755,19 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           mesh, self->tensor, transed_sub_tensor, value_tensor);
     }
 
-    transed_sub_tensor =
-        index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
-
+    if (transed_index.size() == 1 &&
+        transed_index[0].dtype() == phi::DataType::BOOL &&
+        transed_index[0].shape().size() == self->tensor.shape().size()) {
+      if (value_tensor.shape() != self->tensor.shape()) {
+        value_tensor = expand_ad_func(value_tensor, self->tensor.shape());
+      }
+      transed_sub_tensor = where__ad_func(logical_not_ad_func(transed_index[0]),
+                                          transed_sub_tensor,
+                                          value_tensor);
+    } else {
+      transed_sub_tensor =
+          index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
+    }
     // TODO(zoooo0820) Remove following code after backward bug fixed.
     if (out_is_view) {
       paddle::Tensor transback_sub_tensor =
