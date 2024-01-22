@@ -1204,7 +1204,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
         op_interfaces_tmp = op_interfaces
         exclusive_interface_str_tmp = exclusive_interface_str
         decomp_interface_str = "paddle::dialect::DecompInterface"
-        decomp_interface_declare_str = "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
+        decomp_interface_declare_str = "\n  static std::vector<std::vector<pir::Value>> Decomp(pir::Operation* op);"
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:

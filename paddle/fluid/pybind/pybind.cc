@@ -749,9 +749,9 @@ void BindVjp(pybind11::module *m) {
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
             if (!vjp_res[i][j]) {
-              sub_res.append(nullptr);
+              sub_res.append(pir::Value(nullptr));
             } else {
-              sub_res.append(vjp_res[i][j]);
+              sub_res.append(static_cast<pir::Value>(vjp_res[i][j]));
             }
           }
           res.append(sub_res);
@@ -787,14 +787,14 @@ void BindVjp(pybind11::module *m) {
 void BindDecomp(pybind11::module *m) {
   m->def("sinking_decomp",
          [](pir::Program *program,
-            std::vector<pir::OpResult> &src_vars,
+            std::vector<pir::Value> &src_vars,
             std::set<std::string> &blacklist,
             std::set<std::string> &whitelist) {
            VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
            py::list res;
            DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
            decomp_object.decomp_program();
-           std::vector<pir::OpResult> tar_vars = decomp_object.get_dst_vars();
+           std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
            for (size_t i = 0; i < tar_vars.size(); ++i) {
              if (!tar_vars[i]) {
                res.append(nullptr);
@@ -808,8 +808,7 @@ void BindDecomp(pybind11::module *m) {
 
   m->def("call_decomp", [](pir::Operation &fwd_op) {
     py::list res;
-    std::vector<std::vector<pir::OpResult>> decomp_res =
-        call_decomp_rule(&fwd_op);
+    std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(&fwd_op);
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
       for (size_t j = 0; j < decomp_res[i].size(); ++j) {

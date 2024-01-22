@@ -63,7 +63,7 @@ class AddNOp : public pir::Op<AddNOp,
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation *op);
+  static std::vector<std::vector<pir::Value>> Decomp(pir::Operation *op);
 };
 
 class AddN_Op : public pir::Op<AddN_Op,
