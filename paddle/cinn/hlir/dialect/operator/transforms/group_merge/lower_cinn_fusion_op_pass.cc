@@ -732,7 +732,7 @@ class DyShapeFusionOpPattern : public FusionOpPattern {
       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
       const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
       pir::PatternRewriter& rewriter) const {  // NOLINT
-    ProcessDyShapeGroup(group, shape_analysis, pir_compiler, rewriter);
+    return ProcessDyShapeGroup(group, shape_analysis, pir_compiler, rewriter);
   }
 };
 
