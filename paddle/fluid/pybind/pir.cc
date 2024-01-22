@@ -85,6 +85,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
