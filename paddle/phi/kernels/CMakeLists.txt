@@ -249,6 +249,10 @@ if(WITH_MKLDNN)
                         "fusion/onednn/*.cc")
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+  set(cc_search_pattern ${cc_search_pattern} "custom/*.cc")
+endif()
+
 file(
   GLOB kernel_cc
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

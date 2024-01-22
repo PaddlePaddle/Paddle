@@ -15,6 +15,9 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include <iostream>
+#include <regex>
+#include <string>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -43,6 +46,7 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass.h"
 #include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -52,12 +56,20 @@
 #endif
 
 PHI_DECLARE_bool(print_ir);
-namespace paddle {
-namespace dialect {
+PHI_DECLARE_string(pir_onednn_kernel_blacklist);
 
-pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
-                                    pir::Type op_type,
-                                    phi::Place place) {
+namespace paddle::dialect {
+
+static void ProcessBlock(const phi::Place&,
+                         pir::Block*,
+                         pir::Block*,
+                         pir::IrContext*,
+                         std::unordered_map<pir::Operation*, pir::Operation*>*,
+                         std::unordered_map<pir::Value, pir::Value>*);
+
+static pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
+                                           pir::Type op_type,
+                                           phi::Place place) {
   if (op_type.isa<DenseTensorType>()) {
     return AllocatedDenseTensorType::get(
         ctx, place, op_type.dyn_cast<DenseTensorType>());
@@ -1081,8 +1093,21 @@ phi::KernelKey GetKernelKey(
   }
 
 #ifdef PADDLE_WITH_DNNL
+  std::regex reg(",");
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(FLAGS_pir_onednn_kernel_blacklist.begin(),
+                                 FLAGS_pir_onednn_kernel_blacklist.end(),
+                                 reg,
+                                 -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+
   if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
-      SupportsMKLDNN(kernel_fn_str, res.dtype())) {
+      SupportsMKLDNN(kernel_fn_str, res.dtype()) &&
+      elems.count(op->name().substr(
+          strlen(OneDNNOperatorDialect::name()) + 1,
+          op->name().size() - strlen(OneDNNOperatorDialect::name()) - 1)) ==
+          0) {
     res.set_backend(phi::Backend::ONEDNN);
     res.set_layout(phi::DataLayout::ONEDNN);
   }
@@ -1345,7 +1370,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<::pir::YieldOp>() || op_item->isa<::pir::ShadowOutputOp>()) {
+  if (op_item->isa<::pir::YieldOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -1355,6 +1380,32 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+  }
+
+  if (op_item->isa<::pir::ShadowOutputOp>()) {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        // layout transfer(only for onednn)
+#ifdef PADDLE_WITH_DNNL
+        auto new_in_type = new_in.type();
+        if (new_in_type.isa<AllocatedDenseTensorType>()) {
+          if (new_in_type.dyn_cast<AllocatedDenseTensorType>().data_layout() ==
+              phi::DataLayout::ONEDNN) {
+            new_in = AddOneDNN2PaddleLayoutTransferOp(
+                new_in, phi::DataLayout::ANY, block);
+          }
+        }
+#endif
         vec_inputs.push_back(new_in);
       }
     }
@@ -2377,37 +2428,69 @@ void ProcessBlock(
         place, op_item, op, new_block, ctx, map_op_pair, map_value_pair);
   }
 }
+}  // namespace paddle::dialect
 
-std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
-                                                    phi::Place place) {
-  if (FLAGS_print_ir) {
-    std::cout << "IR before lowering = " << *prog << std::endl;
+class PdOpToKernelPass : public pir::Pass {
+ public:
+  explicit PdOpToKernelPass(const phi::Place& place)
+      : pir::Pass("pd_op_to_kernel", 0) {
+    place_ = place;
   }
 
-  auto program = std::make_unique<pir::Program>(pir::IrContext::Instance());
-
-  auto block = prog->block();
-
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<KernelDialect>();
-  ctx->GetOrRegisterDialect<CustomKernelDialect>();
+  bool Initialize(pir::IrContext* context) {
+    context->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::CustomKernelDialect>();
 
 #ifdef PADDLE_WITH_DNNL
-  ctx->GetOrRegisterDialect<OneDNNOperatorDialect>();
-  ctx->GetOrRegisterDialect<OneDNNKernelDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::OneDNNKernelDialect>();
 #endif
-  std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
-  std::unordered_map<pir::Value, pir::Value> map_value_pair;
-
-  ProcessBlock(
-      place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
-
-  if (FLAGS_print_ir) {
-    std::cout << "IR after lowering = " << *program << std::endl;
   }
 
-  return program;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+
+  void Run(pir::Operation* op) override {
+    auto module_op = op->dyn_cast<pir::ModuleOp>();
+    IR_ENFORCE(module_op,
+               "PdOpToKernelPass should run on module op, but got ",
+               op->name());
+    auto& source_block = module_op.block();
+    // NOTE(Aurelius84): ModuleOp shall only containly one region and one block
+    // by design. However we need create a target block to hold all Kernel
+    // Dialect ops, so we create a new block temporarily and will delete source
+    // block to follow the rule.
+    module_op->region(0).emplace_back();
+    auto& target_block = module_op->region(0).back();
+
+    pir::IrContext* ctx = pir::IrContext::Instance();
+    std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
+    std::unordered_map<pir::Value, pir::Value> map_value_pair;
+
+    paddle::dialect::ProcessBlock(place_,
+                                  &source_block,
+                                  &target_block,
+                                  ctx,
+                                  &map_op_pair,
+                                  &map_value_pair);
+
+    // Delete source block
+    module_op->region(0).erase(module_op->region(0).begin());
+    IR_ENFORCE(module_op->num_regions() == 1U,
+               "Require module_op->num_regions() == 1, but got ",
+               module_op->num_regions());
+  }
+
+ private:
+  phi::Place place_;
+};
+
+namespace pir {
+
+std::unique_ptr<Pass> CreatePdOpToKernelPass(const phi::Place& place) {
+  return std::make_unique<PdOpToKernelPass>(place);
 }
-}  // namespace dialect
-}  // namespace paddle
+
+}  // namespace pir

@@ -4065,7 +4065,8 @@ def cummax(x, axis=None, dtype='int64', name=None):
         x = x.flatten(0, len(x.shape) - 1)
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
-    dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cummax(x, axis, dtype)
@@ -4150,7 +4151,8 @@ def cummin(x, axis=None, dtype='int64', name=None):
         x = x.flatten(0, len(x.shape) - 1)
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
-    dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cummin(x, axis, dtype)

@@ -34,10 +34,8 @@ def get_c_embedding(start, end, table, ids):
     return output
 
 
-def c_embedding_wrapper(table, index, start_index=0):
-    return paddle._legacy_C_ops.c_embedding(
-        table, index, "start_index", start_index
-    )
+def c_embedding_wrapper(table, index, start_index=0, vocab_size=-1):
+    return paddle._C_ops.c_embedding(table, index, start_index, vocab_size)
 
 
 class TestCEmbeddingCPU(OpTest):
@@ -58,11 +56,15 @@ class TestCEmbeddingCPU(OpTest):
         )
         self.start_index = 10
         self.end_index = self.start_index + 17
+        self.vocab_size = 34
 
         self.inputs = {'W': table, 'Ids': ids}
         np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
         self.outputs = {'Out': np_out.reshape((2, 4, 64))}
-        self.attrs = {'start_index': self.start_index}
+        self.attrs = {
+            'start_index': self.start_index,
+            'vocab_size': self.vocab_size,
+        }
         if core.is_compiled_with_xpu():
             self.__class__.use_xpu = True
 
@@ -87,12 +89,20 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
             self.check_output_with_place(core.CUDAPlace(0))
         elif core.is_compiled_with_xpu():
             self.check_output_with_place(core.XPUPlace(0))
+        else:
+            current_place = paddle.framework._current_expected_place()
+            if isinstance(current_place, paddle.CustomPlace):
+                self.check_output_with_place(current_place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(core.CUDAPlace(0), ['W'], 'Out')
         elif core.is_compiled_with_xpu():
             self.check_grad_with_place(core.XPUPlace(0), ['W'], 'Out')
+        else:
+            current_place = paddle.framework._current_expected_place()
+            if isinstance(current_place, paddle.CustomPlace):
+                self.check_grad_with_place(current_place, ['W'], 'Out')
 
     def init_dtype(self):
         if core.is_compiled_with_cuda():
@@ -101,6 +111,11 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
         elif core.is_compiled_with_xpu():
             self.dtype = "float32"
             self.ids_dtype = "int64"
+        else:
+            current_place = paddle.framework._current_expected_place()
+            if isinstance(current_place, paddle.CustomPlace):
+                self.dtype = "float32"
+                self.ids_dtype = "int64"
 
 
 class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):

@@ -14,20 +14,18 @@
 
 #pragma once
 
-#include "paddle/pir/core/operation.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/tensor_array.h"
 
-namespace paddle {
-namespace drr {
+namespace phi {
 
-class IrOperation {
- public:
-  explicit IrOperation(pir::Operation* op) : op_(op) {}
-
-  pir::Operation* get() const { return op_; }
-
- private:
-  pir::Operation* op_;
-};
-
-}  // namespace drr
-}  // namespace paddle
+template <typename T, typename Context>
+void TensorToArrayKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         const DenseTensor& out_grad,
+                         int axis,
+                         bool use_stack,
+                         TensorArray* x_grad);
+}  // namespace phi

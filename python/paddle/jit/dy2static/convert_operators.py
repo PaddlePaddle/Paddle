@@ -858,7 +858,7 @@ def _slice_tensor_array(array, start, end):
         return null_array
 
     def false_fn(array, start, end):
-        new_array = paddle.slice(array, starts=[start], ends=[end], axes=[0])
+        new_array = array[start:end]
         return new_array
 
     new_array = paddle.static.nn.cond(

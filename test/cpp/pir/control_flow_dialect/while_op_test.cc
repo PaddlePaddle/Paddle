@@ -26,6 +26,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
@@ -188,9 +189,11 @@ TEST(while_op_test, network_with_backward) {
 #ifdef PADDLE_WITH_CUDA
   place = paddle::platform::CUDAPlace(0);
 #endif
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program, place);
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
   paddle::framework::Scope scope;
   paddle::framework::InterpreterCore test_core(
-      place, {}, kernel_program->block(), &scope);
+      place, {}, program.block(), &scope);
   test_core.Run({});
 }

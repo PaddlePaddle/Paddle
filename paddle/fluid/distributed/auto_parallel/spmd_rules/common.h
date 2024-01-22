@@ -41,12 +41,12 @@ class SPMDRuleBase {
   // 1. Merge the Sharding (dims_mapping) among Input Tensors.
   // 2. Infer the Sharding (dims_mapping) for Output Tensors.
   // The Info of input tensors (Shape and DistAttr) are wrapped as
-  // DistTensorSpec, and  op attribtue should be given as AttributeMap. The
+  // DistTensorSpec, and  op attribute should be given as AttributeMap. The
   // Output is a pair consist of two vectors:
   // 1. The first vector: the merged DistAttr of input tensors.
-  // 2. The infered DistAttr of output tensors.
+  // 2. The inferred DistAttr of output tensors.
   // The Merged DistAttr might be different from the original Intput DistAttrs,
-  // which means that the corressponding input tensor need to be reshard.
+  // which means that the corresponding input tensor need to be reshard.
   virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
   InferForward(const std::vector<DistTensorSpec>& input_specs,
                const paddle::framework::AttributeMap& attrs);
@@ -55,10 +55,10 @@ class SPMDRuleBase {
   // 1. Merge the Sharding (dims_mapping) among Output Tensors.
   // 2. Infer the Sharding (dims_mapping) for Input Tensors.
   // The Info of output tensors (Shape and DistAttr) are wrapped as
-  // DistTensorSpec, and  op attribtue should be given as AttributeMap. The
+  // DistTensorSpec, and  op attribute should be given as AttributeMap. The
   // Output is a pair consist of two vectors:
   // 1. The first vector: the merged DistAttr of output tensors.
-  // 2. The infered DistAttr of Input tensors.
+  // 2. The inferred DistAttr of Input tensors.
   virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
   InferBackward(const std::vector<DistTensorSpec>& input_specs,
                 const std::vector<DistTensorSpec>& output_specs,
@@ -96,7 +96,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const bool merge_conflicts = true);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
-// Rule1: A repicated dimension could be merged by any sharded dimension.
+// Rule1: A replicated dimension could be merged by any sharded dimension.
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
 // (TODO trigger heuristics cost model and reshard to handle axis sharded by
 // multiple dimension case.)
@@ -111,18 +111,18 @@ int64_t ShardingMergeForAxis(const std::string& axis,
 TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr);
 
 // Resolute the partial mesh dimension of a output tensor, giving the
-// merged sharding specifcation of input tensors and the axis names of output
+// merged sharding specification of input tensors and the axis names of output
 // tensor. Input are
 std::vector<int64_t> ResoluteOutputPartialDimension(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const std::string& tensor_axes);
 
 // Generate the axis notation of tensor for the einsum notation of a broadcast
-// operation(alignment star from the rightmost axis). tenosr_ndim: the size of
-// the tensor. broadcast_ndim: the maxium size of tensors in this broadcast
+// operation(alignment star from the rightmost axis). tensor_ndim: the size of
+// the tensor. broadcast_ndim: the maximum size of tensors in this broadcast
 // operation. alphabet: the characters used to represent the axes of tensor.
 // length of alphabet should >= broadcast_ndim.
-std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet);
 
@@ -147,7 +147,7 @@ GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
 // the annotated axes after inferring forward or backward. The parameter axis
 // stores the axes of the tensor. "1" is a special axis, for the axis "1", set
 // its dims mapping to -1.
-// if unsharded_miss_axis, "-1" is assigend to axes that has no key in
+// if unsharded_miss_axis, "-1" is assigned to axes that has no key in
 // axis_to_dim_map.
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,

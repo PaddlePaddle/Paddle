@@ -42,6 +42,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/region.h"
 #include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -236,10 +237,12 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     for (auto output_var_name : output_var_names) {
       exe_config_->skip_gc_vars.insert(output_var_name);
     }
-    auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
+    ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+    lowered_pm.AddPass(::pir::CreatePdOpToKernelPass(place_));
+    lowered_pm.Run(&new_program);
+
     paddle::framework::InterpreterCore core(
-        place_, {}, kernel_program->block(), scope_, *exe_config_);
+        place_, {}, new_program.block(), scope_, *exe_config_);
 
     core.Run({});
     return output_var_names;

@@ -156,7 +156,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
     return true;
   };
 
-  // MemoryOptimizePass surppose input model is directed acyclic graph
+  // MemoryOptimizePass suppose input model is directed acyclic graph
   // although it's not always the case. so black list is the best compromise
   // between performance and underlying principle.
   std::unordered_set<std::string> black_list;

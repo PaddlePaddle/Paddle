@@ -17,7 +17,7 @@
   support_tensor : [start, end, step]
 
 - op : sequence_mask
-  args: (Tensor x, Scalar(int) max_len, int out_dtype)
+  args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
   output: Tensor(y)
   infer_meta:
     func: SequenceMaskScalarInferMeta

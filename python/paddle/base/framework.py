@@ -235,11 +235,6 @@ paddle_type_to_proto_type = {
 }
 
 
-# FIXME(dev): We haven't fully verified eager mode on XPU et.al but
-# only GPU/CPU. Remove this after we improve this feature.
-_is_first_import_ = True
-
-
 def in_dygraph_mode():
     """
 

@@ -24,7 +24,6 @@ from paddle.base.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
-from .logging_utils import warn
 
 
 def index_in_list(array_list, item):
@@ -43,6 +42,7 @@ DYGRAPH_MODULE_PREFIX = 'paddle.base.dygraph'
 
 
 def is_dygraph_api(node):
+    # TODO(SigureMo): Cleanup this function after we remove the BasicApiTransformer
     # Note: A api in module dygraph_to_static is not a real dygraph api.
     if is_api_in_module(node, DYGRAPH_TO_STATIC_MODULE_PREFIX):
         return False
@@ -76,74 +76,8 @@ def _is_api_in_module_helper(obj, module_prefix):
     return m is not None and m.__name__.startswith(module_prefix)
 
 
-# Is numpy_api cannot reuse is_api_in_module because of numpy module problem
-def is_numpy_api(node):
-    assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
-    func_str = ast_to_source_code(node.func)
-    try:
-        module_result = eval(
-            "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
-        )
-        # BUG: np.random.uniform doesn't have module and cannot be analyzed
-        # TODO: find a better way
-        return module_result or (
-            func_str.startswith("numpy.") or func_str.startswith("np.")
-        )
-    except Exception:
-        return False
-
-
 def is_paddle_api(node):
     return is_api_in_module(node, PADDLE_MODULE_PREFIX)
-
-
-def binary_op_output_type(in_type1, in_type2):
-    if in_type1 == in_type2:
-        return in_type1
-
-    if in_type1 == "UNKNOWN":
-        return in_type2
-    if in_type2 == "UNKNOWN":
-        return in_type1
-
-    supported_types = [
-        "BOOLEAN",
-        "INT",
-        "FLOAT",
-        "NUMPY_NDARRAY",
-        "TENSOR",
-        "PADDLE_RETURN_TYPES",
-    ]
-
-    if in_type1 not in supported_types:
-        return "UNKNOWN"
-    if in_type2 not in supported_types:
-        return "UNKNOWN"
-
-    forbidden_types = ["NUMPY_NDARRAY", "TENSOR"]
-    if in_type1 in forbidden_types and in_type2 in forbidden_types:
-        return "UNKNOWN"
-    return max(in_type1, in_type2)
-
-
-Annotation_map = {
-    "Tensor": "TENSOR",
-    "paddle.Tensor": "TENSOR",
-    "int": "INT",
-    "float": "FLOAT",
-    "bool": "BOOLEAN",
-    "str": "STRING",
-}
-
-
-def type_from_annotation(annotation):
-    annotation_str = ast_to_source_code(annotation).strip()
-    if annotation_str in Annotation_map:
-        return Annotation_map[annotation_str]
-
-    # raise warning if not found
-    warn("Currently we don't support annotation: %s" % annotation_str)
-    return "UNKNOWN"
 
 
 def set_dynamic_shape(variable, shape_list):

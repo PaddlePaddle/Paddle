@@ -16,7 +16,7 @@
 
 #include <queue>
 
-#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {

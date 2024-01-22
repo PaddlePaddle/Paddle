@@ -2075,7 +2075,20 @@ struct SelectInputOpTranscriber : public OpTranscriber {
       }
       auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
       auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-      auto dim = common::ComputeCompatibleDim(dim1, dim2);
+      auto compute_compatiable_dim =
+          [](const common::DDim& dim1,
+             const common::DDim& dim2) -> common::DDim {
+        std::vector<int64_t> result;
+        for (int i = 0; i < std::min(dim1.size(), dim2.size()); ++i) {
+          if (dim1[i] != dim2[i]) {
+            result.push_back(-1);
+          } else {
+            result.push_back(dim1[i]);
+          }
+        }
+        return common::make_ddim(result);
+      };
+      auto dim = compute_compatiable_dim(dim1, dim2);
       op_output_types.push_back(
           paddle::dialect::DenseTensorType::get(ctx,
                                                 tensor1.dtype(),

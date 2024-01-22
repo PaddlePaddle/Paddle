@@ -2,7 +2,7 @@ cc_library(
   benchmark
   SRCS benchmark.cc
   DEPS enforce common)
-paddle_test(test_benchmark SRCS benchmark_tester.cc DEPS benchmark)
+
 cc_library(
   infer_io_utils
   SRCS io_utils.cc
@@ -13,7 +13,6 @@ cc_library(
   DEPS proto_desc enforce common)
 
 cc_library(table_printer SRCS table_printer.cc)
-paddle_test(test_table_printer SRCS table_printer_tester.cc DEPS pir)
 
 proto_library(shape_range_info_proto SRCS shape_range_info.proto)
 

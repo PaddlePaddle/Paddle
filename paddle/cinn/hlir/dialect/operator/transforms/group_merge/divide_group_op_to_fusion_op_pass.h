@@ -12,25 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
+#pragma once
 
-namespace paddle {
-namespace drr {
+#include <memory>
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/pass/pass.h"
 
-bool ShapeInterface::operator==(const ShapeInterface& other) const {
-  return *shape_ == *other.shape_;
-}
-
-int ShapeInterface::size() const { return shape_->size(); }
-
-int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
-
-bool DtypeInterface::operator==(const DtypeInterface& other) const {
-  return *dtype_ == *other.dtype_;
-}
-
-IrDtype DtypeInterface::get() const { return *(this->dtype_); }
-
-}  // namespace drr
-}  // namespace paddle
+namespace cinn {
+namespace dialect {
+namespace ir {
+std::unique_ptr<::pir::Pass> CreateDivideGroupOpToFusionOpPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

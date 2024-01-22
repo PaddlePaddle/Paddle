@@ -25,7 +25,7 @@ from paddle import nn
 from paddle.jit import to_static
 
 
-class TestStaticAnalysis(Dy2StTestBase):
+class TestTensorHook(Dy2StTestBase):
     def test_hook_for_different_parameter(self):
         def f(x):
             def h(g):

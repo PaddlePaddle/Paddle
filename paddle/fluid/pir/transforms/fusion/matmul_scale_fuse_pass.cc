@@ -13,22 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
-#include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class MatmulScaleFusePattern
-    : public paddle::drr::DrrPatternBase<MatmulScaleFusePattern> {
+class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -76,6 +71,8 @@ class MatmulScaleFusePattern
     matmul_op_res({&res.Tensor("x"), &res.Tensor("scale_res_out")},
                   {&res.Tensor("scale_out")});
   }
+
+  std::string name() const override { return "MatmulScaleFusePattern"; }
 };
 
 class MatmulScaleFusePass : public pir::PatternRewritePass {

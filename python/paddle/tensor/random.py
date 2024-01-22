@@ -1416,7 +1416,7 @@ def randperm(n, dtype="int64", name=None):
             >>> #doctest: -SKIP
 
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():

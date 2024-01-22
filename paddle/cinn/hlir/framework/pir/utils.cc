@@ -181,6 +181,7 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
   CASE_SINGLE_ATTR(Int32Attribute, data)
   CASE_SINGLE_ATTR(Int64Attribute, data)
   CASE_SINGLE_ATTR(StrAttribute, AsString)
+  else if (src_attr.isa<::pir::shape::SymbolAttribute>()) return dst_attr;
   else dst_attr = ConvertArrayAttribute(src_attr);  // NOLINT
   return dst_attr;
 }

@@ -862,6 +862,7 @@ for binary_fn in BINARY_OPS:
 fallback_tensor_unary_method = {
     int,
     bool,
+    float,
     operator.truth,
 }
 

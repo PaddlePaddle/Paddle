@@ -16,6 +16,7 @@
 #include "glog/logging.h"
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/adt/symbolic_dim.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 
@@ -34,8 +35,8 @@ struct DynamicTensor final {
         .size();
   }
 
-  const std::vector<std::optional<DimExpr>>& GetShape() const {
-    return group->graph_symbolic_dim_infer_ctx()->GetTensorDimExprs(node_data);
+  const std::vector<DimExpr>& GetShape() const {
+    return group->GetShapeOrDataExprs(node_data).shape();
   }
 };
 

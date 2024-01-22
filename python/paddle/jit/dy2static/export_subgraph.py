@@ -99,10 +99,10 @@ class BaseExporter:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
-    def insert_feed_op(self, intputs, rename_prefix):
+    def insert_feed_op(self, inputs, rename_prefix):
         global_block = self.program.block(0)
-        intputs.sort()
-        for i, old_name in enumerate(intputs):
+        inputs.sort()
+        for i, old_name in enumerate(inputs):
             new_name = rename_prefix + str(i)
             global_block._rename_var(old_name, new_name)
             out = global_block.var(new_name)

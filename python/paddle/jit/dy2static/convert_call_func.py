@@ -140,7 +140,8 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
-            f"Whitelist: {func} is part of Paddle module and does not have to be transformed.",
+            "Whitelist: %s is part of Paddle module and does not have to be transformed.",
+            func,
         )
         return True
 
@@ -182,7 +183,7 @@ def convert_call(func):
              [1. 1. 1.]]
 
     """
-    translator_logger.log(1, f"Convert callable object: convert {func}.")
+    translator_logger.log(1, "Convert callable object: convert %s.", func)
     func_self = None
     converted_call = None
 
@@ -194,7 +195,8 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
-            f"{func} is not converted when it is decorated by 'paddle.jit.not_to_static'.",
+            "%s is not converted when it is decorated by 'paddle.jit.not_to_static'.",
+            func,
         )
         return func
 
@@ -274,7 +276,8 @@ def convert_call(func):
                 # If func is not in __globals__, it does not need to be transformed
                 # because it has been transformed before.
                 translator_logger.warn(
-                    f"{func} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is."
+                    "%s doesn't have to be transformed to static function because it has been transformed before, it will be run as-is.",
+                    func,
                 )
                 converted_call = func
         except AttributeError:
@@ -326,7 +329,8 @@ def convert_call(func):
 
     if converted_call is None:
         translator_logger.warn(
-            f"{func} doesn't have to be transformed to static function, and it will be run as-is."
+            "%s doesn't have to be transformed to static function, and it will be run as-is.",
+            func,
         )
         return func
 

@@ -370,6 +370,8 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         local_abserr(Tensor): Local sum of abs error
         local_prob(Tensor): Local sum of predicted ctr
         local_q(Tensor): Local sum of q value
+        local_pos_num (Tensor): Local number of positive examples
+        local_ins_num (Tensor): Local number of instances
 
     Examples:
         .. code-block:: python

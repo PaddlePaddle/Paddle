@@ -195,7 +195,7 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 "pd_op.add_grad",
             )
 
-    def test_backward_with_loop_var_same_to_extral_var(self):
+    def test_backward_with_loop_var_same_to_extra_var(self):
         main_program = paddle.static.Program()
         with paddle.pir.core.program_guard(main_program):
             i = paddle.full(shape=[1], fill_value=0)

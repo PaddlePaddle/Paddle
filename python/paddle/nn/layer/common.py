@@ -202,7 +202,7 @@ class Upsample(Layer):
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
-    in_d is the depth of the intput tensor.
+    in_d is the depth of the input tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:

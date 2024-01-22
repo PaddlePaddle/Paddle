@@ -73,10 +73,12 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       }
     }
 
+    // TODO(zhangbopd): use op->result(0) to infer the shape
     symbol::ShapeOrDataDimExprs shape_data{out_dims};
     if (operand_source_1st_data.has_value()) {
-      shape_data =
-          symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(shape_data);
+      std::vector<symbol::DimExpr> tmp_shape(std::int64_t(out_dims.size()));
+      symbol::ShapeOrDataDimExprs temp_shape_data(tmp_shape, out_dims);
+      shape_data = temp_shape_data;
     }
 
     op->set_attribute("symbolic_shape",

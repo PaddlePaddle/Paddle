@@ -566,6 +566,7 @@ class AutoParallelForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -841,6 +842,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             if self.python_out_sig is not None:

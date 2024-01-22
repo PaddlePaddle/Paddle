@@ -26,7 +26,7 @@ set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 
 if(NOT DEFINED XPU_BASE_DATE)
-  set(XPU_BASE_DATE "20231218")
+  set(XPU_BASE_DATE "20240104")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
   set(XPU_XHPC_BASE_DATE "20240105")

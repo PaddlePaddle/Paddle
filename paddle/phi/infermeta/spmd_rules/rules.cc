@@ -586,12 +586,12 @@ PD_REGISTER_SPMD_RULE(tile,
 // cross_entropy_with_softmax
 PD_REGISTER_SPMD_RULE(
     cross_entropy_with_softmax,
-    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdStatic),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
 
 PD_REGISTER_SPMD_RULE(
     softmax_with_cross_entropy,
-    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdStatic),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
 
 // fused_linear_param_grad_add got no reverse infer spmd rule

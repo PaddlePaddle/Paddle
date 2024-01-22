@@ -23,6 +23,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -749,7 +750,9 @@ class TestTriangularSolveAPI(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(name="x", shape=[3, 3], dtype=self.dtype)
             y = paddle.static.data(name="y", shape=[3, 2], dtype=self.dtype)
             z = paddle.linalg.triangular_solve(x, y)
@@ -760,12 +763,13 @@ class TestTriangularSolveAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"x": x_np, "y": y_np},
                 fetch_list=[z],
             )
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)
@@ -790,7 +794,7 @@ class TestTriangularSolveAPI(unittest.TestCase):
 
 
 class TestTriangularSolveOpError(unittest.TestCase):
-    def test_errors(self):
+    def test_errors1(self):
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
             x1 = base.create_lod_tensor(
@@ -801,6 +805,11 @@ class TestTriangularSolveOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.linalg.triangular_solve, x1, y1)
 
+    @test_with_pir_api
+    def test_errors2(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The data type of input must be float32 or float64.
             x2 = paddle.static.data(name="x2", shape=[30, 30], dtype="bool")
             y2 = paddle.static.data(name="y2", shape=[30, 10], dtype="bool")

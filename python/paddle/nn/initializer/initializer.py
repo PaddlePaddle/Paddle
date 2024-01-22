@@ -168,5 +168,5 @@ def calculate_gain(nonlinearity, param=None):
         return recommended_gain[nonlinearity]
     else:
         raise ValueError(
-            f"nonlinearity function {nonlinearity} is not suppported now."
+            f"nonlinearity function {nonlinearity} is not supported now."
         )

@@ -1,4 +1,4 @@
-file(GLOB DRR_SRCS "*.cc" "api/*.cc")
+file(GLOB DRR_SRCS "*.cc" "include/*.cc")
 
 set(op_creator_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_creator_drr_gen.py

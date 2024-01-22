@@ -26,6 +26,13 @@ constexpr char kFetchSuffix[] = "@fetch";
 
 class SubGraphChecker {
  public:
+  struct ProgramInfo {
+    std::shared_ptr<pir::Program> program{nullptr};
+    std::shared_ptr<pir::Program> kernel_program{nullptr};
+    std::vector<pir::Value> input_values;
+    std::vector<std::string> fetch_names;
+  };
+
   SubGraphChecker(std::shared_ptr<pir::Program> orig_program,
                   std::shared_ptr<pir::Program> prim_program);
 
@@ -50,18 +57,10 @@ class SubGraphChecker {
 
   double RunPhiSpeed();
   double RunCinnSpeed();
-  std::shared_ptr<pir::Program> phi_program_;
-  std::shared_ptr<pir::Program> prim_program_;
 
-  std::unique_ptr<pir::Program> phi_kernel_program_;
-
+  ProgramInfo phi_program_info_;
+  ProgramInfo prim_program_info_;
   paddle::framework::Scope inner_scope_;
-
-  std::vector<pir::Value> phi_input_values_;
-  std::vector<std::string> phi_fetch_names_;
-
-  std::vector<pir::Value> cinn_input_values_;
-  std::vector<std::string> cinn_fetch_names_;
 };
 
 }  // namespace test

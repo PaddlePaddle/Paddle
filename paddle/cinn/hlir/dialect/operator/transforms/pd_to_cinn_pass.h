@@ -31,10 +31,6 @@ class PdOpToCinnOpPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation *op) const override;
 };
 
-// TODO(lanxianghit): delete this and use CreatePdOpToCinnOpPass() in
-// corresponding unit tests.
-void PdOp2CinnOpConverter(::pir::Program *program);
-
 IR_API std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass();
 
 }  // namespace ir

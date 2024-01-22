@@ -55,4 +55,5 @@ PD_REGISTER_KERNEL(max_raw,
                    phi::MaxRawKernel,
                    float,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

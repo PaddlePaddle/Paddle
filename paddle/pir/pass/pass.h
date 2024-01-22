@@ -21,9 +21,8 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace pir {
 
@@ -197,7 +196,7 @@ class IR_API Pass {
   std::unordered_map<std::string, std::function<void(void)>> attr_dels_;
 };
 
-class PatternRewritePass : public Pass {
+class IR_API PatternRewritePass : public Pass {
  public:
   PatternRewritePass(const std::string& name,
                      uint8_t opt_level,

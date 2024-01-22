@@ -47,6 +47,7 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -153,5 +154,7 @@ TEST(kernel_dialect, cond_op_test) {
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
   program.Print(std::cout);
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass());
+  lowered_pm.Run(&program);
 }

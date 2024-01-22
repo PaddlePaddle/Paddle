@@ -560,7 +560,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2) &&
             _value_accesor->Save(it.value().data(), 4)) {
-          CostTimer timer10("sprase table top push");
+          CostTimer timer10("sparse table top push");
           tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
         }
 
@@ -802,7 +802,7 @@ int64_t MemorySparseTable::CacheShuffle(
     writer.Flush();
     writer.channel()->Close();
   }
-  // LOG(INFO) << "MemorySparseTable cache KV save success to Channel feasigh
+  // LOG(INFO) << "MemorySparseTable cache KV save success to Channel feasign
   // size: " << feasign_size << " and start sparse cache data shuffle real local
   // shard num: " << _real_local_shard_num;
   std::vector<std::pair<uint64_t, std::string>> local_datas;

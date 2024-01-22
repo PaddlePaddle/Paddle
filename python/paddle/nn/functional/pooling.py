@@ -171,7 +171,7 @@ def _expand_low_nd_padding(padding):
         padding = [0] + padding
     else:
         raise ValueError(
-            f"The size of padding's dimmention should be 1 or 2. But got padding={padding}"
+            f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
         )
     return padding
 
@@ -250,7 +250,7 @@ def avg_pool1d(
         padding, 1, channel_last=channel_last, ceil_mode=ceil_mode
     )
 
-    # use 2d to implenment 1d should expand padding in advance.
+    # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
     if in_dynamic_or_pir_mode():
@@ -566,7 +566,7 @@ def max_pool1d(
     name=None,
 ):
     """
-    This API implements max pooling 1d opereation.
+    This API implements max pooling 1d operation.
     See more details in :ref:`api_paddle_nn_MaxPool1d` .
 
     Args:
@@ -745,7 +745,7 @@ def max_unpool1d(
     name=None,
 ):
     r"""
-    This API implements max unpooling 1d opereation.
+    This API implements max unpooling 1d operation.
     `max_unpool1d` accepts the output of `max_pool1d` as input,
     including the indices of the maximum value and calculate the partial inverse.
     All non-maximum values are set to zero.
@@ -767,7 +767,7 @@ def max_unpool1d(
         indices (Tensor): The indices given out by maxpooling1d which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` ,
                           where `N` is batch size, `C` is the number of channels, `L` is
-                          the length of the featuree. The data type is float32 or float64.
+                          the length of the feature. The data type is float32 or float64.
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
@@ -880,7 +880,7 @@ def max_unpool2d(
     name=None,
 ):
     r"""
-    This API implements max unpooling 2d opereation.
+    This API implements max unpooling 2d operation.
     See more details in :ref:`api_paddle_nn_MaxUnPool2D` .
 
 
@@ -924,7 +924,7 @@ def max_unpool2d(
 
         Raises:
             ValueError: If the input is not a 4-D tensor.
-            ValueError: If indeces shape is not equal input shape.
+            ValueError: If indices shape is not equal input shape.
 
 
         Examples:
@@ -1030,7 +1030,7 @@ def max_unpool3d(
     name=None,
 ):
     r"""
-    This API implements max unpooling 3d opereation.
+    This API implements max unpooling 3d operation.
     `max_unpool3d` accepts the output of `max_pool3d` as input,
     including the indices of the maximum value and calculate the partial inverse.
     All non-maximum values are set to zero.

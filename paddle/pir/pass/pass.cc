@@ -23,6 +23,8 @@
 #include "paddle/pir/pass/pass_adaptor.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 

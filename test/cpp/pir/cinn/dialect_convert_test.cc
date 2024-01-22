@@ -21,7 +21,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -65,7 +65,9 @@ TEST(DrrTest, reduce_sum) {
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
+  pir::PassManager pm(ctx);
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pm.Run(&program);
 
   auto it = program.block()->begin();
 
@@ -87,7 +89,9 @@ TEST(DrrTest, reduce_max) {
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgramMax(builder);
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
+  pir::PassManager pm(ctx);
+  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pm.Run(&program);
 
   auto it = program.block()->begin();
 

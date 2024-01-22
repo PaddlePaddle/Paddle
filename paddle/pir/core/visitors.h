@@ -41,8 +41,8 @@ void Walk(Operation *op,
 
 template <WalkOrder Order = WalkOrder::PostOrder, typename FuncTy>
 void Walk(Operation *op, FuncTy &&callback) {
-  return detail::Walk(op, callback, Order);
+  return Walk(op, callback, Order);
 }
-
 }  // namespace detail
+
 }  // namespace pir

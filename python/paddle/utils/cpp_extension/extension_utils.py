@@ -585,7 +585,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             # See _reset_so_rpath for details.
             extra_link_args.append(f'-Wl,-rpath,{_get_base_path()}')
             # On MacOS, ld don't support `-l:xx`, so we create a
-            # liblibpaddle.dylib symbol link.
+            # libpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
             extra_link_args.append(f'-l{lib_core_name}')
         # -----------------------   -- END --    ----------------------- #
