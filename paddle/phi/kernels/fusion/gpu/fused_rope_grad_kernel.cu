@@ -61,6 +61,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   phi::Array<const T*, 3> ins_data;
   phi::Array<const T*, 2> sin_cos_data;
   const int64_t* position_ids_data = NULL;
+  phi::Array<int64_t, 3> inputs_num_heads;
+  inputs_num_heads[0] = num_heads;
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
@@ -70,6 +72,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dk);
     outs_data[1] = dk->data<T>();
     ins_data[1] = dout_k->data<T>();
+    inputs_num_heads[1] = dk->dims()[2];
     num_inputs++;
   }
 
@@ -77,6 +80,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dv);
     outs_data[2] = dv->data<T>();
     ins_data[2] = dout_v->data<T>();
+    inputs_num_heads[2] = dv->dims()[2];
     num_inputs++;
   }
 
@@ -95,35 +99,84 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     }
   }
 
+  bool is_same_num_heads = true;
+  auto prev_num_heads = inputs_num_heads[0];
+  for (int i = 1; i < num_inputs; ++i) {
+    if (prev_num_heads != inputs_num_heads[i]) {
+      is_same_num_heads = false;
+      break;
+    }
+    prev_num_heads = inputs_num_heads[i];
+  }
+
   int sign = -1;
-  if (use_neox_rotary_style) {
-    VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-        <<<grid, block, 0, stream>>>(ins_data,
-                                     sin_cos_data,
-                                     position_ids_data,
-                                     flag_sin_cos,
-                                     sign,
-                                     batch_size,
-                                     seq_len,
-                                     num_heads,
-                                     head_dim,
-                                     outs_data,
-                                     num_inputs,
-                                     div_c);
+  if (is_same_num_heads) {
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, 3, vec_size> kernel_func_qkv =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
+                                                          MPType,
+                                                          3,
+                                                          vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>;
+    kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
+                                                sin_cos_data,
+                                                position_ids_data,
+                                                flag_sin_cos,
+                                                sign,
+                                                batch_size,
+                                                seq_len,
+                                                num_heads,
+                                                head_dim,
+                                                outs_data,
+                                                num_inputs,
+                                                div_c);
   } else {
-    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>
-        <<<grid, block, 0, stream>>>(ins_data,
-                                     sin_cos_data,
-                                     position_ids_data,
-                                     flag_sin_cos,
-                                     sign,
-                                     batch_size,
-                                     seq_len,
-                                     num_heads,
-                                     head_dim,
-                                     outs_data,
-                                     num_inputs,
-                                     div_c);
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, 1, vec_size> kernel_func_q =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
+                                                          MPType,
+                                                          1,
+                                                          vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 1, vec_size>;
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, 2, vec_size> kernel_func_kv =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
+                                                          MPType,
+                                                          2,
+                                                          vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 2, vec_size>;
+
+    // rotary position embedding Q
+    phi::Array<const T*, 1> input_q{ins_data[0]};
+    phi::Array<T*, 1> out_q{outs_data[0]};
+    kernel_func_q<<<grid, block, 0, stream>>>(input_q,
+                                              sin_cos_data,
+                                              position_ids_data,
+                                              flag_sin_cos,
+                                              sign,
+                                              batch_size,
+                                              seq_len,
+                                              inputs_num_heads[0],
+                                              head_dim,
+                                              out_q,
+                                              1,
+                                              div_c);
+
+    // rotary position embedding K,V
+    phi::Array<const T*, 2> input_kv{ins_data[1], ins_data[2]};
+    phi::Array<T*, 2> out_kv{outs_data[1], outs_data[2]};
+    kernel_func_kv<<<grid, block, 0, stream>>>(input_kv,
+                                               sin_cos_data,
+                                               position_ids_data,
+                                               flag_sin_cos,
+                                               sign,
+                                               batch_size,
+                                               seq_len,
+                                               inputs_num_heads[1],
+                                               head_dim,
+                                               out_kv,
+                                               num_inputs - 1,
+                                               div_c);
   }
 }
 

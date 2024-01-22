@@ -170,104 +170,108 @@ void FusedRopeKernel(const Context& dev_ctx,
     flag_sin_cos = true;
   }
 
+  bool is_same_num_heads = true;
+  auto prev_num_heads = inputs_num_heads[0];
+  for (int i = 1; i < num_inputs; ++i) {
+    if (prev_num_heads != inputs_num_heads[i]) {
+      is_same_num_heads = false;
+      break;
+    }
+    prev_num_heads = inputs_num_heads[i];
+  }
+
   int sign = 1;
-  if (use_neox_rotary_style) {
-    VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-        <<<grid, block, 0, stream>>>(ins_data,
-                                     sin_cos_data,
-                                     position_ids_data,
-                                     flag_sin_cos,
-                                     sign,
-                                     batch_size,
-                                     seq_len,
-                                     num_heads,
-                                     head_dim,
-                                     outs_data,
-                                     num_inputs,
-                                     div_c);
+  if (is_same_num_heads) {
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, 3, vec_size> kernel_func_qkv =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
+                                                          MPType,
+                                                          3,
+                                                          vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>;
+
+    kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
+                                                sin_cos_data,
+                                                position_ids_data,
+                                                flag_sin_cos,
+                                                sign,
+                                                batch_size,
+                                                seq_len,
+                                                num_heads,
+                                                head_dim,
+                                                outs_data,
+                                                num_inputs,
+                                                div_c);
   } else {
-    bool is_same_num_heads = true;
-    int64_t prev_num_heads = inputs_num_heads[0];
-    for (int i = 1; i < num_inputs; ++i) {
-      if (prev_num_heads != inputs_num_heads[i]) {
-        is_same_num_heads = false;
-        break;
-      }
-      prev_num_heads = inputs_num_heads[i];
-    }
+    // Multi Query Attention (MQA) or Group Query Attention (GQA)
+    PADDLE_ENFORCE_EQ(
+        (inputs_num_heads[0] != inputs_num_heads[1]) &&
+            (inputs_num_heads[0] % inputs_num_heads[1] == 0),
+        true,
+        phi::errors::InvalidArgument(
+            "The MQA or GQA mode is entered, when the number of heads of qkv "
+            "is not exactly the same two by two. This mode requires "
+            "num_heads of q to be divisible by k,v."
+            "But recieved num_heads of q is %d, num_heads of k is %d",
+            inputs_num_heads[0],
+            inputs_num_heads[1]));
 
-    if (is_same_num_heads) {
-      VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>
-          <<<grid, block, 0, stream>>>(ins_data,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       num_heads,
-                                       head_dim,
-                                       outs_data,
-                                       num_inputs,
-                                       div_c);
-    } else {
-      // Multi Query Attention or Group Query Attention
-      PADDLE_ENFORCE_EQ(
-          (inputs_num_heads[0] != inputs_num_heads[1]) &&
-              (inputs_num_heads[0] % inputs_num_heads[1] == 0),
-          true,
-          phi::errors::InvalidArgument(
-              "The MQA or GQA mode is entered, when the number of heads of qkv "
-              "is not exactly the same two by two. This mode requires "
-              "num_heads of q to be divisible by k,v."
-              "But recieved num_heads of q is %d, num_heads of k is %d",
-              inputs_num_heads[0],
-              inputs_num_heads[1]));
+    PADDLE_ENFORCE_EQ(
+        (!v.get_ptr()) || (inputs_num_heads[1] == inputs_num_heads[2]),
+        true,
+        phi::errors::InvalidArgument(
+            "The num_heads of k must be equal to the num_heads of v when v "
+            "is not none."
+            "But recieved num_heads of k is %d, num_heads of v is %d",
+            inputs_num_heads[1],
+            inputs_num_heads[2]));
 
-      PADDLE_ENFORCE_EQ(
-          (!v.get_ptr()) || (inputs_num_heads[1] == inputs_num_heads[2]),
-          true,
-          phi::errors::InvalidArgument(
-              "The num_heads of k must be equal to the num_heads of v when v "
-              "is not none."
-              "But recieved num_heads of k is %d, num_heads of v is %d",
-              inputs_num_heads[1],
-              inputs_num_heads[2]));
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, 1, vec_size> kernel_func_q =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
+                                                          MPType,
+                                                          1,
+                                                          vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 1, vec_size>;
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, 2, vec_size> kernel_func_kv =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
+                                                          MPType,
+                                                          2,
+                                                          vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 2, vec_size>;
 
-      // rotary position embedding Q
-      phi::Array<const T*, 1> input_q{ins_data[0]};
-      phi::Array<T*, 1> out_q{outs_data[0]};
-      VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 1, vec_size>
-          <<<grid, block, 0, stream>>>(input_q,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[0],
-                                       head_dim,
-                                       out_q,
-                                       1,
-                                       div_c);
+    // rotary position embedding Q
+    phi::Array<const T*, 1> input_q{ins_data[0]};
+    phi::Array<T*, 1> out_q{outs_data[0]};
+    kernel_func_q<<<grid, block, 0, stream>>>(input_q,
+                                              sin_cos_data,
+                                              position_ids_data,
+                                              flag_sin_cos,
+                                              sign,
+                                              batch_size,
+                                              seq_len,
+                                              inputs_num_heads[0],
+                                              head_dim,
+                                              out_q,
+                                              1,
+                                              div_c);
 
-      // rotary position embedding K,V
-      phi::Array<const T*, 2> input_kv{ins_data[1], ins_data[2]};
-      phi::Array<T*, 2> out_kv{outs_data[1], outs_data[2]};
-      VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 2, vec_size>
-          <<<grid, block, 0, stream>>>(input_kv,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[1],
-                                       head_dim,
-                                       out_kv,
-                                       num_inputs - 1,
-                                       div_c);
-    }
+    // rotary position embedding K,V
+    phi::Array<const T*, 2> input_kv{ins_data[1], ins_data[2]};
+    phi::Array<T*, 2> out_kv{outs_data[1], outs_data[2]};
+    kernel_func_kv<<<grid, block, 0, stream>>>(input_kv,
+                                               sin_cos_data,
+                                               position_ids_data,
+                                               flag_sin_cos,
+                                               sign,
+                                               batch_size,
+                                               seq_len,
+                                               inputs_num_heads[1],
+                                               head_dim,
+                                               out_kv,
+                                               num_inputs - 1,
+                                               div_c);
   }
 }
 }  // namespace fusion
