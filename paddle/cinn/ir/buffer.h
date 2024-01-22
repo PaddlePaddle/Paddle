@@ -141,7 +141,7 @@ class _Buffer_ : public ExprNode<_Buffer_> {
 
   void Verify() const override;
 
-  int numel() const;
+  int64_t numel() const;
 
   ir::Expr SymbolicNumel() const;
 

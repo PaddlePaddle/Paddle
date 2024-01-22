@@ -64,7 +64,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
 
     def test_tr_rolemaker(self):
-        """Test tr rolenamer."""
+        """Test tr rolemaker."""
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
 
