@@ -325,6 +325,10 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
     auto attr_name_list = yaml_info_parser.AttrParams(true);
     for (auto& attr : attr_name_list) {
       auto attr_name = attr;
+      if (!op_attributes.count(attr_name)) {
+        // In PIR, IntArray attr will be input, but not attr.
+        continue;
+      }
       ctx_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
           op_attributes.at(attr_name), attr_name, yaml_info_parser);
       auto legacy_attr_name =
