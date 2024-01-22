@@ -187,6 +187,7 @@ static bool NeedFallBackCpu(const pir::Operation* op,
 }
 
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
+                                       const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExepectKernelKey
@@ -224,6 +225,21 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
 #endif
     return !use_cudnn;
   }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (kernel_key.backend() == phi::Backend::GPUDNN) {
+    auto iter = phi::KernelFactory::Instance().kernels().find(kernel_name);
+    if (iter != phi::KernelFactory::Instance().kernels().end()) {
+      auto kernel_iter = iter->second.find({phi::Backend::GPUDNN,
+                                            phi::DataLayout::ALL_LAYOUT,
+                                            kernel_key.dtype()});
+      if (kernel_iter == iter->second.end()) {
+        return true;
+      }
+    }
+  }
+#endif
+
   return false;
 }
 
@@ -1069,7 +1085,7 @@ phi::KernelKey GetKernelKey(
     VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
-  if (NeedFallBackFromGPUDNN2GPU(op, res)) {
+  if (NeedFallBackFromGPUDNN2GPU(op, kernel_fn_str, res)) {
     res.set_backend(phi::Backend::GPU);
     VLOG(8) << "kernel backend must be on GPU when need fallback from GPUDNN "
                "to GPU";
