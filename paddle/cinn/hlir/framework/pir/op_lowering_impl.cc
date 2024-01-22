@@ -494,7 +494,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         }
         int_args_set.insert(symbol_name);
         group_func_args->emplace_back(
-            ir::_Var_::Make(symbol_name, cinn::common::Int(32)));
+            ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
         VLOG(4) << "device kernel func's " << non_tensor_arg_idx << " is from "
@@ -860,7 +860,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
     int tensor_dim_size = tensor_dim.size();
     auto tensor_shape = group_func_arg_tensors[tensor_arg_idx]->shape;
 
-    ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int32_t**>());
+    ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int64_t**>());
     for (int i = 0; i < tensor_shape.size(); i++) {
       ir::Expr call_set_infer_shape_value =
           ir::Call::Make(type_of<void>(),
