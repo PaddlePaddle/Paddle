@@ -18,6 +18,7 @@
 #include "glog/logging.h"
 #include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
@@ -27,7 +28,6 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 
 namespace cinn {
 namespace dialect {
@@ -44,19 +44,22 @@ void GroupOp::Build(pir::Builder& builder,
   argument.output_types = output_types;
 }
 
-void GroupOp::Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Type> &output_types,
-                    const std::unordered_map<::pir::Operation*, std::vector<cinn::hlir::framework::pir::ScheduleInfoNode> >& alignment_schedule_info )
-{
-    argument.AddRegion(nullptr);
-    argument.output_types = output_types;
+void GroupOp::Build(
+    pir::Builder& builder,             // NOLINT
+    pir::OperationArgument& argument,  // NOLINT
+    const std::vector<pir::Type>& output_types,
+    const std::unordered_map<
+        ::pir::Operation*,
+        std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>&
+        alignment_schedule_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
 
-
-  cinn::dialect::GroupInfo group_info( {});
+  cinn::dialect::GroupInfo group_info({});
   group_info.alignment_schedule_info = alignment_schedule_info;
-    argument.AddAttribute(
-    "group_info", cinn::dialect::GroupInfoAttribute::get(pir::IrContext::Instance(), group_info));
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
 }
 
 void GroupOp::Build(pir::Builder& builder,             // NOLINT
