@@ -4,15 +4,11 @@
 # of build folder by 30G.
 set(inference_api_tester_deps paddle_inference_api analysis_config)
 
-cc_test(
-  test_paddle_inference_api
-  SRCS api_tester.cc
-  DEPS ${inference_api_tester_deps} common)
+paddle_test(test_paddle_inference_api SRCS api_tester.cc DEPS
+            ${inference_api_tester_deps} common)
 
-cc_test(
-  inference_api_helper_test
-  SRCS helper_test.cc
-  DEPS ${inference_api_tester_deps} common)
+paddle_test(inference_api_helper_test SRCS helper_test.cc DEPS
+            ${inference_api_tester_deps} common)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
@@ -1312,10 +1308,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                                                         30)
   endif()
 
-  cc_test(
-    paddle_infer_api_errors_test
-    SRCS paddle_infer_api_errors_tester.cc
-    DEPS ${inference_api_tester_deps} common)
+  paddle_test(
+    paddle_infer_api_errors_test SRCS paddle_infer_api_errors_tester.cc DEPS
+    ${inference_api_tester_deps} common)
 
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
