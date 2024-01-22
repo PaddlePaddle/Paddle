@@ -286,7 +286,7 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
 
     Args:
         x (Tensor): Tensor, data type float32, float64.
-        p (float, optional): None for porder=2.0. Default None.
+        p (int|float, optional): None for porder=2.0. Default None.
         axis (int|list, optional): None for last dimension. Default None.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str, optional): The default value is None. Normally there is no need for
@@ -518,7 +518,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
 
     Args:
         x (Tensor): Tensor, data type float32, float64.
-        p (float|string, optional): None for porder=2.0. Default None.
+        p (int|float|string, optional): None for porder='fro'. Default None.
         axis (list, optional): The axis is a list(int)/tuple(int) with two elements. Default last two dimensions.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str, optional): The default value is None. Normally there is no need for
@@ -913,7 +913,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
         )
 
 
-def norm(x, p=2.0, axis=None, keepdim=False, name=None):
+def norm(x, p=None, axis=None, keepdim=False, name=None):
     """
 
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
@@ -1008,6 +1008,8 @@ def norm(x, p=2.0, axis=None, keepdim=False, name=None):
 
     # calculate vector norm, where axis is None, int or list with only one integer
     if axis is None or (isinstance(axis, int)):
+        if p is None:
+            p = 2.0
         if isinstance(p, (int, float)):
             return vector_norm(
                 x,
@@ -1023,6 +1025,8 @@ def norm(x, p=2.0, axis=None, keepdim=False, name=None):
 
     # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
+        if p is None:
+            p = 'fro'
         return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
 
     else:

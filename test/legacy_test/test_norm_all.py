@@ -97,14 +97,13 @@ def np_linalg_vector_norm(x, axis, porder, keepdims=False):
             tmp_axis.append(-1 - i)
         x = np.moveaxis(x, axis, tmp_axis)
 
-        front_dim = 1
-        for i in range(0, len(x.shape) - len(axis)):
-            front_dim = front_dim * x.shape[i]
+        front_dim = x.shape[0 : len(x.shape) - len(axis)]
         back_dim = 1
         for i in range(len(x.shape) - len(axis), len(x.shape)):
             back_dim = back_dim * x.shape[i]
-
-        x = x.reshape(front_dim, back_dim)
+        front_dim = list(front_dim)
+        front_dim.append(back_dim)
+        x = x.reshape(front_dim)
         axis = -1
     if isinstance(axis, list):
         axis = tuple(axis)
