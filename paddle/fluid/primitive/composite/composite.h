@@ -637,6 +637,16 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
   return std::make_tuple(res, mean_out, variance_out);
 }
 
+template <typename T>
+Tensor index_select_decomp(const Tensor& x, const Tensor& index, int axis) {
+  int axis_tmp = axis;
+  if (axis < 0) {
+    axis_tmp += x.dims().size();
+  }
+
+  return gather<T>(x, index, axis_tmp);
+}
+
 }  // namespace details
 
 }  // namespace primitive
