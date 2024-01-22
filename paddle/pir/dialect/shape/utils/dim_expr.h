@@ -274,9 +274,9 @@ class ShapeOrData {
       if (i == 0) {
         return shape();
       } else {
-        IR_ENFORCE(i < std::get<std::vector<VecT>>(shape_).size(),
+        IR_ENFORCE(i < std::get<std::vector<VecT>>(data_.value()).size(),
                    "Index out of range.");
-        return std::get<std::vector<VecT>>(shape_)[i];
+        return std::get<std::vector<VecT>>(data_.value())[i];
       }
     }
     return std::nullopt;
