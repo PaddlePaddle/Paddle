@@ -738,6 +738,11 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(tensor3.numpy(), arr2)
         self.assertTrue(tensor3._is_shared_buffer_with(tensor))
 
+    def test_0_size_tensor_share_buffert_to(self):
+        x = paddle.rand([0, 4])
+        y = paddle.rand([0, 4])
+        x._share_buffer_to(y)
+
     def test_share_underline_tensor_to(self):
         arr = np.ones([4, 16, 16, 32]).astype('float32')
         arr1 = np.zeros([4, 16]).astype('float32')

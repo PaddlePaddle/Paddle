@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 
 import numpy as np
 
@@ -170,7 +169,9 @@ def _setitem_for_tensor_array(var, item, value):
         )
 
 
-def deal_advanced_index(ori_tensor, indices, is_for_setitem, values):
+def deal_advanced_index(
+    ori_tensor, indices, is_for_setitem, values, out_is_view=True
+):
     """
     Transpose origin Tensor and advanced indices to the front.
 
@@ -206,18 +207,24 @@ def deal_advanced_index(ori_tensor, indices, is_for_setitem, values):
     for i in range(ori_tensor.ndim):
         if indices[i] is None:
             transed_dim.append(i)
-    transed_tensor = ori_tensor.transpose(transed_dim)
 
     trans_back_dim = np.argsort(transed_dim).tolist() if is_for_setitem else []
-
     transed_value_tensor = None
-    if is_for_setitem:
-        if values.ndim > 1 and pos_of_new_dim != 0:
-            # If the value tensor is not a scalar / 1-D Tensor, and the src tensor was
-            # transposed at 1st dim, the value tensor should be transposed too.
-            transed_value_tensor = values.transpose(transed_dim)
-        else:
+
+    if transed_dim == list(range(ori_tensor.ndim)):
+        transed_tensor = ori_tensor
+        if is_for_setitem:
             transed_value_tensor = values
+    else:
+        out_is_view = True
+        transed_tensor = ori_tensor.transpose(transed_dim)
+        if is_for_setitem:
+            if values.ndim > 1 and pos_of_new_dim != 0:
+                # If the value tensor is not a scalar / 1-D Tensor, and the src tensor was
+                # transposed at 1st dim, the value tensor should be transposed too.
+                transed_value_tensor = values.transpose(transed_dim)
+            else:
+                transed_value_tensor = values
 
     return (
         transed_tensor,
@@ -226,6 +233,7 @@ def deal_advanced_index(ori_tensor, indices, is_for_setitem, values):
         pos_of_new_dim,
         rank_of_new_dim,
         transed_value_tensor,
+        out_is_view,
     )
 
 
@@ -234,17 +242,11 @@ def slice_is_same_to_original(start, end, step):
         return True
 
     # If there is Variable, we cannot determine whether it is the same to original.
-    if isinstance(
-        start, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(start, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        end, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(end, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        step, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(step, (paddle.base.Variable, paddle.pir.Value)):
         return False
     return start == 0 and end == MAX_INTEGER and step == 1
 
@@ -594,12 +596,10 @@ def _setitem_static(x, indices, values):
         #   3. assign values to the sliced result by index_put OP;
         #   4. transpose back and assign the result to original tensor by set_value OP.
 
-        if not isinstance(
-            values, (Variable, paddle.pir.Value, paddle.pir.OpResult)
-        ):
+        if not isinstance(values, (Variable, paddle.pir.Value)):
             values = paddle.assign(values).astype(x.dtype)
 
-        sub_tensor = get_tensor_with_basic_indexing(
+        sub_tensor, is_view = get_tensor_with_basic_indexing(
             x,
             axes,
             starts,
@@ -616,16 +616,21 @@ def _setitem_static(x, indices, values):
             _,
             _,
             values,
-        ) = deal_advanced_index(sub_tensor, advanced_index, True, values)
+            is_view,
+        ) = deal_advanced_index(
+            sub_tensor, advanced_index, True, values, is_view
+        )
 
         if values.dtype != transed_sub_tensor.dtype:
             values = values.astype(transed_sub_tensor.dtype)
 
-        if in_dynamic_or_pir_mode():
+        if paddle.in_dynamic_mode():
             # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
             transed_sub_tensor = transed_sub_tensor.index_put_(
                 adjusted_advanced_index, values
             )
+            if not is_view:
+                return transed_sub_tensor
         else:
             transed_sub_tensor = transed_sub_tensor.index_put(
                 adjusted_advanced_index, values
@@ -694,12 +699,14 @@ def get_tensor_with_basic_indexing(
 ):
     from .dygraph.base import in_to_static_mode
 
+    out_is_view = False
     if in_to_static_mode() and hasattr(x, "is_view_var"):
         x.is_view_var = True
 
     if len(axes) == 0:
         out = x
     else:
+        out_is_view = True
         op_type = "strided_slice" if use_strided_slice else "slice"
         inputs = {'Input': [x]}
         attrs = {
@@ -748,7 +755,7 @@ def get_tensor_with_basic_indexing(
                         if paddle.utils._contain_var(end):
                             end = paddle.utils.get_int_tensor_list(end)
                     if x.is_dense_tensor_array_type():
-                        return paddle._pir_ops.slice_array_dense(x, st)
+                        return paddle._pir_ops.slice_array_dense(x, st), False
                 out = paddle._C_ops.slice(
                     x,
                     axes,
@@ -775,17 +782,9 @@ def get_tensor_with_basic_indexing(
                 attrs=attrs,
             )
             out = slice_out_var
-    # NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
-    # with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
-    # otherwise the output shape will be not correct.
-    set_to_1d = paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']
-    if set_to_1d and len(decrease_axes) == len(x.shape):
-        warnings.warn(
-            "Warning: In Tensor '__getitem__', if the number of scalar elements in the index is equal to the rank of the Tensor, the output should be 0-D. In order to be consistent with the behavior of previous versions, it will be processed to 1-D. But it is not correct and will be removed in release 2.6. If 1-D is still wanted, please modify the index element from scalar to slice (e.g. 'x[i]' => 'x[i:i+1]')."
-        )
-        none_axes = none_axes[1:]
 
     if len(none_axes) > 0:
+        out_is_view = True
         # Deal with cases that decrease_axes is not empty
         # For example:
         # # x.shape: (2,3,4)
@@ -799,7 +798,7 @@ def get_tensor_with_basic_indexing(
 
     if in_to_static_mode() and hasattr(out, "is_view_var"):
         out.is_view_var = True
-    return out
+    return out, out_is_view
 
 
 def _getitem_static(x, indices):
@@ -822,7 +821,7 @@ def _getitem_static(x, indices):
     ) = parse_index(x, indices)
 
     # step2: Dealing with basic indexing
-    out = get_tensor_with_basic_indexing(
+    out, _ = get_tensor_with_basic_indexing(
         x,
         axes,
         starts,
@@ -841,6 +840,7 @@ def _getitem_static(x, indices):
             _,
             pos_of_new_dim,
             rank_of_new_dim,
+            _,
             _,
         ) = deal_advanced_index(out, advanced_index, False, None)
 

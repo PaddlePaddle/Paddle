@@ -105,29 +105,17 @@ class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
-    const auto &scaling_factor =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &scaling_factor = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
-        });
-    const auto &dropout_prob =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-          return static_cast<float>(0.0);
-        });
-    const auto &is_training =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return true;
-        });
-    const auto &is_causal_masking =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
         });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
                {{{"scaling_factor", scaling_factor},
-                 {"dropout_probability", dropout_prob},
-                 {"is_training", is_training},
-                 {"is_causal_masking", is_causal_masking}}});
+                 {"dropout_probability", res.Float32Attr(0.0)},
+                 {"is_training", res.BoolAttr(true)},
+                 {"is_causal_masking", res.BoolAttr(false)}}});
 
     dot_product_attention({&res.Tensor("q"),
                            &res.Tensor("k"),
@@ -270,29 +258,17 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
-    const auto &scaling_factor =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &scaling_factor = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
-        });
-    const auto &dropout_prob =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-          return static_cast<float>(0.0);
-        });
-    const auto &is_training =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return true;
-        });
-    const auto &is_causal_masking =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
         });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
                {{{"scaling_factor", scaling_factor},
-                 {"dropout_probability", dropout_prob},
-                 {"is_training", is_training},
-                 {"is_causal_masking", is_causal_masking}}});
+                 {"dropout_probability", res.Float32Attr(0.0)},
+                 {"is_training", res.BoolAttr(true)},
+                 {"is_causal_masking", res.BoolAttr(false)}}});
 
     dot_product_attention({&res.Tensor("q"),
                            &res.Tensor("k"),
@@ -304,8 +280,8 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
     const auto &dot_product_attention_grad =
         res.Op(paddle::dialect::FusedDotProductAttentionGradOp::name(),
                {{{"scaling_factor", scaling_factor},
-                 {"dropout_probability", dropout_prob},
-                 {"is_causal_masking", is_causal_masking}}});
+                 {"dropout_probability", res.Float32Attr(0.0)},
+                 {"is_causal_masking", res.BoolAttr(false)}}});
     dot_product_attention_grad(
         {&res.Tensor("q"),
          &res.Tensor("k"),
@@ -415,29 +391,17 @@ class FusedDotProductAttentionWithDropoutPattern
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
-    const auto &scaling_factor =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &scaling_factor = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
-        });
-    const auto &dropout_prob =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-          return static_cast<float>(0.0);
-        });
-    const auto &is_training =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return true;
-        });
-    const auto &is_causal_masking =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
         });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
                {{{"scaling_factor", scaling_factor},
-                 {"dropout_probability", src.Attr("dropout_prob")},
-                 {"is_training", is_training},
-                 {"is_causal_masking", is_causal_masking}}});
+                 {"dropout_probability", res.Float32Attr(0.0)},
+                 {"is_training", res.BoolAttr(true)},
+                 {"is_causal_masking", res.BoolAttr(false)}}});
 
     dot_product_attention({&res.Tensor("q"),
                            &res.Tensor("k"),
@@ -595,25 +559,17 @@ class FusedDotProductAttentionGradWithDropoutPattern
 
     // Result pattern
     paddle::drr::ResultPattern res = src.ResultPattern();
-    const auto &scaling_factor =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
+    const auto &scaling_factor = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("q_scale_value");
-        });
-    const auto &is_training =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return true;
-        });
-    const auto &is_causal_masking =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
         });
 
     const auto &dot_product_attention =
         res.Op(paddle::dialect::FusedDotProductAttentionOp::name(),
                {{{"scaling_factor", scaling_factor},
                  {"dropout_probability", src.Attr("dropout_prob")},
-                 {"is_training", is_training},
-                 {"is_causal_masking", is_causal_masking}}});
+                 {"is_training", res.BoolAttr(true)},
+                 {"is_causal_masking", res.BoolAttr(false)}}});
 
     dot_product_attention({&res.Tensor("q"),
                            &res.Tensor("k"),
@@ -626,7 +582,7 @@ class FusedDotProductAttentionGradWithDropoutPattern
         res.Op(paddle::dialect::FusedDotProductAttentionGradOp::name(),
                {{{"scaling_factor", scaling_factor},
                  {"dropout_probability", src.Attr("dropout_prob")},
-                 {"is_causal_masking", is_causal_masking}}});
+                 {"is_causal_masking", res.BoolAttr(false)}}});
     dot_product_attention_grad(
         {&res.Tensor("q"),
          &res.Tensor("k"),

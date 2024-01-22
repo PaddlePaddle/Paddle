@@ -985,6 +985,8 @@ class TestLayer(LayerTest):
                 self.assertRaises(TypeError, test_type)
 
         _test_errors()
+        with paddle.pir_utils.IrGuard():
+            _test_errors()
 
     @test_with_pir_api
     def test_spectral_norm(self):
