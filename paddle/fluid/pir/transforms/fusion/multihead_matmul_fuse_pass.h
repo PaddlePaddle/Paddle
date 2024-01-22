@@ -12,23 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
 
-const std::string SymbolTable::insert(Operation* symbol) {
-  std::string name;
-  if (symbol->isa<shape::SymbolicDimOp>()) {
-    name = symbol->dyn_cast<SymbolicDimOp>().GetSymName();
-    symbol_table_map_.insert({name, symbol});
-  }
+class Pass;
 
-  // TODO(zhangbopd): add more constraint_func name branch.
-  if (symbol->isa<shape::TieProductEqualOp>()) {
-    name = "tie_product_equal";
-    symbol_func_map_[name].emplace_back(symbol);
-  }
+IR_API std::unique_ptr<Pass> CreateMultiHeadMatmulFusePass();
 
-  return name;
-}
 }  // namespace pir

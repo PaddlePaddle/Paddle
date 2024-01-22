@@ -90,7 +90,7 @@ struct VisitDataArgMinMaxFunctor {
   void apply() const {
     dev_ctx.template Alloc<Tout>(out);
 
-    // if flatten, will construct the new dims for the cacluate
+    // if flatten, will construct the new dims for the calculation
     phi::DDim x_dims;
     phi::DDim out_dims;
     int new_axis = axis;

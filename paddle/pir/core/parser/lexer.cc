@@ -16,7 +16,7 @@
 
 Token Lexer::ConsumeToken() {
   SkipWhitespace();
-  if (auto token = LexIdentifer()) {
+  if (auto token = LexIdentifier()) {
     return *token;
   } else if (auto token = LexNumberOrArraow()) {
     return *token;
@@ -71,7 +71,7 @@ void Lexer::SkipWhitespace() {
   }
 }
 
-std::unique_ptr<Token> Lexer::LexIdentifer() {
+std::unique_ptr<Token> Lexer::LexIdentifier() {
   if ((!isalpha(is.peek()) && is.peek() != '_') ||
       IsEndTag(static_cast<char>(is.peek()))) {
     return nullptr;
@@ -80,7 +80,7 @@ std::unique_ptr<Token> Lexer::LexIdentifer() {
   while (isalnum(is.peek()) || is.peek() == '_' || is.peek() == '.') {
     token_identifier += GetChar();
   }
-  std::unique_ptr<Token> token(new Token{token_identifier, IDENTIFER});
+  std::unique_ptr<Token> token(new Token{token_identifier, IDENTIFIER});
   return token;
 }
 

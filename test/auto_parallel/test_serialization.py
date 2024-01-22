@@ -199,7 +199,7 @@ class TestDistAttrSerialization(unittest.TestCase):
         dist_attr.dynamic_dims = [1, 1]
         dist_attr_data = dist_attr.serialize_to_string()
 
-    def test_serialization_opearator(self):
+    def test_serialization_operator(self):
         train_program = static.Program()
         start_program = static.Program()
         with static.program_guard(train_program, start_program):
