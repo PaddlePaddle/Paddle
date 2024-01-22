@@ -281,10 +281,6 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
         "tensor-list or not.");
     return std::get<TensorShapeOrDataDimExprs>(*this).data();
   }
-
-  void SetData(const std::vector<T>& data) {
-    std::get<TensorShapeOrDataDimExprs>(*this).data() = data;
-  }
 };
 
 IR_API std::string ToString(const DimExpr& dim_expr);
