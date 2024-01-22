@@ -136,6 +136,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     HasElementsOp::name(),
     AssertOp::name(),
     SelectInputOp::name(),
+    SelectOutputOp::name(),
     "cinn_runtime.jit_kernel"};
 
 const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
@@ -1151,7 +1152,8 @@ void HandleForIfOp(
                &true_block,
                ctx,
                map_op_pair,
-               map_value_pair);
+               map_value_pair,
+               true);
 
   // process false block
   auto& false_block = new_ifop.false_block();
@@ -1160,7 +1162,8 @@ void HandleForIfOp(
                &false_block,
                ctx,
                map_op_pair,
-               map_value_pair);
+               map_value_pair,
+               true);
 
   // update map
   (*map_op_pair)[op_item] = new_ifop;
@@ -1242,6 +1245,27 @@ phi::Place ParsePhiPlace(pir::Type type) {
     return type.dyn_cast<AllocatedSelectedRowsType>().place();
   } else if (type.isa<AllocatedDenseTensorArrayType>()) {
     return type.dyn_cast<AllocatedDenseTensorArrayType>().place();
+  } else if (type.isa<pir::VectorType>()) {
+    return ParsePhiPlace(type.dyn_cast<pir::VectorType>()[0]);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ParsePhiPlace only support AllocatedDenseTensorType or "
+        "AllocatedSelectedRowsType or AllocatedDenseTensorArrayType"));
+  }
+}
+
+phi::DataType ParsePhiDType(pir::Type type) {
+  if (type.isa<AllocatedDenseTensorType>()) {
+    return TransToPhiDataType(
+        type.dyn_cast<AllocatedDenseTensorType>().dtype());
+  } else if (type.isa<AllocatedSelectedRowsType>()) {
+    return TransToPhiDataType(
+        type.dyn_cast<AllocatedSelectedRowsType>().dtype());
+  } else if (type.isa<AllocatedDenseTensorArrayType>()) {
+    return TransToPhiDataType(
+        type.dyn_cast<AllocatedDenseTensorArrayType>().dtype());
+  } else if (type.isa<pir::VectorType>()) {
+    return ParsePhiDType(type.dyn_cast<pir::VectorType>()[0]);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ParsePhiPlace only support AllocatedDenseTensorType or "
@@ -1255,7 +1279,8 @@ void HandleForSpecialOp(
     pir::Block* block,
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair,
+    bool for_if_block) {
   if (op_item->isa<IfOp>()) {
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
@@ -1362,6 +1387,23 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+
+        if (for_if_block && (!new_in.type().isa<pir::VectorType>()) &&
+            (ParsePhiPlace(new_in.type()).GetType() !=
+             phi::AllocationType::UNDEFINED) &&
+            (ParsePhiPlace(new_in.type()) != place)) {
+          phi::KernelKey kernel_key(TransToPhiBackend(place),
+                                    phi::DataLayout::ALL_LAYOUT,
+                                    ParsePhiDType(new_in.type()));
+          new_in = AddPlaceTransferOp(
+              new_in,
+              ConvertOpTypeToKernelType(ctx, cur_in.type(), place),
+              ParsePhiPlace(new_in.type()),
+              place,
+              kernel_key,
+              block);
+        }
+
         vec_inputs.push_back(new_in);
       }
     }
@@ -1377,6 +1419,7 @@ void HandleForSpecialOp(
         }
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+
         // layout transfer(only for onednn)
 #ifdef PADDLE_WITH_DNNL
         auto new_in_type = new_in.type();
@@ -1510,6 +1553,18 @@ void HandleForSpecialOp(
   }
 
   if (op_item->isa<SelectInputOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(vec_inputs[1].type());
+    }
+  }
+
+  if (op_item->isa<SelectOutputOp>()) {
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       auto new_in = GetNewInput(
@@ -2308,7 +2363,8 @@ void ProcessBlock(
     pir::Block* new_block,
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair,
+    bool for_if_block) {
   auto inputs_by_data_op = GetInputsByDataOp(block);
 
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
@@ -2327,8 +2383,13 @@ void ProcessBlock(
     if (SpecialLowerOps.count(op_item->name())) {
       VLOG(6) << "Handle Special Op: [" << op_item->name()
               << "] while lowering to kernel pass";
-      HandleForSpecialOp(
-          place, op_item, new_block, ctx, map_op_pair, map_value_pair);
+      HandleForSpecialOp(place,
+                         op_item,
+                         new_block,
+                         ctx,
+                         map_op_pair,
+                         map_value_pair,
+                         for_if_block);
       continue;
     }
 
