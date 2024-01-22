@@ -110,22 +110,16 @@ def np_linalg_vector_norm(x, axis, porder, keepdims=False):
 
     r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
 
-    if origin_axis is None:
-        if keepdims:
-            r_shape = np.ones_like(x_shape)
-            r = r.reshape(r_shape)
-    elif len(origin_axis) > 1 and keepdims:
-        r_shape = x_shape
-        for i in origin_axis:
-            r_shape[i] = 1
-        r = r.reshape(r_shape)
-    elif len(origin_axis) > 1 and not keepdims:
-        r_shape = []
-        for i in range(len(x_shape)):
-            if i not in origin_axis:
-                r_shape.append(x_shape[i])
-        r = r.reshape(r_shape)
+    r_shape = r.shape
 
+    if keepdims:
+        if origin_axis is None:
+            r_shape = np.ones_like(x_shape)
+        elif len(origin_axis) > 1:
+            r_shape = x_shape
+            for i in origin_axis:
+                r_shape[i] = 1
+    r = r.reshape(r_shape)
     return r
 
 
