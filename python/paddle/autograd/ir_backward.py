@@ -833,6 +833,9 @@ def append_backward_ops(
                     ) and op.name() not in ["pd_op.while", "pd_op.increment_"]:
                         continue
 
+                    if all(input_grad_stopgradients):
+                        continue
+
                     if op.name() == "pd_op.if":
                         origin_inputs = get_real_op_inputs(op)
                         for sub_block in op.blocks():
@@ -934,6 +937,7 @@ def append_backward_ops(
                         update_input_grad_map(op, input_grads, origin_inputs)
                     else:
                         # create grad_op
+
                         before_ops_num = len(bwd_block.ops)
                         with dynamic_shape_prim_vjp_guard(op, inputs):
                             input_grads = paddle.framework.core.call_vjp(
