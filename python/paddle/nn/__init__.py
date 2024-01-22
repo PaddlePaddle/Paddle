@@ -132,6 +132,8 @@ from .layer.pooling import (
     AvgPool1D,
     AvgPool2D,
     AvgPool3D,
+    FractionalMaxPool2D,
+    FractionalMaxPool3D,
     MaxPool1D,
     MaxPool2D,
     MaxPool3D,
@@ -294,4 +296,6 @@ __all__ = [
     'SoftMarginLoss',
     'GaussianNLLLoss',
     'Unflatten',
+    'FractionalMaxPool2D',
+    'FractionalMaxPool3D',
 ]

@@ -206,13 +206,13 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     y = x_hat * reshape<T>(new_scale, stats_shape) +
         reshape<T>(new_bias, stats_shape);
   }
-  if (need_cast) {
-    y = cast<T>(y, org_dtype);
-  }
   Tensor reserve_space;
 
   auto batch_mean_ = assign<T>(batch_mean);
   auto inv_std_ = assign<T>(inv_std);
+  if (need_cast) {
+    y = cast<T>(y, org_dtype);
+  }
   if (!use_run_stat) {
     return std::make_tuple(
         y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);

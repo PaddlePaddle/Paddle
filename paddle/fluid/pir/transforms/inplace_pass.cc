@@ -71,7 +71,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                   pir::Value input,
                   pir::Value output,
                   const std::string& op_name) {
-  if (!input.type() || !output.type()) {
+  if (!input.type() || !output.type() || input.isa<pir::BlockArgument>()) {
     return false;
   }
 
@@ -492,7 +492,7 @@ class InplacePass : public pir::Pass {
         }
       }
     }
-    PrintStatistics(num_rewrites_);
+    AddStatistics(num_rewrites_);
   }
 };
 

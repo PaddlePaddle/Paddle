@@ -171,7 +171,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Get the Output Tensor object
   ///
-  /// \param[in] name otuput name
+  /// \param[in] name output name
   /// \return output tensor
   ///
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
@@ -379,7 +379,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Prepare input data, only used in Run()
   ///
-  /// \param[in] input_datas inpute tensors
+  /// \param[in] input_datas input tensors
   /// \param[in] scope the scope used by predictor
   /// \return Whether the function executed successfully
   ///
@@ -389,7 +389,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Prepare input data, only used in Run()
   ///
-  /// \param[in] inputs inpute tensors
+  /// \param[in] inputs input tensors
   /// \param[in] scope the scope used by predictor
   /// \return Whether the function executed successfully
   ///

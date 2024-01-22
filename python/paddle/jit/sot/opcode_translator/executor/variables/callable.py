@@ -25,6 +25,7 @@ import paddle
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    ENV_SOT_EXPORT,
     get_static_function,
     is_break_graph_api,
     is_break_graph_tensor_methods,
@@ -553,6 +554,9 @@ class PaddleLayerVariable(LayerVariable):
 
     @VariableFactory.register_from_value(successor="UserDefinedLayerVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        # TODO: @wuzhanfei, if we support create sub layer when export, remove this branch
+        if ENV_SOT_EXPORT.get() != "":
+            return None
         # TODO(SigureMo): Add a more common way to check if a value is a paddle builtin layer.
         if isinstance(value, paddle.nn.Layer):
             # If there is a user-defined behavior, such as a container class layer

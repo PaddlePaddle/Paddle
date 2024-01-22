@@ -25,6 +25,7 @@ from paddle.framework import _dygraph_tracer, use_pir_api
 from ..infer_meta import convert_meta_to_input_spec
 from ..profiler import EventGuard
 from ..utils import (
+    ENV_SOT_EXPORT,
     Cache,
     GraphLogger,
     Singleton,
@@ -33,6 +34,7 @@ from ..utils import (
     log_do,
     map_if,
 )
+from .export import export
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
@@ -143,6 +145,9 @@ class FallbackWrapper:
                 4,
                 lambda: print("[CompileCache] run sir forward success."),
             )
+            if ENV_SOT_EXPORT.get() != "":
+                export(self.SIR, ENV_SOT_EXPORT.get())
+
             return outputs
 
 

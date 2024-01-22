@@ -27,11 +27,11 @@ Program::~Program() {
   }
 }
 
-std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) {
+std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
   pir::IrContext* ctx = pir::IrContext::Instance();
   auto new_program = std::make_shared<Program>(ctx);
-  auto clone_options = CloneOptions(true, true);
-  for (auto& op : *block()) {
+  auto clone_options = CloneOptions::All();
+  for (const auto& op : *block()) {
     auto* new_op = op.Clone(ir_mapping, clone_options);
     new_program->block()->push_back(new_op);
   }

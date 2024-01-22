@@ -24,7 +24,7 @@ from .base_cost import Cost
 
 
 class CostEstimator:
-    _sepical_op_type = ["fused_attention", "fused_feedforward"]
+    _special_op_type = ["fused_attention", "fused_feedforward"]
 
     def __init__(
         self, program, cluster, mode="modeling", rank=None, loop_count=10
@@ -207,7 +207,7 @@ class CostEstimator:
 
                 if dist_op_cost is None:
                     assert (
-                        dist_op.serial_op.type in CostEstimator._sepical_op_type
+                        dist_op.serial_op.type in CostEstimator._special_op_type
                     )
                     continue
                 for item in dist_op_cost:

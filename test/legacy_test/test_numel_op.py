@@ -208,7 +208,7 @@ class TestNumelAPI(unittest.TestCase):
                 input_1 = np.random.random(shape).astype("int32")
                 out_1 = paddle.numel(input_1)
 
-            self.assertRaises(ValueError, test_x_type)
+            self.assertRaises(TypeError, test_x_type)
 
 
 if __name__ == '__main__':

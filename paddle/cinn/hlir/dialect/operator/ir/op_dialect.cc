@@ -53,8 +53,10 @@ void OperatorDialect::initialize() {
       >();
 #endif
   RegisterOp<GroupOp>();
+  RegisterOp<FusionOp>();
   RegisterOp<ConcatOp>();
   RegisterOp<SplitOp>();
+  RegisterOp<GenerateShapeOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CINNKernelInfoAttribute>();
 }
@@ -87,6 +89,8 @@ void OperatorDialect::PrintOperation(pir::Operation *op,
                                      pir::IrPrinter &printer) const {
   if (auto group_op = op->dyn_cast<GroupOp>()) {
     group_op.Print(printer);
+  } else if (auto fusion_op = op->dyn_cast<FusionOp>()) {
+    fusion_op.Print(printer);
   } else {
     printer.PrintGeneralOperation(op);
   }
