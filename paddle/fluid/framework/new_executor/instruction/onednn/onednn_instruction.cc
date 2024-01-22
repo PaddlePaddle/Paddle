@@ -309,6 +309,8 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .at("extra_args")
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
+    auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
     std::vector<std::string> extra_args;
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
