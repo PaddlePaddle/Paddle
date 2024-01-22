@@ -76,13 +76,13 @@ def p_norm_python_api(
 def np_linalg_vector_norm(x, axis, porder, keepdims=False):
     x_shape = list(x.shape)
 
-    axis_static = axis
-    if axis_static is None:
+    origin_axis = axis
+    if origin_axis is None:
         pass
-    elif isinstance(axis_static, int):
-        axis_static = [axis_static]
+    elif isinstance(origin_axis, int):
+        origin_axis = [origin_axis]
     else:
-        axis_static = list(axis_static)
+        origin_axis = list(origin_axis)
 
     if axis is None:
         x = x.ravel()
@@ -110,19 +110,19 @@ def np_linalg_vector_norm(x, axis, porder, keepdims=False):
 
     r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
 
-    if axis_static is None:
+    if origin_axis is None:
         if keepdims:
             r_shape = np.ones_like(x_shape)
             r = r.reshape(r_shape)
-    elif len(axis_static) > 1 and keepdims:
+    elif len(origin_axis) > 1 and keepdims:
         r_shape = x_shape
-        for i in axis_static:
+        for i in origin_axis:
             r_shape[i] = 1
         r = r.reshape(r_shape)
-    elif len(axis_static) > 1 and not keepdims:
+    elif len(origin_axis) > 1 and not keepdims:
         r_shape = []
         for i in range(len(x_shape)):
-            if i not in axis_static:
+            if i not in origin_axis:
                 r_shape.append(x_shape[i])
         r = r.reshape(r_shape)
 
@@ -139,12 +139,7 @@ def np_linalg_norm(x, axis, porder, keepdims=False, reduce_all=False):
     r = []
     if axis is None or reduce_all:
         x = x.flatten()
-        if porder == np.inf:
-            r = np.amax(np.abs(x), keepdims=keepdims)
-        elif porder == -np.inf:
-            r = np.amin(np.abs(x), keepdims=keepdims)
-        else:
-            r = np.linalg.norm(x, ord=porder, keepdims=keepdims)
+        r = np.linalg.norm(x, ord=porder, keepdims=keepdims)
     else:
         if isinstance(axis, list):
             axis = tuple(axis)
