@@ -1824,7 +1824,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetDisableLogs(config_.glog_info_disabled());
   if (FLAGS_enable_pass_controller &&
       ((config_.use_gpu()) ||
-       (config_.use_gpu() && config_.tensorrt_engine_enabled()))) {
+       (config_.use_gpu() && config_.tensorrt_engine_enabled())) &&
+      model_precision_ == phi::DataType::FLOAT32) {
     LOG(INFO) << "Pass Contorl is enabled!";
     auto *pass_ctrl = config_.pass_controller();
     argument_->SetIrAnalysisPasses(pass_ctrl->GetCtrlPassList(

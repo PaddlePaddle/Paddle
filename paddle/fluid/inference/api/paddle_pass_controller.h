@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -66,13 +67,15 @@ struct PD_INFER_DECL VersionCtrlState {
   int64_t lt_cudnn_version_{0};
   PassType version_ctrl_state_{PassType::Default};
 };
+
 struct PD_INFER_DECL PassState {
   PassState() {}
-  explicit PassState(std::string status_name) { status_name_ = status_name; }
+  explicit PassState(PassType pass_default_state) {
+    pass_default_state_ = pass_default_state;
+  }
   void SetPassDefaultState(PassType pass_default_state) {
     pass_default_state_ = pass_default_state;
   }
-  std::string status_name_;
   std::map<std::string, std::vector<VersionCtrlState>> version_ctrl_state_;
   PassType pass_default_state_{PassType::Default};
 };
@@ -85,12 +88,20 @@ struct PD_INFER_DECL PassContorller {
   void SetUserPassStatus(PassType user_pass_status) {
     user_pass_status_ = user_pass_status;
   }
-  void SetSupportCategories(std::vector<std::string> support_categories) {
-    support_categories_ = support_categories;
+  void SetRunTimeList(std::vector<std::string> runtime_status_list) {
+    runtime_status_list_ = runtime_status_list;
   }
+  bool HasRuntimeStatue(std::string runtime_status) {
+    auto has_runtime_status = std::find(runtime_status_list_.begin(),
+                                        runtime_status_list_.end(),
+                                        runtime_status);
+    return has_runtime_status != runtime_status_list_.end();
+  }
+
   std::string pass_name_;
-  std::vector<std::string> support_categories_;
-  std::map<std::string, PassState> pass_state_map_;
+  std::vector<std::string> runtime_status_list_;  // runtime_status
+  std::map<std::string, PassState>
+      pass_state_map_;  // runtime_status->PassState
   PassType user_pass_status_{PassType::Default};
 };
 
@@ -106,8 +117,8 @@ struct PD_INFER_DECL PaddlePassContorller {
     pass_ctrl_map_ = other.pass_ctrl_map_;
     ctrl_passes_ = other.ctrl_passes_;
   }
-  void LoadDefaultPassCtrl();
-  void LoadDefaultConfig();
+  bool LoadDefaultPassCtrl();
+  bool LoadDefaultConfig();
   void SetPassStatus(const std::string& pass_name, const int64_t pass_status);
   const std::vector<std::string> GetCtrlPassList(
       const std::vector<std::string> passes,
