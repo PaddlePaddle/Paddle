@@ -17,9 +17,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt,
@@ -300,7 +297,7 @@ class TestContinueInWhile(TestContinueNotPirBase):
         self.dygraph_func = test_continue_in_while
 
     # TODO(dev): Remove this after fix PT Rename issue
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pt
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
@@ -318,7 +315,7 @@ class TestBreakInWhile(TestContinueInWhile):
         self.dygraph_func = test_break_in_while
 
     # TODO(dev): Remove this after fix PT Rename issue
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pt
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
@@ -360,7 +357,7 @@ class TestOptimBreakInWhile(TestContinueInWhile):
         self.dygraph_func = test_optim_break_in_while
 
     # TODO(dev): Remove this after fix PT Rename issue
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pt
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
