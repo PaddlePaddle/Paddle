@@ -3323,7 +3323,7 @@ function distribute_test() {
     cd ${work_dir}
     git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci
     cd PaddleNLP
-    sed -i '/lac/d' PaddleNLP/scripts/regression/requirements_ci.txt
+    sed -i '/lac/d' scripts/regression/requirements_ci.txt
 
     pip install -r requirements.txt
     pip install -r scripts/regression/requirements_ci.txt
@@ -3349,12 +3349,21 @@ function distribute_test() {
     export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"
-    cd ${work_dir}/PaddleNLP
+    #cd ${work_dir}/PaddleNLP
     #python -m pytest -s -v tests/llm --timeout=3600
+    #pids=()
     #env CUDA_VISIBLE_DEVICES=0,1 python -m pytest tests/llm/test_finetune.py tests/llm/test_gradio.py &
+    #pids+=($!)
     #env CUDA_VISIBLE_DEVICES=2,3 python -m pytest tests/llm/test_lora.py tests/llm/test_predictor.py &
+    #pids+=($!)
     #env CUDA_VISIBLE_DEVICES=4,5 python -m pytest tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
+    #pids+=($!)
     #env CUDA_VISIBLE_DEVICES=6,7 python -m pytest tests/llm/test_ptq.py tests/llm/testing_utils.py &
+    #pids+=($!)
+
+    #for pid in "${pids[@]}"; do
+    #  wait $pid
+    #done
     echo "End LLM Test"
 
     echo "Start auto_parallel Test"
