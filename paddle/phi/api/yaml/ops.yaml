@@ -1102,6 +1102,19 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : fused_rms_norm
+  args: (Tensor x, Tensor scale, float epsilon = 1e-5)
+  output: Tensor(out), Tensor(invvar)
+  infer_meta:
+    func: FusedRmsNormInferMeta
+    spmd_rule: RmsNormInferSpmd
+  kernel:
+    func: fused_rms_norm
+    data_type: x
+  intermediate: invvar
+  backward: fused_rms_norm_grad
+  support_dygraph_mode: true
+
 - op : gammaln
   args : (Tensor x)
   output : Tensor(out)

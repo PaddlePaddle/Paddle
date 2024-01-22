@@ -30,10 +30,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// https://github.com/Oneflow-Inc/oneflow/blob/master/oneflow/core/cuda/layer_norm.cuh
-// The following code modified from OneFlow's implementation, and change to use
-// single Pass algorithm. Support Int8 quant, dequant Load/Store implementation.
-
 #include <assert.h>
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
