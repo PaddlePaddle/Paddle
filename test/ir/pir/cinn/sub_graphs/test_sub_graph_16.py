@@ -36,41 +36,22 @@ class LayerCase(paddle.nn.Layer):
         var_1,  # (shape: [16, 16], dtype: paddle.int64, stop_gradient: True)
     ):
         var_2 = paddle.tensor.manipulation.reshape(var_0, [10, 16, 12, 64])
-        out = paddle.tensor.manipulation.split(var_2, [16, 16, 32], axis=3)
-        var_3 = out[0]
-        var_4 = out[1]
-        var_5 = out[2]
+        var_3, var_4, var_5 = paddle.tensor.manipulation.split(
+            var_2, [16, 16, 32], axis=3
+        )
         var_6 = paddle.tensor.linalg.transpose(var_3, perm=[0, 2, 1, 3])
         var_7 = paddle.tensor.linalg.transpose(var_4, perm=[0, 2, 1, 3])
         var_8 = paddle.tensor.linalg.transpose(var_5, perm=[0, 2, 1, 3])
         var_9 = paddle.tensor.linalg.transpose(var_7, perm=[0, 1, 3, 2])
-        var_10 = paddle.tensor.linalg.transpose(
-            self.parameter_0,
-            (
-                1,
-                0,
-            ),
-        )
+        var_10 = paddle.tensor.linalg.transpose(self.parameter_0, (1, 0))
         concat_list = []
         for i in range(len(var_1)):
             _var = var_1[i]
             var_10 = paddle.tensor.manipulation.gather(var_10, _var)
             concat_list.append(var_10)
         var_43 = paddle.tensor.manipulation.concat(concat_list)
-        var_44 = paddle.tensor.linalg.transpose(
-            var_43,
-            (
-                1,
-                0,
-            ),
-        )
-        var_45 = var_44.reshape(
-            (
-                0,
-                16,
-                16,
-            )
-        )
+        var_44 = paddle.tensor.linalg.transpose(var_43, (1, 0))
+        var_45 = var_44.reshape((0, 16, 16))
         var_46 = paddle.tensor.linalg.matmul(var_6, var_9)
         var_47 = var_46.__mul__(0.25)
         var_48 = var_47.__add__(var_45)
