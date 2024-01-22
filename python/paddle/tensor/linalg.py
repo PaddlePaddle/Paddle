@@ -63,24 +63,40 @@ def transpose(x, perm, name=None):
 
         .. code-block:: text
 
-            x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
-                 [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
-            shape(x) =  [2,3,4]
+            # The following codes in this code block are pseudocode, designed to show the execution logic and results of the function.
+
+            x = to_tensor([[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
+                           [[13 14 15 16] [17 18 19 20] [21 22 23 24]]])
+            shape(x): return [2,3,4]
 
             # Example 1
             perm0 = [1,0,2]
-            y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
-                       [[ 5  6  7  8]  [17 18 19 20]]
-                       [[ 9 10 11 12]  [21 22 23 24]]]
-            shape(y_perm0) = [3,2,4]
+            y_perm0 = transpose(x, perm0) # Permute x by perm0
+
+            # dim:0 of y_perm0 is dim:1 of x
+            # dim:1 of y_perm0 is dim:0 of x
+            # dim:2 of y_perm0 is dim:2 of x
+            # The above two lines can also be understood as exchanging the zeroth and first dimensions of x
+
+            y_perm0.data = [[[ 1  2  3  4]  [13 14 15 16]]
+                            [[ 5  6  7  8]  [17 18 19 20]]
+                            [[ 9 10 11 12]  [21 22 23 24]]]
+            shape(y_perm0): return [3,2,4]
 
             # Example 2
             perm1 = [2,1,0]
-            y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
-                       [[ 2 14] [ 6 18] [10 22]]
-                       [[ 3 15]  [ 7 19]  [11 23]]
-                       [[ 4 16]  [ 8 20]  [12 24]]]
-            shape(y_perm1) = [4,3,2]
+            y_perm1 = transpose(x, perm1) # Permute x by perm1
+
+            # dim:0 of y_perm1 is dim:2 of x
+            # dim:1 of y_perm1 is dim:1 of x
+            # dim:2 of y_perm1 is dim:0 of x
+            # The above two lines can also be understood as exchanging the zeroth and second dimensions of x
+
+            y_perm1.data = [[[ 1 13]  [ 5 17]  [ 9 21]]
+                            [[ 2 14]  [ 6 18]  [10 22]]
+                            [[ 3 15]  [ 7 19]  [11 23]]
+                            [[ 4 16]  [ 8 20]  [12 24]]]
+            shape(y_perm1): return [4,3,2]
 
     Examples:
 
