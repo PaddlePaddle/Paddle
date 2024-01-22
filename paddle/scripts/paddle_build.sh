@@ -3337,6 +3337,7 @@ function distribute_test() {
     rm -rf ./paddlenlp/upload/*
     rm -rf ./paddlenlp/models/bigscience/*
 
+    sed -i '/lac/d' PaddleNLP/scripts/regression/requirements_ci.tx
     sed -i '35c # gpt_auto_recompute_bs16_fp16_o2_DP4-MP2-Sharding4_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
     sed -i '37c # gpt_auto_recompute_bs16_fp16_o2_DP4-MP2-Sharding4_stage3' PaddleNLP/scripts/distribute/ci_case_auto.sh
     sed -i '38c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP1-PP4_Sharding2_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
