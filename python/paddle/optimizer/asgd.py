@@ -294,7 +294,7 @@ class ASGD(Optimizer):
             assert isinstance(block, framework.Block)
             # create the optimize op
             add_inputs = {
-                "X": to_tensor(m),
+                "X": m,
                 "Y": to_tensor([1], dtype=m.dtype),
             }
 

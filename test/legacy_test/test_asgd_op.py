@@ -332,36 +332,36 @@ class TestASGDSimple(unittest.TestCase):
         self.data = np.random.random(size=(2, 2)).astype('float32')
 
     def run_static(self):
-        with paddle.pir_utils.IrGuard():
-            paddle.seed(10)
-            np.random.seed(10)
+        # with paddle.pir_utils.IrGuard():
+        paddle.seed(10)
+        np.random.seed(10)
 
-            exe = paddle.static.Executor('gpu')
-            train_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
 
-            with paddle.static.program_guard(train_program, startup_program):
-                input = paddle.static.data(
-                    shape=[2, 2], name='input', dtype='float32'
-                )
-                model = paddle.nn.Linear(2, 2)
-                output = model(input)
-                loss = paddle.mean(output)
+        with paddle.static.program_guard(train_program, startup_program):
+            input = paddle.static.data(
+                shape=[2, 2], name='input', dtype='float32'
+            )
+            model = paddle.nn.Linear(2, 2)
+            output = model(input)
+            loss = paddle.mean(output)
 
-                optimizer = paddle.optimizer.ASGD(
-                    batch_num=3,
-                )
+            optimizer = paddle.optimizer.ASGD(
+                batch_num=3,
+            )
 
-                optimizer.minimize(loss)
+            optimizer.minimize(loss)
 
-            exe.run(startup_program)
-            out = []
-            for _ in range(10):
-                (loss_data,) = exe.run(
-                    train_program, feed={"input": self.data}, fetch_list=[loss]
-                )
-                out.append(loss_data)
-            return out
+        exe.run(startup_program)
+        out = []
+        for _ in range(10):
+            (loss_data,) = exe.run(
+                train_program, feed={"input": self.data}, fetch_list=[loss]
+            )
+            out.append(loss_data)
+        return out
 
     def run_dygraph(self):
         with dygraph_guard():
