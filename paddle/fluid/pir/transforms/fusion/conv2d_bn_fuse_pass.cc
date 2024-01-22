@@ -66,9 +66,8 @@ class Conv2dBnFusePattern
     paddle::dialect::DivideOp div_op =
         rewriter.Build<paddle::dialect::DivideOp>(bn_scale, sqrt_op.out());
     // reshape scale
-    phi::DDim conv2d_filter_shape = pir::GetShapeFromValue(conv2d_filter);
-    phi::DDim bn_scale_shape =
-        bn_scale.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    auto conv2d_filter_shape = pir::GetShapeFromValue(conv2d_filter);
+    auto bn_scale_shape = pir::GetShapeFromValue(bn_scale);
     std::vector<int64_t> bn_scale_new_shape(conv2d_filter_shape.size(), 1);
     bn_scale_new_shape[0] = bn_scale_shape[0];
     paddle::dialect::ReshapeOp reshape_scale_op =
@@ -90,8 +89,7 @@ class Conv2dBnFusePattern
     paddle::dialect::SubtractOp sub_op =
         rewriter.Build<paddle::dialect::SubtractOp>(bn_bias, mul_bias_op.out());
     // reshape new bias
-    phi::DDim new_conv2d_out_shape =
-        pir::GetShapeFromValue(new_conv2d_op.out());
+    auto new_conv2d_out_shape = pir::GetShapeFromValue(new_conv2d_op.out());
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
     std::string data_format =
         new_conv2d_op.attribute<pir::StrAttribute>("data_format").AsString();

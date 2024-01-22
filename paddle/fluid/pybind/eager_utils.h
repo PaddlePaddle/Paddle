@@ -393,9 +393,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
-PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
+PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args);
 
-PyObject* GetEmpytyTensorsWithValue(PyObject* self, PyObject* args);
+PyObject* GetEmptyTensorsWithValue(PyObject* self, PyObject* args);
 
 // end of Slice related methods
 
