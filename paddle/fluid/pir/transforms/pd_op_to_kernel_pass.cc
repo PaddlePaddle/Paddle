@@ -66,7 +66,8 @@ static void ProcessBlock(const phi::Place&,
                          pir::Block*,
                          pir::IrContext*,
                          std::unordered_map<pir::Operation*, pir::Operation*>*,
-                         std::unordered_map<pir::Value, pir::Value>*);
+                         std::unordered_map<pir::Value, pir::Value>*,
+                         bool for_if_block = false);
 
 static pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
                                            pir::Type op_type,
