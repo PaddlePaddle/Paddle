@@ -31,9 +31,7 @@ class LayerCase(paddle.nn.Layer):
         var_0,  # (shape: [10, 196, 640], dtype: paddle.float32, stop_gradient: False)
     ):
         var_1 = paddle.tensor.manipulation.reshape(var_0, [10, 196, 8, -1])
-        out = paddle.tensor.manipulation.split(var_1, [16, 64], axis=3)
-        var_2 = out[0]
-        var_3 = out[1]
+        var_2, var_3 = paddle.tensor.manipulation.split(var_1, [16, 64], axis=3)
         var_4 = paddle.tensor.linalg.transpose(var_2, perm=[0, 2, 1, 3])
         var_5 = paddle.tensor.linalg.transpose(var_3, perm=[0, 2, 1, 3])
         return var_4, var_5

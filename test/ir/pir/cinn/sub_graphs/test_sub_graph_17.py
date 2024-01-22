@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 
 
-class LayerCase(paddle.nn.Layer):
+class ConcatCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -35,13 +35,13 @@ class LayerCase(paddle.nn.Layer):
         return var_2
 
 
-class TestLayer(unittest.TestCase):
+class TestConcat(unittest.TestCase):
     def setUp(self):
         self.inputs = (
             paddle.rand(shape=[145, 12, 112, 112], dtype=paddle.float32),
             paddle.rand(shape=[145, 12, 112, 112], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = ConcatCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         paddle.set_flags({'FLAGS_prim_all': with_prim})

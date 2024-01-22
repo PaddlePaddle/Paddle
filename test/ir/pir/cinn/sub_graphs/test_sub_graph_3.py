@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 
 
-class LayerCase(paddle.nn.Layer):
+class LinearCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.parameter_0 = self.create_parameter(
@@ -44,10 +44,10 @@ class LayerCase(paddle.nn.Layer):
         return var_1
 
 
-class TestLayer(unittest.TestCase):
+class TestLinear(unittest.TestCase):
     def setUp(self):
         self.inputs = (paddle.rand(shape=[10, 64], dtype=paddle.float32),)
-        self.net = LayerCase()
+        self.net = LinearCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         paddle.set_flags({'FLAGS_prim_all': with_prim})

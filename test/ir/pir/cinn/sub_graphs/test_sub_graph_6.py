@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 
 
-class LayerCase(paddle.nn.Layer):
+class ReshapeCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -34,10 +34,10 @@ class LayerCase(paddle.nn.Layer):
         return var_1
 
 
-class TestLayer(unittest.TestCase):
+class TestReshape(unittest.TestCase):
     def setUp(self):
         self.inputs = (paddle.rand(shape=[4312, 640], dtype=paddle.float32),)
-        self.net = LayerCase()
+        self.net = ReshapeCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         paddle.set_flags({'FLAGS_prim_all': with_prim})
