@@ -1115,13 +1115,23 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const pir::OpResult& value) {
+PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
 }
 
 PyObject* ToPyObject(const std::vector<pir::OpResult>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+  }
+
+  return result;
+}
+
+PyObject* ToPyObject(const std::vector<pir::Value>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {

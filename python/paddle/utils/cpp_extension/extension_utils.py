@@ -1164,15 +1164,15 @@ def _custom_api_content(op_name):
     )
     API_TEMPLATE = textwrap.dedent(
         """
-        import paddle.base.core as core
-        from paddle.framework import in_dynamic_mode
+        from paddle import _C_ops
+        from paddle.framework import in_dynamic_or_pir_mode
         from paddle.base.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dynamic_mode():
-                outs = core.eager._run_custom_op("{op_name}", {params_list})
+            if in_dynamic_or_pir_mode():
+                outs = _C_ops._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:
                 {static_content}

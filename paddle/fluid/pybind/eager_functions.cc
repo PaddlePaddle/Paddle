@@ -528,9 +528,9 @@ static Tensor InitializedEmptyTensor() {
   return tensor;
 }
 
-static PyObject* eager_api_run_custom_op(PyObject* self,
-                                         PyObject* args,
-                                         PyObject* kwargs) {
+PyObject* eager_api_run_custom_op(PyObject* self,
+                                  PyObject* args,
+                                  PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
