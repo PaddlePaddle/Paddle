@@ -145,7 +145,10 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
   Expr res;
   ir::TryElevateInt32ToInt64(shape);
   for (int i = 0; i < shape.size(); i++) {
-    CHECK(shape[i].type() == Int(64) || shape[i].type() == Int(32));
+    CHECK(shape[i].type() == Int(64) || shape[i].type() == Int(32))
+        << "The shape data type currently supports only int32 or int64, but "
+           "the current data type of shape["
+        << i << "] is " << shape[i].type();
     Expr indice_prod = indices[i];
     optim::SimplifyCast(&indice_prod);
     for (int j = i + 1; j < shape.size(); j++) {

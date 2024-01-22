@@ -702,7 +702,9 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
   TryElevateInt32ToInt64(vs);
   auto type = vs.front().type();
   for (auto &v : vs) {
-    CHECK_EQ(v.type(), type) << "(" << v << " vs " << vs.front() << ")";
+    CHECK_EQ(v.type(), type) << "The operands' types of the node ["
+                             << n->node_type() << "] don't match: "
+                             << "(" << v << " vs " << vs.front() << ")";
   }
 
   n->operands() = vs;
