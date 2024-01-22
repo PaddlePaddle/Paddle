@@ -415,7 +415,6 @@ class TestAPICase_Nested(unittest.TestCase):
             out_1 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
             )
-            print(main_program)
             out_2 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
             )
