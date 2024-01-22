@@ -18,8 +18,6 @@ if(WITH_TESTING AND NOT WIN32)
       transfer_layout_op
       fluid_jit
       generated_static_op)
-  cc_test(
-    layer_test
-    SRCS layer_test.cc
-    DEPS ${JIT_DEPS})
+
+  paddle_test(layer_test SRCS layer_test.cc DEPS ${JIT_DEPS})
 endif()
