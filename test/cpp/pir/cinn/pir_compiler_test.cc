@@ -36,6 +36,7 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 using cinn::hlir::framework::pir::Group;
 using cinn::hlir::framework::pir::GroupPtr;

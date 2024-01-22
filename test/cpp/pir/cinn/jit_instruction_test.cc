@@ -37,6 +37,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
