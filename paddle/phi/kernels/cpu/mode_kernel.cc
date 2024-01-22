@@ -49,7 +49,7 @@ void ModeKernel(const Context& dev_ctx,
   }
 
   // if axis is not the last dim, transpose it to the last dim, do the
-  // calculation, then tranpose it back to original axis.
+  // calculation, then transpose it back to original axis.
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
         common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
