@@ -997,7 +997,7 @@ function run_sot_test() {
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
-    # Install PaddleSOT
+    # cd to sot test dir
     cd $PADDLE_ROOT/test/sot/
 
     # Run unittest
@@ -4211,7 +4211,7 @@ function main() {
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
         export ON_INFER=ON
-        export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data 
+        export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data
         is_run_distribute_in_op_test
         parallel_test
         check_coverage
@@ -4302,12 +4302,15 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
+        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11 3.12)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-            run_sot_test $PY_VERSION
+            # Currently, only compile on Python 3.12
+            if [ "${PY_VERSION}" != "3.12" ]; then
+                run_sot_test $PY_VERSION
+            fi
             rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
         done
         ;;
