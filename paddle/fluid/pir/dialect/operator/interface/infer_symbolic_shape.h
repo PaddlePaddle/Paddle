@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/pir/core/op_base.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
 // Type inference is currently modelled executionally for operation creation
 // using the `InferMetaInterface`. While `InferSymbolicShapeInterface` is used
