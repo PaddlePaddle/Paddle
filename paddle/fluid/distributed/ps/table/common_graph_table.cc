@@ -359,11 +359,11 @@ GraphTable::make_gpu_ps_graph_float_fea(int gpu_id,
 paddle::framework::GpuPsCommRankFea GraphTable::make_gpu_ps_rank_fea(
     int gpu_id) {
   paddle::framework::GpuPsCommRankFea res;
-  if (egde_node_rank_.empty()) {
+  if (edge_node_rank_.empty()) {
     return res;
   }
   std::vector<size_t> node_num_vec(shard_num_per_server, 0);
-  auto rank_nodes = egde_node_rank_.get_rank_nodes();
+  auto rank_nodes = edge_node_rank_.get_rank_nodes();
   // 遍历 rank_nodes[i][shard_num]，分8份，分配到 res
   std::vector<std::future<size_t>> tasks;
 
@@ -930,7 +930,7 @@ void GraphTable::graph_partition(bool is_edge) {
 }
 
 void GraphTable::dbh_graph_edge_partition() {
-  VLOG(0) << "start to process dbh egde shard";
+  VLOG(0) << "start to process dbh edge shard";
   std::vector<std::vector<GraphShard *>> tmp_edge_shards;
   tmp_edge_shards.resize(edge_shards.size());
   for (size_t k = 0; k < edge_shards.size(); k++) {
@@ -1064,7 +1064,7 @@ void GraphTable::dbh_graph_edge_partition() {
                                all_edge_keys[0].end());
   VLOG(1) << "insert unique_all_edge_keys_ done, size:"
           << unique_all_edge_keys_.size();
-  VLOG(0) << "end to process dbh egde shard";
+  VLOG(0) << "end to process dbh edge shard";
 }
 
 void GraphTable::dbh_graph_feature_partition() {
@@ -1112,7 +1112,7 @@ void GraphTable::query_all_ids_rank(const size_t &total,
         load_node_edge_task_pool->enqueue([this, &ids, &ranks, start, end]() {
           size_t cnt = 0;
           for (size_t k = start; k < end; ++k) {
-            int rank = egde_node_rank_.find(ids[k]);
+            int rank = edge_node_rank_.find(ids[k]);
             if (rank < 0) {
               rank = partition_key_for_rank(ids[k]);
               ++cnt;
@@ -1130,7 +1130,7 @@ void GraphTable::query_all_ids_rank(const size_t &total,
   VLOG(0) << "query total keys=" << total << ", hash count=" << hash_count;
 }
 void GraphTable::fennel_graph_edge_partition() {
-  VLOG(0) << "start to process fennel2 egde shard";
+  VLOG(0) << "start to process fennel2 edge shard";
   std::vector<std::future<size_t>> wait_tasks;
   robin_hood::unordered_flat_map<uint64_t, std::vector<Node *>>
       neighbor_nodes[shard_num_per_server];
@@ -1172,10 +1172,10 @@ void GraphTable::fennel_graph_edge_partition() {
   VLOG(0) << "gather total edge node count=" << total_node
           << ", load_limit:" << load_limit << ", alpha: " << alpha;
   // init,每个子图插入一个节点, 记录每台机器子图已有的节点set
-  egde_node_rank_.clear();
-  egde_node_rank_.init(node_num_, shard_num_per_server);
+  edge_node_rank_.clear();
+  edge_node_rank_.init(node_num_, shard_num_per_server);
   for (size_t part_id = 0; part_id < shard_num_per_server; ++part_id) {
-    egde_node_rank_.rehash(part_id, neighbor_nodes[part_id].size());
+    edge_node_rank_.rehash(part_id, neighbor_nodes[part_id].size());
   }
   // 获取与邻居的边交集数量
   auto get_inter_cost = [this, &neighbor_nodes](
@@ -1186,7 +1186,7 @@ void GraphTable::fennel_graph_edge_partition() {
     for (auto &node : nodes) {
       for (size_t n_i = 0; n_i < node->get_neighbor_size(); ++n_i) {
         uint64_t d_id = node->get_neighbor_id(n_i);
-        int rank = egde_node_rank_.find(d_id);
+        int rank = edge_node_rank_.find(d_id);
         if (rank >= 0) {
           ++(*inter_cost)[rank];
           find = true;
@@ -1215,11 +1215,11 @@ void GraphTable::fennel_graph_edge_partition() {
     for (int i = 0; i < node_num_; ++i) {
       // 计算最大score所在的机器
       //      double score = 0.0;
-      //      if (egde_node_rank_.nodes_num(i) < load_limit) {
+      //      if (edge_node_rank_.nodes_num(i) < load_limit) {
       //        score = inter_cost[i] - alpha * gamma *
-      //        pow(egde_node_rank_.nodes_num(i), gamma - 1);
+      //        pow(edge_node_rank_.nodes_num(i), gamma - 1);
       //      } else {
-      //        score = - alpha * gamma * pow(egde_node_rank_.nodes_num(i),
+      //        score = - alpha * gamma * pow(edge_node_rank_.nodes_num(i),
       //        gamma - 1);
       //      }
       auto &score = inter_cost[i];
@@ -1246,7 +1246,7 @@ void GraphTable::fennel_graph_edge_partition() {
         continue;
       }
       for (auto it = n_nodes.begin(); it != n_nodes.end(); ++it) {
-        if (egde_node_rank_.find(it->first) >= 0) {
+        if (edge_node_rank_.find(it->first) >= 0) {
           continue;
         }
         get_inter_cost(it->first, it->second, &inter_cost);
@@ -1283,10 +1283,10 @@ void GraphTable::fennel_graph_edge_partition() {
         continue;
       }
       for (auto it = n_nodes.begin(); it != n_nodes.end(); ++it) {
-        if (egde_node_rank_.find(it->first) >= 0) {
+        if (edge_node_rank_.find(it->first) >= 0) {
           continue;
         }
-        egde_node_rank_.insert(it->first, rank_id);
+        edge_node_rank_.insert(it->first, rank_id);
         ++cnt;
       }
     }
@@ -1332,7 +1332,7 @@ void GraphTable::fennel_graph_edge_partition() {
   while (cnt < total_node) {
     int need_proc_node = node_num_;
     for (int rank_id = 0; rank_id < node_num_; ++rank_id) {
-      auto &num = egde_node_rank_.nodes_num(rank_id);
+      auto &num = edge_node_rank_.nodes_num(rank_id);
       if (num >= load_limit) {
         --need_proc_node;
         continue;
@@ -1356,7 +1356,7 @@ void GraphTable::fennel_graph_edge_partition() {
             --max_step;
           }
           ++rank_nums[rank_id];
-          egde_node_rank_.insert(key, rank_id);
+          edge_node_rank_.insert(key, rank_id);
           ++cnt;
           add_neighbor_to_queue(key, &queue, &keys_unique);
         }
@@ -1368,15 +1368,15 @@ void GraphTable::fennel_graph_edge_partition() {
 
       int rank = get_rank_by_score(key);
       if (rank >= 0) {
-        egde_node_rank_.insert(key, rank);
+        edge_node_rank_.insert(key, rank);
         ++cnt;
         add_neighbor_to_queue(key, &node_queue[rank], &keys_unique);
       }
     }
     if (cnt - start_print > 10000000) {
       for (int i = 0; i < node_num_; i++) {
-        VLOG(0) << "current total nodes count=" << cnt << ", egde_node_ids["
-                << i << "] :" << egde_node_rank_.nodes_num(i)
+        VLOG(0) << "current total nodes count=" << cnt << ", edge_node_ids["
+                << i << "] :" << edge_node_rank_.nodes_num(i)
                 << ", queue size: " << node_queue[i].size()
                 << ", first size: " << rank_nums[i]
                 << ", keys_unique: " << keys_unique.size();
@@ -1386,10 +1386,10 @@ void GraphTable::fennel_graph_edge_partition() {
   }
   // end split nodes
   for (int i = 0; i < node_num_; i++) {
-    VLOG(0) << " egde_node_ids[" << i << "] :" << egde_node_rank_.nodes_num(i);
+    VLOG(0) << " edge_node_ids[" << i << "] :" << edge_node_rank_.nodes_num(i);
   }
   filter_graph_edge_nodes();
-  VLOG(0) << "end to process fennel new egde shard";
+  VLOG(0) << "end to process fennel new edge shard";
 }
 void GraphTable::filter_graph_edge_nodes() {
   VLOG(0) << "begin filter graph edge nodes";
@@ -1411,7 +1411,7 @@ void GraphTable::filter_graph_edge_nodes() {
     size_t cnt = 0;
     for (size_t i = 0; i < node->get_neighbor_size(); ++i) {
       uint64_t nid = node->get_neighbor_id(i);
-      if (egde_node_rank_.find(nid) != rank_id) {
+      if (edge_node_rank_.find(nid) != rank_id) {
         ++cnt;
       }
     }
@@ -1441,7 +1441,7 @@ void GraphTable::filter_graph_edge_nodes() {
               total_edge_count[part_id] += node->get_neighbor_size();
               auto nid = node->get_id();
               // 节点插入到对应的机器shard中
-              int rank = egde_node_rank_.find(nid);
+              int rank = edge_node_rank_.find(nid);
               if (rank != node_id_) {
                 remove_ids.push_back(nid);
                 ++remove_cnt;
@@ -1511,7 +1511,7 @@ void GraphTable::fennel_graph_feature_partition() {
             auto &nodes = shard->get_bucket();
             for (auto node : nodes) {
               uint64_t id = node->get_id();
-              int rank = egde_node_rank_.find(id);
+              int rank = edge_node_rank_.find(id);
               if (rank < 0) {  // single node
                 if (!is_key_for_self_rank(id)) {
                   remove_keys.push_back(id);
@@ -1554,7 +1554,7 @@ void GraphTable::stat_graph_edge_info(int type) {
       size_t cnt = 0;
       for (size_t i = 0; i < node->get_neighbor_size(); ++i) {
         uint64_t nid = node->get_neighbor_id(i);
-        if (egde_node_rank_.find(nid) != node_id_) {
+        if (edge_node_rank_.find(nid) != node_id_) {
           ++cnt;
         }
       }
@@ -2522,7 +2522,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
       if (!FLAGS_graph_edges_split_only_by_src_id &&
           !is_key_for_self_rank(dst_id)) {
         VLOG(3) << " dest node num :" << dst_id
-                << " will not add egde, node_id_:" << node_id_
+                << " will not add edge, node_id_:" << node_id_
                 << " node_num:" << node_num_;
         continue;
       }
@@ -3024,7 +3024,7 @@ int GraphTable::parse_feature(int idx,
                               const char *feat_str,
                               size_t len,
                               FeatureNode *node) {
-  // Return (feat_id, btyes) if name are in this->feat_name, else return (-1,
+  // Return (feat_id, bytes) if name are in this->feat_name, else return (-1,
   // "")
   thread_local std::vector<::paddle::string::str_ptr> fields;
   fields.clear();

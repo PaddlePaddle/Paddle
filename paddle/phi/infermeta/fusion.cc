@@ -291,7 +291,7 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
       dilations,
       0,
       phi::errors::InvalidArgument(
-          "The dilation of Op(Conv) should be larget than 0, but received "
+          "The dilation of Op(Conv) should be larger than 0, but received "
           "dilation is %d.",
           dilations));
 
@@ -405,7 +405,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -1870,7 +1870,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
       x_dims[x_dims_size - 1],
       4,
       phi::errors::InvalidArgument(
-          "The last dim of x should be larget than 4, but received "
+          "The last dim of x should be larger than 4, but received "
           " is %d.",
           x_dims[x_dims_size - 1]));
   // compute left out_dims
@@ -1993,7 +1993,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -2331,7 +2331,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }

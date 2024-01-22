@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
+#pragma once
 
-namespace pir {
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/tensor_array.h"
 
-const std::string SymbolTable::insert(Operation* symbol) {
-  std::string name;
-  if (symbol->isa<shape::SymbolicDimOp>()) {
-    name = symbol->dyn_cast<SymbolicDimOp>().GetSymName();
-    symbol_table_map_.insert({name, symbol});
-  }
+namespace phi {
 
-  // TODO(zhangbopd): add more constraint_func name branch.
-  if (symbol->isa<shape::TieProductEqualOp>()) {
-    name = "tie_product_equal";
-    symbol_func_map_[name].emplace_back(symbol);
-  }
-
-  return name;
-}
-}  // namespace pir
+template <typename T, typename Context>
+void TensorToArrayKernel(const Context& dev_ctx,
+                         const TensorArray& x,
+                         const DenseTensor& out_grad,
+                         int axis,
+                         bool use_stack,
+                         TensorArray* x_grad);
+}  // namespace phi

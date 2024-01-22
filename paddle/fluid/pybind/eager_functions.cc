@@ -195,7 +195,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        only_inputs,
                        allow_unused,
                        no_grad_vars);
-    VLOG(4) << " in eager_api_run_partial_grad, after runing egr::Grad";
+    VLOG(4) << " in eager_api_run_partial_grad, after running egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1085,7 +1085,7 @@ static PyObject* eager_api_async_read(PyObject* self,
       PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                         count_tensor.numel(),
                         platform::errors::InvalidArgument(
-                            "`offset` and `count` tensor size dismatch."));
+                            "`offset` and `count` tensor size mismatch."));
       auto* offset_data = offset_tensor.data<int64_t>();
       auto* count_data = count_tensor.data<int64_t>();
       for (int64_t i = 0; i < count_tensor.numel(); i++) {
@@ -1214,7 +1214,7 @@ static PyObject* eager_api_async_write(PyObject* self,
     PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                       count_tensor.numel(),
                       platform::errors::InvalidArgument(
-                          "`offset` and `count` tensor size dismatch."));
+                          "`offset` and `count` tensor size mismatch."));
     PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
                       dst_tensor->dims().size(),
                       platform::errors::InvalidArgument(

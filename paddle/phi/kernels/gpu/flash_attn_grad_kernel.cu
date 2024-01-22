@@ -20,6 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 PD_DECLARE_bool(cudnn_deterministic);
 
@@ -51,33 +52,6 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
-  void* dq_ptr = nullptr;
-  void* dk_ptr = nullptr;
-  void* dv_ptr = nullptr;
-
-  ctx.template Alloc<T>(dq);
-  dq_ptr = dq->data();
-
-  DenseTensor dk_tmp;
-  if (dk) {
-    ctx.template Alloc<T>(dk);
-    dk_ptr = dk->data();
-  } else {
-    dk_tmp = EmptyLike<T, Context>(ctx, k);
-    dk_ptr = dk_tmp.data();
-  }
-
-  DenseTensor dv_tmp;
-  if (dv) {
-    ctx.template Alloc<T>(dv);
-    dv_ptr = dv->data();
-  } else {
-    dv_tmp = EmptyLike<T, Context>(ctx, v);
-    dv_ptr = dv_tmp.data();
-  }
-
-  const cudaStream_t stream = ctx.stream();
-
   // q,k,v [total_*, num_heads, head_dim]
   auto dims = q.dims();
 
@@ -85,7 +59,45 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   const int64_t num_heads = dims[1];
   const int64_t head_size_og = dout.dims()[2];
   const int64_t head_size = dims[2];
+  const int64_t total_k = k.dims()[0];
   const int64_t num_heads_k = k.dims()[1];
+
+  bool is_mha = (num_heads == num_heads_k);
+
+  void* dq_ptr = nullptr;
+  void* dk_ptr = nullptr;
+  void* dv_ptr = nullptr;
+
+  DenseTensor dq_tmp;
+  if (dq) {
+    dq_ptr = ctx.template Alloc<T>(dq);
+  } else {
+    dq_tmp.Resize(dims);
+    dq_ptr = ctx.template Alloc<T>(&dq_tmp);
+  }
+
+  std::initializer_list<int64_t> dk_dv_shape = {
+      total_k, num_heads_k, num_heads / num_heads_k, head_size};
+
+  DenseTensor dk_tmp;
+  if (dk && is_mha) {
+    ctx.template Alloc<T>(dk);
+    dk_ptr = dk->data();
+  } else {
+    dk_tmp.Resize(dk_dv_shape);
+    dk_ptr = ctx.template Alloc<T>(&dk_tmp);
+  }
+
+  DenseTensor dv_tmp;
+  if (dv && is_mha) {
+    ctx.template Alloc<T>(dv);
+    dv_ptr = dv->data();
+  } else {
+    dv_tmp.Resize(dk_dv_shape);
+    dv_ptr = ctx.template Alloc<T>(&dv_tmp);
+  }
+
+  const cudaStream_t stream = ctx.stream();
 
   int num_splits = get_num_split();
 
@@ -150,6 +162,14 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
+  if (!is_mha) {
+    if (dk) {
+      phi::SumKernel<T, Context>(ctx, dk_tmp, {2}, dk->type(), false, dk);
+    }
+    if (dv) {
+      phi::SumKernel<T, Context>(ctx, dv_tmp, {2}, dv->type(), false, dv);
+    }
+  }
 #else
   RaiseNotSupportedError();
 #endif
@@ -171,33 +191,6 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
-  void* dq_ptr = nullptr;
-  void* dk_ptr = nullptr;
-  void* dv_ptr = nullptr;
-
-  ctx.template Alloc<T>(dq);
-  dq_ptr = dq->data();
-
-  DenseTensor dk_tmp;
-  if (dk) {
-    ctx.template Alloc<T>(dk);
-    dk_ptr = dk->data();
-  } else {
-    dk_tmp = EmptyLike<T, Context>(ctx, k);
-    dk_ptr = dk_tmp.data();
-  }
-
-  DenseTensor dv_tmp;
-  if (dv) {
-    ctx.template Alloc<T>(dv);
-    dv_ptr = dv->data();
-  } else {
-    dv_tmp = EmptyLike<T, Context>(ctx, v);
-    dv_ptr = dv_tmp.data();
-  }
-
-  const cudaStream_t stream = ctx.stream();
-
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
 
@@ -208,6 +201,42 @@ void FlashAttnGradKernel(const Context& ctx,
   const int64_t head_size = dims[3];
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
+
+  bool is_mha = (num_heads == num_heads_k);
+
+  void* dq_ptr = nullptr;
+  void* dk_ptr = nullptr;
+  void* dv_ptr = nullptr;
+
+  DenseTensor dq_tmp;
+  if (dq) {
+    dq_ptr = ctx.template Alloc<T>(dq);
+  } else {
+    dq_tmp.Resize(dims);
+    dq_ptr = ctx.template Alloc<T>(&dq_tmp);
+  }
+
+  DenseTensor dk_tmp;
+  std::initializer_list<int64_t> dk_dv_shape = {
+      batch_size, seqlen_k, num_heads_k, num_heads / num_heads_k, head_size};
+  if (dk && is_mha) {
+    ctx.template Alloc<T>(dk);
+    dk_ptr = dk->data();
+  } else {
+    dk_tmp.Resize(dk_dv_shape);
+    dk_ptr = ctx.template Alloc<T>(&dk_tmp);
+  }
+
+  DenseTensor dv_tmp;
+  if (dv && is_mha) {
+    ctx.template Alloc<T>(dv);
+    dv_ptr = dv->data();
+  } else {
+    dv_tmp.Resize(dk_dv_shape);
+    dv_ptr = ctx.template Alloc<T>(&dv_tmp);
+  }
+
+  const cudaStream_t stream = ctx.stream();
 
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
@@ -281,6 +310,14 @@ void FlashAttnGradKernel(const Context& ctx,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
+  if (!is_mha) {
+    if (dk) {
+      phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
+    }
+    if (dv) {
+      phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
+    }
+  }
 #else
   RaiseNotSupportedError();
 #endif

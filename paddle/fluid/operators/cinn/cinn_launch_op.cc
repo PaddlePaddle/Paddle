@@ -54,7 +54,7 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
   const auto& cinn_scope = *(result.scope);
   const auto& paddle2cinn_varmap = result.paddle2cinn_varmap;
 
-  VLOG(4) << "Compiled runtime_program instrunction size:["
+  VLOG(4) << "Compiled runtime_program instruction size:["
           << cinn_runtime_program->size() << "]";
 
   std::vector<std::string> infos;

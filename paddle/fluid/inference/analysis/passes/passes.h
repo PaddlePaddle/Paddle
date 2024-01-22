@@ -27,7 +27,7 @@ namespace analysis {
 struct PassRegistry {
   PassRegistry();
 
-  AnalysisPass* Retreive(const std::string& pass_type) {
+  AnalysisPass* Retrieve(const std::string& pass_type) {
     return passes_[pass_type].get();
   }
 

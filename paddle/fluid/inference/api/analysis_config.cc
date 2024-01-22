@@ -816,7 +816,7 @@ void AnalysisConfig::EnableDlnne(
     int max_batch_size,
     bool use_static_batch,
     std::string weight_share_mode,
-    std::unordered_set<std::string> disable_nodes_by_ouputs,
+    std::unordered_set<std::string> disable_nodes_by_outputs,
     std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
     bool use_calib_mode,
     Precision precision_mode) {
@@ -825,7 +825,7 @@ void AnalysisConfig::EnableDlnne(
   dlnne_max_batchsize_ = max_batch_size;
   dlnne_use_static_batch_ = use_static_batch;
   dlnne_weight_share_mode_ = weight_share_mode;
-  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_ouputs;
+  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_outputs;
   dlnne_input_shape_dict_ = dlnne_input_shape_dict;
   dlnne_use_calib_mode_ = use_calib_mode;
   dlnne_precision_mode_ = precision_mode;
