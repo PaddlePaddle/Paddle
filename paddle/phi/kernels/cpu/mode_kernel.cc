@@ -36,7 +36,7 @@ void ModeKernel(const Context& dev_ctx,
                           "The dims of Input(X) should be greater than 0."));
   }
   auto out_dims = out->dims();
-  // axis < 0, cacluate the real axis
+  // axis < 0, calculate the real axis
   if (axis < 0) axis += in_dims.size();
 
   T* output_data = dev_ctx.template Alloc<T>(out);

@@ -147,7 +147,7 @@ void TopkKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
-  // axis < 0, cacluate the real axis
+  // axis < 0, calculate the real axis
   if (axis < 0) {
     axis += in_dims.size();
   }
