@@ -55,9 +55,11 @@ class CinnJitInstruction::FnPtrImpl {
               int_arg_mp.second.dim_idx)));
     }
 
-    VLOG(4) << "Run func_args_ size: " << func_args_.size();
-    for (const auto& args : func_args_) {
-      VLOG(4) << " args type_code: " << args.type_code();
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "Run func_args_ size: " << func_args_.size();
+      for (const auto& args : func_args_) {
+        VLOG(4) << " args type_code: " << args.type_code();
+      }
     }
 
     // 3. Launch host kernel
@@ -91,9 +93,11 @@ class CinnJitInstruction::FnPtrImpl {
                  sizeof(int32_t*)));
     }
 
-    VLOG(4) << "InferShape func_args_ size: " << func_args_.size();
-    for (const auto& args : func_args_) {
-      VLOG(4) << " args type_code: " << args.type_code();
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "InferShape func_args_ size: " << func_args_.size();
+      for (const auto& args : func_args_) {
+        VLOG(4) << " args type_code: " << args.type_code();
+      }
     }
 
     // 4. Launch infer_shape_fn_ptr to infer shape of output tensor
