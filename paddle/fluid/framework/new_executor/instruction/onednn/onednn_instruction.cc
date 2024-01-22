@@ -311,7 +311,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .AsVector();
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
     std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
-    std::vector<std::string> extra_args;
+
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
       extra_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
@@ -320,6 +320,17 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
           op_normalizer.GetLegacyAttrName(fluid_op_name, attr_name);
       if (legacy_attr_name != attr_name) {
         extra_attr_[legacy_attr_name] = extra_attr_[attr_name];
+      }
+    }
+    auto attr_name_list = yaml_info_parser.AttrParams(true);
+    for (auto& attr : attr_name_list) {
+      auto attr_name = attr;
+      ctx_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
+          op_attributes.at(attr_name), attr_name, yaml_info_parser);
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(fluid_op_name, attr_name);
+      if (legacy_attr_name != attr_name) {
+        ctx_attr_[legacy_attr_name] = ctx_attr_[attr_name];
       }
     }
   }
@@ -378,6 +389,9 @@ void OneDNNPhiKernelInstruction::Run() {
   auto one_dnn_ctx = const_cast<phi::OneDNNContext*>(
       &kernel_context_.GetDeviceContext<phi::OneDNNContext>());
   for (auto& attr : extra_attr_) {
+    one_dnn_ctx->SetDnnAttr(attr.first, attr.second);
+  }
+  for (auto& attr : ctx_attr_) {
     one_dnn_ctx->SetDnnAttr(attr.first, attr.second);
   }
   one_dnn_ctx->SetInputsName(inputs_);
