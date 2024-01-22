@@ -2446,6 +2446,7 @@ class PdOpToKernelPass : public pir::Pass {
     context->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
     context->GetOrRegisterDialect<paddle::dialect::OneDNNKernelDialect>();
 #endif
+    return true;
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
