@@ -263,7 +263,8 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> out_dims_data;
   if (operand_shape_or_data.data().has_value()) {
     out_dims_data = operand_shape_or_data.data().value();
-    out_dims.emplace_back(operand_shape_or_data.shape().size());
+    out_dims.emplace_back(
+        static_cast<std::int64_t>(operand_shape_or_data.shape().size()));
   }
   // else : pir::VectorType x =
   // operand_source.type().dyn_cast<pir::VectorType>();
