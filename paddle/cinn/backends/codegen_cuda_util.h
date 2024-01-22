@@ -152,7 +152,7 @@ struct CollectBucketStrategyHostFunctionVisitor
         kernel_args_(KERNEL_ARGS, type_of<void*>()),
         kernel_args_num_(KERNEL_ARGS_NUM, type_of<int>()),
         kernel_stream_(KERNEL_STREAM, type_of<void*>()),
-        tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int32_t**>()) {}
+        tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int64_t**>()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
