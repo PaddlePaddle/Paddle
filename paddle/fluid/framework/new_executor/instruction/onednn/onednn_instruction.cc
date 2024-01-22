@@ -314,6 +314,11 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
       extra_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
           op_attributes.at(attr_name), attr_name, yaml_info_parser);
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(fluid_op_name, attr_name);
+      if (legacy_attr_name != attr_name) {
+        extra_attr_[legacy_attr_name] = extra_attr_[attr_name];
+      }
     }
   }
   TensorNameMap(op, *value_exec_info_, yaml_info_parser, inputs_, outputs_);
