@@ -121,10 +121,12 @@ def generate_intermediate_api(
                 apis.extend(api_list)
 
     for api in apis:
-        foward_api = DistForwardAPI(api) if gen_dist_branch else ForwardAPI(api)
-        if foward_api.is_dygraph_api:
-            dygraph_header_file.write(foward_api.gene_api_declaration())
-            dygraph_source_file.write(foward_api.gene_api_code())
+        forward_api = (
+            DistForwardAPI(api) if gen_dist_branch else ForwardAPI(api)
+        )
+        if forward_api.is_dygraph_api:
+            dygraph_header_file.write(forward_api.gene_api_declaration())
+            dygraph_source_file.write(forward_api.gene_api_code())
 
     dygraph_header_file.write(sparse_namespace_pair[0])
     dygraph_source_file.write(sparse_namespace_pair[0])

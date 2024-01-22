@@ -126,7 +126,7 @@ Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
       PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
                         false,
                         phi::errors::InvalidArgument(
-                            "The last container in foward while op must used "
+                            "The last container in forward while op must used "
                             "after construct while_grad op"));
       break;
     }
