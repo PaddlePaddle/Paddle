@@ -187,27 +187,64 @@ std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
 
 std::ostream& operator<<(std::ostream& stream,
                          const ShapeOrDataDimExprs& shape_or_data) {
-  std::string result = "shape[";
-  for (size_t i = 0; i < shape_or_data.shape().size(); ++i) {
-    result += ToString(shape_or_data.shape()[i]);
-    if (i < shape_or_data.shape().size() - 1) {
-      result += ", ";
-    }
-  }
-  result += "]";
-  if (shape_or_data.data()) {
-    result += ", data[";
-    for (size_t i = 0; i < shape_or_data.data()->size(); ++i) {
-      result += ToString(shape_or_data.data()->at(i));
-      if (i < shape_or_data.data()->size() - 1) {
+  std::string result;
+  if (shape_or_data.isa<TensorShapeOrDataDimExprs>()) {
+    result += "shape[";
+    TensorShapeOrDataDimExprs tensor_shape_data =
+        shape_or_data.dyn_cast<TensorShapeOrDataDimExprs>();
+    for (size_t i = 0; i < tensor_shape_data.shape().size(); ++i) {
+      result += ToString(tensor_shape_data.shape()[i]);
+      if (i < tensor_shape_data.shape().size() - 1) {
         result += ", ";
       }
     }
     result += "]";
-  } else {
-    result += ", data[NULL]";
+    if (tensor_shape_data.data()) {
+      result += ", data[";
+      for (size_t i = 0; i < tensor_shape_data.data()->size(); ++i) {
+        result += ToString(tensor_shape_data.data()->at(i));
+        if (i < tensor_shape_data.data()->size() - 1) {
+          result += ", ";
+        }
+      }
+      result += "]";
+    } else {
+      result += ", data[NULL]";
+    }
+  } else if (shape_or_data.isa<TensorListShapeOrDataDimExprs>()) {
+    TensorListShapeOrDataDimExprs tensor_list_shape_data =
+        shape_or_data.dyn_cast<TensorListShapeOrDataDimExprs>();
+
+    for (size_t i = 0; i < tensor_list_shape_data.size(); ++i) {
+      result += "shape[";
+      for (size_t i = 0; i < tensor_list_shape_data[i].shape().size(); ++i) {
+        result += ToString(tensor_list_shape_data[i].shape()[i]);
+        if (i < tensor_list_shape_data[i].shape().size() - 1) {
+          result += ", ";
+        }
+      }
+      result += "]";
+      if (tensor_list_shape_data[i].data()) {
+        result += ", data[";
+        for (size_t i = 0; i < tensor_list_shape_data[i].data()->size(); ++i) {
+          result += ToString(tensor_list_shape_data[i].data()->at(i));
+          if (i < tensor_list_shape_data[i].data()->size() - 1) {
+            result += ", ";
+          }
+        }
+        result += "]";
+      } else {
+        result += ", data[NULL]";
+      }
+
+      if (i < tensor_list_shape_data.size() - 1) {
+        result += ", ";
+      }
+    }
   }
+
   stream << result;
+
   return stream;
 }
 

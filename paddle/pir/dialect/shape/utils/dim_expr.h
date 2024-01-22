@@ -248,7 +248,16 @@ using ShapeOrDataDimExprsBase =
     std::variant<TensorShapeOrDataDimExprs, TensorListShapeOrDataDimExprs>;
 
 class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
+ public:
   using ShapeOrDataDimExprsBase::ShapeOrDataDimExprsBase;
+  explicit ShapeOrDataDimExprs(const std::vector<DimExpr>& shape) {
+    *this = symbol::ShapeOrDataDimExprs(shape);
+  }
+
+  explicit ShapeOrDataDimExprs(const std::vector<DimExpr>& shape,
+                               const std::vector<DimExpr>& data) {
+    *this = symbol::ShapeOrDataDimExprs(shape, data);
+  }
 
   template <typename T>
   bool isa() const {
@@ -264,8 +273,7 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
     return static_cast<const ShapeOrDataDimExprsBase&>(*this);
   }
 
-  template <typename T>
-  const std::vector<T>& shape() const {
+  const std::vector<DimExpr>& shape() const {
     IR_ENFORCE(
         std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
         "Shape of ShapeOrData is not a vector, check wheather the value is a "
@@ -273,13 +281,21 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
     return std::get<TensorShapeOrDataDimExprs>(*this).shape();
   }
 
-  template <typename T>
-  const std::vector<T>& data() const {
+  const std::optional<std::vector<DimExpr>>& data() const {
     IR_ENFORCE(
         std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
         "Data of ShapeOrData is not a vector, check wheather the value is a "
         "tensor-list or not.");
     return std::get<TensorShapeOrDataDimExprs>(*this).data();
+  }
+
+  void SetData(const std::vector<DimExpr>& data) {
+    IR_ENFORCE(
+        std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
+        "Data of ShapeOrData is not a vector, check wheather the value is a "
+        "tensor-list or not.");
+
+    std::get<TensorShapeOrDataDimExprs>(*this).SetData(data);
   }
 };
 
