@@ -676,9 +676,8 @@ void expand_grad(const Tensor& x,
                  const IntArray& shape,
                  Tensor* x_grad) {
   if (x_grad) {
-    auto out_dims = common::make_ddim(shape.GetData());
-    if (out_dims != x.dims()) {
-      auto axes = get_reduce_dims_from_out(out_dims, x.dims());
+    if (out_grad.dims() != x.dims()) {
+      auto axes = get_reduce_dims_from_out(out_grad.dims(), x.dims());
       auto reduced = out_grad.sum(common::vectorize(axes), x.dtype(), false);
       if (reduced.dims().size() != x.dims().size()) {
         reduced = reshape<T>(reduced, x.shape());
