@@ -73,7 +73,7 @@ class CGenXCCLIdOp : public framework::OperatorBase {
 class CGenXCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "Raw variable contains a XCCL UniqueId instaces.");
+    AddOutput("Out", "Raw variable contains a XCCL UniqueId instances.");
     AddComment(R"DOC(
 CGenXCCLId operator
 
