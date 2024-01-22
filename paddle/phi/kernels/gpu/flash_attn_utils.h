@@ -114,7 +114,7 @@ struct FlashAttnParamsBase {
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
         num_heads(_num_heads),
-        num_heads_k(_num_heads),
+        num_heads_k(_num_heads_k),
         head_size(_head_size),
         softmax_scale(_scale),
         causal(_causal),
