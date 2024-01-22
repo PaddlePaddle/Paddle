@@ -275,12 +275,15 @@ def create_parameter(
     **kwargs,
 ):
     regularizer = None
+    need_clip = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
     if 'regularizer' in kwargs:
         regularizer = kwargs['regularizer']
+    if 'need_clip' in kwargs:
+        need_clip = kwargs['need_clip']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -308,12 +311,13 @@ def create_parameter(
         param.persistable = True
 
     param.regularizer = regularizer
+    param.need_clip = need_clip
     return param
 
 
 def _convert_into_value(tensor):
     """
-    Convert Tensor into OpResult.
+    Convert Tensor into Value.
     """
     import paddle
     from paddle.jit.pir_dy2static.parameter_recorder import (

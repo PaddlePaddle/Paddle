@@ -185,8 +185,8 @@ using Pattern2Placement = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
 Pattern2Placement ConstructCstrLhsEqRhsReplacement(
     const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
   auto [lhs, rhs] = *broadcastable_condition;
-  if (lhs.isa<std::string>()) return Pattern2Placement{{lhs, rhs}};
   if (rhs.isa<std::string>()) return Pattern2Placement{{rhs, lhs}};
+  if (lhs.isa<std::string>()) return Pattern2Placement{{lhs, rhs}};
   return Pattern2Placement{{lhs, rhs}};
 }
 
@@ -293,6 +293,56 @@ BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves) {
       broadcastable_condition = GetFirstCstrBroadcastable(leaves);
   if (!broadcastable_condition.has_value()) return leaves;
   return ConstructBroadcastBranch(broadcastable_condition.value(), leaves);
+}
+
+namespace {
+
+std::string ToTxtStringImpl(const BroadcastBranch<BroadcastTree>& branch) {
+  std::stringstream ss;
+  const auto& [cstr, lhs_eq_rhs, lhs_eq_one, rhs_eq_one] = branch.tuple();
+  const auto& [lhs, rhs] = *cstr;
+  const auto& Put = [&](const std::string& key, const auto& value) {
+    ss << "\"" << key << "\": ";
+    ss << ToTxtString(value);
+    ss << ",\n ";
+  };
+  ss << "{";
+  ss << "\"$lhs\": " << lhs << ",\n ";
+  ss << "\"$rhs\": " << rhs << ",\n ";
+  Put("$lhs == $rhs", lhs_eq_rhs);
+  Put("$lhs == 1", lhs_eq_one);
+  Put("$rhs == 1", rhs_eq_one);
+  ss << "}";
+  return ss.str();
+}
+
+std::string ToTxtStringImpl(const BroadcastLeaf& leaf) {
+  std::stringstream ss;
+  ss << "[";
+  for (const auto& dim_exprs : *leaf) {
+    ss << "[";
+    int j = 0;
+    for (const auto& dim_expr : dim_exprs) {
+      if (j++) {
+        ss << ",";
+      }
+      ss << dim_expr;
+    }
+    ss << "]";
+  }
+  ss << "]";
+  return ss.str();
+}
+
+}  // namespace
+
+std::string ToTxtString(const BroadcastTree& tree) {
+  return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
+                    tree.variant());
+}
+
+std::ostream& operator<<(std::ostream& os, const BroadcastTree& tree) {
+  os << ToTxtString(tree);
 }
 
 }  // namespace cinn::common

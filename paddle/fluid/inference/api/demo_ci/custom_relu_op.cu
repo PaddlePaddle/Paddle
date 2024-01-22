@@ -36,7 +36,7 @@ __global__ void relu_cuda_backward_kernel(const data_t* dy,
 }
 
 std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
+  auto out = paddle::empty_like(x);
 
   int numel = x.size();
   int block = 512;
@@ -44,7 +44,7 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cuda_forward_kernel", ([&] {
         relu_cuda_forward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
-            x.data<data_t>(), out.mutable_data<data_t>(x.place()), numel);
+            x.data<data_t>(), out.data<data_t>(), numel);
       }));
 
   return {out};
@@ -53,7 +53,7 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
                                                const paddle::Tensor& out,
                                                const paddle::Tensor& grad_out) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
+  auto grad_x = paddle::empty_like(x);
 
   int numel = out.size();
   int block = 512;
@@ -63,7 +63,7 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
                                    <<<grid, block, 0, x.stream()>>>(
                                        grad_out.data<data_t>(),
                                        out.data<data_t>(),
-                                       grad_x.mutable_data<data_t>(x.place()),
+                                       grad_x.data<data_t>(),
                                        numel);
                              }));
 

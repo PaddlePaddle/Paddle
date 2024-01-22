@@ -37,7 +37,7 @@
 namespace pir {
 
 // This class reprensents the benefit of a pattern. The most common
-// unit to use is the `numver of operations` in the pattern.
+// unit to use is the `number of operations` in the pattern.
 class IR_API PatternBenefit {
  public:
   PatternBenefit() = default;

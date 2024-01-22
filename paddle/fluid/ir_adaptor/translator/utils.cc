@@ -24,6 +24,7 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/utils.h"
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #endif
 
@@ -36,6 +37,13 @@ bool HaveOpToMultiKernelsMap(std::string op_name) {
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
   return op_to_multi_kernels_map[op_name];
 }
+
+#ifdef PADDLE_WITH_DNNL
+bool IsOneDNNOnlyOp(std::string op_name) {
+  return paddle::onednn::dialect::onednn_only_op_set.count(op_name);
+}
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 

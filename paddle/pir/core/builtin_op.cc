@@ -22,7 +22,7 @@ namespace pir {
 const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
 
 void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
-  VLOG(4) << "Builder construction stop gradient for OpResults.";
+  VLOG(10) << "Builder construction stop gradient for OpResults.";
   bool stop_gradient = true;
   for (auto value : argument.inputs) {
     auto attr = value.attribute<BoolAttribute>(kStopGradientAttrName);
@@ -90,7 +90,7 @@ void ModuleOp::Destroy() {
 }
 
 void ModuleOp::VerifySig() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
+  VLOG(10) << "Verifying inputs, outputs and attributes for: ModuleOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
 
@@ -111,8 +111,7 @@ void ParameterOp::Build(Builder &builder,
                         OperationArgument &argument,
                         const std::string &name,
                         Type type) {
-  argument.attributes[attributes_name[0]] =
-      pir::StrAttribute::get(builder.ir_context(), name);
+  argument.attributes[attributes_name[0]] = builder.str_attr(name);
   argument.output_types.emplace_back(type);
   PassStopGradients(argument);
 }
@@ -129,7 +128,7 @@ std::string ParameterOp::param_name() const {
   return attribute<StrAttribute>("parameter_name").AsString();
 }
 void ParameterOp::VerifySig() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: ParameterOp.";
+  VLOG(10) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
 
@@ -151,11 +150,11 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
                            Value parameter,
                            const std::string &name) {
   argument.AddInput(parameter);
-  argument.AddAttribute(attributes_name[0],
-                        pir::StrAttribute::get(builder.ir_context(), name));
+  argument.AddAttribute(attributes_name[0], builder.str_attr(name));
 }
+
 void SetParameterOp::VerifySig() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
+  VLOG(10) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
 
@@ -177,11 +176,11 @@ void ShadowOutputOp::Build(Builder &builder,             // NOLINT
                            Value parameter,
                            const std::string &name) {
   argument.AddInput(parameter);
-  argument.AddAttribute(attributes_name[0],
-                        pir::StrAttribute::get(builder.ir_context(), name));
+  argument.AddAttribute(attributes_name[0], builder.str_attr(name));
 }
+
 void ShadowOutputOp::VerifySig() const {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
+  VLOG(10) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
 
@@ -203,8 +202,7 @@ void CombineOp::Build(Builder &builder,
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs_type[idx] = inputs[idx].type();
   }
-  argument.output_types.emplace_back(
-      pir::VectorType::get(builder.ir_context(), inputs_type));
+  argument.output_types.emplace_back(builder.vec_type(inputs_type));
   PassStopGradientsDefaultly(argument);
 }
 
@@ -249,8 +247,7 @@ void SliceOp::Build(Builder &builder,
                                          .data()[static_cast<size_t>(index)]);
   PassStopGradients(argument, index);
 
-  argument.AddAttribute(
-      "index", pir::Int32Attribute::get(pir::IrContext::Instance(), index));
+  argument.AddAttribute("index", builder.int32_attr(index));
 }
 
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
@@ -490,6 +487,14 @@ ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
 bool ConstantTensorOp::classof(const Operation *op) {
   return ConstantOp::classof(op) && op &&
          op->attribute("value").isa<TensorNameAttribute>();
+}
+
+void ConstantTensorOp::Build(Builder &builder,
+                             OperationArgument &argument,
+                             const std::string &name,
+                             Type output_type) {
+  ConstantOp::Build(
+      builder, argument, builder.tensor_name_attr(name), output_type);
 }
 
 std::string ConstantTensorOp::tensor_name() {

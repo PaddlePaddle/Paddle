@@ -1643,7 +1643,7 @@ class Completer:
         def _get_forward_varname_from_grad_varname(grad_var_name):
             assert _is_grad_var_name(
                 grad_var_name
-            ), f"[{grad_var_name}] is not a grad varnme."
+            ), f"[{grad_var_name}] is not a grad var name."
             return grad_var_name[: grad_var_name.find("@GRAD")]
 
         def _get_op_by_id(ops, id):
@@ -1769,7 +1769,7 @@ class Completer:
             def infer_backward_op_partial_status(
                 vars, grad_op, grad_op_dist_attr
             ):
-                # NOTE Since we use composite op in static mode which might have implicit Reduction of broadcast axes for caculating parameter's gradient.
+                # NOTE Since we use composite op in static mode which might have implicit Reduction of broadcast axes for calculating parameter's gradient.
                 # Those implicit Reduction hinder the Partial inference in a normal way, and we need a special method to handle it.
                 param_grads = []
                 activation_grad = None
@@ -1993,7 +1993,7 @@ class Completer:
                         output_name, ref_fwd_dims_mapping
                     )
                     # NOTE(zhaoyingli):
-                    # The sum op is used to accmulate the grads' value of the same forward var,
+                    # The sum op is used to accumulate the grads' value of the same forward var,
                     # sum op's chunk_id is same with the last op which generate the grad.
                     ref_chunk_id = None
                     ref_process_mesh = None
@@ -2336,7 +2336,7 @@ class Completer:
                 assert dist_op is not None
                 dist_op.dist_attr.process_mesh = ProcessMesh(world_ranks)
 
-                # Find the most compatible implemenetations from the distributed operator
+                # Find the most compatible implementations from the distributed operator
                 op_dist_impls = find_compatible_distributed_operator_impls(
                     dist_op, fwd=True
                 )

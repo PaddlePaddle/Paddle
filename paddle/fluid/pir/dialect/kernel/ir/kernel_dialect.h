@@ -58,7 +58,7 @@ class OneDNNKernelDialect : public pir::Dialect {
  public:
   explicit OneDNNKernelDialect(pir::IrContext* context);
 
-  static const char* name() { return "pd_onednn_kernel"; }
+  static const char* name() { return "onednn_kernel"; }
 
   void PrintType(pir::Type type, std::ostream& os) const override;
 

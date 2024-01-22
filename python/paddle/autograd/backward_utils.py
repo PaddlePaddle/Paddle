@@ -111,6 +111,10 @@ class ValueDict:
     def __contains__(self, key):
         return ValueWrapper(key) in self._items
 
+    def __repr__(self) -> str:
+        items_str = ", ".join(f"{key}: {val}" for key, val in self.items())
+        return f'ValueDict({items_str})'
+
 
 class ValueSet:
     def __init__(
@@ -153,6 +157,10 @@ class ValueSet:
     def __contains__(self, val):
         return ValueWrapper(val) in self._set
 
+    def __repr__(self) -> str:
+        items_str = ", ".join(repr(item) for item in self)
+        return f'ValueSet({items_str})'
+
 
 class State:
     """
@@ -164,13 +172,13 @@ class State:
 
     def __init__(self, block):
         self.block = block
-        # opresult -> list(list(opresult))
+        # value -> list(list(value))
         self.value_to_valuegrad = ValueDict(default_factory=list)
         self.value_to_sumvaluegrad = ValueDict(default_factory=list)
         # operation -> list(operation)
         self.op_to_opgrad = collections.defaultdict(list)
 
-        # opresult -> list(opresult)
+        # value -> list(value)
         self.valuegrad_to_value = ValueDict(default_factory=list)
         self.sumvaluegrad_to_value = ValueDict(default_factory=list)
         # operation -> list(operation)
@@ -205,7 +213,7 @@ class State:
         # operation -> list(operation)
         state.op_to_opgrad = self.op_to_opgrad.copy()
 
-        # opresult -> list(opresult)
+        # value -> list(value)
         state.valuegrad_to_value = self.valuegrad_to_value.copy()
         state.sumvaluegrad_to_value = self.sumvaluegrad_to_value.copy()
         # operation -> list(operation)

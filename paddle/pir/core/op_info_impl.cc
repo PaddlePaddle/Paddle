@@ -28,8 +28,8 @@ void OpInfoImpl::AttachInterface(InterfaceValue &&interface_value) {
   IR_ENFORCE(suceess,
              "Interface: id[%u] is already registered. inset failed",
              interface_value.type_id());
-  VLOG(6) << "Attach a interface: id[" << interface_value.type_id() << "]. to "
-          << op_name_;
+  VLOG(10) << "Attach a interface: id[" << interface_value.type_id() << "]. to "
+           << op_name_;
 }
 
 OpInfoImpl::OpInfoImpl(std::set<InterfaceValue> &&interface_set,
@@ -62,13 +62,13 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
                           VerifyPtr verify_region) {
   // (1) Malloc memory for traits, opinfo_impl.
   size_t traits_num = trait_set.size();
-  VLOG(6) << "Create OpInfoImpl with: " << interface_set.size()
-          << " interfaces, " << traits_num << " traits, " << attributes_num
-          << " attributes.";
+  VLOG(10) << "Create OpInfoImpl with: " << interface_set.size()
+           << " interfaces, " << traits_num << " traits, " << attributes_num
+           << " attributes.";
   size_t base_size = sizeof(TypeId) * traits_num + sizeof(OpInfoImpl);
   char *base_ptr = static_cast<char *>(::operator new(base_size));
-  VLOG(6) << "Malloc " << base_size << " Bytes at "
-          << static_cast<void *>(base_ptr);
+  VLOG(10) << "Malloc " << base_size << " Bytes at "
+           << static_cast<void *>(base_ptr);
   if (traits_num > 0) {
     auto p_first_trait = reinterpret_cast<TypeId *>(base_ptr);
     memcpy(base_ptr, trait_set.data(), sizeof(TypeId) * traits_num);
@@ -76,8 +76,8 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
     base_ptr += traits_num * sizeof(TypeId);
   }
   // Construct OpInfoImpl.
-  VLOG(6) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
-          << " ......";
+  VLOG(10) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
+           << " ......";
   OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(std::move(interface_set),
                                                     dialect,
                                                     op_id,

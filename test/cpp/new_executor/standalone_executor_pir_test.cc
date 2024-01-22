@@ -33,7 +33,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 
-#include "paddle/fluid/platform/init_phi.h"
+#include "paddle/common/macros.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 

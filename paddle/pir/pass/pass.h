@@ -21,9 +21,8 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace pir {
 
@@ -139,6 +138,9 @@ class IR_API Pass {
   void Set(const std::string& attr_name, AttrType* attr) {
     VLOG(3) << "Setting the attribute " << attr_name << " for the pass "
             << name();
+    if (Has(attr_name)) {
+      Erase(attr_name);
+    }
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(8) << "deleting " << attr_name;
@@ -150,9 +152,9 @@ class IR_API Pass {
   // should delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string& attr_name, AttrType* attr) {
-    IR_ENFORCE(0 == attrs_.count(attr_name),
-               "Attribute %s already set in the pass.",
-               attr_name);
+    VLOG(3) << "Setting the attribute " << attr_name << " for the " << name();
+    IR_ENFORCE(
+        !Has(attr_name), "Attribute %s already set in the pass.", attr_name);
     attrs_[attr_name] = attr;
   }
 
@@ -163,11 +165,18 @@ class IR_API Pass {
 
   virtual bool Initialize(IrContext* context) { return true; }
 
-  void PrintStatistics(int64_t match_count) const;
+  void AddStatistics(int64_t match_count) {
+    Set<int64_t>("__match_count__", new int64_t{match_count});
+  }
 
-  void PrintStatistics(int64_t match_count, int64_t all_count) const;
+  void AddStatistics(int64_t match_count, int64_t all_count) {
+    Set<int64_t>("__match_count__", new int64_t{match_count});
+    Set<int64_t>("__all_count__", new int64_t{all_count});
+  }
 
-  void PrintStatistics(const std::string& custom_log) const;
+  void AddStatistics(const std::string& custom_log) {
+    Set<std::string>("__custom_log__", new std::string{custom_log});
+  }
 
   AnalysisManager analysis_manager() { return pass_state().am; }
 
@@ -187,7 +196,7 @@ class IR_API Pass {
   std::unordered_map<std::string, std::function<void(void)>> attr_dels_;
 };
 
-class PatternRewritePass : public Pass {
+class IR_API PatternRewritePass : public Pass {
  public:
   PatternRewritePass(const std::string& name,
                      uint8_t opt_level,

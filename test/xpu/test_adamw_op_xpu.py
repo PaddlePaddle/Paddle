@@ -21,6 +21,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -85,8 +86,8 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             self.op_type = "adamw"
             self.init_shape()
             self.dtype = self.in_type
-            param = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-            grad = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            param = np.random.uniform(-1, 1, self.shape)
+            grad = np.random.uniform(-1, 1, self.shape)
             moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
             # The second moment is positive
             moment2 = np.random.random(self.shape).astype("float32")
@@ -97,7 +98,9 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             epsilon = 1e-4
             beta1_pow = beta1**10
             beta2_pow = beta2**10
-
+            if self.dtype != np.uint16:
+                param = param.astype(self.dtype)
+                grad = grad.astype(self.dtype)
             self.inputs = {
                 'Param': param,
                 'Grad': grad,
@@ -128,12 +131,25 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
             }
 
+            if self.dtype == np.uint16:
+                self.inputs['Param'] = convert_float_to_uint16(
+                    self.inputs['Param']
+                )
+                self.inputs['Grad'] = convert_float_to_uint16(
+                    self.inputs['Grad']
+                )
+                self.outputs['ParamOut'] = convert_float_to_uint16(param_out)
+
         def init_shape(self):
             self.shape = [102, 105]
 
         def test_check_output(self):
             paddle.enable_static()
             self.check_output_with_place(place=paddle.XPUPlace(0))
+
+        def infer_dtype_from_inputs_outputs(self, inputs, outputs):
+            self.__class__.dtype = self.dtype
+            self.output_dtype = self.dtype
 
     class TestAdamW2(TestAdamW):
         def init_shape(self):

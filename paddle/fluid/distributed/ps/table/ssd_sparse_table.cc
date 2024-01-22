@@ -36,7 +36,7 @@ int32_t SSDSparseTable::Initialize() {
   MemorySparseTable::Initialize();
   _db = ::paddle::distributed::RocksDBHandler::GetInstance();
   _db->initialize(FLAGS_rocksdb_path, _real_local_shard_num);
-  VLOG(0) << "initalize SSDSparseTable succ";
+  VLOG(0) << "initialize SSDSparseTable succ";
   VLOG(0) << "SSD FLAGS_pserver_print_missed_key_num_every_push:"
           << FLAGS_pserver_print_missed_key_num_every_push;
   return 0;

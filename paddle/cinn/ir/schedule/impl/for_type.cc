@@ -38,12 +38,21 @@ namespace ir {
 void DyScheduleImpl::MutateForType(const Expr& loop,
                                    ForType for_type,
                                    int factor) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "MutateForType";
+  std::ostringstream os;
   auto* for_node = loop.As<ir::For>();
-  CHECK(for_node) << "loop param must be For node! Please check.";
-  CHECK(for_node->is_serial())
-      << "loop is not serial, current forloop type is "
-      << static_cast<int>(for_node->for_type()) << ", and it cannot become "
-      << static_cast<int>(for_type);
+  if (!for_node) {
+    os << "Loop param must be For node! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
+  if (!for_node->is_serial()) {
+    os << "Loop is not serial, current for loop type is "
+       << static_cast<int>(for_node->for_type()) << ", and it can't become "
+       << static_cast<int>(for_type) << "!\n";
+  }
+
   auto loop_copy = ir::ir_utils::IRCopy(loop);
   auto* new_for_node = loop_copy.As<ir::For>();
   CHECK(new_for_node);
@@ -56,17 +65,22 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
     new_for_node->set_bind_info(bind_info);
   }
   this->Replace(loop, loop_copy);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::Parallel(const Expr& loop) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Parallel";
+  std::ostringstream os;
   MutateForType(loop, ForType::Parallel);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "Vectorize";
   std::ostringstream os;
-  CHECK_GT(factor, 0) << "vectorize factor should be more than 0";
+
   if (factor <= 0) {
     os << "vectorize factor should be more than 0\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);

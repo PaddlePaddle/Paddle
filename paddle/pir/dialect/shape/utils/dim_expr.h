@@ -22,9 +22,9 @@
 #include <variant>
 #include <vector>
 
-#include "paddle/pir/core/dll_decl.h"
-
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
+#include "paddle/pir/core/dll_decl.h"
 
 namespace symbol {
 
@@ -231,9 +231,12 @@ class ShapeOrData {
   ShapeOrData& operator=(const ShapeOrData&) = default;
   ShapeOrData& operator=(ShapeOrData&&) = default;
 
-  static ShapeOrData MakeConsistentShapeOrData(const std::vector<T>& data) {
-    T shape(std::int64_t(data.size()));
-    return ShapeOrData(std::vector<T>{shape}, data);
+  int64_t size() const {
+    if (data_.has_value()) {
+      return data_.value().size();
+    } else {
+      return shape_.size();
+    }
   }
 
   // Tensor's real shape
@@ -252,6 +255,9 @@ using ShapeOrDataDimExprs = ShapeOrData<DimExpr>;
 IR_API std::string ToString(const DimExpr& dim_expr);
 
 IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
+
+IR_API std::ostream& operator<<(std::ostream&,
+                                const ShapeOrDataDimExprs& dim_expr);
 
 IR_API std::size_t GetHashValue(const DimExpr& dim_expr);
 
