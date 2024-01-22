@@ -156,7 +156,12 @@ def paddle_fused_rotary_position_embedding(
 )
 class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def setUp(self):
-        self.shape_q = [2, 8, 2, 16]
+        self.shape_q = [
+            2,
+            8,
+            2,
+            16,
+        ]  # [batch_size, seq_len, num_heads, head_dim]
         self.shape_k = [2, 8, 2, 16]
         self.shape_v = [2, 8, 2, 16]
         self.dtype = 'float32'
@@ -313,9 +318,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         paddle.enable_static()
 
-        q = paddle.static.data(name="q", shape=self.shape, dtype=self.dtype)
-        k = paddle.static.data(name="k", shape=self.shape, dtype=self.dtype)
-        v = paddle.static.data(name="v", shape=self.shape, dtype=self.dtype)
+        q = paddle.static.data(name="q", shape=self.shape_q, dtype=self.dtype)
+        k = paddle.static.data(name="k", shape=self.shape_k, dtype=self.dtype)
+        v = paddle.static.data(name="v", shape=self.shape_v, dtype=self.dtype)
         sin = paddle.static.data(
             name="sin",
             shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
@@ -364,9 +369,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 )
 class TestFusedRotaryPositionEmbeddingMQA(TestFusedRotaryPositionEmbedding):
     def setUp(self):
-        self.shape_q = [2, 8, 2, 16]
-        self.shape_k = [2, 1, 2, 16]
-        self.shape_v = [2, 1, 2, 16]
+        self.shape_q = [2, 8, 4, 16]  # bs, seq_len, num_heads, head_dim
+        self.shape_k = [2, 8, 1, 16]
+        self.shape_v = [2, 8, 1, 16]
 
         self.dtype = 'float32'
         self.training = True
@@ -380,7 +385,7 @@ class TestFusedRotaryPositionEmbeddingMQA(TestFusedRotaryPositionEmbedding):
 )
 class TestFusedRotaryPositionEmbeddingGQA(TestFusedRotaryPositionEmbedding):
     def setUp(self):
-        self.shape_q = [2, 8, 8, 16]  # bs, seq_len, num_heads, head_dim
+        self.shape_q = [2, 8, 4, 16]  # bs, seq_len, num_heads, head_dim
         self.shape_k = [2, 8, 2, 16]
         self.shape_v = [2, 8, 2, 16]
 
