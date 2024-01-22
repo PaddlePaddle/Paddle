@@ -1121,6 +1121,12 @@ PyObject* ToPyObject(const pir::Value& value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const pir::OpResult& value) {
+  auto obj = ::pybind11::cast(value);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 PyObject* ToPyObject(const std::vector<pir::OpResult>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
