@@ -91,6 +91,7 @@ class TestLayer(unittest.TestCase):
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
+            # NOTE: This Test Can Not Pass with atol 1e-8
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
