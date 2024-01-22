@@ -2028,7 +2028,7 @@ paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
   return tensor;
 }
 
-PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
+PyObject* GetEmptyTensorsWithOpResult(PyObject* self, PyObject* args) {
   std::vector<paddle::Tensor> result;
   std::unordered_map<pir::OpResult, paddle::Tensor> out_tensor_map;
 
@@ -2764,9 +2764,9 @@ static PyMethodDef EagerUtilMethods[] = {
      METH_VARARGS,
      "GetEmptyTensorsWithVarDesc"},
     {"create_empty_tensors_with_op_results",
-     (PyCFunction)(void (*)(void))GetEmpytyTensorsWithOpResult,
+     (PyCFunction)(void (*)(void))GetEmptyTensorsWithOpResult,
      METH_VARARGS,
-     "GetEmpytyTensorsWithOpResult."},
+     "GetEmptyTensorsWithOpResult."},
     {"set_static_op_arg_pre_cast_hook",
      (PyCFunction)SetStaticOpArgPreCastHook,
      METH_O,

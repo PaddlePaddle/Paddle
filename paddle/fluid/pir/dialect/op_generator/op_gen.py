@@ -95,7 +95,7 @@ ONEDNN_ONLY_OP_SET_H = """
 extern std::set<std::string> onednn_only_op_set;
 """
 
-GET_OP_LIST_TEMPALTE = """{}
+GET_OP_LIST_TEMPLATE = """{}
 """
 
 DECLARE_OP_TYPE_ID = """
@@ -338,7 +338,7 @@ attr_types_map = {
 
 
 def to_phi_and_fluid_op_name(op_item):
-    # Templat: - op : phi_name (fluid_name)
+    # Template: - op : phi_name (fluid_name)
     names = op_item.split('(')
     if len(names) == 1:
         phi_fluid_name = names[0].strip()
@@ -350,7 +350,7 @@ def to_phi_and_fluid_op_name(op_item):
 
 
 def to_phi_and_fluid_grad_op_name(op_item):
-    # Templat: sum_grad (reduce_sum_grad), sum_double_grad
+    # Template: sum_grad (reduce_sum_grad), sum_double_grad
     rtn = []
     all_names = op_item.split(', ')
     for name in all_names:
@@ -1499,7 +1499,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 # =================================== #
                 #         gen GetOpInfo func str      #
                 # =================================== #
-                # generate get op info funciton: inputs
+                # generate get op info function: inputs
                 input_info_list = []
                 for idx in range(len(op_input_name_list)):
                     input_info_list.append(
@@ -1529,7 +1529,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     inputs_info_str = ", ".join(input_info_list)
                 else:
                     inputs_info_str = ""
-                # generate get op info funciton: outputs
+                # generate get op info function: outputs
                 outputs_info_str = ""
                 if len(op_output_name_list) > 0:
                     output_info_list = []
@@ -1543,7 +1543,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                             )
                         )
                     outputs_info_str = ", ".join(output_info_list)
-                # generate get op info funciton: attributes
+                # generate get op info function: attributes
                 attribute_info_str = ""
                 if len(op_non_mutable_attribute_name_list) > 0:
                     attribute_info_list = []
@@ -1866,7 +1866,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
     ops_name_with_namespace_list = []
     for name in ops_name_list:
         ops_name_with_namespace_list.append(op_namespaces_prev + name)
-    op_list_str = GET_OP_LIST_TEMPALTE.format(
+    op_list_str = GET_OP_LIST_TEMPLATE.format(
         ", ".join(ops_name_with_namespace_list)
     )
 
@@ -2154,7 +2154,7 @@ def OpGenerator(
 
     # (6) write to files for xx_vjp_op.cc.tmp
     # NOTE(Aurelius84): op_gen.py is called multiply times,
-    # and vjp is only avaible for pd dialect.
+    # and vjp is only available for pd dialect.
     vjp_source_file_str = "\n".join(vjp_source_file_strs)
     vjp_source_file_str = VJP_CC_FILE_TEMPLATE.format(input=vjp_source_file_str)
     if (

@@ -50,7 +50,7 @@ class TestParallelDygraphNoSyncUnusedParam(TestDistBase):
         self._dygraph = True
         self._find_unused_parameters = True
 
-    def test_no_sync_ununsed_param(self):
+    def test_no_sync_unused_param(self):
         if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "parallel_dygraph_no_sync_unused_params.py",
