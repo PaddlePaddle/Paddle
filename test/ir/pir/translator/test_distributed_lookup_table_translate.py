@@ -14,14 +14,14 @@
 
 import unittest
 
-import test_op_transcriber
+import test_op_translator
 
 import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestDistributedLookupTableOpTranscriber(
-    test_op_transcriber.TestOpTranscriber
+class TestDistributedLookupTableOpTranslator(
+    test_op_translator.TestOpTranslator
 ):
     def append_op(self):
         self.op_type = "distributed_lookup_table"
