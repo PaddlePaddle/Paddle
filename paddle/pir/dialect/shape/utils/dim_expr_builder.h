@@ -46,7 +46,7 @@ class IR_API DimExprBuilder {
   std::pair<std::vector<DimExpr>, std::vector<DimExpr>> SplitAt(
       const std::vector<DimExpr>, int index);
 
-  const std::vector<DimExprConstraint>& constaints() const;
+  const std::vector<DimExprConstraint>& constraints() const;
 
  private:
   std::vector<DimExprConstraint>* constraints_;

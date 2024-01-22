@@ -14,7 +14,6 @@
 
 # TODO: define random api
 import paddle
-from paddle import base
 from paddle.base import core
 
 __all__ = []
@@ -43,14 +42,14 @@ def seed(seed):
 
     seed = int(seed)
 
-    if core.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda():
         for i in range(core.get_cuda_device_count()):
             core.default_cuda_generator(i).manual_seed(seed)
-    elif core.is_compiled_with_xpu():
+    elif paddle.is_compiled_with_xpu():
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).manual_seed(seed)
-    place = base.framework._current_expected_place()
-    if isinstance(place, core.CustomPlace):
+    place = paddle.framework._current_expected_place()
+    if isinstance(place, paddle.CustomPlace):
         dev_cnt = sum(
             [
                 place.get_device_type() == s.split(':')[0]
@@ -59,7 +58,7 @@ def seed(seed):
         )
         for i in range(dev_cnt):
             core.default_custom_device_generator(
-                core.CustomPlace(place.get_device_type(), i)
+                paddle.CustomPlace(place.get_device_type(), i)
             ).manual_seed(seed)
     return core.default_cpu_generator().manual_seed(seed)
 
@@ -84,19 +83,19 @@ def get_rng_state(device=None):
     """
     state_list = []
     if device is None:
-        place = base.framework._current_expected_place()
+        place = paddle.framework._current_expected_place()
     else:
         place = paddle.device._convert_to_place(device)
 
-    if isinstance(place, core.CPUPlace):
+    if isinstance(place, paddle.CPUPlace):
         state_list.append(core.default_cpu_generator().get_state())
-    elif isinstance(place, core.CUDAPlace):
+    elif isinstance(place, paddle.CUDAPlace):
         for i in range(core.get_cuda_device_count()):
             state_list.append(core.default_cuda_generator(i).get_state())
-    elif isinstance(place, core.XPUPlace):
+    elif isinstance(place, paddle.XPUPlace):
         for i in range(core.get_xpu_device_count()):
             state_list.append(core.default_xpu_generator(i).get_state())
-    elif isinstance(place, core.CustomPlace):
+    elif isinstance(place, paddle.CustomPlace):
         dev_cnt = sum(
             [
                 place.get_device_type() == s.split(':')[0]
@@ -136,7 +135,7 @@ def get_cuda_rng_state():
 
     """
     state_list = []
-    if core.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda():
         for i in range(core.get_cuda_device_count()):
             state_list.append(core.default_cuda_generator(i).get_state())
 
@@ -166,25 +165,25 @@ def set_rng_state(state_list, device=None):
 
     """
     if device is None:
-        place = base.framework._current_expected_place()
+        place = paddle.framework._current_expected_place()
     else:
         place = device._convert_to_place(device)
 
-    if isinstance(place, core.CUDAPlace):
+    if isinstance(place, paddle.CUDAPlace):
         if not len(state_list) == core.get_cuda_device_count():
             raise ValueError(
                 "Length of gpu state list shoule be equal to the gpu device count"
             )
         for i in range(core.get_cuda_device_count()):
             core.default_cuda_generator(i).set_state(state_list[i])
-    elif isinstance(place, core.XPUPlace):
+    elif isinstance(place, paddle.XPUPlace):
         if not len(state_list) == core.get_xpu_device_count():
             raise ValueError(
                 "Length of xpu state list shoule be equal to the xpu device count"
             )
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).set_state(state_list[i])
-    elif isinstance(place, core.CustomPlace):
+    elif isinstance(place, paddle.CustomPlace):
         dev_cnt = sum(
             [
                 place.get_device_type() == s.split(':')[0]
@@ -197,7 +196,7 @@ def set_rng_state(state_list, device=None):
             )
         for i in range(dev_cnt):
             core.default_custom_device_generator(
-                core.CustomPlace(place.get_device_type(), i)
+                paddle.CustomPlace(place.get_device_type(), i)
             ).set_state(state_list[i])
     elif isinstance(place, core.CPUPlace):
         if not len(state_list) == 1:
@@ -228,7 +227,7 @@ def set_cuda_rng_state(state_list):
             >>> paddle.set_cuda_rng_state(sts)
 
     """
-    if core.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda():
         if not len(state_list) == core.get_cuda_device_count():
             raise ValueError(
                 "Length of cuda state list shoule be equal to the cuda device count"

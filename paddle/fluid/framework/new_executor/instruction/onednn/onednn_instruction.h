@@ -52,7 +52,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
 
   const std::string& Name() const override { return phi_op_name_; }
 
- private:
+ protected:
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
       nullptr};  // not owned
 

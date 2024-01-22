@@ -30,7 +30,7 @@ class TestOpTranslator(unittest.TestCase):
         self.main_program = paddle.static.Program()
 
     def append_op(self):
-        raise Exception("Define the op to be tested here!")
+        raise NotImplementedError("Define the op to be tested here!")
 
     def build_model(self):
         with paddle.static.scope_guard(self.new_scope):
@@ -49,7 +49,7 @@ class TestOpTranslator(unittest.TestCase):
         )
 
 
-class TestOpWithBackWardTranslator(unittest.TestCase):
+class TestOpWithBackwardTranslator(unittest.TestCase):
     def setUp(self):
         self.place = core.Place()
         self.place.set_place(paddle.CPUPlace())
@@ -57,7 +57,7 @@ class TestOpWithBackWardTranslator(unittest.TestCase):
         self.main_program = paddle.static.Program()
 
     def append_op(self):
-        raise Exception("Define the op to be tested here!")
+        raise NotImplementedError("Define the op to be tested here!")
 
     def build_model(self):
         with paddle.static.scope_guard(self.new_scope):
@@ -73,7 +73,7 @@ class TestOpWithBackWardTranslator(unittest.TestCase):
         ), "forward_op_type should be specified!"
         assert hasattr(
             self, "backward_op_type"
-        ), "forward_op_type should be specified!"
+        ), "backward_op_type should be specified!"
         serialized_pir_program = str(pir_program)
         assert self.forward_op_type in serialized_pir_program, (
             self.forward_op_type

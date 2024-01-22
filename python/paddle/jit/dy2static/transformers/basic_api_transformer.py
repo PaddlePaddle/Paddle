@@ -171,9 +171,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def visit_Attribute(self, node):
         def skip_fn(node):
-            if utils.ast_to_source_code(node).startswith(
-                "_jst."
-            ):  # skip _jst.xxx
+            if isinstance(node.value, gast.Name) and node.value.id == "_jst":
                 return True
             return False
 

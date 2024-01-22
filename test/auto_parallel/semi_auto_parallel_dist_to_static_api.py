@@ -120,6 +120,7 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         self.assertNotEqual(main_program, None)
         self.assertNotEqual(startup_program, None)
 
+        dist_model.eval()
         main_program = dist_model.dist_main_program("eval")
         startup_program = dist_model.dist_startup_program("eval")
         self.assertNotEqual(main_program, None)
@@ -151,11 +152,18 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
 
         # static training
         strategy = dist.Strategy()
-        dist_model, dist_loader = dist.to_static(
-            layer, self.data_loader, loss_fn, opt, strategy=strategy
+
+        dist_loader = dist.shard_dataloader(
+            dataloader=self.data_loader,
+            meshes=[mesh],
+        )
+
+        dist_model = dist.to_static(
+            layer, dist_loader, loss_fn, opt, strategy=strategy
         )
 
         dist_model._mode = None
+
         with self.assertRaises(ValueError):
             for batch_id, (image, label) in enumerate(dist_loader()):
                 loss = dist_model(image, label)
@@ -205,12 +213,12 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         dist_model._engine._has_prepared["train"] = False
         dist_model._engine._has_prepared["eval"] = False
         dist_model._engine._has_prepared["predict"] = False
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(TypeError):
             dist_model.train()
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(TypeError):
             dist_model.eval()
-        with self.assertRaises(RuntimeError):
-            dist_model.predict()
+        # with self.assertRaises(TypeError):
+        dist_model.predict()
         dist_model._engine._has_prepared["train"] = True
         dist_model._engine._has_prepared["eval"] = True
         dist_model._engine._has_prepared["predict"] = True

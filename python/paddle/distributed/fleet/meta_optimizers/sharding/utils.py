@@ -863,6 +863,7 @@ def insert_broadcast_ops(
 
 DtypeToSize = {
     core.VarDesc.VarType.FP16: 2,
+    core.VarDesc.VarType.BF16: 2,
     core.VarDesc.VarType.FP32: 4,
     core.VarDesc.VarType.FP64: 8,
     core.VarDesc.VarType.INT16: 2,

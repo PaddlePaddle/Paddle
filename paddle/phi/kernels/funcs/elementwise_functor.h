@@ -895,5 +895,71 @@ struct ElementwiseInversePowFunctor {
   }
 };
 
+// copysign forward and grad functors
+template <typename T>
+inline HOSTDEVICE auto copysign_func(const T& a, const T& b) {
+#ifdef WIN32
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+  return static_cast<T>(std::copysign(static_cast<U>(a), static_cast<U>(b)));
+#else
+  return static_cast<T>(std::copysign(a, b));
+#endif
+}
+
+inline HOSTDEVICE phi::dtype::float16 copysign_func(phi::dtype::float16 a,
+                                                    phi::dtype::float16 b) {
+  return phi::dtype::raw_uint16_to_float16((a.x & 0x7fff) | (b.x & 0x8000));
+}
+
+inline HOSTDEVICE phi::dtype::bfloat16 copysign_func(phi::dtype::bfloat16 a,
+                                                     phi::dtype::bfloat16 b) {
+  return phi::dtype::raw_uint16_to_bfloat16((a.x & 0x7fff) | (b.x & 0x8000));
+}
+
+template <typename T>
+struct CopySignGradXFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    if (x == static_cast<T>(0)) return x;
+    return dout * (funcs::copysign_func(x, y) / x);
+  }
+};
+
+template <typename T>
+struct CopySignGradYFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return static_cast<T>(0);
+  }
+};
+
+template <typename InT, typename OutT>
+struct CopySignGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
+                                                   const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
+    // dx
+    if (x == static_cast<InT>(0))
+      outs[0] = static_cast<OutT>(0);
+    else
+      outs[0] = static_cast<OutT>(dout * (funcs::copysign_func(x, y)) / x);
+    // dy = 0
+    outs[1] = static_cast<OutT>(0);
+    return outs;
+  }
+};
+
+template <typename T>
+struct CopySignFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return copysign_func(a, b);
+  }
+};
+template <typename T>
+struct InverseCopySignFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return copysign_func(b, a);
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi
