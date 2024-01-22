@@ -114,6 +114,31 @@ std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(
   return buffer_alias;
 }
 
+std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
+  std::vector<Expr> filtered;
+  for (const Expr &free : frees) {
+    const ir::Free *op = free.As<ir::Free>();
+    CHECK_NOTNULL(op);
+    bool has_symbolic_constant = false;
+    const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
+    for (Expr shape : buffer->shape) {
+      ir::ir_utils::CollectIRNodes(shape, [&](const Expr *x) {
+        if (x->as_var()) {
+          CHECK(x->as_var()->is_symbolic_constant)
+              << "var in buffer shape must be symbolic constant.";
+          has_symbolic_constant = true;
+        }
+        return false;
+      });
+    }
+    if (has_symbolic_constant &&
+        buffer->memory_type == ir::MemoryType::GPULocal) {
+      filtered.emplace_back(free);
+    }
+  }
+  return filtered;
+}
+
 void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
@@ -129,7 +154,8 @@ void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
   auto alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
   auto temp_buffer_alias = GenerateBufferAliasExprs(op, op->temp_bufs);
   auto alis_var_exprs = op->CudaAliasVarExprs();
-  auto dealloc_temp_buffers = op->PrepareDeallocTempBufferExprs();
+  auto dealloc_temp_buffers =
+      FilterDeallocTempBuffers(op->PrepareDeallocTempBufferExprs());
 
 #define APPEND_TO_NEW_BODY(field__) \
   new_body.insert(std::end(new_body), std::begin(field__), std::end(field__));
@@ -151,24 +177,9 @@ void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::Free *op) {
-  bool has_symbolic_constant = false;
-  const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
-  for (Expr shape : buffer->shape) {
-    ir::ir_utils::CollectIRNodes(shape, [&](const Expr *x) {
-      if (x->as_var()) {
-        CHECK(x->as_var()->is_symbolic_constant)
-            << "var in buffer shape must be symbolic constant.";
-        has_symbolic_constant = true;
-      }
-      return false;
-    });
-  }
-  if (has_symbolic_constant &&
-      buffer->memory_type == ir::MemoryType::GPULocal) {
-    str_ += "delete [] ";
-    str_ += op->destination.As<ir::_Buffer_>()->name;
-    str_ += ";\n";
-  }
+  str_ += "delete [] ";
+  str_ += op->destination.As<ir::_Buffer_>()->name;
+  str_ += ";\n";
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::_Var_ *op) {
