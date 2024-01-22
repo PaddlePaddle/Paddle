@@ -39,6 +39,7 @@ from paddle.common_ops_import import (
     convert_dtype,
     in_dygraph_mode,
 )
+from paddle.framework import use_pir_api
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -1114,8 +1115,9 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     return final_fn()
 
 
-class StaticOutputSelector:
-    def __init__(self, flattened_true_output, flattened_false_output):
+class OutputSelector:
+    def __init__(self, if_op, flattened_true_output, flattened_false_output):
+        self.if_op = if_op
         self.true_output = flattened_true_output
         self.false_output = flattened_false_output
         assert len(flattened_true_output) == len(flattened_false_output)
@@ -1124,22 +1126,25 @@ class StaticOutputSelector:
     def unified_output(self):
         unified_true_output = []
         unified_false_output = []
-        static_indices = []
+        variable_indices = []
         for true_out, false_out in zip(self.true_output, self.false_output):
             (
                 true_out,
                 false_out,
-            ) = StaticOutputSelector.builtin_variable_promotion(
-                [true_out, false_out]
+            ) = OutputSelector.constant_to_variable_promotion(
+                [
+                    (true_out, self.if_op.true_block),
+                    (false_out, self.if_op.false_block),
+                ]
             )
             if isinstance(true_out, paddle.pir.Value):
                 assert isinstance(
                     false_out, paddle.pir.Value
                 ), "true_out and false_out should be both paddle.pir.Value"
-                static_indices.append(len(unified_true_output))
+                variable_indices.append(len(unified_true_output))
             unified_true_output.append(true_out)
             unified_false_output.append(false_out)
-        return unified_true_output, unified_false_output, static_indices
+        return unified_true_output, unified_false_output, variable_indices
 
     @property
     def unified_true_output(self):
@@ -1150,70 +1155,80 @@ class StaticOutputSelector:
         return self.unified_output[1]
 
     @property
-    def static_indices(self):
+    def variable_indices(self):
         return self.unified_output[2]
 
     @property
-    def non_static_indices(self):
+    def constant_indices(self):
         return [
             i
             for i in range(len(self.true_output))
-            if i not in self.static_indices
+            if i not in self.variable_indices
         ]
 
     @staticmethod
-    def select_outputs(unified_args, indices):
+    def select_by_indices(unified_args, indices):
         return [unified_args[i] for i in indices]
 
     @staticmethod
-    def restore_outputs(outputs, partial_outputs, partial_indices):
+    def fill_by_indices(outputs, partial_outputs, partial_indices):
         for i, out in zip(partial_indices, partial_outputs):
             outputs[i] = out
         return outputs
 
     @staticmethod
-    def builtin_variable_promotion(args):
-        from paddle.jit.dy2static.utils import UndefinedVar
+    def constant_to_variable_promotion(out_with_blocks):
         from paddle.jit.dy2static.variable_trans_func import to_static_variable
 
         promotion_builtin_types = (bool, int, float)
+        outs, _ = zip(*out_with_blocks)
 
-        def all_has_same_value(args):
-            if len(args) <= 1:
+        def all_has_same_value(outs):
+            if len(outs) <= 1:
                 return True
-            return all(arg == args[0] for arg in args[1:])
+            return all(out == outs[0] for out in outs[1:])
 
-        def all_has_same_type(args):
-            if len(args) <= 1:
+        def all_has_same_type(outs):
+            if len(outs) <= 1:
                 return True
-            return all(type(arg) is type(args[0]) for arg in args[1:])
+            return all(type(out) is type(outs[0]) for out in outs[1:])
 
-        if all(isinstance(arg, paddle.pir.Value) for arg in args):
-            return args
+        def constant_to_variable_with_block(constant, block_context_manager):
+            with block_context_manager():
+                return to_static_variable(constant)
 
-        if all(isinstance(arg, UndefinedVar) for arg in args):
-            return [None for _ in args]
+        if all(isinstance(out, paddle.pir.Value) for out in outs):
+            return outs
+
+        if all(arg is None for arg in outs):
+            return outs
 
         if all(
-            isinstance(arg, promotion_builtin_types) for arg in args
-        ) and all_has_same_type(args):
-            if all_has_same_value(args):
-                return args
+            isinstance(out, promotion_builtin_types) for out in outs
+        ) and all_has_same_type(outs):
+            if all_has_same_value(outs):
+                return outs
             else:
                 # TODO: add promotion warning
-                return [to_static_variable(arg) for arg in args]
+                return [
+                    constant_to_variable_with_block(out, block)
+                    for out, block in out_with_blocks
+                ]
 
-        if any(isinstance(arg, paddle.pir.Value) for arg in args) and all(
-            isinstance(arg, (paddle.pir.Value,) + promotion_builtin_types)
-            for arg in args
+        if any(isinstance(out, paddle.pir.Value) for out in outs) and all(
+            isinstance(out, (paddle.pir.Value,) + promotion_builtin_types)
+            for out in outs
         ):
             # TODO: Add promotion warning
-            return [to_static_variable(arg) for arg in args]
+            return [
+                constant_to_variable_with_block(out, block)
+                for out, block in out_with_blocks
+            ]
 
         # TODO: Add arg name
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            "returned by false_fn is '{}' and true_var of true_fn is '{}'"
+            f"returned by false_fn is '{outs[0]}' and true_var of true_fn is '{outs[1]}'"
         )
 
 
@@ -1490,7 +1505,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(return_names),
     )
 
-    if is_dy2static:
+    if is_dy2static and not use_pir_api():
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output
         )
@@ -1500,37 +1515,39 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             true_output
         ), flatten(false_output)
         num_output = len(flattened_true_output)
-        output_selector = StaticOutputSelector(
-            flattened_true_output, flattened_false_output
+        output_selector = OutputSelector(
+            if_op, flattened_true_output, flattened_false_output
         )
-        static_true_output = output_selector.select_outputs(
-            output_selector.unified_true_output, output_selector.static_indices
-        )
-        static_false_output = output_selector.select_outputs(
-            output_selector.unified_false_output, output_selector.static_indices
-        )
-        non_static_output = output_selector.select_outputs(
+        variable_true_output = output_selector.select_by_indices(
             output_selector.unified_true_output,
-            output_selector.non_static_indices,
+            output_selector.variable_indices,
+        )
+        variable_false_output = output_selector.select_by_indices(
+            output_selector.unified_false_output,
+            output_selector.variable_indices,
+        )
+        constant_output = output_selector.select_by_indices(
+            output_selector.unified_true_output,
+            output_selector.constant_indices,
         )
 
         with if_op.true_block():
-            cf_yield(static_true_output)
+            cf_yield(variable_true_output)
         with if_op.false_block():
-            cf_yield(static_false_output)
+            cf_yield(variable_false_output)
         if_op.update_output()
-        static_results = flatten(if_op.results())
+        variable_results = flatten(if_op.results())
 
         restored_output = [None for _ in range(num_output)]
-        output_selector.restore_outputs(
+        output_selector.fill_by_indices(
             restored_output,
-            static_results,
-            output_selector.static_indices,
+            variable_results,
+            output_selector.variable_indices,
         )
-        output_selector.restore_outputs(
+        output_selector.fill_by_indices(
             restored_output,
-            non_static_output,
-            output_selector.non_static_indices,
+            constant_output,
+            output_selector.constant_indices,
         )
         return pack_sequence_as(true_output, restored_output)
 
