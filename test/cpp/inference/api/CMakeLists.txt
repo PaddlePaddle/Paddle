@@ -1161,7 +1161,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     lite_mul_model_test.cc
     EXTRA_DEPS
-    common
     paddle_inference_shared
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
@@ -1170,7 +1169,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     lite_resnet50_test.cc
     EXTRA_DEPS
-    common
     paddle_inference_shared
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
@@ -1180,7 +1178,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_capi_exp_tester.cc
     EXTRA_DEPS
-    common
     paddle_inference_c_shared
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}/model)
@@ -1190,7 +1187,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_capi_exp_pd_config_tester.cc
     EXTRA_DEPS
-    common
     paddle_inference_c_shared
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
@@ -1200,7 +1196,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     SRCS
     analyzer_capi_exp_pd_tensor_tester.cc
     EXTRA_DEPS
-    common
     paddle_inference_c_shared
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
