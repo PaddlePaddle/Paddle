@@ -175,7 +175,7 @@ void IrPrinter::PrintGeneralOperation(Operation* op) {
   PrintAttributeMap(op);
   os << " :";
 
-  // PrintOpSingature
+  // PrintOpSignature
   PrintOperandsType(op);
   os << " -> ";
 
