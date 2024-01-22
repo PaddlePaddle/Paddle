@@ -2504,7 +2504,7 @@ class PdOpToKernelPass : public pir::Pass {
     place_ = place;
   }
 
-  bool Initialize(pir::IrContext* context) {
+  bool Initialize(pir::IrContext* context) override {
     context->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
     context->GetOrRegisterDialect<paddle::dialect::CustomKernelDialect>();
