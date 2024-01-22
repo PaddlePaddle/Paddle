@@ -945,6 +945,8 @@ __global__ void post_process_kernel(Masked_multihead_attention_params<T> params)
   
   for (int i = 1; i < params.split_seq; ++i) {
     float tmp_max = params.qk_max_split_seq[bhsi + i];
+    float this_sum = params.qk_sum_split_seq[bhsi + i];
+    if (this_sum < 1e-6) break;
     max = tmp_max > max ? tmp_max : max;
   }
   
@@ -953,6 +955,7 @@ __global__ void post_process_kernel(Masked_multihead_attention_params<T> params)
   for (int i = 0; i < params.split_seq; ++i) {
     float this_max = params.qk_max_split_seq[bhsi + i];
     float this_sum = params.qk_sum_split_seq[bhsi + i];
+    if (this_sum < 1e-6) break;
     float this_v = params.split_out[(bhsi + i) * 128 + tid];
 
     float real_this_sum = this_sum * __expf(this_max - max);
@@ -1018,6 +1021,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   qk_sum_split_seq.Resize({{bsz, num_head, split_seq}});
   dev_ctx.template Alloc<float>(&qk_sum_split_seq, qk_max_split_seq.numel() * sizeof(float));
   params.qk_sum_split_seq = qk_sum_split_seq.data<float>();
+  cudaMemset(params.qk_sum_split_seq, 0, sizeof(float) * qk_max_split_seq.numel());
 
   phi::DenseTensor split_out;
   split_out.Resize({{bsz , num_head, split_seq, dim_head}});
