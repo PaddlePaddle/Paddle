@@ -101,6 +101,8 @@
     {x : X, y : Y}
   outputs :
     {out : Out}
+  attrs :
+    {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -757,6 +759,14 @@
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
+
+- op : dequantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift}
 
 - op : dequantize_linear
   extra :
@@ -2491,7 +2501,6 @@
     {q : Q, r : R}
 
 - op : quantize
-  backward : quantize_grad
   inputs :
     input : Input
   outputs :
@@ -2598,6 +2607,14 @@
     out : Out
   attrs:
     axis : dim
+
+- op : requantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, shift_in : Shift_in, shift_out : Shift_out}
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
@@ -3158,6 +3175,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : tdm_sampler
+  inputs:
+    {x : X, travel : Travel, layer : Layer}
+  outputs:
+    {out : Out, labels : Labels, mask : Mask}
+
 - op : thresholded_relu
   inputs :
     x : X
@@ -3392,6 +3415,12 @@
     out: Out
 
 - op: c_allreduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_prod
   inputs :
     x : X
   outputs :

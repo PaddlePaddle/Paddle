@@ -20,6 +20,7 @@ import numpy as np
 from semi_auto_parallel_llama_model import (
     LlamaForCausalLMAuto,
     LlamaPretrainingCriterionAuto,
+    get_mesh,
     set_global_mesh,
 )
 
@@ -137,6 +138,12 @@ class TestLlamaAuto:
             num_workers=0,
         )
 
+        dist_loader = dist.shard_dataloader(
+            dataloader=train_dataloader,
+            meshes=[get_mesh(), get_mesh(-1)],
+            shard_dims="dp",
+        )
+
         global_step = 1
         tr_loss = float(0)
 
@@ -144,7 +151,7 @@ class TestLlamaAuto:
         check_loss = None
         #####
         for epoch_idx in range(1):
-            for step, inputs in enumerate(train_dataloader):
+            for step, inputs in enumerate(dist_loader):
                 input_ids, labels = inputs
                 logits = model(input_ids)
                 tr_loss_step = criterion(logits, labels)
@@ -207,9 +214,13 @@ class TestLlamaAuto:
             strategy.pipeline.accumulate_steps = (
                 self.gradient_accumulation_steps
             )
-
-        dist_model, dist_loader = dist.to_static(
-            model, train_dataloader, criterion, opt, strategy=strategy
+        dist_loader = dist.shard_dataloader(
+            dataloader=train_dataloader,
+            meshes=[get_mesh(), get_mesh(-1)],
+            shard_dims="dp",
+        )
+        dist_model = dist.to_static(
+            model, dist_loader, criterion, opt, strategy=strategy
         )
 
         dist_model.train()

@@ -30,6 +30,7 @@ from paddle.base.layer_helper import LayerHelper
 class TestElementwiseAddOp(OpTest):
     def init_kernel_type(self):
         self.use_mkldnn = False
+        self.check_pir_onednn = False
 
     def setUp(self):
         self.op_type = "elementwise_add"
@@ -58,6 +59,7 @@ class TestElementwiseAddOp(OpTest):
         self.check_output(
             check_dygraph=self.check_dygraph(),
             check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_normal(self):
@@ -71,6 +73,7 @@ class TestElementwiseAddOp(OpTest):
             check_prim=self.check_prim,
             check_prim_pir=self.check_dygraph(),
             check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_ingore_x(self):
@@ -85,6 +88,7 @@ class TestElementwiseAddOp(OpTest):
             check_prim=self.check_prim,
             check_prim_pir=self.check_dygraph(),
             check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_ingore_y(self):
@@ -99,6 +103,7 @@ class TestElementwiseAddOp(OpTest):
             check_prim=self.check_prim,
             check_prim_pir=self.check_dygraph(),
             check_pir=self.check_dygraph(),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_input_output(self):

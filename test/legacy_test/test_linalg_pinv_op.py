@@ -309,6 +309,7 @@ class TestDivByZero(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
         paddle.linalg.pinv(x)
 
+    @test_with_pir_api
     def test_div_by_zero(self):
         with self.assertRaises(ValueError):
             self.pinv_zero_input_dynamic()

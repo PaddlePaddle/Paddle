@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The design is mainly from MLIR, very thanks to the greate project.
+// The design is mainly from MLIR, very thanks to the great project.
 
 #pragma once
 
@@ -37,7 +37,7 @@
 namespace pir {
 
 // This class reprensents the benefit of a pattern. The most common
-// unit to use is the `numver of operations` in the pattern.
+// unit to use is the `number of operations` in the pattern.
 class IR_API PatternBenefit {
  public:
   PatternBenefit() = default;
@@ -306,7 +306,7 @@ class RewriterBase : public Builder {
 
   virtual void FinalizeRootUpdate(Operation* op) {}
 
-  virtual void CancleRootUpdate(Operation* op) {}
+  virtual void CancelRootUpdate(Operation* op) {}
 
   template <typename CallableT>
   void UpdateRootInplace(Operation* root, CallableT&& callable) {

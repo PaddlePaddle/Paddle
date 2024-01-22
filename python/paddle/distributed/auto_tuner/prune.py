@@ -54,7 +54,10 @@ def same_cfgs_beside(attr, cur_cfg, history_cfgs=[]):
         for key in cur_cfg:
             if key == attr:
                 continue
-            if key not in cfg or cfg[key] != cur_cfg[key]:
+            if key not in cfg or (
+                cfg[key] != cur_cfg[key]
+                and key not in ["estimated_memory_usage"]
+            ):
                 same = False
                 break
         if same:
@@ -467,7 +470,7 @@ def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
     if not use_recompute:
         cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
         if cfgs:
-            pruned_reason = f"recompute_granularity {cfg['recompute_granularity']} invalid because use_recompute is {use_recompute}."
+            pruned_reason = f"recompute_granularity invalid because use_recompute is {use_recompute}."
             log_pruned_info(cur_cfg, pruned_reason)
             return True
     return False
@@ -567,21 +570,21 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
     )
 
     if result.returncode == 0:
-        cur_memory_usage = round(float(result.stdout), 2)
+        cur_memory_usage = int(round(float(result.stdout), 2))
         cur_cfg["estimated_memory_usage"] = cur_memory_usage
-        msg = f"estimated memory usage: {cur_memory_usage} GB"
-        memory_exceeded = cur_memory_usage > max_memory_usage
+        msg = f"Estimated {cur_cfg} memory usage: {cur_memory_usage} MB"
+        memory_exceeded = cur_memory_usage > (max_memory_usage * 1024)
         if memory_exceeded:
-            msg += ", WILL BE PRUNED!"
+            msg += ", it will be pruned!"
         logger.info(msg)
-        return cur_memory_usage > max_memory_usage
+        return memory_exceeded
     else:
         raise ValueError(
             f"memory_estimation_tool failed with error: {result.stderr}"
         )
 
 
-@register_prune
+@register_prune_history
 def prune_by_sharding_overlap(tuner_cfg, cur_cfg, history_cfgs=[]):
     """Prune by sharding overlap for single dp estimation"""
     if "sharding_overlap" in cur_cfg:

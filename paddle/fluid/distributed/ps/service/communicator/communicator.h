@@ -347,7 +347,7 @@ class Communicator {
 
   static Communicator *GetInstance() { return communicator_.get(); }
 
-  static std::shared_ptr<Communicator> GetInstantcePtr() {
+  static std::shared_ptr<Communicator> GetInstancePtr() {
     return communicator_;
   }
 
@@ -528,7 +528,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
       : AsyncCommunicator(envs) {}
 
   void InitEnvs() {
-    // enfore to recv after send
+    // enforce to recv after send
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));

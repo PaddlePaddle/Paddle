@@ -149,11 +149,9 @@ std::vector<std::vector<pir::OpResult>> IncrementOp::Vjp(
 
   VLOG(6) << "Vjp prepare Prepare attributes of increment_grad";
 
-  float value = op->attribute("value").dyn_cast<pir::FloatAttribute>().data();
-
   VLOG(6) << "Vjp prepare call increment's vjp inteface";
 
-  pir::OpResult tensor_res = paddle::dialect::increment(inputs_[0][0], -value);
+  pir::OpResult tensor_res = paddle::dialect::scale(out_grads[0][0]);
 
   std::vector<std::vector<pir::OpResult>> res{{tensor_res}};
 
