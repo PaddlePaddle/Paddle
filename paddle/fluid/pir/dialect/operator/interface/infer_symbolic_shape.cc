@@ -269,7 +269,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
   symbol::ShapeOrDataDimExprs shape_data{out_dims};
   if (operand_shape_or_data.data().has_value()) {
-    shape_data.SetData(operand_shape_or_data.shape());
+    shape_data.SetData(operand_shape_or_data.data());
   }
 
   op->set_attribute(
