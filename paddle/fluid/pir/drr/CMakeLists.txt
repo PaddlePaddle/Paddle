@@ -5,30 +5,30 @@ set(op_creator_gen_file
 )
 set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(op_forward_yaml_file1
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
 
 set(op_forward_yaml_file3
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/update_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/update_ops.parsed.yaml
 )
 set(op_backward_yaml_file1
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
 )
 set(fused_op_forward_yaml_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
 )
 set(fused_op_backward_yaml_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 
 set(cinn_op_yaml_file
-    ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
+    ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
 
 set(cinn_op_yaml_source_file
-    ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
+    ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
 
 set(parsed_op_dir
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 
 set(op_yaml_file3 ${parsed_op_dir}/ops.parsed.yaml)
 set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
