@@ -16,8 +16,6 @@ import logging
 import os
 import subprocess
 
-from paddle.distributed.launch.main import ctx
-
 logger = logging.getLogger('auto_tuner')
 _PRUNE_FUNC = []
 _PRUNE_HISTORY_FUNC = []
@@ -35,9 +33,15 @@ def log_pruned_info(cur_cfg, pruned_reason):
         cur_cfg["use_recompute"],
         cur_cfg["recompute_granularity"],
     )
-    ctx.logger.info(
-        f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
-    )
+
+    try:
+        from paddle.distributed.launch.main import ctx
+
+        ctx.logger.info(
+            f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
+        )
+    except:
+        pass
     logger.info(
         f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
     )
@@ -505,7 +509,7 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     if not os.path.exists(memory_estimation_tool):
         raise ValueError(
-            f"memory_estimation_tool shoule be a valid path, but got {memory_estimation_tool}"
+            f"memory_estimation_tool should be a valid path, but got {memory_estimation_tool}"
         )
 
     if max_memory_usage is None:
