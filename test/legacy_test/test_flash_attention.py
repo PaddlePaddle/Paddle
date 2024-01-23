@@ -323,6 +323,22 @@ class TestFlashAttentionAPI(unittest.TestCase):
         paddle.disable_static()
 
 
+def check_flashattn_advanced_so():
+    paddle_lib_path = paddle.sysconfig.get_lib()
+    flashattn_advanced_so_path = os.path.join(
+        paddle_lib_path, 'libflashattn_advanced.so'
+    )
+
+    if os.path.exists(flashattn_advanced_so_path):
+        logging.warning("use flash_attn in paddle_flash_attn.whl.")
+        return True
+    else:
+        logging.warning(
+            "libflashattn_advanced.so does not exist in Paddle installation directory. Please install paddle_flash_attn.whl."
+        )
+        return False
+
+
 @unittest.skipIf(
     not is_flashattn_supported(),
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -337,6 +353,8 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         self.causal = False
 
     def test_dot_scale_product(self):
+        if not check_flashattn_advanced_so:
+            return
         # test dynamic
         paddle.disable_static()
 

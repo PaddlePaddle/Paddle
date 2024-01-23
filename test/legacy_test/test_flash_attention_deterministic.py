@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import re
 import unittest
@@ -68,6 +69,22 @@ is_sm90 = (
 )
 
 is_sm_supported = is_sm8x or is_sm90
+
+
+def check_flashattn_advanced_so():
+    paddle_lib_path = paddle.sysconfig.get_lib()
+    flashattn_advanced_so_path = os.path.join(
+        paddle_lib_path, 'libflashattn_advanced.so'
+    )
+
+    if os.path.exists(flashattn_advanced_so_path):
+        logging.warning("use flash_attn in paddle_flash_attn.whl.")
+        return True
+    else:
+        logging.warning(
+            "libflashattn_advanced.so does not exist in Paddle installation directory. Please install paddle_flash_attn.whl."
+        )
+        return False
 
 
 @unittest.skipIf(
@@ -146,6 +163,8 @@ class TestFlashAttentionAPIFlag(unittest.TestCase):
         return out, out_, q.grad.numpy(), k.grad.numpy(), v.grad.numpy()
 
     def test_all_flag(self):
+        if not check_flashattn_advanced_so:
+            return
         paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
         query = np.random.random(self.shape)
         key = np.random.random(self.shape)
