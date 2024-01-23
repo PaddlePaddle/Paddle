@@ -260,17 +260,17 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
   std::vector<symbol::DimExpr> out_dims;
+  std::vector<symbol::DimExpr> out_dims_data;
   if (operand_shape_or_data.data().has_value()) {
-    out_dims = operand_shape_or_data.data().value();
+    out_dims_data = operand_shape_or_data.data().value();
+    out_dims.emplace_back(
+        static_cast<std::int64_t>(operand_shape_or_data.shape().size()));
   }
   // else : pir::VectorType x =
   // operand_source.type().dyn_cast<pir::VectorType>();
   // TODO(zhangbopd): else branch is not implemented yet.
 
-  symbol::ShapeOrDataDimExprs shape_data{out_dims};
-  if (operand_shape_or_data.data().has_value()) {
-    shape_data.SetData(operand_shape_or_data.shape());
-  }
+  symbol::ShapeOrDataDimExprs shape_data{out_dims, out_dims_data};
 
   op->set_attribute(
       "symbolic_shape",
