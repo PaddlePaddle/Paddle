@@ -1,7 +1,7 @@
 cc_library(
   benchmark
   SRCS benchmark.cc
-  DEPS enforce common)
+  DEPS enforce)
 
 cc_library(
   infer_io_utils

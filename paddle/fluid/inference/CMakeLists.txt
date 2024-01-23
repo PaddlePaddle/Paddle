@@ -66,14 +66,8 @@ if(WIN32)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  create_static_lib(
-    paddle_inference
-    ${phi_modules}
-    ${fluid_modules}
-    ${ir_targets}
-    ${STATIC_INFERENCE_API}
-    ${utils_modules}
-    common_static)
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
