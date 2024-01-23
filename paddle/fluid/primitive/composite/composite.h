@@ -681,6 +681,16 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
                          full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32));
 }
 
+template <typename T>
+Tensor index_select_decomp(const Tensor& x, const Tensor& index, int axis) {
+  int axis_tmp = axis;
+  if (axis < 0) {
+    axis_tmp += x.dims().size();
+  }
+
+  return gather<T>(x, index, axis_tmp);
+}
+
 }  // namespace details
 
 }  // namespace primitive

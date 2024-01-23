@@ -232,5 +232,65 @@ class TestCinnDyShapeRMSNorm(TestCinnDyShapeBase):
         # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
+def unsqueeze_composite(x, axis):
+    """define composite rule of op unsqueeze"""
+    """using reshape to implement unsqueeze op"""
+    x_shape = list(x.shape)
+    axis_list = list(axis)
+    for i in axis_list:
+        if i < 0:
+            i += len(x_shape) + 1
+        x_shape = (
+            x_shape[:i]
+            + [
+                1,
+            ]
+            + x_shape[i:]
+        )
+    out = paddle.reshape(x, x_shape)
+    return out
+
+
+class LlamaRepeatKV(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.n_rep = 4
+
+    def forward(self, hidden_states):
+        batch, slen, num_key_value_heads, head_dim = hidden_states.shape
+        rst_unsqueeze = unsqueeze_composite(hidden_states, [-2])
+        rst_tile = rst_unsqueeze.tile([1, 1, 1, self.n_rep, 1])
+        out = rst_tile.reshape(
+            [batch, slen, num_key_value_heads * self.n_rep, head_dim]
+        )
+
+        return out
+
+
+class TestCinnDyShapeRepeatKV(TestCinnDyShapeBase):
+    def prepare_data(self):
+        self.hidden_states_shape = [1, 300, 32, 128]
+        self.hidden_states = paddle.randn(
+            self.hidden_states_shape, dtype="float32"
+        )
+        self.hidden_states.stop_gradient = False
+
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = LlamaRepeatKV()
+        input_spec = [
+            InputSpec(shape=[None, None, 32, 128], dtype='float32'),
+        ]
+        net = apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.hidden_states)
+        return out
+
+    def test_eval_symbolic(self):
+        # cinn_out = self.eval_symbolic(use_cinn=True)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
 if __name__ == '__main__':
     unittest.main()

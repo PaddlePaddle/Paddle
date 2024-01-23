@@ -16,8 +16,6 @@ import logging
 import os
 import subprocess
 
-from paddle.distributed.launch.main import ctx
-
 logger = logging.getLogger('auto_tuner')
 _PRUNE_FUNC = []
 _PRUNE_HISTORY_FUNC = []
@@ -35,9 +33,15 @@ def log_pruned_info(cur_cfg, pruned_reason):
         cur_cfg["use_recompute"],
         cur_cfg["recompute_granularity"],
     )
-    ctx.logger.info(
-        f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
-    )
+
+    try:
+        from paddle.distributed.launch.main import ctx
+
+        ctx.logger.info(
+            f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
+        )
+    except:
+        pass
     logger.info(
         f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
     )
@@ -123,7 +127,7 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=[]):
         "num_attention_heads", None
     )
     seq_length = tuner_cfg["model_cfg"].get("seq_length", None)
-    use_sequence_paralel = tuner_cfg.get("use_sequence_paralel", False)
+    use_sequence_parallel = tuner_cfg.get("use_sequence_parallel", False)
 
     if mp_degree is None:
         return False
@@ -137,7 +141,7 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=[]):
     if num_attention_heads and num_attention_heads % mp_degree != 0:
         return True
 
-    if seq_length and seq_length % mp_degree != 0 and use_sequence_paralel:
+    if seq_length and seq_length % mp_degree != 0 and use_sequence_parallel:
         return True
 
     mp_degree_candidates = tuner_cfg.get("mp_degree", None)
@@ -505,7 +509,7 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     if not os.path.exists(memory_estimation_tool):
         raise ValueError(
-            f"memory_estimation_tool shoule be a valid path, but got {memory_estimation_tool}"
+            f"memory_estimation_tool should be a valid path, but got {memory_estimation_tool}"
         )
 
     if max_memory_usage is None:
