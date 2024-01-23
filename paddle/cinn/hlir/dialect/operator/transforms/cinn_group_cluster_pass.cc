@@ -414,13 +414,13 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
       }
     } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
                cinn::hlir::framework::kBroadcast) {
-      if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
-        cluster_node.loop_ranges =
-            phi::vectorize(op->result(0)
-                               .type()
-                               .dyn_cast<paddle::dialect::DenseTensorType>()
-                               .dims());
-      }
+      // if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
+      cluster_node.loop_ranges =
+          phi::vectorize(op->result(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
+      //}
 
       // all the op in cluster node must add broadcast
       ScheduleInfoNode sch_node;

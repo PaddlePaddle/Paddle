@@ -563,13 +563,16 @@ void StaticShapeGroupScheduler::Tiling() {
     if (name.find("_out") != std::string::npos) {
       continue;
     }
+
     // if (!output_tensor_names_.count(name)) {
     //  std::cerr << "temp name " << name << std::endl;
     auto block = ir_sch_->GetBlock(name);
     if (group_tile_info_->shared_var_names.count(name)) {
       ir_sch_->SetBuffer(block, "shared", false);
     } else {
-      ir_sch_->SetBuffer(block, "local", false);
+      if (!group_tile_info_->direct_output_var_names.count(name)) {
+        ir_sch_->SetBuffer(block, "local", false);
+      }
     }
     //}
 

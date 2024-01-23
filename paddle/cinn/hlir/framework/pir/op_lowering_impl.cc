@@ -303,6 +303,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   }
 
   group_tile_info->shared_var_names = shared_var_names;
+  group_tile_info->direct_output_var_names = direct_output_var_names;
   group_tile_info->thread_sync_before_names = thread_sync_before_names;
 
   group_tile_info->broadcast_info = broadcast_info;
@@ -653,6 +654,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       }
 
       if ((it->first->name() != "cinn_op.reshape") &&
+          (it->first->name() != "cinn_op.broadcast") &&
           (it->first->num_operands() == 1)) {
         in_dim = it->first->operand_source(0)
                      .type()
@@ -816,11 +818,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       // std::cerr << "broadcast is a output " << tensor->name << std::endl;
       if (opresult.use_count() > 1) {
         copyed_var_names.insert(tensor->name);
+      } else {
+        direct_output_var_names.insert(tensor->name);
       }
 
       // shared_var_names.insert(  tensor->name );
       // }
     }
+  }
+
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    // std::cerr << ops[i]->name() << std::endl;
+    // std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
+    std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
   }
 
   // 2.Do group schedule.
