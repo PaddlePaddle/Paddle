@@ -83,6 +83,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
@@ -1582,7 +1583,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   //   pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
   // }
 
-  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
+  pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
 
   pass_manager->EnableIRPrinting();

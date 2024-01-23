@@ -39,6 +39,7 @@ struct GroupTileInfo {
   int64_t block_num{-1};
   int64_t warp_num;
   int64_t flatten_inner_num;
+  int64_t reduce_numel;
   int64_t reduce_inner_num;
   int64_t reduce_block;
 

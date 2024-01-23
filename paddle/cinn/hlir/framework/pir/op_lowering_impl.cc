@@ -130,28 +130,9 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     const GroupPtr& group) {
   auto master_ops = group->master_ops;
   std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info;
-  PADDLE_ENFORCE_GT(master_ops.size(), 0, "master op MUST great than 0");
+  // PADDLE_ENFORCE_GT(master_ops.size(), 0, "master op MUST great than 0");
 
   group_tile_info = std::make_shared<cinn::ir::GroupTileInfo>();
-
-  // std::cerr << "op name " << (*master_ops.begin())->name() << std::endl;
-  // std::cerr << group->kind() << std::endl;
-  ::pir::Operation* first_master_op = nullptr;
-  for (auto op : master_ops) {
-    if (CompatibleInfo::OpKind(*op) == group->kind()) {
-      first_master_op = op;
-
-      // std::cerr << "choose " << op->name() << std::endl;
-      break;
-    }
-    // std::cerr << "master op " << op->name() << std::endl;
-  }
-
-  if (first_master_op == nullptr) {
-    first_master_op = *master_ops.begin();
-    // LOG() << "master op not same with group kind";
-    // throw std::runtime_error("master op can not empty");
-  }
 
   std::stringstream ss;
   ::pir::IrPrinter printer(ss);
@@ -167,33 +148,34 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   // std::cerr << ss.str() << std::endl;
 
   // pir:: first_master_op = *master_ops.begin();
-  std::vector<int64_t> reduce_axis;
-  phi::DDim data_dim;
-  if (group->kind() == OpPatternKind::kReduction) {
-    data_dim = first_master_op->operand_source(0)
-                   .type()
-                   .dyn_cast<paddle::dialect::DenseTensorType>()
-                   .dims();
-    group_tile_info->data_rank = data_dim.size();
-    reduce_axis = cinn::dialect::ir::GetVectorAttr(first_master_op, "dim");
-  } else if (group->kind() == OpPatternKind::kElementWise) {
-    data_dim = first_master_op->result(0)
-                   .type()
-                   .dyn_cast<paddle::dialect::DenseTensorType>()
-                   .dims();
-    // std::cerr << "data dim " << data_dim << std::endl;
-    group_tile_info->data_rank = data_dim.size();
-  } else if (group->kind() == OpPatternKind::kBroadcast) {
-    data_dim = first_master_op->result(0)
-                   .type()
-                   .dyn_cast<paddle::dialect::DenseTensorType>()
-                   .dims();
-    group_tile_info->data_rank = data_dim.size();
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("only support group kind with reduce, "
-                                   "elementwise and broadcast for now"));
-  }
+  auto data_dim = group->loop_ranges;
+  group_tile_info->data_rank = data_dim.size();
+  auto reduce_axis = group->reduce_axis;
+  // if (group->kind() == OpPatternKind::kReduction) {
+  //   data_dim = first_master_op->operand_source(0)
+  //                  .type()
+  //                  .dyn_cast<paddle::dialect::DenseTensorType>()
+  //                  .dims();
+  //   group_tile_info->data_rank = data_dim.size();
+  //   reduce_axis = cinn::dialect::ir::GetVectorAttr(first_master_op, "dim");
+  // } else if (group->kind() == OpPatternKind::kElementWise) {
+  //   data_dim = first_master_op->result(0)
+  //                  .type()
+  //                  .dyn_cast<paddle::dialect::DenseTensorType>()
+  //                  .dims();
+  //   // std::cerr << "data dim " << data_dim << std::endl;
+  //   group_tile_info->data_rank = data_dim.size();
+  // } else if (group->kind() == OpPatternKind::kBroadcast) {
+  //   data_dim = first_master_op->result(0)
+  //                  .type()
+  //                  .dyn_cast<paddle::dialect::DenseTensorType>()
+  //                  .dims();
+  //   group_tile_info->data_rank = data_dim.size();
+  // } else {
+  //   PADDLE_THROW(
+  //       phi::errors::Unimplemented("only support group kind with reduce, "
+  //                                  "elementwise and broadcast for now"));
+  // }
   // std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
   // std::cerr << "data dim " << data_dim << std::endl;
 
@@ -262,7 +244,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
       reduce_inner_num = 2;
     }
     warp_num = 8;
-  } else if (reduce_numel > 256 < reduce_numel <= 2048) {
+  } else if (reduce_numel > 256 && reduce_numel <= 2048) {
     flatten_block = 1;
     reduce_block = int64_t(std::ceil(reduce_numel * 1.0 / 256.0)) * 256;
     warp_num = reduce_block / 256;
@@ -272,10 +254,11 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     flatten_block = 1;
     reduce_block = 2048;
     warp_num = 8;
-    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 256.0)) / 256;
+    reduce_inner_num = int64_t(std::ceil(reduce_numel * 1.0 / 256.0));
     flatten_inner_num = 1;
   }
 
+  group_tile_info->reduce_numel = reduce_numel;
   group_tile_info->reduce_block = reduce_block;
   // flatten_block = std::min(flatten_block, flatten_numel);
   // reduce_block = std::min(reduce_block, reduce_numel);
@@ -391,8 +374,9 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
-  ir::IRSchedule ir_sch(
-      mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
+  // ir::IRSchedule ir_sch(
+  //     mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
+  ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
   std::vector<std::pair<ir::SymbolicPredicate, ir::Expr>> cond2func_bodies;
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
@@ -625,81 +609,194 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 
   std::unordered_set<::pir::Operation*> not_used_op;
 
-  for (auto* op : ops) {
-    if (CompatibleInfo::OpKind(*op) == framework::kBroadcast) {
-      auto pre_op = op->operand_source(0).dyn_cast<::pir::OpResult>().owner();
-      if (pre_op->name() == "cinn_op.reduce_sum") {
-        continue;
+  auto& align_info = group->alignment_schedule_info;
+
+  for (auto op1 : ops) {
+    auto it = align_info.find(op1);
+    if (it == align_info.end()) {
+      continue;
+    }
+
+    std::cerr << "found name " << op1->name() << std::endl;
+
+    std::cerr << "it " << it->first->dialect() << std::endl;
+    std::cerr << "it->fisrt " << it->first->name() << std::endl;
+    std::cerr << "align name  " << ValueName(it->first->result(0)) << std::endl;
+
+    std::vector<int64_t> changed_axes;
+    std::vector<int64_t> changed_factor;
+
+    if (it->second.size() > 1) {
+      for (auto& node : it->second) {
+        std::cerr << "info " << node.DebugStr() << std::endl;
+      }
+      throw std::runtime_error("only suppopt one transform yet");
+    }
+
+    std::cerr << "it->second type " << it->second[0].type << std::endl;
+    if (it->second[0].type == "broadcast") {
+      // get broadcast op
+      auto broadcast_axes = it->second[0].axis_info;
+      auto output_shape = it->second[0].factor_info;
+
+      std::cerr << "op name " << it->first->name() << std::endl;
+
+      phi::DDim in_dim;
+
+      if (it->first->name() == "cinn_op.reshape") {
+        // TODO(phlrain): deal with reshape in a better way
+        if (it->first->result(0).use_count() == 1 &&
+            it->first->result(0).first_use().owner()->name() == "cf.yield") {
+          std::cerr << "skip last reshape\n";
+          continue;
+        }
       }
 
-      // back trace all the elementwise ops
-
-      std::unordered_set<::pir::Operation*> visited;
-      std::stack<::pir::Operation*> op_stack;
-
-      if (ops_set.count(pre_op)) {
-        op_stack.push(pre_op);
+      if ((it->first->name() != "cinn_op.reshape") &&
+          (it->first->num_operands() == 1)) {
+        in_dim = it->first->operand_source(0)
+                     .type()
+                     .dyn_cast<paddle::dialect::DenseTensorType>()
+                     .dims();
+      } else {
+        in_dim = it->first->result(0)
+                     .type()
+                     .dyn_cast<paddle::dialect::DenseTensorType>()
+                     .dims();
       }
+      std::cerr << " in dim " << in_dim << "\t" << it->second[0].DebugStr()
+                << std::endl;
 
-      auto broadcast_axes =
-          cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
-      auto output_shape = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
-
-      auto in_dim = op->operand_source(0)
-                        .type()
-                        .dyn_cast<paddle::dialect::DenseTensorType>()
-                        .dims();
-
-      std::vector<int64_t> changed_axes;
-      std::vector<int64_t> changed_factor;
-      for (size_t i = 0; i < broadcast_axes.size(); ++i) {
-        if (in_dim[i] != output_shape[broadcast_axes[i]]) {
-          if (in_dim[i] != 1) {
+      if (in_dim.size() == broadcast_axes.size()) {
+        for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+          if (in_dim[i] != output_shape[broadcast_axes[i]]) {
+            if (in_dim[i] != 1) {
+              throw std::runtime_error("Only support 1 - D broadcast ");
+            }
+            changed_axes.push_back(i);
+            changed_factor.push_back(output_shape[broadcast_axes[i]]);
+          }
+        }
+      } else {
+        // only deal with broadcast axes
+        for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+          if (in_dim[broadcast_axes[i]] != 1) {
             throw std::runtime_error("Only support 1 - D broadcast ");
           }
-          changed_axes.push_back(i);
+
+          changed_axes.push_back(broadcast_axes[i]);
           changed_factor.push_back(output_shape[broadcast_axes[i]]);
         }
       }
 
       cinn::ir::BroadcastInfo info{changed_axes, changed_factor};
-      while (!op_stack.empty()) {
-        auto cur_op = op_stack.top();
-        op_stack.pop();
 
-        if (visited.count(cur_op)) {
+      auto op_out = it->first->result(0);
+      broadcast_info[ValueName(op_out)] = info;
+
+      // if( op_out.use_count() > 1 )
+      // {
+      //   throw std::runtime_error("only support ONE user for now");
+      // }
+
+      std::cerr << "op " << it->first->name() << std::endl;
+
+      // std::cerr << "use op name " << op_out.first_use().owner()->name() <<
+      // std::endl; std::cerr << "pattern kind " <<  CompatibleInfo::OpKind(
+      // *(op_out.first_use().owner()) ) << std::endl;
+      for (auto use_it = op_out.use_begin(); use_it != op_out.use_end();
+           ++use_it) {
+        if (use_it->owner()->name() == "cf.yield") {
           continue;
         }
-
-        if (CompatibleInfo::OpKind(*cur_op) == framework::kElementWise) {
-          // std::cerr << "broadcast info " << ValueName(cur_op->result(0))
-          //           << std::endl;
-          broadcast_info[ValueName(cur_op->result(0))] = info;
-          broadcast_to_elementwise[ValueName(op->result(0))] = info;
-
-          for (size_t i = 0; i < cur_op->num_operands(); ++i) {
-            auto in_op =
-                cur_op->operand_source(i).dyn_cast<::pir::OpResult>().owner();
-            if (pre_op->name() == "cinn_op.reduce_sum" ||
-                visited.count(in_op) || (!ops_set.count(in_op))) {
-              continue;
-            }
-
-            if (pre_op->name() == "cinn_op.broadcast") {
-              throw std::runtime_error("Not support two broadcast pattern");
-            }
-
-            op_stack.push(in_op);
-          }
+        if (CompatibleInfo::OpKind(*(use_it->owner())) ==
+            framework::kBroadcast) {
+          std::cerr << "match broadcast !!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+          broadcast_to_elementwise[ValueName(use_it->owner()->result(0))] =
+              info;
         }
       }
-
-      // if (inner_genevalue.count(op->operand_source(0))) {
-      //   shared_var_names.insert(ValueName(op->operand_source(0)));
-      //   thread_sync_before_names.push_back(ValueName(op->result(0)));
-      // }
+    } else {
+      std::cerr << "type " << it->second[0].type << std::endl;
+      throw std::runtime_error("only supportbroadcast type for now");
     }
   }
+  // for (auto* op : ops) {
+  //   if (CompatibleInfo::OpKind(*op) == framework::kBroadcast) {
+  //     auto pre_op =
+  //     op->operand_source(0).dyn_cast<::pir::OpResult>().owner(); if
+  //     (pre_op->name() == "cinn_op.reduce_sum") {
+  //       continue;
+  //     }
+
+  //     // back trace all the elementwise ops
+
+  //     std::unordered_set<::pir::Operation*> visited;
+  //     std::stack<::pir::Operation*> op_stack;
+
+  //     if (ops_set.count(pre_op)) {
+  //       op_stack.push(pre_op);
+  //     }
+
+  //     auto broadcast_axes =
+  //         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
+  //     auto output_shape = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+
+  //     auto in_dim = op->operand_source(0)
+  //                       .type()
+  //                       .dyn_cast<paddle::dialect::DenseTensorType>()
+  //                       .dims();
+
+  //     std::vector<int64_t> changed_axes;
+  //     std::vector<int64_t> changed_factor;
+  //     for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+  //       if (in_dim[i] != output_shape[broadcast_axes[i]]) {
+  //         if (in_dim[i] != 1) {
+  //           throw std::runtime_error("Only support 1 - D broadcast ");
+  //         }
+  //         changed_axes.push_back(i);
+  //         changed_factor.push_back(output_shape[broadcast_axes[i]]);
+  //       }
+  //     }
+
+  //     cinn::ir::BroadcastInfo info{changed_axes, changed_factor};
+  //     while (!op_stack.empty()) {
+  //       auto cur_op = op_stack.top();
+  //       op_stack.pop();
+
+  //       if (visited.count(cur_op)) {
+  //         continue;
+  //       }
+
+  //       if (CompatibleInfo::OpKind(*cur_op) == framework::kElementWise) {
+  //         std::cerr << "broadcast info " << ValueName(cur_op->result(0))
+  //                    << std::endl;
+  //         broadcast_info[ValueName(cur_op->result(0))] = info;
+  //         broadcast_to_elementwise[ValueName(op->result(0))] = info;
+
+  //         for (size_t i = 0; i < cur_op->num_operands(); ++i) {
+  //           auto in_op =
+  //               cur_op->operand_source(i).dyn_cast<::pir::OpResult>().owner();
+  //           if (pre_op->name() == "cinn_op.reduce_sum" ||
+  //               visited.count(in_op) || (!ops_set.count(in_op))) {
+  //             continue;
+  //           }
+
+  //           if (pre_op->name() == "cinn_op.broadcast") {
+  //             throw std::runtime_error("Not support two broadcast pattern");
+  //           }
+
+  //           op_stack.push(in_op);
+  //         }
+  //       }
+  //     }
+
+  //     // if (inner_genevalue.count(op->operand_source(0))) {
+  //     //   shared_var_names.insert(ValueName(op->operand_source(0)));
+  //     //   thread_sync_before_names.push_back(ValueName(op->result(0)));
+  //     // }
+  //   }
+  // }
 
   for (auto& op : group->output_ops) {
     if (erase_reshape.count(op)) {
@@ -717,7 +814,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 
       // if (broadcast_info.count(tensor->name)) {
       // std::cerr << "broadcast is a output " << tensor->name << std::endl;
-      copyed_var_names.insert(tensor->name);
+      if (opresult.use_count() > 1) {
+        copyed_var_names.insert(tensor->name);
+      }
 
       // shared_var_names.insert(  tensor->name );
       // }
@@ -1254,8 +1353,26 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
-  auto group_tile_info = GetGroupTileInfo(group);
   VLOG(3) << "using StaticShapeGroupScheduler to schedule group.";
+  std::cerr << "!!!!!!!!!!!!!!!!!!!!group op kind" << group->op_pattern_kind
+            << std::endl;
+
+  std::cerr << "group id " << group->group_id << std::endl;
+  std::cerr << "type " << group->op_pattern_kind << std::endl;
+
+  std::cerr << "reduce axis ";
+  for (auto d : group->reduce_axis) {
+    std::cerr << " " << d;
+  }
+  std::cerr << std::endl;
+
+  std::cerr << "loop range ";
+  for (auto d : group->loop_ranges) {
+    std::cerr << " " << d;
+  }
+  std::cerr << std::endl;
+
+  auto group_tile_info = GetGroupTileInfo(group);
 
   std::unordered_set<std::string> output_tensor_names;
   std::transform(
@@ -1273,7 +1390,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
       ir::GroupScheduler::Make(&ir_sch,
                                output_tensor_names,
                                target_,
-                               /* is_dy_shape = */ true,
+                               /* is_dy_shape = */ false,
                                group_tile_info);
   group_scheduler->Schedule();
   return ir_sch.GetModule().GetExprs().at(0);
@@ -1285,15 +1402,16 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  if (!group->value_to_shape_or_data_exprs.empty()) {
-    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
-    std::vector<ir::Dim> sym_shape;
-    for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(input_id, sym);
-    }
-    return lang::CreatePlaceHolder(
-        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-  } else {
+  // if (!group->value_to_shape_or_data_exprs.empty()) {
+  //   const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+  //   std::vector<ir::Dim> sym_shape;
+  //   for (auto& sym : sym_vec) {
+  //     sym_shape.emplace_back(input_id, sym);
+  //   }
+  //   return lang::CreatePlaceHolder(
+  //       sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  // } else
+  {
     return lang::CreatePlaceHolder(
         in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   }

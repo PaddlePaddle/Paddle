@@ -44,19 +44,13 @@ void GroupOp::Build(pir::Builder& builder,
   argument.output_types = output_types;
 }
 
-void GroupOp::Build(
-    pir::Builder& builder,             // NOLINT
-    pir::OperationArgument& argument,  // NOLINT
-    const std::vector<pir::Type>& output_types,
-    const std::unordered_map<
-        ::pir::Operation*,
-        std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>&
-        alignment_schedule_info) {
+void GroupOp::Build(pir::Builder& builder,             // NOLINT
+                    pir::OperationArgument& argument,  // NOLINT
+                    const std::vector<pir::Type>& output_types,
+                    const cinn::dialect::GroupInfo& group_info) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
 
-  cinn::dialect::GroupInfo group_info({});
-  group_info.alignment_schedule_info = alignment_schedule_info;
   argument.AddAttribute("group_info",
                         cinn::dialect::GroupInfoAttribute::get(
                             pir::IrContext::Instance(), group_info));

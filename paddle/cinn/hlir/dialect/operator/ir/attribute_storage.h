@@ -50,6 +50,8 @@ struct GroupInfo {
   std::unordered_map<::pir::Operation*,
                      std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>
       alignment_schedule_info;
+  std::vector<int64_t> reduce_axis;
+  std::vector<int64_t> loop_ranges;
 
  private:
   void Initialize() {

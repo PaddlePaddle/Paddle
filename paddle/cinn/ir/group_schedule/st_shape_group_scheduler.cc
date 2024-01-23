@@ -393,9 +393,8 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  // std::cerr << "after flatten fuse: " <<
-  // ir_sch_->GetModule().GetExprs().front()
-  //           << std::endl;
+  std::cerr << "after flatten fuse: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 
   if (group_tile_info_->flatten_inner_num > 1) {
     // split flatten inner here
@@ -413,8 +412,8 @@ void StaticShapeGroupScheduler::Tiling() {
 
     reduce_current_axis += 1;
   }
-  // std::cerr << "split flatten inner: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  std::cerr << "split flatten inner: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   // std::cerr << "current reduce " << reduce_current_axis << std::endl;
   // split reduce inner here
@@ -436,7 +435,8 @@ void StaticShapeGroupScheduler::Tiling() {
       }
 
       std::vector<int> split_factors{
-          group_tile_info_->reduce_block / group_tile_info_->reduce_inner_num,
+          std::ceil(group_tile_info_->reduce_numel * 1.0 /
+                    group_tile_info_->reduce_inner_num),
           group_tile_info_->reduce_inner_num};
 
       auto split_loops =

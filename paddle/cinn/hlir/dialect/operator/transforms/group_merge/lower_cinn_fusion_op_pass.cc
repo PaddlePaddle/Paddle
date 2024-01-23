@@ -92,12 +92,12 @@ CreateGroupShapeOrDataExprs(const cinn::dialect::ir::GroupPtr& group,
   return value2shape;
 }
 
-class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
+class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
  public:
   explicit FusionOpPattern(::pir::IrContext* context)
-      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
+      : pir::OpRewritePattern<cinn::dialect::GroupOp>(context) {}
 
-  bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
+  bool MatchAndRewrite(cinn::dialect::GroupOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto target = cinn::common::DefaultNVGPUTarget();
@@ -120,6 +120,32 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
+
+    auto attr = fusion_op.attribute("group_info")
+                    .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                    .data();
+    auto align_info = attr.alignment_schedule_info;
+
+    for (auto it = align_info.begin(); it != align_info.end(); ++it) {
+      for (auto& node : it->second) {
+        std::cerr << node.DebugStr() << std::endl;
+      }
+    }
+
+    std::cerr << "!!!!!!!!!!!! group id " << attr.group_id << std::endl;
+    std::cerr << "type " << attr.op_pattern_kind << std::endl;
+
+    std::cerr << "reduce axis ";
+    for (auto d : attr.reduce_axis) {
+      std::cerr << " " << d;
+    }
+    std::cerr << std::endl;
+
+    std::cerr << "loop range ";
+    for (auto d : attr.loop_ranges) {
+      std::cerr << " " << d;
+    }
+    std::cerr << std::endl;
 
     // TODO(zhangyuqin1998): Replace pir::Group with a new structure
     auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
@@ -152,22 +178,41 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   }
 
  private:
-  std::shared_ptr<Group> RebuildGroup(cinn::dialect::FusionOp fusion_op) const {
+  std::shared_ptr<Group> RebuildGroup(cinn::dialect::GroupOp fusion_op) const {
     auto group = std::make_shared<Group>();
-    group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
+    auto attr = fusion_op.attribute("group_info")
+                    .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                    .data();
+
+    group->op_pattern_kind = attr.op_pattern_kind;
+    group->loop_ranges = attr.loop_ranges;
+
+    std::cerr << "rebuild loop range\n";
+    for (auto d : group->loop_ranges) {
+      std::cerr << "d " << d << std::endl;
+    }
+    group->reduce_axis = attr.reduce_axis;
+    group->alignment_schedule_info = attr.alignment_schedule_info;
 
     // Rebuild ops of the group
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
     for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
         group->ops.push_back(op);
+        printer.PrintOperation(op);
+        ss << std::endl;
+
         group->ops_set.insert(op);
-        group->op_pattern_kind =
-            static_cast<int>(CompatibleInfo::OpKind(*op)) >
-                    static_cast<int>(group->op_pattern_kind)
-                ? CompatibleInfo::OpKind(*op)
-                : group->op_pattern_kind;
+        // group->op_pattern_kind =
+        //     static_cast<int>(CompatibleInfo::OpKind(*op)) >
+        //             static_cast<int>(group->op_pattern_kind)
+        //         ? CompatibleInfo::OpKind(*op)
+        //         : group->op_pattern_kind;
       }
     }
+
+    std::cerr << "program \n" << ss.str() << std::endl;
 
     // Rebuild output_ops and input_ops of the group
     auto yeild_op = fusion_op.GetOperators().back();
