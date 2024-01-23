@@ -22,7 +22,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 import paddle.distributed as dist
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -553,9 +553,12 @@ create_test_bf16(TestConcatOp4)
 
 
 class TestConcatOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The input type of concat_op should be list.
 
             x1 = paddle.static.data(shape=[-1, 4], dtype='int32', name='x1')
@@ -692,8 +695,11 @@ class TestConcatAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The item in input must be Variable.
             x2 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
