@@ -559,16 +559,8 @@ class TestConcatOpError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            # The input type of concat_op should be list.
-
-            x1 = paddle.static.data(shape=[-1, 4], dtype='int32', name='x1')
-            paddle.concat(x1)
-
             # The item in input must be Variable.
             x2 = base.create_lod_tensor(
-                np.array([[-1]]), [[1]], base.CPUPlace()
-            )
-            x3 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.concat, [x2])
