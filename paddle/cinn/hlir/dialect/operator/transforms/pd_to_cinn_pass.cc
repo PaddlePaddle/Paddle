@@ -19,8 +19,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/pass.h"
@@ -31,7 +30,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class SumOpPattern : public paddle::drr::DrrPatternBase<SumOpPattern> {
+class SumOpPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
@@ -55,9 +54,11 @@ class SumOpPattern : public paddle::drr::DrrPatternBase<SumOpPattern> {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "SumOpPattern"; }
 };
 
-class MaxOpPattern : public paddle::drr::DrrPatternBase<MaxOpPattern> {
+class MaxOpPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
@@ -80,9 +81,11 @@ class MaxOpPattern : public paddle::drr::DrrPatternBase<MaxOpPattern> {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "MaxOpPattern"; }
 };
 
-class MinOpPattern : public paddle::drr::DrrPatternBase<MinOpPattern> {
+class MinOpPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
@@ -105,9 +108,11 @@ class MinOpPattern : public paddle::drr::DrrPatternBase<MinOpPattern> {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "MinOpPattern"; }
 };
 
-class ProdOpPattern : public paddle::drr::DrrPatternBase<ProdOpPattern> {
+class ProdOpPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
@@ -130,6 +135,8 @@ class ProdOpPattern : public paddle::drr::DrrPatternBase<ProdOpPattern> {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
+
+  std::string name() const override { return "ProdOpPattern"; }
 };
 
 class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
@@ -337,6 +344,9 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
           end_vec,
           infer_flags,
           decrease_axis);
+      // NOTE(Aurelius84): In SliceRawInferMeta, it not always share_lod, so
+      // we need to update it maually.
+      cinn_slice.result(0).set_type(op.result(0).type());
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_slice.result(0));
       rewriter.EraseOp(op);
 
@@ -586,7 +596,7 @@ class ExpandOpPattern
   }
 };
 
-class UniformOpPattern : public paddle::drr::DrrPatternBase<UniformOpPattern> {
+class UniformOpPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
@@ -632,6 +642,8 @@ class UniformOpPattern : public paddle::drr::DrrPatternBase<UniformOpPattern> {
                 {"diag_val", pattern.Attr("min_value")}});
     res.Tensor("ret") = cinn_uniform();
   }
+
+  std::string name() const override { return "ProdOpPattern"; }
 };
 
 PdOpToCinnOpPass::PdOpToCinnOpPass()

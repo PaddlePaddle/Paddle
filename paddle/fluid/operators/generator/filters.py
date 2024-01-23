@@ -143,7 +143,7 @@ def assert_dense_or_sr(input_type):
     )
 
 
-def find_optinal_inputs_name(inputs):
+def find_optional_inputs_name(inputs):
     optional_inputs_name = [
         input["fluid_name"] for input in inputs if input["optional"] is True
     ]
