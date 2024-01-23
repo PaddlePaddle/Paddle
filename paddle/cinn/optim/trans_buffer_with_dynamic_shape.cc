@@ -15,6 +15,7 @@
 #include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
 
 #include <numeric>
+#include <unordered_set>
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/dev_info_manager.h"
@@ -41,33 +42,42 @@ struct Mutator : public ir::IRMutator<> {
   void Visit(const ir::_Tensor_* tensor, Expr* expr) override {
     if (!tensor->buffer.defined()) return;
     auto buf = tensor->buffer.As<ir::_Buffer_>();
-    auto buf_size = ir::Expr(1);
+    if (!visited_buf_.count(buf->name)) {
+      visited_buf_.insert(buf->name);
+      auto buf_size = ir::Expr(1);
 
-    for (size_t i = 0; i < expr->as_tensor()->shape.size(); ++i) {
-      auto e = expr->as_tensor()->shape[i];
-      auto buf_e = buf->shape[i];
-      CHECK(ir::ir_utils::IRCompare(e, buf_e));
-      if (buf->memory_type == ir::MemoryType::GPULocal) {
-        e = cinn::common::AutoSimplify(e);
-        if (!e.is_constant()) {
-          auto new_shape = ir::ir_utils::IRCopy(e);
-          new_shape = analyzer.UpperBound(new_shape);
-          CHECK(new_shape.is_constant());
-          e = new_shape;
+      for (size_t i = 0; i < expr->as_tensor()->shape.size(); ++i) {
+        auto e = expr->as_tensor()->shape[i];
+        auto buf_e = buf->shape[i];
+        CHECK(ir::ir_utils::IRCompare(e, buf_e));
+        if (buf->memory_type == ir::MemoryType::GPULocal) {
+          e = cinn::common::AutoSimplify(e);
+          if (!e.is_constant()) {
+            auto new_shape = ir::ir_utils::IRCopy(e);
+            new_shape = analyzer.UpperBound(new_shape);
+            CHECK(new_shape.is_constant());
+            e = new_shape;
+          }
+          buf_e = ir::ir_utils::IRCopy(e);
         }
-        buf_e = ir::ir_utils::IRCopy(e);
+        buf_size = buf_size * buf_e;
+        Visit(&e, &e);
       }
-      buf_size = buf_size * buf_e;
-      Visit(&e, &e);
-    }
-    if (buf->memory_type == ir::MemoryType::GPUShared) {
-      buf_size = analyzer.UpperBound(buf_size);
-      CHECK(buf_size.is_constant());
-      shared_mem_size_used_ += buf_size.get_constant();
+      if (buf->memory_type == ir::MemoryType::GPUShared) {
+        buf_size = analyzer.UpperBound(buf_size);
+        CHECK(buf_size.is_constant());
+        shared_mem_size_used_ += static_cast<size_t>(buf_size.get_constant()) *
+                                 static_cast<size_t>(buf->dtype.bits()) / 8;
+      }
+    } else {
+      for (auto& e : expr->as_tensor()->shape) {
+        Visit(&e, &e);
+      }
     }
   }
 
   size_t shared_mem_size_used_;
+  std::unordered_set<std::string> visited_buf_;
 };
 
 }  // namespace
