@@ -61,7 +61,7 @@ def _check_normalization(norm):
 def _check_fft_n(n):
     if not isinstance(n, int):
         raise ValueError(
-            f"Invalid FFT argument n({n}), it shoule be an integer."
+            f"Invalid FFT argument n({n}), it should be an integer."
         )
     if n <= 0:
         raise ValueError(f"Invalid FFT argument n({n}), it should be positive.")
@@ -87,7 +87,7 @@ def _check_fft_shape(x, s):
 def _check_fft_axis(x, axis):
     ndim = x.ndim
     if not isinstance(axis, int):
-        raise ValueError(f"Invalid FFT axis ({axis}), it shoule be an integer.")
+        raise ValueError(f"Invalid FFT axis ({axis}), it should be an integer.")
     if axis < -ndim or axis >= ndim:
         raise ValueError(
             f"Invalid FFT axis ({axis}), it should be in range [-{ndim}, {ndim})"

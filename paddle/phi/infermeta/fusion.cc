@@ -2630,7 +2630,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
         embs_dim.size(),
         2,
         phi::errors::InvalidArgument(
-            "The Emb dim's size shoule be 2, but found %d.", embs_dim.size()));
+            "The Emb dim's size should be 2, but found %d.", embs_dim.size()));
     PADDLE_ENFORCE_EQ(
         embs_dim[1],
         dims_bias[0],
@@ -3158,7 +3158,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
                 std::end(mkldnn_data_type_list),
                 mkldnn_data_type) != std::end(mkldnn_data_type_list),
       true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
+      phi::errors::InvalidArgument("The mkldnn_data_type should be [float32, "
                                    "int8, bfloat16], but found %s.",
                                    mkldnn_data_type.c_str()));
 
