@@ -558,7 +558,7 @@ pir::Operation* ProcessDyShapeGroup(
   VLOG(0) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
 
   auto group_inputs = GetBlockOutsideInput(group->ops);
-  shape_analysis.PrintShapeOrDatas();
+  // shape_analysis.PrintShapeOrDatas();
 
   // has multiple branch
   if (broadcast_tree
