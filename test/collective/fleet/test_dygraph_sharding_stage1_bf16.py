@@ -22,6 +22,12 @@ class TestDygraphShardingStage1(TestMultipleGpus):
     def test_dygraph_sharding_stage1_bf16(self):
         self.run_mnist_2gpu('dygraph_group_sharded_stage1_bf16.py')
 
+    def test_dygraph_sharding_stage1_fp16(self):
+        self.run_mnist_2gpu('dygraph_group_sharded_stage1_fp16.py')
+
+    def test_dygraph_sharding_stage1_dp(self):
+        self.run_mnist_ngpu('dygraph_group_sharded_stage1_dp.py', ngpu=4)
+
 
 if __name__ == "__main__":
     unittest.main()
