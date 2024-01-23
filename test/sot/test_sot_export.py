@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import paddle
-from paddle.jit.sot.utils import with_export_guard
+from paddle.jit.sot.utils import min_graph_size_guard, with_export_guard
 
 
 class Net(paddle.nn.Layer):
@@ -35,11 +36,13 @@ class Net(paddle.nn.Layer):
 
 
 class TestSotExport(unittest.TestCase):
+    @min_graph_size_guard(0)
     @with_export_guard("/tmp")
     def test_basic(self):
         net = Net()
         x = paddle.to_tensor([2, 3], dtype="float32", stop_gradient=True)
         y = paddle.jit.to_static(net)(x)
+        assert os.path.exists("/tmp/SIR_0.py")
 
 
 if __name__ == "__main__":

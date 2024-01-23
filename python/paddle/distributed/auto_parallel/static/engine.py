@@ -825,14 +825,19 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self._dp_world_sizes = []
-        self._dp_ranks = []
-        for feed_var in feed_list:
-            dp_world_size, dp_rank = auto_utils.get_input_split_info(
-                self._cur_rank, feed_var, self._dist_contexts[mode]
-            )
-            self._dp_world_sizes.append(dp_world_size)
-            self._dp_ranks.append(dp_rank)
+        self._dp_world_sizes = getattr(self, "_dp_world_sizes", [])
+        self._dp_ranks = getattr(self, "_dp_ranks", [])
+        if mode in ['eval', 'predice'] or (
+            not self._dp_world_sizes and not self._dp_ranks
+        ):
+            self._dp_world_sizes = []
+            self._dp_ranks = []
+            for feed_var in feed_list:
+                dp_world_size, dp_rank = auto_utils.get_input_split_info(
+                    self._cur_rank, feed_var, self._dist_contexts[mode]
+                )
+                self._dp_world_sizes.append(dp_world_size)
+                self._dp_ranks.append(dp_rank)
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
@@ -902,7 +907,7 @@ class Engine:
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
-            # The model's instance variables (not paramters), used in forward function,
+            # The model's instance variables (not parameters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
                 for buffer in self._model.buffers():

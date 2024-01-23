@@ -938,7 +938,7 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
                     1,
                     phi::errors::InvalidArgument(
                         "ShapeError: The number of dimensions of 'Alpha' "
-                        "must be greater than or euqal to 1. "
+                        "must be greater than or equal to 1. "
                         "But received Alpha's dimensions = %d,",
                         alpha_dim.size()));
   out->set_dims(alpha_dim);
@@ -3192,7 +3192,7 @@ void PoolInferMeta(const MetaTensor& x,
                     2U,
                     errors::InvalidArgument(
                         "the dimension of input minus the size of "
-                        "Attr(kernel_size_) must be euqal to 2 in Op(pool). "
+                        "Attr(kernel_size_) must be equal to 2 in Op(pool). "
                         "But received: the dimension of input minus the size "
                         "of Attr(kernel_size_) is %d, the "
                         "input's dimension is %d, the shape of input "
@@ -4780,6 +4780,12 @@ void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
 void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
+void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_layout(x.layout());
   out->share_lod(x);
 }
 

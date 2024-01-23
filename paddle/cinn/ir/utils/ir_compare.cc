@@ -76,7 +76,7 @@ bool IrEqualVisitor::Compare(const std::string& lhs, const std::string& rhs) {
   }
 
   if (!equal) {
-    VLOG(5) << "Not euqal on name, lhs=" << lhs << ", rhs=" << rhs;
+    VLOG(5) << "Not equal on name, lhs=" << lhs << ", rhs=" << rhs;
   }
 
   return equal;
