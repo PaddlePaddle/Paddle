@@ -30,7 +30,7 @@ namespace paddle {
 namespace framework {
 
 typedef void (*lower_func_ptr_g)(void*, int32_t, void*);
-typedef void (*infer_shape_func_ptr_g)(void*, int32_t, int32_t**);
+typedef void (*infer_shape_func_ptr_g)(void*, int32_t, int64_t**);
 
 class CinnJitInstruction::FnPtrImpl {
   using CINNKernelInfo = cinn::hlir::framework::pir::CINNKernelInfo;
@@ -55,9 +55,11 @@ class CinnJitInstruction::FnPtrImpl {
               int_arg_mp.second.dim_idx)));
     }
 
-    VLOG(4) << "Run func_args_ size: " << func_args_.size();
-    for (const auto& args : func_args_) {
-      VLOG(4) << " args type_code: " << args.type_code();
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "Run func_args_ size: " << func_args_.size();
+      for (const auto& args : func_args_) {
+        VLOG(4) << " args type_code: " << args.type_code();
+      }
     }
 
     // 3. Launch host kernel
@@ -84,23 +86,25 @@ class CinnJitInstruction::FnPtrImpl {
     }
 
     // 3. Define an array of Pointers to hold the output tensor shape
-    int32_t* output_tensor_shapes[output_tensor_size];
+    std::vector<int64_t*> output_tensor_shapes(output_tensor_size);
     for (int i = 0; i < output_tensor_size; ++i) {
-      output_tensor_shapes[i] = reinterpret_cast<int32_t*>(
+      output_tensor_shapes[i] = reinterpret_cast<int64_t*>(
           malloc(kernel_args[input_tensor_size + i]->dims().size() *
-                 sizeof(int32_t*)));
+                 sizeof(int64_t*)));
     }
 
-    VLOG(4) << "InferShape func_args_ size: " << func_args_.size();
-    for (const auto& args : func_args_) {
-      VLOG(4) << " args type_code: " << args.type_code();
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "InferShape func_args_ size: " << func_args_.size();
+      for (const auto& args : func_args_) {
+        VLOG(4) << " args type_code: " << args.type_code();
+      }
     }
 
     // 4. Launch infer_shape_fn_ptr to infer shape of output tensor
     ((infer_shape_func_ptr_g)cinn_kernel_info_.infer_shape_fn_ptr)(
         static_cast<void*>(func_args_.data()),
         func_args_.size(),
-        output_tensor_shapes);
+        output_tensor_shapes.data());
 
     // 5. Resize shape of output tensor
     for (int i = 0; i < output_tensor_size; ++i) {

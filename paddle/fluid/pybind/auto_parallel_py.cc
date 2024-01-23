@@ -778,8 +778,8 @@ void BindAutoParallel(py::module *m) {
       py::return_value_policy::reference);
 
   // TODO(liuzhenhai): DistributedMapper is not used for now, but
-  // dist_mapper_test need the symbols forch DistributedMapper to be linked,
-  // remove it latter
+  // dist_mapper_test need the symbols touch DistributedMapper to be linked,
+  // remove it later
   m->def("touch_dist_mapper", []() {
     DistributedMapper mapper;
     return mapper.to_string();

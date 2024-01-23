@@ -98,7 +98,7 @@ def get_infermeta_inputs_str(
     infermeta_inputs_str += "\n"
 
     infermeta_inputs_str += '  VLOG(4) << "Builder construction outputs";\n'
-    # Prepar input type
+    # Prepare input type
     for idx in range(len(op_input_name_list)):
         if op_input_name_list[idx] not in inuse_infer_meta_args:
             continue
@@ -367,7 +367,7 @@ def GenBuildOutputsPart2(
             elif attr_dtype[0] == "pir::StrAttribute":
                 build_output_str += ""
             else:
-                assert "mutable attribtue type is not right."
+                assert "mutable attribute type is not right."
         build_output_str += "\n"
 
     # Prepare inputs_meta_tensor & attributes for infer meta
