@@ -666,7 +666,7 @@ def _check_inputs(func, xs, v=None):
     if isinstance(xs, typing.Sequence) and not all(
         isinstance(x, framework.Variable) for x in xs
     ):
-        raise TypeError("All elements of 'xs' shoule be Tensor.")
+        raise TypeError("All elements of 'xs' should be Tensor.")
 
     if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
         raise TypeError(
@@ -676,7 +676,7 @@ def _check_inputs(func, xs, v=None):
     if isinstance(v, typing.Sequence) and not all(
         isinstance(e, framework.Variable) for e in v
     ):
-        raise TypeError("All elements of 'xs' shoule be Tensor.")
+        raise TypeError("All elements of 'xs' should be Tensor.")
 
 
 def _check_v_shape(v, refs):

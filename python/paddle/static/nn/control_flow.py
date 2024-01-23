@@ -175,6 +175,51 @@ class WhileGuard(BlockGuard):
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
+class If:
+    '''
+    **If**
+
+    If is an operator that bind two blocks (true_block and false_block) to a specific condition,
+    According to the condition, the corresponding block will be executed.
+
+    Args:
+        cond (Value): A value whose data type is bool controlling which block is executed.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> from paddle.static.nn.control_flow import ConditionalBlock
+
+            >>> label = paddle.rand([1])
+            >>> limit = paddle.ones([1]) * 0.5
+            >>> cond = paddle.less_than(x=label, y=limit)
+            >>> if_op = If(cond)
+            >>> with if_op.true_block():
+            ...     pass
+            >>> with if_op.false_block():
+            ...     pass
+    '''
+
+    def __init__(self, cond):
+        if not isinstance(cond, list):
+            check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.If')
+            if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
+                raise TypeError(
+                    "condition expected shape as [1], but given shape as {}.".format(
+                        list(cond.shape)
+                    )
+                )
+        self.if_op = build_if_op(cond)
+        self.cond_var = self.if_op.cond()
+
+    def true_block(self):
+        return self.if_op.true_block()
+
+    def false_block(self):
+        return self.if_op.false_block()
+
+
 class ConditionalBlock:
     '''
     **ConditionalBlock**
@@ -208,13 +253,23 @@ class ConditionalBlock:
     '''
 
     def __init__(self, inputs, is_scalar_condition=False, name=None):
-        for each_input in inputs:
-            check_type(each_input, "input", Variable, "ConditionalBlock")
         self.inputs = inputs
+        if in_pir_mode():
+            if is_scalar_condition and len(inputs) != 1:
+                raise TypeError(
+                    "For ConditionalBlock Api,  Only support one input while is_scalar_condition is True"
+                )
+            return
+        else:
+            for each_input in inputs:
+                check_type(each_input, "input", Variable, "ConditionalBlock")
+
         self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
 
     def block(self):
+        if in_pir_mode():
+            return If(self.inputs).true_block()
         return ConditionalBlockGuard(self)
 
     def complete(self):
@@ -1244,9 +1299,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         return None
     true_output = None
     false_output = None
+    check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+    check_type(name, "name", (str, type(None)), "base.layers.cond")
     if in_pir_mode():
-        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-        check_type(name, "name", (str, type(None)), "base.layers.cond")
         if_op = build_if_op(pred)
         if true_fn is not None:
             if not callable(true_fn):
@@ -1267,8 +1322,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             with if_op.false_block():
                 false_output = false_fn()
     else:
-        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-        check_type(name, "name", (str, type(None)), "base.layers.cond")
         helper = LayerHelper('cond', **locals())
         copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
         if true_fn is not None:

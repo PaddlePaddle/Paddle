@@ -31,7 +31,7 @@ class CollectiveLauncher(LauncherInterface):
         self.procs = []
 
     def launch(self):
-        logger.info("collective lauchner launch ...")
+        logger.info("collective launcher launch ...")
         args = self.args
         self.tmp_dir = tempfile.mkdtemp()
         cluster, pod = paddle.distributed.fleet.launch.get_cluster_info(args)
@@ -52,14 +52,14 @@ class CollectiveLauncher(LauncherInterface):
             logger.info(f"launch proc_id:{proc.proc.pid} idx:{idx}")
 
     def stop(self):
-        logger.info("collective lauchner stop ...")
+        logger.info("collective launcher stop ...")
         if not self._terminate_procs():
             logger.error("kill process failed")
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir)
 
     def watch(self):
-        logger.debug("collective lauchner watch ...")
+        logger.debug("collective launcher watch ...")
         for p in self.procs:
             if p.log_fn and p.local_rank == 0:
                 pull_worker_log(p)

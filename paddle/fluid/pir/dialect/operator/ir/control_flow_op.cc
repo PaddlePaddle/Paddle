@@ -218,8 +218,14 @@ void IfOp::VerifyRegion() {
       1u,
       phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
                                       (*this)->region(0).size()));
-  if ((*this)->region(0).front().size() > 0) {
-    auto &true_last_op = (*this)->region(0).front().back();
+  if ((*this)->num_results() != 0) {
+    auto &true_block = (*this)->region(0).front();
+    PADDLE_ENFORCE_GT(
+        true_block.size(),
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The true block must have at least one op yield op."));
+    auto &true_last_op = true_block.back();
     PADDLE_ENFORCE_EQ(true,
                       true_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
@@ -229,15 +235,19 @@ void IfOp::VerifyRegion() {
                       phi::errors::PreconditionNotMet(
                           "The size of last of true block op's input must be "
                           "equal to IfOp's outputs num."));
-  }
-  VLOG(4) << "Start Verifying false branch.";
-  PADDLE_ENFORCE_EQ(
-      (*this)->region(1).size(),
-      1u,
-      phi::errors::PreconditionNotMet("The size %d of false_region must be 1.",
-                                      (*this)->region(0).size()));
-  if ((*this)->region(1).front().size() > 0) {
-    auto &false_last_op = (*this)->region(1).front().back();
+    VLOG(4) << "Start Verifying false branch.";
+    PADDLE_ENFORCE_EQ((*this)->region(1).size(),
+                      1u,
+                      phi::errors::PreconditionNotMet(
+                          "The size %d of false_region must be 1.",
+                          (*this)->region(0).size()));
+    auto &false_block = (*this)->region(1).front();
+    PADDLE_ENFORCE_GT(
+        false_block.size(),
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The false block must have at least one op yield op."));
+    auto &false_last_op = false_block.back();
     PADDLE_ENFORCE_EQ(true,
                       false_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
@@ -250,7 +260,7 @@ void IfOp::VerifyRegion() {
   }
 }
 
-std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
+std::vector<std::vector<pir::Value>> IfOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs_,
     const std::vector<std::vector<pir::Value>> &outputs,
@@ -281,7 +291,7 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
   auto if_grad = ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
       cond_val, std::move(output_types));
 
-  std::vector<std::vector<pir::OpResult>> res{inputs_.size()};
+  std::vector<std::vector<pir::Value>> res{inputs_.size()};
   for (size_t i = 0, j = 0; i < inputs_.size(); ++i) {
     res[i].resize(1);
     if (!stop_gradients[i][0]) {
@@ -450,7 +460,7 @@ void WhileOp::VerifyRegion() {
   VLOG(4) << "Successful end verifying sub regions for: WhileOp.";
 }
 
-std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
+std::vector<std::vector<pir::Value>> WhileOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
     const std::vector<std::vector<pir::Value>> &outputs,
@@ -515,13 +525,13 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
   }
   auto while_grad = builder.Build<WhileOp>(cond_val, loop_vars);
 
-  std::vector<std::vector<pir::OpResult>> res(inputs.size());
+  std::vector<std::vector<pir::Value>> res(inputs.size());
   for (size_t i = 0, j = 0; i < inputs.size(); ++i) {
     res[i].push_back(stop_gradients[i][0] ? nullptr : while_grad.result(j++));
   }
   return res;
 }
-std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
+std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
     const std::vector<std::vector<pir::Value>> &outputs,
@@ -537,7 +547,7 @@ std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
           inputs.size()));
   auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
       TuplePushOp::dyn_cast(op).outlet());
-  std::vector<std::vector<pir::OpResult>> res{inputs.size()};
+  std::vector<std::vector<pir::Value>> res{inputs.size()};
   res[0].resize(1);
   for (size_t i = 1u; i < inputs.size(); ++i) {
     res[i].resize(1);
