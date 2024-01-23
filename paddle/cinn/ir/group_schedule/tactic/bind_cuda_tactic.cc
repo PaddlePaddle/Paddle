@@ -39,7 +39,8 @@ void BindCudaTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
        ++i, ++loop_idx) {
     const auto& axis = context_->iter_space_info.sp_space[i];
     const IterativeSpaceInfo::AxisType& axis_type = std::get<1>(axis);
-    if (axis_type2bind_info.count(axis_type) != 0) {
+    if (axis_type2bind_info.count(axis_type) != 0 &&
+        loops[loop_idx].As<ir::For>()->is_serial()) {
       sch->Bind(loops[loop_idx], axis_type2bind_info.at(axis_type));
     }
   }
@@ -48,7 +49,8 @@ void BindCudaTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
        ++i, ++loop_idx) {
     const auto& axis = context_->iter_space_info.rb_space[i];
     const IterativeSpaceInfo::AxisType& axis_type = std::get<1>(axis);
-    if (axis_type2bind_info.count(axis_type) != 0) {
+    if (axis_type2bind_info.count(axis_type) != 0 &&
+        loops[loop_idx].As<ir::For>()->is_serial()) {
       sch->Bind(loops[loop_idx], axis_type2bind_info.at(axis_type));
     }
   }

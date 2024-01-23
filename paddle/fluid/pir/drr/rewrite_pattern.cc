@@ -497,9 +497,9 @@ void DrrRewritePattern::ReplaceOutputTensor(
       const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
       rewriter.ReplaceAllUsesWith(src_ir_tensor, res_ir_tensor);
     } else {
-      LOG(WARNING) << "The output tensor (" << output_name
-                   << ") in the result_pattern_graph is not the tensor"
-                      " in source_pattern_graph.";
+      VLOG(5) << "[DRR WARNING] The output tensor (" << output_name
+              << ") in the result_pattern_graph is not the tensor"
+                 " in source_pattern_graph.";
     }
   }
 }

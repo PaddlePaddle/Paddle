@@ -985,6 +985,8 @@ class TestLayer(LayerTest):
                 self.assertRaises(TypeError, test_type)
 
         _test_errors()
+        with paddle.pir_utils.IrGuard():
+            _test_errors()
 
     @test_with_pir_api
     def test_spectral_norm(self):
@@ -1119,6 +1121,7 @@ class TestLayer(LayerTest):
                 conv3d1.bias.numpy(), conv3d2.bias.numpy()
             )
 
+    @test_with_pir_api
     def test_while_loop(self):
         with self.static_graph():
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)

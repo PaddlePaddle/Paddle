@@ -30,8 +30,6 @@ namespace cinn::adt {
 MapExpr GenerateMapExpr(
     const std::shared_ptr<cinn::hlir::framework::pir::Group>& group);
 
-void TryGenerateMapExprFromGraph(const hlir::framework::pir::GroupList& groups);
-
 void TryGenerateMapExprFromGroup(
     const std::shared_ptr<hlir::framework::pir::Group>& fusion_group);
 

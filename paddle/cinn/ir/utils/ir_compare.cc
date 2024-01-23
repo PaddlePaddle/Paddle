@@ -390,9 +390,7 @@ bool IrEqualVisitor::Visit(const ScheduleBlockRealize* lhs, const Expr* other) {
 
 bool IrEqualVisitor::Visit(const _Dim_* lhs, const Expr* other) {
   auto* rhs = other->As<_Dim_>();
-  return lhs->name == rhs->name &&
-         lhs->GetSymbolName() == rhs->GetSymbolName() &&
-         lhs->GetRealDimSize() == rhs->GetRealDimSize();
+  return lhs->name == rhs->name && lhs->ToString() == rhs->ToString();
 }
 
 bool IRCompare(const Expr& lhs, const Expr& rhs, bool allow_name_suffix_diff) {

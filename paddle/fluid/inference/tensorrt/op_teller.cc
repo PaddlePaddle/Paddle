@@ -1662,14 +1662,10 @@ struct SimpleOpTypeSetTeller : public Teller {
           fill_constant_inputs.end()) {
         if (!desc.Input("ValueTensor").empty()) return false;
       }
-      if (fill_constant_inputs.find("ShapeTensor") !=
-          fill_constant_inputs.end()) {
-        if (!desc.Input("ShapeTensor").empty()) return false;
+      if (desc.HasInput("ShapeTensor")) {
+        if (desc.Input("ShapeTensor").size() > 1) return false;
       }
-      if (fill_constant_inputs.find("ShapeTensorList") !=
-          fill_constant_inputs.end()) {
-        if (!desc.Input("ShapeTensorList").empty()) return false;
-      }
+
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : 5;

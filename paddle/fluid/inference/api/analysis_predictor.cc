@@ -113,6 +113,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
@@ -795,18 +796,19 @@ bool AnalysisPredictor::PrepareExecutor() {
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
         //----------------------------------------------------------------------------------------------//
-        // Operator fusion pass
-        gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
-        gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
-        gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
-        gpu_pm.AddPass(::pir::CreateFcFusePass());
-        gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
-        gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
+        // Functional pass
+        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
         //----------------------------------------------------------------------------------------------//
 
         //----------------------------------------------------------------------------------------------//
-        // Functional pass
-        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
+        // Operator fusion pass
+        // gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
+        gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
+        gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
+        gpu_pm.AddPass(::pir::CreateFcFusePass());
+        gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
+        gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
         //----------------------------------------------------------------------------------------------//
 
         //----------------------------------------------------------------------------------------------//
@@ -833,6 +835,24 @@ bool AnalysisPredictor::PrepareExecutor() {
           gpu_pm.EnableIRPrinting();
         }
         gpu_pm.Run(pir_program_.get());
+      } else {
+        ::pir::PassManager cpu_pm(::pir::IrContext::Instance(), 2);
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        cpu_pm.AddPass(std::move(constant_folding_pass));
+        cpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        cpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        //----------------------------------------------------------------------------------------------//
+        if (!config_.glog_info_disabled()) {
+          cpu_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          cpu_pm.EnableIRPrinting();
+        }
+        cpu_pm.Run(pir_program_.get());
       }
 
       pir_program_ = std::move(
@@ -1769,6 +1789,12 @@ void AnalysisPredictor::PrepareArgument() {
         model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
+      pass_builder->AppendPass("map_op_to_another_pass");
+      pass_builder->AppendPass("simplify_with_basic_ops_pass");
+      pass_builder->AppendPass("is_test_pass");
+      if (!FLAGS_enable_pir_in_executor) {
+        pass_builder->AppendPass("constant_folding_pass");
+      }
       pass_builder->AppendPass("auto_mixed_precision_pass");
       if (!FLAGS_enable_pir_in_executor) {
         pass_builder->AppendPass("inplace_op_var_pass");
@@ -1800,7 +1826,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
 
-  // mixed precison.
+  // mixed precision.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
   argument_->SetMixedWhiteList(config_.mixed_white_list_);
