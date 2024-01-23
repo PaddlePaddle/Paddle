@@ -48,23 +48,21 @@ namespace phi {
 namespace {
 #ifndef PADDLE_WITH_HIP
 
-template <typename T, typename U, typename V>
-void HostApplyRMSNorm(T* output,
+template <typename Context, typename T, typename U, typename V>
+void HostApplyRMSNorm(const Context& dev_ctx,
+                      T* output,
                       U* invvar,
                       const T* input,
                       int n1,
                       int n2,
                       double epsilon,
-                      const V* gamma,
-                      cudaStream_t stream) {
-  // auto stream = at::cuda::getCurrentCUDAStream().stream();
+                      const V* gamma) {
   const dim3 threads(32, 4, 1);
-  // const uint64_t maxGridY =
-  // at::cuda::getCurrentDeviceProperties()->maxGridSize[1];
-  const uint64_t maxGridY = GetDeviceProp()->maxGridSize[1];
+  const uint64_t maxGridY = dev_ctx.GetCUDAMaxGridDimSize()[1];
   const dim3 blocks(1, std::min((uint64_t)n1, maxGridY), 1);
   int nshared =
       threads.y > 1 ? threads.y * sizeof(U) + (threads.y / 2) * sizeof(U) : 0;
+  cudaStream_t stream = dev_ctx.stream(); 
   cuApplyRMSNorm<<<blocks, threads, nshared, stream>>>(
       output, invvar, input, n1, n2, U(epsilon), gamma);
 }
@@ -88,14 +86,14 @@ void cuda_rms_norm(const Context& dev_ctx,
       T,
       scale.dtype(),
       "cuda_rms_norm_kernel",
-      HostApplyRMSNorm(out->data<T>(),
+      HostApplyRMSNorm(dev_ctx,
+                       out->data<T>(),
                        invvar->data<float>(),
                        const_cast<T*>(x.data<T>()),
                        rows,
                        cols,
                        epsilon,
-                       const_cast<SCALE_TYPE*>(scale.data<SCALE_TYPE>()),
-                       dev_ctx.stream()));
+                       const_cast<SCALE_TYPE*>(scale.data<SCALE_TYPE>())));
 }
 
 #endif
@@ -109,7 +107,7 @@ void FusedRmsNormKernel(const Context& dev_ctx,
                         DenseTensor* out,
                         DenseTensor* invvar) {
 #if defined(PADDLE_WITH_HIP)
-  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+  PADDLE_THROW(phi::errors::Unimplemented("Please compile with CUDA, ROCM platform isn't support it."));
 #else
   cuda_rms_norm<T, Context>(dev_ctx, x, scale, epsilon, out, invvar);
 #endif

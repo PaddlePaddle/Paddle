@@ -38,6 +38,7 @@ limitations under the License.
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/enforce.h"
 #ifndef PADDLE_WITH_HIP
 #include <cuda.h>          // NOLINT
 #include <cuda_runtime.h>  // NOLINT
@@ -52,8 +53,9 @@ namespace {  // NOLINT
 #define DEFAULT_THROW(NAME, TYPE)                           \
   default:                                                  \
     do {                                                    \
-      PD_THROW(#NAME, " not implemented for '", TYPE, "'"); \
-    } while (0);                                            \
+      PADDLE_THROW(phi::errors::Unimplemented(               \
+          "(%s) is  not implemented for (%s).",   #NAME, TYPE));          \
+    } while (0);                                                          \
     break
 
 #define DISPATCH_SCALE_TYPE(INPUT_TYPE, SCALE_DTYPE, NAME, ...)            \
@@ -919,20 +921,6 @@ __global__ void cuComputeGradInput(const T* __restrict__ dout,
     __syncthreads();
   }
 }
-
-static cudaDeviceProp GetDevicePropImpl() {
-  int device = -1;
-  PD_CHECK(cudaGetDevice(&device) == cudaSuccess);
-  cudaDeviceProp prop;
-  PD_CHECK(cudaGetDeviceProperties(&prop, device) == cudaSuccess);
-  return prop;
-}
-
-static cudaDeviceProp* GetDeviceProp() {
-  static auto prop = GetDevicePropImpl();
-  return &prop;
-}
-
 #endif
 }  // namespace
 

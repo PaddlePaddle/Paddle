@@ -58,8 +58,8 @@ void HostRMSNormGradient(const Context& dev_ctx,
                          const V* gamma,
                          double epsilon,
                          T* grad_input,
-                         V* grad_gamma,
-                         cudaStream_t stream) {
+                         V* grad_gamma) {
+  cudaStream_t stream = dev_ctx.stream();                      
   if (gamma != NULL) {
     const int part_size = 16;
     const dim3 threads2(32, 4, 1);
@@ -102,7 +102,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
   }
 
   // compute grad_input
-  const uint64_t maxGridY = GetDeviceProp()->maxGridSize[1];
+  const uint64_t maxGridY = dev_ctx.GetCUDAMaxGridDimSize()[1];
   const dim3 blocks1(1, std::min((uint64_t)n1, maxGridY), 1);
   const dim3 threads1(32, 4, 1);
   int nshared = threads1.y > 1 ? threads1.y * threads1.x * sizeof(U) : 0;
@@ -154,8 +154,7 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                           scale.data<SCALE_TYPE>(),
                           epsilon,
                           grad_x->data<T>(),
-                          grad_scale->data<SCALE_TYPE>(),
-                          dev_ctx.stream()));
+                          grad_scale->data<SCALE_TYPE>()));
 }
 #endif
 }  // namespace
@@ -170,7 +169,7 @@ void FusedRmsNormGradKernel(const Context& dev_ctx,
                             DenseTensor* grad_x,
                             DenseTensor* grad_scale) {
 #if defined(PADDLE_WITH_HIP)
-  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+  PADDLE_THROW(phi::errors::Unimplemented("Please compile with CUDA, ROCM platform isn't support it."));
 #else
   cuda_rms_norm_gradient<T, Context>(
       dev_ctx, x, scale, invvar, dy, epsilon, grad_x, grad_scale);
