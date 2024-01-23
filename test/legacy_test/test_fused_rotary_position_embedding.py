@@ -342,30 +342,38 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         )
 
         paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            q = paddle.static.data(
+                name="q", shape=self.shape_q, dtype=self.dtype
+            )
+            k = paddle.static.data(
+                name="k", shape=self.shape_k, dtype=self.dtype
+            )
+            v = paddle.static.data(
+                name="v", shape=self.shape_v, dtype=self.dtype
+            )
+            sin = paddle.static.data(
+                name="sin",
+                shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
+                dtype=self.dtype,
+            )
+            cos = paddle.static.data(
+                name="cos",
+                shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
+                dtype=self.dtype,
+            )
 
-        q = paddle.static.data(name="q", shape=self.shape_q, dtype=self.dtype)
-        k = paddle.static.data(name="k", shape=self.shape_k, dtype=self.dtype)
-        v = paddle.static.data(name="v", shape=self.shape_v, dtype=self.dtype)
-        sin = paddle.static.data(
-            name="sin",
-            shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
-            dtype=self.dtype,
-        )
-        cos = paddle.static.data(
-            name="cos",
-            shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
-            dtype=self.dtype,
-        )
-
-        out_q, out_k, out_v = fused_rotary_position_embedding(
-            q,
-            k,
-            v,
-            sin,
-            cos,
-            position_ids=None,
-            use_neox_rotary_style=False,
-        )
+            out_q, out_k, out_v = fused_rotary_position_embedding(
+                q,
+                k,
+                v,
+                sin,
+                cos,
+                position_ids=None,
+                use_neox_rotary_style=False,
+            )
 
         exe = paddle.static.Executor()
 
@@ -377,7 +385,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             'cos': tensor_cos.numpy(),
         }
         outs = exe.run(
-            paddle.static.default_main_program(),
+            main,
             feed=feed,
             fetch_list=[out_q, out_k, out_v],
         )
