@@ -31,10 +31,7 @@ class LayerCase(paddle.nn.Layer):
         _var_1 = _var_0.mean(1, keepdim=True)
         _var_2 = paddle.nn.functional.pooling.adaptive_avg_pool2d(
             _var_1,
-            output_size=(
-                7,
-                7,
-            ),
+            output_size=(7, 7),
             data_format='NCHW',
             name=None,
         )
