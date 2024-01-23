@@ -310,7 +310,7 @@ bool ReduceInferDim(pir::Operation *op,
   bool empty_dim = axis.size() == 0;
   reduce_all = reduce_all || full_dim || empty_dim;
 
-  symbol::ShapeOrDataDimExprs x_shape_or_data =
+  const symbol::ShapeOrDataDimExprs& x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(x);
   std::vector<symbol::DimExpr> input_shapes;
   if (x_shape_or_data.data() == std::nullopt ||
@@ -548,7 +548,7 @@ bool GatherNdOpInferSymbolicShape(
 
 bool PowOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return true;
+  return SameOperandsAndResultShape(op, shape_analysis);
 }
 bool Pow_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
