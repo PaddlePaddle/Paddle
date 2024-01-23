@@ -236,21 +236,25 @@ class PipelineLayerChunk(nn.Layer):
             "The forward function of PipelineLayerChunk cannot be called directly. "
             "Please call forward function of PipelineLayer."
         )
-
+    
+    def __iter__(self):
+        return iter(self.run_function)
 
 class PipelineSublayers(nn.Layer):
     def __init__(self, run_function):
         super().__init__()
         self.run_function = run_function
-        for sublayer in self.run_function:
+        for idx, sublayer in enumerate(self.run_function):
             if isinstance(sublayer, nn.Layer):
-                self.add_sublayer(str(len(self.run_function)), sublayer)
+                self.add_sublayer(str(idx), sublayer)
 
     def forward(self, x):
         for layer in self.run_function:
             x = layer(x)
         return x
-
+    
+    def __iter__(self):
+        return iter(self.run_function)
 
 class PipelineLayer(nn.Layer):
     """PipelineLayer
