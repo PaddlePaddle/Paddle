@@ -14,34 +14,83 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_symbol_to_static_number_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 
-#include <unordered_map>
-
-#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_pass.h"
-#include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-
-#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/utils/flags.h"
 
-PD_DEFINE_string(cinn_convert_dynamic_symbol_to_static_number);
+PD_DECLARE_string(cinn_convert_dynamic_to_static_dim);
 
 namespace {
+
+template <typename DoEachT>
+void ForEachRawDyanmicToStaticDimPair(const DoEachT& DoEach) {
+  const std::string& env_var = FLAGS_cinn_convert_dynamic_to_static_dim;
+  size_t start = 0;
+  while (true) {
+    size_t end = env_var.find(",", start);
+    DoEach(env_var.substr(start, end));
+    if (end == std::string::npos) return;
+    start = end + 1;
+  }
+}
+
+std::optional<std::pair<std::string, int64_t>> ParseRawDyanmicToStaticDimPair(
+    const std::string& raw_pair) {
+  size_t pos = raw_pair.find(":", 0);
+  if (pos == std::string::npos) return std::nullopt;
+  std::int64_t constant = 0;
+  try {
+    constant = std::stoll(raw_pair.substr(pos + 1, -1), nullptr);
+  } catch (const std::invalid_argument&) {
+    return std::nullopt;
+  }
+  if (constant <= 0) return std::nullopt;
+  std::string symbol = raw_pair.substr(0, pos);
+  if (symbol == "") return std::nullopt;
+  const auto& IsWordOrUnderLine = [&](const char ch) {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch == '_');
+  };
+  const auto& IsDigit = [&](const char ch) { return ch >= '0' && ch <= '9'; };
+  if (!IsWordOrUnderLine(symbol[0])) return std::nullopt;
+  for (int i = 1; i < symbol.size(); ++i) {
+    if (!(IsWordOrUnderLine(symbol[i]) || IsDigit(symbol[i])))
+      return std::nullopt;
+  }
+  return std::pair{symbol, int64_t{constant}};
+}
+
+std::unordered_map<std::string, int64_t> GetDynamicToStaticDimFlag() {
+  std::unordered_map<std::string, int64_t> map;
+  ForEachRawDyanmicToStaticDimPair([&](const std::string& raw_pair) {
+    if (auto pair = ParseRawDyanmicToStaticDimPair(raw_pair)) {
+      map.insert(pair.value());
+    }
+  });
+  return map;
+}
+
+using GlobalDynamicToStaticDimMapT = std::unordered_map<std::string, int64_t>;
+
+std::optional<GlobalDynamicToStaticDimMapT> CalcGlobalDynamicToStaticDimMap() {
+  GlobalDynamicToStaticDimMapT map = GetDynamicToStaticDimFlag();
+  if (map.empty()) return std::nullopt;
+  return map;
+}
+
+const std::optional<GlobalDynamicToStaticDimMapT>*
+GetGlobalDynamicToStaticDimMap() {
+  static std::optional<GlobalDynamicToStaticDimMapT> map(
+      CalcGlobalDynamicToStaticDimMap());
+  return &map;
+}
 
 class DynamicToStaticConverter {
  public:
@@ -68,16 +117,24 @@ class DynamicToStaticConverter {
 
  private:
   bool IsSymbolFullyInfered() {
+    bool is_infered = true;
     VisitEachValue(fusion_op_, [&](pir::Value value) {
       if (!shape_analysis_->HasShapeOrDataForValue(value)) {
-        return false;
+        is_infered = false;
       }
     });
-    return true;
+    return is_infered;
   }
 
   DimExpr4SymbolName InitDimExpr4SymbolName() {
-    // TODO(Hongyu Jia)
+    const auto* map = GetGlobalDynamicToStaticDimMap();
+    CHECK(map->has_value());
+    return
+        [map](
+            const std::string& symbol_name) -> std::optional<symbol::DimExpr> {
+          CHECK(map->value().find(symbol_name) != map->value().end());
+          return map->value().at(symbol_name);
+        };
   }
 
   template <typename DoEachT>
@@ -101,21 +158,20 @@ class DynamicToStaticConverter {
     }
   }
 
-  std::vector<int> GetOriginValueShape(pir::Value value) {
+  std::vector<std::int64_t> GetOriginValueShape(pir::Value value) {
     auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
-    return ::common::vectorize<int>(dim);
+    return ::common::vectorize(dim);
   }
 
-  std::vector<int> GetTargetValueShape(pir::Value value) {
+  std::vector<std::int64_t> GetTargetValueShape(pir::Value value) {
     const auto& dynamic_shapes =
         shape_analysis_->GetShapeOrDataForValue(value).shape();
-    std::vector<int> static_shapes{};
+    std::vector<std::int64_t> static_shapes{};
     VisitEachDimExpr(dynamic_shapes, [&](const symbol::DimExpr& dim_expr) {
       const auto& static_shape = cinn::common::SimplifyDimExpr(
           cinn::dialect::SubstituteDimExpr(dim_expr, DimExpr4SymbolName_));
       CHECK(static_shape.Has<std::int64_t>());
-      static_shapes.push_back(
-          static_cast<int>(static_shape.Get<std::int64_t>()));
+      static_shapes.push_back(static_shape.Get<std::int64_t>());
     });
     return static_shapes;
   }
@@ -134,7 +190,17 @@ class DynamicToStaticConverter {
         CHECK(origin_shape.at(i) == target_shape.at(i));
       }
     }
-    // TODO(Hongyu Jia): update value's shape, origin_shape->target_shape
+    if (update) {
+      const auto& origin_type = value.type().dyn_cast<::pir::DenseTensorType>();
+      pir::DenseTensorType target_type =
+          pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                    origin_type.dtype(),
+                                    ::common::make_ddim(target_shape),
+                                    origin_type.data_layout(),
+                                    origin_type.lod(),
+                                    origin_type.offset());
+      value.set_type(target_type);
+    }
     return update;
   }
 
@@ -154,10 +220,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   }
 };
 
-class DynamicSymbolToStaticNumberPass : public pir::PatternRewritePass {
+class ConvertDynamicToStaticDimPass : public pir::PatternRewritePass {
  public:
-  DynamicSymbolToStaticNumberPass()
-      : pir::PatternRewritePass("dynamic_symbol_to_static_number", 1) {}
+  ConvertDynamicToStaticDimPass()
+      : pir::PatternRewritePass("convert_dynamic_to_static_dim_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
@@ -171,9 +237,6 @@ class DynamicSymbolToStaticNumberPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    if (FLAGS_cinn_convert_dynamic_symbol_to_static_number.empty()) {
-      return false;
-    }
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
@@ -184,8 +247,10 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<::pir::Pass> CreateDynamicSymbolToStaticNumberPass() {
-  return std::make_unique<DynamicSymbolToStaticNumberPass>();
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateConvertDynamicToStaticDimPass() {
+  if (!GetGlobalDynamicToStaticDimMap()->has_value()) return std::nullopt;
+  return std::make_unique<ConvertDynamicToStaticDimPass>();
 }
 
 }  // namespace ir

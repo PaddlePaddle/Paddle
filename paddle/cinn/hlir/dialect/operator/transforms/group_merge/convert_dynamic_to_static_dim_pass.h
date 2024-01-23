@@ -15,13 +15,18 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include <optional>
 #include "paddle/pir/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
-std::unique_ptr<::pir::Pass> CreateDynamicSymbolToStaticNumberPass();
+
+// This is a helper pass for preparing dynamic-shape frontend and static-shape
+// backend Returns std::nullopt if FLAGS_cinn_convert_dynamic_to_static_dim not
+// set or invalid.
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateConvertDynamicToStaticDimPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
