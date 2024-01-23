@@ -1,5 +1,5 @@
 [flake8]
-select = C,E,W
+select = E
 exclude =
     ./build,
     # Exclude third-party libraries
@@ -19,12 +19,10 @@ ignore =
     # Do not assign a lambda expression, use a def
     E731,
     # Do not use variables named ‘l’, ‘O’, or ‘I’
-    E741,
-    # Line break before binary operator, it is not compatible with black
-    W503
+    E741
 per-file-ignores =
     # These files need tabs for testing.
-    test/dygraph_to_static/test_legacy_error.py:E101,W191
+    test/dygraph_to_static/test_legacy_error.py:E101
 
     # Ignore compare with True in sot unittest
     test/sot/test_dup_top.py:E712

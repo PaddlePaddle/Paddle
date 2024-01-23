@@ -70,7 +70,7 @@ void BatchNormKernel(const Context& ctx,
       5,
       phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
-          "But received: the size of input X's dimensionss is [%d]",
+          "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
   const int N = static_cast<int>(x_dims[0]);
   const int C = static_cast<int>(
@@ -83,6 +83,10 @@ void BatchNormKernel(const Context& ctx,
   ctx.template Alloc<T>(variance_out);
   ctx.template Alloc<T>(saved_mean);
   ctx.template Alloc<T>(saved_variance);
+  if (reserve_space != nullptr) {
+    reserve_space->Resize({0});
+    ctx.template Alloc<T>(reserve_space);
+  }
 
   // input dimension is 2 and the format is NCHW. The input can be regarded
   // as NHWC format
@@ -97,6 +101,9 @@ void BatchNormKernel(const Context& ctx,
         ctx.template Alloc<T>(saved_variance), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
+    EigenVectorArrayMap<T> reserve_space_e(ctx.template Alloc<T>(reserve_space),
+                                           0);
+    reserve_space_e.setZero();
 
     EigenVectorArrayMap<T> running_mean_arr(ctx.template Alloc<T>(mean_out), C);
     EigenVectorArrayMap<T> running_var_arr(ctx.template Alloc<T>(variance_out),

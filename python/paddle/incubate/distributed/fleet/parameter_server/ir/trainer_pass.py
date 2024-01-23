@@ -1658,7 +1658,7 @@ def entrance_exit_check(
         )
 
         for var in backward_entrance:
-            if not ("@GRAD" in var) and not (var in forward_all):
+            if "@GRAD" not in var and var not in forward_all:
                 current_block_entrance.append(var)
 
         current_block_entrance.sort()

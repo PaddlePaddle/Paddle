@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <cstdint>
 #include "paddle/pir/core/value.h"
 
 namespace pir {
@@ -32,6 +33,8 @@ class OpOperandImpl {
   Value source() const;
 
   void set_source(Value value);
+
+  uint32_t index() const;
 
   /// Remove this op_operand from the current use list.
   void RemoveFromUdChain();

@@ -94,12 +94,12 @@ struct BroadcastOpHandle : public OpHandleBase {
                     const std::vector<platform::Place> &places)
       : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 
-  std::string Name() const override;
+  TEST_API std::string Name() const override;
 
   bool IsMultiDeviceTransfer() override { return true; };
 
  protected:
-  void RunImpl() override;
+  TEST_API void RunImpl() override;
 
   std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
 

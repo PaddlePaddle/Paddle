@@ -13,47 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .imperative.ptq_config import (
+from .base_observer import BaseObserver
+from .base_quanter import BaseQuanter
+from .config import QuantConfig
+from .factory import quanter
+from .imperative.ptq import (  # noqa: F401
+    ImperativePTQ,
+)
+from .imperative.ptq_config import (  # noqa: F401
     PTQConfig,
     default_ptq_config,
 )
-from .imperative.ptq_quantizer import (
-    BaseQuantizer,
-)
-from .imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (  # noqa: F401
+    SUPPORT_ACT_QUANTIZERS,
+    SUPPORT_WT_QUANTIZERS,
     AbsmaxQuantizer,
-)
-from .imperative.ptq_quantizer import (
+    BaseQuantizer,
+    HistQuantizer,
+    KLQuantizer,
     PerChannelAbsmaxQuantizer,
 )
-from .imperative.ptq_quantizer import (
-    KLQuantizer,
-)
-from .imperative.ptq_quantizer import (
-    HistQuantizer,
-)
-from .imperative.ptq_quantizer import (
-    SUPPORT_ACT_QUANTIZERS,
-)
-from .imperative.ptq_quantizer import (
-    SUPPORT_WT_QUANTIZERS,
-)
-from .imperative.ptq_registry import (
+from .imperative.ptq_registry import (  # noqa: F401
     PTQRegistry,
 )
-from .imperative.ptq import (
-    ImperativePTQ,
-)
-from .imperative.qat import (
+from .imperative.qat import (  # noqa: F401
     ImperativeQuantAware,
 )
-
-from .config import QuantConfig
-from .base_quanter import BaseQuanter
-from .base_observer import BaseObserver
-from .factory import quanter
-from .qat import QAT
 from .ptq import PTQ
+from .qat import QAT
 
 __all__ = [
     "QuantConfig",

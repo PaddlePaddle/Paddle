@@ -108,6 +108,7 @@ PHI_DECLARE_int32(call_stack_level);
 namespace paddle {
 namespace platform {
 using namespace ::phi::enforce;  // NOLINT
+using ::common::demangle;
 
 /** HELPER MACROS AND FUNCTIONS **/
 

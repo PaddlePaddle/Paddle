@@ -1,8 +1,7 @@
 cc_test(
   op_tester
   SRCS op_tester.cc
-  DEPS memory
-       timer
+  DEPS timer
        framework_proto
        proto_desc
        lod_tensor

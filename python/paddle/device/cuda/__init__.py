@@ -17,7 +17,7 @@ from paddle.base import core
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
-from .streams import Stream, Event
+from .streams import Event, Stream
 
 __all__ = [
     'Stream',

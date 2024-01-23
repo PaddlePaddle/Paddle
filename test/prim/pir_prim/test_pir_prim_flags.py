@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.decomposition import decompose
+from paddle.decomposition import decomp
 
 
 class TestPrimBlacklistFlags(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             # Ensure that tanh in original block
             self.assertTrue('pd_op.gelu' in fwd_ops)
 
-            [y] = decompose(main_program, [y])
+            [y] = decomp.decompose(main_program, [y])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops
@@ -67,7 +67,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             # Ensure that tanh in original block
             self.assertTrue('pd_op.gelu' in fwd_ops)
 
-            _ = decompose(main_program, [y])
+            _ = decomp.decompose(main_program, [y])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops

@@ -24,6 +24,7 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils import with_control_flow_guard
 
 
 @check_no_breakgraph
@@ -80,6 +81,7 @@ class TestTupleMethods(TestCaseBase):
         self.assert_results(tuple_count_int, 1, paddle.to_tensor(2))
         self.assert_results(tuple_index_int, 1, paddle.to_tensor(2))
 
+    @with_control_flow_guard(False)
     def test_tuple_methods_tensor(self):
         a = paddle.to_tensor(1)
         b = paddle.to_tensor(2)

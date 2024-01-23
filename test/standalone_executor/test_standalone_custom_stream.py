@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 from test_standalone_executor import build_program
+
+sys.path.append("../legacy_test")
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle.base import core
@@ -73,6 +77,7 @@ class TestCustomStream(unittest.TestCase):
                 )
         return outs
 
+    @compare_legacy_with_pt
     def test_result(self):
         if not core.is_compiled_with_cuda():
             return

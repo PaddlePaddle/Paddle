@@ -38,12 +38,12 @@ ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 
 # install cmake
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz
-ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
+RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
+ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
 # conda 4.9.2
 WORKDIR /opt
-ARG CONDA_FILE=Miniconda3-py37_4.9.2-Linux-x86_64.sh
+ARG CONDA_FILE=Miniconda3-py38_23.10.0-1-Linux-x86_64.sh
 RUN cd /opt && wget -q https://repo.anaconda.com/miniconda/${CONDA_FILE} && chmod +x ${CONDA_FILE}
 RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_FILE}
 ENV PATH=/opt/conda/bin:${PATH}

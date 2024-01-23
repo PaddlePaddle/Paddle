@@ -21,28 +21,26 @@
 #include "paddle/utils/flags.h"
 #include "paddle/utils/string/printf.h"
 
-PD_DECLARE_bool(color);
-
 namespace paddle {
 
 namespace string {
 
-inline std::string black() { return FLAGS_color ? "\e[30m" : ""; }
-inline std::string red() { return FLAGS_color ? "\e[31m" : ""; }
-inline std::string b_red() { return FLAGS_color ? "\e[41m" : ""; }
-inline std::string green() { return FLAGS_color ? "\e[32m" : ""; }
-inline std::string yellow() { return FLAGS_color ? "\e[33m" : ""; }
-inline std::string blue() { return FLAGS_color ? "\e[34m" : ""; }
-inline std::string purple() { return FLAGS_color ? "\e[35m" : ""; }
-inline std::string cyan() { return FLAGS_color ? "\e[36m" : ""; }
-inline std::string light_gray() { return FLAGS_color ? "\e[37m" : ""; }
-inline std::string white() { return FLAGS_color ? "\e[37m" : ""; }
-inline std::string light_red() { return FLAGS_color ? "\e[91m" : ""; }
-inline std::string dim() { return FLAGS_color ? "\e[2m" : ""; }
-inline std::string bold() { return FLAGS_color ? "\e[1m" : ""; }
-inline std::string underline() { return FLAGS_color ? "\e[4m" : ""; }
-inline std::string blink() { return FLAGS_color ? "\e[5m" : ""; }
-inline std::string reset() { return FLAGS_color ? "\e[0m" : ""; }
+inline std::string black() { return "\e[30m"; }
+inline std::string red() { return "\e[31m"; }
+inline std::string b_red() { return "\e[41m"; }
+inline std::string green() { return "\e[32m"; }
+inline std::string yellow() { return "\e[33m"; }
+inline std::string blue() { return "\e[34m"; }
+inline std::string purple() { return "\e[35m"; }
+inline std::string cyan() { return "\e[36m"; }
+inline std::string light_gray() { return "\e[37m"; }
+inline std::string white() { return "\e[37m"; }
+inline std::string light_red() { return "\e[91m"; }
+inline std::string dim() { return "\e[2m"; }
+inline std::string bold() { return "\e[1m"; }
+inline std::string underline() { return "\e[4m"; }
+inline std::string blink() { return "\e[5m"; }
+inline std::string reset() { return "\e[0m"; }
 
 using TextBlock = std::pair<std::string, std::string>;
 

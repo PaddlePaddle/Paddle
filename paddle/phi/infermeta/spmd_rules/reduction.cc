@@ -103,6 +103,9 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
+  auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
@@ -126,7 +129,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
           << "partial_on_dims: [" + str_join(partial_on_dims)
           << " with reduce_type " << reduce_type << "]\n\n";
 
-  return {{x_dist_attr_src}, {out_dist_attr}};
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
@@ -203,7 +206,7 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
 
   // initialize input dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
-  TensorDistAttr x_dist_attr_dst(x.dist_attr());
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
   // Step3: handle partial (TODO)

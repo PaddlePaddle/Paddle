@@ -507,7 +507,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   }
 
   // step 4: Insert YieldOp for outputs
-  builder.SetInsertionPointToEnd(group_block);
+  builder.SetInsertionPointToBlockEnd(group_block);
   builder.Build<::pir::YieldOp>(outputs);
 }
 

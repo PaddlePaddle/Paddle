@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
 )
 from test_fetch_feed import Linear
@@ -72,7 +73,6 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
         x_data = np.random.randn(30, 10, 32).astype('float32')
         batch_num = 3
 
-        paddle.jit.enable_to_static(True)
         x = base.dygraph.to_variable(x_data)
         net = Linear(32, 64)
         adam = Adam(learning_rate=0.1, parameters=net.parameters())
@@ -102,15 +102,15 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
 
         x = base.dygraph.to_variable(x_data)
         # predict output
-        paddle.jit.enable_to_static(False)
-        dygraph_out, dygraph_loss = dygraph_net(x)
+        with enable_to_static_guard(False):
+            dygraph_out, dygraph_loss = dygraph_net(x)
 
-        np.testing.assert_allclose(
-            dygraph_out.numpy(), static_out.numpy(), rtol=1e-05
-        )
-        np.testing.assert_allclose(
-            dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
-        )
+            np.testing.assert_allclose(
+                dygraph_out.numpy(), static_out.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
+            )
 
     def _compute_op_num(self, composite_program):
         if paddle.framework.use_pir_api():

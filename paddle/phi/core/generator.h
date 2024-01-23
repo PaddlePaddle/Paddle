@@ -45,20 +45,38 @@ class Generator {
       cpu_engine = std::make_shared<std::mt19937_64>(seq);
     }
 
+    GeneratorState(const GeneratorState& state)
+        : device(state.device), seed(state.seed), offset(state.offset) {
+      if (state.cpu_engine) {
+        std::seed_seq seq({state.seed});
+        cpu_engine = std::make_shared<std::mt19937_64>(seq);
+        // Clone the engine state
+        *(cpu_engine) = *(state.cpu_engine);
+      }
+    }
+
+    GeneratorState& operator=(const GeneratorState& state) {
+      if (this != &state) {
+        device = state.device;
+        seed = state.seed;
+        offset = state.offset;
+
+        if (state.cpu_engine) {
+          std::seed_seq seq({state.seed});
+          cpu_engine = std::make_shared<std::mt19937_64>(seq);
+          *cpu_engine = *(state.cpu_engine);
+        } else {
+          cpu_engine = nullptr;
+        }
+      }
+      return *this;
+    }
+
     void reset(uint64_t new_seed = MAGIC_RANDOM_SEED) {
       std::seed_seq seq({new_seed});
       cpu_engine->seed(seq);
       offset = 0;
       seed = new_seed;
-    }
-
-    GeneratorState clone() const {
-      GeneratorState state(device, seed, offset);
-      if (cpu_engine) {
-        // Clone the engine state
-        *(state.cpu_engine) = *cpu_engine;
-      }
-      return state;
     }
   };
 

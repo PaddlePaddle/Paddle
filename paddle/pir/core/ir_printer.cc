@@ -124,6 +124,10 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Index)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << "(Pointer)" << p.data();
+  } else if (auto p = attr.dyn_cast<Complex64Attribute>()) {
+    os << "(Complex64)" << p.data();
+  } else if (auto p = attr.dyn_cast<Complex128Attribute>()) {
+    os << "(Complex128)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
     os << "[";
@@ -171,7 +175,7 @@ void IrPrinter::PrintGeneralOperation(Operation* op) {
   PrintAttributeMap(op);
   os << " :";
 
-  // PrintOpSingature
+  // PrintOpSignature
   PrintOperandsType(op);
   os << " -> ";
 

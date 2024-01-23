@@ -12,47 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .creation import sparse_coo_tensor
-from .creation import sparse_csr_tensor
-
-from .unary import sin
-from .unary import tan
-from .unary import asin
-from .unary import atan
-from .unary import sinh
-from .unary import tanh
-from .unary import asinh
-from .unary import atanh
-from .unary import sqrt
-from .unary import square
-from .unary import log1p
-from .unary import abs
-from .unary import pow
-from .unary import pca_lowrank
-from .unary import cast
-from .unary import neg
-from .unary import coalesce
-from .unary import deg2rad
-from .unary import rad2deg
-from .unary import expm1
-from .unary import transpose
-from .unary import sum
-from .unary import reshape
-from .unary import isnan
-from .unary import slice
-
-from .binary import mv
-from .binary import matmul
-from .binary import masked_matmul
-from .binary import add
-from .binary import divide
-from .binary import multiply
-from .binary import subtract
-from .binary import is_same_shape
-
+from . import nn  # noqa: F401
+from .binary import (
+    add,
+    divide,
+    is_same_shape,
+    masked_matmul,
+    matmul,
+    multiply,
+    mv,
+    subtract,
+)
+from .creation import sparse_coo_tensor, sparse_csr_tensor
 from .multiary import addmm
-
-from . import nn
+from .unary import (
+    abs,
+    asin,
+    asinh,
+    atan,
+    atanh,
+    cast,
+    coalesce,
+    deg2rad,
+    expm1,
+    isnan,
+    log1p,
+    neg,
+    pca_lowrank,
+    pow,
+    rad2deg,
+    reshape,
+    sin,
+    sinh,
+    slice,
+    sqrt,
+    square,
+    sum,
+    tan,
+    tanh,
+    transpose,
+)
 
 __all__ = [
     'sparse_coo_tensor',

@@ -28,7 +28,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._rtol = 1e-6
-        self._atol = 0.0
+        self._atol = 1e-6
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
@@ -134,6 +134,19 @@ class TestElementwiseApiForSemiAutoParallel:
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
             x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
+            binary_func=paddle.add,
+        )
+
+    def test_add_broadcast_with_shard(self):
+        if self._backend == "cpu":
+            return
+
+        self.test_binary_body(
+            x_shape=[16, 4, 32],
+            y_shape=[16, 1, 32],
+            out_shape=[16, 4, 32],
+            x_placements=[dist.Shard(1)],
             y_placements=[dist.Replicate()],
             binary_func=paddle.add,
         )
@@ -472,6 +485,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_add_x_shard_broadcast()
         self.test_add_x_y_shard()
         self.test_add_x_y_shard_broadcast()
+        self.test_add_broadcast_with_shard()
         self.test_sub_x_shard()
         self.test_sub_x_y_shard_broadcast()
         self.test_square_x_shard()

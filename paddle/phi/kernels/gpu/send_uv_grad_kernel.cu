@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/send_uv_grad_kernel.h"
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -117,10 +117,11 @@ void CalculateGrad(const Context& ctx,
                 x_grad_out.numel() * sizeof(T),
                 hipMemcpyDeviceToDevice);
 #else
-      cudaMemcpy(x_grad,
-                 x_grad_out.data<T>(),
-                 x_grad_out.numel() * sizeof(T),
-                 cudaMemcpyDeviceToDevice);
+      cudaMemcpyAsync(x_grad,
+                      x_grad_out.data<T>(),
+                      x_grad_out.numel() * sizeof(T),
+                      cudaMemcpyDeviceToDevice,
+                      ctx.stream());
 #endif
     }
   } else if (message_op == "MUL") {
@@ -199,10 +200,11 @@ void CalculateGrad(const Context& ctx,
                 x_grad_out.numel() * sizeof(T),
                 hipMemcpyDeviceToDevice);
 #else
-      cudaMemcpy(x_grad,
-                 x_grad_out.data<T>(),
-                 x_grad_out.numel() * sizeof(T),
-                 cudaMemcpyDeviceToDevice);
+      cudaMemcpyAsync(x_grad,
+                      x_grad_out.data<T>(),
+                      x_grad_out.numel() * sizeof(T),
+                      cudaMemcpyDeviceToDevice,
+                      ctx.stream());
 #endif
     }
   }
@@ -223,7 +225,7 @@ void GraphSendUVGradOpCUDAKernelLaunchHelper(const Context& ctx,
       index_size,
       0,
       errors::InvalidArgument("The first dimension of src_index or dst_index "
-                              "shoule be greater than 0, but received %d.",
+                              "should be greater than 0, but received %d.",
                               index_size));
 
   ctx.template Alloc<T>(x_grad);
@@ -248,8 +250,8 @@ void GraphSendUVGradOpCUDAKernelLaunchHelper(const Context& ctx,
   hipMemset(x_grad_data, 0, memset_bytes_x);
   hipMemset(y_grad_data, 0, memset_bytes_y);
 #else
-  cudaMemset(x_grad_data, 0, memset_bytes_x);
-  cudaMemset(y_grad_data, 0, memset_bytes_y);
+  cudaMemsetAsync(x_grad_data, 0, memset_bytes_x, ctx.stream());
+  cudaMemsetAsync(y_grad_data, 0, memset_bytes_y, ctx.stream());
 #endif
 
   const T* out_grad_data = out_grad.data<T>();

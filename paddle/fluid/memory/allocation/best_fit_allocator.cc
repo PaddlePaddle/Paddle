@@ -17,7 +17,10 @@
 #include <cmath>
 #include <mutex>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
+
+REGISTER_FILE_SYMBOLS(best_fit_allocator);
 
 namespace paddle {
 namespace memory {

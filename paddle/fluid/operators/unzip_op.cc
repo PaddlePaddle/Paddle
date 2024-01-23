@@ -28,22 +28,14 @@ class unzipOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lod");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "lod");
-
-    auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(
-        x_dims.size(),
-        2UL,
-        platform::errors::InvalidArgument(
-            "Input(X)'s rank should be 2, but got %d", x_dims.size()));
-
     auto lod_dims = ctx->GetInputDim("lod");
     PADDLE_ENFORCE_EQ(
         lod_dims.size(),
         1UL,
         platform::errors::InvalidArgument(
             "Input(X)'s rank should be 1, but got %d", lod_dims.size()));
-
-    ctx->SetOutputDim("Y", {lod_dims[0] - 1, x_dims[1]});
+    auto len = static_cast<int64_t>(ctx->Attrs().Get<int>("len"));
+    ctx->SetOutputDim("Y", {lod_dims[0] - 1, len});
   }
 
  protected:
@@ -75,31 +67,16 @@ class unzipGradientOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto lod_dims = ctx->GetInputDim("lod");
-    auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
         platform::errors::InvalidArgument(
             "Expect Input(X)'s rank == 2, but got %d", x_dims.size()));
     PADDLE_ENFORCE_EQ(
-        dy_dims.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "Expect Input(X)'s rank == 2, but got %d", dy_dims.size()));
-    PADDLE_ENFORCE_EQ(
         lod_dims.size(),
         1,
         platform::errors::InvalidArgument(
             "Expect Input(X)'s rank == 1, but got %d", lod_dims.size()));
-
-    PADDLE_ENFORCE_EQ(
-        x_dims[1],
-        dy_dims[1],
-        platform::errors::InvalidArgument(
-            "The 1st dimension of Input(X) and Input(Y@Grad) should "
-            "be equal, X is %d, Y@Grad is %d",
-            x_dims[1],
-            dy_dims[1]));
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
@@ -120,14 +97,12 @@ class unzipGradientOp : public framework::OperatorWithKernel {
 class unzipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
-             "[M x N],"
-             " where N is the batch size and D is the emebdding dim. ");
+    AddInput("X", "(LodTensor, default LodTensor<float>)");
     AddInput("lod", "(Tensor),  a 1-D Tensor with shape [K]");
+    AddAttr<int>("len", "The len of each original Tensor").SetDefault(1);
     AddOutput("Y",
               "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
-              "[K-1 x N].");
+              "[K-1 x len].");
     AddComment(R"DOC(
 unzip Operator.
 )DOC");
@@ -144,6 +119,7 @@ class unzipGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("unzip_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("lod", this->Input("lod"));
+    op->SetAttr("len", this->GetAttr("len"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());

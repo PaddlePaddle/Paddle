@@ -106,8 +106,13 @@ class XPUOpTest(OpTest):
             if not core.is_float16_supported(place):
                 return
 
-        if self.dtype == np.float16:
+        if self.dtype == np.uint16:
+            if not core.is_bfloat16_supported(place):
+                return
+
+        if self.dtype == np.float16 or self.dtype == np.uint16:
             atol = 0.1
+
         return super().check_output_with_place(
             place,
             atol,
@@ -181,6 +186,10 @@ class XPUOpTest(OpTest):
 
         if self.dtype == np.float16:
             if not core.is_float16_supported(place):
+                return
+
+        if self.dtype == np.uint16:
+            if not core.is_bfloat16_supported(place):
                 return
 
         if self.dtype == np.float16 or self.dtype == np.uint16:
@@ -306,7 +315,7 @@ class XPUOpTest(OpTest):
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
 
-        if not type(output_names) is list:
+        if type(output_names) is not list:
             output_names = [output_names]
 
         if self.dtype not in mean_grad_op_types_np:

@@ -124,7 +124,7 @@ class L1Decay(WeightDecayRegularizer):
             new variable for weight decay
         """
         assert isinstance(
-            param, (framework.Variable, pir.OpResult, pir.core.ParameterMeta)
+            param, (framework.Variable, pir.Value, pir.core.ParameterMeta)
         )
         assert isinstance(block, (framework.Block, pir.Block))
 
@@ -236,7 +236,7 @@ class L2Decay(WeightDecayRegularizer):
             new variable for weight decay
         """
         assert isinstance(
-            param, (framework.Variable, pir.OpResult, pir.core.ParameterMeta)
+            param, (framework.Variable, pir.Value, pir.core.ParameterMeta)
         )
         assert isinstance(block, (framework.Block, pir.Block))
 

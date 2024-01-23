@@ -56,7 +56,7 @@ void OneHotKernel(const Context& dev_ctx,
   auto numel = x.numel();
   auto* p_out_data = dev_ctx.template Alloc<float>(out);
   auto stream = dev_ctx.stream();
-  funcs::set_constant(dev_ctx, out, 0.0);
+  funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
 

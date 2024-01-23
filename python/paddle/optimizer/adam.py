@@ -18,7 +18,7 @@ from collections import defaultdict
 import paddle
 from paddle import _C_ops, pir
 from paddle.base.libpaddle import DataType
-from paddle.pir import OpResult
+from paddle.pir import Value
 
 from ..base import core, framework
 from ..base.dygraph import base as imperative_base
@@ -185,17 +185,17 @@ class Adam(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if not isinstance(beta1, (Variable, OpResult)):
+        if not isinstance(beta1, (Variable, Value)):
             if not 0 <= beta1 < 1:
                 raise ValueError(
                     "Invaild value of beta1, expect beta1 in [0,1)."
                 )
-        if not isinstance(beta2, (Variable, OpResult)):
+        if not isinstance(beta2, (Variable, Value)):
             if not 0 <= beta2 < 1:
                 raise ValueError(
                     "Invaild value of beta2, expect beta2 in [0,1)."
                 )
-        if not isinstance(epsilon, (Variable, OpResult)):
+        if not isinstance(epsilon, (Variable, Value)):
             if not 0 <= epsilon:
                 raise ValueError(
                     "Invaild value of epsilon, expect epsilon >= 0."
@@ -245,7 +245,7 @@ class Adam(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.9
-            if isinstance(self._beta1, (Variable, OpResult))
+            if isinstance(self._beta1, (Variable, Value))
             else self._beta1,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -256,7 +256,7 @@ class Adam(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.999
-            if isinstance(self._beta2, (Variable, OpResult))
+            if isinstance(self._beta2, (Variable, Value))
             else self._beta2,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -709,12 +709,12 @@ class Adam(Optimizer):
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
                         if isinstance(
-                            found_inf, (core.eager.Tensor, pir.OpResult)
+                            found_inf, (core.eager.Tensor, pir.Value)
                         ):
                             self._set_auxiliary_var('found_inf', True)
                     else:
                         if isinstance(
-                            found_inf, (core.eager.Tensor, pir.OpResult)
+                            found_inf, (core.eager.Tensor, pir.Value)
                         ):
                             self._set_auxiliary_var('found_inf', False)
                         _, _, _, _, _, _ = _C_ops.merged_adam_(

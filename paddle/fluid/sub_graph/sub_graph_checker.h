@@ -20,14 +20,18 @@
 namespace paddle {
 namespace test {
 
+constexpr char kInputPrefix[] = "pt_input_";
+constexpr char kOutputPrefix[] = "pt_output_";
+constexpr char kFetchSuffix[] = "@fetch";
+
 class SubGraphChecker {
  public:
   SubGraphChecker(std::shared_ptr<pir::Program> orig_program,
                   std::shared_ptr<pir::Program> prim_program);
 
-  void CheckResult();
+  bool CheckResult();
 
-  void CheckSpeed();
+  std::vector<double> CheckSpeed();
 
  private:
   void InitInputs(const std::vector<pir::Value>& input_values,

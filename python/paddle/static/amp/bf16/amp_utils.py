@@ -400,10 +400,6 @@ def cast_model_to_bf16(
                     and op.attr(attr_name) == core.VarDesc.VarType.FP32
                 ):
                     op._set_attr(attr_name, core.VarDesc.VarType.BF16)
-            if op.has_attr('use_mkldnn'):
-                op._set_attr('use_mkldnn', True)
-            if op.has_attr('mkldnn_data_type'):
-                op._set_attr('mkldnn_data_type', 'bfloat16')
 
         if startup_prog is not None:
             cast_initializers_to_bf16(
@@ -593,10 +589,7 @@ def rewrite_program_bf16(main_prog, amp_lists=None):
                 core.VarDesc.VarType.FP32,
             )
         elif op in bf16_op_set:
-            if op.has_attr('use_mkldnn'):
-                op._set_attr('use_mkldnn', True)
-                op._set_attr('mkldnn_data_type', 'bfloat16')
-            elif (
+            if (
                 op.has_attr('dtype')
                 and op.attr('dtype') == core.VarDesc.VarType.FP32
             ):

@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle.base import core
 from paddle.incubate.nn.functional import fused_rotary_position_embedding
+from paddle.pir_utils import test_with_pir_api
 
 
 def deal_qkv(init_q, init_k, init_v):
@@ -281,6 +282,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 p_bw[i].numpy(), f_bw[i].numpy(), rtol=1e-05
             )
 
+    @test_with_pir_api
     def test_static(self):
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
             self.seed, True

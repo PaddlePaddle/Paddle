@@ -17,7 +17,6 @@ import unittest
 import paddle
 from paddle import base, jit, nn
 
-paddle.jit.enable_to_static(True)
 base.core._set_prim_all_enabled(True)
 
 x = paddle.randn([4, 1])

@@ -27,6 +27,7 @@ from op_gen import (
 
 PD_MANUAL_API_LIST = {
     'embedding_grad',
+    'assign',
 }
 
 H_FILE_TEMPLATE = """
@@ -85,6 +86,7 @@ API_INNER_CODE_TEMPLATE = """
     {in_combine}
     {compute_op}
     {handle_optional_outputs}
+    {set_null_type}
     {out_split}
     {return_result}"""
 
@@ -147,6 +149,12 @@ OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
         auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
         optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
     }}"""
+
+SET_NULL_TYPE_TEMPLATE = """
+    if (!{input}) {{
+        {op_name}_op.result({index}).set_type(pir::Type());
+    }}"""
+
 
 COMBINE_OP_TEMPLATE = """
     auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
@@ -234,7 +242,7 @@ class CodeGen:
     def _need_skip(self, op_info, op_name):
         return (
             op_info.infer_meta_func is None and op_name not in PD_MANUAL_OP_LIST
-        ) or op_name in PD_MANUAL_API_LIST
+        )
 
     def _is_optional_input(self, op_info, input_name):
         name_list = op_info.input_name_list
@@ -370,7 +378,10 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if self._need_skip(op_info, op_name):
+                if (
+                    self._need_skip(op_info, op_name)
+                    or op_name in PD_MANUAL_API_LIST
+                ):
                     continue
                 declare_str += self._gen_one_declare(
                     op_info, op_name, False, False
@@ -433,6 +444,21 @@ class CodeGen:
                         op_name=op_name,
                         index=i,
                     )
+        return ret
+
+    def _gen_set_null_type(self, op_info, op_name):
+        name_list = op_info.output_name_list
+        inplace_map = op_info.inplace_map
+        if inplace_map is None:
+            return ""
+
+        ret = ""
+        for i, out_name in enumerate(name_list):
+            if self._is_optional_output(op_info, out_name):
+                in_name = inplace_map[out_name]
+                ret += SET_NULL_TYPE_TEMPLATE.format(
+                    input=in_name, op_name=op_name, index=i
+                )
         return ret
 
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
@@ -571,8 +597,7 @@ class CodeGen:
         )
 
         if (
-            op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
-            or op_name in ["print", "hardshrink", "det", "assign_out_"]
+            op_name in ["real_grad", "imag_grad"]
             or len(mapping_name_to_type) == 0
         ):
             return ""
@@ -594,8 +619,11 @@ class CodeGen:
             for name in op_info.input_name_list[::-1]:
                 type = mapping_input_name_to_type[name]
                 optional = mapping_input_name_to_optional[name]
-                function_name = mapping_type_to_function_name.get(type, None)
-                if function_name is None:
+                if (
+                    function_name := mapping_type_to_function_name.get(
+                        type, None
+                    )
+                ) is None:
                     continue
 
                 if optional == 'false':
@@ -635,8 +663,9 @@ class CodeGen:
             if name not in mapping_name_to_type:
                 return ""
             type = mapping_name_to_type[name]
-            function_name = mapping_type_to_function_name.get(type, None)
-            if function_name is None:
+            if (
+                function_name := mapping_type_to_function_name.get(type, None)
+            ) is None:
                 return ""
             return CHECK_DATA_TYPE_TEMPLATE.format(
                 function=function_name,
@@ -724,6 +753,7 @@ class CodeGen:
                     handle_optional_outputs=self._gen_handle_optional_outputs(
                         op_info, kernel_name
                     ),
+                    set_null_type=self._gen_set_null_type(op_info, kernel_name),
                     out_split=out_split,
                     return_result=self._gen_return_result(ret_list),
                 )
@@ -762,8 +792,15 @@ class CodeGen:
                 op_info, op_inst_name
             )
 
+            kernel_name = (
+                list(dispatch_kernel.keys())[0]
+                if dispatch_kernel and len(dispatch_kernel.keys()) == 1
+                else op_name
+            )
+            if op_name.endswith('_') and not kernel_name.endswith('_'):
+                kernel_name = kernel_name + '_'
             api_inner_code = API_INNER_CODE_TEMPLATE.format(
-                check_data_type=self._gen_check_data_type(op_info, op_name),
+                check_data_type=self._gen_check_data_type(op_info, kernel_name),
                 handle_optional_inputs=self._gen_handle_optional_inputs(
                     op_info
                 ),
@@ -772,6 +809,7 @@ class CodeGen:
                 handle_optional_outputs=self._gen_handle_optional_outputs(
                     op_info, op_name
                 ),
+                set_null_type=self._gen_set_null_type(op_info, op_name),
                 out_split=out_split,
                 return_result=self._gen_return_result(ret_list),
             )
@@ -794,7 +832,10 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if self._need_skip(op_info, op_name):
+                if (
+                    self._need_skip(op_info, op_name)
+                    or op_name in PD_MANUAL_API_LIST
+                ):
                     continue
                 impl_str += self._gen_one_impl(op_info, op_name, False, False)
                 if len(op_info.mutable_attribute_name_list) > 0:

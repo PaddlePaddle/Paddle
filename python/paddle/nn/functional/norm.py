@@ -17,7 +17,11 @@ import numbers
 # TODO: define normalization api
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.base.framework import in_dygraph_mode, in_dynamic_or_pir_mode
+from paddle.base.framework import (
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -129,7 +133,7 @@ def batch_norm(
     nn.functional.batch_norm is used for nn.BatchNorm1D, nn.BatchNorm2D, nn.BatchNorm3D. Please use above API for BatchNorm.
 
     Parameters:
-        x(Tesnor): input value. It's data type should be float32, float64.
+        x(Tensor): input value. It's data type should be float32, float64.
         running_mean(Tensor): running mean.
         running_var(Tensor): running variance.
         weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
@@ -192,8 +196,24 @@ def batch_norm(
     else:
         trainable_statistics = not use_global_stats
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+            x,
+            running_mean,
+            running_var,
+            weight,
+            bias,
+            not training,
+            momentum,
+            epsilon,
+            data_format,
+            use_global_stats,
+            trainable_statistics,
+        )
+        return batch_norm_out
+
+    elif in_pir_mode():
+        batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm_(
             x,
             running_mean,
             running_var,
@@ -219,7 +239,6 @@ def batch_norm(
             "epsilon": epsilon,
             "is_test": not training,
             "data_layout": data_format,
-            "use_mkldnn": False,
             "fuse_with_relu": False,
             "use_global_stats": use_global_stats,
             "trainable_statistics": trainable_statistics,
@@ -414,7 +433,7 @@ def instance_norm(
         eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         use_input_stats(bool, optional): Default True. Obsolete (that is, no longer usable).
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Default "NCHW".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:

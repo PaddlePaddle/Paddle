@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import csv
+import os
 
 from .utils import default_candidates, gbs_default_candidates
 
@@ -46,10 +48,16 @@ class AutoTuner:
 
             tuner_cfg["candidates"] = gbs_default_candidates(tuner_cfg)
             self.algo = GBSSearch(tuner_cfg)
+        elif search_algo == "customize":
+            from .search import CustomizeSearch
+
+            self.algo = CustomizeSearch(tuner_cfg)
         else:
             raise NotImplementedError()
 
         self.history_cfgs = []
+        self.resume_cfgs = []
+        self.tuner_cfg = tuner_cfg
 
     def search_once(self):
         """Return a new task config."""
@@ -63,3 +71,76 @@ class AutoTuner:
     def add_cfg(self, cfg):
         """Add cfg into history cfgs"""
         self.history_cfgs.append(cfg)
+
+    def resume_form_history(self, history_csv_path="./history.csv"):
+        """Resume form history csv file"""
+        # The breakpoint resume function does not start when the resume csv file does not exist.
+        if not os.path.exists(history_csv_path):
+            return
+        resume_csv_path = os.path.join(
+            os.path.dirname(history_csv_path),
+            f'{os.path.basename(history_csv_path).split(".")[0]}_copy.csv',
+        )
+        with open(history_csv_path, "r") as fread:
+            reader = csv.reader(fread)
+            data_list = list(reader)
+            with open(resume_csv_path, "w") as fwrite:
+                writer = csv.writer(fwrite)
+                for row in data_list:
+                    writer.writerow(row)
+        # chang str type to real type
+        for row in data_list:
+            for i, value in enumerate(row):
+                try:
+                    row[i] = int(value)
+                except ValueError:
+                    try:
+                        row[i] = float(value)
+                    except ValueError:
+                        pass
+
+        data_dict = []
+        keys = data_list[0]
+        values = data_list[1:]
+        for val in values:
+            val = [x if x != '' else None for x in val]
+            val = [True if x == 'True' else x for x in val]
+            val = [False if x == 'False' else x for x in val]
+            dictionary = dict(zip(keys, val))
+            time_val = -1
+            target_key = self.tuner_cfg["metric_cfg"]["name"]
+            if dictionary[target_key]:
+                time_val = dictionary[target_key]
+            dictionary["time"] = time_val
+            data_dict.append(dictionary)
+        self.resume_cfgs = data_dict
+
+    def get_cfg_from_resume(self, cur_cfg):
+        """Get cfg from resume cfgs"""
+        keys_to_compare = [
+            'mp_degree',
+            'sharding_degree',
+            'pp_degree',
+            'dp_degree',
+            'sharding_stage',
+            'micro_batch_size',
+            'vpp_degree',
+            'use_recompute',
+            'recompute_granularity',
+            'num_gpus',
+            'nodes',
+            'global_batch_size',
+            'sharding_overlap',
+            'acc_steps',
+        ]
+        for cfg in self.resume_cfgs:
+            ret_is_same = True
+            for key in keys_to_compare:
+                if not cfg.get(key) and not cur_cfg.get(key):
+                    continue
+                else:
+                    is_same = str(cfg.get(key)) == str(cur_cfg.get(key))
+                ret_is_same = ret_is_same and is_same
+            if ret_is_same:
+                return cfg
+        return None

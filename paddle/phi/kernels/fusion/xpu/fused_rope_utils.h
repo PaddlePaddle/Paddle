@@ -68,15 +68,29 @@ void XPUGetSinCosData(const Context& dev_ctx,
           phi::errors::InvalidArgument(
               "The batch_size and seq_len of position_ids must be the same as "
               "those of q."));
-      int ret = xpu::gather<XPUT, int64_t>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUT*>(sin_cos->data()),
-          position_ids->data<int64_t>(),
-          sin_cos_data,
-          {seq_len, head_dim},
-          batch_size * seq_len,
-          0);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather");
+      using XPUTFp16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+      using XPUTBf16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
+      if (std::is_same<XPUT, XPUTBf16>::value) {
+        int ret = xpu::gather<XPUTFp16, int64_t>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUTFp16*>(sin_cos->data()),
+            position_ids->data<int64_t>(),
+            reinterpret_cast<XPUTFp16*>(sin_cos_data),
+            {seq_len, head_dim},
+            batch_size * seq_len,
+            0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather");
+      } else {
+        int ret = xpu::gather<XPUT, int64_t>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUT*>(sin_cos->data()),
+            position_ids->data<int64_t>(),
+            sin_cos_data,
+            {seq_len, head_dim},
+            batch_size * seq_len,
+            0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather");
+      }
     } else {
       int ret =
           xpu::broadcast<XPUT>(dev_ctx.x_context(),
@@ -122,8 +136,8 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
            {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
            {seq_len * head_dim, head_dim, head_dim, 1});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret,
-                              is_bwd ? "rotary_no_freqs_embedding_v2"
-                                     : "rotary_no_freqs_embedding_v2_grad");
+                              is_bwd ? "rotary_no_freqs_embedding_v2_grad"
+                                     : "rotary_no_freqs_embedding_v2");
 }
 }  // namespace fusion
 }  // namespace phi

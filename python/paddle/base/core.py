@@ -41,8 +41,7 @@ try:
         # Note: from python3.8, PATH will not take effect
         # https://github.com/python/cpython/pull/12302
         # Use add_dll_directory to specify dll resolution path
-        if sys.version_info[:2] >= (3, 8):
-            os.add_dll_directory(third_lib_path)
+        os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
     if os.name == 'nt':
@@ -342,6 +341,9 @@ try:
         _set_prim_target_grad_name,
     )
 
+    # type promotion
+    from .libpaddle import need_type_promotion, get_promote_dtype  # noqa: F401
+
     # isort: on
     if sys.platform != 'win32':
         from .libpaddle import (  # noqa: F401
@@ -513,12 +515,34 @@ decomp_ops_contain_unused_output = {
 }
 
 
+# This api is used for development for dynamic shape in prim, and will be removed in future.
+def _enable_prim_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_skip_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+# This api is used for development for sinking decomp in c++, and will be removed in future.
+def _enable_sink_decomp():
+    flag = os.getenv("FLAGS_sink_decomp", "true")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
 def _set_prim_forward_blacklist(*args):
     for item in args:
         if not isinstance(item, str):
             raise TypeError("ops set in forward_blacklist must belong to str")
         else:
             prim_config["forward_blacklist"].add(item)
+
+
+def _reset_prim_forward_blacklist():
+    prim_config["forward_blacklist"] = set()
 
 
 def _set_prim_backward_blacklist(*args):

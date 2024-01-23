@@ -92,6 +92,8 @@ class TrainerFactory:
                     and len(opt_info.get("dump_fields_path")) != 0
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
+                if opt_info.get("dump_fields_mode") is not None:
+                    trainer._set_dump_fields_mode(opt_info["dump_fields_mode"])
                 if (
                     opt_info.get("user_define_dump_filename") is not None
                     and len(opt_info.get("user_define_dump_filename")) != 0
@@ -115,6 +117,10 @@ class TrainerFactory:
                 if opt_info.get("is_dump_in_simple_mode") is not None:
                     trainer._set_is_dump_in_simple_mode(
                         opt_info["is_dump_in_simple_mode"]
+                    )
+                if opt_info.get("dump_num_decimals") is not None:
+                    trainer._set_dump_num_decimals(
+                        opt_info["dump_num_decimals"]
                     )
                 if opt_info.get("enable_random_dump") is not None:
                     trainer._set_enable_random_dump(

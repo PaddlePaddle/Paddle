@@ -15,7 +15,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 from test_lac import DynamicGRU
 
 import paddle
@@ -297,8 +297,7 @@ class Args:
     train_step = 10
 
 
-def train(args, to_static):
-    paddle.jit.enable_to_static(to_static)
+def train(args):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
@@ -373,8 +372,9 @@ class TestSentiment(Dy2StTestBase):
 
     def train_model(self, model_type='cnn_net'):
         self.args.model_type = model_type
-        st_out = train(self.args, True)
-        dy_out = train(self.args, False)
+        st_out = train(self.args)
+        with enable_to_static_guard(False):
+            dy_out = train(self.args)
         np.testing.assert_allclose(
             dy_out,
             st_out,

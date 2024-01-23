@@ -20,7 +20,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
@@ -60,7 +59,7 @@ std::vector<int64_t> GetOutputShape(const phi::DDim& x, const phi::DDim& y) {
 
     vec_res.resize(max_rank);
     for (size_t i = 0; i < max_rank; ++i) {
-      vec_res[i] = GetDimByIndex(x, y, short_align_axis, max_rank);
+      vec_res[i] = GetDimByIndex(x, y, short_align_axis, i);
     }
   }
 

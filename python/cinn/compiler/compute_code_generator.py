@@ -92,7 +92,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
     def visit_arguments(self, node):
         """
         Parse CINN Low Level IR Argument.
-        If it is not jit mode, it will get information from arg.annoatation.
+        If it is not jit mode, it will get information from arg.annotation.
 
         Args:
             node(ast.arguments): The ast argument Node

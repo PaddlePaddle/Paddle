@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 API_list = [
     (paddle.quantile, np.quantile),
@@ -239,17 +240,18 @@ class TestQuantileRuntime(unittest.TestCase):
                         paddle_res.numpy(), np_res, rtol=1e-05
                     )
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for func, res_func in API_list:
             for device in self.devices:
                 x = paddle.static.data(
-                    name="x", shape=self.input_data.shape, dtype=paddle.float32
+                    name="x", shape=self.input_data.shape, dtype="float32"
                 )
                 x_fp64 = paddle.static.data(
                     name="x_fp64",
                     shape=self.input_data.shape,
-                    dtype=paddle.float64,
+                    dtype="float64",
                 )
 
                 results = func(x, q=0.5, axis=1)

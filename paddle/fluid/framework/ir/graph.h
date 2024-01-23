@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(all_blocks_convert_trt);
 
 namespace paddle {
 namespace framework {
@@ -382,6 +383,8 @@ class Graph {
   std::shared_ptr<Graph> Clone();
 
   bool IsMainGraph() const { return main_graph_ == nullptr; }
+
+  const Graph *GetMainGraph() const { return main_graph_; }
 
   Graph *GetSubGraph(const size_t idx) const {
     PADDLE_ENFORCE_EQ(

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_reify_infer_shape_op.h"
 
 namespace pir::shape {
 ShapeDialect::ShapeDialect(IrContext *context)
@@ -23,28 +23,42 @@ ShapeDialect::ShapeDialect(IrContext *context)
 }
 
 void ShapeDialect::initialize() {
-  RegisterOps<SymbolicDimOp,
-              DimOp,
-              TieProductEqualOp,
-              TieShapeOp,
-              FuncOp,
-              TensorDimOp,
-              ShapeOfOp,
-              FromElementsOp,
-              ExtractOp,
-              ConstantOp,
-              IndexCastOp,
-              AbsOp,
-              TransposeOp,
-              ConcatOp>();
+  RegisterOps<DimOp>();
+
+  RegisterAttributes<SymbolAttribute>();
+}
+
+void ShapeDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
+  if (attr.isa<SymbolAttribute>()) {
+    SymbolAttribute symbol_attr = attr.dyn_cast<SymbolAttribute>();
+    os << "(shape_data)";
+    os << "[";
+    for (size_t i = 0; i < symbol_attr.data().shape().size(); ++i) {
+      if (i != symbol_attr.data().shape().size() - 1) {
+        os << symbol::ToString(symbol_attr.data().shape()[i]) << ",";
+      } else {
+        os << symbol::ToString(symbol_attr.data().shape()[i]);
+      }
+    }
+    os << "]_[";
+    if (symbol_attr.data().data().has_value()) {
+      for (size_t i = 0; i < symbol_attr.data().data().value().size(); ++i) {
+        if (i != symbol_attr.data().data().value().size() - 1) {
+          os << symbol::ToString(symbol_attr.data().data().value()[i]) << ",";
+        } else {
+          os << symbol::ToString(symbol_attr.data().data().value()[i]);
+        }
+      }
+    } else {
+      os << "nullopt";
+    }
+
+    os << "]";
+  }
 }
 
 void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {
-  if (auto func_op = op->dyn_cast<FuncOp>()) {
-    func_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
-  }
+  printer.PrintGeneralOperation(op);
 }
 
 }  // namespace pir::shape

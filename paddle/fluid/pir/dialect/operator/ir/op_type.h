@@ -18,16 +18,18 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/type.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace dialect {
 
 using DenseTensorType = pir::DenseTensorType;
 
-class SelectedRowsType : public pir::Type::TypeBase<SelectedRowsType,
-                                                    pir::Type,
-                                                    SelectedRowsTypeStorage,
-                                                    pir::ShapedTypeInterface> {
+class TEST_API SelectedRowsType
+    : public pir::Type::TypeBase<SelectedRowsType,
+                                 pir::Type,
+                                 SelectedRowsTypeStorage,
+                                 pir::ShapedTypeInterface> {
  public:
   using Base::Base;
 

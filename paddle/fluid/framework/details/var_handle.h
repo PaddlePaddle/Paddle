@@ -49,7 +49,7 @@ struct VarHandleBase {
     node_->WrappedBy(this);
   }
 
-  virtual ~VarHandleBase();
+  TEST_API virtual ~VarHandleBase();
 
   virtual std::string DebugString() const = 0;
   virtual const std::string& Name() const = 0;
@@ -114,9 +114,9 @@ struct VarHandle : public VarHandleBase {
   DISABLE_COPY_AND_ASSIGN(VarHandle);
 
  public:
-  virtual ~VarHandle();
+  TEST_API virtual ~VarHandle();
 
-  std::string DebugString() const override;
+  TEST_API std::string DebugString() const override;
 
   VarHandle(ir::Node* node,
             size_t version,
@@ -177,9 +177,9 @@ struct VarHandle : public VarHandleBase {
 struct DummyVarHandle : public VarHandleBase {
   explicit DummyVarHandle(ir::Node* node) : VarHandleBase(node) {}
 
-  virtual ~DummyVarHandle();
+  TEST_API virtual ~DummyVarHandle();
 
-  std::string DebugString() const override;
+  TEST_API std::string DebugString() const override;
 
  public:
   const std::string& Name() const override { return name_; }

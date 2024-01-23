@@ -35,7 +35,7 @@ class saved_tensors_hooks:
             backward need use the saved inputs/outputs tensors. Then you can reload
             the tensor and return it to paddle framework. The input of `unpack_hook`
             is the information returned by `pack_hook`. The output of `unpack_hook`
-            is a tensor reloaded by the information, and the tensor mast has the same
+            is a tensor reloaded by the information, and the tensor must has the same
             content as the original tensor passed as input to the corresponding
             `pack_hook`.
 

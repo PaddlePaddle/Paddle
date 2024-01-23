@@ -242,7 +242,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
         if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
-          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
+          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0f);
         } else {
           grad_t->clear();
         }

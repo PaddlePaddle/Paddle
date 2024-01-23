@@ -839,7 +839,9 @@ def get_first_optimize_op_idx(block):
     return first_opt_op_idx
 
 
-def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
+def insert_broadcast_ops(
+    block, insert_idx, ring_id, broadcast2root, use_calc_stream=False
+):
     """
     _add_broadcast_ops
     """
@@ -853,6 +855,7 @@ def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
             attrs={
                 'ring_id': ring_id,
                 'root': root_device,
+                'use_calc_stream': use_calc_stream,
                 OP_ROLE_KEY: op_role,
             },
         )
@@ -860,6 +863,7 @@ def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
 
 DtypeToSize = {
     core.VarDesc.VarType.FP16: 2,
+    core.VarDesc.VarType.BF16: 2,
     core.VarDesc.VarType.FP32: 4,
     core.VarDesc.VarType.FP64: 8,
     core.VarDesc.VarType.INT16: 2,

@@ -64,8 +64,9 @@ set(KERNEL_LIST
 
 # shared inference library deps
 list(REMOVE_DUPLICATES fluid_modules)
-#windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
-if(WIN32 AND WITH_GPU)
+# windows static library（both CPU and GPU）over the limit, so no longer create_static_lib,
+# and cc_library is dummy
+if(WIN32)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
@@ -107,7 +108,7 @@ set(SHARED_INFERENCE_SRCS
 list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference
 # shared library to prune library size.
-list(REMOVE_ITEM fluid_modules ${not_infer_modules})
+# list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
 set(SHARED_INFERENCE_DEPS phi common ${fluid_modules} analysis_predictor
                           ${utils_modules})
@@ -142,8 +143,9 @@ if(WIN32)
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared phi common)
 endif()
-set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
-                                                         "-Wl,-rpath,'$ORIGIN'")
+set(INFERENCE_SHARED_LINKFLAGS "-Wl,-rpath,'$ORIGIN'")
+set_target_properties(paddle_inference_shared
+                      PROPERTIES LINK_FLAGS "${INFERENCE_SHARED_LINKFLAGS}")
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
 if(NOT APPLE
@@ -151,11 +153,11 @@ if(NOT APPLE
    AND NOT WITH_TESTING
    AND NOT WITH_INFERENCE_API_TEST)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
-  set(LINK_FLAGS
-      "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
-
-  set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
-                                                           "${LINK_FLAGS}")
+  set(INFERENCE_SHARED_LINKFLAGS
+      "${INFERENCE_SHARED_LINKFLAGS},--version-script=${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map"
+  )
+  set_target_properties(paddle_inference_shared
+                        PROPERTIES LINK_FLAGS "${INFERENCE_SHARED_LINKFLAGS}")
   # check symbol hidden
   file(
     WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake

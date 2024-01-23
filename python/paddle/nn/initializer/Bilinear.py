@@ -14,10 +14,14 @@
 
 import numpy as np
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ...base import core, framework, unique_name
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_pir_mode,
+)
 from .initializer import Initializer
 
 __all__ = []
@@ -85,13 +89,18 @@ class Bilinear(Initializer):
         Returns:
             The initialization op
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, Bilinear initializer not support lazy init for dist param."
         block = self._check_block(block)
 
-        if not isinstance(var, framework.Variable):
-            raise ValueError("var must be framework.Variable.")
+        if not isinstance(var, (framework.Variable, pir.core.ParameterMeta)):
+            raise ValueError(
+                "var must be framework.Variable or pir.core.ParameterMeta."
+            )
 
-        if not isinstance(block, framework.Block):
-            raise ValueError("block must be framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise ValueError("block must be framework.Block or pir.Block.")
 
         shape = var.shape
         if len(shape) != 4:
@@ -127,12 +136,19 @@ class Bilinear(Initializer):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
+        elif var.dtype in [
+            core.DataType.FLOAT16,
+            core.DataType.BFLOAT16,
+            core.DataType.FLOAT64,
+        ]:
+            out_dtype = core.DataType.FLOAT32
+            out_var = var
         else:
             out_dtype = var.dtype
             out_var = var
 
-        if out_dtype == core.VarDesc.VarType.FP32:
-            value_name = "fp32_values"
+        if out_dtype in (core.VarDesc.VarType.FP32, core.DataType.FLOAT32):
+            value_name = "values"
             values = [float(v) for v in weight.flat]
         else:
             raise TypeError("Unsupported dtype %s", var.dtype)
@@ -158,6 +174,20 @@ class Bilinear(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
+        elif in_pir_mode():
+            out_var = _C_ops.assign_value(
+                list(shape),
+                out_dtype,
+                values,
+                _current_expected_place(),
+            )
+            if var.dtype in [
+                core.DataType.FLOAT16,
+                core.DataType.BFLOAT16,
+                core.DataType.FLOAT64,
+            ]:
+                out_var = _C_ops.cast(out_var, var.dtype)
+            return out_var
         else:
             op = block.append_op(
                 type='assign_value',

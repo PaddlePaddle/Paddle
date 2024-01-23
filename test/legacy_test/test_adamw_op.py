@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 from functools import partial
@@ -230,6 +231,24 @@ class TestAdamWOp(unittest.TestCase):
             adam.step()
             adam.clear_gradients()
 
+    def test_adamw_op_dygraph_bypassing_step(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+        )
+        os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "1"
+        for _ in range(2):
+            out = linear(a)
+            out.backward()
+            adam.step()
+            adam.clear_gradients()
+
     def test_adamw_op_coverage(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
@@ -353,6 +372,30 @@ class TestAdamWOpGroup(TestAdamWOp):
             weight_decay=0.01,
         )
 
+        for _ in range(2):
+            out = linear_1(a)
+            out = linear_2(out)
+            out.backward()
+            adam.step()
+            adam.clear_gradients()
+
+    def test_adamw_op_dygraph_bypassing_step(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {'params': linear_2.parameters(), 'weight_decay': 0.001},
+            ],
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+        )
+
+        os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "1"
         for _ in range(2):
             out = linear_1(a)
             out = linear_2(out)

@@ -349,7 +349,19 @@ void DropoutFwGPUKernelDriver(
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
-
+#ifdef PADDLE_WITH_HIP
+      VectorizedRandomGenerator<T>
+          <<<grid_size, block_size, 0, stream>>>(0,
+                                                 size,
+                                                 seed_data,
+                                                 dropout_prob,
+                                                 x_data,
+                                                 mask_data,
+                                                 y_data,
+                                                 upscale_in_train,
+                                                 increment,
+                                                 main_offset);
+#else
       void* functionPtr =
           reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));
       cudaFunction_t cudaFunc;
@@ -401,6 +413,7 @@ void DropoutFwGPUKernelDriver(
 
       VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
                << ", increment = " << increment;
+#endif
     }
   } else {
     if (upscale_in_train) {

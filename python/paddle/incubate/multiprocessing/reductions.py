@@ -84,7 +84,7 @@ def _rebuild_tensor(cls, lodtensor, metadata):
         size, stop_gradient = metadata
         tensor = paddle.base.core.eager.Tensor()
         if lodtensor._is_initialized():
-            tensor.value().get_tensor()._share_data_with(lodtensor)
+            tensor.get_tensor()._share_data_with(lodtensor)
         else:
             tensor = paddle.to_tensor([], dtype=lodtensor._dtype())
         tensor.stop_gradient = stop_gradient
@@ -92,7 +92,7 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 
 
 def _reduce_tensor(tensor):
-    lodtensor = tensor.value().get_tensor()
+    lodtensor = tensor.get_tensor()
 
     if not tensor.stop_gradient and not tensor.is_leaf:
         raise RuntimeError(

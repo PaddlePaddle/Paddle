@@ -17,17 +17,20 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.jit.sot.symbolic.compile_cache import CompileSIRCache
 
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
+        self.dropout = paddle.nn.Dropout(p=0.5)
 
     def forward(self, x):
         if self.training:
             out1 = paddle.nn.functional.dropout(x, p=0.5, training=True)
         else:
             out1 = paddle.nn.functional.dropout(x, p=0.5, training=False)
+        out1 = self.dropout(out1)
         return out1
 
 
@@ -35,6 +38,15 @@ class TestModelSwitchTraining(unittest.TestCase):
     def setUp(self):
         self.seed = 1127
         self.net = SimpleNet()
+        # singleton
+        self.compile_cache = CompileSIRCache()
+
+    def check_mode(self, is_train):
+        self.assertEqual(len(self.compile_cache.cache), 1)
+        mode = list(self.compile_cache.cache.values())[
+            0
+        ].partial_program.training
+        self.assertEqual(mode, is_train)
 
     def get_dygraph_out(self, input):
         paddle.seed(self.seed)
@@ -46,11 +58,16 @@ class TestModelSwitchTraining(unittest.TestCase):
 
     def get_static_out(self, input):
         paddle.seed(self.seed)
+        self.compile_cache.clear()
         static_net = paddle.jit.to_static(self.net)
         static_net.eval()
         eval_result = static_net(input)
+        self.check_mode(is_train=False)
+        self.compile_cache.clear()
+
         static_net.train()
         train_result = static_net(input)
+        self.check_mode(is_train=True)
         return eval_result, train_result
 
     def test_model_switch_training(self):

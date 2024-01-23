@@ -33,7 +33,7 @@ namespace ir {
 Tensor CreateRFTensor(const Tensor& original_tensor,
                       const Expr& rf_loop,
                       int rf_axis) {
-  std::string name = cinn::common::UniqName(original_tensor->name + "_rf");
+  std::string name = original_tensor->name + "_rf";
   std::vector<Expr> new_shape = original_tensor->shape;
   new_shape.insert(new_shape.begin() + rf_axis, rf_loop.As<For>()->extent);
   Tensor rf_tensor = _Tensor_::Make(name,
@@ -130,6 +130,26 @@ class ReduceBlockCreater {
       if (!has_add_init_block && is_spatial_loop) {
         body = Block::Make({new_init_block_realize_, body});
         has_add_init_block = true;
+      }
+      // Add If
+      if (original_loops_[i].As<For>()->body.As<IfThenElse>()) {
+        const IfThenElse* original_if =
+            original_loops_[i].As<For>()->body.As<IfThenElse>();
+        body = IfThenElse::Make(original_if->condition, body);
+      }
+      if (original_loops_[i].As<For>()->body.As<Block>() &&
+          original_loops_[i].As<For>()->body.As<Block>()->stmts.size() == 1 &&
+          original_loops_[i]
+              .As<For>()
+              ->body.As<Block>()
+              ->stmts[0]
+              .As<IfThenElse>()) {
+        const IfThenElse* original_if = original_loops_[i]
+                                            .As<For>()
+                                            ->body.As<Block>()
+                                            ->stmts[0]
+                                            .As<IfThenElse>();
+        body = IfThenElse::Make(original_if->condition, body);
       }
       // Add loops
       Var loop_var = ir_utils::IRCopy(original_loops_[i].As<For>()->loop_var);

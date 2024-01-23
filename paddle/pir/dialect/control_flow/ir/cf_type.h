@@ -21,6 +21,7 @@
 namespace pir {
 
 class IR_API ContainerType : public Type {
+ public:
   using Type::Type;
   static bool classof(Type);
 };

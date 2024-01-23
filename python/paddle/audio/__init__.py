@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import features
-from . import functional
-from . import datasets
-from . import backends
-
+from . import backends, datasets, features, functional
 from .backends.backend import info, load, save
 
 __all__ = [

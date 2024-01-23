@@ -668,6 +668,7 @@ TEST(Tensor, RunWithExternalStream) {
   cudaStream_t stream;
   cudaStreamCreate(&stream);
   config.SetExecStream(stream);
+  config.EnableNewExecutor();
   auto predictor = CreatePredictor(config);
 
   auto w0 = predictor->GetInputHandle("firstw");
@@ -703,8 +704,7 @@ TEST(Tensor, RunWithExternalStream) {
 
   cudaStream_t external_stream;
   cudaStreamCreate(&external_stream);
-  Config tmp_config(config);
-  tmp_config.SetExecStream(external_stream);
+
   predictor->Run();
   paddle_infer::experimental::InternalUtils::RunWithExternalStream(
       predictor.get(), external_stream);

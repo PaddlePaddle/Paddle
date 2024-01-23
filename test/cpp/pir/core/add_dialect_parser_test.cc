@@ -26,6 +26,7 @@
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/utils.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using AttributeStorage = pir::AttributeStorage;
@@ -44,7 +45,7 @@ class TestParserDialect : public pir::Dialect {
   void initialize();
 };
 
-IR_DECLARE_EXPLICIT_TYPE_ID(TestParserDialect);
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestParserDialect);
 IR_DEFINE_EXPLICIT_TYPE_ID(TestParserDialect);
 
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(CharAttributeStorage, char);
@@ -63,7 +64,7 @@ class CharAttribute : public pir::Attribute {
   }
 };
 
-IR_DECLARE_EXPLICIT_TYPE_ID(CharAttribute);
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(CharAttribute);
 
 IR_DEFINE_EXPLICIT_TYPE_ID(CharAttribute);
 

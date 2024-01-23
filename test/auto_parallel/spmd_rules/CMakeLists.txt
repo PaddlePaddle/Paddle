@@ -25,6 +25,10 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_concat_rule MODULES test_concat_rule)
   py_test_modules(test_where_rule MODULES test_where_rule)
   py_test_modules(test_triu_rule MODULES test_triu_rule)
+  py_test_modules(test_flash_attention_rule MODULES test_flash_attention_rule)
+  py_test_modules(test_tile_rule MODULES test_tile_rule)
+  py_test_modules(test_fused_linear_param_grad_add_rule MODULES
+                  test_fused_linear_param_grad_add_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

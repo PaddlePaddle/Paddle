@@ -99,7 +99,7 @@ cc_test(
 cc_test(
   strided_memcpy_test
   SRCS strided_memcpy_test.cc
-  DEPS phi common memory)
+  DEPS phi common)
 
 cc_test(
   sequence_padding_test

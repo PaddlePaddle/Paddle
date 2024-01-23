@@ -208,6 +208,9 @@ class PipelineParallel(MetaParallelBase):
         self._enable_timer = self._strategy.hybrid_configs[
             "pp_configs"
         ].enable_timer
+        self._release_gradients = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].release_gradients
 
         self._sharding_split_param = self._strategy.hybrid_configs[
             "sharding_configs"
@@ -372,7 +375,13 @@ class PipelineParallel(MetaParallelBase):
 
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
-                        group_idx, parameters, comm_group, acc_steps, act, dst
+                        group_idx,
+                        parameters,
+                        comm_group,
+                        acc_steps,
+                        act,
+                        dst,
+                        release_grads=self._release_gradients,
                     )
                     self._chunk_2_comm_buffers[chunk_idx].append(buffer)
 
@@ -862,7 +871,14 @@ class PipelineParallel(MetaParallelBase):
         else:
             self.optimizer.step()
 
-        self.optimizer.clear_grad()
+        if self._release_gradients:
+            self.optimizer.clear_grad(set_to_zero=False)
+            for _, buffers in self._chunk_2_comm_buffers.items():
+                for buffer in buffers:
+                    buffer._clear_grad_storage()
+        else:
+            self.optimizer.clear_grad()
+
         if self.lr_scheduler:
             self.lr_scheduler.step()
 
@@ -920,8 +936,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._virtual_pp_world_size = self.num_model_chunks
         self._virtual_pp_rank = 0
         self._reset_counter()
-
-        self._assign_vpp_info(self.model_chunks)
 
     def _check_sanity(self):
         assert (
@@ -1552,13 +1566,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         self._forward_only = forward_only
 
         assert (
-            self.accumulate_steps >= self.num_stages
-        ), "accumulate_steps({}) should be larger than num_stages({}) for pipeline with interleave".format(
-            self.accumulate_steps, self.num_stages
-        )
-        assert (
-            self.accumulate_steps < 2 * self.num_stages
-        ), "accumulate_steps({}) should be smaller than 2 * num_stages({}) for pipeline with interleave".format(
+            self.accumulate_steps == self.num_stages
+            or self.accumulate_steps % self.num_stages != 0
+        ), "accumulate_steps({}) and num_stages({}) should be a multiple or accumulate_steps % num_stages == 0".format(
             self.accumulate_steps, self.num_stages
         )
 

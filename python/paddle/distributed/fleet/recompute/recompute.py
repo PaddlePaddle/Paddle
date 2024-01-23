@@ -512,6 +512,13 @@ def recompute(function, *args, **kwargs):
             normal_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0], recompute_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0]
 
     """
+    if not in_dynamic_mode():
+        from paddle.distributed.auto_parallel.interface import (
+            recompute as static_auto_recompute,
+        )
+
+        return static_auto_recompute(function)(*args, **kwargs)
+
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
 

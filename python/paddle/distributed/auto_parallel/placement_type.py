@@ -50,6 +50,20 @@ def to_placements(dim_map, mesh, partial_idx=[]):
     return placements
 
 
+def check_placements_equal(this, that):
+    assert isinstance(this, list) and isinstance(that, list)
+    small_placements = this if len(this) < len(that) else that
+    large_placements = that if len(this) < len(that) else this
+    for i in range(len(large_placements)):
+        if i < len(small_placements):
+            if small_placements[i] != large_placements[i]:
+                return False
+        else:
+            if large_placements[i] != Replicate():
+                return False
+    return True
+
+
 def to_dim_map(placements, tensor_dims):
     """
     convert placements to dim_map.

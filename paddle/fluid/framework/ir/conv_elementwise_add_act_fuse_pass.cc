@@ -40,7 +40,7 @@ framework::proto::OpDesc PrepareOpDesc(
     float alpha) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
-  desc.SetType("conv2d_fusion");
+  desc.SetType("fused_conv2d_add_act");
   desc.SetInput("Bias", {bias});
   desc.SetInput("ResidualData", {});
   desc.SetAttr("activation", activation);
@@ -175,6 +175,13 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
   }
 
+  std::unordered_set<std::string> custom_act_set{};
+  if (Get<bool>("use_custom_device")) {
+    custom_act_set = {
+        "identity", "relu", "sigmoid", "tanh", "swish", "leaky_relu"};
+    all_act_set.insert(custom_act_set.begin(), custom_act_set.end());
+  }
+
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, all_act_set);
   int found_count = 0;
@@ -194,10 +201,11 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
         conv_op->Op(), scope, act_op_type, Get<int>("gpu_device_id"));
     bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
-    // When this conv2d_fusion specified by problem size and act type is not
-    // supported by cutlass and not supported by cuDNN, we should not apply this
-    // pass.
-    if (!cutlass_can_fuse && !cudnn_can_fuse) {
+    // When this fused_conv2d_add_act specified by problem size and act type is
+    // not supported by cutlass and not supported by cuDNN, we should not apply
+    // this pass.
+    bool custom_can_fuse = custom_act_set.count(act_op_type);
+    if (!cutlass_can_fuse && !cudnn_can_fuse && !custom_can_fuse) {
       return;
     }
 

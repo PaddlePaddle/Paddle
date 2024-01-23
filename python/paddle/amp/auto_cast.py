@@ -138,7 +138,7 @@ def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
     # Highest prority. Because all the layers except BN will use bfloat16 params in bfoat16 training,
     # here we provide a option to keep fp32 param.
-    if not layer._cast_to_low_precison:
+    if not layer._cast_to_low_precision:
         need_keep_fp32 = True
     # The BN layers will keep fp32
     elif isinstance(
@@ -197,12 +197,12 @@ def set_excluded_layers(models, excluded_layers):
         for layer in excluded_layers_instances[idx].sublayers(
             include_self=True
         ):
-            layer._cast_to_low_precison = False
+            layer._cast_to_low_precision = False
     excluded_layers_types = tuple(excluded_layers_types)
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             if isinstance(layer, excluded_layers_types):
-                layer._cast_to_low_precison = False
+                layer._cast_to_low_precision = False
 
 
 @dygraph_only
@@ -330,13 +330,13 @@ def amp_guard(
 
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'OD', 'O1', 'O2']):
+    if level not in ['O0', 'OD', 'O1', 'O2']:
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
     if enable:
-        if not (dtype in ['float16', 'bfloat16']):
+        if dtype not in ['float16', 'bfloat16']:
             raise ValueError(
                 "If enable amp, dtype should be 'float16' or 'bfloat16'."
             )
@@ -576,11 +576,11 @@ def amp_decorate(
             ...     print(output.dtype)
             paddle.float16
     """
-    if not (level in ['O1', 'O2']):
+    if level not in ['O1', 'O2']:
         raise ValueError(
             "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
         )
-    if not (dtype in ['float16', 'bfloat16']):
+    if dtype not in ['float16', 'bfloat16']:
         raise ValueError("dtype only support float16 or bfloat16.")
 
     if level == 'O1':
@@ -660,7 +660,7 @@ def amp_decorate(
                 "optimizers must be either a single optimizer or a list of optimizers."
             )
         # support master_weight
-        use_multi_precision = not (master_weight is False)
+        use_multi_precision = master_weight is not False
         for opt in optimizers:
             _set_multi_precision(opt, use_multi_precision)
 
@@ -673,7 +673,7 @@ def amp_decorate(
                 )
 
     if save_dtype is not None:
-        if not (save_dtype in ['float16', 'bfloat16', 'float32', 'float64']):
+        if save_dtype not in ['float16', 'bfloat16', 'float32', 'float64']:
             raise ValueError(
                 "save_dtype can only be float16 float32 or float64, but your input save_dtype is %s."
                 % save_dtype
@@ -806,7 +806,7 @@ def decorate(
         level(str, optional): Auto mixed precision level. Accepted values are 'O1' and 'O2': O1 represent mixed precision, the decorator will do nothing;
              O2 represent Pure float16/bfloat16, the decorator will cast all parameters of models to float16/bfloat16, except BatchNorm, InstanceNorm and LayerNorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
+        master_weight(bool, optional): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
         master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight

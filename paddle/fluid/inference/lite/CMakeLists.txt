@@ -13,4 +13,4 @@ cc_library(
 cc_library(
   lite_tensor_utils
   SRCS tensor_utils.cc
-  DEPS memcpy ${LITE_DEPS} framework_proto device_context ${XPU_DEPS})
+  DEPS ${LITE_DEPS} framework_proto device_context ${XPU_DEPS})

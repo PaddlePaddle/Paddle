@@ -54,8 +54,9 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     }
   }
 
-  bool Simplify() {
-    bool changed = false;
+  std::pair<bool, int64_t> Simplify() {
+    int64_t sum_num_rewrites = 0;
+    int64_t num_rewrites = 0;
     int64_t iteration = 0;
     do {
       // Check if the iteration limit was reached.
@@ -80,19 +81,18 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
         VLOG(6) << "worklist[" << i << "] is " << worklist_[i]->name();
       }
 
-      changed = ProcessWorklist();
-    } while (changed);
-
-    return !changed;
+      num_rewrites = ProcessWorklist();
+      sum_num_rewrites += num_rewrites;
+    } while (num_rewrites != 0);
+    bool converged = num_rewrites == 0;
+    return std::make_pair(converged, sum_num_rewrites);
   }
 
  private:
   /// Process ops until the worklist is empty or `config.max_num_rewrites`
   /// is reached. Return `true` if any IR was changed.
-  bool ProcessWorklist() {
-    bool changed = false;
+  int64_t ProcessWorklist() {
     int64_t num_rewrites = 0;
-
     while (!worklist_.empty() &&
            (num_rewrites < config_.max_num_rewrites ||
             config_.max_num_rewrites == pir::GreedyRewriteConfig::kNoLimit)) {
@@ -108,12 +108,10 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
 
       bool match_result = matcher_.MatchAndRewrite(op, *this);
       if (match_result) {
-        changed = true;
         ++num_rewrites;
       }
     }
-
-    return changed;
+    return num_rewrites;
   }
 
   // TODO(wilber): OpResult support GetUsers method.
@@ -214,18 +212,35 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
 
 namespace pir {
 
-bool ApplyPatternsGreedily(Region& region,  // NOLINT
-                           const FrozenRewritePatternSet& patterns,
-                           GreedyRewriteConfig config) {
+std::pair<bool, int64_t> ApplyPatternsGreedily(
+    Region& region,  // NOLINT
+    const FrozenRewritePatternSet& patterns,
+    GreedyRewriteConfig config) {
   if (!config.region) config.region = &region;
 
   GreedyPatternRewriteDriver driver(region.ir_context(), patterns, config);
-  bool converged = driver.Simplify();
+  auto [converged, num_rewrites] = driver.Simplify();
   if (!converged) {
-    LOG(WARNING) << "The pattern rewrite did not converge after scaning "
+    LOG(WARNING) << "The pattern rewrite did not converge after scanning "
                  << config.max_iterations << " times";
   }
-  return converged;
+  return std::make_pair(converged, num_rewrites);
+}
+
+IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
+    Operation* op,
+    const FrozenRewritePatternSet& patterns,
+    GreedyRewriteConfig config) {
+  bool sum_converged = true;
+  int64_t sum_num_rewrites = 0;
+  for (uint32_t i = 0; i < op->num_regions(); ++i) {
+    Region& region = op->region(i);
+    auto [converged, num_rewrites] =
+        ApplyPatternsGreedily(region, patterns, config);
+    sum_converged &= converged;
+    sum_num_rewrites += num_rewrites;
+  }
+  return std::make_pair(sum_converged, sum_num_rewrites);
 }
 
 }  // namespace pir

@@ -109,7 +109,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     std::string act_type = "identity";
     framework::OpDesc new_op_desc(base_op_desc, nullptr);
-    new_op_desc.SetType("conv2d_fusion");
+    new_op_desc.SetType("fused_conv2d_add_act");
     new_op_desc.SetInput("Bias", {bias_name});
     new_op_desc.SetInput("ResidualData", {});
     new_op_desc.SetAttr("activation", act_type);
@@ -133,7 +133,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     auto out_threshold_attr =
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
     // set the out_threshold of the elementwise add op to be the out_threshold
-    // of the conv2d_fusion
+    // of the fused_conv2d_add_act
     if (out_threshold_attr.index()) {
       new_op_desc.SetAttr("out_threshold", out_threshold_attr);
     }
@@ -160,7 +160,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   };
 
   gpd(graph, handler);
-  // check if detect conv2d_fusion subgraph!
+  // check if detect fused_conv2d_add_act subgraph!
   AddStatis(found_conv_eltwise_count);
 }
 

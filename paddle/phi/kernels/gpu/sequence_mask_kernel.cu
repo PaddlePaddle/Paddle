@@ -27,3 +27,13 @@ PD_REGISTER_KERNEL(sequence_mask,
                    int64_t) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
+PD_REGISTER_KERNEL(sequence_mask_scalar,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SequenceMaskScalarKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

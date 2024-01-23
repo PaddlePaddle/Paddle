@@ -51,6 +51,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/x_to_r_reshard_function.h"
 #include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -231,6 +232,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::PToSReshardFunction>(
       *m, "PToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::XToRShrinkReshardFunction>(
+      *m, "XToRShrinkReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SameNdMeshReshardFunction>(
@@ -773,8 +778,8 @@ void BindAutoParallel(py::module *m) {
       py::return_value_policy::reference);
 
   // TODO(liuzhenhai): DistributedMapper is not used for now, but
-  // dist_mapper_test need the symbols forch DistributedMapper to be linked,
-  // remove it latter
+  // dist_mapper_test need the symbols touch DistributedMapper to be linked,
+  // remove it later
   m->def("touch_dist_mapper", []() {
     DistributedMapper mapper;
     return mapper.to_string();

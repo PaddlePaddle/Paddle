@@ -20,12 +20,12 @@ import gym
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base
 from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 
@@ -61,13 +61,11 @@ class Args:
     train_step = 10
 
 
-def train(args, place, to_static):
-    paddle.jit.enable_to_static(to_static)
+def train(args, to_static: bool):
+    with enable_to_static_guard(to_static):
+        env = gym.make('CartPole-v0')
+        env.reset(seed=SEED)
 
-    env = gym.make('CartPole-v0')
-    env.reset(seed=SEED)
-
-    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
@@ -206,17 +204,12 @@ def train(args, place, to_static):
 
 class TestDeclarative(Dy2StTestBase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
         self.args = Args()
 
     @test_legacy_and_pt_and_pir
     def test_train(self):
-        st_out = train(self.args, self.place, to_static=True)
-        dy_out = train(self.args, self.place, to_static=False)
+        st_out = train(self.args, to_static=True)
+        dy_out = train(self.args, to_static=False)
         np.testing.assert_allclose(st_out, dy_out, rtol=1e-05)
 
 

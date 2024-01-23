@@ -445,7 +445,7 @@ def add_optimizer_pass(program, config):
                 type="sum",
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
             optimize_block.append_op(
                 type="scale",

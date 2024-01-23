@@ -16,7 +16,6 @@ cc_library(
        build_strategy
        device_context
        parallel_executor
-       standalone_executor
        cinnapi)
 
 set(CINN_OP_DEPS parallel_executor string_helper variable_helper cinnapi

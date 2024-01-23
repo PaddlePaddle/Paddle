@@ -19,7 +19,67 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.jit.dy2static.export_subgraph import get_saving_dir
+
+
+class ProgramInfo:
+    def __init__(self, program, feeds, fetchs):
+        self.program = program
+        # {name: [shape, dtype]}
+        self.feeds = feeds
+        # {name: shape}
+        self.fetchs = fetchs
+
+    def random_feeds(self):
+        feed_dict = {}
+        for name, info in self.feeds.items():
+            data = np.random.random(info[0]).astype(convert_dtype(info[1]))
+            feed_dict[name] = data
+
+        return feed_dict
+
+    def fetch_list(self):
+        return list(self.fetchs.keys())
+
+
+class Parser:
+    def __init__(self):
+        self.feed_op_name = 'pd_op.data'
+        self.fetch_op_name = 'pd_op.fetch'
+
+    def run(self, file):
+        program = self.load_from(file)
+        feeds = self.parse_feeds(program)
+        fetchs = self.parse_fetchs(program)
+
+        return ProgramInfo(program, feeds, fetchs)
+
+    def load_from(self, file):
+        with open(file, 'r') as f:
+            content = f.read()
+
+        return paddle.pir.parse_program(content)
+
+    def parse_feeds(self, program):
+        feeds = {}
+        for op in program.global_block().ops:
+            if op.name() == self.feed_op_name:
+                in_val = op.result(0)
+                # shape, dtype
+                info = [in_val.shape, in_val.dtype]
+                feeds[op.attrs()['name']] = info
+
+        return feeds
+
+    def parse_fetchs(self, program):
+        fetchs = {}
+        for op in program.global_block().ops:
+            if op.name() == self.fetch_op_name:
+                in_val = op.operand_source(0)
+                fetchs[op.attrs()['name']] = in_val.shape
+
+        return fetchs
 
 
 class Net(paddle.nn.Layer):
@@ -78,79 +138,52 @@ class TestSaveFwdBwdProg(unittest.TestCase):
 
     def check_fwd(self, prog_file):
         path = os.path.join(self.root_dir, prog_file)
-        with open(path, 'r') as f:
-            content = f.read()
-        program = paddle.pir.parse_program(content)
+        program_info = Parser().run(path)
+        feed = program_info.random_feeds()
+        fetch_list = program_info.fetch_list()
+        outs = self.run_program(program_info.program, feed, fetch_list)
 
-        pt_input_0 = np.random.random([4, 4]).astype(np.float32)
-        feed = {"pt_input_0": pt_input_0}
-        fetch_list = [
-            'pt_output_0',
-            'pt_output_1',
-            'pt_intermediate_0',
-            'pt_intermediate_1',
-            'pt_intermediate_2',
-        ]
-        outs = self.run_program(program, feed, fetch_list)
-
-        self.assertEqual(len(outs), 5)
-        out_shapes = [[4, 4], [], [4, 4], [4, 4], [4, 4]]
-        for i, out in enumerate(outs):
-            self.assertListEqual(list(out.shape), out_shapes[i])
+        self.assertEqual(len(outs), len(fetch_list))
+        fetchs = program_info.fetchs
+        for name, out in zip(fetch_list, outs):
+            self.assertListEqual(list(out.shape), fetchs[name])
 
     def check_bwd(self, prog_file):
         path = os.path.join(self.root_dir, prog_file)
-        with open(path, 'r') as f:
-            content = f.read()
+        program_info = Parser().run(path)
+        feed = program_info.random_feeds()
+        fetch_list = program_info.fetch_list()
+        outs = self.run_program(program_info.program, feed, fetch_list)
 
-        program = paddle.pir.parse_program(content)
-        data = np.random.random([4, 4]).astype(np.float32)
-        feed = {
-            "pt_input_6": data,
-            "pt_input_5": data,
-            "pt_input_4": data,
-            "pt_input_3": np.array(0.1).astype(np.float32),
-            "pt_input_2": data,
-            "pt_input_1": data,
-            "pt_input_0": data,
-        }
-        fetch_list = []
-        outs = self.run_program(program, feed, fetch_list)
-
-        self.assertEqual(len(outs), 0)
+        self.assertEqual(len(outs), len(fetch_list))
 
 
-# class TestSaveInferProg(TestSaveFwdBwdProg):
+class TestSaveInferProg(TestSaveFwdBwdProg):
+    def test_export(self):
+        x = paddle.randn([4, 4])
+        self.net.eval()
+        out = self.net(x)
+        self.check_export()
 
-#     def test_export(self):
-#         x = paddle.randn([4, 4])
-#         self.net.eval()
-#         out = self.net(x)
-#         self.check_export()
+    def check_export(self):
+        for prog_file in os.listdir(self.root_dir):
+            if "infer" in prog_file:
+                self.check_infer(prog_file)
+            else:
+                raise RuntimeError("Not Support.")
 
-#     def check_export(self):
-#         for prog_file in os.listdir(self.root_dir):
-#             breakpoint()
-#             if "infer" in prog_file:
-#                 self.check_infer(prog_file)
-#             else:
-#                 raise RuntimeError("Not Support.")
+    def check_infer(self, prog_file):
+        path = os.path.join(self.root_dir, prog_file)
+        program_info = Parser().run(path)
+        feed = program_info.random_feeds()
+        fetch_list = program_info.fetch_list()
+        outs = self.run_program(program_info.program, feed, fetch_list)
 
-#     def check_infer(self, prog_file):
-#         path = os.path.join(self.root_dir, prog_file)
-#         with open(path, 'r') as f:
-#             content = f.read()
-#         program = paddle.pir.parse_program(content)
+        self.assertEqual(len(outs), len(fetch_list))
+        fetchs = program_info.fetchs
+        for name, out in zip(fetch_list, outs):
+            self.assertListEqual(list(out.shape), fetchs[name])
 
-#         pt_input_0 = np.random.random([4,4]).astype(np.float32)
-#         feed = {"pt_input_0": pt_input_0}
-#         fetch_list = ['pt_output_0', 'pt_output_1']
-#         outs = self.run_program(program, feed, fetch_list)
-
-#         self.assertEqual(len(outs), 2)
-#         out_shapes = [[], [4,4]]
-#         for i, out in enumerate(outs):
-#             self.assertListEqual(list(out.shape), out_shapes[i])
 
 if __name__ == "__main__":
     unittest.main()

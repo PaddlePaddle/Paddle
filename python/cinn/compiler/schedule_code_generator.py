@@ -107,7 +107,7 @@ class ScheduleCodeGenerator(ast.NodeVisitor):
                 local_var_table = exec_assign(
                     target=item.optional_vars, source=sch_block
                 )
-                # 3. Set the block's loop to its attritbute
+                # 3. Set the block's loop to its attribute
                 sch_block.set_scheduler(self.scheduler)
                 self.block_stack.append(sch_block)
                 for k, v in local_var_table.items():

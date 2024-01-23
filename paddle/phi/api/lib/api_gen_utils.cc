@@ -649,11 +649,9 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
       VLOG(3) << "CreateKernelDistOutput function set generated output "
                  "dist_tensor as Tensor's impl";
       if (out->is_dist_tensor()) {
-        VLOG(3)
-            << "out is DistTensor, set its DistAttr to generated DistOutput.";
-        dist_output->unsafe_set_dist_attr(
-            std::static_pointer_cast<phi::distributed::DistTensor>(out->impl())
-                ->dist_attr());
+        VLOG(3) << "out is DistTensor, set DistAttr:" << dist_attr
+                << " to generated DistOutput.";
+        dist_output->unsafe_set_dist_attr(dist_attr);
       }
       out->set_impl(dist_output);
     }

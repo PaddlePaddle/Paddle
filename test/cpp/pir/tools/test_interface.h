@@ -27,6 +27,7 @@
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/region.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 namespace test {
 /// \brief Define built-in Interface, derived from OpInterfaceBase. Concepts and
@@ -62,4 +63,4 @@ class InferShapeInterface : public pir::OpInterfaceBase<InferShapeInterface> {
 };
 
 }  // namespace test
-IR_DECLARE_EXPLICIT_TYPE_ID(test::InferShapeInterface)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::InferShapeInterface)

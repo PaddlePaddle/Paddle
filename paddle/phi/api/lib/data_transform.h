@@ -178,6 +178,11 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
              (target != Backend::ALL_BACKEND &&
               phi::TransToPhiBackend(src_place) !=
                   (target != Backend::GPUDNN ? target : Backend::GPU));
+#ifdef PADDLE_WITH_DNNL
+  if (target == Backend::ONEDNN) {
+    ret = src_place.GetType() != AllocationType::CPU;
+  }
+#endif
   return ret;
 }
 

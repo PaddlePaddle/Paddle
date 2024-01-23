@@ -44,7 +44,6 @@ def topo_sort(edge, indegree):
         for k in range(nsize):
             if edge[j][k] != 0:
                 indegree[k] -= 1
-
     return topo
 
 
@@ -95,7 +94,6 @@ def maximum_path_len_algo(optimizer_list):
     edge, indegree = create_graph(optimizer_list)
     topo_sort(edge, indegree)
     max_path = floyd(edge)
-
     candidate = []
     for idx in max_path:
         candidate.append(optimizer_list[idx])

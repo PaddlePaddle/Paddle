@@ -48,6 +48,8 @@ class GroupScheduler {
 
   virtual std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() = 0;
 
+  std::unordered_set<std::string> OutputTensorNames() const;
+
  protected:
   ir::IRSchedule* ir_sch_;
   const std::unordered_set<std::string>& output_tensor_names_;

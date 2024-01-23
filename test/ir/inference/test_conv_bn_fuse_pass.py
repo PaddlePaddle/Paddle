@@ -177,7 +177,7 @@ class TestConvBnFusePass(PassAutoScanTest):
                 use_static=False,
                 use_calib_mode=False,
             )
-            yield config, ['conv2d_fusion'], (1e-5, 1e-5)
+            yield config, ['fused_conv2d_add_act'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):

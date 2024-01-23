@@ -24,6 +24,11 @@ from . import (  # noqa: F401
     xpu,
 )
 from .checkpoint import auto_checkpoint  # noqa: F401
+from .framework import (  # noqa: F401
+    get_rng_state,
+    register_rng_state_as_index,
+    set_rng_state,
+)
 from .nn.loss import identity_loss
 from .operators import (
     graph_khop_sampler,
@@ -45,11 +50,6 @@ from .tensor import (
     segment_mean,
     segment_min,
     segment_sum,
-)
-from .framework import (
-    get_rng_state,
-    set_rng_state,
-    register_rng_state_as_index,
 )
 
 __all__ = [

@@ -20,14 +20,25 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..base.data_feeder import check_dtype, check_type, check_variable_and_dtype
+from ..base.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+    convert_dtype,
+)
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from ..framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
 
 __all__ = []
+
 
 # Consistent with kDefaultDim from C++ Backend
 K_DEFAULT_DIM = 9
@@ -52,24 +63,40 @@ def transpose(x, perm, name=None):
 
         .. code-block:: text
 
-            x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
-                 [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
-            shape(x) =  [2,3,4]
+            # The following codes in this code block are pseudocode, designed to show the execution logic and results of the function.
+
+            x = to_tensor([[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
+                           [[13 14 15 16] [17 18 19 20] [21 22 23 24]]])
+            shape(x): return [2,3,4]
 
             # Example 1
             perm0 = [1,0,2]
-            y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
-                       [[ 5  6  7  8]  [17 18 19 20]]
-                       [[ 9 10 11 12]  [21 22 23 24]]]
-            shape(y_perm0) = [3,2,4]
+            y_perm0 = transpose(x, perm0) # Permute x by perm0
+
+            # dim:0 of y_perm0 is dim:1 of x
+            # dim:1 of y_perm0 is dim:0 of x
+            # dim:2 of y_perm0 is dim:2 of x
+            # The above two lines can also be understood as exchanging the zeroth and first dimensions of x
+
+            y_perm0.data = [[[ 1  2  3  4]  [13 14 15 16]]
+                            [[ 5  6  7  8]  [17 18 19 20]]
+                            [[ 9 10 11 12]  [21 22 23 24]]]
+            shape(y_perm0): return [3,2,4]
 
             # Example 2
             perm1 = [2,1,0]
-            y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
-                       [[ 2 14] [ 6 18] [10 22]]
-                       [[ 3 15]  [ 7 19]  [11 23]]
-                       [[ 4 16]  [ 8 20]  [12 24]]]
-            shape(y_perm1) = [4,3,2]
+            y_perm1 = transpose(x, perm1) # Permute x by perm1
+
+            # dim:0 of y_perm1 is dim:2 of x
+            # dim:1 of y_perm1 is dim:1 of x
+            # dim:2 of y_perm1 is dim:0 of x
+            # The above two lines can also be understood as exchanging the zeroth and second dimensions of x
+
+            y_perm1.data = [[[ 1 13]  [ 5 17]  [ 9 21]]
+                            [[ 2 14]  [ 6 18]  [10 22]]
+                            [[ 3 15]  [ 7 19]  [11 23]]
+                            [[ 4 16]  [ 8 20]  [12 24]]]
+            shape(y_perm1): return [4,3,2]
 
     Examples:
 
@@ -289,8 +316,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
-        p (float|string, optional): Order of the norm. Supported values are `fro`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0 and nuclear norm.
+        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
+            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0.
             Default value is `fro`.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
@@ -368,6 +395,21 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
              [4., 3., 2., 1.]])
     """
 
+    def _backshift_permutation(dim0, dim1, dimn):
+        """
+        Auxiliary function for matrix_norm
+        Computes the permutation that moves the two given dimensions to the back
+        """
+        ret = [i for i in range(dimn) if i != dim0 and i != dim1]
+        ret.extend((dim0, dim1))
+        return ret
+
+    def _inverse_permutation(perm):
+        """
+        Given a permutation, returns its inverse. It's equivalent to argsort on an array
+        """
+        return [i for i, j in sorted(enumerate(perm), key=lambda ij: ij[1])]
+
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
@@ -408,6 +450,98 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
             return out
 
+    def nuclear_norm(input, axis=axis, keepdim=False, name=None):
+        """
+        The nuclear norm OP is to calculate the nuclear norm of certain two dimensions of Tensor `input`.
+        Args:
+          input (Variable): Tensor, data type float32, float64.
+          dim (list): Two dimensions.
+          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+          name (str, optional): The default value is None. Normally there is no need for
+              user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        """
+
+        perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
+        inv_perm = _inverse_permutation(perm)
+
+        if in_dynamic_mode():
+            transposed = _C_ops.transpose(input, perm)
+            u, s, vh = _C_ops.svd(transposed, False)
+            result = _C_ops.sum(s, -1, None, keepdim)
+            if keepdim:
+                result = _C_ops.transpose(
+                    _C_ops.unsqueeze(result, -1), inv_perm
+                )
+            return result
+
+        attrs = {'axis': axis, 'keepdim': keepdim}
+
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'nuclear_norm'
+        )
+
+        block = LayerHelper('nuclear_nrom', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        transpose_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        input_shape = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        block.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [transpose_out], 'XShape': [input_shape]},
+            attrs={'axis': perm},
+        )
+
+        u = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        s = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        vt = block.create_variable_for_type_inference(dtype=block.input_dtype())
+        block.append_op(
+            type='svd',
+            inputs={'X': [transpose_out]},
+            outputs={'U': u, 'VH': vt, 'S': s},
+            attrs={'full_matrices': False},
+        )
+
+        reduce_all, sum_axis = _get_reduce_axis(-1, s)
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': s},
+            outputs={'Out': out},
+            attrs={
+                'dim': sum_axis,
+                'keep_dim': keepdim,
+                'reduce_all': reduce_all,
+            },
+        )
+
+        if keepdim:
+            unsqueeze_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+
+            block.append_op(
+                type='unsqueeze2',
+                inputs={'X': [out]},
+                outputs={'Out': [unsqueeze_out], 'XShape': [input_shape]},
+                attrs={'axes': [-1]},
+            )
+
+            block.append_op(
+                type='transpose2',
+                inputs={'X': [unsqueeze_out]},
+                outputs={'Out': [out], 'XShape': [input_shape]},
+                attrs={'axis': inv_perm},
+            )
+
+        return out
+
     def vector_norm(
         input, porder=None, axis=None, keepdim=False, asvector=False, name=None
     ):
@@ -422,7 +556,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           name (str, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if axis is None:
                 axis = -1
             return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
@@ -610,6 +744,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     elif isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
+        elif p == "nuc":
+            return nuclear_norm(x, axis=axis, keepdim=keepdim, name=name)
         elif p == np.inf or p == -np.inf:
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
@@ -1042,7 +1178,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': max_out, 'Y': min_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis, 'use_mkldnn': False},
+                    attrs={'aixs': axis},
                 )
                 return out
             if porder == -2:
@@ -1050,7 +1186,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': min_out, 'Y': max_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis, 'use_mkldnn': False},
+                    attrs={'aixs': axis},
                 )
                 return out
 
@@ -1258,7 +1394,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if fweights.min() < 0:
             raise ValueError(
-                "The value of Input(fweights) cannot be negtive, but received "
+                "The value of Input(fweights) cannot be negative, but received "
                 f"min of Input(fweights) is {fweights.min()}."
             )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
@@ -1283,7 +1419,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if aweights.min() < 0:
             raise ValueError(
-                "The value of Input(aweights) cannot be negtive, but received "
+                "The value of Input(aweights) cannot be negative, but received "
                 f"min of Input(aweights) is {aweights.min()}."
             )
         if w is not None:
@@ -1596,7 +1732,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
 
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(tol, (Variable, paddle.pir.OpResult)):
+        if isinstance(tol, (Variable, paddle.pir.Value)):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
             else:
@@ -2009,11 +2145,11 @@ def svd(x, full_matrices=False, name=None):
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
-            positive number. Note that if x is sigular matrices, the grad is numerical
+            where `...` is zero or more batch dimensions. N and M can be arbitrary
+            positive number. Note that if x is singular matrices, the grad is numerical
             instable. The data type of x should be float32 or float64.
-        full_matrices (bool, optional): A flag to control the behavor of svd.
-            If full_matrices = True, svd op will compute full U and V matrics,
+        full_matrices (bool, optional): A flag to control the behavior of svd.
+            If full_matrices = True, svd op will compute full U and V matrices,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
@@ -2026,7 +2162,7 @@ def svd(x, full_matrices=False, name=None):
         - S (Tensor), is the singular value decomposition result S.
         - VH (Tensor), VH is the conjugate transpose of V, which is the singular value decomposition result V.
 
-        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singular value vectors of matrices with shape `[..., K]`
 
     Examples:
         .. code-block:: python
@@ -2087,7 +2223,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
+            where `...` is zero or more batch dimensions. N and M can be arbitrary
             positive number. The data type of x should be float32 or float64.
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
@@ -2824,26 +2960,30 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.eigh(x, UPLO)
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        return _C_ops.eigh(x, UPLO)
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigh', **locals())
@@ -2885,7 +3025,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
     Args:
         x (Tensor): The input tensor. Its shape should be (*, m, n)
             where * is zero or more batch dimensions. m and n can be
-            arbitraty positive number. The data type of x should be
+            arbitrary positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or cpmplex128, hermitian should be set
             True.
@@ -3018,7 +3158,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 type='elementwise_mul',
                 inputs={'X': v, 'Y': st},
                 outputs={'Out': out_1},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
             out_1 = helper.append_activation(out_1)
 
@@ -3088,7 +3228,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 type='elementwise_mul',
                 inputs={'X': u, 'Y': st},
                 outputs={'Out': out_1},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
             out_1 = helper.append_activation(out_1)
 
@@ -3186,9 +3326,9 @@ def triangular_solve(
 
     Args:
         x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
-            zero or more batch dimensions. Its data type should be float32 or float64.
+            zero or more batch dimensions. Its data type should be float32, float64, complex64, complex128.
         upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular
             system of equations. Default: True.
         transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
@@ -3227,10 +3367,16 @@ def triangular_solve(
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("triangular_solve", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'triangular_solve'
+            x,
+            'x',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64'], 'triangular_solve'
+            y,
+            'y',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'triangular_solve',
         )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -3330,27 +3476,32 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigvalsh', **locals())
@@ -3869,3 +4020,604 @@ def householder_product(x, tau, name=None):
             )
     out = out.reshape(org_x_shape)
     return out
+
+
+# Reference: MatrixExponential, https://eigen.tuxfamily.org/dox/unsupported/MatrixExponential_8h_source.html
+def _matrix_exp_pade3(mat_a, mat_i=None, mat_a2=None, *, dtype=None):
+    """3rd-order Pade approximant."""
+    b = [120.0, 60.0, 12.0]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a2 is None:
+        mat_a2, *_ = _matrix_mats(mat_a, 2, dtype)
+
+    tmp = mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = b[2] * mat_a2 + b[0] * mat_i
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade5(
+    mat_a, mat_i=None, mat_a2=None, mat_a4=None, *, dtype=None
+):
+    """5th-order Pade approximant."""
+    b = [30240.0, 15120.0, 3360.0, 420.0, 30.0]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a4 is None:
+        mat_a2, mat_a4, *_ = _matrix_mats(mat_a, 4, dtype)
+
+    tmp = mat_a4 + b[3] * mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = b[4] * mat_a4 + b[2] * mat_a2 + b[0] * mat_i
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade7(
+    mat_a, mat_i=None, mat_a2=None, mat_a4=None, mat_a6=None, *, dtype=None
+):
+    """7th-order Pade approximant."""
+    b = [17297280.0, 8648640.0, 1995840.0, 277200.0, 25200.0, 1512.0, 56.0]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a6 is None:
+        mat_a2, mat_a4, mat_a6, *_ = _matrix_mats(mat_a, 6, dtype)
+
+    tmp = mat_a6 + b[5] * mat_a4 + b[3] * mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = b[6] * mat_a6 + b[4] * mat_a4 + b[2] * mat_a2 + b[0] * mat_i
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade9(
+    mat_a,
+    mat_i=None,
+    mat_a2=None,
+    mat_a4=None,
+    mat_a6=None,
+    mat_a8=None,
+    *,
+    dtype=None,
+):
+    """9th-order Pade approximant."""
+    b = [
+        17643225600.0,
+        8821612800.0,
+        2075673600.0,
+        302702400.0,
+        30270240.0,
+        2162160.0,
+        110880.0,
+        3960.0,
+        90.0,
+    ]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a8 is None:
+        mat_a2, mat_a4, mat_a6, mat_a8, *_ = _matrix_mats(mat_a, 8, dtype)
+
+    tmp = mat_a8 + b[7] * mat_a6 + b[5] * mat_a4 + b[3] * mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = (
+        b[8] * mat_a8
+        + b[6] * mat_a6
+        + b[4] * mat_a4
+        + b[2] * mat_a2
+        + b[0] * mat_i
+    )
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade13(
+    mat_a, mat_i=None, mat_a2=None, mat_a4=None, mat_a6=None, *, dtype=None
+):
+    """13th-order Pade approximant."""
+    b = [
+        64764752532480000.0,
+        32382376266240000.0,
+        7771770303897600.0,
+        1187353796428800.0,
+        129060195264000.0,
+        10559470521600.0,
+        670442572800.0,
+        33522128640.0,
+        1323241920.0,
+        40840800.0,
+        960960.0,
+        16380.0,
+        182.0,
+    ]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a6 is None:
+        mat_a2, mat_a4, mat_a6, *_ = _matrix_mats(mat_a, 6, dtype)
+
+    tmp_u = (
+        paddle.matmul(mat_a6, mat_a6 + b[11] * mat_a4 + b[9] * mat_a2)
+        + b[7] * mat_a6
+        + b[5] * mat_a4
+        + b[3] * mat_a2
+        + b[1] * mat_i
+    )
+    mat_u = paddle.matmul(mat_a, tmp_u)
+    tmp_v = b[12] * mat_a6 + b[10] * mat_a4 + b[8] * mat_a2
+    mat_v = (
+        paddle.matmul(mat_a6, tmp_v)
+        + b[6] * mat_a6
+        + b[4] * mat_a4
+        + b[2] * mat_a2
+        + b[0] * mat_i
+    )
+    return mat_u, mat_v
+
+
+def _matrix_uv_where(vals, cases, l1_norm):
+    if len(vals) == 1:
+        return paddle.where(
+            paddle.less_than(l1_norm, vals[0]), cases[0], cases[1]
+        )
+    else:
+        return paddle.where(
+            paddle.less_than(l1_norm, vals[0]),
+            cases[0],
+            _matrix_uv_where(vals[1:], cases[1:], l1_norm),
+        )
+
+
+def _matrix_mats(mat_a, total, dtype):
+    mat_a2 = paddle.matmul(mat_a, mat_a)
+    mat_a4 = None
+    mat_a6 = None
+    mat_a8 = None
+
+    if total > 2:
+        mat_a4 = paddle.matmul(mat_a2, mat_a2)
+
+    if total > 4:
+        mat_a6 = paddle.matmul(mat_a4, mat_a2)
+
+    if total > 6:
+        mat_a8 = paddle.matmul(mat_a6, mat_a2)
+
+    return mat_a2, mat_a4, mat_a6, mat_a8
+
+
+def _matrix_uv_float32(mat_a, l1_norm, squarings, dtype):
+    mat_i = paddle.eye(mat_a.shape[-1], dtype=dtype)
+    mat_a2, mat_a4, *_ = _matrix_mats(mat_a, 4, dtype)
+
+    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2, dtype=dtype)
+    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4, dtype=dtype)
+    u7, v7 = _matrix_exp_pade7(
+        mat_a
+        / paddle.cast(
+            paddle.pow(paddle.full((), 2.0, dtype), squarings),
+            dtype,
+        ),
+        mat_i,
+        dtype=dtype,
+    )
+    conds = (
+        paddle.full((), 4.258730016922831e-001, dtype),
+        paddle.full((), 1.880152677804762e000, dtype),
+    )
+
+    u = _matrix_uv_where(conds, (u3, u5, u7), l1_norm)
+    v = _matrix_uv_where(conds, (v3, v5, v7), l1_norm)
+
+    return u, v
+
+
+def _matrix_uv_float64(mat_a, l1_norm, squarings, dtype):
+    mat_i = paddle.eye(mat_a.shape[-1], dtype=dtype)
+    mat_a2, mat_a4, mat_a6, mat_a8, *_ = _matrix_mats(mat_a, 8, dtype)
+
+    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2, dtype=dtype)
+    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4, dtype=dtype)
+    u7, v7 = _matrix_exp_pade7(
+        mat_a, mat_i, mat_a2, mat_a4, mat_a6, dtype=dtype
+    )
+    u9, v9 = _matrix_exp_pade9(
+        mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8, dtype=dtype
+    )
+    u13, v13 = _matrix_exp_pade13(
+        mat_a
+        / paddle.cast(
+            paddle.pow(paddle.full((), 2.0, dtype), squarings),
+            dtype,
+        ),
+        mat_i,
+        dtype=dtype,
+    )
+
+    conds = (
+        paddle.full((), 1.495585217958292e-002, dtype),
+        paddle.full((), 2.539398330063230e-001, dtype),
+        paddle.full((), 9.504178996162932e-001, dtype),
+        paddle.full((), 2.097847961257068e000, dtype),
+    )
+
+    u = _matrix_uv_where(conds, (u3, u5, u7, u9, u13), l1_norm)
+    v = _matrix_uv_where(conds, (v3, v5, v7, v9, v13), l1_norm)
+
+    return u, v
+
+
+def matrix_exp(x, name=None):
+    r"""
+    Computes the matrix exponential of square matrices.
+
+    .. math::
+
+        exp(A) = \sum_{n=0}^\infty A^n/n!
+
+    The input tensor x should be of square matrices with shape like :math:`(*, M, M)`, and the
+    exponential output is computed by Pade approximation of the scaling and squaring method.
+
+    [1] Nicholas J. Higham, The scaling and squaring method for the matrix exponential revisited.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`(*, M, M)` where :math:`*` is zero or more batch dimensions. The data type should be one of float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, the shape and dtype are same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> mat_a = paddle.empty((2, 2, 2))
+            >>> mat_a[0, :, :] = paddle.eye(2, 2)
+            >>> mat_a[1, :, :] = 2 * paddle.eye(2, 2)
+            >>> print(mat_a)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 0.],
+              [0., 1.]],
+             [[2., 0.],
+              [0., 2.]]])
+
+            >>> out = paddle.linalg.matrix_exp(mat_a)
+            >>> print(out)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[2.71828198, 0.        ],
+              [0.        , 2.71828198]],
+             [[7.38905621, 0.        ],
+              [0.        , 7.38905621]]])
+
+            >>> import math
+            >>> mat_a = paddle.to_tensor([[0, math.pi/3], [-math.pi/3, 0]])
+            >>> out = paddle.linalg.matrix_exp(mat_a)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.49999994,  0.86602545],
+             [-0.86602551,  0.50000000]])
+
+    """
+
+    # convert to tensor if necessary
+    if not isinstance(
+        x,
+        (
+            paddle.Tensor,
+            paddle.base.framework.Variable,
+            paddle.base.libpaddle.pir.Value,
+        ),
+    ):
+        mat_a = paddle.to_tensor(x)
+    else:
+        mat_a = x
+
+    dtype = convert_dtype(mat_a.dtype)
+
+    # check dtype, shape
+    if dtype not in ['float32', 'float64']:
+        raise ValueError(
+            f"The input tensor's dtype must be float32 or float64, but got {dtype}"
+        )
+
+    # 0-dim
+    if mat_a.ndim == 0:
+        return paddle.exp(mat_a)
+
+    # check tensor dim
+    if mat_a.ndim < 2:
+        raise ValueError('The input tensor must be at least two-dimensional')
+
+    if mat_a.shape[-1] != mat_a.shape[-2]:
+        raise ValueError('Last 2 dimensions of the tensor must be square')
+
+    # scalar case
+    if list(mat_a.shape[-2:]) == [1, 1]:
+        return paddle.exp(mat_a)
+
+    # compute uv
+    l1_norm = paddle.unsqueeze(
+        paddle.max(paddle.sum(paddle.abs(mat_a), axis=mat_a.ndim - 2), axis=-1),
+        axis=[-1, -2],
+    )
+
+    squarings = paddle.full(mat_a.shape, 0, dtype)
+    _matrix_uv_func = None
+
+    # dtype already checked before, we use `if-elif` only
+    if dtype == 'float32':
+        maxnorm = paddle.full((), 3.925724783138660, dtype)
+        squarings = paddle.floor(
+            paddle.log(l1_norm / maxnorm)
+            / paddle.log(paddle.full((), 2.0, dtype))
+        )
+        squarings = paddle.maximum(squarings, paddle.zeros_like(squarings))
+
+        _matrix_uv_func = _matrix_uv_float32
+
+    elif dtype == 'float64':
+        maxnorm = paddle.full((), 5.371920351148152, dtype)
+        squarings = paddle.floor(
+            paddle.log(l1_norm / maxnorm)
+            / paddle.log(paddle.full((), 2.0, dtype))
+        )
+        squarings = paddle.maximum(squarings, paddle.zeros_like(squarings))
+
+        _matrix_uv_func = _matrix_uv_float64
+
+    u, v = _matrix_uv_func(mat_a, l1_norm, squarings, dtype)
+
+    # compute result
+    is_finite = paddle.isfinite(paddle.max(l1_norm))
+    result = paddle.static.nn.cond(
+        is_finite,
+        lambda: paddle.linalg.solve(-u + v, u + v),
+        lambda: paddle.full(mat_a.shape, np.nan, dtype),
+    )
+
+    max_squaring = paddle.max(squarings)
+    i = paddle.full((), 0, dtype)
+
+    def cond(i, _):
+        return paddle.static.nn.cond(
+            is_finite,
+            lambda: paddle.less_than(i, max_squaring),
+            lambda: paddle.full((), False),
+        )
+
+    def body(i, result):
+        return i + 1, paddle.where(
+            paddle.less_than(i, squarings),
+            paddle.matmul(result, result),
+            result,
+        )
+
+    _, result = paddle.static.nn.while_loop(cond, body, [i, result])
+
+    return result
+
+
+def histogramdd(
+    x, bins=10, ranges=None, density=False, weights=None, name=None
+):
+    r"""
+    Computes a multi-dimensional histogram of the values in a tensor.
+
+    Interprets the elements of an input tensor whose innermost dimension has size `N` as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
+
+    input `x` must be a tensor with at least 2 dimensions. If input has shape `(M, N)`, each of its `M` rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
+
+    Each dimension is independently associated with its own strictly increasing sequence of bin edges. Bin edges may be specified explicitly by passing a sequence of 1D tensors. Alternatively, bin edges may be constructed automatically by passing a sequence of integers specifying the number of equal-width bins in each dimension.
+
+    Args:
+        x (Tensor): The input tensor.
+        bins (Tensor[], int[], or int): If Tensor[], defines the sequences of bin edges. If int[], defines the number of equal-width bins in each dimension. If int, defines the number of equal-width bins for all dimensions.
+        ranges (sequence of float, optional): Defines the leftmost and rightmost bin edges in each dimension. If is None, set the minimum and maximum as leftmost and rightmost edges for each dimension.
+        density (bool, optional): If False (default), the result will contain the count (or total weight) in each bin. If True, each count (weight) is divided by the total count (total weight), then divided by the volume of its associated bin.
+        weights (Tensor, optional): By default, each value in the input has weight 1. If a weight tensor is passed, each N-dimensional coordinate in input contributes its associated weight towards its bin’s result. The weight tensor should have the same shape as the input tensor excluding its innermost dimension N.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        N-dimensional Tensor containing the values of the histogram. ``bin_edges(Tensor[])``,  sequence of N 1D Tensors containing the bin edges.
+
+    Examples:
+        .. code-block:: python
+            :name: exampl
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]])
+            >>> bins = [3,3]
+            >>> weights = paddle.to_tensor([1., 2., 4., 8.])
+            >>> paddle.histogramdd(x, bins=bins, weights=weights)
+            (Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[0., 1., 0.],
+                    [2., 0., 0.],
+                    [4., 0., 8.]]), [Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.66666669, 1.33333337, 2.        ]), Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.66666669, 1.33333337, 2.        ])])
+
+        .. code-block:: python
+            :name: examp2
+
+            >>> import paddle
+            >>> y = paddle.to_tensor([[0., 0.], [1., 1.], [2., 2.]])
+            >>> bins = [2,2]
+            >>> ranges = [0., 1., 0., 1.]
+            >>> density = True
+            >>> paddle.histogramdd(y, bins=bins, ranges=ranges, density=density)
+            (Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 0.],
+                    [0., 2.]]), [Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.50000000, 1.        ]), Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.50000000, 1.        ])])
+
+
+    """
+
+    def __check_x(x):
+        assert (
+            len(x.shape) >= 2
+        ), "input x must be a tensor with at least 2 dimensions."
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float32',
+                'float64',
+            ],
+            'histogramdd',
+        )
+
+    def __check_bins(bins, x):  # when Tensor[], check dtype
+        for bins_tensor in bins:
+            bins_tensor = paddle.to_tensor(bins_tensor)
+            check_variable_and_dtype(
+                bins_tensor,
+                'bins',
+                [
+                    'float32',
+                    'float64',
+                ],
+                'histogramdd',
+            )
+            assert (
+                bins_tensor.dtype == x.dtype
+            ), "When bins is Tensor[], the dtype of bins must be the same as x.\n"
+
+    def __check_weights(x, weights):
+        if weights is None:
+            return
+        x_shape, weights_shape = x.shape, weights.shape
+        assert len(x_shape) == len(weights_shape) + 1, (
+            "if weight tensor is provided,"
+            "it should have the same shape as the input tensor excluding its innermost dimension.\n"
+        )
+        for i, _ in enumerate(weights_shape):
+            assert weights_shape[i] == x_shape[i], (
+                "if weight tensor is provided,"
+                "it should have the same shape as the input tensor excluding its innermost dimension.\n"
+            )
+        check_variable_and_dtype(
+            weights,
+            'weights',
+            [
+                'float32',
+                'float64',
+            ],
+            'histogramdd',
+        )
+        assert (
+            weights.dtype == x.dtype
+        ), "The dtype of weights must be the same as x.\n"
+
+    def __check_ranges(D, ranges):
+        if ranges is None:
+            return
+        check_type(ranges, 'ranges', (list, tuple), 'histogramdd')
+        assert D * 2 == len(
+            ranges
+        ), "The length of ranges list must be %d\n" % (D * 2)
+
+    check_type(density, 'density', bool, 'histogramdd')
+
+    __check_x(x)
+    # weights
+    __check_weights(x, weights)
+    D = x.shape[-1]
+    reshaped_input = x.reshape([-1, D])
+    N = reshaped_input.shape[0]
+    reshaped_weights = None
+    if weights is not None:
+        weights = weights.astype(x.dtype)
+        reshaped_weights = weights.reshape([N])
+        assert reshaped_weights.shape[0] == N, (
+            "The size of weight must be %d" % N
+        )
+    # ranges
+    __check_ranges(D, ranges)
+    if ranges is None:
+        ranges = paddle.zeros([D, 2], dtype=x.dtype)
+        maxv = paddle.max(reshaped_input, axis=0).reshape([-1])
+        minv = paddle.min(reshaped_input, axis=0).reshape([-1])
+
+        if paddle.in_dynamic_mode():
+            ranges[:, 0] = minv
+            ranges[:, 1] = maxv
+        else:
+            ranges = paddle.static.setitem(ranges, (slice(None), 0), minv)
+            ranges = paddle.static.setitem(ranges, (slice(None), 1), maxv)
+    else:
+        ranges = paddle.to_tensor(ranges, dtype=x.dtype).reshape([D, 2])
+    # bins to edges
+    edges = []
+    hist_shape = []
+    dedges = []
+    if isinstance(bins, (int, list)):  # int or int[]
+        if isinstance(bins, int):
+            bins = [bins] * D
+        assert len(bins) == D, (
+            "The length of bins must be %d when bins is a list.\n" % D
+        )
+        for idx, r in enumerate(ranges):
+            if not isinstance(bins[idx], int):
+                raise ValueError(
+                    "The type of %d-th element in bins list must be int." % idx
+                )
+            e = paddle.linspace(r[0], r[1], bins[idx] + 1, x.dtype)
+            edges.append(e)
+            dedges.append(e.diff())
+    elif isinstance(
+        bins, tuple
+    ):  # tuple with D tensors for each innermost dimension
+        __check_bins(bins, x)
+        for bin in bins:
+            bin = paddle.to_tensor(bin)
+            edges.append(bin)
+            dedges.append(bin.diff())
+    else:
+        raise ValueError("Input bins must be Tensor[], int[], or int.")
+    hist_shape = [edge.shape[0] + 1 for edge in edges]
+    index_list = []
+    # edges shape: [D, linspaced]
+    # index_list shape: [D, N]
+    for idx, edge in enumerate(edges):
+        edge = paddle.to_tensor(edge)
+        index_list.append(
+            paddle.searchsorted(edge, reshaped_input[:, idx], right=True)
+        )
+    index_list = paddle.to_tensor(index_list)
+    for i in range(D):
+        on_edge = reshaped_input[:, i] == edges[i][-1]
+        if paddle.in_dynamic_mode():
+            index_list[i][on_edge] -= 1
+        else:
+            index_list = paddle.static.setitem(
+                index_list, (i, on_edge), index_list[i][on_edge] - 1
+            )
+    index_list = tuple(index_list)
+    lut = paddle.arange(
+        paddle.to_tensor(hist_shape).prod(),
+    ).reshape(hist_shape)
+    flattened_index = lut[index_list]
+    hist = paddle.bincount(
+        flattened_index,
+        reshaped_weights,
+        minlength=paddle.to_tensor(hist_shape).prod(),
+    )
+    hist = hist.reshape(hist_shape)
+    hist = hist.astype(x.dtype)
+
+    core = D * (slice(1, -1),)
+    hist = hist[core]
+
+    if density:
+        s = hist.sum()
+        for i in range(D):
+            shape = D * [1]
+            shape[i] = hist_shape[i] - 2
+            hist = hist / dedges[i].reshape(shape)
+        hist /= s
+
+    return (hist, edges)

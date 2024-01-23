@@ -16,20 +16,29 @@ import inspect
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.jit import not_to_static, to_static
-from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.program_translator import (
+    ProgramTranslator,
+    StaticFunction,
+)
 from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
+from paddle.static.amp.fp16_utils import (
+    DEFAULT_AMP_OPTIONS,
+    prepare_op_amp_options,
+)
 
 from .converter import Converter
+from .process_group import get_world_process_group
 from .utils import get_logger, to_list
 
 
 class ProxyLayer(Layer):
     """
     ProxyLayer implements all logic for converting dygraph model into
-    static Program IR. Meanwhile, it provides conviential interfaces for
+    static Program IR. Meanwhile, it provides conventional interfaces for
     auto parallel to visit feed/fetch/loss/metric variables.
     """
 
@@ -244,8 +253,14 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        getattr(self.proxy_layer, func_name).concrete_program  # noqa: B018
-
+        concrete_program = getattr(
+            self.proxy_layer, func_name
+        ).concrete_program  # noqa: B018
+        prepare_op_amp_options(
+            concrete_program.main_program,
+            ProgramTranslator.get_instance()._amp_records,
+            DEFAULT_AMP_OPTIONS,
+        )
         self._build_startup_program()
 
     def _build_startup_program(self):
@@ -324,25 +339,62 @@ class ProgramHelper:
     def init(self, main_program, place, dist_context):
         if self.lazy_init:
             return
+
+        is_comm = False
         for param in self.concrete_program.parameters:
+            if param.is_dist():
+                serial_main_program = self.concrete_program.main_program
+                var = serial_main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                is_comm = True
+                tmp = paddle.base.core.reshard(param, var_dist_attr)
+                if tmp._is_initialized():
+                    param.get_tensor()._share_data_with(tmp.get_tensor())
+                else:
+                    param = None
+            paddle.device.synchronize()
+
             # create var in scope and share parameters to scope
+            if param is None:
+                continue
             if param.name not in main_program.global_block().vars:
                 continue
-            # get param_var's dist_attr
-            var = main_program.global_block().vars[param.name]
-            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
-            dist_attr = {
-                "dims_mapping": var_dist_attr.dims_mapping,
-                "process_shape": var_dist_attr.process_mesh.shape,
-                "process_group": var_dist_attr.process_mesh.process_ids,
-            }
-            # slice param_value with dist_attr
-            # share sliced_param_value with param_tensor in global_scope
-            param_tensor = global_scope().var(param.name).get_tensor()
-            sliced_param = Converter.slice_with_dist_attr(
-                param.numpy(), dist_attr
+            if param.is_dense():
+                # get param_var's dist_attr
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.shape,
+                    "process_group": var_dist_attr.process_mesh.process_ids,
+                }
+                # slice param_value with dist_attr
+                # share sliced_param_value with param_tensor in global_scope
+                param_tensor = global_scope().var(param.name).get_tensor()
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dist_attr
+                )
+                param_tensor.set(sliced_param, place)
+            elif param.is_dist():
+                dense_tensor = global_scope().var(param.name).get_tensor()
+                dense_tensor._share_data_with(param.get_tensor().get_tensor())
+
+        world_group = get_world_process_group()
+        if (
+            is_comm
+            and world_group.nranks > 1
+            and paddle.distributed.get_world_size() > 1
+        ):
+            paddle.disable_static()
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', 0
             )
-            param_tensor.set(sliced_param, place)
+            paddle.enable_static()
 
     @property
     def concrete_program(self):

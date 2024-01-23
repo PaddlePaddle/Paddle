@@ -112,7 +112,7 @@ void BasicEngine::Init(
     if (grad_tensor == nullptr) {
       grad_var->Resize(fwd_var.dims());
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
-      phi::funcs::set_constant(*dev_ctx, grad_var, 1.0);
+      phi::funcs::set_constant(*dev_ctx, grad_var, 1.0f);
     } else {
       paddle::framework::TensorCopy(grad_tensor->Var().Get<phi::DenseTensor>(),
                                     fwd_var.place(),
@@ -168,7 +168,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
   }
@@ -236,7 +236,7 @@ void BasicEngine::PrepareGradAccumulators(
 
             accumulator->IncreaseRefCnt();
 
-            VLOG(3) << "Prepare to acccumulate variable grad " << var->Name()
+            VLOG(3) << "Prepare to accumulate variable grad " << var->Name()
                     << "(" << var.get()
                     << ") that has grad node with reference count "
                     << accumulator->RefCnt();
@@ -267,7 +267,7 @@ void BasicEngine::PrepareGradAccumulators(
 
         accumulator->IncreaseRefCnt();
 
-        VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
+        VLOG(3) << "Prepare to accumulate variable grad " << var->Name() << "("
                 << var.get()
                 << ") that don't have grad node  with reference count "
                 << accumulator->RefCnt();
@@ -445,7 +445,7 @@ void BasicEngine::Execute() {
        *
        * - construct the temp output map, avoid to disrupt graph
        * - replace the element in the map by temp var, because a
-       *   var may be coresponding to several grad var in one op
+       *   var may be corresponding to several grad var in one op
        */
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
 
@@ -495,7 +495,7 @@ void BasicEngine::Execute() {
           }
 
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor,
-          // it should be orderly and not reapeated.
+          // it should be orderly and not repeated.
           if (var->IsLeafGrad()) {
             if (std::find(leaf_accumulators_.begin(),
                           leaf_accumulators_.end(),

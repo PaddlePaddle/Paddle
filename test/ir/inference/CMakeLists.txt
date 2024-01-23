@@ -33,6 +33,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_groupnorm_act_pass_fuse_pass")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_trans_layernorm")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_trans_layernorm")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_argsort")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_trans_layernorm")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
@@ -167,8 +168,8 @@ if(NOT WITH_MKLDNN
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 
-  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 1000)
+  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 600)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)

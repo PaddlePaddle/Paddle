@@ -454,21 +454,47 @@ NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
 # TODO(GhostScreaming): Support aliquant condition.
 # Specialized Code, for example, reshape needs to calculate local_shape
 RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
+
+      // The dist_input_x is a dist tensor, the dims() func return the global dims.
+      auto x_shape = dist_input_x->dims();
+      auto x_numel = dist_input_x->numel();
+      bool visit_negative = false;
       std::vector<int64_t> local_shape;
       for (size_t i = 0; i < shape.GetData().size(); i++) {
         auto& out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
         if (out_dist_attr.dims_mapping()[i] >= 0) {
+          int64_t shape_i = shape.GetData()[i];
+          if (shape_i == 0) {
+            shape_i = x_shape[i];
+          } else if (shape_i == -1) {
+            PADDLE_ENFORCE(not visit_negative,
+                           phi::errors::InvalidArgument(
+                               "Reshape can only have one -1 in the shape."));
+            visit_negative = true;
+            int64_t non_negative_product = 1;
+            for (size_t j = 0; j < shape.GetData().size(); j++) {
+              if (i == j) {
+                continue;
+              }
+              int64_t tmp_j = shape.GetData()[j];
+              if (tmp_j == 0) {
+                tmp_j = x_shape[j];
+              }
+              non_negative_product *= tmp_j;
+            }
+            PADDLE_ENFORCE(x_numel % non_negative_product == 0,
+                           phi::errors::InvalidArgument("Cannot infer real shape for -1."));
+            shape_i = x_numel / non_negative_product;
+          }
           int64_t dim = out_dist_attr.dims_mapping()[i];
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE_EQ(shape.GetData()[i] % mesh_dim,
-                0,
+          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
                 phi::errors::InvalidArgument(
-                    "Reshape only support local shape dim is divisible"
-                    "by the mesh dim, however local_shape[%d] is %d",
-                    "and shard mesh dims is %d",
-                    i, shape.GetData()[i], mesh_dim));
-          local_shape.push_back(shape.GetData()[i] / mesh_dim);
+                    "Reshape only support local shape dim is divisible "
+                    "by the mesh dim, however local_shape[%lld] is %lld "
+                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
+          local_shape.push_back(shape_i / mesh_dim);
         } else {
           local_shape.push_back(shape.GetData()[i]);
         }
@@ -578,35 +604,49 @@ class DistForwardAPI(ForwardAPI):
     def generate_non_computation_rank_clip_code(self) -> str:
         if len(self.inputs['names']) > 0:
             mesh = ""
-            # All inputs have same mesh
-            if (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const Tensor&"
-            ):
+            # NOTE(zhengzhonghui): select the 'const Tensor&' input, because optional<Tensor>& type input may be an empty Tensor, and will cause a segment error when fetching process_mesh
+            not_optional_index = -1
+            for i in range(len(self.inputs['names'])):
+                if (
+                    self.inputs['input_info'][self.inputs['names'][i]]
+                    == "const Tensor&"
+                ):
+                    not_optional_index = i
+            if not_optional_index != -1:
                 mesh = GET_MESH_TEMPLATE.format(
-                    "{}.".format(self.inputs['names'][0])
+                    "{}.".format(self.inputs['names'][not_optional_index])
                 )
-            elif (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const paddle::optional<Tensor>&"
-            ):
-                mesh = GET_MESH_TEMPLATE.format(
-                    "{}->".format(self.inputs['names'][0])
-                )
-            elif (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const std::vector<Tensor>&"
-            ):
-                mesh = GET_MESH_TEMPLATE.format(
-                    "{}[0].".format(self.inputs['names'][0])
-                )
-            elif (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const paddle::optional<std::vector<Tensor>>&"
-            ):
-                mesh = GET_MESH_TEMPLATE.format(
-                    "{}->at(0).".format(self.inputs['names'][0])
-                )
+            else:
+                # if 'const Tensor&' input not present, the first one is used.
+                # usually there is no such case
+                if (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const Tensor&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}.".format(self.inputs['names'][0])
+                    )
+                elif (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}->".format(self.inputs['names'][0])
+                    )
+                elif (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const std::vector<Tensor>&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}[0].".format(self.inputs['names'][0])
+                    )
+                elif (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const paddle::optional<std::vector<Tensor>>&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}->at(0).".format(self.inputs['names'][0])
+                    )
             return mesh
         else:
             return ""
@@ -1645,10 +1685,12 @@ class DistForwardAPI(ForwardAPI):
                 # TODO(GhostScreaming): for inplace view operators like reshape,
                 # input and output may have different shape. If they have no specified
                 # InferSPMD rules, just set replicated dist_attr for them.
-                if (
-                    self.need_to_generate_code_for_inplace_impl(i)
-                    and self.outputs['names'][i] not in self.view_map
-                ):
+                if self.need_to_generate_code_for_inplace_impl(i):
+                    if (
+                        self.generate_general_infer_spmd
+                        and self.outputs['names'][i] in self.view_map
+                    ):
+                        continue
                     need_reshard = (
                         "true" if self.generate_general_infer_spmd else "false"
                     )
@@ -1688,8 +1730,8 @@ class DistForwardAPI(ForwardAPI):
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
-    def generate_auto_paralel_branch(self) -> str:
-        # if no tensor input, do not genetate auto parallel branch
+    def generate_auto_parallel_branch(self) -> str:
+        # if no tensor input, do not generate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
 
@@ -1773,7 +1815,7 @@ class DistForwardAPI(ForwardAPI):
                     and not self.api.endswith("_double_grad")
                     and not self.api.endswith("_triple_grad")
                 ):
-                    dist_branch_code += self.generate_auto_paralel_branch()
+                    dist_branch_code += self.generate_auto_parallel_branch()
             kernel_dispatch_code += dist_branch_code
             for kernel_name in self.kernel['func']:
                 kernel_dispatch_code += self.gene_dispatch_code(
@@ -1795,7 +1837,7 @@ class DistForwardAPI(ForwardAPI):
                 and not self.api.endswith("_double_grad")
                 and not self.api.endswith("_triple_grad")
             ):
-                dist_branch_code = self.generate_auto_paralel_branch()
+                dist_branch_code = self.generate_auto_parallel_branch()
             return API_IMPL_TEMPLATE.format(
                 self.get_return_type(inplace_flag),
                 api_func_name,
@@ -1847,15 +1889,15 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-        dist_foward_api = DistForwardAPI(api)
-        if dist_foward_api.is_dygraph_api:
-            dist_foward_api.is_dygraph_api = False
+        dist_forward_api = DistForwardAPI(api)
+        if dist_forward_api.is_dygraph_api:
+            dist_forward_api.is_dygraph_api = False
 
-        header_file.write(dist_foward_api.gene_api_declaration())
+        header_file.write(dist_forward_api.gene_api_declaration())
         if is_fused_ops_yaml is True:
-            source_file.write(dist_foward_api.gene_api_code())
+            source_file.write(dist_forward_api.gene_api_code())
         else:
-            source_file.write(dist_foward_api.gene_api_code())
+            source_file.write(dist_forward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

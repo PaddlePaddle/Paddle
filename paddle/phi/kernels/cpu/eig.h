@@ -120,7 +120,7 @@ void TransposeTwoAxis(const DenseTensor& input,
 }
 
 // Apply eig to a batch of matrices, values, vectors and (intermidiate
-// DenseTensor) info are overritten
+// DenseTensor) info are overwritten
 template <typename T, typename Context>
 void LapackEig(DenseTensor* input,
                DenseTensor* values,
@@ -218,7 +218,7 @@ void ApplyEigKernel(const DenseTensor& input,
   int num_dims = input.dims().size();
 
   // transfer to column-major memory layout i.e. common::make_ddim from
-  // tranposed_input: [batch,row,col]->[batch,col,row]
+  // transposed_input: [batch,row,col]->[batch,col,row]
   TransposeTwoAxis<T, Context>(
       input, &input_column_major, num_dims - 1, num_dims - 2, dev_ctx);
   // make sure 'vectors_row_major' holds memory before passed to LapackEig()

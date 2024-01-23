@@ -22,7 +22,7 @@ import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
 from paddle import _legacy_C_ops, base
@@ -531,7 +531,6 @@ class TestLACModel(Dy2StTestBase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        paddle.jit.enable_to_static(to_static)
         place = (
             base.CUDAPlace(0)
             if base.is_compiled_with_cuda()
@@ -580,7 +579,9 @@ class TestLACModel(Dy2StTestBase):
                             num_label_chunks,
                             num_correct_chunks,
                         ) = chunk_eval(
-                            input=crf_decode, label=targets, seq_length=length
+                            input=crf_decode,
+                            label=targets,
+                            seq_length=length,
                         )
                         outputs = [avg_cost, precision, recall, f1_score]
                         avg_cost, precision, recall, f1_score = (
@@ -619,9 +620,13 @@ class TestLACModel(Dy2StTestBase):
 
             return np.array(loss_data)
 
+    def _train(self, to_static: bool):
+        with enable_to_static_guard(to_static):
+            self.train(self.args, to_static)
+
     def test_train(self):
-        st_out = self.train(self.args, to_static=True)
-        dy_out = self.train(self.args, to_static=False)
+        st_out = self._train(to_static=True)
+        dy_out = self._train(to_static=False)
         np.testing.assert_allclose(
             dy_out,
             st_out,
@@ -645,19 +650,21 @@ class TestLACModel(Dy2StTestBase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(self.place):
-            model = LexNet(self.args)
-            # load dygraph trained parameters
-            model_dict = paddle.load(self.dy_param_path + ".pdparams")
-            model.set_dict(model_dict)
-            model.eval()
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(self.place):
+                model = LexNet(self.args)
+                # load dygraph trained parameters
+                model_dict = paddle.load(self.dy_param_path + ".pdparams")
+                model.set_dict(model_dict)
+                model.eval()
 
-            _, pred_res = model(
-                to_variable(words), to_variable(targets), to_variable(length)
-            )
+                _, pred_res = model(
+                    to_variable(words),
+                    to_variable(targets),
+                    to_variable(length),
+                )
 
-            return pred_res.numpy()
+                return pred_res.numpy()
 
     def predict_static(self, batch):
         """

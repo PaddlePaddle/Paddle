@@ -306,7 +306,7 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
       auto op_desc = quantized_node->Op();
       std::string quantized_op_type = op_desc->Type();
       if (quantized_op_type == "conv2d" ||
-          quantized_op_type == "conv2d_fusion" ||
+          quantized_op_type == "fused_conv2d_add_act" ||
           quantized_op_type == "depthwise_conv2d" ||
           quantized_op_type == "conv2d_transpose" ||
           quantized_op_type == "matrix_multiply") {
@@ -339,7 +339,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
   if (quantized_op_type == "conv2d" ||
       quantized_op_type == "depthwise_conv2d" ||
       quantized_op_type == "fused_conv2d" ||
-      quantized_op_type == "conv2d_fusion" ||
+      quantized_op_type == "fused_conv2d_add_act" ||
       quantized_op_type == "conv2d_transpose") {
     weight_name = "Filter";
     input_name = "Input";
@@ -348,7 +348,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     input_name = "X";
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "QuantDequantFuse: We only support conv2d, conv2d_fusion, fused_conv2d,"
+        "QuantDequantFuse: We only support conv2d, fused_conv2d_add_act, "
+        "fused_conv2d,"
         "conv2d_transpose, matrix_multiply(mul/matmul/matmul_v2) for now, but "
         "received: "
         "%s.",
@@ -573,7 +574,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
                                   quantized_op_node->Op()->Block());
     new_op_desc.SetType(quantized_op_type);
     new_op_desc.SetAttr("enable_int8", true);
-    if (quantized_op_type == "conv2d" || quantized_op_type == "conv2d_fusion" ||
+    if (quantized_op_type == "conv2d" ||
+        quantized_op_type == "fused_conv2d_add_act" ||
         quantized_op_type == "fused_conv2d" ||
         quantized_op_type == "depthwise_conv2d" ||
         quantized_op_type == "conv2d_transpose") {

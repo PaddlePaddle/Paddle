@@ -24,7 +24,7 @@ from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
     default_startup_program,
-    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     program_guard,
 )
 from paddle.common_ops_import import Variable
@@ -106,7 +106,7 @@ def rnn(
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -1590,7 +1590,7 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             out, _, state = _C_ops.rnn(
                 inputs,
                 initial_states,
@@ -1604,29 +1604,6 @@ class RNNBase(LayerList):
                 self.num_layers,
                 self.mode,
                 0,
-                not self.training,
-            )
-        elif in_dynamic_mode():
-            _, _, out, state = _legacy_C_ops.rnn(
-                inputs,
-                initial_states,
-                self._all_weights,
-                sequence_length,
-                self._dropout_state,
-                self.state_components,
-                'dropout_prob',
-                self.dropout,
-                'is_bidirec',
-                self.num_directions == 2,
-                'input_size',
-                self.input_size,
-                'hidden_size',
-                self.hidden_size,
-                'num_layers',
-                self.num_layers,
-                'mode',
-                self.mode,
-                'is_test',
                 not self.training,
             )
         else:

@@ -7,7 +7,7 @@ if(WITH_TESTING)
       phi
       common
       init
-      memory
+      allocator
       phi_utils
       proto_desc)
 

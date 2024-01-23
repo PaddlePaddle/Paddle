@@ -72,7 +72,7 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
             inner_outputs,
         ) = paddle.utils.get_inputs_outputs_in_block(sub_block)
         # 'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
-        self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_3'})
+        self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_0'})
         # '_generated_var_1', is name of a + c
         self.assertTrue(inner_outputs == {'_generated_var_0'})
 

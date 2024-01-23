@@ -31,6 +31,32 @@ from .group_sharded_storage import GradStorage
 from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
 
 
+class OrderedSet:
+    def __init__(self, iterable=None):
+        self._data = OrderedDict.fromkeys(iterable or [])
+
+    def __contains__(self, item):
+        return item in self._data
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
+
+    def add(self, item):
+        self._data[item] = None
+
+    def discard(self, item):
+        self._data.pop(item, None)
+
+    def update(self, iterable):
+        self._data.update((item, None) for item in iterable)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({list(self._data)})"
+
+
 def _all_gather(tensor, buffer_size, group):
     """
     The main difference with paddle.distributed.all_gather:
@@ -148,7 +174,7 @@ class GroupShardedStage3(nn.Layer):
             {}
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
         self._trainable_params = {}  # {id(layer): [trainable_params]}
-        self._unslice_params = set()  # param's numel <= segment_size
+        self._unslice_params = OrderedSet()  # param's numel <= segment_size
         self._unslice_params2align = {}  # {param.name: param's align}
         self._grad_storages = {}  # {param.dtype: GradStorage}
 

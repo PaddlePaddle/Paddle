@@ -105,7 +105,7 @@ struct OneHotGenerator<CPUContext, T> {
 #undef CALL_ARG_MINMAX_FUNCTOR
     }
 
-    funcs::set_constant(ctx, out, 0.0);
+    funcs::set_constant(ctx, out, static_cast<T>(0.0));
     for (int i = 0; i < size_to_axis; i++) {
       for (int j = 0; j < size_out_axis; j++) {
         *(out->data<T>() + i * size_from_axis + j +

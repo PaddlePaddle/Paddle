@@ -153,7 +153,13 @@ bool ComputeInliner::BodyPatternAllowInline() {
   auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
-  for (auto& i : find_vars) vars_set.insert(i.as_var_ref());
+  for (auto& i : find_vars) {
+    if (i.as_var_ref()->name[0] == 'S') continue;
+    // if (i.as_var_ref()->name == "S0" || i.as_var_ref()->name == "S1")
+    // continue;
+    vars_set.insert(i.as_var_ref());
+  }
+
   int n_vars = vars_set.size();
   if (!UpdateAndCheckIndexVars(inlined_store_.As<Store>()->indices, n_vars)) {
     return false;
@@ -376,8 +382,9 @@ Expr IRSchedule::GetBlock(const std::string& block_name) const {
 
 std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<int>& factors) {
+  if (IsDynamicShape()) return impl_->Split(loop, factors);
   std::vector<Expr> decision = SamplePerfectTile(
-      loop, factors.size(), loop.As<ir::For>()->extent.as_int32(), factors);
+      loop, factors.size(), loop.As<ir::For>()->extent.as_int64(), factors);
   auto results = Split(loop, decision);
   return results;
 }
@@ -398,11 +405,16 @@ std::vector<Expr> IRSchedule::Split(const std::string& block_name,
 std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<Expr>& factors) {
   std::vector<int> int_factors;
-  std::transform(factors.begin(),
-                 factors.end(),
-                 std::back_inserter(int_factors),
-                 [](Expr x) { return x.as_int32(); });
-  auto results = impl_->Split(loop, int_factors);
+  std::vector<Expr> results;
+  std::for_each(factors.begin(), factors.end(), [&int_factors](const Expr& e) {
+    if (e.is_constant()) int_factors.push_back(e.as_int64());
+  });
+  if (int_factors.size() == factors.size()) {
+    results = impl_->Split(loop, int_factors);
+  } else {
+    results = impl_->Split(loop, factors);
+  }
+
   trace_.Append(ScheduleDesc::Step(
       "Split",
       {{"loop", std::vector<Expr>({loop})}, {"factors", factors}},

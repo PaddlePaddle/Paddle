@@ -71,6 +71,13 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    } else if (backend_key == Backend::GPU &&
+               phi::distributed::DistTensor::classof(&t) &&
+               static_cast<const phi::distributed::DistTensor&>(t)
+                   .value()
+                   .meta()
+                   .use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
     return backend_set;
   }

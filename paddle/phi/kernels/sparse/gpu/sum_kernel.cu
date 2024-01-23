@@ -379,7 +379,7 @@ void SumCsr1Kernel(const Context& dev_ctx,
         Reshape<int64_t, Context>(dev_ctx, x_crows, {x_dim0, x_dim1 + 1});
     DenseTensor last_indices = Empty<int64_t, Context>(dev_ctx, {1});
     phi::funcs::SetConstant<Context, int64_t> set_constant;
-    set_constant(dev_ctx, &last_indices, x_dim1);
+    set_constant(dev_ctx, &last_indices, static_cast<int64_t>(x_dim1));
 
     DenseTensor x_crows_last = Empty<int64_t, Context>(dev_ctx, {x_dim0, 1});
     IndexSelectKernel<int64_t, Context>(

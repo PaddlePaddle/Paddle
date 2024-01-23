@@ -45,8 +45,6 @@ class OptimizerWithMixedPrecision:
 
     def __init__(self, optimizer, amp_lists, use_pure_bf16, use_bf16_guard):
         self._optimizer = optimizer
-        if optimizer.type == 'sgd':
-            optimizer._use_mkldnn = True
         self._amp_lists = amp_lists
         self._param_grads = None
         self._train_program = None

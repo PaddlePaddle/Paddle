@@ -82,13 +82,18 @@ from .auto_parallel.api import (
     shard_tensor,
     dtensor_from_fn,
     reshard,
+    shard_dataloader,
     shard_layer,
     shard_optimizer,
+    to_static,
+    Strategy,
+    DistModel,
+    unshard_dtensor,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
 
-from .entry_attr import (  # noqa: F401
+from .entry_attr import (
     ProbabilityEntry,
     CountFilterEntry,
     ShowClickEntry,
@@ -102,6 +107,9 @@ from .sharding import (  # noqa: F401
 )
 
 from . import rpc  # noqa: F401
+
+from .checkpoint.save_state_dict import save_state_dict
+from .checkpoint.load_state_dict import load_state_dict
 
 __all__ = [
     "io",
@@ -152,10 +160,17 @@ __all__ = [
     "dtensor_from_fn",
     "reshard",
     "shard_layer",
+    "shard_dataloader",
     "ReduceType",
     "Placement",
     "Shard",
     "Replicate",
     "Partial",
+    "save_state_dict",
+    "load_state_dict",
     "shard_optimizer",
+    "to_static",
+    "Strategy",
+    "DistModel",
+    "unshard_dtensor",
 ]

@@ -345,10 +345,15 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
         static_cast<int64_t *>(paddle_tensor.data<int64_t>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::UINT8) {
+    tensor.ShareExternalData(
+        static_cast<uint8_t *>(paddle_tensor.data()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
+        "INT64, UINT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -686,7 +691,9 @@ void BindPaddlePredictor(py::module *m) {
       .def("get_output_tensor", &PaddlePredictor::GetOutputTensor)
       .def("get_input_names", &PaddlePredictor::GetInputNames)
       .def("get_output_names", &PaddlePredictor::GetOutputNames)
-      .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
+      .def("zero_copy_run",
+           &PaddlePredictor::ZeroCopyRun,
+           py::arg("switch_stream") = false)
       .def("clone", [](PaddlePredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("clone",
@@ -735,7 +742,9 @@ void BindNativePredictor(py::module *m) {
            })
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &NativePaddlePredictor::GetOutputTensor)
-      .def("zero_copy_run", &NativePaddlePredictor::ZeroCopyRun)
+      .def("zero_copy_run",
+           &NativePaddlePredictor::ZeroCopyRun,
+           py::arg("switch_stream") = false)
       .def("clone",
            [](NativePaddlePredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1125,7 +1134,9 @@ void BindAnalysisPredictor(py::module *m) {
       .def("get_input_names", &AnalysisPredictor::GetInputNames)
       .def("get_output_names", &AnalysisPredictor::GetOutputNames)
       .def("get_input_tensor_shape", &AnalysisPredictor::GetInputTensorShape)
-      .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
+      .def("zero_copy_run",
+           &AnalysisPredictor::ZeroCopyRun,
+           py::arg("switch_stream") = false)
       .def("clear_intermediate_tensor",
            &AnalysisPredictor::ClearIntermediateTensor)
       .def("try_shrink_memory", &AnalysisPredictor::TryShrinkMemory)

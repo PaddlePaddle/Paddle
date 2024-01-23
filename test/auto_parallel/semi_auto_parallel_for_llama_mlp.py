@@ -123,7 +123,7 @@ class TestLlamaMlpForSemiAutoParallel:
 
     def train_loop(self, layer, process_mesh=None, shard_input=False):
         # run forward and backward
-        input_dist_attr = [Shard(0)]
+        input_placements = [Shard(0)]
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=layer.parameters()
         )
@@ -148,21 +148,21 @@ class TestLlamaMlpForSemiAutoParallel:
             np1, np2, rtol=rtol, atol=atol, verbose=verbose
         )
 
-    def check_dim_mapping(self, output, expected_dim_mapping):
+    def check_placements(self, output, expected_placements):
         assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+            output.placements == expected_placements
+        ), f"{output.placements}  vs {expected_placements}"
 
-    def get_shard_check_hook(self, dims_mapping, check_input=False):
+    def get_shard_check_hook(self, placements, check_input=False):
         def check_func(layer, input, output=None):
             if check_input:
                 if isinstance(input, tuple):
                     input = input[0]
-                self.check_dim_mapping(input, dims_mapping)
+                self.check_placements(input, placements)
             else:
                 if isinstance(output, tuple):
                     output = output[0]
-                self.check_dim_mapping(output, dims_mapping)
+                self.check_placements(output, placements)
 
         return check_func
 
@@ -171,10 +171,10 @@ class TestLlamaMlpForSemiAutoParallel:
 
         dp_layer = LlamaMlp("dp_demo_weight")
 
-        up_gate_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        up_gate_post_hook = self.get_shard_check_hook([0, -1, -1])
-        down_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        down_post_hook = self.get_shard_check_hook([0, -1, -1])
+        up_gate_pre_hook = self.get_shard_check_hook([dist.Shard(0)], True)
+        up_gate_post_hook = self.get_shard_check_hook([dist.Shard(0)])
+        down_pre_hook = self.get_shard_check_hook([dist.Shard(0)], True)
+        down_post_hook = self.get_shard_check_hook([dist.Shard(0)])
 
         dp_layer.up_proj.register_forward_pre_hook(up_gate_pre_hook)
         dp_layer.gate_proj.register_forward_pre_hook(up_gate_pre_hook)
@@ -201,9 +201,9 @@ class TestLlamaMlpForSemiAutoParallel:
             LlamaMlp("mp_demo_weight"), self._mesh, self.mp_shard_fn
         )
 
-        up_gate_post_hook = self.get_shard_check_hook([-1, -1, 0])
-        down_pre_hook = self.get_shard_check_hook([-1, -1, 0], True)
-        down_post_hook = self.get_shard_check_hook([-1, -1, -1])
+        up_gate_post_hook = self.get_shard_check_hook([dist.Shard(2)])
+        down_pre_hook = self.get_shard_check_hook([dist.Shard(2)], True)
+        down_post_hook = self.get_shard_check_hook([dist.Replicate()])
 
         mp_layer.up_proj.register_forward_post_hook(up_gate_post_hook)
         mp_layer.gate_proj.register_forward_post_hook(up_gate_post_hook)

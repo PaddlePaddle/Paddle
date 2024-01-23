@@ -70,7 +70,7 @@ void TopkKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, 0.0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
   // calcluate the real axis
@@ -228,10 +228,10 @@ void TopkKernel(const Context& dev_ctx,
             "the input data shape has error in the topk cuda kernel."));
     }
   } else {
-    // if get topK not from the last axis, will tranpose the tensor and get
+    // if get topK not from the last axis, will transpose the tensor and get
     // TopK
 
-    // first step, prepare the trans args for the tranpose
+    // first step, prepare the trans args for the transpose
     std::vector<int> trans;
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
@@ -248,7 +248,7 @@ void TopkKernel(const Context& dev_ctx,
       trans_dims[i] = in_dims[trans[i]];
       trans_out_dims[i] = out_dims[trans[i]];
     }
-    // second step, tranpose the input
+    // second step, transpose the input
     DenseTensor trans_input;
     trans_input.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_input);
@@ -282,7 +282,7 @@ void TopkKernel(const Context& dev_ctx,
                                   &trans_out,
                                   &trans_ind,
                                   largest)) {
-        // last step, tranpose back the indices and output
+        // last step, transpose back the indices and output
         funcs::TransCompute<phi::GPUContext, int64_t>(
             ndims, dev_ctx, trans_ind, indices, trans);
         funcs::TransCompute<phi::GPUContext, T>(
@@ -337,7 +337,7 @@ void TopkKernel(const Context& dev_ctx,
             "the input data shape has error in the topk cuda kernel."));
     }
 
-    // last step, tranpose back the indices and output
+    // last step, transpose back the indices and output
     funcs::TransCompute<phi::GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
     funcs::TransCompute<phi::GPUContext, T>(

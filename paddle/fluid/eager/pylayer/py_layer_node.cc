@@ -50,7 +50,7 @@ GradNodePyLayer::operator()(
   PADDLE_ENFORCE_EQ(ctx->forward_output_tensor_is_duplicable.size(),
                     grads.size(),
                     paddle::platform::errors::InvalidArgument(
-                        "%s's grad input size(%s) mast be equal with it's "
+                        "%s's grad input size(%s) must be equal with it's "
                         "forward's output size(%s).",
                         name(),
                         grads.size(),

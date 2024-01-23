@@ -111,6 +111,10 @@ def _select_sdp(head_dim):
     is determined by the sdp_kernel configuration or specified through input values.
     """
     place = paddle.get_device()
+
+    if "xpu" in place:
+        return "flash_attn"
+
     # not use sdp_kernel
     if g_enable_flash is None:
         if "gpu" not in place:

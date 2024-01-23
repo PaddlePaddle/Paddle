@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -275,9 +276,7 @@ learning_rate = 1e-3
 total_steps = len(dataset) * epoch_num // batch_size
 
 
-def train(to_static):
-    paddle.jit.enable_to_static(to_static)
-
+def train():
     random.seed(0)
     np.random.seed(0)
 
@@ -322,8 +321,10 @@ def train(to_static):
 class TestWord2Vec(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
-        dygraph_loss = train(to_static=False)
-        static_loss = train(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_loss = train()
+
+        static_loss = train()
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 

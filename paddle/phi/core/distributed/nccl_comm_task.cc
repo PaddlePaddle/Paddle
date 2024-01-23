@@ -90,6 +90,7 @@ void NCCLCommTask::EndRecord() {
 #endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 void NCCLCommTask::ClearRecord() {
   if (start_event_created_) {
     backends::gpu::GPUDeviceGuard guard(place_.device);
@@ -102,8 +103,22 @@ void NCCLCommTask::ClearRecord() {
     end_event_created_ = false;
   }
 }
+#else  // PADDLE_WITH_HIP
+void NCCLCommTask::ClearRecord() {
+  if (start_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    HIP_CHECK(hipEventDestroy(nccl_start_event_));
+    start_event_created_ = false;
+  }
+  if (end_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    HIP_CHECK(hipEventDestroy(nccl_end_event_));
+    end_event_created_ = false;
+  }
+}
+#endif
 
-bool NCCLCommTask::CudaEventQuery(cudaEvent_t event) {
+bool NCCLCommTask::CudaEventQuery(gpuEvent_t event) {
 #ifdef PADDLE_WITH_CUDA
   cudaError_t ret = cudaEventQuery(event);
   if (ret == cudaSuccess) {

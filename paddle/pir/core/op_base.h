@@ -49,7 +49,7 @@ class IR_API OpBase {
 
   Block *parent() const { return operation()->GetParent(); }
 
-  // Attribtue related interfaces
+  // Attribute related interfaces
   const AttributeMap &attributes() const { return operation()->attributes(); }
   Attribute attribute(const std::string &key) const {
     return operation()->attribute(key);
@@ -62,8 +62,16 @@ class IR_API OpBase {
   Value operand_source(uint32_t index) const {
     return operation()->operand_source(index);
   }
+  Type operand_type(uint32_t index) const {
+    return operation()->operand_type(index);
+  }
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
+
+  template <typename T = Type>
+  T result_type(uint32_t index) const {
+    return operation()->result_type<T>(index);
+  }
 
   void VerifySig() {}
 
@@ -79,6 +87,7 @@ class IR_API OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
+  using Base = OpTraitBase<ConcreteTrait>;
   explicit OpTraitBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }

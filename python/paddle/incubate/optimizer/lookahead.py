@@ -17,7 +17,9 @@ from paddle.base import framework, unique_name
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Variable
 from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_pir_mode
 from paddle.optimizer import Optimizer
+from paddle.pir.core import create_parameter
 
 __all__ = []
 
@@ -121,7 +123,9 @@ class LookAhead(Optimizer):
         self.inner_optimizer = inner_optimizer
         if self.inner_optimizer._parameter_list is None:
             parameters = (
-                framework.default_main_program().global_block().all_parameters()
+                paddle.static.default_main_program()
+                .global_block()
+                .all_parameters()
             )
         else:
             parameters = self.inner_optimizer._parameter_list
@@ -186,40 +190,64 @@ class LookAhead(Optimizer):
         )
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         for p in parameters:
             self._add_accumulator(self._slow_str, p)
 
     def _increment_global_var(self):
-        if self._global_step_var is None:
-            self._global_step_var = paddle.static.create_global_var(
-                name=unique_name.generate("lookahead_step"),
-                shape=[1],
-                value=0,
-                dtype='int32',
-                persistable=True,
-            )
+        if in_pir_mode():
+            if self._global_step_var is None:
+                self._global_step_var = create_parameter(
+                    dtype='int32',
+                    shape=[1],
+                    name=unique_name.generate("lookahead_step"),
+                    trainable=False,
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0.0, force_cpu=False
+                    ),
+                )
+            self._global_step_var = paddle.increment(self._global_step_var, 1.0)
+        else:
+            if self._global_step_var is None:
+                self._global_step_var = paddle.static.create_global_var(
+                    name=unique_name.generate("lookahead_step"),
+                    shape=[1],
+                    value=0,
+                    dtype='int32',
+                    persistable=True,
+                )
 
-        self.helper.append_op(
-            type='increment',
-            inputs={'X': [self._global_step_var]},
-            outputs={'Out': [self._global_step_var]},
-            attrs={'step': 1.0},
-        )
+            self.helper.append_op(
+                type='increment',
+                inputs={'X': [self._global_step_var]},
+                outputs={'Out': [self._global_step_var]},
+                attrs={'step': 1.0},
+            )
 
     def _append_optimize_op(self, block, param_and_grad):
         one_var = paddle.ones(shape=[1], dtype='int32', name='lookahead_ones')
         zero_var = paddle.zeros(
             shape=[1], dtype='int32', name='lookahead_zeros'
         )
-        k_var = paddle.static.create_global_var(
-            name=unique_name.generate("lookahead_k"),
-            shape=[1],
-            value=self.k,
-            dtype='int32',
-            persistable=True,
-        )
+        if in_pir_mode():
+            k_var = create_parameter(
+                dtype='int32',
+                shape=[1],
+                name=unique_name.generate("lookahead_k"),
+                trainable=False,
+                initializer=paddle.nn.initializer.ConstantInitializer(
+                    value=float(self.k), force_cpu=False
+                ),
+            )
+        else:
+            k_var = paddle.static.create_global_var(
+                name=unique_name.generate("lookahead_k"),
+                shape=[1],
+                value=self.k,
+                dtype='int32',
+                persistable=True,
+            )
 
         mod = paddle.remainder(self._global_step_var, k_var)
 
@@ -284,7 +312,9 @@ class LookAhead(Optimizer):
                 >>> lookahead.clear_grad()
 
         """
-        assert isinstance(loss, Variable), "The loss should be an Tensor."
+        assert isinstance(
+            loss, (Variable, paddle.pir.Value)
+        ), "The loss should be an Tensor."
 
         # Apply inner optimizer to the main_program
         optimize_ops, params_grads = self.inner_optimizer.minimize(

@@ -13,7 +13,7 @@
 # limitations under the License.
 '''
 Single host:
-python3.7 -m paddle.distributed.launch \
+python3.8 -m paddle.distributed.launch \
 --devices=4 \
 ipu \
 --hosts=localhost \
@@ -29,11 +29,11 @@ poprun \
 --num-replicas=4 \
 --ipus-per-replica=1 \
 --print-topology=yes \
-python3.7 test/ipu/distributed/test_dist_sample.py
+python3.8 test/ipu/distributed/test_dist_sample.py
 '''
 '''
 Multi hosts:
-python3.7 -m paddle.distributed.launch \
+python3.8 -m paddle.distributed.launch \
 --devices=4 \
 ipu \
 --hosts=host1,host2 \
@@ -49,7 +49,7 @@ poprun \
 --num-replicas=4 \
 --ipus-per-replica=1 \
 --print-topology=yes \
-python3.7 test/ipu/distributed/test_dist_sample.py
+python3.8 test/ipu/distributed/test_dist_sample.py
 '''
 
 import os

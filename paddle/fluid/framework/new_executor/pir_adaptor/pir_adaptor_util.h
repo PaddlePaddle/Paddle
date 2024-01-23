@@ -43,11 +43,11 @@
 namespace paddle {
 namespace framework {
 
-class CondInstruction;
+class IfInstruction;
 class WhileInstruction;
 class ValueExecutionInfo {
  public:
-  friend class CondInstruction;
+  friend class IfInstruction;
   friend class WhileInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
@@ -58,9 +58,7 @@ class ValueExecutionInfo {
 
   void Add(::pir::Value value, const std::string& var_name);
 
-  void Rename(pir::Value value,
-              const std::string& new_name,
-              const std::string& orig_name);
+  void Rename(const std::string& new_name, const std::string& orig_name);
 
   int GetIdByName(const std::string& name) const;
 
@@ -71,6 +69,8 @@ class ValueExecutionInfo {
   const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 
   void AddValue2VarName(::pir::Value value, const std::string& var_name);
+
+  void UpdateValue2VarName(::pir::Value value, const std::string& var_name);
 
   const std::unordered_map<const paddle::framework::Variable*, std::string>&
   GetVar2VarName() const;
@@ -134,9 +134,11 @@ void BuildScope(const pir::Block& block,
                 ValueExecutionInfo* value_exe_info = nullptr);
 
 void DeepCopyVariable(const Variable* src_var,
-                      Variable* dst_var,
+                      Variable** dst_var,
                       ValueExecutionInfo* value_exe_info,
-                      uint32_t stack_size);
+                      uint32_t stack_size,
+                      bool is_optional,
+                      std::map<const Variable*, Variable*>* src_to_dst_map);
 
 void BuildRuntimeContext(pir::Operation* op,
                          const ValueExecutionInfo& value_exec_info,
@@ -212,9 +214,13 @@ void BuildPhiContext(pir::Operation* op,
         } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
           inputs.emplace_back(InType(const_cast<phi::SelectedRows*>(
               &(variable_array[i]->Get<phi::SelectedRows>()))));
+        } else if (variable_array[i]->IsType<phi::TensorArray>()) {
+          inputs.emplace_back(InType(const_cast<phi::TensorArray*>(
+              &(variable_array[i]->Get<phi::TensorArray>()))));
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
-              "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
+              "Only support Vector<DenseTensor> and vector<SelectedRows> "
+              "and vector<TensorArray> now "
               "not support vector<%d>.",
               variable_array[i]->Type()));
         }
@@ -228,7 +234,7 @@ void BuildPhiContext(pir::Operation* op,
                                               var->Type()));
     }
   }
-
+  VLOG(8) << "EmplaceBackInput done";
   // EmplaceBackAttributes
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
@@ -416,6 +422,7 @@ void BuildPhiContext(pir::Operation* op,
     }
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
+  VLOG(8) << "EmplaceBackBackAttributes done";
 
   // EmplaceBackOutputs
   VLOG(8) << "ctx->EmplaceBackOutput: ";
@@ -482,6 +489,7 @@ void BuildPhiContext(pir::Operation* op,
           phi::errors::Unimplemented("only support DenseTensor and vector "));
     }
   }
+  VLOG(8) << "EmplaceBackOutputs done";
 
   VLOG(6) << "Done build phi context";
 }

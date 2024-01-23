@@ -133,11 +133,12 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
   // infer input's dims mapping.
   std::vector<int64_t> x_dims_mapping =
       GetDimsMappingForAxes(x_axes, axis_to_dim_map);
-  TensorDistAttr x_dist_attr(x.dist_attr());
+  TensorDistAttr x_dist_attr = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr.set_dims_mapping(x_dims_mapping);
 
   // update output's dims mapping.
-  TensorDistAttr out_dist_attr_dst(out_dist_attr_src);
+  TensorDistAttr out_dist_attr_dst =
+      CopyTensorDistAttrForOutput(out_dist_attr_src);
   out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   VLOG(4) << "SoftmaxInferSpmdReverse:\n"

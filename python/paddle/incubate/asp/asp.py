@@ -910,7 +910,6 @@ class ASPHelper:
                     outputs={'Out': param},
                     attrs={
                         'axis': -1,
-                        'use_mkldnn': False,
                         OP_ROLE_KEY: int(OpRole.Optimize),
                     },
                 )

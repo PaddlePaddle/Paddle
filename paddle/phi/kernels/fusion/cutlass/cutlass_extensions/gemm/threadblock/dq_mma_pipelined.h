@@ -195,11 +195,18 @@ class DqMmaPipelined : public DqMmaBase<Shape_,
   /// Construct from tensor references
   CUTLASS_DEVICE
   DqMmaPipelined(typename Base::SharedStorage&
-                     shared_storage,  ///< Shared storage needed for internal
-                                      ///< use by threadblock-scoped GEMM
-                 int thread_idx,      ///< ID within the threadblock
-                 int warp_idx,        ///< ID of warp
-                 int lane_idx         ///< ID of each thread within a warp
+                     shared_storage,    ///< Shared storage needed for internal
+                                        ///< use by threadblock-scoped GEMM
+                 const int group_size,  ///< Will not be used, just to adapt to
+                                        ///< finegrained modifications and make
+                                        ///< the compilation successful.
+                                        ///< Because DqMmaPipelined is only
+                                        ///< enabled for sm<80, so even if this
+                                        ///< argument is not added, it does not
+                                        ///< affect compilation for sm>=80.
+                 int thread_idx,        ///< ID within the threadblock
+                 int warp_idx,          ///< ID of warp
+                 int lane_idx           ///< ID of each thread within a warp
                  )
       : Base(shared_storage, thread_idx, warp_idx, lane_idx),
         warp_dequantizer_(

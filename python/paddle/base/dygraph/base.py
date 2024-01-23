@@ -121,7 +121,7 @@ def _convert_into_variable(tensor):
     Convert Tensor into Variable.
     """
     if paddle.framework.use_pir_api():
-        return paddle.pir.core._convert_into_opresult(tensor)
+        return paddle.pir.core._convert_into_value(tensor)
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)

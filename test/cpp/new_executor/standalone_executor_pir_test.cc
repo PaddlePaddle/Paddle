@@ -33,7 +33,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 
-#include "paddle/fluid/platform/init_phi.h"
+#include "paddle/common/macros.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
@@ -251,7 +251,7 @@ TEST(StandaloneExecutor, if_op) {
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
   std::string out_name = "if_out";
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
   builder.Build<pir::ShadowOutputOp>(if_op->result(0), out_name);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);

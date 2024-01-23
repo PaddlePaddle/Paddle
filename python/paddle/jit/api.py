@@ -66,7 +66,6 @@ from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
     SymbolicStaticFunction,
-    convert_to_static,
     unwrap_decorators,
 )
 from .translated_layer import (
@@ -112,74 +111,6 @@ def extract_vars(inputs, err_tag='inputs'):
     result_list = []
     _extract_vars(inputs, result_list, err_tag)
     return result_list
-
-
-def _dygraph_to_static_func_(dygraph_func):
-    """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @dygraph_to_static_func only converts imperative dygraph APIs into
-    declarative net-building APIs, which means it doesn't return immediate
-    digital result as imperative mode. Users should handle Program and Executor
-    by themselves.
-
-    Note:
-    This decorator is NOT our recommended way to transform imperative function
-    to declarative function. We will remove this decorator after we finalize
-    cleaning up code.
-
-    Args:
-        dygraph_func (callable): callable imperative function.
-
-    Returns:
-        Callable: converting imperative dygraph APIs into declarative
-        net-building APIs.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP('`paddle.jit.dygraph_to_static_func` can not run in xdoctest')
-            >>> import paddle
-            >>> from paddle.jit.api import dygraph_to_static_func
-
-            >>> @dygraph_to_static_func
-            ... def func(x):
-            ...     if paddle.mean(x) < 0:
-            ...         x_v = x - 1
-            ...     else:
-            ...         x_v = x + 1
-            ...
-            ...     return x_v
-            ...
-            >>> paddle.enable_static()
-            >>> x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
-
-            >>> x_v = func(x)
-            >>> exe = paddle.static.Executor(paddle.CPUPlace())
-            >>> out = exe.run(fetch_list=[x_v])
-            >>> print(out[0])
-            [[1. 1. 1.]
-             [1. 1. 1.]
-             [1. 1. 1.]]
-
-    """
-
-    # TODO: remove this decorator after we finalize training API
-    def __impl__(*args, **kwargs):
-        program_translator = ProgramTranslator()
-        if in_dynamic_mode() or not program_translator.enable_to_static:
-            logging_utils.warn(
-                "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
-                "We will just return dygraph output."
-            )
-            return dygraph_func(*args, **kwargs)
-        static_func = convert_to_static(dygraph_func)
-        return static_func(*args, **kwargs)
-
-    return __impl__
-
-
-dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def copy_decorator_attrs(original_func, decorated_obj):
@@ -1070,7 +1001,8 @@ def save(layer, path, input_spec=None, **configs):
     scope = core.Scope()
     extra_var_info = {}
     if isinstance(layer, Layer):
-        functions = dir(inner_layer)
+        functions = list(set(dir(inner_layer)))
+        functions = sorted(functions)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
             with_hook = True
     else:

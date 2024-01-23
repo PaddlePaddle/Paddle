@@ -102,7 +102,7 @@ SpmdInfo ConcatInferSpmdReverse(const std::vector<DistMetaTensor>& x,
                                 const DistMetaTensor& output,
                                 int axis) {
   auto out_dist_attr = output.dist_attr();
-  out_dist_attr = UnShardTensorDim(out_dist_attr, axis);
+  out_dist_attr = UnShardTensorDims(out_dist_attr, {axis});
   auto n_inputs = x.size();
   TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr);
   const auto& input_dim_mapping = out_dist_attr.dims_mapping();

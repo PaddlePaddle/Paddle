@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#define IR_API
+#include "paddle/utils/test_macros.h"
+
+#define IR_API TEST_API
 #if defined(_WIN32)
 #ifndef STATIC_IR
 #ifdef IR_LIBRARY

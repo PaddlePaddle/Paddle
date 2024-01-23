@@ -17,14 +17,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   set(eager_deps ${eager_deps} accumulation_node prim_utils)
 endif()
 
-set(fluid_deps
-    tracer
-    layer
-    proto_desc
-    operator
-    op_registry
-    variable_helper
-    memcpy)
+set(fluid_deps tracer layer proto_desc operator op_registry variable_helper)
 set(generated_deps final_dygraph_function final_dygraph_node dygraph_function
                    dygraph_node)
 
@@ -52,7 +45,7 @@ endif()
 cc_library(
   eager_nan_inf_utils
   SRCS nan_inf_utils.cc
-  DEPS phi common nan_inf_utils enforce)
+  DEPS phi common enforce)
 cc_library(
   grad_node_info
   SRCS grad_node_info.cc
@@ -73,7 +66,6 @@ cc_library(
        operator
        op_registry
        variable_helper
-       memcpy
        generated_op
        autograd_meta
        hook_utils)

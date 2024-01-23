@@ -16,6 +16,7 @@ math functions
 """
 
 import math
+import warnings
 
 import numpy as np
 
@@ -134,7 +135,7 @@ def _get_reduce_axis(axis, x):
 
 
 def _get_reduce_axis_with_tensor(axis, x):
-    if isinstance(axis, (Variable, paddle.pir.OpResult)):
+    if isinstance(axis, (Variable, paddle.pir.Value)):
         if axis.shape[0] == len(x.shape):
             reduce_all = True
         else:
@@ -514,11 +515,11 @@ def pow(x, y, name=None):
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.OpResult)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar , Tensor(in dygraph mode), OpResult(in pir mode) but received: %s '
+                'y must be scalar , Tensor(in dygraph mode), Value(in pir mode) but received: %s '
                 % (y.dtype)
             )
     else:
@@ -621,7 +622,6 @@ def _elementwise_op(helper):
     )
 
     axis = helper.kwargs.get('axis', -1)
-    use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
 
     if out is None:
@@ -636,7 +636,7 @@ def _elementwise_op(helper):
         type=op_type,
         inputs={'X': x, 'Y': y},
         outputs={'Out': out},
-        attrs={'axis': axis, 'use_mkldnn': use_mkldnn},
+        attrs={'axis': axis},
     )
     return helper.append_activation(out)
 
@@ -779,7 +779,7 @@ def logaddexp(x, y, name=None):
 
 def subtract(x, y, name=None):
     """
-    Substract two tensors element-wise. The equation is:
+    Subtract two tensors element-wise. The equation is:
 
     .. math::
         out = x - y
@@ -1630,7 +1630,7 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
              -99.                                    ])
     """
     # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
-    # incorrectly, so we have to explicitly contruct tensors here
+    # incorrectly, so we have to explicitly construct tensors here
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
@@ -1981,7 +1981,7 @@ def add_n(inputs, name=None):
              [14., 16., 18.]])
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(inputs, (Variable, paddle.pir.OpResult)):
+        if isinstance(inputs, (Variable, paddle.pir.Value)):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:
@@ -2029,7 +2029,7 @@ def add_n(inputs, name=None):
             type='sum',
             inputs={'X': inputs},
             outputs={'Out': out},
-            attrs={'use_mkldnn': False},
+            attrs={},
         )
 
         return out
@@ -2252,7 +2252,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2292,7 +2292,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
@@ -2332,7 +2332,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2372,7 +2372,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
@@ -4065,7 +4065,8 @@ def cummax(x, axis=None, dtype='int64', name=None):
         x = x.flatten(0, len(x.shape) - 1)
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
-    dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cummax(x, axis, dtype)
@@ -4150,7 +4151,8 @@ def cummin(x, axis=None, dtype='int64', name=None):
         x = x.flatten(0, len(x.shape) - 1)
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
-    dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cummin(x, axis, dtype)
@@ -4633,6 +4635,7 @@ def sign(x, name=None):
                 'int32',
                 'int64',
                 'float16',
+                'bfloat16',
                 'float32',
                 'float64',
             ],
@@ -4719,12 +4722,16 @@ def increment(x, value=1.0, name=None):
             [1.])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.increment_(x, value)
+
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
+    )
+    if in_pir_mode():
+        _C_ops.increment_(x, value)
+        return x
     else:
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
-        )
         helper = LayerHelper("increment", **locals())
         helper.append_op(
             type='increment',
@@ -4998,6 +5005,51 @@ def conj(x, name=None):
 
         helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
         return out
+
+
+def gammaln(x, name=None):
+    r"""
+    Calculates the logarithm of the absolute value of the gamma function elementwisely.
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, bfloat16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The values of the logarithm of the absolute value of the gamma at the given tensor x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.arange(1.5, 4.5, 0.5)
+            >>> out = paddle.gammaln(x)
+            >>> print(out)
+            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-0.12078224,  0.        ,  0.28468287,  0.69314718,  1.20097363,
+                    1.79175949])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.gammaln(x)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'bfloat16'], 'gammaln'
+        )
+        helper = LayerHelper('gammaln', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(type='gammaln', inputs={'x': x}, outputs={'out': out})
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def gammaln_(x, name=None):
+    r"""
+    Inplace version of ``gammaln`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_gammaln`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.gammaln_(x)
 
 
 def digamma(x, name=None):
@@ -6230,6 +6282,11 @@ def sgn(x, name=None):
         paddle.float64,
         paddle.complex64,
         paddle.complex128,
+        DataType.FLOAT16,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
+        DataType.COMPLEX64,
+        DataType.COMPLEX128,
     ]:
         raise TypeError(
             f"The data type of input must be one of ['float16', 'float32', 'float64', 'complex64', 'complex128'], but got {x.dtype}"
@@ -6317,12 +6374,17 @@ def take(x, index, mode='raise', name=None):
             f"'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {mode}."
         )
 
-    if in_dynamic_mode():
-        if not isinstance(index, (paddle.Tensor, Variable)):
+    if in_dynamic_or_pir_mode():
+        if not isinstance(index, (paddle.Tensor, Variable, paddle.pir.Value)):
             raise TypeError(
                 f"The type of 'index' must be Tensor, but got {type(index)}"
             )
-        if index.dtype not in [paddle.int32, paddle.int64]:
+        if index.dtype not in [
+            paddle.int32,
+            paddle.int64,
+            DataType.INT32,
+            DataType.INT64,
+        ]:
             raise TypeError(
                 "The data type of 'index' must be one of ['int32', 'int64'], but got {}".format(
                     index.dtype
@@ -7008,12 +7070,14 @@ def ldexp(x, y, name=None):
             [4. , 8. , 12.])
 
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
-    if not isinstance(y, (paddle.Tensor, Variable)):
+    if not isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
         out_dtype = paddle.float64
+    elif x.dtype == DataType.FLOAT64 or y.dtype == DataType.FLOAT64:
+        out_dtype = DataType.FLOAT64
     else:
         out_dtype = paddle.get_default_dtype()
     x = paddle.cast(x, dtype=out_dtype)
@@ -7039,6 +7103,293 @@ def ldexp_(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply_(x, paddle.pow(two, y))
+
+
+def _bitwise_op(op_name, x, y, is_arithmetic, out=None, name=None):
+    check_variable_and_dtype(
+        x,
+        "x",
+        ["uint8", "int8", "int16", "int32", "int64"],
+        op_name,
+    )
+    if y is not None:
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["uint8", "int8", "int16", "int32", "int64"],
+            op_name,
+        )
+
+    helper = LayerHelper(op_name, **locals())
+    assert x.dtype == y.dtype
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type=op_name,
+        inputs={"x": x, "y": y},
+        outputs={"out": out},
+        attrs={'is_arithmetic': is_arithmetic},
+    )
+
+    return out
+
+
+def bitwise_left_shift(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Apply ``bitwise_left_shift`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+
+        Out = X \ll Y
+
+    .. note::
+
+        ``paddle.bitwise_left_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        out (Tensor, optional): Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+            :name: bitwise_left_shift_example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=True)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[2  , 8  , 32 , 128],
+                    [64 , 136, 128, 130]])
+
+        .. code-block:: python
+            :name: bitwise_left_shift_example2
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=False)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[2  , 8  , 32 , 128],
+                    [64 , 136, 128, 130]])
+    """
+    if in_dynamic_mode() and out is None:
+        return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
+    return _bitwise_op(
+        op_name="bitwise_left_shift",
+        x=x,
+        y=y,
+        is_arithmetic=is_arithmetic,
+        name=name,
+        out=out,
+    )
+
+
+@inplace_apis_in_dygraph_only
+def bitwise_left_shift_(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Inplace version of ``bitwise_left_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_left_shift`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_or_pir_mode():
+        return _C_ops.bitwise_left_shift_(x, y, is_arithmetic)
+
+
+def bitwise_right_shift(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Apply ``bitwise_right_shift`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+
+        Out = X \gg Y
+
+    .. note::
+
+        ``paddle.bitwise_right_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        out (Tensor, optional): Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+            :name: bitwise_right_shift_example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=True)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[5 , 5 , 5 , 5 ],
+                    [4 , 2 , 8 , 32]])
+
+        .. code-block:: python
+            :name: bitwise_right_shift_example2
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[-10,-20,-40,-80],[-16,-17,-32,-65]], dtype=paddle.int8)
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]], dtype=paddle.int8)
+            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=False)  # logic shift
+            Tensor(shape=[2, 4], dtype=int8, place=Place(gpu:0), stop_gradient=True,
+                [[123, 59 , 27 , 11 ],
+                    [60 , 29 , 56 , 95 ]])
+    """
+    if in_dynamic_mode() and out is None:
+        return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
+
+    return _bitwise_op(
+        op_name="bitwise_right_shift",
+        x=x,
+        y=y,
+        is_arithmetic=is_arithmetic,
+        name=name,
+        out=out,
+    )
+
+
+@inplace_apis_in_dygraph_only
+def bitwise_right_shift_(x, y, is_arithmetic=True, out=None, name=None):
+    r"""
+    Inplace version of ``bitwise_right_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_left_shift`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.bitwise_right_shift_(x, y, is_arithmetic)
+
+
+def copysign(x, y, name=None):
+    r"""
+    Create a new floating-point tensor with the magnitude of input ``x`` and the sign of ``y``, elementwise.
+
+    Equation:
+        .. math::
+
+            copysign(x_{i},y_{i})=\left\{\begin{matrix}
+            & -|x_{i}| & if \space y_{i} <= -0.0\\
+            & |x_{i}| & if \space y_{i} >= 0.0
+            \end{matrix}\right.
+
+    Args:
+        x (Tensor): The input Tensor, magnitudes, the data type is bool, uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64.
+        y (Tensor, number): contains value(s) whose signbit(s) are applied to the magnitudes in input.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), the output tensor. The data type is the same as the input tensor.
+
+    Examples:
+        .. code-block:: python
+            :name: example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-1, 1, -1], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [-1.,  2., -3.])
+
+        .. code-block:: python
+            :name: example2
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-2], dtype='float64')
+            >>> res = paddle.copysign(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [-1.,  -2.,  -3.])
+
+        .. code-block:: python
+            :name: example_zero1
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([0.0], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                [1., 2., 3.])
+
+        .. code-block:: python
+            :name: example_zero2
+
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-0.0], dtype='float64')
+            >>> out = paddle.copysign(x, y)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                [-1., -2., -3.])
+    """
+    if isinstance(y, (float, int)):
+        y = paddle.to_tensor(y, dtype=x.dtype)
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        warnings.warn(
+            "The shape of broadcast output {} is different from the input tensor x with shape: {}, please make sure you are using copysign api correctly.".format(
+                out_shape, x.shape
+            )
+        )
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.copysign(x, y)
+    else:
+        helper = LayerHelper("copysign", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='copysign', inputs={'x': x, 'y': y}, outputs={'out': out}
+        )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def copysign_(x, y, name=None):
+    r"""
+    Inplace version of ``copysign`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_copysign`.
+    """
+    if isinstance(y, (float, int)):
+        y = paddle.to_tensor(y, dtype=x.dtype)
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.copysign_(x, y)
 
 
 def hypot(x, y, name=None):
@@ -7158,3 +7509,62 @@ def combinations(x, r=2, with_replacement=False, name=None):
         grids[i] = grids[i].masked_select(mask)
 
     return paddle.stack(grids, 1)
+
+
+def signbit(x, name=None):
+    r"""
+    Tests if each element of input has its sign bit set or not.
+
+    Args:
+        x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, bfloat16, uint8, int8, int16, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
+
+    Examples:
+        .. code-block:: python
+            :name: signbit-example-1
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-0., 1.1, -2.1, 0., 2.5], dtype='float32')
+            >>> res = paddle.signbit(x)
+            >>> print(res)
+            Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, False, True, False, False])
+
+        .. code-block:: python
+            :name: signbit-example-2
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-5, -2, 3], dtype='int32')
+            >>> res = paddle.signbit(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , True , False])
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'float16',
+            'float32',
+            'float64',
+            'bfloat16',
+            'uint8',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+        ],
+        "signbit",
+    )
+    neg_zero_x = paddle.to_tensor(np.copysign(1, x.numpy()), dtype=x.dtype)
+    x = paddle.sign(neg_zero_x)
+    out = paddle.cast(x < 0, dtype='bool')
+    return out

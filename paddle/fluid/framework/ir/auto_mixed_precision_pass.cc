@@ -178,6 +178,7 @@ bool OpSupportPrecision(const std::string& op_type,
 // ref to python/paddle/base/contrib/mixed_precision/fp16_lists.py
 void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
   black_list_.insert({
+      "cast",
       // numerically-dangerous
       "exp",
       "square",

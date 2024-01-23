@@ -18,7 +18,10 @@ from paddle.base import core
 from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.base.framework import default_main_program
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 __all__ = []
 

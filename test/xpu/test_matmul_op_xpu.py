@@ -354,11 +354,43 @@ class XPUTestMatmulOp3(XPUOpTestWrapper):
         return base_class, classes
 
 
+class XPUTestMatmulOpBF16(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = "matmul"
+        self.use_dynamic_create_class = True
+
+    def dynamic_create_class(self):
+        base_class = TestMatmulBaseGenerator
+        classes = []
+        for dim in [2]:
+            for transpose_X in [False, True]:
+                for transpose_Y in [False, True]:
+                    class_name = 'TestMatMulOp2_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+                        dim, dim, transpose_X, transpose_Y
+                    )
+                    shape_X, shape_Y = generate_compatible_shapes_2(
+                        dim, transpose_X, transpose_Y
+                    )
+                    attr_dict = {
+                        'shape_X': shape_X,
+                        'shape_Y': shape_Y,
+                        'transpose_X': transpose_X,
+                        'transpose_Y': transpose_Y,
+                        'op_type': "matmul",
+                    }
+                    classes.append([class_name, attr_dict])
+        return base_class, classes
+
+
 support_types = get_xpu_op_support_types('matmul')
 for stype in support_types:
-    create_test_class(globals(), XPUTestMatmulOpErr, stype)
-    create_test_class(globals(), XPUTestMatmulOp1, stype)
-    create_test_class(globals(), XPUTestMatmulOp3, stype)
+    if "bfloat16" in str(stype):
+        # only support fc_fusion now
+        create_test_class(globals(), XPUTestMatmulOpBF16, stype)
+    else:
+        create_test_class(globals(), XPUTestMatmulOpErr, stype)
+        create_test_class(globals(), XPUTestMatmulOp1, stype)
+        create_test_class(globals(), XPUTestMatmulOp3, stype)
 
 if __name__ == "__main__":
     paddle.enable_static()

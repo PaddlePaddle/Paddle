@@ -36,7 +36,17 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                     true,
                     platform::errors::InvalidArgument(
                         "Graph must have kParamScopeAttr attribute."));
-  VLOG(3) << "Handle delete weight dequant linear op pass ...";
+
+  VLOG(3) << "Running delete_weight_dequant_linear_op_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running delete_weight_dequant_linear_op_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running delete_weight_dequant_linear_op_pass is: "
+        << graph->GetBlockId();
+  }
+
   auto& scope = graph->Get<framework::Scope>(kParamScopeAttr);
   bool is_int8 = false;
 
