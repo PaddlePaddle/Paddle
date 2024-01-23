@@ -557,7 +557,9 @@ std::vector<Expr> _Tensor_::domain_with_reduce_axis() const {
   if (reduce_axis.empty()) return domain;
   auto res = domain;
   for (const Var &axis : reduce_axis) {
-    CHECK(axis->upper_bound.type().is_int(32)) << axis->upper_bound;
+    CHECK(axis->upper_bound.type().is_int(32) ||
+          axis->upper_bound.type().is_int(64))
+        << axis->upper_bound;
     res.push_back(axis->upper_bound);
   }
   return res;
