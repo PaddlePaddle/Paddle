@@ -36,6 +36,7 @@
 #include "paddle/common/macros.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
@@ -71,12 +72,14 @@ TEST(StandaloneExecutor, run) {
   std::string out_name = "add_out";
   builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
+
   Scope scope;
 
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -140,11 +143,13 @@ TEST(StandaloneExecutor, run_feed_tensor) {
   std::string out_name = "add_out";
   builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
+
   Scope scope;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -191,11 +196,13 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   std::string out_name = "full_out";
   builder.Build<pir::ShadowOutputOp>(full->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
+
   Scope scope;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -254,11 +261,13 @@ TEST(StandaloneExecutor, if_op) {
   builder.SetInsertionPointToBlockEnd(block);
   builder.Build<pir::ShadowOutputOp>(if_op->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
+
   Scope scope;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 
@@ -324,11 +333,13 @@ TEST(StandaloneExecutor, while_op) {
   std::string out_name = "while_out";
   builder.Build<pir::ShadowOutputOp>(while_op->result(0), out_name);
 
-  auto kernel_program = PdOpLowerToKernelPass(&program);
-
   auto place = platform::CPUPlace();
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(&program);
+
   Scope scope;
-  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  InterpreterCore test_core(place, {}, program.block(), &scope);
 
   test_core.SetSkipGcVars({out_name});
 

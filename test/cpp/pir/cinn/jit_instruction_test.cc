@@ -37,6 +37,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -143,16 +144,16 @@ TEST(CinnJitInstruction, Run) {
   }
 
   platform::Place place = platform::CUDAPlace(0);
-
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(ir_program.get(), place);
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(ir_program.get());
 
   Scope exe_scope;
 
   paddle::framework::interpreter::ExecutionConfig exe_conf;
   exe_conf.create_local_scope = false;
   InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+      place, {"out@fetch"}, ir_program->block(), &exe_scope);
 
   std::set<std::string> out_names;
   out_names.insert("out@fetch");

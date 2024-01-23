@@ -102,21 +102,18 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
           job->SetFetchVarName(fetch_var_names_[index]);
         }
       }
-      auto kernel_program =
-          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
-      std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
-      plan_.SetIrProgram("job_" + std::to_string(job_idx), shared_program);
-
+      pir::PassManager pm(pir::IrContext::Instance(), 3);
+      pm.AddPass(pir::CreatePdOpToKernelPass(place));
       if (FLAGS_pir_apply_inplace_pass) {
-        pir::PassManager pm(pir::IrContext::Instance(), 3);
         pm.AddPass(pir::CreateInplacePass());
-        pm.Run(shared_program.get());
       }
+      pm.Run(base_program.get());
+      plan_.SetIrProgram("job_" + std::to_string(job_idx), base_program);
 
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             job->FetchVarNames(),
-                                            shared_program->block(),
+                                            base_program->block(),
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
       // Note(lizhiyu): Add mannual event info

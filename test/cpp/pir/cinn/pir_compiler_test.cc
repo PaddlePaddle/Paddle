@@ -36,6 +36,7 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 using cinn::hlir::framework::pir::Group;
 using cinn::hlir::framework::pir::GroupPtr;
@@ -193,16 +194,16 @@ TEST(PirCompier, CompileSoftmax) {
       cinn_op->result(cinn_op->num_results() - 1), "out", 0);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(new_program.get(), place);
+  ::pir::PassManager lowered_pm(pir::IrContext::Instance(), 3);
+  lowered_pm.AddPass(pir::CreatePdOpToKernelPass(place));
+  lowered_pm.Run(new_program.get());
 
   paddle::framework::Scope exe_scope;
 
   paddle::framework::interpreter::ExecutionConfig exe_conf;
   exe_conf.create_local_scope = false;
   paddle::framework::InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+      place, {"out@fetch"}, new_program->block(), &exe_scope);
 
   executor.Run({}, true);
   auto out_tensor =
