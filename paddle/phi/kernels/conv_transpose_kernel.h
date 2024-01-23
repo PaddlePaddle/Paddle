@@ -37,6 +37,21 @@ void Conv2dTransposeKernel(const Context& ctx,
                            DenseTensor* out);
 
 template <typename T, typename Context>
+void FusedConv2dTransposeKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& bias,
+                           const DenseTensor& filter,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::vector<int>& output_padding,
+                           const IntArray& output_size,
+                           const std::string& padding_algorithm,
+                           int groups,
+                           const std::vector<int>& dilations,
+                           const std::string& data_format,
+                           DenseTensor* out);
+
+template <typename T, typename Context>
 void Conv3dTransposeKernel(const Context& ctx,
                            const DenseTensor& x,
                            const DenseTensor& filter,
