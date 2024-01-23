@@ -126,9 +126,10 @@ void SqueezeExcitationKernel(const Context& ctx,
     SQUEEZE_EXCITATION_KERNEL_IMPL(float, int16_t, int16_t);
   } else {
     PADDLE_THROW(
-        phi::errors::Unimplemented("Not support "
-                                   "x_dtype is %s, ",
-                                   DataTypeToString(x.dtype())));
+        "Not support x_dtype is %s, filter_dtype is "
+        "%s.",
+        DataTypeToString(x.dtype()),
+        DataTypeToString(filter.dtype()));
   }
   return;
 }

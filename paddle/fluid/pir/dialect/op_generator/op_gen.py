@@ -1990,6 +1990,15 @@ def OpGenerator(
                 if first_file:
                     op["is_onednn_only"] = True
                     onednn_only_op_list.append("\"" + op['name'] + "\"")
+                    if op['name'] in ops_onednn_extra_map:
+                        onednn_item = ops_onednn_extra_map[op['name']]
+                        op["is_onednn_only"] = onednn_item["is_onednn_only"]
+                        op["extra_args"] = onednn_item["extra_args"]
+                        op["data_format_tensors"] = onednn_item[
+                            "data_format_tensors"
+                        ]
+                        op["dynamic_fallback"] = onednn_item["dynamic_fallback"]
+                        op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 elif op['name'] in ops_onednn_extra_map:
                     onednn_item = ops_onednn_extra_map[op['name']]
                     op["is_onednn_only"] = onednn_item["is_onednn_only"]
