@@ -3316,7 +3316,7 @@ EOF
 
 function distribute_test() {
     echo "Start gpups tests"
-    #parallel_test_base_gpups
+    parallel_test_base_gpups
     echo "End gpups tests"
 
     echo "Download ..."
