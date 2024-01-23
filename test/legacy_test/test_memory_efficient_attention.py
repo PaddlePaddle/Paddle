@@ -223,7 +223,6 @@ class TestMemEffAttentionAPI(unittest.TestCase):
 
 class TestMemEffAPIDtypeFp16(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp16"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 128, 128)
@@ -237,7 +236,6 @@ class TestMemEffAPIDtypeFp16(TestMemEffAttentionAPI):
 
 class TestMemEffAPIShape0(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 128, 32)
@@ -251,7 +249,6 @@ class TestMemEffAPIShape0(TestMemEffAttentionAPI):
 
 class TestMemEffAPIShape1(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 16, 16)
@@ -265,7 +262,6 @@ class TestMemEffAPIShape1(TestMemEffAttentionAPI):
 
 class TestMemEffAPIShape2(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 8, 8)
@@ -279,7 +275,6 @@ class TestMemEffAPIShape2(TestMemEffAttentionAPI):
 
 class TestMemEffAPIShape3(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32"
         self.place = paddle.CUDAPlace(0)
         self.shape = (16, 32, 128, 128)
@@ -293,7 +288,6 @@ class TestMemEffAPIShape3(TestMemEffAttentionAPI):
 
 class TestMemEffAPIMask0(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32_BlockDiagonalMask"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 128, 128)
@@ -317,7 +311,6 @@ class TestMemEffAPIMask0(TestMemEffAttentionAPI):
 
 class TestMemEffAPIMask1(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32_BlockDiagonalCausalMask"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 128, 128)
@@ -341,7 +334,6 @@ class TestMemEffAPIMask1(TestMemEffAttentionAPI):
 
 class TestMemEffAPIMask2(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32_LowerTriangularMask"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 128, 128)
@@ -365,7 +357,6 @@ class TestMemEffAPIMask2(TestMemEffAttentionAPI):
 
 class TestMemEffAPIMask3(TestMemEffAttentionAPI):
     def setUp(self):
-        return
         self.name = "MemEffAPI_fp32_AnyTensor"
         self.place = paddle.CUDAPlace(0)
         self.shape = (1, 32, 128, 128)
