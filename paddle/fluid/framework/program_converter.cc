@@ -306,8 +306,7 @@ void ConvertProgram(ProgramDesc* program) {
       framework::compatible::get_op_version_map(), &op_version_map);
 
   VLOG(3) << "Converting program from old(no scalar attributes) to new(with "
-             "scalar attributes)"
-          << legacy_ops.size();
+             "scalar attributes)";
 
   for (const auto& pair : legacy_ops) {
     const std::string op_type = pair.first;
