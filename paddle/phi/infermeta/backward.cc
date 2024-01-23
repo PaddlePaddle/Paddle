@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
-#include "glog/logging.h"
 
 namespace phi {
 

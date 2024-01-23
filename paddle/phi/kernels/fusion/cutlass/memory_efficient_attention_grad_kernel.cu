@@ -59,7 +59,6 @@ void MemoryEfficientAttentionGradKernel(
   bool kernel_launched = false;
 
   auto launchKernel = [&](auto k_, auto kernel_fn) {
-    VLOG(3)<< "MemoryEfficientAttentionGradKernel: launchKernel " ;
     // ndim
     PADDLE_ENFORCE_EQ(
         query.dims().size(),
