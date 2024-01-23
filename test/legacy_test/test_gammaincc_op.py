@@ -22,8 +22,8 @@ import paddle
 from paddle.base import core
 
 
-def ref_gammaincc(x, a):
-    return special.gammaincc(a, x)
+def ref_gammaincc(x, y):
+    return special.gammaincc(x, y)
 
 
 class TestGammainccOp(OpTest):
@@ -33,9 +33,9 @@ class TestGammainccOp(OpTest):
         self.init_dtype_type()
         self.shape = (3, 40)
         self.x = np.random.random(self.shape).astype(self.dtype) + 1
-        self.a = np.random.random(self.shape).astype(self.dtype) + 1
-        self.inputs = {'x': self.x, 'a': self.a}
-        out = ref_gammaincc(self.x, self.a)
+        self.y = np.random.random(self.shape).astype(self.dtype) + 1
+        self.inputs = {'x': self.x, 'y': self.y}
+        out = ref_gammaincc(self.x, self.y)
         self.outputs = {'out': out}
 
     def init_dtype_type(self):
@@ -45,7 +45,7 @@ class TestGammainccOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x'], 'out', check_pir=True)
+        self.check_grad(['y'], 'out', check_pir=True)
 
 
 class TestGammainccOpFp32(TestGammainccOp):
@@ -58,7 +58,7 @@ class TestGammainccOpApi(unittest.TestCase):
         self.shape = [2, 3, 4, 5]
         self.init_dtype_type()
         self.x_np = np.random.random(self.shape).astype(self.dtype) + 1
-        self.a_np = np.random.random(self.shape).astype(self.dtype) + 1
+        self.y_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -72,36 +72,36 @@ class TestGammainccOpApi(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('x', self.x_np.shape, self.x_np.dtype)
-            a = paddle.static.data('a', self.a_np.shape, self.x_np.dtype)
-            out = paddle.gammaincc(x, a)
+            y = paddle.static.data('y', self.y_np.shape, self.y_np.dtype)
+            out = paddle.gammaincc(x, y)
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(
-                feed={'x': self.x_np, 'a': self.a_np}, fetch_list=[out]
+                feed={'x': self.x_np, 'y': self.y_np}, fetch_list=[out]
             )
-        out_ref = ref_gammaincc(self.x_np, self.a_np)
+        out_ref = ref_gammaincc(self.x_np, self.y_np)
         np.testing.assert_allclose(out_ref, res, rtol=1e-6, atol=1e-6)
 
     def test_dygraph_api(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
-        a = paddle.to_tensor(self.a_np)
-        out = paddle.gammaincc(x, a)
-        out_ref = ref_gammaincc(self.x_np, self.a_np)
+        y = paddle.to_tensor(self.y_np)
+        out = paddle.gammaincc(x, y)
+        out_ref = ref_gammaincc(self.x_np, self.y_np)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-6, atol=1e-6)
 
     def test_x_le_zero_error(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
-        a = paddle.to_tensor(self.a_np)
+        y = paddle.to_tensor(self.y_np)
         x[0] = -1
-        self.assertRaises(ValueError, paddle.gammaincc, x, a)
+        self.assertRaises(ValueError, paddle.gammaincc, x, y)
 
     def test_a_le_zero_error(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
-        a = paddle.to_tensor(self.a_np)
-        a[0] = -1
-        self.assertRaises(ValueError, paddle.gammaincc, x, a)
+        y = paddle.to_tensor(self.y_np)
+        y[0] = -1
+        self.assertRaises(ValueError, paddle.gammaincc, x, y)
 
     def test_dtype_error(self):
         paddle.enable_static()
@@ -111,18 +111,18 @@ class TestGammainccOpApi(unittest.TestCase):
                 x = paddle.static.data(
                     name="x", shape=self.shape, dtype="int32"
                 )
-                a = paddle.static.data(
-                    name="a", shape=self.shape, dtype="int32"
+                y = paddle.static.data(
+                    name="y", shape=self.shape, dtype="int32"
                 )
-                out = paddle.gammaincc(x, a)
+                out = paddle.gammaincc(x, y)
 
         paddle.disable_static()
         # in dynamic mode
         with self.assertRaises(RuntimeError):
             with paddle.base.dygraph.guard():
                 x = paddle.to_tensor(self.x_np, dtype="int32")
-                a = paddle.to_tensor(self.a_np, dtype="int32")
-                res = paddle.gammaincc(x, a)
+                y = paddle.to_tensor(self.y_np, dtype="int32")
+                res = paddle.gammaincc(x, y)
 
 
 class TestGammainccOpFp32Api(TestGammainccOpApi):

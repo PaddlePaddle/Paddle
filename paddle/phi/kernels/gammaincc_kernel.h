@@ -22,6 +22,6 @@ namespace phi {
 template <typename T, typename Context>
 void GammainccKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const DenseTensor& a,
+                     const DenseTensor& y,
                      DenseTensor* out);
 }  // namespace phi

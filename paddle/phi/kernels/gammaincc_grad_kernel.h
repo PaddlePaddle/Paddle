@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void GammainccGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& a,
+                         const DenseTensor& y,
                          const DenseTensor& d_out,
-                         DenseTensor* d_x);
+                         DenseTensor* d_y);
 }  // namespace phi

@@ -46,17 +46,17 @@ struct IgammaGradFunctor {
 template <typename T, typename Context>
 void GammainccGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& a,
+                         const DenseTensor& y,
                          const DenseTensor& d_out,
-                         DenseTensor* d_x) {
+                         DenseTensor* d_y) {
   auto numel = d_out.numel();
   auto* dout_data = d_out.data<T>();
   auto* x_data = x.data<T>();
-  auto* a_data = a.data<T>();
-  auto* dx_data =
-      dev_ctx.template Alloc<T>(d_x, static_cast<size_t>(numel * sizeof(T)));
+  auto* y_data = y.data<T>();
+  auto* dy_data =
+      dev_ctx.template Alloc<T>(d_y, static_cast<size_t>(numel * sizeof(T)));
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  IgammaGradFunctor<T> functor(dout_data, x_data, a_data, dx_data, numel);
+  IgammaGradFunctor<T> functor(dout_data, y_data, x_data, dy_data, numel);
   for_range(functor);
 }
 }  // namespace phi

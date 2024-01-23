@@ -130,14 +130,14 @@ struct IgammaFunctor {
 template <typename T, typename Context>
 void GammainccKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const DenseTensor& a,
+                     const DenseTensor& y,
                      DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  auto* a_data = a.data<T>();
+  auto* y_data = y.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  IgammaFunctor<T> functor(x_data, a_data, out_data, numel);
+  IgammaFunctor<T> functor(y_data, x_data, out_data, numel);
   for_range(functor);
 }
 }  // namespace phi

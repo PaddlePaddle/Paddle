@@ -909,36 +909,45 @@ class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
         return paddle.neg(var)
 
 
-class TestDygraphInplaceGammaincc(TestDygraphInplaceWithContinuous):
+class TestDygraphInplaceGammaincc(TestDygraphInplace):
     def init_data(self):
         self.shape = (3, 40)
         self.dtype = "float32"
         self.input_var_numpy = (
             np.random.random(self.shape).astype(self.dtype) + 1
         )
-        self.a = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
 
     def inplace_api_processing(self, var):
-        return paddle.gammaincc_(var, a=self.a)
+        return paddle.gammaincc_(var, y=self.y)
 
     def non_inplace_api_processing(self, var):
-        return paddle.gammaincc(var, a=self.a)
+        return paddle.gammaincc(var, y=self.y)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
 
 
-class TestDygraphInplaceGammainc(TestDygraphInplaceWithContinuous):
+class TestDygraphInplaceGammainc(TestDygraphInplace):
     def init_data(self):
         self.shape = (3, 40)
         self.dtype = "float32"
         self.input_var_numpy = (
             np.random.random(self.shape).astype(self.dtype) + 1
         )
-        self.a = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
 
     def inplace_api_processing(self, var):
-        return paddle.gammainc_(var, a=self.a)
+        return paddle.gammainc_(var, y=self.y)
 
     def non_inplace_api_processing(self, var):
-        return paddle.gammainc(var, a=self.a)
+        return paddle.gammainc(var, y=self.y)
 
     def test_forward_version(self):
         with paddle.base.dygraph.guard():
@@ -955,26 +964,13 @@ class TestDygraphInplaceGammainc(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 7)
 
     def test_backward_error(self):
-        # It raises an error because the inplace operator will result
-        # in incorrect gradient computation.
-        with paddle.base.dygraph.guard():
-            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
-            var_a.stop_gradient = False
+        pass
 
-            var_b = var_a**2
+    def test_backward_success_1(self):
+        pass
 
-            # Here, the gradient computation will use the value of var_b
-            var_c = var_b**2
-            var_b[1:2] = 3.3  # var_b is modified inplace after using it
-
-            var_d = var_b**2
-
-            loss = paddle.nn.functional.relu(var_c + var_d)
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "received tensor_version:1 != wrapper_version_snapshot:0",
-            ):
-                loss.backward()
+    def test_backward_success_2(self):
+        pass
 
 
 class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):

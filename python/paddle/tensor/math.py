@@ -5100,15 +5100,15 @@ def digamma_(x, name=None):
         return _C_ops.digamma_(x)
 
 
-def gammaincc(x, a, name=None):
+def gammaincc(x, y, name=None):
     r"""
     Computes the regularized upper incomplete gamma function.
 
-    .. math:: Q(a, x) = \frac{1}{\Gamma(a)} \int_{x}^{\infty} t^{a-1} e^{-t} dt
+    .. math:: Q(x, y) = \frac{1}{\Gamma(x)} \int_{y}^{\infty} t^{x-1} e^{-t} dt
 
     Args:
-        x (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
-        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
+        y (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5119,53 +5119,53 @@ def gammaincc(x, a, name=None):
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
-            >>> a = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
-            >>> out = paddle.gammaincc(x, a)
+            >>> x = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
+            >>> y = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
+            >>> out = paddle.gammaincc(x, y)
             >>> print(out)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1.        , 0.15729916, 0.00000774, 0.        , 0.        ])
     """
-    if not paddle.all(paddle.greater_equal(a, paddle.zeros_like(a))):
-        raise ValueError(
-            "The input argument a must be greater than or equal to 0."
-        )
     if not paddle.all(paddle.greater_equal(x, paddle.zeros_like(x))):
         raise ValueError(
             "The input argument x must be greater than or equal to 0."
         )
+    if not paddle.all(paddle.greater_equal(y, paddle.zeros_like(y))):
+        raise ValueError(
+            "The input argument y must be greater than or equal to 0."
+        )
     if in_dynamic_or_pir_mode():
-        return _C_ops.gammaincc(x, a)
+        return _C_ops.gammaincc(x, y)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gammaincc')
-        check_variable_and_dtype(a, 'a', ['float32', 'float64'], 'gammaincc')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'gammaincc')
         helper = LayerHelper('gammaincc', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
-            type='gammaincc', inputs={'x': x, 'a': a}, outputs={'out': out}
+            type='gammaincc', inputs={'x': x, 'y': y}, outputs={'out': out}
         )
         return out
 
 
 @inplace_apis_in_dygraph_only
-def gammaincc_(x, a, name=None):
+def gammaincc_(x, y, name=None):
     r"""
     Inplace version of ``gammaincc`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_gammaincc`.
     """
     if in_dynamic_mode():
-        return _C_ops.gammaincc_(x, a)
+        return _C_ops.gammaincc_(x, y)
 
 
-def gammainc(x, a, name=None):
+def gammainc(x, y, name=None):
     r"""
     Computes the regularized lower incomplete gamma function.
 
-    .. math:: P(a, x) = \frac{1}{\Gamma(a)} \int_{0}^{x} t^{a-1} e^{-t} dt
+    .. math:: P(x, y) = \frac{1}{\Gamma(x)} \int_{0}^{y} t^{x-1} e^{-t} dt
 
     Args:
-        x (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
-        a (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
+        y (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5176,24 +5176,24 @@ def gammainc(x, a, name=None):
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
-            >>> a = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
-            >>> out = paddle.gammainc(x, a)
+            >>> x = paddle.to_tensor([0.5, 0.5, 0.5, 0.5, 0.5], dtype="float32")
+            >>> y = paddle.to_tensor([0, 1, 10, 100, 1000], dtype="float32")
+            >>> out = paddle.gammainc(x, y)
             >>> print(out)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.        , 0.84270084, 0.99999225, 1.        , 1.        ])
     """
-    return 1 - paddle.gammaincc(x, a)
+    return 1 - paddle.gammaincc(x, y)
 
 
 @inplace_apis_in_dygraph_only
-def gammainc_(x, a, name=None):
+def gammainc_(x, y, name=None):
     r"""
     Inplace version of ``gammainc`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_gammainc`.
     """
     return (
-        paddle.gammaincc_(x, a)
+        paddle.gammaincc_(x, y)
         .multiply_(paddle.full_like(x, -1.0))
         .add_(paddle.full_like(x, 1.0))
     )
