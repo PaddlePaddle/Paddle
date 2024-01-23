@@ -293,6 +293,11 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
  public:
   XpuPassStrategy();
+  explicit XpuPassStrategy(const XpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_xpu_ = true;
+    deleted_passes_ = other.deleted_passes_;
+  }
 };
 
 /// \class CustomDevicePassStrategy
@@ -308,6 +313,7 @@ class PD_INFER_DECL CustomDevicePassStrategy final : public PassStrategy {
   explicit CustomDevicePassStrategy(const CustomDevicePassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_custom_device_ = true;
+    deleted_passes_ = other.deleted_passes_;
   }
 };
 
@@ -324,6 +330,7 @@ class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
   explicit IpuPassStrategy(const IpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_ipu_ = true;
+    deleted_passes_ = other.deleted_passes_;
   }
 };
 
