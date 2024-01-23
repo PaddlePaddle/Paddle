@@ -127,12 +127,12 @@ bool DimExpr::operator!=(const DimExpr& other) const {
 
 namespace {
 template <class... Ts>
-struct overloaded : Ts... {
+struct Overloaded : Ts... {
   using Ts::operator()...;
 };
 
 template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
+Overloaded(Ts...) -> Overloaded<Ts...>;
 
 std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
                                 const std::string& delim = ", ") {
@@ -148,7 +148,7 @@ std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
 }  // namespace
 
 std::string ToString(const DimExpr& dim_expr) {
-  auto lambdas = overloaded{
+  auto lambdas = Overloaded{
       [](std::int64_t dim_expr) { return std::to_string(dim_expr); },
       [](const std::string& dim_expr) { return dim_expr; },
       [](const Negative<DimExpr>& dim_expr) {
@@ -184,8 +184,7 @@ std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
 std::ostream& operator<<(std::ostream& stream,
                          const ShapeOrDataDimExprs& shape_or_data) {
   std::string result;
-
-  auto lambdas = overloaded{
+  auto lambdas = Overloaded{
       [&result](const TensorShapeOrDataDimExprs& tensor_shape_data) {
         result += "shape[";
         for (size_t i = 0; i < tensor_shape_data.shape().size(); ++i) {

@@ -68,6 +68,26 @@ TEST(DimExpr, DataShapeExpr) {
       symbol::TensorShapeOrDataDimExprs(x_shapes)};
 }
 
+/*
+  Simulate the ShapeOrDataDimExprs result of below codes:
+  def (x, y):
+    out = pd.combine(x, y)
+*/
+TEST(DimExpr, TensorListShapeOrDataDimExprs) {
+  std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr("S1"), DimExpr(2)};
+  std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S3"), DimExpr(2)};
+  // x => {shape: [S0, S1, 2], data: nullopt}
+  ShapeOrDataDimExprs x_data_shape{symbol::TensorShapeOrDataDimExprs(x_shapes)};
+  // y => {shape: [1, S3, 2], data: nullopt}
+  ShapeOrDataDimExprs y_data_shape{symbol::TensorShapeOrDataDimExprs(y_shapes)};
+
+  // out => {shape: [S0, S1, 2], data: nullopt, shape: [1, S3, 2], data:
+  // nullopt}
+  ShapeOrDataDimExprs out_data_shape_list(
+      {symbol::TensorShapeOrDataDimExprs(x_shapes),
+       symbol::TensorShapeOrDataDimExprs(y_shapes)});
+}
+
 TEST(Simplify, NumberArithmetic) {
   DimExpr number = DimExpr(5);
   DimExpr add_minus = number + number - number;

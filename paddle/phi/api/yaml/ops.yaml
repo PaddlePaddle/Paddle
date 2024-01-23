@@ -2187,6 +2187,7 @@
     func : relu
   inplace : (x -> out)
   backward : relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : relu6
   args : (Tensor x)

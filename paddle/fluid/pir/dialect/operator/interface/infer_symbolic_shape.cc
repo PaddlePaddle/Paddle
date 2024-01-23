@@ -696,6 +696,15 @@ bool FullWithTensorOpInferSymbolicShape(
   return SameOperandsAndResultShape(op, shape_analysis);
 }
 
+bool ReluOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool Relu_OpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
 }  // namespace paddle::dialect
 namespace cinn::dialect {
 
