@@ -2874,7 +2874,7 @@ class TestSundryAPI(unittest.TestCase):
         # using p_nrom, as_vector = False
         x_2_fro = paddle.arange(24, dtype="float32") - 12
         x_2_fro.stop_gradient = False
-        out_2_fro = paddle.linalg.norm(x_2_fro, p="fro", axis=0)
+        out_2_fro = paddle.linalg.norm(x_2_fro, p=2, axis=0)
         out_2_fro.retain_grads()
         out_2_fro.backward()
 
@@ -5331,7 +5331,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         # using p_nrom, as_vector = False
         x_2_fro = paddle.arange(24, dtype="float32") - 12
         x_2_fro.stop_gradient = False
-        out_2_fro = paddle.linalg.norm(x_2_fro, p="fro", axis=0)
+        out_2_fro = paddle.linalg.norm(x_2_fro, p=2, axis=0)
         paddle.static.append_backward(out_2_fro.sum())
 
         prog = paddle.static.default_main_program()

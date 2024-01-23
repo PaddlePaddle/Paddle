@@ -721,7 +721,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
         Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
         Args:
           input (Variable): Tensor, data type float32, float64.
-          porder (float,str): p in ['fuc','nuc',1,-1,2,-2,np.inf,-np.inf]. Default 1.
+          porder (int|float,str): p in ['fro', 'nuc', ±1, ±2, ±inf] Default 1.
           axis (list): Two dimensions.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
           name (str, optional): The default value is None. Normally there is no need for
@@ -922,9 +922,9 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
-        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm.
-            Default value is `fro`.
+        p (int|float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `±1`, `±2`,
+            `±inf` and any real number yielding the corresponding p-norm.
+            Default value is None.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
             If `axis < 0`, the dimension to norm operation is rank(input) + axis.

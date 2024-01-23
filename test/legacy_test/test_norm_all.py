@@ -31,48 +31,6 @@ def p_norm_python_api(
         return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
 
 
-# def np_linalg_vector_norm(x, axis, porder, keepdims=False):
-#     r = []
-#     if axis is None:
-#         x_f = x.flatten()
-#         if porder == np.inf:
-#             r = np.amax(np.abs(x_f), keepdims=keepdims)
-#         elif porder == -np.inf:
-#             r = np.amin(np.abs(x_f), keepdims=keepdims)
-#         else:
-#             r = np.linalg.norm(x_f, ord=porder, keepdims=keepdims)
-#         if keepdims:
-#             r = np.squeeze(r)
-#             for i in range(len(x.shape)):
-#                 r = np.expand_dims(r, 0)
-#     elif isinstance(axis, list or tuple) and len(axis) >= 2:
-#         if porder == np.inf:
-#             axis = tuple(axis)
-#             r = np.amax(np.abs(x), axis=axis, keepdims=keepdims)
-#         elif porder == -np.inf:
-#             axis = tuple(axis)
-#             r = np.amin(np.abs(x), axis=axis, keepdims=keepdims)
-#         elif porder == 0:
-#             axis = tuple(axis)
-#             r = x.astype(bool)
-#             r = np.sum(r, axis, keepdims=keepdims)
-#         elif porder == 1:
-#             axis = tuple(axis)
-#             r = np.sum(np.abs(x), axis, keepdims=keepdims)
-#         else:
-#             axis = tuple(axis)
-#             xp = np.power(np.abs(x), porder)
-#             s = np.sum(xp, axis=axis, keepdims=keepdims)
-#             r = np.power(s, 1.0 / porder)
-#     else:
-#         if isinstance(axis, list):
-#             axis = tuple(axis)
-#         r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
-#     r = r.astype(x.dtype)
-
-#     return r
-
-
 def np_linalg_vector_norm(x, axis, porder, keepdims=False):
     x_shape = list(x.shape)
 
@@ -129,15 +87,13 @@ def np_linalg_matrix_norm(x, axis, porder, keepdims=False):
     return r
 
 
-def np_linalg_norm(x, axis, porder, keepdims=False, reduce_all=False):
+def np_linalg_norm(x, axis, porder, keepdims=False):
     r = []
-    if axis is None or reduce_all:
-        x = x.flatten()
-        r = np.linalg.norm(x, ord=porder, keepdims=keepdims)
+    if axis is None or isinstance(axis, (int, float)):
+        r = np_linalg_vector_norm(x, axis, porder, keepdims)
     else:
-        if isinstance(axis, list):
-            axis = tuple(axis)
-        r = np.linalg.norm(x, ord=porder, axis=axis, keepdims=keepdims)
+        if isinstance(axis, list) and len(axis) == 2:
+            r = np_linalg_matrix_norm(x, axis, porder, keepdims)
     r = r.astype(x.dtype)
 
     return r
@@ -163,11 +119,11 @@ def numpy_nuclear_norm(x, axis=None, keepdims=False):
     return r
 
 
-def frobenius_norm(x, dim, keep_dim, reduce_all):
+def frobenius_norm(x, dim, keep_dim):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
 
 
-def nuclear_norm(x, dim, keep_dim, reduce_all):
+def nuclear_norm(x, dim, keep_dim):
     return paddle.linalg.norm(x, p='nuc', axis=dim, keepdim=keep_dim)
 
 
@@ -179,7 +135,7 @@ class TestFrobeniusNormOp(OpTest):
         self.init_dtype()
         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
         norm = numpy_frobenius_norm(x, self.axis, self.keepdim)
-        self.reduce_all = len(self.axis) == len(self.shape)
+        self.reduce_all = False
         self.inputs = {'X': x}
         self.attrs = {
             'dim': list(self.axis),
@@ -223,9 +179,7 @@ class TestPnormOp(OpTest):
         self.init_test_case()
         self.init_dtype()
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
-        norm = np_linalg_norm(
-            x, self.axis, self.porder, self.keepdim, self.asvector
-        )
+        norm = np_linalg_norm(x, self.axis, self.porder, self.keepdim)
         self.inputs = {'X': x}
         self.attrs = {
             'epsilon': self.epsilon,
@@ -271,16 +225,12 @@ class TestPnormOp(OpTest):
         if porder == 0:
             grad = np.zeros(x.shape).astype(x.dtype)
         elif porder in [float("inf"), float("-inf")]:
-            norm = np_linalg_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
+            norm = np_linalg_norm(x, axis=axis, porder=porder, keepdims=True)
             x_abs = np.abs(x)
             grad = np.sign(x)
             grad[x_abs != norm] = 0.0
         else:
-            norm = np_linalg_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
+            norm = np_linalg_norm(x, axis=axis, porder=porder, keepdims=True)
             grad = (
                 np.power(norm, 1 - porder)
                 * np.power(np.abs(x), porder - 1)
@@ -366,7 +316,7 @@ class TestPnormOp6(TestPnormOp):
         self.epsilon = 1e-12
         self.porder = 2
         self.keepdim = False
-        self.asvector = True
+        self.asvector = False
 
     def init_dtype(self):
         self.dtype = "float32"
@@ -421,9 +371,7 @@ class TestPnormBF16Op(OpTest):
         self.python_api = p_norm_python_api
         self.init_test_case()
         self.x = (np.random.random(self.shape) + 0.5).astype(np.float32)
-        self.norm = np_linalg_norm(
-            self.x, self.axis, self.porder, self.keepdim, self.asvector
-        )
+        self.norm = np_linalg_norm(self.x, self.axis, self.porder, self.keepdim)
         self.gradient = self.calc_gradient()
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.attrs = {
@@ -476,16 +424,12 @@ class TestPnormBF16Op(OpTest):
         if porder == 0:
             grad = np.zeros(x.shape).astype(x.dtype)
         elif porder in [float("inf"), float("-inf")]:
-            norm = np_linalg_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
+            norm = np_linalg_norm(x, axis=axis, porder=porder, keepdims=True)
             x_abs = np.abs(x)
             grad = np.sign(x)
             grad[x_abs != norm] = 0.0
         else:
-            norm = np_linalg_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
+            norm = np_linalg_norm(x, axis=axis, porder=porder, keepdims=True)
             grad = (
                 np.power(norm, 1 - porder)
                 * np.power(np.abs(x), porder - 1)
