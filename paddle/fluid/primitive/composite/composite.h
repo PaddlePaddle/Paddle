@@ -647,6 +647,34 @@ Tensor index_select_decomp(const Tensor& x, const Tensor& index, int axis) {
   return gather<T>(x, index, axis_tmp);
 }
 
+template <typename T>
+std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& input) {
+  int size = input.size();
+  std::vector<int64_t> shape(size, 1);
+
+  for (int i = 0; i < size; ++i) {
+    int dim = input[i].dims().size();
+    if (dim != 1 && dim != 2) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "meshgrid_decomp only support 1D or 2D input"));
+    }
+
+    if (dim == 1) {
+      shape[i] = input[i].dims()[0];
+    }
+  }
+
+  std::vector<Tensor> out_tensors;
+  for (int i = 0; i < size; ++i) {
+    std::vector<int64_t> view_shape(size, 1);
+    view_shape[i] = shape[i];
+    auto out = reshape<T>(input[i], view_shape).broadcast_to(shape);
+    // primitive_broadcast_to
+    out_tensors.push_back(out);
+  }
+  return out_tensors;
+}
+
 }  // namespace details
 
 }  // namespace primitive

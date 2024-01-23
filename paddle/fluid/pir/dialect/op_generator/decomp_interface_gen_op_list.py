@@ -30,6 +30,7 @@ decomp_interface_declare_gen_op_list = [
     "layer_norm",
     "leaky_relu",
     "mean",
+    "meshgrid",
     "pow",
     "relu",
     "rsqrt",
