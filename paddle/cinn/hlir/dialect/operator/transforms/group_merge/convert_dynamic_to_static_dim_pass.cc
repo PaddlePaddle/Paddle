@@ -109,7 +109,7 @@ class DynamicToStaticConverter {
     }
     bool updated = false;
     VisitEachValue(fusion_op_, [&](pir::Value value) {
-      updated = updated || UpdateValueShape(value);
+      updated |= UpdateValueShape(value);
     });
     shape_analysis_->Init();
     return updated;
@@ -141,11 +141,11 @@ class DynamicToStaticConverter {
   void VisitEachValue(cinn::dialect::FusionOp fusion_op,
                       const DoEachT& DoEach) {
     for (pir::Operation* op : fusion_op.GetOperators()) {
-      for (pir::Value value : op->operands_source()) {
-        DoEach(value);
+      for (std::size_t i = 0; i < op->num_operands(); ++i) {
+        DoEach(op->operand_source(i));
       }
-      for (pir::Value value : op->results()) {
-        DoEach(value);
+      for (std::size_t i = 0; i < op->num_results(); ++i) {
+        DoEach(op->result(i));
       }
     }
   }
@@ -200,6 +200,8 @@ class DynamicToStaticConverter {
                                     origin_type.lod(),
                                     origin_type.offset());
       value.set_type(target_type);
+      VLOG(4) << "DynamicToStaticConverter update Value: "
+              << std::hash<pir::Value>()(value);
     }
     return update;
   }

@@ -1563,14 +1563,15 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  bool force_static_shape = false;
   if (auto pass = cinn::dialect::ir::CreateConvertDynamicToStaticDimPass()) {
     pass_manager->AddPass(std::move(pass.value()));
-    has_dynamic_shape = false;
+    force_static_shape = true;
   }
   if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
     pass_manager->AddPass(std::move(pass.value()));
   }
-  if (has_dynamic_shape) {
+  if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   }
