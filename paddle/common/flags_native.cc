@@ -22,6 +22,7 @@
 #include <mutex>
 #include <set>
 #include <sstream>
+#include <string>
 
 namespace paddle {
 namespace flags {
