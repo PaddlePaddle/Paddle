@@ -147,6 +147,8 @@ else()
     DEPS ${PHI_DEPS})
 endif()
 
+target_compile_definitions(phi PUBLIC PHI_INNER)
+
 if(WIN32)
   target_link_libraries(phi shlwapi.lib)
 endif()
