@@ -91,9 +91,8 @@ def np_linalg_norm(x, axis, porder, keepdims=False):
     r = []
     if axis is None or isinstance(axis, (int, float)):
         r = np_linalg_vector_norm(x, axis, porder, keepdims)
-    else:
-        if isinstance(axis, list) and len(axis) == 2:
-            r = np_linalg_matrix_norm(x, axis, porder, keepdims)
+    elif isinstance(axis, list) and len(axis) == 2:
+        r = np_linalg_matrix_norm(x, axis, porder, keepdims)
     r = r.astype(x.dtype)
 
     return r

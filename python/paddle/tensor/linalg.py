@@ -1008,7 +1008,8 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
 
     # calculate vector norm, where axis is None, int or list with only one integer
     if axis is None or (isinstance(axis, int)):
-        if p is None:
+        # 'fro' is used to adapt previous usage
+        if p is None or p == 'fro':
             p = 2.0
         if isinstance(p, (int, float)):
             return vector_norm(
