@@ -509,7 +509,7 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     if not os.path.exists(memory_estimation_tool):
         raise ValueError(
-            f"memory_estimation_tool shoule be a valid path, but got {memory_estimation_tool}"
+            f"memory_estimation_tool should be a valid path, but got {memory_estimation_tool}"
         )
 
     if max_memory_usage is None:

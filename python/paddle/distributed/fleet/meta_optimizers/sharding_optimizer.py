@@ -702,7 +702,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step6: (optional) sharding gradient merge
         self._sharding_gradient_merge()
 
-        # # check op dependecy
+        # # check op dependency
         # FIXME (JZ-LIANG) enable checking in future.
         # check_broadcast(main_block)
         # check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,

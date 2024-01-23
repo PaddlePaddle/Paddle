@@ -907,7 +907,7 @@ class Engine:
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
-            # The model's instance variables (not paramters), used in forward function,
+            # The model's instance variables (not parameters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
                 for buffer in self._model.buffers():
