@@ -650,18 +650,16 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
     PADDLE_THROW(phi::errors::Unimplemented(
         "end_axis must be greater than or equal to start_axis."));
   }
-  if (x_dim.size() == 0) {
-    std::vector<int64_t> res_shape(1, 1);
-    std::vector<int64_t> tmp_shape(1, 0);
-    return std::make_tuple(reshape<T>(x, res_shape),
-                           full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32));
-  }
 
   std::vector<int64_t> tmp_shape(x_dim);
   tmp_shape.insert(tmp_shape.begin(), 0);
+  auto xshape = full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32);
+  if (x_dim.size() == 0) {
+    std::vector<int64_t> res_shape(1, 1);
+    return std::make_tuple(reshape<T>(x, res_shape), xshape);
+  }
   if (end_axis == start_axis) {
-    return std::make_tuple(reshape<T>(x, x_dim),
-                           full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32));
+    return std::make_tuple(reshape<T>(x, x_dim), xshape);
   }
 
   int slice_numel = 1;
@@ -677,8 +675,7 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
     out_shape.push_back(x_dim[i]);
   }
 
-  return std::make_tuple(reshape<T>(x, out_shape),
-                         full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32));
+  return std::make_tuple(reshape<T>(x, out_shape), xshape);
 }
 
 template <typename T>
