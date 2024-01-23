@@ -137,7 +137,7 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
-
+  std::vector<DenseTensor> tmp_value_v;
   std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
@@ -154,11 +154,13 @@ void IndexPutKernel(const Context& dev_ctx,
                                      range_tensor_v,
                                      bd_dim,
                                      &res_dim_v);
-  phi::DenseTensor tmp_value;
+
   if (value.numel() != 1) {
-    tmp_value = DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v));
-    ExpandKernel<T, Context>(dev_ctx, value, IntArray(res_dim_v), &tmp_value);
-    ptr_value = &tmp_value;
+    tmp_value_v.emplace_back(
+        DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v)));
+    ExpandKernel<T, Context>(
+        dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
+    ptr_value = &tmp_value_v[0];
   } else {
     ptr_value = &value;
   }
