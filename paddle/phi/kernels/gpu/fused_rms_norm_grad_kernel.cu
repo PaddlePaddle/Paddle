@@ -59,7 +59,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
                          double epsilon,
                          T* grad_input,
                          V* grad_gamma) {
-  cudaStream_t stream = dev_ctx.stream();                      
+  cudaStream_t stream = dev_ctx.stream();
   if (gamma != NULL) {
     const int part_size = 16;
     const dim3 threads2(32, 4, 1);
@@ -169,7 +169,8 @@ void FusedRmsNormGradKernel(const Context& dev_ctx,
                             DenseTensor* grad_x,
                             DenseTensor* grad_scale) {
 #if defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(phi::errors::Unimplemented("Please compile with CUDA, ROCM platform isn't support it."));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Please compile with CUDA, ROCM platform isn't support it."));
 #else
   cuda_rms_norm_gradient<T, Context>(
       dev_ctx, x, scale, invvar, dy, epsilon, grad_x, grad_scale);

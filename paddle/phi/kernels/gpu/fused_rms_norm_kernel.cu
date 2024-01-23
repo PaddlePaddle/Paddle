@@ -62,7 +62,7 @@ void HostApplyRMSNorm(const Context& dev_ctx,
   const dim3 blocks(1, std::min((uint64_t)n1, maxGridY), 1);
   int nshared =
       threads.y > 1 ? threads.y * sizeof(U) + (threads.y / 2) * sizeof(U) : 0;
-  cudaStream_t stream = dev_ctx.stream(); 
+  cudaStream_t stream = dev_ctx.stream();
   cuApplyRMSNorm<<<blocks, threads, nshared, stream>>>(
       output, invvar, input, n1, n2, U(epsilon), gamma);
 }
@@ -107,7 +107,8 @@ void FusedRmsNormKernel(const Context& dev_ctx,
                         DenseTensor* out,
                         DenseTensor* invvar) {
 #if defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(phi::errors::Unimplemented("Please compile with CUDA, ROCM platform isn't support it."));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Please compile with CUDA, ROCM platform isn't support it."));
 #else
   cuda_rms_norm<T, Context>(dev_ctx, x, scale, epsilon, out, invvar);
 #endif

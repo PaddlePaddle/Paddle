@@ -37,8 +37,8 @@ limitations under the License.
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
 #ifndef PADDLE_WITH_HIP
 #include <cuda.h>          // NOLINT
 #include <cuda_runtime.h>  // NOLINT
@@ -50,12 +50,12 @@ namespace phi {
 namespace {  // NOLINT
 #ifndef PADDLE_WITH_HIP
 
-#define DEFAULT_THROW(NAME, TYPE)                           \
-  default:                                                  \
-    do {                                                    \
-      PADDLE_THROW(phi::errors::Unimplemented(               \
-          "(%s) is  not implemented for (%s).",   #NAME, TYPE));          \
-    } while (0);                                                          \
+#define DEFAULT_THROW(NAME, TYPE)                              \
+  default:                                                     \
+    do {                                                       \
+      PADDLE_THROW(phi::errors::Unimplemented(                 \
+          "(%s) is  not implemented for (%s).", #NAME, TYPE)); \
+    } while (0);                                               \
     break
 
 #define DISPATCH_SCALE_TYPE(INPUT_TYPE, SCALE_DTYPE, NAME, ...)            \
@@ -431,7 +431,6 @@ struct SharedMemory<float> {
 
 }  // namespace
 
-
 template <typename T, typename U, typename V>
 __device__ void cuApplyLayerNorm_(T* __restrict__ output_vals,
                                   U* __restrict__ mean,
@@ -461,8 +460,8 @@ __device__ void cuApplyLayerNorm_(T* __restrict__ output_vals,
       for (int i = thrx; i < n2; i += numx) {
         U curr = static_cast<U>(lvals[i]);
         if (!rms_only) {
-          ovals[i] =
-              static_cast<T>(gamma[i] * static_cast<V>(c_invvar * (curr - mu)) + beta[i]);
+          ovals[i] = static_cast<T>(
+              gamma[i] * static_cast<V>(c_invvar * (curr - mu)) + beta[i]);
         } else {
           ovals[i] = static_cast<T>(gamma[i] * static_cast<V>(c_invvar * curr));
         }
@@ -498,7 +497,6 @@ __global__ void cuApplyRMSNorm(T* __restrict__ output_vals,
   cuApplyLayerNorm_<T, U, V>(
       output_vals, NULL, invvar, vals, n1, n2, epsilon, gamma, NULL, true);
 }
-
 
 template <typename T, typename U>
 __device__ void cuLoadWriteStridedInputs(const int i1_block,
