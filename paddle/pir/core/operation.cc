@@ -251,8 +251,8 @@ Operation::Operation(const AttributeMap &attributes,
 ///
 /// \brief op ouput related public interfaces implementation
 ///
-std::vector<OpResult> Operation::results() const {
-  std::vector<OpResult> res;
+std::vector<Value> Operation::results() const {
+  std::vector<Value> res;
   for (uint32_t i = 0; i < num_results(); ++i) {
     res.push_back(result(i));
   }
@@ -351,9 +351,8 @@ void Operation::Erase() {
 
 bool Operation::use_empty() {
   auto res = results();
-  return std::all_of(res.begin(), res.end(), [](OpResult result) {
-    return result.use_empty();
-  });
+  return std::all_of(
+      res.begin(), res.end(), [](Value result) { return result.use_empty(); });
 }
 
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
@@ -361,14 +360,6 @@ void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
              "the num of result should be the same.");
   for (uint32_t i = 0; i < num_results_; ++i) {
     result(i).ReplaceAllUsesWith(values[i]);
-  }
-}
-
-void Operation::ReplaceAllUsesWith(const std::vector<OpResult> &op_results) {
-  IR_ENFORCE(num_results_ == op_results.size(),
-             "the num of result should be the same.");
-  for (uint32_t i = 0; i < num_results_; ++i) {
-    result(i).ReplaceAllUsesWith(op_results[i]);
   }
 }
 
