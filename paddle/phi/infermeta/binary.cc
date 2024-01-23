@@ -1104,7 +1104,7 @@ void DistributeLookupTableInferMeta(
     bool is_distributed,
     const std::string& lookup_table_version,
     int64_t padding_idx,
-    int dtype,
+    DataType dtype,
     bool is_test,
     std::vector<MetaTensor*> outputs) {
   auto table_dims = w.dims();
