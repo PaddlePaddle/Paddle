@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class FcElementwiseLayerNormFusePattern
-    : public paddle::drr::DrrPatternBase<FcElementwiseLayerNormFusePattern> {
+class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -49,12 +50,14 @@ class FcElementwiseLayerNormFusePattern
     // Constrains the activation is none
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       int64_t layer_norm_x = 1;
-      for (int i = match_ctx.Attr<int>("begin_norm_axis");
-           i < match_ctx.Tensor("fc_out").Shape().size();
+      auto fc_out_dims = pir::GetShapeFromValue(match_ctx.Tensor("fc_out"));
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      for (size_t i = match_ctx.Attr<int>("begin_norm_axis");
+           i < fc_out_dims.size();
            i++) {
-        layer_norm_x *= match_ctx.Tensor("fc_out").Shape().at(i);
+        layer_norm_x *= fc_out_dims.at(i);
       }
-      if (layer_norm_x == match_ctx.Tensor("w").Shape().at(1)) {
+      if (layer_norm_x == w_dims.at(1)) {
         return true;
       }
       return false;
@@ -62,14 +65,8 @@ class FcElementwiseLayerNormFusePattern
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &x_num_col_dims_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
-          return 1;
-        });
-    const auto &false_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
-        });
+    const auto &x_num_col_dims_attr = res.Int32Attr(1);
+    const auto &false_attr = res.BoolAttr(false);
 
     const auto &fused_fc_elementwise_op =
         res.Op(paddle::dialect::FusedFcElementwiseLayernormOp::name(),
@@ -89,10 +86,13 @@ class FcElementwiseLayerNormFusePattern
                              &res.Tensor("layernorm_mean"),
                              &res.Tensor("layernorm_variance")});
   }
+
+  std::string name() const override {
+    return "FcElementwiseLayerNormFusePattern";
+  }
 };
 
-class FcElementwiseLayerNormFuse2Pattern
-    : public paddle::drr::DrrPatternBase<FcElementwiseLayerNormFuse2Pattern> {
+class FcElementwiseLayerNormFuse2Pattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -119,12 +119,14 @@ class FcElementwiseLayerNormFuse2Pattern
     // Constrains the activation is none
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       int64_t layer_norm_x = 1;
-      for (int i = match_ctx.Attr<int>("begin_norm_axis");
-           i < match_ctx.Tensor("fc_out").Shape().size();
+      auto fc_out_dims = pir::GetShapeFromValue(match_ctx.Tensor("fc_out"));
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      for (size_t i = match_ctx.Attr<int>("begin_norm_axis");
+           i < fc_out_dims.size();
            i++) {
-        layer_norm_x *= match_ctx.Tensor("fc_out").Shape().at(i);
+        layer_norm_x *= fc_out_dims.at(i);
       }
-      if (layer_norm_x == match_ctx.Tensor("w").Shape().at(1)) {
+      if (layer_norm_x == w_dims.at(1)) {
         return true;
       }
       return false;
@@ -149,6 +151,10 @@ class FcElementwiseLayerNormFuse2Pattern
                             {&res.Tensor("layernorm_out"),
                              &res.Tensor("layernorm_mean"),
                              &res.Tensor("layernorm_variance")});
+  }
+
+  std::string name() const override {
+    return "FcElementwiseLayerNormFuse2Pattern";
   }
 };
 

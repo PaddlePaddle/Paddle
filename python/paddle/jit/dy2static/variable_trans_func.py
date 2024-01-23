@@ -26,20 +26,6 @@ def create_undefined_var(name):
     return gast.parse(func_code).body[0]
 
 
-def create_fill_constant_node(name, value=0):
-    func_code = f"{name} = paddle.full(shape=[1], "
-    if isinstance(value, bool):
-        func_code += f"dtype='bool', fill_value={value}, name='{name}')"
-        return gast.parse(func_code).body[0]
-    if isinstance(value, float):
-        func_code += f"dtype='float64', fill_value={value}, name='{name}')"
-        return gast.parse(func_code).body[0]
-
-    if isinstance(value, int):
-        func_code += f"dtype='int64', fill_value={value}, name='{name}')"
-        return gast.parse(func_code).body[0]
-
-
 def to_static_variable(x):
     '''
     Translate a Python Tensor to PaddlePaddle static graph Tensor

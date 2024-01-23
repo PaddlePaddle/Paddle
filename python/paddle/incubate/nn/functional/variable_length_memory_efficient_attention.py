@@ -41,9 +41,9 @@ def variable_length_memory_efficient_attention(
     This method requires SM_ARCH in sm70, sm75, sm80.
 
     Args:
-        query (Tensor): The Query Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        key (Tensor): The Key Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        value (Tensor): The Value Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
+        query (Tensor): The Query Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
+        key (Tensor): The Key Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
+        value (Tensor): The Value Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
         seq_lens (Tensor): The sequence lengths of the sequences in the batch, used to index query. Its shape is [batchsize, 1].
         kv_seq_lens (Tensor): The sequence lengths of the sequences in the batch, used to index key and value. Its shape is [batchsize, 1].
         mask (Tensor): The Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
@@ -89,7 +89,7 @@ def variable_length_memory_efficient_attention(
             >>> out = naive_attention_impl(query, key, value, mask, scale)
             >>> # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale, pre_cache_length)
 
-            >>> print(out.shape) # [batch, seq_len, num_head, head_size]
+            >>> out.shape # [batch, num_head, seq_len, head_size]
             [1, 8, 256, 32]
     """
     if scale is None:
