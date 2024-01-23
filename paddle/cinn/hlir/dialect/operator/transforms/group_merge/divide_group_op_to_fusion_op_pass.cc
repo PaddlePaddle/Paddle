@@ -192,7 +192,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         group_list, shape_analysis);
 
     for (auto group : merged_group_list) {
-      auto vec_outs = GetBlockOutsideOutput(group->ops);
+      auto vec_outs = group->GetGroupOutputValues();
+      // auto vec_outs = GetBlockOutsideOutput(group->ops);
 
       std::vector<pir::Type> output_types;
       for (auto& value : vec_outs) {
