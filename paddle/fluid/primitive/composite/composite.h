@@ -637,6 +637,50 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
   return std::make_tuple(res, mean_out, variance_out);
 }
 
+template <typename T>
+std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
+                                          int start_axis,
+                                          int end_axis) {
+  auto x_dim = common::vectorize<int64_t>(x.dims());
+  if (x_dim.size() == 0) {
+    start_axis = 0;
+    end_axis = 0;
+  }
+  if (end_axis < start_axis) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "end_axis must be greater than or equal to start_axis."));
+  }
+  if (x_dim.size() == 0) {
+    std::vector<int64_t> res_shape(1, 1);
+    std::vector<int64_t> tmp_shape(1, 0);
+    return std::make_tuple(reshape<T>(x, res_shape),
+                           full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32));
+  }
+
+  std::vector<int64_t> tmp_shape(x_dim);
+  tmp_shape.insert(tmp_shape.begin(), 0);
+  if (end_axis == start_axis) {
+    return std::make_tuple(reshape<T>(x, x_dim),
+                           full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32));
+  }
+
+  int slice_numel = 1;
+  for (int i = start_axis; i <= end_axis; ++i) {
+    slice_numel *= x_dim[i];
+  }
+  std::vector<int64_t> out_shape;
+  for (int i = 0; i < start_axis; ++i) {
+    out_shape.push_back(x_dim[i]);
+  }
+  out_shape.push_back(slice_numel);
+  for (size_t i = end_axis + 1; i < x_dim.size(); ++i) {
+    out_shape.push_back(x_dim[i]);
+  }
+
+  return std::make_tuple(reshape<T>(x, out_shape),
+                         full<T>(tmp_shape, 0.0, phi::DataType::FLOAT32));
+}
+
 }  // namespace details
 
 }  // namespace primitive
