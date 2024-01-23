@@ -325,5 +325,19 @@ class TestWeakref(TestCaseBase):
         self.assert_results(weakref_breakgraph, obj)
 
 
+def test_builtin_type_conversion_breakgraph(x):
+    return int(x), bool(x), float(x)
+
+
+class TestBuiltinTypeConversion(TestCaseBase):
+    def test_builtin_type_conversion_breakgraph(self):
+        self.assert_results(
+            test_builtin_type_conversion_breakgraph, paddle.to_tensor(1.2)
+        )
+        self.assert_results(
+            test_builtin_type_conversion_breakgraph, paddle.to_tensor(0)
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

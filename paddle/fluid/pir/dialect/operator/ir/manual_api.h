@@ -83,5 +83,7 @@ pir::OpResult add_n_array(const std::vector<pir::Value>& inputs);
 
 pir::OpResult slice_array_dense(pir::Value input, pir::Value starts);
 
+pir::OpResult assign(const pir::Value& x);
+
 }  // namespace dialect
 }  // namespace paddle

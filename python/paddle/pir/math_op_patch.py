@@ -434,6 +434,20 @@ def monkey_patch_value():
 
         return _C_ops.transpose(self, perm)
 
+    def _int_(self):
+        raise TypeError(
+            "int(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.int32), and do not use int(Value)."
+        )
+
+    def _float_(self):
+        raise TypeError(
+            "float(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value directly, and do not use float(Value)."
+        )
+
     def clone(self):
         """
         Returns a new static Value, which is the clone of the original static
@@ -499,7 +513,7 @@ def monkey_patch_value():
     def append(self, var):
         """
         **Notes**:
-           **The type Value must be LoD Tensor Array.
+           **The type Value must be Tensor Array.
 
         """
         if not self.is_dense_tensor_array_type():
@@ -653,6 +667,8 @@ def monkey_patch_value():
                 '__ge__', paddle.tensor.greater_equal, False, None
             ),
         ),
+        ('__float__', _float_),
+        ('__int__', _int_),
     ]
 
     global _already_patch_value

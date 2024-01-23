@@ -58,7 +58,6 @@ extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
-extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_ir_value_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_data_type_pytype;
@@ -185,10 +184,6 @@ bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj) {
 
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 
-bool PyObject_CheckIROpResult(PyObject* obj) {
-  return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
-}
-
 bool PyObject_CheckIRValue(PyObject* obj) {
   return PyObject_TypeCheck(obj, g_ir_value_pytype);
 }
@@ -228,40 +223,6 @@ bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
   }
 }
 
-bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
-  if (PyList_Check(obj)) {
-    Py_ssize_t len = PyList_Size(obj);
-    PyObject* item = nullptr;
-    // if obj is [], parse it as std::vector<scalar>
-    if (len == 0) {
-      return false;
-    }
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyList_GetItem(obj, i);
-      if (!PyObject_CheckIROpResult(item)) {
-        return false;
-      }
-    }
-    return true;
-  } else if (PyTuple_Check(obj)) {
-    Py_ssize_t len = PyTuple_Size(obj);
-    PyObject* item = nullptr;
-    if (len == 0) {
-      return false;
-    }
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyTuple_GetItem(obj, i);
-      if (!PyObject_CheckIROpResult(item)) {
-        return false;
-      }
-    }
-    return true;
-  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return true;
-  } else {
-    return false;
-  }
-}
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None || obj == Py_False) {
     return false;  // To be compatible with QA integration testing. Some
@@ -1115,10 +1076,20 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const pir::OpResult& value) {
+PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
+}
+
+PyObject* ToPyObject(const std::vector<pir::Value>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+  }
+
+  return result;
 }
 
 PyObject* ToPyObject(const std::vector<pir::OpResult>& value) {
@@ -1987,7 +1958,7 @@ PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args) {
   return ToPyObject(result);
 }
 
-paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
+paddle::Tensor CreateTensorFromValue(const pir::Value& op_result) {
   auto tensor = paddle::Tensor();
 
   auto dims = phi::vectorize(GetValueDims(op_result));
@@ -2028,9 +1999,9 @@ paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
   return tensor;
 }
 
-PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
+PyObject* GetEmptyTensorsWithValue(PyObject* self, PyObject* args) {
   std::vector<paddle::Tensor> result;
-  std::unordered_map<pir::OpResult, paddle::Tensor> out_tensor_map;
+  std::unordered_map<pir::Value, paddle::Tensor> out_tensor_map;
 
   auto op_result_list = PyTuple_GetItem(args, 0);
 
@@ -2038,9 +2009,9 @@ PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
     Py_ssize_t len = PyList_Size(op_result_list);
     for (Py_ssize_t i = 0; i < len; i++) {
       auto op_result =
-          PyObjectCast<pir::OpResult>(PyList_GetItem(op_result_list, i));
+          PyObjectCast<pir::Value>(PyList_GetItem(op_result_list, i));
       if (out_tensor_map.find(op_result) == out_tensor_map.end()) {
-        paddle::Tensor tensor = CreateTensorFromOpResult(op_result);
+        paddle::Tensor tensor = CreateTensorFromValue(op_result);
         out_tensor_map[op_result] = tensor;
         result.emplace_back(tensor);
       } else {
@@ -2051,9 +2022,9 @@ PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
     Py_ssize_t len = PyTuple_Size(op_result_list);
     for (Py_ssize_t i = 0; i < len; i++) {
       auto op_result =
-          PyObjectCast<pir::OpResult>(PyTuple_GetItem(op_result_list, i));
+          PyObjectCast<pir::Value>(PyTuple_GetItem(op_result_list, i));
       if (out_tensor_map.find(op_result) == out_tensor_map.end()) {
-        paddle::Tensor tensor = CreateTensorFromOpResult(op_result);
+        paddle::Tensor tensor = CreateTensorFromValue(op_result);
         out_tensor_map[op_result] = tensor;
         result.emplace_back(tensor);
       } else {
@@ -2062,7 +2033,7 @@ PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args) {
     }
   } else if (op_result_list != Py_None) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Argument of GetTensorsWithOpResultInArgs must be list of OpResult, "
+        "Argument of GetTensorsWithValueInArgs must be list of Value, "
         "but got "
         "%s",
         (reinterpret_cast<PyTypeObject*>(op_result_list->ob_type))->tp_name));
@@ -2143,14 +2114,12 @@ pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
                            size_t arg_pos) {
   obj = CastPyArg2ValuePreHook(obj);
-  if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return ::pybind11::handle(obj).cast<pir::OpResult>();
-  } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
+  if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
     return ::pybind11::handle(obj).cast<pir::Value>();
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
-        "OpResult, but got %s",
+        "Value, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
@@ -2464,7 +2433,10 @@ paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
 
   PyObject* res = nullptr;
   try {
-    bool return_py_none_if_not_initialize = var.is_dist_tensor() ? false : true;
+    bool return_py_none_if_not_initialize = true;
+    if (var.defined() && !var.initialized()) {
+      return_py_none_if_not_initialize = !var.is_dist_tensor();
+    }
     PyObject* p_tmp_var = ToPyObject(var, return_py_none_if_not_initialize);
     res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
     Py_DECREF(p_tmp_var);
@@ -2761,9 +2733,9 @@ static PyMethodDef EagerUtilMethods[] = {
      METH_VARARGS,
      "GetEmptyTensorsWithVarDesc"},
     {"create_empty_tensors_with_op_results",
-     (PyCFunction)(void (*)(void))GetEmpytyTensorsWithOpResult,
+     (PyCFunction)(void (*)(void))GetEmptyTensorsWithValue,
      METH_VARARGS,
-     "GetEmpytyTensorsWithOpResult."},
+     "GetEmptyTensorsWithValue."},
     {"set_static_op_arg_pre_cast_hook",
      (PyCFunction)SetStaticOpArgPreCastHook,
      METH_O,

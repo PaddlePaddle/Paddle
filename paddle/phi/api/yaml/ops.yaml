@@ -135,6 +135,15 @@
     func : angle
   backward : angle_grad
 
+- op : apply_per_channel_scale
+  args: (Tensor x, Tensor scales)
+  output: Tensor(out)
+  infer_meta :
+    func : ApplyPerChannelScaleInferMeta
+  kernel :
+    func : apply_per_channel_scale
+    data_type : x
+
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
@@ -540,6 +549,7 @@
     func : concat
     data_type : x
   backward : concat_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conj
   args : (Tensor x)
@@ -557,6 +567,7 @@
     func : ConvInferMeta
   kernel :
     func : conv2d
+    data_type : input
   backward : conv2d_grad
 
 - op : conv3d
@@ -566,6 +577,7 @@
     func : Conv3DInferMeta
   kernel :
     func : conv3d
+    data_type : input
   backward : conv3d_grad
 
 - op : conv3d_transpose
@@ -703,6 +715,7 @@
     func : DepthwiseConvInferMeta
   kernel :
     func : depthwise_conv2d
+    data_type : input
   backward : depthwise_conv2d_grad
 
 - op : det
@@ -1052,6 +1065,24 @@
     func: fold
   backward: fold_grad
 
+- op : fractional_max_pool2d
+  args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0}, float random_u = 0.0, bool return_mask = true)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : FractionalMaxPoolInferMeta
+  kernel :
+    func : fractional_max_pool2d
+  backward : fractional_max_pool2d_grad
+
+- op : fractional_max_pool3d
+  args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0, 0}, float random_u = 0.0, bool return_mask = true)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : FractionalMaxPoolInferMeta
+  kernel :
+    func : fractional_max_pool3d
+  backward : fractional_max_pool3d_grad
+
 - op : frame
   args : (Tensor x, int frame_length, int hop_length, int axis=-1)
   output : Tensor(out)
@@ -1103,6 +1134,7 @@
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -2063,6 +2095,7 @@
     data_type : x
   inplace: (x -> out)
   backward : pow_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prelu
   args : (Tensor x, Tensor alpha, str data_format="NCHW", str mode="all")
@@ -2274,6 +2307,7 @@
     func : rsqrt
   inplace : (x -> out)
   backward : rsqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
   args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
@@ -2288,6 +2322,7 @@
     data_type : x
   inplace : (x -> out)
   backward : scale_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
@@ -2572,6 +2607,7 @@
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stack
   args : (Tensor[] x, int axis = 0)
@@ -2807,6 +2843,7 @@
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unstack
   args : (Tensor x, int axis=0, int num=0)

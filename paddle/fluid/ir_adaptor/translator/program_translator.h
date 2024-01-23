@@ -89,8 +89,7 @@ class ProgramTranslator {
 
   void Translate();
 
-  std::unordered_map<std::string, std::vector<pir::OpResult>>
-  VarDesc2OpResult();
+  std::unordered_map<std::string, std::vector<pir::Value>> VarDesc2Value();
 
  private:
   const ProgramDesc* legacy_program_;  // not owned
@@ -133,12 +132,20 @@ class ProgramTranslator {
   const VariableDefiningInfo& CreateUndefinedVariable(
       const std::string& var_name, const BlockDesc& block);
 
-  pir::Operation* InsertDataOpOrCreateArrayToBlock(pir::Block* insert_block,
+  pir::Operation* InsertInitOpOrCreateArrayToBlock(pir::Block* insert_block,
                                                    pir::Type type);
 
+  std::unordered_map<const OpDesc*, std::vector<std::string>>
+      push_pop_var_names_;
+  std::unordered_map<const OpDesc*, std::vector<pir::Type>> push_pop_var_types_;
+  std::unordered_map<const OpDesc*, const OpDesc*> cond_grad_to_cond_;
+  std::unordered_map<const OpDesc*, std::vector<pir::Value>>
+      cond_to_stack_value_;
+  void PreAnalysisForCond();
   void TranslateIfOperation(const OpDesc* op,
                             TranslationContext* translation_ctx,
-                            pir::Block* dst_block);
+                            pir::Block* dst_block,
+                            bool for_bwd = false);
 
   void TranslateWhileOperation(const OpDesc* op,
                                TranslationContext* translation_ctx,
