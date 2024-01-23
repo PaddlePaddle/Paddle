@@ -205,6 +205,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
     use_mkldnn_int8_ = other.use_mkldnn_int8_;
     disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
+    deleted_passes_ = other.deleted_passes_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -256,6 +257,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
     use_cudnn_ = other.use_cudnn_;
+    deleted_passes_ = other.deleted_passes_;
   }
 
   /// \brief Enable the use of cuDNN kernel.
