@@ -46,11 +46,12 @@ std::vector<Tensor> add_n_grad<LazyTensor>(const std::vector<Tensor>& x,
 }
 
 template <>
-Tensor embedding_grad<LazyTensor>(const Tensor& x,
-                                  const Tensor& weight,
-                                  const Tensor& out_grad,
-                                  int64_t padding_idx,
-                                  bool sparse) {
+Tensor embedding_grad<LazyTensor>(
+    const Tensor& x,
+    const Tensor& weight,
+    manual_static_backend.cc const Tensor& out_grad,
+    int64_t padding_idx,
+    bool sparse) {
   pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
   pir::Value weight_res =
       std::static_pointer_cast<LazyTensor>(weight.impl())->value();
