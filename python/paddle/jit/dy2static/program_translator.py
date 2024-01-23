@@ -30,9 +30,10 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
+from paddle.base.executor import _add_pir_fetch_ops
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
-from paddle.pir import Value
+from paddle.pir import PassManager, Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
@@ -1254,10 +1255,7 @@ class ConcreteProgram:
                     if need_wrap_into_list:
                         outputs = [outputs]
 
-        # TODO(@xiongkun): support op call stack in new ir?
-        # main_program = update_op_callstack_with_origin_info(main_program)
-
-        return ConcreteProgram(
+        concrete_program = ConcreteProgram(
             inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
@@ -1266,6 +1264,33 @@ class ConcreteProgram:
             startup_program=startup_program,
             **kwargs,
         )
+        return ConcreteProgram.apply_pir_dce_pass(concrete_program)
+
+    @staticmethod
+    def apply_pir_dce_pass(concrete_program):
+        pm = PassManager()
+        # insert fetch op for outputs and inputs. (avoid inputs been pruned)
+        _add_pir_fetch_ops(
+            concrete_program.main_program,
+            concrete_program.inputs,
+            "_fetch_inputs",
+        )
+        _add_pir_fetch_ops(
+            concrete_program.main_program,
+            concrete_program.outputs,
+            "_fetch_outputs",
+        )
+        # apply dce pass
+        pm.add_pass(
+            'dead_code_elimination_pass'
+        )  # apply pass to elimitate dead code
+        pm.run(concrete_program.main_program)
+        # remove fetch op
+        block = concrete_program.main_program.global_block()
+        to_remove = [op for op in block.ops if op.name() == "pd_op.fetch"]
+        for op in to_remove:
+            block.remove_op(op)
+        return concrete_program
 
     # TODO(@xiongkun): remove after new ir is switch
     @staticmethod

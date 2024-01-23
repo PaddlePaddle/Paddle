@@ -232,5 +232,26 @@ class TestDy2staticPir7(unittest.TestCase):
         np.testing.assert_allclose(out, ans)
 
 
+class TestDy2staticPir8(unittest.TestCase):
+    def test_basic_network(self):
+        def func(x):
+            tmp = x * 2
+            return x * 3
+
+        static_func = paddle.jit.to_static(func, full_graph=True)
+        x = paddle.randn((2, 3, 4))
+        x.stop_gradient = False
+        ans = func(x)
+        out = static_func(x)
+        np.testing.assert_allclose(out, ans)
+
+        main_program = static_func.get_concrete_program(x)[0].main_program
+        scale_num = 0
+        for op in main_program.global_block().ops:
+            if op.name() == 'pd_op.scale':
+                scale_num += 1
+        np.testing.assert_equal(scale_num, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
