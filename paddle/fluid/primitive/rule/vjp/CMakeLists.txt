@@ -1,5 +1,5 @@
 set(VJP_SRCS
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/rule/vjp/generated/generated_vjp.cc
+    ${PADDLE_BINARY_DIR}/paddle/fluid/primitive/rule/vjp/generated/generated_vjp.cc
     ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/rule/vjp/manual/manual_vjp.cc)
 cc_library(
   primitive_vjp_experimental

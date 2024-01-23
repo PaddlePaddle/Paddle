@@ -7,7 +7,7 @@ if(WITH_PYTHON OR NOT ON_INFER)
     DEPS final_dygraph_function eager_utils phi common)
 endif()
 set(static_backend_files
-    ${CMAKE_CURRENT_SOURCE_DIR}/generated/generated_static_backend.cc
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/generated_static_backend.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/manual/manual_static_backend.cc)
 cc_library(
   primitive_backend_static_experimental
