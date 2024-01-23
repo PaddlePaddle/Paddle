@@ -74,10 +74,13 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     }
 
     // TODO(zhangbopd): use op->result(0) to infer the shape
-    symbol::ShapeOrDataDimExprs shape_data{out_dims};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+
     if (operand_source_1st_data.has_value()) {
       std::vector<symbol::DimExpr> tmp_shape(std::int64_t(out_dims.size()));
-      symbol::ShapeOrDataDimExprs temp_shape_data(tmp_shape, out_dims);
+      symbol::ShapeOrDataDimExprs temp_shape_data{
+          symbol::TensorShapeOrDataDimExprs(tmp_shape, out_dims)};
       shape_data = temp_shape_data;
     }
 
@@ -116,7 +119,9 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
       sym_shape.push_back(dim_expr);
     }
 
-    symbol::ShapeOrDataDimExprs shape_data{sym_shape};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_shape)};
+
     op->set_attribute("symbolic_shape",
                       pir::shape::SymbolAttribute::get(
                           pir::IrContext::Instance(), shape_data));

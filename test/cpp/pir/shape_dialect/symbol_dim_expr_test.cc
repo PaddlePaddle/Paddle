@@ -60,12 +60,12 @@ TEST(DimExpr, DataShapeExpr) {
   std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
   std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
   // x => {shape: [S0, 2], data: nullopt}
-  ShapeOrDataDimExprs x_data_shape{x_shapes};
+  ShapeOrDataDimExprs x_data_shape{symbol::TensorShapeOrDataDimExprs(x_shapes)};
   // y => {shape: [1, S1, 2], data: nullopt}
-  ShapeOrDataDimExprs y_data_shape{y_shapes};
-
+  ShapeOrDataDimExprs y_data_shape{symbol::TensorShapeOrDataDimExprs(y_shapes)};
   // out => {shape: [S0, 2], data: nullopt}
-  ShapeOrDataDimExprs out_value_shape{x_shapes};
+  ShapeOrDataDimExprs out_value_shape{
+      symbol::TensorShapeOrDataDimExprs(x_shapes)};
 }
 
 TEST(Simplify, NumberArithmetic) {

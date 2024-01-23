@@ -249,15 +249,13 @@ using ShapeOrDataDimExprsBase =
 
 class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
  public:
-  using ShapeOrDataDimExprsBase::ShapeOrDataDimExprsBase;
-  explicit ShapeOrDataDimExprs(const std::vector<DimExpr>& shape) {
-    *this = symbol::ShapeOrDataDimExprs(shape);
-  }
-
-  explicit ShapeOrDataDimExprs(const std::vector<DimExpr>& shape,
-                               const std::vector<DimExpr>& data) {
-    *this = symbol::ShapeOrDataDimExprs(shape, data);
-  }
+  ShapeOrDataDimExprs() = delete;
+  ShapeOrDataDimExprs(
+      const TensorShapeOrDataDimExprs& tensor_dim_exprs)  // NOLINT
+      : ShapeOrDataDimExprsBase(tensor_dim_exprs) {}
+  ShapeOrDataDimExprs(
+      const TensorListShapeOrDataDimExprs& tensor_list_dim_exprs)
+      : ShapeOrDataDimExprsBase(tensor_list_dim_exprs) {}
 
   template <typename T>
   bool isa() const {
