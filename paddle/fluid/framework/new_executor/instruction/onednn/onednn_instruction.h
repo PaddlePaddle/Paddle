@@ -52,7 +52,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
 
   const std::string& Name() const override { return phi_op_name_; }
 
- private:
+ protected:
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
       nullptr};  // not owned
 
@@ -71,6 +71,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
   std::set<int> data_format_tensors_{};
   phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
   std::map<std::string, phi::Attribute> extra_attr_{};
+  std::map<std::string, phi::Attribute> ctx_attr_{};
   std::map<std::string, std::vector<std::string>> inputs_{};
   std::map<std::string, std::vector<std::string>> outputs_{};
 };

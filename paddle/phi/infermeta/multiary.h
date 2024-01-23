@@ -827,7 +827,7 @@ void FusedConvInferMeta(const MetaTensor& input,
                         bool fuse_residual_conn,
                         bool force_fp32_output,
                         MetaTensor* out,
-                        MetaConfig config);
+                        MetaConfig config = MetaConfig());
 
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,

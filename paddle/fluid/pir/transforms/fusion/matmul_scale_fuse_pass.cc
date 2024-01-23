@@ -55,13 +55,10 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
                                       {"value", pat.Attr("value")},
                                       {"dtype", pat.Attr("dtype")},
                                       {"place", pat.Attr("place")}});
-    const auto &scale_op_res = res.Op(
-        paddle::dialect::ScaleOp::name(),
-        {{"bias",
-          res.Attr([](const paddle::drr::MatchContext &match_ctx) -> float {
-            return 0.0;
-          })},
-         {"bias_after_scale", pat.Attr("bias_after_scale")}});
+    const auto &scale_op_res =
+        res.Op(paddle::dialect::ScaleOp::name(),
+               {{"bias", res.Float32Attr(0.0)},
+                {"bias_after_scale", pat.Attr("bias_after_scale")}});
     const auto &matmul_op_res =
         res.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", pat.Attr("transpose_x")},

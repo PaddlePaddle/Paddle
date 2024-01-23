@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/fused_conv2d_add_act_layout_transfer_pass.h"
+#include "paddle/fluid/framework/ir/transfer_layout_pass.h"
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -99,7 +100,7 @@ void InsertLayoutTransOp(ir::Graph *graph,
 
 }  // namespace
 
-void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
+void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::PreconditionNotMet("graph should not be nullptr."));
@@ -118,12 +119,12 @@ void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
                     true,
                     platform::errors::InvalidArgument(
                         "the graph should be main graph when applying "
-                        "fused_conv2d_add_act_layout_transfer_pass"));
+                        "transfer_layout_pass"));
 
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal("scope must not be nullptr when applying "
-                              "fused_conv2d_add_act_layout_transfer_pass"));
+                              "transfer_layout_pass"));
 
   // Not support multiple block now.
   std::unordered_map<ir::Node *, ir::Node *> cache;
@@ -132,7 +133,7 @@ void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   auto *block_desc = (*iter)->Op()->Block();
 
   // Process multiple fused_conv2d_add_act shares weight.
-  std::unordered_set<std::string> weights_shape_nhwc;
+  std::unordered_map<std::string, std::vector<ir::Node *>> weights_shared;
 
   // Used to control the insertion of transfer_layout op.
   std::unordered_set<ir::Node *> vars_shape_nhwc;
@@ -179,25 +180,57 @@ void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     if (op_node->Op()->Type() != target_op_type) {
       continue;
     }
-    auto filter_name = op_node->Op()->Input("Filter").front();
-    if (weights_shape_nhwc.count(filter_name)) {
-      continue;
-    }
+
     auto data_format =
         op_node->Op()->GetAttrIfExists<std::string>("data_format");
-
     if (data_format != "NCHW") {
       continue;
     }
 
+    auto filter_names = op_node->Op()->Input("Filter");
+    for (const auto &filter_name : filter_names) {
+      weights_shared[filter_name].push_back(op_node);
+    }
+
     if (cuDNNIsValid(op_node) || CutlassIsValid(op_node)) {
       valid_ops.insert(op_node);
+    }
+  }
+
+  // The target operators that share weights either run nhwc or not at all.
+  for (auto *op_node : op_nodes) {
+    CHECK_EQ(op_node->IsOp(), true);
+    if (valid_ops.count(op_node)) {
+      auto filter_names = op_node->Op()->Input("Filter");
+      for (const auto &filter_name : filter_names) {
+        if (std::any_of(weights_shared[filter_name].begin(),
+                        weights_shared[filter_name].end(),
+                        [&valid_ops](ir::Node *node) {
+                          return valid_ops.count(node) == 0;
+                        })) {
+          for (auto *node : weights_shared[filter_name]) {
+            valid_ops.erase(node);
+          }
+        }
+      }
+    }
+  }
+
+  // Insert transfer_layout op
+  for (auto *op_node : op_nodes) {
+    CHECK_EQ(op_node->IsOp(), true);
+
+    if (valid_ops.count(op_node)) {
       auto *op_desc = op_node->Op();
 
       if (CutlassIsValid(op_node)) {
         // fused_conv2d_add_act must have this attribute because of signature.
         if (!op_desc->HasAttr("fuse_alpha")) {
           op_desc->SetAttr("fuse_alpha", 0.f);
+        }
+      } else if (cuDNNIsValid(op_node)) {
+        if (op_desc->HasAttr("use_cudnn")) {
+          op_desc->SetAttr("use_cudnn", true);
         }
       }
       op_desc->SetAttr("data_format", std::string{"NHWC"});
@@ -206,28 +239,28 @@ void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       // transfer weights
       auto filter_names = op_desc->Input("Filter");
       for (const auto &filter_name : filter_names) {
-        if (weights_shape_nhwc.count(filter_name) == 0) {
-          weights_shape_nhwc.insert(filter_name);
-          auto *filter_var = scope->FindLocalVar(filter_name);
-          auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-          phi::DenseTensor temp_tensor;
+        auto *filter_var = scope->FindLocalVar(filter_name);
+        auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+        if (filter_tensor->layout() == phi::DataLayout::kNHWC) {
+          continue;
+        }
+        phi::DenseTensor temp_tensor;
 
-          framework::TransDataLayout(phi::DataLayout::kNCHW,
-                                     phi::DataLayout::kNHWC,
-                                     phi::CPUPlace{},
-                                     *filter_tensor,
-                                     &temp_tensor);
-          *filter_tensor = temp_tensor;
+        framework::TransDataLayout(phi::DataLayout::kNCHW,
+                                   phi::DataLayout::kNHWC,
+                                   phi::CPUPlace{},
+                                   *filter_tensor,
+                                   &temp_tensor);
+        *filter_tensor = temp_tensor;
 
-          auto op_inputs = op_node->inputs;
-          for (auto *in_var_node : op_inputs) {
-            CHECK_EQ(in_var_node->IsVar(), true);
-            if (in_var_node->Var()->Persistable() &&
-                in_var_node->Var()->Name() == filter_name) {
-              auto from_shape = in_var_node->Var()->GetShape();
-              in_var_node->Var()->SetShape(
-                  {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
-            }
+        auto op_inputs = op_node->inputs;
+        for (auto *in_var_node : op_inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+          if (in_var_node->Var()->Persistable() &&
+              in_var_node->Var()->Name() == filter_name) {
+            auto from_shape = in_var_node->Var()->GetShape();
+            in_var_node->Var()->SetShape(
+                {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
           }
         }
       }
@@ -243,14 +276,8 @@ void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
             {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
         vars_shape_nhwc.insert(out_var_node);
       }
-    }
-  }
 
-  // Insert transfer_layout op
-  for (auto *op_node : op_nodes) {
-    CHECK_EQ(op_node->IsOp(), true);
-
-    if (valid_ops.count(op_node)) {
+      // Insert transfer_layout for intermidiate var.
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
         CHECK_EQ(in_var_node->IsVar(), true);
@@ -283,11 +310,11 @@ void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       }
     }
   }
+  AddStatis(static_cast<int>(valid_ops.size()));
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fused_conv2d_add_act_layout_transfer_pass,
-              paddle::framework::ir::FusedConv2dAddActLayoutTransferPass);
+REGISTER_PASS(transfer_layout_pass, paddle::framework::ir::TransferLayoutPass);

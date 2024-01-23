@@ -71,9 +71,7 @@ int TensorDtype2NumpyDtype(phi::DataType dtype);
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
-bool PyObject_CheckIROpResult(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
-bool PyObject_CheckIRVectorOfOpResult(PyObject* obj);
 bool PyObject_CheckIRVectorOfValue(PyObject* obj);
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos);
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
@@ -397,9 +395,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
-PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
+PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args);
 
-PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args);
+PyObject* GetEmptyTensorsWithValue(PyObject* self, PyObject* args);
 
 // end of Slice related methods
 
