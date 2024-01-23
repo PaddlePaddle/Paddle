@@ -15,7 +15,7 @@ set(prim_path "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml")
 set(templates_dir
     "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
 set(compat_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
-set(destination_dir "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/")
+set(destination_dir "${PADDLE_BINARY_DIR}/paddle/fluid/primitive/")
 set(scripts "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/gen.py")
 
 message("Automatic code generation for paddle/fluid/primitive")
