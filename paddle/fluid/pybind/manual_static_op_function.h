@@ -335,7 +335,7 @@ static PyObject *static_api_slice_array(PyObject *self,
 
     PyObject *starts_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value starts;
-    if (GetEmptyTensorsWithValue(starts_obj)) {
+    if (PyObject_CheckIRValue(starts_obj)) {
       starts = CastPyArg2Value(starts_obj, "slice_array", 1);
     } else if (PyObject_CheckIRVectorOfValue(starts_obj)) {
       std::vector<pir::Value> starts_tmp =
@@ -350,7 +350,7 @@ static PyObject *static_api_slice_array(PyObject *self,
 
     PyObject *ends_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value ends;
-    if (GetEmptyTensorsWithValue(ends_obj)) {
+    if (PyObject_CheckIRValue(ends_obj)) {
       ends = CastPyArg2Value(ends_obj, "slice_array", 1);
     } else if (PyObject_CheckIRVectorOfValue(ends_obj)) {
       std::vector<pir::Value> ends_tmp =
