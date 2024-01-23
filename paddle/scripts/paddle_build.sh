@@ -3352,13 +3352,13 @@ function distribute_test() {
     # Disable Test: test_gradio
     cd ${work_dir}/PaddleNLP
     pids=()
-    env CUDA_VISIBLE_DEVICES=0,1 python -m -s -v pytest tests/llm/test_finetune.py &
+    env CUDA_VISIBLE_DEVICES=0,1 python -m pytest -s -v tests/llm/test_finetune.py &
     pids+=($!)
-    env CUDA_VISIBLE_DEVICES=2,3 python -m -s -v pytest tests/llm/test_lora.py tests/llm/test_predictor.py &
+    env CUDA_VISIBLE_DEVICES=2,3 python -m pytest -s -v tests/llm/test_lora.py tests/llm/test_predictor.py &
     pids+=($!)
-    env CUDA_VISIBLE_DEVICES=4,5 python -m -s -v pytest tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
+    env CUDA_VISIBLE_DEVICES=4,5 python -m pytest -s -v tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
     pids+=($!)
-    env CUDA_VISIBLE_DEVICES=6,7 python -m -s -v pytest tests/llm/test_ptq.py tests/llm/testing_utils.py &
+    env CUDA_VISIBLE_DEVICES=6,7 python -m pytest -s -v tests/llm/test_ptq.py tests/llm/testing_utils.py &
     pids+=($!)
 
     for pid in "${pids[@]}"; do
