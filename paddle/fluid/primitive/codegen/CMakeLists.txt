@@ -42,7 +42,7 @@ execute_process(
     ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/decomp_gen.py --fwd_path
     ${fwd_path} --fwd_pd_op_path ${fwd_pd_op_path} --templates_dir
     ${templates_dir} --compat_path ${compat_path} --destination_dir
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/op_decomp.cc
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/op_decomp.cc
   RESULT_VARIABLE _result)
 if(${_result})
   message(

@@ -1,5 +1,5 @@
 set(PD_DIALECT_SOURCE_DIR
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir")
+    "${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir")
 
 # Generate pd_op_dialect files defining op using op_gen_file
 set(op_gen_parsed_yaml_file
@@ -31,7 +31,7 @@ set(pir_op_bwd_src_yaml
 set(pir_update_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
 set(parsed_op_dir
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
 set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
@@ -187,7 +187,7 @@ set(generated_files_python_c "${python_c_header_file}"
 
 set(ops_api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/ops_api_gen.py)
-set(ops_api_source_file ${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/ops_api.cc)
+set(ops_api_source_file ${PADDLE_BINARY_DIR}/paddle/fluid/pybind/ops_api.cc)
 set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 
 execute_process(
