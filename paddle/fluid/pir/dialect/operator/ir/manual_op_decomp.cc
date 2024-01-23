@@ -224,12 +224,13 @@ std::vector<std::vector<pir::Value>> MeshgridOp::Decomp(pir::Operation* op) {
           inputs);
   VLOG(6) << "Decomp call meshgrid's forward composite rule end";
 
+  std::vector<pir::Value> res_tmp;
   for (size_t idx = 0; idx < op_res.size(); idx++) {
-    op_res[idx] =
+    res_tmp.push_back(
         std::static_pointer_cast<primitive::LazyTensor>(op_res[idx].impl())
-            ->value();
+            ->value());
   }
-  res.push_back(op_res);
+  res.push_back(res_tmp);
 
   VLOG(4) << "Decomp call meshgrid's decomp interface end";
   return res;
