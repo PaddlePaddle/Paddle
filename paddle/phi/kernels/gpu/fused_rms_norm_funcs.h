@@ -429,6 +429,75 @@ struct SharedMemory<float> {
 
 }  // namespace
 
+
+template <typename T, typename U, typename V>
+__device__ void cuApplyLayerNorm_(T* __restrict__ output_vals,
+                                  U* __restrict__ mean,
+                                  U* __restrict__ invvar,
+                                  const T* __restrict__ vals,
+                                  const int n1,
+                                  const int n2,
+                                  const U epsilon,
+                                  const V* __restrict__ gamma,
+                                  const V* __restrict__ beta,
+                                  bool rms_only) {
+  // Assumptions:
+  // 1) blockDim.x == WARP_SIZE
+  // 2) Tensors are contiguous
+  //
+  for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
+    SharedMemory<U> shared;
+    U* buf = shared.getPointer();
+    U mu, sigma2;
+    cuWelfordMuSigma2(vals, n1, n2, i1, mu, sigma2, buf, rms_only);
+    const T* lvals = vals + i1 * n2;
+    T* ovals = output_vals + i1 * n2;
+    U c_invvar = rsqrt(sigma2 + epsilon);
+    const int numx = blockDim.x * blockDim.y;
+    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
+    if (gamma != NULL && (beta != NULL || rms_only)) {
+      for (int i = thrx; i < n2; i += numx) {
+        U curr = static_cast<U>(lvals[i]);
+        if (!rms_only) {
+          ovals[i] =
+              static_cast<T>(gamma[i] * static_cast<V>(c_invvar * (curr - mu)) + beta[i]);
+        } else {
+          ovals[i] = static_cast<T>(gamma[i] * static_cast<V>(c_invvar * curr));
+        }
+      }
+    } else {
+      for (int i = thrx; i < n2; i += numx) {
+        U curr = static_cast<U>(lvals[i]);
+        if (!rms_only) {
+          ovals[i] = static_cast<T>(c_invvar * (curr - mu));
+        } else {
+          ovals[i] = static_cast<T>(c_invvar * curr);
+        }
+      }
+    }
+    if (threadIdx.x == 0 && threadIdx.y == 0) {
+      if (!rms_only) {
+        mean[i1] = mu;
+      }
+      invvar[i1] = c_invvar;
+    }
+    __syncthreads();
+  }
+}
+
+template <typename T, typename U, typename V = T>
+__global__ void cuApplyRMSNorm(T* __restrict__ output_vals,
+                               U* __restrict__ invvar,
+                               const T* __restrict__ vals,
+                               const int n1,
+                               const int n2,
+                               const U epsilon,
+                               const V* __restrict__ gamma) {
+  cuApplyLayerNorm_<T, U, V>(
+      output_vals, NULL, invvar, vals, n1, n2, epsilon, gamma, NULL, true);
+}
+
+
 template <typename T, typename U>
 __device__ void cuLoadWriteStridedInputs(const int i1_block,
                                          const int thr_load_row_off,

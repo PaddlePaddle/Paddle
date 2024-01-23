@@ -48,19 +48,6 @@ namespace phi {
 namespace {
 #ifndef PADDLE_WITH_HIP
 
-static cudaDeviceProp GetDevicePropImpl() {
-  int device = -1;
-  PD_CHECK(cudaGetDevice(&device) == cudaSuccess);
-  cudaDeviceProp prop;
-  PD_CHECK(cudaGetDeviceProperties(&prop, device) == cudaSuccess);
-  return prop;
-}
-
-static cudaDeviceProp* GetDeviceProp() {
-  static auto prop = GetDevicePropImpl();
-  return &prop;
-}
-
 template <typename T, typename U, typename V, typename Context>
 void HostRMSNormGradient(const Context& dev_ctx,
                          const T* dout,
