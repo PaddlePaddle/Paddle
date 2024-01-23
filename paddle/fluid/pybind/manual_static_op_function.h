@@ -335,9 +335,9 @@ static PyObject *static_api_slice_array(PyObject *self,
 
     PyObject *starts_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value starts;
-    if (PyObject_CheckIROpResult(starts_obj)) {
+    if (PyObject_CheckIRValue(starts_obj)) {
       starts = CastPyArg2Value(starts_obj, "slice_array", 1);
-    } else if (PyObject_CheckIRVectorOfOpResult(starts_obj)) {
+    } else if (PyObject_CheckIRVectorOfValue(starts_obj)) {
       std::vector<pir::Value> starts_tmp =
           CastPyArg2VectorOfValue(starts_obj, "slice_array", 1);
       starts = paddle::dialect::stack(starts_tmp, /*axis*/ 0);
@@ -350,9 +350,9 @@ static PyObject *static_api_slice_array(PyObject *self,
 
     PyObject *ends_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value ends;
-    if (PyObject_CheckIROpResult(ends_obj)) {
+    if (PyObject_CheckIRValue(ends_obj)) {
       ends = CastPyArg2Value(ends_obj, "slice_array", 1);
-    } else if (PyObject_CheckIRVectorOfOpResult(ends_obj)) {
+    } else if (PyObject_CheckIRVectorOfValue(ends_obj)) {
       std::vector<pir::Value> ends_tmp =
           CastPyArg2VectorOfValue(ends_obj, "slice_array", 1);
       ends = paddle::dialect::stack(ends_tmp, /*axis*/ 0);
