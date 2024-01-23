@@ -369,7 +369,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         for i in range(3):
             np.testing.assert_allclose(
-                p_fw[i].numpy(), outs[i], rtol=self.rtol,
+                p_fw[i].numpy(),
+                outs[i],
+                rtol=self.rtol,
             )
         paddle.disable_static()
 
