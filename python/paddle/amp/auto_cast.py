@@ -138,7 +138,7 @@ def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
     # Highest prority. Because all the layers except BN will use bfloat16 params in bfoat16 training,
     # here we provide a option to keep fp32 param.
-    if not layer._cast_to_low_precison:
+    if not layer._cast_to_low_precision:
         need_keep_fp32 = True
     # The BN layers will keep fp32
     elif isinstance(
@@ -197,12 +197,12 @@ def set_excluded_layers(models, excluded_layers):
         for layer in excluded_layers_instances[idx].sublayers(
             include_self=True
         ):
-            layer._cast_to_low_precison = False
+            layer._cast_to_low_precision = False
     excluded_layers_types = tuple(excluded_layers_types)
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             if isinstance(layer, excluded_layers_types):
-                layer._cast_to_low_precison = False
+                layer._cast_to_low_precision = False
 
 
 @dygraph_only
