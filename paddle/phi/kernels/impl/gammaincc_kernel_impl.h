@@ -128,10 +128,10 @@ struct IgammaFunctor {
 };
 
 template <typename T, typename Context>
-void IgammaKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& a,
-                  DenseTensor* out) {
+void GammainccKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& a,
+                     DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* a_data = a.data<T>();

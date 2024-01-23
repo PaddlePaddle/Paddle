@@ -1102,6 +1102,17 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : gammaincc
+  args : (Tensor x, Tensor a)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param : [x, a]
+  kernel :
+    func : gammaincc
+  inplace: (x -> out)
+  backward : gammaincc_grad
+
 - op : gammaln
   args : (Tensor x)
   output : Tensor(out)
@@ -1310,17 +1321,6 @@
     func : identity_loss
   inplace: (x -> out)
   backward : identity_loss_grad
-
-- op : igamma
-  args : (Tensor x, Tensor a)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseInferMeta
-    param : [x, a]
-  kernel :
-    func : igamma
-  inplace: (x -> out)
-  backward : igamma_grad
 
 - op : imag
   args : (Tensor x)

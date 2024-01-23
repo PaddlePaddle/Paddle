@@ -1,4 +1,3 @@
-
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/gammaincc_grad_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/gammaincc_grad_kernel_impl.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void IgammaKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& a,
-                  DenseTensor* out);
-}  // namespace phi
+PD_REGISTER_KERNEL(
+    gammaincc_grad, CPU, ALL_LAYOUT, phi::GammainccGradKernel, float, double) {}

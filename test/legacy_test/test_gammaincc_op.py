@@ -28,7 +28,7 @@ def ref_gammaincc(x, a):
 
 class TestGammainccOp(OpTest):
     def setUp(self):
-        self.op_type = 'igamma'
+        self.op_type = 'gammaincc'
         self.python_api = paddle.gammaincc
         self.init_dtype_type()
         self.shape = (3, 40)

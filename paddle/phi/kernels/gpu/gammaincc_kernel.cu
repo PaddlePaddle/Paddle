@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/igamma_kernel.h"
+#include "paddle/phi/kernels/gammaincc_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/kernels/impl/igamma_kernel_impl.h"
+#include "paddle/phi/kernels/impl/gammaincc_kernel_impl.h"
 
-PD_REGISTER_KERNEL(igamma, GPU, ALL_LAYOUT, phi::IgammaKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    gammaincc, GPU, ALL_LAYOUT, phi::GammainccKernel, float, double) {}

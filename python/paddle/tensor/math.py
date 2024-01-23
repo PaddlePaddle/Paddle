@@ -5135,14 +5135,14 @@ def gammaincc(x, a, name=None):
             "The input argument x must be greater than or equal to 0."
         )
     if in_dynamic_or_pir_mode():
-        return _C_ops.igamma(x, a)
+        return _C_ops.gammaincc(x, a)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gammaincc')
         check_variable_and_dtype(a, 'a', ['float32', 'float64'], 'gammaincc')
         helper = LayerHelper('gammaincc', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
-            type='igamma', inputs={'x': x, 'a': a}, outputs={'out': out}
+            type='gammaincc', inputs={'x': x, 'a': a}, outputs={'out': out}
         )
         return out
 
@@ -5154,7 +5154,7 @@ def gammaincc_(x, a, name=None):
     Please refer to :ref:`api_paddle_gammaincc`.
     """
     if in_dynamic_mode():
-        return _C_ops.igamma_(x, a)
+        return _C_ops.gammaincc_(x, a)
 
 
 def gammainc(x, a, name=None):

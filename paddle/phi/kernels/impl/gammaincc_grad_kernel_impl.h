@@ -44,11 +44,11 @@ struct IgammaGradFunctor {
 };
 
 template <typename T, typename Context>
-void IgammaGradKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& a,
-                      const DenseTensor& d_out,
-                      DenseTensor* d_x) {
+void GammainccGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& a,
+                         const DenseTensor& d_out,
+                         DenseTensor* d_x) {
   auto numel = d_out.numel();
   auto* dout_data = d_out.data<T>();
   auto* x_data = x.data<T>();
