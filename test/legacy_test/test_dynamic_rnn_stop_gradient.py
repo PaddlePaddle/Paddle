@@ -59,6 +59,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         paddle.tensor.array_write(score, i=step_idx, array=scores)
         length_cond = paddle.less_than(x=step_idx, y=max_len)
         paddle.assign(length_cond, cond)
+    scores.stop_gradient = True
     out = tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
     loss = paddle.mean(out)
     opt = paddle.optimizer.Adam(0.01)
