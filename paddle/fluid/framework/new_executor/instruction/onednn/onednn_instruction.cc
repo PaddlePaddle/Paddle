@@ -100,6 +100,7 @@ void TensorNameMap(pir::Operation* op,
                        inputs_tensor_name_map,  // NOLINT
                    std::map<std::string, std::vector<std::string>>&
                        outputs_tensor_name_map) {  // NOLINT
+  static int unique_id = 0;
   const Scope* inner_scope = value_exec_info.GetScope();
   VLOG(6) << "TensorNameMap in scope[" << inner_scope << "]";
 
@@ -132,14 +133,16 @@ void TensorNameMap(pir::Operation* op,
     auto type = ptr.type();
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
         type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      inputs_tensor_name_map[legacy_arg_name] = {in_var_name};
+      inputs_tensor_name_map[legacy_arg_name] = {in_var_name +
+                                                 std::to_string(unique_id++)};
     } else if (type.isa<pir::VectorType>()) {
       auto var = inner_scope->FindVar(in_var_name);
       auto var_ref = var->Get<VariableRefArray>();
       std::vector<std::string> vec_tmp;
       vec_tmp.reserve(var_ref.size());
       for (size_t k = 0; k < var_ref.size(); ++k) {
-        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]));
+        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]) +
+                          std::to_string(unique_id++));
       }
       inputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
@@ -168,14 +171,16 @@ void TensorNameMap(pir::Operation* op,
     auto type = ptr.type();
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
         type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      outputs_tensor_name_map[legacy_arg_name] = {out_var_name};
+      outputs_tensor_name_map[legacy_arg_name] = {out_var_name +
+                                                  std::to_string(unique_id++)};
     } else if (type.isa<pir::VectorType>()) {
       auto var = inner_scope->FindVar(out_var_name);
       auto var_ref = var->Get<VariableRefArray>();
       std::vector<std::string> vec_tmp;
       vec_tmp.reserve(var_ref.size());
       for (size_t k = 0; k < var_ref.size(); ++k) {
-        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]));
+        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]) +
+                          std::to_string(unique_id++));
       }
       outputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
