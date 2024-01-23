@@ -6446,7 +6446,12 @@ def frexp(x, name=None):
             Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 2., 3.]])
     """
-    if x.dtype not in [paddle.float32, paddle.float64]:
+    if x.dtype not in [
+        paddle.float32,
+        paddle.float64,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
+    ]:
         raise TypeError(
             f"The data type of input must be one of ['float32', 'float64'], but got {x.dtype}"
         )
