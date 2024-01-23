@@ -59,6 +59,7 @@ void MemoryEfficientAttentionGradKernel(
   bool kernel_launched = false;
 
   auto launchKernel = [&](auto k_, auto kernel_fn) {
+    VLOG(3)<< "MemoryEfficientAttentionGradKernel: launchKernel " ;
     // ndim
     PADDLE_ENFORCE_EQ(
         query.dims().size(),
@@ -404,9 +405,9 @@ void MemoryEfficientAttentionGradKernel(
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
     p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);
     p.grad_output_ptr = phi::SafeGetTensorPtr<scalar_t>(output_grad);
-    VLOG(3) << "query_grad" << query_grad;
-    VLOG(3) << "key_grad" << key_grad;
-    VLOG(3) << "value_grad" << value_grad;
+    // VLOG(3) << "query_grad" << query_grad;
+    // VLOG(3) << "key_grad" << key_grad;
+    // VLOG(3) << "value_grad" << value_grad;
 
     if (query_grad) {
       p.grad_query_ptr =
@@ -461,31 +462,46 @@ void MemoryEfficientAttentionGradKernel(
     PD_MEA_CHECK_OVERFLOW(p.o_strideH, DimStride(output.dims(), 2));
     PD_MEA_CHECK_OVERFLOW(p.o_strideB, DimStride(output.dims(), 0));
 
-    PD_MEA_CHECK_OVERFLOW(p.gQ_strideH, DimStride(query_grad->dims(), 2));
-    PD_MEA_CHECK_OVERFLOW(p.gK_strideH, DimStride(key_grad->dims(), 2));
-    PD_MEA_CHECK_OVERFLOW(p.gV_strideH, DimStride(value_grad->dims(), 2));
-    PD_MEA_CHECK_OVERFLOW(p.gQ_strideB, DimStride(query_grad->dims(), 0));
-    PD_MEA_CHECK_OVERFLOW(p.gK_strideB, DimStride(key_grad->dims(), 0));
-    PD_MEA_CHECK_OVERFLOW(p.gV_strideB, DimStride(value_grad->dims(), 0));
+    if(query_grad){
+      PD_MEA_CHECK_OVERFLOW(p.gQ_strideH, DimStride(query_grad->dims(), 2));
+      PD_MEA_CHECK_OVERFLOW(p.gQ_strideB, DimStride(query_grad->dims(), 0));
+    }
+    if(key_grad){
+      PD_MEA_CHECK_OVERFLOW(p.gK_strideH, DimStride(key_grad->dims(), 2));
+      PD_MEA_CHECK_OVERFLOW(p.gK_strideB, DimStride(key_grad->dims(), 0));
+    }
+    if(value_grad){
+      PD_MEA_CHECK_OVERFLOW(p.gV_strideH, DimStride(value_grad->dims(), 2));
+      PD_MEA_CHECK_OVERFLOW(p.gV_strideB, DimStride(value_grad->dims(), 0));
+    }
+
     p.gQKV_strideM_multiplier = 1;
-    PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
+    if(query_grad){
+      PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
                       DimStride(query_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad query"
                           "should be euqal to the first dimension size of "
                           "query grad's stride"));
-    PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
+    }
+    if(key_grad){
+      PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
                       DimStride(key_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad key"
                           "should be euqal to the first dimension size of key "
                           "grad's stride"));
-    PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
+    }
+    if(value_grad){
+      VLOG(3) << "v_dims[2] * v_dims[3] = " << v_dims[2] * v_dims[3];
+      VLOG(3) << "DimStride(value_grad->dims(), 1) = " << DimStride(value_grad->dims(), 1);
+      PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
                       DimStride(value_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad value"
                           "should be euqal to the first dimension size of "
                           "value grad's stride"));
+    }
 
     PD_MEA_CHECK_OVERFLOW(p.q_strideB, DimStride(query.dims(), 0));
     PD_MEA_CHECK_OVERFLOW(p.k_strideB, DimStride(key.dims(), 0));

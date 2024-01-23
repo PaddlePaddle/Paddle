@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "glog/logging.h"
 
 namespace phi {
 
@@ -693,6 +694,16 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
                                            MetaTensor* key_grad,
                                            MetaTensor* value_grad,
                                            MetaTensor* bias_grad) {
+  VLOG(3)<< "MemoryEfficientAttentionGradInferMeta begin";
+  if(query_grad == nullptr){
+    VLOG(3)<< "query_grad is nullptr";
+  }
+  if(key_grad == nullptr){
+     VLOG(3)<< "key_grad is nullptr";
+  }
+  if(value_grad = nullptr){
+    VLOG(3)<< "value_grad is nullptr";
+  }
   PADDLE_ENFORCE_EQ(
       output_grad.dims().size(),
       4,
@@ -721,27 +732,37 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   const int64_t value_num_head = value.dims()[2];
   const int64_t value_head_size = value.dims()[3];
 
-  std::vector<int64_t> query_grad_dims(
-      {query_batch_size, query_seq_length, query_num_head, query_head_size});
-  std::vector<int64_t> key_grad_dims(
-      {key_batch_size, key_seq_length, key_num_head, key_head_size});
-  std::vector<int64_t> value_grad_dims(
-      {value_batch_size, value_seq_length, value_num_head, value_head_size});
-
-  query_grad->set_dims(common::make_ddim(query_grad_dims));
-  query_grad->share_lod(query);
-  query_grad->set_dtype(query.dtype());
-  query_grad->set_layout(query.layout());
-
-  key_grad->set_dims(common::make_ddim(key_grad_dims));
-  key_grad->share_lod(key);
-  key_grad->set_dtype(key.dtype());
-  key_grad->set_layout(key.layout());
-
-  value_grad->set_dims(common::make_ddim(value_grad_dims));
-  value_grad->share_lod(value);
-  value_grad->set_dtype(value.dtype());
-  value_grad->set_layout(value.layout());
+  std::vector<int64_t> query_grad_dims;
+  std::vector<int64_t> key_grad_dims;
+  std::vector<int64_t> value_grad_dims;
+  if(query_grad){
+    query_grad_dims = {query_batch_size, query_seq_length, query_num_head, query_head_size};
+  }
+  if(key_grad){
+    key_grad_dims = {key_batch_size, key_seq_length, key_num_head, key_head_size};
+  }
+  if(value_grad){
+    value_grad_dims = {value_batch_size, value_seq_length, value_num_head, value_head_size};
+  }
+  
+  if(query_grad){
+    query_grad->set_dims(common::make_ddim(query_grad_dims));
+    query_grad->share_lod(query);
+    query_grad->set_dtype(query.dtype());
+    query_grad->set_layout(query.layout());
+  }
+  if(key_grad){
+    key_grad->set_dims(common::make_ddim(key_grad_dims));
+    key_grad->share_lod(key);
+    key_grad->set_dtype(key.dtype());
+    key_grad->set_layout(key.layout());
+  }
+  if(value_grad){
+    value_grad->set_dims(common::make_ddim(value_grad_dims));
+    value_grad->share_lod(value);
+    value_grad->set_dtype(value.dtype());
+    value_grad->set_layout(value.layout());
+  }
 
   if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
