@@ -138,12 +138,13 @@ std::shared_ptr<DimTrans> make_flatten(
 std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
                                      const std::vector<int64_t>& shape,
                                      int64_t id) {
-  PADDLE_ENFORCE_GT(shape.size(),
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The size of the `shape` vector in `make_split` "
-                        "must be greater than 0, but received %d",
-                        shape.size()));
+  PADDLE_ENFORCE_addle / fluid / pir / dialect /
+      CMakeLists.txtGT(shape.size(),
+                       0,
+                       phi::errors::InvalidArgument(
+                           "The size of the `shape` vector in `make_split` "
+                           "must be greater than 0, but received %d",
+                           shape.size()));
   std::shared_ptr<DimTrans> ptr;
   if (shape.size() == 1) {
     assert(id == 0);
