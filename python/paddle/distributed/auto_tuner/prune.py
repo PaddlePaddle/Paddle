@@ -127,7 +127,7 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=[]):
         "num_attention_heads", None
     )
     seq_length = tuner_cfg["model_cfg"].get("seq_length", None)
-    use_sequence_paralel = tuner_cfg.get("use_sequence_paralel", False)
+    use_sequence_parallel = tuner_cfg.get("use_sequence_parallel", False)
 
     if mp_degree is None:
         return False
@@ -141,7 +141,7 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=[]):
     if num_attention_heads and num_attention_heads % mp_degree != 0:
         return True
 
-    if seq_length and seq_length % mp_degree != 0 and use_sequence_paralel:
+    if seq_length and seq_length % mp_degree != 0 and use_sequence_parallel:
         return True
 
     mp_degree_candidates = tuner_cfg.get("mp_degree", None)
@@ -509,7 +509,7 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     if not os.path.exists(memory_estimation_tool):
         raise ValueError(
-            f"memory_estimation_tool shoule be a valid path, but got {memory_estimation_tool}"
+            f"memory_estimation_tool should be a valid path, but got {memory_estimation_tool}"
         )
 
     if max_memory_usage is None:

@@ -842,7 +842,7 @@ class PartialProgramLayer:
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
-        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # For Backward process in CINN, all param@GRAD should be skipped for GC, because
         # they will be shared in scope and used by optimizer.
         backward_skip_vars = self._parse_skip_gc_vars(
             whole_program

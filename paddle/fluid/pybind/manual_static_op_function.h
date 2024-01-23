@@ -83,9 +83,9 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
     phi::DataType dtype = CastPyArg2DataTypeDirectly(dtype_obj, "full", 2);
     Place place = CastPyArg2Place(place_obj, "full", 3);
 
-    if (!PyObject_CheckIROpResult(shape_obj) &&
-        !PyObject_CheckIRVectorOfOpResult(shape_obj) &&
-        !PyObject_CheckIROpResult(value_obj)) {
+    if (!PyObject_CheckIRValue(shape_obj) &&
+        !PyObject_CheckIRVectorOfValue(shape_obj) &&
+        !PyObject_CheckIRValue(value_obj)) {
       std::vector<int64_t> shape = CastPyArg2Longs(shape_obj, "full", 0);
       float value = CastPyArg2Float(value_obj, "full", 1);
       auto static_api_out = paddle::dialect::full(shape, value, dtype, place);
@@ -93,9 +93,9 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
     } else {
       pir::Value shape, value;
 
-      if (PyObject_CheckIROpResult(shape_obj)) {
+      if (PyObject_CheckIRValue(shape_obj)) {
         shape = CastPyArg2Value(shape_obj, "full", 0);
-      } else if (PyObject_CheckIRVectorOfOpResult(shape_obj)) {
+      } else if (PyObject_CheckIRVectorOfValue(shape_obj)) {
         std::vector<pir::Value> shape_tmp =
             CastPyArg2VectorOfValue(shape_obj, "full", 0);
         shape = paddle::dialect::stack(shape_tmp, 0);
@@ -105,7 +105,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
             shape_tmp, phi::DataType::INT64, phi::CPUPlace());
       }
 
-      if (PyObject_CheckIROpResult(value_obj)) {
+      if (PyObject_CheckIRValue(value_obj)) {
         value = CastPyArg2Value(value_obj, "full", 1);
       } else {
         float value_tmp = CastPyArg2Float(value_obj, "full", 1);
@@ -270,9 +270,9 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
     // Get Value from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
     pir::Value x;
-    if (PyObject_CheckIROpResult(x_obj)) {
+    if (PyObject_CheckIRValue(x_obj)) {
       x = CastPyArg2Value(x_obj, "array_to_tensor", 0);
-    } else if (PyObject_CheckIRVectorOfOpResult(x_obj)) {
+    } else if (PyObject_CheckIRVectorOfValue(x_obj)) {
       std::vector<pir::Value> x_tmp =
           CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0);
       if (x_tmp.size() != 1) {
@@ -334,9 +334,9 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
 
     PyObject *starts_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value starts;
-    if (PyObject_CheckIROpResult(starts_obj)) {
+    if (PyObject_CheckIRValue(starts_obj)) {
       starts = CastPyArg2Value(starts_obj, "slice_array_dense", 1);
-    } else if (PyObject_CheckIRVectorOfOpResult(starts_obj)) {
+    } else if (PyObject_CheckIRVectorOfValue(starts_obj)) {
       std::vector<pir::Value> starts_tmp =
           CastPyArg2VectorOfValue(starts_obj, "slice_array_dense", 1);
       starts = paddle::dialect::stack(starts_tmp, /*axis*/ 0);

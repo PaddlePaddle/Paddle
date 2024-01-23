@@ -19,7 +19,7 @@
 namespace phi {
 namespace fusion {
 
-template <typename T, typename TW, typename TGEMM, typename Context>
+template <typename T, typename TW, typename Context>
 void SqueezeExcitationKernelImpl(const Context& ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& filter,
@@ -32,7 +32,6 @@ void SqueezeExcitationKernelImpl(const Context& ctx,
                                  DenseTensor* out) {
   using XPUTypeX = typename XPUTypeTrait<T>::Type;
   using XPUTypeW = typename XPUTypeTrait<TW>::Type;
-  using XPUTypeGEMM = typename XPUTypeTrait<TGEMM>::Type;
 
   auto* weight1_ptr = filter.data<TW>();
   auto weight_len = filter.numel();
@@ -71,7 +70,7 @@ void SqueezeExcitationKernelImpl(const Context& ctx,
     }
     act.push_back(cur_act);
   }
-  int r = xpu::squeeze_excitation_block<XPUTypeX, XPUTypeW, XPUTypeGEMM>(
+  int r = xpu::squeeze_excitation_block<XPUTypeX, XPUTypeW, XPUTypeW>(
       /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
       /* const T* x */ input_data,
       /* const TW* weight1 */ reinterpret_cast<const XPUTypeW*>(weight1_ptr),
@@ -93,18 +92,17 @@ void SqueezeExcitationKernelImpl(const Context& ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "squeeze_excitation_block");
 }
 
-#define SQUEEZE_EXCITATION_KERNEL_IMPL(t_dtype_, tw_dtype_, tgemm_dtype_)  \
-  SqueezeExcitationKernelImpl<t_dtype_, tw_dtype_, tgemm_dtype_, Context>( \
-      ctx,                                                                 \
-      x,                                                                   \
-      filter,                                                              \
-      filter_max,                                                          \
-      bias,                                                                \
-      branch,                                                              \
-      act_type,                                                            \
-      act_param,                                                           \
-      filter_dims,                                                         \
-      out);
+#define SQUEEZE_EXCITATION_KERNEL_IMPL(t_dtype_, tw_dtype_)              \
+  SqueezeExcitationKernelImpl<t_dtype_, tw_dtype_, Context>(ctx,         \
+                                                            x,           \
+                                                            filter,      \
+                                                            filter_max,  \
+                                                            bias,        \
+                                                            branch,      \
+                                                            act_type,    \
+                                                            act_param,   \
+                                                            filter_dims, \
+                                                            out);
 
 template <typename T, typename Context>
 void SqueezeExcitationKernel(const Context& ctx,
@@ -119,17 +117,15 @@ void SqueezeExcitationKernel(const Context& ctx,
                              DenseTensor* out) {
   if (x.dtype() == DataType::FLOAT16 && filter.dtype() == DataType::INT16) {
     // float16 kernel
-    SQUEEZE_EXCITATION_KERNEL_IMPL(phi::dtype::float16, int16_t, int16_t);
+    SQUEEZE_EXCITATION_KERNEL_IMPL(phi::dtype::float16, int16_t);
   } else if (x.dtype() == DataType::FLOAT32 &&
              filter.dtype() == DataType::INT16) {
     // float32 kernel
-    SQUEEZE_EXCITATION_KERNEL_IMPL(float, int16_t, int16_t);
+    SQUEEZE_EXCITATION_KERNEL_IMPL(float, int16_t);
   } else {
-    PADDLE_THROW(
-        "Not support x_dtype is %s, filter_dtype is "
-        "%s.",
-        DataTypeToString(x.dtype()),
-        DataTypeToString(filter.dtype()));
+    PADDLE_ENFORCE(true,
+                   errors::InvalidArgument("Not support x_dtype is %s ",
+                                           DataTypeToString(x.dtype())));
   }
   return;
 }
