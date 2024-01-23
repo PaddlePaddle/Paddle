@@ -144,16 +144,16 @@ INIT_ATTRS_TEMPLATE = """
        {type} {name};
 """
 MUTABLE_ATTR_TEMPLATE = """
-        if (PyObject_CheckIROpResult({name}_obj)){{
+        if (PyObject_CheckIRValue({name}_obj)){{
             {mutable_cast_attrs}
         }}else{{
             {no_mutable_cast_attrs}
         }}"""
 
 MUTABLE_ATTR_LIST_TEMPLATE = """
-        if (PyObject_CheckIROpResult({name}_obj)){{
+        if (PyObject_CheckIRValue({name}_obj)){{
            {mutable_cast_attrs}
-        }}else if (PyObject_CheckIRVectorOfOpResult({name}_obj)){{
+        }}else if (PyObject_CheckIRVectorOfValue({name}_obj)){{
            {mutable_vector_cast_attrs}
         }}else{{
            {no_mutable_cast_attrs}

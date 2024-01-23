@@ -555,10 +555,9 @@ pir::Operation* ProcessDyShapeGroup(
   cinn::common::BroadcastTree broadcast_tree =
       cinn::common::ConstructBroadcastTree(
           cinn::common::BroadcastLeaf(all_value_dim_exprs));
-  VLOG(0) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
+  VLOG(4) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
 
   auto group_inputs = GetBlockOutsideInput(group->ops);
-  // shape_analysis.PrintShapeOrDatas();
 
   // has multiple branch
   if (broadcast_tree
