@@ -694,16 +694,6 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
                                            MetaTensor* key_grad,
                                            MetaTensor* value_grad,
                                            MetaTensor* bias_grad) {
-  VLOG(3)<< "MemoryEfficientAttentionGradInferMeta begin";
-  if(query_grad == nullptr){
-    VLOG(3)<< "query_grad is nullptr";
-  }
-  if(key_grad == nullptr){
-     VLOG(3)<< "key_grad is nullptr";
-  }
-  if(value_grad = nullptr){
-    VLOG(3)<< "value_grad is nullptr";
-  }
   PADDLE_ENFORCE_EQ(
       output_grad.dims().size(),
       4,

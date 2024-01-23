@@ -59,7 +59,6 @@ class Attention(nn.Layer):
             hidden_states = paddle.matmul(attention_probs, v)
         else:
             if self.attention_op == "cutlass":
-                print('x'*100)
                 hidden_states = memory_efficient_attention(
                     q,
                     k,
@@ -93,7 +92,8 @@ freeze_params(attn)
 
 hidden_states = paddle.randn((1, 16, 768))
 context = paddle.randn((1, 16, 768))
-context.stop_gradient = False
+# context.stop_gradient = False
+# hidden_states.stop_gradient = False
 attention_op = "cutlass" # 或者 'flash'
 o = attn(hidden_states=hidden_states, 
     context=context,

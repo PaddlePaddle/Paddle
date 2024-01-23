@@ -405,9 +405,6 @@ void MemoryEfficientAttentionGradKernel(
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
     p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);
     p.grad_output_ptr = phi::SafeGetTensorPtr<scalar_t>(output_grad);
-    // VLOG(3) << "query_grad" << query_grad;
-    // VLOG(3) << "key_grad" << key_grad;
-    // VLOG(3) << "value_grad" << value_grad;
 
     if (query_grad) {
       p.grad_query_ptr =
@@ -493,8 +490,6 @@ void MemoryEfficientAttentionGradKernel(
                           "grad's stride"));
     }
     if(value_grad){
-      VLOG(3) << "v_dims[2] * v_dims[3] = " << v_dims[2] * v_dims[3];
-      VLOG(3) << "DimStride(value_grad->dims(), 1) = " << DimStride(value_grad->dims(), 1);
       PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
                       DimStride(value_grad->dims(), 1),
                       phi::errors::InvalidArgument(
