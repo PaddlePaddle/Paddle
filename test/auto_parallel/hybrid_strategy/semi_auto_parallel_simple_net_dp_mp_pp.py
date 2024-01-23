@@ -51,7 +51,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
 
     def dp_mp_pp_shard_fn(self, layer_name, layer, process_mesh):
         if layer_name == 'linear_0':
-            # shard_layer doens't support cross-mesh now.
+            # shard_layer doesn't support cross-mesh now.
             # input process_mesh of pp_shard_fn is useless,
             # it's defined just for unified format.
             layer.weight = dist.shard_tensor(

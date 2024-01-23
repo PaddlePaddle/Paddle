@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,15 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/core/dll_decl.h"
+#include <optional>
+#include "paddle/pir/pass/pass.h"
 
-namespace pir {
+namespace cinn::dialect::ir {
 
-class Pass;
+// This is a helper pass for preparing dynamic-shape inputs to cinn backend even
+// in static shape GroupOp. Returns std::nullopt if
+// FLAGS_cinn_convert_static_dim_to_dynamic not set or invalid.
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateConvertStaticDimToDynamicPass();
 
-IR_API std::unique_ptr<Pass> CreateAttentionFusePass();
-
-}  // namespace pir
+}  // namespace cinn::dialect::ir

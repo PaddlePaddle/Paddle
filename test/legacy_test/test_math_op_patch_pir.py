@@ -524,10 +524,20 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 np.testing.assert_array_equal(res, a_np)
                 np.testing.assert_array_equal(res, b_np)
 
+    def test_builtin_type_conversion(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(name='x', shape=[], dtype="float32")
+                with self.assertRaises(TypeError):
+                    int(x)
+                with self.assertRaises(TypeError):
+                    float(x)
+
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
             a = paddle.static.data(name='a', shape=[1], dtype='float32')
-            self.assertTrue(isinstance(a, paddle.pir.OpResult))
+            self.assertTrue(isinstance(a, paddle.pir.Value))
             self.assertTrue(inspect.ismethod(a.dot))
             self.assertTrue(inspect.ismethod(a.logsumexp))
             self.assertTrue(inspect.ismethod(a.multiplex))

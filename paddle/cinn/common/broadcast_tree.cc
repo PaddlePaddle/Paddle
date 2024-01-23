@@ -137,7 +137,8 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
       }
     }
     if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
-      CHECK(lhs_symbol != rhs_symbol);
+      CHECK(lhs_symbol != rhs_symbol)
+          << lhs_symbol.value() << " != " << rhs_symbol.value();
       ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
                                                    rhs_symbol.value()};
       return true;
@@ -339,10 +340,6 @@ std::string ToTxtStringImpl(const BroadcastLeaf& leaf) {
 std::string ToTxtString(const BroadcastTree& tree) {
   return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
                     tree.variant());
-}
-
-std::ostream& operator<<(std::ostream& os, const BroadcastTree& tree) {
-  os << ToTxtString(tree);
 }
 
 }  // namespace cinn::common

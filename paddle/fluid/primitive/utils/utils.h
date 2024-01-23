@@ -138,7 +138,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
     result.push_back(i);
   }
   for (int i = 0; i < in_dims.size(); ++i) {
-    if (in_dims[i] == 1) {
+    if (in_dims[i] == 1 && dout_dims[i] != 1) {
       result.push_back(i + bat);
     } else {
       PADDLE_ENFORCE_EQ(

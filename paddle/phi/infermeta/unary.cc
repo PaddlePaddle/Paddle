@@ -938,7 +938,7 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
                     1,
                     phi::errors::InvalidArgument(
                         "ShapeError: The number of dimensions of 'Alpha' "
-                        "must be greater than or euqal to 1. "
+                        "must be greater than or equal to 1. "
                         "But received Alpha's dimensions = %d,",
                         alpha_dim.size()));
   out->set_dims(alpha_dim);
@@ -3192,7 +3192,7 @@ void PoolInferMeta(const MetaTensor& x,
                     2U,
                     errors::InvalidArgument(
                         "the dimension of input minus the size of "
-                        "Attr(kernel_size_) must be euqal to 2 in Op(pool). "
+                        "Attr(kernel_size_) must be equal to 2 in Op(pool). "
                         "But received: the dimension of input minus the size "
                         "of Attr(kernel_size_) is %d, the "
                         "input's dimension is %d, the shape of input "
@@ -4097,14 +4097,13 @@ void SplitWithNumInferMeta(const MetaTensor& x,
 
 void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  const Scalar& max_len,
-                                 int out_dtype,
+                                 DataType out_dtype,
                                  MetaTensor* y) {
   auto dim = phi::vectorize<int>(x.dims());
   int maxlen = max_len.to<int>();
   dim.push_back(maxlen > 0 ? maxlen : -1);
   y->set_dims(phi::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
@@ -4781,6 +4780,12 @@ void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
 void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
+void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_layout(x.layout());
   out->share_lod(x);
 }
 
