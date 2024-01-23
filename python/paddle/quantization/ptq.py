@@ -47,8 +47,8 @@ class PTQ(Quantization):
         quantization parameters.
 
         Args:
-            model(Layer) - The model to be quantized.
-            inplace(bool) - Whether to modify the model in-place.
+            model(Layer): The model to be quantized.
+            inplace(bool): Whether to modify the model in-place.
 
         Return: The prepared model for post-training quantization.
 

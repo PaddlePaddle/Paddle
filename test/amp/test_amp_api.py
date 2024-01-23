@@ -176,7 +176,7 @@ class TestGradScaler(AmpTestBase):
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestFp16Guard(AmpTestBase):
-    def test_fp16_gurad(self):
+    def test_fp16_guard(self):
         paddle.enable_static()
 
         def run_example_code():
@@ -221,7 +221,7 @@ class TestFp16Guard(AmpTestBase):
                     use_dynamic_loss_scaling=True,
                     use_pure_fp16=True,
                 )
-                # If you don't use the default_startup_program(), you sholud pass
+                # If you don't use the default_startup_program(), you should pass
                 # your defined `startup_program` into `minimize`.
                 optimizer.minimize(loss)
 

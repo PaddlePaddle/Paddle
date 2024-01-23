@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,16 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <memory>
+#include <optional>
+#include "paddle/pir/pass/pass.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace cinn::dialect::ir {
 
-class FusedConv2dAddActLayoutTransferPass : public FusePassBase {
- public:
-  FusedConv2dAddActLayoutTransferPass() = default;
-  virtual ~FusedConv2dAddActLayoutTransferPass() = default;
+// This is a helper pass for preparing dynamic-shape inputs to cinn backend even
+// in static shape GroupOp. Returns std::nullopt if
+// FLAGS_cinn_convert_static_dim_to_dynamic not set or invalid.
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateConvertStaticDimToDynamicPass();
 
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace cinn::dialect::ir

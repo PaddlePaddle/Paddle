@@ -1058,6 +1058,21 @@ def all_stop_gradient_true(block):
     return True
 
 
+def update_total_ops(block):
+    '''
+    when block is sub_block, forward op should include its parent block ops
+    (sub block nest should Add on demand to aviod block copy)
+    '''
+    total_ops = []
+    if block.parent_block is not None:
+        if block.parent_block.parent_block:
+            total_ops += block.parent_block.parent_block.ops
+        total_ops += block.parent_block.ops
+    total_ops += block.ops
+
+    return total_ops
+
+
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
@@ -1067,16 +1082,14 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         )
         return state.value_to_valuegrad
 
-    total_ops = []
-    if block.parent_block is not None:
-        total_ops += block.parent_block.ops
-    total_ops += block.ops
+    total_ops = update_total_ops(block)
 
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
-    complete_outputs, backward_ops = prepare_grad_outputs(
-        grad_outputs, outputs, state
-    )
+    with block:
+        complete_outputs, backward_ops = prepare_grad_outputs(
+            grad_outputs, outputs, state
+        )
 
     inputs_set = ValueSet(inputs)
     stop_gradient_false_outputs = []
@@ -1251,19 +1264,19 @@ def grad(
     check_type(
         outputs,
         'outputs',
-        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+        (paddle.pir.Value, list, tuple),
         'paddle.autograd.ir_backward.grad',
     )
     check_type(
         inputs,
         'inputs',
-        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+        (paddle.pir.Value, list, tuple),
         'paddle.autograd.ir_backward.grad',
     )
     check_type(
         grad_outputs,
         'grad_outputs',
-        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
+        (paddle.pir.Value, list, tuple, type(None)),
         'paddle.autograd.ir_backward.grad',
     )
 
@@ -1271,7 +1284,7 @@ def grad(
         no_grad_vars,
         'no_grad_vars',
         (
-            (paddle.pir.Value, paddle.pir.OpResult),
+            paddle.pir.Value,
             list,
             tuple,
             set,
@@ -1314,7 +1327,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
     check_type(
         loss,
         'loss',
-        (paddle.pir.Value, paddle.pir.OpResult),
+        paddle.pir.Value,
         'paddle.autograd.ir_backward.append_backward',
     )
 
@@ -1329,7 +1342,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
             check_type(
                 param,
                 'parameter_list[%s]' % i,
-                (paddle.pir.Value, paddle.pir.OpResult),
+                paddle.pir.Value,
                 'base.backward.append_backward',
             )
 
