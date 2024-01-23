@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -361,10 +361,13 @@ class TestSplitAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_5, out[2])
 
 
-class TestSplitOpError(unittest.TestCase):
-    def test_errors(self):
+class TestSplitOpErrorStatic(unittest.TestCase):
+    @test_with_pir_api
+    def test_errors_with_static(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
                 x6 = paddle.static.data(
@@ -412,6 +415,9 @@ class TestSplitOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_axis_type_tensor)
         paddle.disable_static()
 
+
+class TestSplitOpErrorDynamic(unittest.TestCase):
+    def test_errors_with_dynamic(self):
         with paddle.base.dygraph.guard():
 
             def test_0_num_tensor():
