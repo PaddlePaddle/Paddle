@@ -222,7 +222,7 @@ llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
 
 llvm::Value* CodeGenCUDA_Host::LowerParseArgsValueCall(
     const ir::Call* call_ir) {
-  auto ret_type = CinnTypeToLLVMType(Int(32), m_);
+  auto ret_type = CinnTypeToLLVMType(Int(64), m_);
   std::vector<llvm::Type*> args_type;
   CHECK_EQ(call_ir->read_args.size(), 2);
   CHECK(call_ir->read_args[0].is_var() &&
