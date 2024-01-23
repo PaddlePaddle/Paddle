@@ -1566,6 +1566,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
                         : nullptr;
 
+  pass_manager->EnableIRPrinting();
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
@@ -1579,9 +1580,11 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
     pass_manager->AddPass(std::move(pass.value()));
   }
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
+  }
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
-  VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
-          << ", shape_analysis: " << shape_analysis;
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
