@@ -29,6 +29,7 @@
 namespace cinn {
 namespace dialect {
 namespace ir {
+using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 
 class SumOpPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -319,6 +320,9 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
 
   bool MatchAndRewrite(paddle::dialect::SliceOp op,
                        pir::PatternRewriter &rewriter) const override {
+    if (!CompatibleInfo::IsSupportCinn(*op.operation())) {
+      return false;
+    }
     auto start_gen_op = op->operand_source(1)
                             .defining_op()
                             ->dyn_cast<paddle::dialect::FullIntArrayOp>();
@@ -363,6 +367,9 @@ class ConcatOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ConcatOp op,
                        pir::PatternRewriter &rewriter) const override {
+    if (!CompatibleInfo::IsSupportCinn(*op.operation())) {
+      return false;
+    }
     auto axis_gen_op = op->operand_source(1).defining_op();
     if (auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
       int axis = static_cast<int>(
