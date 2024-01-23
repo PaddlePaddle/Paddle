@@ -37,6 +37,7 @@ Dim _Dim_::Make(const std::string& name, const symbol::DimExpr& sym_dim) {
   } else {
     n->dim_expr = Expr(static_cast<int32_t>(sym_dim.dyn_cast<int64_t>()));
   }
+  n->set_type(n->dim_expr.type());
 
   return Dim(n);
 }

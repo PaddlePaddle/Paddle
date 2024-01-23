@@ -99,6 +99,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
+    pir::IrPrinter printer(VLOG(0) << "fusion_op: ");
+    fusion_op.Print(printer);
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto target = cinn::common::DefaultNVGPUTarget();
     // TODO(Aurelius84): Remove scope after cleaning PirCompiler usless Build
@@ -148,6 +150,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     rewriter.EraseOp(fusion_op);
+    pir::IrPrinter(LOG(ERROR) << "jit_kernel_op: ")
+        .PrintOperation(jit_kernel_op);
     return true;
   }
 

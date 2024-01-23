@@ -44,6 +44,10 @@ std::unique_ptr<Program> PirCompiler::Build() {
 
 std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
+  LOG(INFO) << "groups.size() = " << groups.size();
+  for (auto group : groups) {
+    group->Print();
+  }
   std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
 
   if (FLAGS_cinn_bucket_compile) {

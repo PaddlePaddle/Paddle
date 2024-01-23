@@ -98,6 +98,13 @@ struct Group {
     return value_to_shape_or_data_exprs.at(value);
   }
 
+  void Print() {
+    LOG(INFO) << "group ops: ";
+    for (auto op : ops) {
+      LOG(INFO) << op->name();
+    }
+  }
+
   // distance to last group.
   int depth{0};
   int max_depth{0};

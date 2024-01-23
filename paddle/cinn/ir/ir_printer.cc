@@ -608,11 +608,11 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
 }
 
 void IrPrinter::Visit(const _Dim_ *x) {
-  str_ += "Dim(name: ";
-  str_ += x->name;
-  str_ += ", symbol: ";
+  // str_ += "Dim(name: ";
+  // str_ += x->name;
+  // str_ += ", symbol: ";
   str_ += x->ToString();
-  str_ += ")";
+  // str_ += ")";
 }
 
 void IrPrinter::Visit(const IntrinsicOp *x) {
