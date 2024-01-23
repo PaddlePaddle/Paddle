@@ -20,14 +20,14 @@ namespace dialect {
 class VjpInterface : public pir::OpInterfaceBase<VjpInterface> {
  public:
   struct Concept {
-    explicit Concept(std::vector<std::vector<pir::OpResult>> (*vjp)(
+    explicit Concept(std::vector<std::vector<pir::Value>> (*vjp)(
         pir::Operation* op,
         const std::vector<std::vector<pir::Value>>& inputs,
         const std::vector<std::vector<pir::Value>>& outputs,
         const std::vector<std::vector<pir::Value>>& out_grads,
         const std::vector<std::vector<bool>>& stop_gradients))
         : vjp_(vjp) {}
-    std::vector<std::vector<pir::OpResult>> (*vjp_)(
+    std::vector<std::vector<pir::Value>> (*vjp_)(
         pir::Operation* op,
         const std::vector<std::vector<pir::Value>>& inputs,
         const std::vector<std::vector<pir::Value>>& outputs,
@@ -37,7 +37,7 @@ class VjpInterface : public pir::OpInterfaceBase<VjpInterface> {
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static std::vector<std::vector<pir::OpResult>> Vjp(
+    static std::vector<std::vector<pir::Value>> Vjp(
         pir::Operation* op,
         const std::vector<std::vector<pir::Value>>& inputs,
         const std::vector<std::vector<pir::Value>>& outputs,
@@ -53,7 +53,7 @@ class VjpInterface : public pir::OpInterfaceBase<VjpInterface> {
   VjpInterface(pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<VjpInterface>(op), impl_(impl) {}
 
-  std::vector<std::vector<pir::OpResult>> Vjp(
+  std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation* op,
       const std::vector<std::vector<pir::Value>>& inputs,
       const std::vector<std::vector<pir::Value>>& outputs,

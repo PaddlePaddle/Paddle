@@ -1713,7 +1713,7 @@ def re_order_program(block, param_grads, dist_context):
         if len(use_order) == len(pname_to_pg_pairs):
             break
 
-    # reorder optimzier
+    # reorder optimizer
     last_op = block.ops[-1]
     pname_to_op = {}
     num_ops = len(block.ops)

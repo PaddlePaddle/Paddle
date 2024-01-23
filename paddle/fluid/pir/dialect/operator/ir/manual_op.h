@@ -57,13 +57,13 @@ class AddNOp : public pir::Op<AddNOp,
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
 
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation *op);
+  static std::vector<std::vector<pir::Value>> Decomp(pir::Operation *op);
 };
 
 class AddN_Op : public pir::Op<AddN_Op,
@@ -312,7 +312,7 @@ class ArrayReadOp : public pir::Op<ArrayReadOp,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -345,7 +345,7 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -376,7 +376,7 @@ class ArrayToTensorOp : public pir::Op<ArrayToTensorOp,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -416,11 +416,17 @@ class SliceArrayOp
  public:
   using Op::Op;
   static const char *name() { return "pd_op.slice_array"; }
-  static const char *attributes_name[2];
+  static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 2;
   static OpInfoTuple GetOpInfo();
 
   void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    pir::Value starts,
+                    pir::Value ends);
 
   static phi::DataType GetKernelTypeForVar(
       const std::string &var_name,
@@ -569,7 +575,7 @@ class ExpandOp : public pir::Op<ExpandOp,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -614,7 +620,7 @@ class IncrementOp
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -659,7 +665,7 @@ class Increment_Op
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,

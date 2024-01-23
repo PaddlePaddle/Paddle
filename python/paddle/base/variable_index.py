@@ -113,7 +113,6 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
         attrs[attr_name] = attr
 
 
-# the item is a tensor of bool
 def get_value_for_bool_tensor(var, item):
     if len(item.shape) > len(var.shape):
         raise IndexError(
@@ -625,12 +624,31 @@ def _setitem_static(x, indices, values):
             values = values.astype(transed_sub_tensor.dtype)
 
         if paddle.in_dynamic_mode():
-            # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
-            transed_sub_tensor = transed_sub_tensor.index_put_(
-                adjusted_advanced_index, values
-            )
-            if not is_view:
-                return transed_sub_tensor
+            if (
+                len(adjusted_advanced_index) == 1
+                and adjusted_advanced_index[0].dtype
+                in (paddle.bool, paddle.base.libpaddle.BOOL)
+                and len(
+                    adjusted_advanced_index[0].shape
+                    == len(transed_sub_tensor.shape)
+                )
+            ):
+                if values.shape != transed_sub_tensor.shape:
+                    values = values.expand(transed_sub_tensor.shape)
+                transed_sub_tensor = paddle._C_ops.where_(
+                    paddle.logical_not(adjusted_advanced_index[0]),
+                    transed_sub_tensor,
+                    values,
+                )
+                if not is_view:
+                    return x
+            else:
+                # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
+                transed_sub_tensor = transed_sub_tensor.index_put_(
+                    adjusted_advanced_index, values
+                )
+                if not is_view:
+                    return x
         else:
             transed_sub_tensor = transed_sub_tensor.index_put(
                 adjusted_advanced_index, values
@@ -845,10 +863,9 @@ def _getitem_static(x, indices):
         ) = deal_advanced_index(out, advanced_index, False, None)
 
         # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
-        if (
-            len(adjusted_advanced_index) == 1
-            and adjusted_advanced_index[0].dtype == paddle.bool
-        ):
+        if len(adjusted_advanced_index) == 1 and adjusted_advanced_index[
+            0
+        ].dtype in (paddle.bool, paddle.base.libpaddle.BOOL):
             # Note: now slice not support 0-size Tensor, so only one bool tensor can return empty 0-size.
             out = get_value_for_bool_tensor(
                 transed_tensor, adjusted_advanced_index[0]

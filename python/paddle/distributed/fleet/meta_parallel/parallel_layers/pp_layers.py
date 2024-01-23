@@ -341,7 +341,7 @@ class PipelineLayer(nn.Layer):
                 ), "seg_method should be a str for interleave scheduler"
                 assert seg_method.startswith(
                     'layer:'
-                ), "seg_method shoud be start with layer: for interleave scheduler"
+                ), "seg_method should be start with layer: for interleave scheduler"
 
         self._num_virtual_pipeline_stages = (
             1

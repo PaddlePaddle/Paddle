@@ -21,14 +21,14 @@ class DecompInterface : public pir::OpInterfaceBase<DecompInterface> {
  public:
   struct Concept {
     explicit Concept(
-        std::vector<std::vector<pir::OpResult>> (*decomp)(pir::Operation* op))
+        std::vector<std::vector<pir::Value>> (*decomp)(pir::Operation* op))
         : decomp_(decomp) {}
-    std::vector<std::vector<pir::OpResult>> (*decomp_)(pir::Operation* op);
+    std::vector<std::vector<pir::Value>> (*decomp_)(pir::Operation* op);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op) {
+    static std::vector<std::vector<pir::Value>> Decomp(pir::Operation* op) {
       return ConcreteOp::Decomp(op);
     }
     Model() : Concept(Decomp) {}
@@ -38,7 +38,7 @@ class DecompInterface : public pir::OpInterfaceBase<DecompInterface> {
   DecompInterface(pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<DecompInterface>(op), impl_(impl) {}
 
-  std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op) {
+  std::vector<std::vector<pir::Value>> Decomp(pir::Operation* op) {
     return impl_->decomp_(op);
   }
 

@@ -166,7 +166,7 @@ inline std::vector<int64_t> ComputeOutputShape(
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv). "
+          "length must be equal to 2 for Op(Conv). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
           "difference of input's dimension and Attr(strides)'s length = %u.",

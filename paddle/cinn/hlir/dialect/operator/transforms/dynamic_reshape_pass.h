@@ -20,9 +20,9 @@
 namespace cinn {
 namespace dialect {
 namespace ir {
-std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass();
 
-std::unique_ptr<::pir::Pass> CreateLowerCinnDyShapeFusionOpPass();
+std::unique_ptr<pir::Pass> CreateDynamicReshapeOpPass();
+
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
