@@ -60,6 +60,7 @@ class IR_API Program {
   Block* block() { return &module_.block(); }
   const Block* block() const { return &module_op().block(); }
 
+  uint32_t GetOpNum() { return block()->GetOpNum(); }
   Parameter* GetParameter(const std::string& name) const;
   void SetParameter(const std::string& name,
                     std::unique_ptr<Parameter>&& parameter);

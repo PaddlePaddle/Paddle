@@ -138,6 +138,13 @@ class IR_API Block {
     return Walk<Order>(begin(), end(), std::forward<FuncT>(callback));
   }
 
+  uint32_t GetOpNum() {
+    uint32_t num = 0;
+    std::function<void(Operation *)> func = [&num](Operation *) { ++num; };
+    Walk(func);
+    return num;
+  }
+
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
