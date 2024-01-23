@@ -33,7 +33,6 @@ class handlePaddle:
                     sum += float(item[:-1]) * 1024
                 else:
                     sum += float(item[:-1])
-                # sum += int(item)
 
         print(f"Total size is {sum} M (without third_party)")
 
