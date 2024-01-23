@@ -282,7 +282,7 @@ int32_t GraphBrpcService::Barrier(Table *table,
   if (request.params_size() < 1) {
     set_response_code(response,
                       -1,
-                      "PsRequestMessage.params is requeired at "
+                      "PsRequestMessage.params is required at "
                       "least 1 for num of sparse_key");
     return 0;
   }

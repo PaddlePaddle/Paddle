@@ -77,7 +77,7 @@ class MLP(nn.Layer):
         out = self.linear_0(x)
         out = dist.reshard(
             out, self._mesh, [Shard(1)]
-        )  # triggle infinite propagation
+        )  # trigger infinite propagation
         out = self.linear_1(out)
 
         return out
