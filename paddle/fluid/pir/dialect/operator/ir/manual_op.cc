@@ -2728,8 +2728,6 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   return argument_outputs;
 }
 
-const char *SliceArrayOp::attributes_name[2] = {"starts", "ends"};
-
 OpInfoTuple SliceArrayOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo("input",
@@ -2737,14 +2735,20 @@ OpInfoTuple SliceArrayOp::GetOpInfo() {
                                    false,
                                    false,
                                    false,
+                                   false),
+      paddle::dialect::OpInputInfo("starts",
+                                   "paddle::dialect::IntArrayAttribute",
+                                   false,
+                                   false,
+                                   true,
+                                   false),
+      paddle::dialect::OpInputInfo("ends",
+                                   "paddle::dialect::IntArrayAttribute",
+                                   false,
+                                   false,
+                                   true,
                                    false)};
-  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
-      paddle::dialect::OpAttributeInfo("starts",
-                                       "paddle::dialect::IntArrayAttribute",
-                                       "std::vector<int64_t>"),
-      paddle::dialect::OpAttributeInfo("ends",
-                                       "paddle::dialect::IntArrayAttribute",
-                                       "std::vector<int64_t>")};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorArrayType", false, false)};
@@ -2767,8 +2771,8 @@ void SliceArrayOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
+    IR_ENFORCE(input_size == 3u,
+               "The size %d of inputs must be equal to 3.",
                input_size);
     IR_ENFORCE((*this)
                    ->operand_source(0)
@@ -2776,19 +2780,20 @@ void SliceArrayOp::VerifySig() {
                    .isa<paddle::dialect::DenseTensorArrayType>(),
                "Type validation failed for the 0th input, got %s.",
                (*this)->operand_source(0).type());
-  }
-  VLOG(4) << "Verifying attributes:";
-  {
-    auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("starts") > 0, "starts does not exist.");
-    IR_ENFORCE(
-        attributes.at("starts").isa<paddle::dialect::IntArrayAttribute>(),
-        "Type of attribute: starts is not paddle::dialect::IntArrayAttribute.");
-
-    IR_ENFORCE(attributes.count("ends") > 0, "ends does not exist.");
-    IR_ENFORCE(
-        attributes.at("ends").isa<paddle::dialect::IntArrayAttribute>(),
-        "Type of attribute: ends is not paddle::dialect::IntArrayAttribute.");
+    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
+                   (*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 1st input, got %s.",
+               (*this)->operand_source(1).type());
+    IR_ENFORCE((*this)->operand_source(2).type().isa<pir::VectorType>() ||
+                   (*this)
+                       ->operand_source(2)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 1st input, got %s.",
+               (*this)->operand_source(2).type());
   }
   VLOG(4) << "Verifying outputs:";
   {
@@ -2803,6 +2808,74 @@ void SliceArrayOp::VerifySig() {
   VLOG(4) << "End Verifying for: SliceArrayOp.";
 }
 
+phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
+  phi::IntArray starts_or_ends_list;
+  if (starts_or_ends.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    starts_or_ends_list =
+        std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+            starts_or_ends.dyn_cast<pir::OpResult>()
+                .owner()
+                ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+                .attribute("value"))));
+  } else if (starts_or_ends.type().isa<pir::VectorType>()) {
+    size_t starts_or_ends_size =
+        starts_or_ends.type().dyn_cast<pir::VectorType>().size();
+    starts_or_ends_list =
+        std::move(phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1)));
+    starts_or_ends_list.SetFromTensor(true);
+  } else if (starts_or_ends.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim starts_or_ends_dim =
+        starts_or_ends.type()
+            .dyn_cast<paddle::dialect::DenseTensorType>()
+            .dims();
+    size_t starts_or_ends_size = common::product(starts_or_ends_dim);
+    if (common::contain_unknown_dim(starts_or_ends_dim)) {
+      starts_or_ends_size = 1;
+    }
+    starts_or_ends_list =
+        std::move(phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1)));
+    starts_or_ends_list.SetFromTensor(true);
+  } else if (starts_or_ends.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    common::DDim starts_or_ends_dim =
+        starts_or_ends.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dims();
+    size_t starts_or_ends_size = common::product(starts_or_ends_dim);
+    if (common::contain_unknown_dim(starts_or_ends_dim)) {
+      starts_or_ends_size = 1;
+    }
+    starts_or_ends_list =
+        std::move(phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1)));
+    starts_or_ends_list.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
+                                   "or AllocatedDenseTensorType"));
+  }
+  return starts_or_ends_list;
+}
+
+void SliceArrayOp::Build(pir::Builder &builder,             // NOLINT
+                         pir::OperationArgument &argument,  // NOLINT
+                         pir::Value input,
+                         pir::Value starts,
+                         pir::Value ends) {
+  VLOG(4) << "Start build SliceArrayDenseOp";
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {input, starts, ends};
+  argument.AddInputs(argument_inputs);
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  VLOG(4) << "Builder construction outputs";
+  std::vector<pir::Type> argument_outputs =
+      SliceArrayOp::InferMeta(argument_inputs, argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
 void SliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(phi::SliceArrayInferMeta);
   fn(infer_meta);
@@ -2812,20 +2885,12 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     const pir::AttributeMap &attributes) {
   VLOG(4) << "Start infermeta SliceArrayOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
+  IR_ENFORCE(input_values.size() == 3,
+             "Num of inputs is expected to be 3 but got %d.",
              input_values.size());
   pir::Value input = input_values[0];
-
-  IR_ENFORCE(attributes.count("starts") > 0, "starts does not exist.");
-  IR_ENFORCE(
-      attributes.at("starts").isa<paddle::dialect::IntArrayAttribute>(),
-      "Type of attribute: starts is not paddle::dialect::IntArrayAttribute.");
-
-  IR_ENFORCE(attributes.count("ends") > 0, "ends does not exist.");
-  IR_ENFORCE(
-      attributes.at("ends").isa<paddle::dialect::IntArrayAttribute>(),
-      "Type of attribute: ends is not paddle::dialect::IntArrayAttribute.");
+  pir::Value starts = input_values[1];
+  pir::Value ends = input_values[2];
 
   VLOG(4) << "Builder construction outputs";
   paddle::dialect::DenseTensorArrayType input_type;
@@ -2854,13 +2919,8 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
 
-  phi::IntArray starts_list =
-      attributes.at("starts")
-          .dyn_cast<paddle::dialect::IntArrayAttribute>()
-          .data();
-  phi::IntArray ends_list = attributes.at("ends")
-                                .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                                .data();
+  phi::IntArray starts_list = CalcSliceBoundsFromValue(starts);
+  phi::IntArray ends_list = CalcSliceBoundsFromValue(ends);
 
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
@@ -2872,14 +2932,12 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
                            phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
-  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      pir::IrContext::Instance(),
-      paddle::dialect::TransToIrDataType(dense_out.dtype()),
-      dense_out.dims(),
-      dense_out.layout(),
-      dense_out.lod(),
-      dense_out.offset());
-  argument_outputs.push_back(out_dense_tensor_type);
+  pir::Type out_dense_tensor_array_type =
+      paddle::dialect::DenseTensorArrayType::get(
+          pir::IrContext::Instance(),
+          TransToIrDataType(dense_out.dtype()),
+          dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
 }
 
@@ -3019,44 +3077,7 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
 
-  phi::IntArray starts_list;
-  if (starts.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
-    starts_list = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        starts.defining_op()
-            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-            .attribute("value"))));
-  } else if (starts.type().isa<pir::VectorType>()) {
-    size_t starts_size = starts.type().dyn_cast<pir::VectorType>().size();
-    starts_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
-    starts_list.SetFromTensor(true);
-  } else if (starts.type().isa<paddle::dialect::DenseTensorType>()) {
-    common::DDim starts_dim =
-        starts.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    size_t starts_size = common::product(starts_dim);
-    if (common::contain_unknown_dim(starts_dim)) {
-      starts_size = 1;
-    }
-    starts_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
-    starts_list.SetFromTensor(true);
-  } else if (starts.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-    common::DDim starts_dim =
-        starts.type()
-            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-            .dims();
-    size_t starts_size = common::product(starts_dim);
-    if (common::contain_unknown_dim(starts_dim)) {
-      starts_size = 1;
-    }
-    starts_list =
-        std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
-    starts_list.SetFromTensor(true);
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
-                                   "or AllocatedDenseTensorType"));
-  }
+  phi::IntArray starts_list = CalcSliceBoundsFromValue(starts);
 
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
@@ -3113,44 +3134,11 @@ void AssignArrayOp::Build(pir::Builder &builder,
   argument.AddInputs(argument_inputs);
 
   VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
 
   VLOG(4) << "Builder construction outputs";
-  paddle::dialect::DenseTensorArrayType x_type;
-  if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
-    x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-    paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
-        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
-    x_type = paddle::dialect::DenseTensorArrayType::get(
-        pir::IrContext::Instance(),
-        allocated_input.dtype(),
-        allocated_input.data_layout());
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Only support paddle::dialect::DenseTensorArrayType or "
-        "paddle::dialect::AllocatedDenseTensorArrayType"));
-  }
-
-  VLOG(4) << "Builder construction dense_tensor_array_x";
-  paddle::dialect::IrTensor ir_tensor_x(
-      paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
-      x_type.data_layout(),
-      {});
-  VLOG(4) << "Builder construction  meta_x";
-  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
-  paddle::dialect::IrTensor dense_out;
-  paddle::dialect::IrMetaTensor meta_out(&dense_out);
-
-  phi::UnchangedArrayInferMeta(meta_x, &meta_out);
-
-  std::vector<pir::Type> argument_outputs;
-  pir::Type out_dense_tensor_array_type =
-      paddle::dialect::DenseTensorArrayType::get(
-          pir::IrContext::Instance(),
-          TransToIrDataType(dense_out.dtype()),
-          dense_out.layout());
-  argument_outputs.push_back(out_dense_tensor_array_type);
+  std::vector<pir::Type> argument_outputs =
+      AssignArrayOp::InferMeta(argument_inputs, argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);
 }

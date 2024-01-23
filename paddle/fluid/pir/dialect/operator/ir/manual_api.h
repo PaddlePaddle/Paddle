@@ -81,6 +81,8 @@ pir::Value tensor_to_array(pir::Value x,
 
 pir::Value add_n_array(const std::vector<pir::Value>& inputs);
 
+pir::Value slice_array(pir::Value input, pir::Value starts, pir::Value ends);
+
 pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
 pir::Value assign(const pir::Value& x);
