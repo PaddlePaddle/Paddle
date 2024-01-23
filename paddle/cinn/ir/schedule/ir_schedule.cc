@@ -384,7 +384,7 @@ std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<int>& factors) {
   if (IsDynamicShape()) return impl_->Split(loop, factors);
   std::vector<Expr> decision = SamplePerfectTile(
-      loop, factors.size(), loop.As<ir::For>()->extent.as_int32(), factors);
+      loop, factors.size(), loop.As<ir::For>()->extent.as_int64(), factors);
   auto results = Split(loop, decision);
   return results;
 }
@@ -407,7 +407,7 @@ std::vector<Expr> IRSchedule::Split(const Expr& loop,
   std::vector<int> int_factors;
   std::vector<Expr> results;
   std::for_each(factors.begin(), factors.end(), [&int_factors](const Expr& e) {
-    if (e.is_constant()) int_factors.push_back(e.as_int32());
+    if (e.is_constant()) int_factors.push_back(e.as_int64());
   });
   if (int_factors.size() == factors.size()) {
     results = impl_->Split(loop, int_factors);

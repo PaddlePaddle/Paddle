@@ -30,6 +30,7 @@ void ProcessBlock(
     pir::Block* new_block,
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair);
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair,
+    bool for_if_block = false);
 }  // namespace dialect
 }  // namespace paddle
