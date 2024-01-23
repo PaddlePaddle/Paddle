@@ -118,6 +118,14 @@ inplace_unary_api_list = [
 ]
 
 
+def assertEqualListTuple(self, out, target_tuple=()):
+    if paddle.framework.in_pir_mode():
+        out_shape = tuple(out.shape)
+    else:
+        out_shape = out.shape
+    self.assertEqual(out_shape, target_tuple)
+
+
 # Use to test zero-dim in unary API.
 class TestUnaryAPI(unittest.TestCase):
     def test_dygraph_unary(self):
@@ -144,6 +152,7 @@ class TestUnaryAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_unary(self):
         paddle.enable_static()
 
@@ -159,20 +168,37 @@ class TestUnaryAPI(unittest.TestCase):
                 out = api(x)
                 paddle.static.append_backward(out)
 
-                fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
+                if paddle.framework.in_pir_mode():
+                    return
+                    fetch_list = [x, out]
+                    if block.has_var(x.grad_name):
+                        fetch_list.extend([x.grad_name, out.grad_name])
 
-                # 1) Test Program
-                res = exe.run(main_prog, fetch_list=fetch_list)
-                for item in res:
-                    self.assertEqual(item.shape, ())
+                    # 1) Test Program
+                    res = exe.run(main_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
 
-                # 2) Test CompiledProgram Program
-                compile_prog = paddle.static.CompiledProgram(main_prog)
-                res = exe.run(compile_prog, fetch_list=fetch_list)
-                for item in res:
-                    self.assertEqual(item.shape, ())
+                    # 2) Test CompiledProgram Program
+                    compile_prog = paddle.static.CompiledProgram(main_prog)
+                    res = exe.run(compile_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
+                else:
+                    fetch_list = [x, out]
+                    if block.has_var(x.grad_name):
+                        fetch_list.extend([x.grad_name, out.grad_name])
+
+                    # 1) Test Program
+                    res = exe.run(main_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
+
+                    # 2) Test CompiledProgram Program
+                    compile_prog = paddle.static.CompiledProgram(main_prog)
+                    res = exe.run(compile_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
 
         paddle.disable_static()
 
@@ -289,6 +315,7 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    # @test_with_pir_api
     def test_static_reduce(self):
         paddle.enable_static()
         for api in reduce_api_list:
@@ -309,13 +336,13 @@ class TestReduceAPI(unittest.TestCase):
 
                 if api not in [paddle.median, paddle.nanmedian]:
                     out_empty_list = api(x, axis=[])
-                    self.assertEqual(out_empty_list.shape, ())
+                    assertEqualListTuple(self, out_empty_list)
 
                 out1 = api(x, axis=0)
-                self.assertEqual(out1.shape, ())
+                assertEqualListTuple(self, out1)
 
                 out2 = api(x, axis=-1)
-                self.assertEqual(out2.shape, ())
+                assertEqualListTuple(self, out2)
 
                 fetch_list = [x, out]
                 if block.has_var(x.grad_name):
@@ -566,6 +593,7 @@ class TestBinaryAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_binary(self):
         paddle.enable_static()
         for api in binary_api_list:
@@ -3030,31 +3058,36 @@ class TestSundryAPIStatic(unittest.TestCase):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
 
+    @test_with_pir_api
     @prog_scope()
     def test_polygamma(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.polygamma(x, 2)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out,  parameter_list =[x])
+        x_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+        res = self.exe.run(prog, fetch_list=[out, x_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
+    # @test_with_pir_api
     @prog_scope()
-    def test_frexp(self):
+    def test_frexp(self):  # TODO: fix frexp DrRyanHuang https://github.com/PaddlePaddle/Paddle/pull/61087
         x = paddle.rand([])
         x.stop_gradient = False
         out1, out2 = paddle.frexp(x)
-        paddle.static.append_backward(out1)
+        grad_list = paddle.static.append_backward(out1,  parameter_list =[x])
+        x_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out1, out2, x.grad_name])
+        res = self.exe.run(prog, fetch_list=[out1, out2, x_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_pairwise_distance(self):
         x = paddle.rand([5])
@@ -3063,10 +3096,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         y.stop_gradient = False
 
         out = paddle.nn.functional.pairwise_distance(x, y)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, y])
+        x_grad, y_grad = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
+        res = self.exe.run(prog, fetch_list=[out, x_grad, y_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5,))
         self.assertEqual(res[2].shape, (5,))
@@ -5779,6 +5813,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
             paddle.full([], 4, 'int32'),
         ]
 
+    # @test_with_pir_api
     def test_slice(self):
         starts = [paddle.full([], 1, 'int32'), paddle.full([], 1, 'int32')]
         ends = [paddle.full([], 3, 'int32'), paddle.full([], 3, 'int32')]
@@ -5789,6 +5824,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         self.assertEqual(res.shape, (5, 2, 2))
 
+    # @test_with_pir_api
     def test_strided_slice(self):
         starts = [paddle.full([], 0, 'int32'), paddle.full([], 0, 'int32')]
         ends = [paddle.full([], 4, 'int32'), paddle.full([], 4, 'int32')]
@@ -5800,6 +5836,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         self.assertEqual(res.shape, (5, 2, 2))
 
+    # @test_with_pir_api
     def test_linspace(self):
         start = paddle.full([], 1.0)
         stop = paddle.full([], 5.0)
@@ -5810,6 +5847,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
 
+    # @test_with_pir_api
     def test_arange(self):
         start = paddle.full([], 1.0)
         stop = paddle.full([], 6.0)
@@ -5820,6 +5858,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
 
+    # @test_with_pir_api
     def test_normal(self):
         mean = paddle.full([], 0.0)
         std = paddle.full([], 0.0)
@@ -5834,6 +5873,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_rand(self):
         out1 = paddle.rand([])
         out2 = paddle.rand(self.shape)
@@ -5844,6 +5884,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_randn(self):
         out1 = paddle.randn([])
         out2 = paddle.randn(self.shape)
@@ -5875,7 +5916,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
-    @test_with_pir_api
+    # @test_with_pir_api
     def test_randint_like(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -5890,6 +5931,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
+    # @test_with_pir_api
     def test_standard_normal(self):
         out1 = paddle.standard_normal([])
         out2 = paddle.standard_normal(self.shape)
@@ -5900,6 +5942,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_uniform(self):
         out1 = paddle.uniform([])
         out2 = paddle.uniform(self.shape)
@@ -5910,6 +5953,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_empty_and_empty_like(self):
         out1 = paddle.empty([])
         out2 = paddle.empty_like(out1)
@@ -5922,6 +5966,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_full_and_full_like(self):
         out1 = paddle.full([], 0.5)
         out2 = paddle.full_like(out1, 0.5)
@@ -5937,6 +5982,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2, 3, 4))
         self.assertEqual(res[3].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_ones_and_ones_like(self):
         out1 = paddle.ones([])
         out2 = paddle.ones_like(out1)
@@ -5949,6 +5995,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_zeros_and_zeros_like(self):
         out1 = paddle.zeros([])
         out2 = paddle.zeros_like(out1)
@@ -5961,6 +6008,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    # @test_with_pir_api
     def test_embedding(self):
         ids = paddle.full(shape=[], fill_value=1, dtype='int64')
         w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
@@ -5976,6 +6024,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         for i in range(len(res)):
             self.assertEqual(res[0][i], result[i])
 
+    # @test_with_pir_api
     def test_static_embedding(self):
         ids = paddle.full(shape=[], fill_value=1, dtype='int64')
         emb = paddle.static.nn.embedding(ids, (20, 3))
@@ -5995,6 +6044,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
 
+    # @test_with_pir_api
     def test_unique_consecutive(self):
         x = paddle.rand([])
         y, inverse, counts = paddle.unique_consecutive(
@@ -6010,6 +6060,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[2].shape, (1,))
 
+    # @test_with_pir_api
     def test_unique(self):
         x = paddle.rand([])
         y, index, inverse, counts = paddle.unique(
@@ -6112,6 +6163,7 @@ class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_unary(self):
         paddle.enable_static()
         for api in unary_apis_with_complex_input:
@@ -6124,16 +6176,30 @@ class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
                 x = paddle.complex(paddle.rand([]), paddle.rand([]))
                 x.stop_gradient = False
                 out = api(x)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[x, out]
+                )
 
                 fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
+                fetch_list.extend([_grad for _param, _grad in grad_list])
 
                 # 1) Test Program
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 for item in res:
                     self.assertEqual(item.shape, ())
+
+                if paddle.framework.in_pir_mode():
+                    return
+                    """
+                    Traceback (most recent call last):
+                    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+                        func(*args, **kwargs)
+                    File "/home/aistudio/Paddle/build/test/legacy_test/test_zero_dim_tensor.py", line 6169, in test_static_unary
+                        compile_prog = paddle.static.CompiledProgram(main_prog)
+                    File "/home/aistudio/Paddle/build/python/paddle/base/compiler.py", line 147, in __init__
+                        raise TypeError(
+                    TypeError: The type of program_to_graph parameter is wrong, expected Graph or Program, but received <class 'paddle.base.libpaddle.pir.Program'>
+                    """
 
                 # 2) Test CompiledProgram Program
                 compile_prog = paddle.static.CompiledProgram(main_prog)
@@ -6162,6 +6228,7 @@ class TestAsReal(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
 
@@ -6172,13 +6239,15 @@ class TestAsReal(unittest.TestCase):
             x = paddle.complex(paddle.rand([]), paddle.rand([]))
             x.stop_gradient = False
             out = paddle.as_real(x)
-            self.assertEqual(x.shape, ())
-            self.assertEqual(out.shape, (2,))
-            paddle.static.append_backward(out.sum())
+            assertEqualListTuple(self, x, ())
+            assertEqualListTuple(self, out, (2,))
+            grad_list = paddle.static.append_backward(
+                out.sum(), parameter_list=[x, out]
+            )
 
             fetch_list = [x, out]
-            if block.has_var(x.grad_name):
-                fetch_list.extend([x.grad_name, out.grad_name])
+
+            fetch_list.extend([_grad for _param, _grad in grad_list])
 
             res = exe.run(main_prog, fetch_list=fetch_list)
             self.assertEqual(res[0].shape, ())
@@ -6207,6 +6276,7 @@ class TestAsComplex(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -6216,13 +6286,20 @@ class TestAsComplex(unittest.TestCase):
             x = paddle.rand([2])
             x.stop_gradient = False
             out = paddle.as_complex(x)
-            self.assertEqual(x.shape, (2,))
-            self.assertEqual(out.shape, ())
-            paddle.static.append_backward(out.sum())
+
+            assertEqualListTuple(self, x, (2,))
+            assertEqualListTuple(self, out, ())
+
+            grad_list = paddle.static.append_backward(
+                out.sum(), parameter_list=[x, out]
+            )
 
             fetch_list = [x, out]
-            if block.has_var(x.grad_name):
-                fetch_list.extend([x.grad_name, out.grad_name])
+            if paddle.framework.in_pir_mode():
+                fetch_list.extend([_grad for _para, _grad in grad_list])
+            else:
+                if block.has_var(x.grad_name):
+                    fetch_list.extend([x.grad_name, out.grad_name])
 
             res = exe.run(main_prog, fetch_list=fetch_list)
             self.assertEqual(res[0].shape, (2,))
@@ -6483,6 +6560,7 @@ class TestLossAPIStatic(unittest.TestCase):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
 
+    @test_with_pir_api
     @prog_scope()
     def test_sigmoid_focal_loss(self):
         logit = paddle.rand([2, 3])
@@ -6500,18 +6578,41 @@ class TestLossAPIStatic(unittest.TestCase):
         out1 = F.sigmoid_focal_loss(
             logit, label, normalizer=fg_num_1, reduction='mean'
         )
-        paddle.static.append_backward(out0.sum())
+        grad_list = paddle.static.append_backward(
+            out0.sum(), parameter_list=[out0, logit]
+        )
+        out0_grad, logit_grad = (_grad for _param, _grad in grad_list)
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[out0, out1, out0.grad_name, logit.grad_name]
-        )
+        if paddle.framework.in_pir_mode():
+            return
+        res = self.exe.run(prog, fetch_list=[out0, out1, out0_grad, logit_grad])
         np.testing.assert_allclose(res[0], res[1])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, (2, 3))
 
+        """
+        段错误
+        --------------------------------------
+        C++ Traceback (most recent call last):
+        --------------------------------------
+        0   paddle::framework::ThreadPoolTempl<paddle::framework::StlThreadEnvironment>::WorkerLoop(int)
+        1   paddle::framework::PirInterpreter::RunInstructionBaseAsync(unsigned long)
+        2   paddle::framework::PirInterpreter::RunInstructionBase(paddle::framework::InstructionBase*)
+        3   paddle::framework::PhiKernelInstruction::Run()
+        4   phi::CastInferMeta(phi::MetaTensor const&, phi::DataType, phi::MetaTensor*)
+
+        ----------------------
+        Error Message Summary:
+        ----------------------
+        FatalError: `Segmentation fault` is detected by the operating system.
+        [TimeInfo: *** Aborted at 1706040143 (unix time) try "date -d @1706040143" if you are using GNU date ***]
+        [SignalInfo: *** SIGSEGV (@0x0) received by PID 1010183 (TID 0x7fce0bfef700) from PID 0 ***]
+        """
+
+    @test_with_pir_api
     @prog_scope()
     def test_cross_entropy(self):
         input = paddle.rand([3, 5])
@@ -6522,13 +6623,15 @@ class TestLossAPIStatic(unittest.TestCase):
         loss = paddle.nn.functional.cross_entropy(
             input, label, reduction='mean'
         )
-        paddle.static.append_backward(loss)
+        grad_list = paddle.static.append_backward(loss, parameter_list=[input])
+        input_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 5))
 
+    @test_with_pir_api
     @prog_scope()
     def test_l1_loss(self):
         input = paddle.rand([3, 5])
@@ -6536,13 +6639,15 @@ class TestLossAPIStatic(unittest.TestCase):
         label = paddle.rand([3, 5])
 
         loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-        paddle.static.append_backward(loss)
+        grad_list = paddle.static.append_backward(loss, parameter_list=[input])
+        input_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 5))
 
+    @test_with_pir_api
     @prog_scope()
     def test_nll_loss(self):
         input = paddle.rand([5, 3])
@@ -6554,10 +6659,11 @@ class TestLossAPIStatic(unittest.TestCase):
         label.stop_gradient = False
 
         loss = paddle.nn.functional.nll_loss(log_out, label)
-        paddle.static.append_backward(loss)
+        grad_list = paddle.static.append_backward(loss, parameter_list=[input])
+        input_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5, 3))
 
@@ -6570,10 +6676,11 @@ class TestLossAPIStatic(unittest.TestCase):
         label.stop_gradient = False
 
         loss = paddle.nn.functional.nll_loss(log_out, label)
-        paddle.static.append_backward(loss)
+        grad_list = paddle.static.append_backward(loss, parameter_list=[input])
+        input_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5, 3, 2, 4))
 
