@@ -355,8 +355,8 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
 
         return reshard_output_code
 
-    def generate_auto_paralel_branch(self) -> str:
-        # if no tensor input, do not genetate auto parallel branch
+    def generate_auto_parallel_branch(self) -> str:
+        # if no tensor input, do not generate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
         infer_spmd_code = self.generate_infer_spmd_code()
