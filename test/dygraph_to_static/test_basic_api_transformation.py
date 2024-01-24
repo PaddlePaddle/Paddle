@@ -29,9 +29,6 @@ from paddle.jit.api import to_static
 SEED = 2020
 np.random.seed(SEED)
 
-# TODO(zhhsplendid): This test is old so that use a static graph style
-# mark it as TODO, to refactoring the code of this file.
-
 
 def dyfunc_to_variable(x):
     res = base.dygraph.to_variable(x, name=None, zero_copy=None)
@@ -104,11 +101,11 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
             np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
-# 1. test Apis that inherit from layers.Layer
-def dyfunc_BilinearTensorProduct(bilinearTensorProduct, layer1, layer2):
+# test Apis that inherit from layers.Layer
+def dyfunc_BilinearTensorProduct(bilinearTensorProduct, x1, x2):
     res = bilinearTensorProduct(
-        base.dygraph.base.to_variable(layer1),
-        base.dygraph.base.to_variable(layer2),
+        paddle.to_tensor(x1),
+        paddle.to_tensor(x2),
     )
     return res
 
@@ -459,15 +456,6 @@ class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
         paddle.seed(SEED)
         res = self.dygraph_func()
         return res
-
-
-def _dygraph_fn():
-    from paddle import base
-
-    x = np.random.random((1, 3)).astype('float32')
-    with base.dygraph.guard():
-        base.dygraph.to_variable(x)
-        np.random.random(1)
 
 
 if __name__ == '__main__':
