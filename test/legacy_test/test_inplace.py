@@ -351,7 +351,7 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
 
     def test_continuous_inplace_backward(self):
         # The api that only relies on input to calculate the gradient will copy input before
-        # the inpalce calculation, so here supports continuous inpalce backward calculation.
+        # the inplace calculation, so here supports continuous inplace backward calculation.
         grad_var_a, grad_var_a_inplace = 0, 1
         with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
