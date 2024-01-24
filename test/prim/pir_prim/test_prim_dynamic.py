@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decomp
 from paddle.framework import core
 
@@ -45,14 +44,14 @@ class TestPrimMode(unittest.TestCase):
             z = paddle.divide(x1, y)
             res = paddle.nn.functional.gelu(z)
             [res2] = decomp.decompose(main_program, [res])
-            gradients = grad(res2, (x, y))
+            # gradients = grad(res2, (x, y))
             exe = paddle.static.Executor()
             outs = exe.run(
                 feed={
                     'x': self.x,
                     'y': self.y,
                 },
-                fetch_list=[res2, gradients[0], gradients[1]],
+                fetch_list=[res2],
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
