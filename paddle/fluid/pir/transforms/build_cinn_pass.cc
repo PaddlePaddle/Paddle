@@ -14,15 +14,11 @@
 
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 
-#include "paddle/pir/core/builder.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-
-#include "paddle/cinn/frontend/op_mapper_registry.h"
-#include "paddle/cinn/hlir/framework/pir/utils.h"
-
-#include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 
 namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
