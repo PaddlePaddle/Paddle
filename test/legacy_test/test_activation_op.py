@@ -692,6 +692,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4910,7 +4911,7 @@ create_test_act_fp16_class(
 create_test_act_fp16_class(
     TestSilu, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
-create_test_act_fp16_class(TestLogSigmoid)
+create_test_act_fp16_class(TestLogSigmoid, check_pir=True)
 create_test_act_fp16_class(
     TestTanh, check_prim=True, check_prim_pir=True, enable_cinn=True
 )
@@ -5100,7 +5101,7 @@ create_test_act_bf16_class(
     TestSigmoid, check_prim=True, check_pir=True, check_prim_pir=True
 )
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
-create_test_act_bf16_class(TestLogSigmoid)
+create_test_act_bf16_class(TestLogSigmoid, check_pir=True)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestTanhshrink, check_pir=True)
 create_test_act_bf16_class(TestHardShrink, check_pir=True)
