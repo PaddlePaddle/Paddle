@@ -90,7 +90,6 @@ class OpCreatorCodeGen:
             ops_onednn_extra_yaml_file,
         )
         self.dialect_name = dialect_name
-        raise Exception("aaa")
 
     def parse_yaml(
         self,
@@ -104,7 +103,6 @@ class OpCreatorCodeGen:
         op_yaml_items = []
 
         if dialect_name == "onednn_op":
-            raise Exception("onednn_op is not supported")
             with open(ops_onednn_extra_yaml_file, "r") as f:
                 ops_onednn_extra = yaml.safe_load(f)
                 ops_onednn_extra_set = set()
