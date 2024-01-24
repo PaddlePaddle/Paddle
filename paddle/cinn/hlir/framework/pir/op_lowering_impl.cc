@@ -1183,6 +1183,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   for (auto* op : ops) {
+    std::cerr << "op name " << op->name() << std::endl;
     VLOG(4) << "start lowering op:" << op->name();
     // 1.Select Op impl
     std::vector<ir::Tensor> op_func_arg_tensors =

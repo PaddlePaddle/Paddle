@@ -53,22 +53,25 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         # TODO(Aurelius84): Need to remove it after verify CINN
         if use_cinn:
             net = apply_to_static(net, use_cinn)
-        net.eval()
+        # net.eval()
         out = net(self.hidden_states)
 
-        # loss = out.sum()
-        # loss.backward()
+        loss = out.sum()
+        loss.backward()
 
-        # print(self.hidden_states.gradient())
+        print(self.hidden_states.gradient())
         # print("=========")
-        return out
+        return out, net.weight.gradient(), self.hidden_states.gradient()
 
     def test_eval(self):
-        cinn_out = self.eval(use_cinn=True)
-        dy_out = self.eval(use_cinn=False)
+        cinn_out, cinn_dx, cinn_dh = self.eval(use_cinn=True)
+        dy_out, dy_dx, dy_dh = self.eval(use_cinn=False)
         np.testing.assert_allclose(
             cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
         )
+
+        np.testing.assert_allclose(cinn_dx, dy_dx, atol=1e-8)
+        np.testing.assert_allclose(cinn_dh, dy_dh, atol=1e-8)
 
 
 # class RotaryPosEmb(nn.Layer):

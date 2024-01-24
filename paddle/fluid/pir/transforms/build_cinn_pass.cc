@@ -171,7 +171,8 @@ bool UnimplementOps(pir::Operation* op) {
           return true;
         }
         if (owner_name == "pd_op.fetch" ||
-            owner_name == "builtin.set_parameter") {
+            owner_name == "builtin.set_parameter" ||
+            owner_name == "builtin.shadow_output") {
           continue;
         }
 
@@ -207,6 +208,27 @@ bool HaveZeroDimInput(pir::Operation* op) {
   return have_zero_dim;
 }
 
+bool HaveNegativeDimInput(pir::Operation* op) {
+  bool have_negtive_dim = false;
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    auto in = op->operand_source(i);
+    if (in) {
+      if (auto tensor_type =
+              in.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
+        auto in_dim = tensor_type.dims();
+        for (size_t j = 0; j < in_dim.size(); ++j) {
+          if (in_dim[j] < 0) {
+            have_negtive_dim = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return have_negtive_dim;
+}
+
 bool AllInputDenseTensor(pir::Operation* op) {
   bool all_denese_tensor = true;
   for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -231,6 +253,10 @@ bool IsSupportCinn(pir::Operation* op) {
   }
 
   if (HaveZeroDimInput(op)) {
+    return false;
+  }
+
+  if (HaveNegativeDimInput(op)) {
     return false;
   }
 
