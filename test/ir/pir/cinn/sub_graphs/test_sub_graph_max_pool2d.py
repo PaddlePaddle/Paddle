@@ -51,8 +51,8 @@ class TestMaxPool2d(unittest.TestCase):
         self.net = MaxPool2dCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
-        paddle.set_flags({'FLAGS_prim_all': with_prim})
         if to_static:
+            paddle.set_flags({'FLAGS_prim_all': with_prim})
             if with_cinn:
                 build_strategy = paddle.static.BuildStrategy()
                 build_strategy.build_cinn_pass = True
