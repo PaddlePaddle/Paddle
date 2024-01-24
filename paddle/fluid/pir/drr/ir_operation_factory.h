@@ -73,6 +73,9 @@ class OperationFactory {
 #ifdef PADDLE_WITH_CINN
   void RegisterCinnOpGeneratedOpCreator();
 #endif
+#ifdef PADDLE_WITH_DNNL
+  void RegisterOnednnOpGeneratedOpCreator();
+#endif
   std::unordered_map<std::string, operation_create_fn> op_creator_map;
 };
 
