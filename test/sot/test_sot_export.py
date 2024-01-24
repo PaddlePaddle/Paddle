@@ -46,6 +46,7 @@ class TestSotExport(unittest.TestCase):
         with with_export_guard(temp_dir_name):
             y = paddle.jit.to_static(net)(x)
         assert os.path.exists(os.path.join(temp_dir_name, "SIR_0.py"))
+        temp_dir.cleanup()
 
 
 if __name__ == "__main__":
