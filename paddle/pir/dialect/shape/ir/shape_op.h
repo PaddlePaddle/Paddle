@@ -37,7 +37,7 @@ class IR_API DimOp : public Op<DimOp> {
 
   const std::string GetName();
   void SetName(std::string attrValue);
-  OpResult out() { return result(0); }
+  Value out() { return result(0); }
   void VerifySig() {}
 };
 
