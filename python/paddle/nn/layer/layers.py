@@ -1750,7 +1750,12 @@ class Layer:
                         ):
                             _buffers[name] = assign(value)
                         else:
-                            assign(value, getattr(self, name))
+                            if isinstance(value, paddle.pir.Value):
+                                _buffers[name] = assign(
+                                    value, getattr(self, name)
+                                )
+                            else:
+                                assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
