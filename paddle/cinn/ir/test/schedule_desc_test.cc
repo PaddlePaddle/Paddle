@@ -105,7 +105,7 @@ std::string SourceCodeGen(const ModuleExpr& module_expr,
                           const std::vector<ir::LoweredFunc>& lowered_funcs,
                           const Target& target) {
   auto exprs = module_expr.GetExprs();
-  CHECK_EQ(exprs.size(), lowered_funcs.size()) << "size of func is not euqal";
+  CHECK_EQ(exprs.size(), lowered_funcs.size()) << "size of func is not equal";
   std::vector<ir::LoweredFunc> updated_funcs =
       ir::ir_utils::IRCopy(lowered_funcs);
   Module::Builder builder("test_module", target);
