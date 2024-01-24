@@ -143,24 +143,22 @@ class CUDAGraphNodeLauncher {
   //  [CUDA Kernel Callback]
   //  Acts as the launcher for the kernel. It accepts an `unsigned int`
   //  identifier and uses it for the kernel launch.
-  //
-  //  cudaKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
-  //      kernel<<<>>>(id, ...);  // Launching the kernel with id
-  //  };
-  using cudaKernelCallback_t = std::function<void(unsigned int)>;
-
-  //  [Retrieving CUDA Function]
   //  The `cudaGetFuncBySymbol` method can be used to fetch the `cudaFunction_t`
   //  reference of the kernel from the kernel pointer.
+  //  cudaKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
+  //      // cudaFunction_t is REQUIRED to get here
+  //      cudaFunction_t cudaFunc;
+  //      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
   //
-  //  cudaFunction_t cudaFunc;
-  //  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
-  //
+  //      kernel<<<>>>(id, ...);  // Launching the kernel with id
+  //      return cudaFunc;
+  //  };
+  using cudaKernelCallback_t = std::function<cudaFunction_t(unsigned int)>;
+
   //  [Kernel Launch]
   //  With the callbacks defined and the CUDA function obtained, the kernel can
   //  be launched using the `KernelNodeLaunch` method.
-  void KernelNodeLaunch(cudaFunction_t cudaFunc,
-                        parameterSetter_t parameterSetter,
+  void KernelNodeLaunch(parameterSetter_t parameterSetter,
                         cudaKernelCallback_t cudakernelCallback);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
