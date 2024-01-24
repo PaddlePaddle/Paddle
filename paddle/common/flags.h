@@ -213,7 +213,7 @@ DEFINE_FROM_ENV_FUNC(std::string, String);
 #if defined(_WIN32)
 #define PHI_EXPORT_FLAG __declspec(dllexport)
 #if defined(PHI_INNER)
-#define PHI_IMPORT_FLAG
+#define PHI_IMPORT_FLAG __declspec(dllexport)
 #else
 #define PHI_IMPORT_FLAG __declspec(dllimport)
 #endif  // PHI_INNER
