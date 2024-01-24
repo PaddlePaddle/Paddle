@@ -499,7 +499,9 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
     op_name += "_";
     traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
   }
-  op_names_.push_back(op_name);
+  char* op_name_c = new char[op_name.size() + 1];
+  snprintf(op_name_c, op_name.size() + 1, "%s", op_name.c_str());
+  op_names_.push_back(op_name_c);
 
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
   std::vector<std::string> attr_names;
@@ -522,7 +524,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
   pir::VerifyPtr verify_func = [](pir::Operation* op) {};
   ir_context()->RegisterOpInfo(this,
                                id,
-                               op_names_.back().c_str(),
+                               op_names_.back(),
                                std::move(interface_values),
                                traits,
                                attr_num,
