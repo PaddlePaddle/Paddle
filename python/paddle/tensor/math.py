@@ -24,6 +24,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
+from paddle.pir import Value
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -5126,11 +5127,15 @@ def gammaincc(x, y, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1.        , 0.15729916, 0.00000774, 0.        , 0.        ])
     """
-    if not paddle.all(paddle.greater_equal(x, paddle.zeros_like(x))):
+    if not isinstance(x, Value) and not paddle.all(
+        paddle.greater_equal(x, paddle.zeros_like(x))
+    ):
         raise ValueError(
             "The input argument x must be greater than or equal to 0."
         )
-    if not paddle.all(paddle.greater_equal(y, paddle.zeros_like(y))):
+    if not isinstance(x, Value) and not paddle.all(
+        paddle.greater_equal(y, paddle.zeros_like(y))
+    ):
         raise ValueError(
             "The input argument y must be greater than or equal to 0."
         )
