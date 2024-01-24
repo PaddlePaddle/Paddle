@@ -672,8 +672,6 @@ GroupList OpFusionPassInternal(
   }
   VLOG(3) << "OpFusionPass Finish...!";
 
-  VLOG(3) << "OpFusionPass Finish...!";
-
   return res;
 }
 
