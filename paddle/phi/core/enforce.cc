@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/core/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
-PD_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_int32(call_stack_level);
 namespace phi {
 namespace enforce {
 

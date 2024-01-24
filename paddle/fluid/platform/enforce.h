@@ -102,7 +102,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
 
-PHI_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {

@@ -46,10 +46,16 @@
 #define PD_DECLARE_string(name) DECLARE_string(name)
 #endif
 
-#define PD_DECLARE_VARIABLE(type, name)           \
-  namespace paddle_flags {                        \
-  extern PHI_IMPORT_FLAG(name) type FLAGS_##name; \
-  }                                               \
+#define PD_DECLARE_VARIABLE(type, name)     \
+  namespace paddle_flags {                  \
+  extern PHI_IMPORT_FLAG type FLAGS_##name; \
+  }                                         \
+  using paddle_flags::FLAGS_##name
+
+#define COMMON_DECLARE_VARIABLE(type, name) \
+  namespace paddle_flags {                  \
+  extern PADDLE_API type FLAGS_##name;      \
+  }                                         \
   using paddle_flags::FLAGS_##name
 
 #define PD_DECLARE_bool(name) PD_DECLARE_VARIABLE(bool, name)
@@ -60,6 +66,13 @@
 #define PD_DECLARE_double(name) PD_DECLARE_VARIABLE(double, name)
 #define PD_DECLARE_string(name) PD_DECLARE_VARIABLE(std::string, name)
 
+#define COMMON_DECLARE_bool(name) COMMON_DECLARE_VARIABLE(bool, name)
+#define COMMON_DECLARE_int32(name) COMMON_DECLARE_VARIABLE(int32_t, name)
+#define COMMON_DECLARE_uint32(name) COMMON_DECLARE_VARIABLE(uint32_t, name)
+#define COMMON_DECLARE_int64(name) COMMON_DECLARE_VARIABLE(int64_t, name)
+#define COMMON_DECLARE_uint64(name) COMMON_DECLARE_VARIABLE(uint64_t, name)
+#define COMMON_DECLARE_double(name) COMMON_DECLARE_VARIABLE(double, name)
+#define COMMON_DECLARE_string(name) COMMON_DECLARE_VARIABLE(std::string, name)
 // ----------------------------DEFINE FLAGS----------------------------
 #define PD_DEFINE_VARIABLE(type, name, default_value, description)           \
   namespace paddle_flags {                                                   \
@@ -210,15 +223,16 @@ DEFINE_FROM_ENV_FUNC(std::string, String);
 }  // namespace flags
 }  // namespace paddle
 
-#define PHI_IMPORT_FLAG(name) \
-#if defined(_WIN32) &&      \
-      defined(PHI_INNER_DEFINE_##name) __declspec(dllexport) #else\
-__declspec(dllimport) #endif
-
 #if defined(_WIN32)
 #define PHI_EXPORT_FLAG __declspec(dllexport)
+#if defined(PHI_INNER)
+#define PHI_IMPORT_FLAG __declspec(dllexport)
+#else
+#define PHI_IMPORT_FLAG __declspec(dllimport)
+#endif  // PHI_INNER
 #else
 #define PHI_EXPORT_FLAG
+#define PHI_IMPORT_FLAG
 #endif  // _WIN32
 
 // We redefine the flags macro for exporting flags defined in phi
@@ -227,7 +241,7 @@ __declspec(dllimport) #endif
 // clang-format off
 #define PHI_DECLARE_VARIABLE(type, shorttype, name) \
   namespace fL##shorttype {                         \
-    extern PHI_IMPORT_FLAG(name) type FLAGS_##name;       \
+    extern PHI_IMPORT_FLAG type FLAGS_##name;       \
   }                                                 \
   using fL##shorttype::FLAGS_##name
 // clang-format on
@@ -249,16 +263,15 @@ __declspec(dllimport) #endif
 
 #define PHI_DECLARE_VARIABLE(type, shorttype, name) \
   namespace paddle_flags {                          \
-  extern PHI_IMPORT_FLAG(name) type FLAGS_##name;   \
+  extern PHI_IMPORT_FLAG type FLAGS_##name;         \
   }                                                 \
   using paddle_flags::FLAGS_##name
 
 #define PHI_DEFINE_VARIABLE(type, shorttype, name, default_value, description) \
   namespace paddle_flags {                                                     \
-#if defined(                                                                 \
-      PHI_INNER) #define PHI_INNER_DEFINE_##name #endif static const type      \
-      FLAGS_##name##_default = default_value;                                  \
-  PHI_EXPORT_FLAG type FLAGS_##name = default_value; /* Register FLAG */       \
+  static const type FLAGS_##name##_default = default_value;                    \
+  PHI_EXPORT_FLAG type FLAGS_##name = default_value;                           \
+  /* Register FLAG */                                                          \
   static ::paddle::flags::FlagRegisterer flag_##name##_registerer(             \
       #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name);   \
   }                                                                            \
@@ -289,10 +302,10 @@ __declspec(dllimport) #endif
   PHI_DEFINE_VARIABLE(double, D, name, val, txt)
 
 #ifdef PADDLE_WITH_GFLAGS
-#define PHI_DECLARE_string(name)                             \
-  namespace fLS {                                            \
-  extern PHI_IMPORT_FLAG(name)::fLS::clstring& FLAGS_##name; \
-  }                                                          \
+#define PHI_DECLARE_string(name)                        \
+  namespace fLS {                                       \
+  extern PHI_IMPORT_FLAG ::fLS::clstring& FLAGS_##name; \
+  }                                                     \
   using fLS::FLAGS_##name
 
 #define PHI_DEFINE_string(name, val, txt)                                    \

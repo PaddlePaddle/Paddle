@@ -32,8 +32,8 @@ PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
                          "Whether to use strdie kernel if op support stride.");
 
-PD_DECLARE_int32(low_precision_op_list);
-PD_DECLARE_bool(enable_api_kernel_fallback);
+COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(enable_api_kernel_fallback);
 PD_DECLARE_bool(run_kp_kernel);
 namespace phi {
 
