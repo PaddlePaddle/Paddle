@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/get_pad_lse.cu.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
@@ -411,6 +410,27 @@ void MemoryEfficientAttentionGradKernel(
     p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);
     p.grad_output_ptr = phi::SafeGetTensorPtr<scalar_t>(output_grad);
 
+    if (!has_query_grad) {
+      dq_tmp.clear();
+      dq_tmp = EmptyLike<T, Context>(ctx, query);
+      query_grad = &dq_tmp;
+    }
+    p.grad_query_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
+
+    if (!has_key_grad) {
+      dk_tmp.clear();
+      dk_tmp = EmptyLike<T, Context>(ctx, key);
+      key_grad = &dk_tmp;
+    }
+    p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
+
+    if (!has_value_grad) {
+      dv_tmp.clear();
+      dv_tmp = EmptyLike<T, Context>(ctx, value);
+      value_grad = &dv_tmp;
+    }
+    p.grad_value_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
+
     p.delta_ptr = phi::SafeGetTensorPtr<float>(delta);
     PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
     PD_MEA_CHECK_OVERFLOW(p.head_dim_value, v_dims[3]);
@@ -446,27 +466,6 @@ void MemoryEfficientAttentionGradKernel(
 
     PD_MEA_CHECK_OVERFLOW(p.o_strideH, DimStride(output.dims(), 2));
     PD_MEA_CHECK_OVERFLOW(p.o_strideB, DimStride(output.dims(), 0));
-
-    if (!has_query_grad) {
-      dq_tmp.clear();
-      dq_tmp = EmptyLike<T, Context>(ctx, query);
-      query_grad = &dq_tmp;
-    }
-    p.grad_query_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
-
-    if (!has_key_grad) {
-      dk_tmp.clear();
-      dk_tmp = EmptyLike<T, Context>(ctx, key);
-      key_grad = &dk_tmp;
-    }
-    p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
-
-    if (!has_value_grad) {
-      dv_tmp.clear();
-      dv_tmp = EmptyLike<T, Context>(ctx, value);
-      value_grad = &dv_tmp;
-    }
-    p.grad_value_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
 
     PD_MEA_CHECK_OVERFLOW(p.gQ_strideH, DimStride(query_grad->dims(), 2));
     PD_MEA_CHECK_OVERFLOW(p.gQ_strideB, DimStride(query_grad->dims(), 0));
