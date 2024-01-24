@@ -1236,7 +1236,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
       x_rank == static_cast<int>(y_dims.size()),
       phi::errors::PreconditionNotMet(
           "ShapeError: The shape of input tensor Y: %s should match with "
-          "input tenosr X: %s",
+          "input tensor X: %s",
           y_dims.to_str(),
           x_dims.to_str()));
   bool shape_match = true;
