@@ -74,10 +74,13 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     }
 
     // TODO(zhangbopd): use op->result(0) to infer the shape
-    symbol::ShapeOrDataDimExprs shape_data{out_dims};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+
     if (operand_source_1st_data.has_value()) {
       std::vector<symbol::DimExpr> tmp_shape(std::int64_t(out_dims.size()));
-      symbol::ShapeOrDataDimExprs temp_shape_data(tmp_shape, out_dims);
+      symbol::ShapeOrDataDimExprs temp_shape_data{
+          symbol::TensorShapeOrDataDimExprs(tmp_shape, out_dims)};
       shape_data = temp_shape_data;
     }
 
@@ -97,7 +100,7 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    pir::OpResult res0 = op->result(0);
+    pir::Value res0 = op->result(0);
 
     std::vector<int64_t> dims =
         common::vectorize(res0.type().dyn_cast<pir::DenseTensorType>().dims());
@@ -116,7 +119,9 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
       sym_shape.push_back(dim_expr);
     }
 
-    symbol::ShapeOrDataDimExprs shape_data{sym_shape};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_shape)};
+
     op->set_attribute("symbolic_shape",
                       pir::shape::SymbolAttribute::get(
                           pir::IrContext::Instance(), shape_data));
@@ -494,7 +499,9 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
     op_name += "_";
     traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
   }
-  op_names_.push_back(op_name);
+  char* op_name_c = new char[op_name.size() + 1];
+  snprintf(op_name_c, op_name.size() + 1, "%s", op_name.c_str());
+  op_names_.push_back(op_name_c);
 
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
   std::vector<std::string> attr_names;
@@ -517,7 +524,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
   pir::VerifyPtr verify_func = [](pir::Operation* op) {};
   ir_context()->RegisterOpInfo(this,
                                id,
-                               op_names_.back().c_str(),
+                               op_names_.back(),
                                std::move(interface_values),
                                traits,
                                attr_num,
