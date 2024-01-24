@@ -46,10 +46,33 @@ struct Mutator : public ir::IRMutator<> {
       visited_buf_.insert(buf->name);
       auto buf_size = ir::Expr(1);
 
-      for (size_t i = 0; i < expr->as_tensor()->shape.size(); ++i) {
+      size_t max_size = std::max(buf->shape.size(), tensor->shape.size());
+      size_t min_size = std::min(buf->shape.size(), tensor->shape.size());
+      size_t i = 0;
+      for (; i < min_size; ++i) {
         auto e = expr->as_tensor()->shape[i];
         auto buf_e = buf->shape[i];
-        CHECK(ir::ir_utils::IRCompare(e, buf_e));
+        if (buf->memory_type == ir::MemoryType::GPULocal) {
+          e = cinn::common::AutoSimplify(e);
+          buf_e = cinn::common::AutoSimplify(buf_e);
+          if (!e.is_constant()) {
+            auto new_shape = ir::ir_utils::IRCopy(e);
+            new_shape = analyzer.UpperBound(new_shape);
+            CHECK(new_shape.is_constant());
+            e = new_shape;
+          }
+          if (!buf_e.is_constant()) {
+            auto new_shape = ir::ir_utils::IRCopy(buf_e);
+            new_shape = analyzer.UpperBound(new_shape);
+            CHECK(new_shape.is_constant());
+            buf_e = new_shape;
+          }
+        }
+        buf_size = buf_size * buf_e;
+      }
+      for (; i < max_size; i++) {
+        auto e = buf->shape.size() > tensor->shape.size() ? buf->shape[i]
+                                                          : tensor->shape[i];
         if (buf->memory_type == ir::MemoryType::GPULocal) {
           e = cinn::common::AutoSimplify(e);
           if (!e.is_constant()) {
@@ -58,10 +81,9 @@ struct Mutator : public ir::IRMutator<> {
             CHECK(new_shape.is_constant());
             e = new_shape;
           }
-          buf_e = ir::ir_utils::IRCopy(e);
         }
-        buf_size = buf_size * buf_e;
-        Visit(&e, &e);
+        buf_size = buf_size *
+                   (buf->shape.size() > tensor->shape.size() ? e : ir::Expr(1));
       }
       if (buf->memory_type == ir::MemoryType::GPUShared) {
         buf_size = analyzer.UpperBound(buf_size);
@@ -69,7 +91,6 @@ struct Mutator : public ir::IRMutator<> {
         shared_mem_size_used_ += static_cast<size_t>(buf_size.get_constant()) *
                                  static_cast<size_t>(buf->dtype.bits()) / 8;
       }
-    } else {
       for (auto& e : expr->as_tensor()->shape) {
         Visit(&e, &e);
       }
