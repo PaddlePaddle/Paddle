@@ -67,10 +67,15 @@ MUTABLE_ATTR_FUNCTION_TEMPLATE = """
       }});
 """
 
-Dialect2NameSpaceMap = {"pd_op": "paddle::dialect", "cinn_op": "cinn::dialect"}
+Dialect2NameSpaceMap = {
+    "pd_op": "paddle::dialect",
+    "cinn_op": "cinn::dialect",
+    "onednn_op": "paddle::onednn::dialect",
+}
 Dialect2OpHeaderMap = {
     "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
     "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
+    "onednn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/onednn_op.h\"",
 }
 
 

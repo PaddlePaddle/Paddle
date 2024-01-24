@@ -105,7 +105,7 @@ if(WITH_MKLDNN)
     COMMAND
       ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files
       ${op_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
-      --dialect_name ${dialect_name} --op_creator_file
+      --dialect_name ${onednn_dialect_name} --op_creator_file
       ${onednn_op_creator_file_tmp} --onednn_yaml_file ${pir_op_onednn_yaml}
       --ops_onednn_extra_yaml_file ${pd_ops_onednn_extra_yaml_file}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${onednn_op_creator_file_tmp}
