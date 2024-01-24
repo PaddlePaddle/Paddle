@@ -66,7 +66,7 @@ class IR_API OpBase {
     return operation()->operand_type(index);
   }
 
-  OpResult result(uint32_t index) const { return operation()->result(index); }
+  Value result(uint32_t index) const { return operation()->result(index); }
 
   template <typename T = Type>
   T result_type(uint32_t index) const {
