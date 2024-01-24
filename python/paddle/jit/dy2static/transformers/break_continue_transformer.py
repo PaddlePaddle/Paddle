@@ -173,6 +173,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
         )
         loop_node_index = _find_ancestor_loop_index(node, self.ancestor_nodes)
         assert loop_node_index != -1, "SyntaxError: 'continue' outside loop"
+        loop_node = self.ancestor_nodes[loop_node_index]
         function_def_node = self.ancestor_nodes[function_def_node_index]
 
         # 1. Map the 'break/continue' stmt with an unique boolean variable V.
@@ -191,6 +192,9 @@ class BreakContinueTransformer(BaseNodeVisitor):
 
         # 4. For 'continue', set continue to False at the beginning of each loop
         assign_false_node = create_bool_node(variable_name, False)
+        loop_node.body.insert(0, assign_false_node)
+        # Add a same assign statement to the beginning of function body to avoid
+        # generate the UndefinedVar
         function_def_node.body.insert(0, assign_false_node)
 
     def _remove_stmts_after_break_continue(

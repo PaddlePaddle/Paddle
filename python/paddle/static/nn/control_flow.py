@@ -1178,7 +1178,9 @@ class OutputSelector:
         self.true_output = flattened_true_output
         self.false_output = flattened_false_output
         self.names = names
-        assert len(flattened_true_output) == len(flattened_false_output)
+        self.num_output = len(flattened_true_output)
+        assert len(flattened_false_output) == self.num_output
+        assert len(names) == self.num_output
 
     @cached_property
     def unified_output(self):
@@ -1193,9 +1195,10 @@ class OutputSelector:
                 false_out,
             ) = OutputSelector.constant_to_variable_promotion(
                 [
-                    (true_out, self.if_op.true_block, name),
-                    (false_out, self.if_op.false_block, name),
-                ]
+                    (true_out, self.if_op.true_block),
+                    (false_out, self.if_op.false_block),
+                ],
+                name,
             )
             if isinstance(true_out, paddle.pir.Value):
                 assert isinstance(
@@ -1226,22 +1229,51 @@ class OutputSelector:
             if i not in self.variable_indices
         ]
 
+    def get_variable_outputs(self):
+        variable_true_output = self.select_by_indices(
+            self.unified_true_output,
+            self.variable_indices,
+        )
+        variable_false_output = self.select_by_indices(
+            self.unified_false_output,
+            self.variable_indices,
+        )
+        return variable_true_output, variable_false_output
+
+    def restore_outputs_by_variable_results(self, variable_results):
+        constant_output = self.select_by_indices(
+            self.unified_true_output,
+            self.constant_indices,
+        )
+        restored_output = [None for _ in range(self.num_output)]
+        self.fill_to_indices(
+            restored_output,
+            variable_results,
+            self.variable_indices,
+        )
+        self.fill_to_indices(
+            restored_output,
+            constant_output,
+            self.constant_indices,
+        )
+        return restored_output
+
     @staticmethod
     def select_by_indices(unified_args, indices):
         return [unified_args[i] for i in indices]
 
     @staticmethod
-    def fill_by_indices(outputs, partial_outputs, partial_indices):
+    def fill_to_indices(outputs, partial_outputs, partial_indices):
         for i, out in zip(partial_indices, partial_outputs):
             outputs[i] = out
         return outputs
 
     @staticmethod
-    def constant_to_variable_promotion(out_with_blocks):
+    def constant_to_variable_promotion(out_with_blocks, name):
         from paddle.jit.dy2static.variable_trans_func import to_static_variable
 
         promotion_builtin_types = (bool, int, float)
-        outs, _, names = zip(*out_with_blocks)
+        outs, _ = zip(*out_with_blocks)
 
         def all_has_same_value(outs):
             if len(outs) <= 1:
@@ -1269,26 +1301,33 @@ class OutputSelector:
             if all_has_same_value(outs):
                 return outs
             else:
-                # TODO: add promotion warning
+                warnings.warn(
+                    f"Return results from different branches in cond has same type: {type(outs[0])}, "
+                    f"but has different value: true value is '{outs[0]}' and false value is '{outs[1]}', "
+                    "so we will promote the constant to variable."
+                )
                 return [
                     constant_to_variable_with_block(out, block)
-                    for out, block, name in out_with_blocks
+                    for out, block in out_with_blocks
                 ]
 
         if any(isinstance(out, paddle.pir.Value) for out in outs) and all(
             isinstance(out, (paddle.pir.Value,) + promotion_builtin_types)
             for out in outs
         ):
-            # TODO: Add promotion warning
+            warnings.warn(
+                "Return results from different branches in cond are not same type: "
+                f"false_var returned by false_fn is '{type(outs[1])}' and true_var of true_fn is "
+                f"'{type(outs[0])}'"
+            )
             return [
                 constant_to_variable_with_block(out, block)
-                for out, block, name in out_with_blocks
+                for out, block in out_with_blocks
             ]
 
-        # TODO: Add arg name
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            f"returned `{names[0]}` by false_fn is `{outs[0]}` and true_var of true_fn is `{outs[1]}`"
+            f"returned `{name}` by false_fn is `{outs[0]}` and true_var of true_fn is `{outs[1]}`"
         )
 
 
@@ -1572,25 +1611,24 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         flattened_true_output, flattened_false_output = flatten(
             true_output
         ), flatten(false_output)
-        num_output = len(flattened_true_output)
+        flattened_return_names = [
+            name
+            for seq_out, name in zip(
+                _to_sequence_except_dict(true_output),
+                _to_sequence_except_dict(return_names),
+            )
+            for _ in flatten(seq_out)
+        ]
         output_selector = OutputSelector(
             if_op,
             flattened_true_output,
             flattened_false_output,
-            names=return_names,
+            names=flattened_return_names,
         )
-        variable_true_output = output_selector.select_by_indices(
-            output_selector.unified_true_output,
-            output_selector.variable_indices,
-        )
-        variable_false_output = output_selector.select_by_indices(
-            output_selector.unified_false_output,
-            output_selector.variable_indices,
-        )
-        constant_output = output_selector.select_by_indices(
-            output_selector.unified_true_output,
-            output_selector.constant_indices,
-        )
+        (
+            variable_true_output,
+            variable_false_output,
+        ) = output_selector.get_variable_outputs()
 
         with if_op.true_block():
             cf_yield(variable_true_output)
@@ -1603,16 +1641,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         if_op.update_output()
         variable_results = flatten(if_op.results())
 
-        restored_output = [None for _ in range(num_output)]
-        output_selector.fill_by_indices(
-            restored_output,
-            variable_results,
-            output_selector.variable_indices,
-        )
-        output_selector.fill_by_indices(
-            restored_output,
-            constant_output,
-            output_selector.constant_indices,
+        restored_output = output_selector.restore_outputs_by_variable_results(
+            variable_results
         )
         return pack_sequence_as(true_output, restored_output)
 
