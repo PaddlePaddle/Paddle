@@ -226,8 +226,8 @@ symbol::DimExpr GetCstrRhsEqOneDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrRhsEqOneReplacement(broadcastable_condition);
-  return symbol
-      : SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 typedef symbol::DimExpr (*ConvertDimExprT)(
