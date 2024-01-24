@@ -71,25 +71,7 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                                           "but received dimensions of"
                                           "Input is [%d]",
                                           x_dim.size()));
-    PADDLE_ENFORCE_EQ(y_dim.size(),
-                      4,
-                      platform::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4"
-                          "(3, num_head, dim_head, dim_embed),"
-                          "but received dimensions of"
-                          "Input is [%d]",
-                          y_dim.size()));
-    PADDLE_ENFORCE_EQ(
-        x_dim[2],
-        trans_qkvw ? y_dim[3] : y_dim[0],
-        platform::errors::InvalidArgument(
-            "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
-            "true) or y_dim[0](trans_qkvw is false)"
-            "must be equal. But received: the shape "
-            "of input x = [%s], and the shape of "
-            "input qkv_weight = [%s]",
-            x_dim,
-            y_dim));
+
 
     if (ctx->HasInputs("CacheKV")) {
       // [2, batch_size, num_head, max_seq_len, head_size]
