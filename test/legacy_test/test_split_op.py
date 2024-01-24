@@ -371,7 +371,7 @@ class TestSplitOpErrorStatic(unittest.TestCase):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
                 x5 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x3'
+                    shape=[-1, 4], dtype='float16', name='x5'
                 )
                 paddle.split(x=x5, num_or_sections=2, axis=3.2)
 
@@ -380,7 +380,7 @@ class TestSplitOpErrorStatic(unittest.TestCase):
             # The type of num_or_sections in split_op should be int, tuple or list.
             def test_num_or_sections_type():
                 x6 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x4'
+                    shape=[-1, 4], dtype='float16', name='x6'
                 )
                 paddle.split(x=x6, num_or_sections=2.1, axis=3)
 
@@ -388,7 +388,7 @@ class TestSplitOpErrorStatic(unittest.TestCase):
 
             def test_num_or_sections_type_tensor():
                 x7 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x5'
+                    shape=[-1, 4], dtype='float16', name='x7'
                 )
                 paddle.split(input=x7, num_or_sections=2.1, dim=3)
 
@@ -396,7 +396,7 @@ class TestSplitOpErrorStatic(unittest.TestCase):
 
             def test_axis_type_tensor():
                 x8 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x6'
+                    shape=[-1, 4], dtype='float16', name='x8'
                 )
                 paddle.split(input=x8, num_or_sections=2, dim=3.2)
 
