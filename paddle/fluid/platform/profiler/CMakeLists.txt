@@ -43,19 +43,9 @@ cc_library(
        cpu_utilization
        event_bind
        custom_tracer)
-cc_test(
-  test_event_node
-  SRCS test_event_node.cc
-  DEPS event_node profiler_logger)
-cc_test(
-  test_extra_info
-  SRCS test_extra_info.cc
-  DEPS profiler_utils)
-cc_test(
-  test_serialization_logger
-  SRCS dump/test_serialization_logger.cc
-  DEPS event_bind)
-cc_test(
-  new_profiler_test
-  SRCS profiler_test.cc
-  DEPS new_profiler)
+paddle_test(test_event_node SRCS test_event_node.cc DEPS event_node
+            profiler_logger)
+paddle_test(test_extra_info SRCS test_extra_info.cc DEPS profiler_utils)
+paddle_test(test_serialization_logger SRCS dump/test_serialization_logger.cc
+            DEPS event_bind)
+paddle_test(new_profiler_test SRCS profiler_test.cc DEPS new_profiler)
