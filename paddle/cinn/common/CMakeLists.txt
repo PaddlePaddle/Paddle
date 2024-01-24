@@ -22,7 +22,6 @@ gather_srcs(
   python_interpreter_guard.cc
   nvgpu_dev_info.cc
   integer_set.cc
-  dim_expr_simplify.cc
   dim_expr_converter.cc
   broadcast_tree.cc
   dim_expr_util.cc)
