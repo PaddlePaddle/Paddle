@@ -1417,7 +1417,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, phi::CPUPlace());
-  pir::OpResult axis_ = full_axis_op->result(0);
+  pir::Value axis_ = full_axis_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {out_grad_, axis_};
@@ -1521,8 +1521,7 @@ std::vector<pir::Type> SplitGradOp::InferMeta(
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType out_grad = out_grad_.type().dyn_cast<pir::VectorType>();
-  int axis = axis_.dyn_cast<pir::OpResult>()
-                 .owner()
+  int axis = axis_.defining_op()
                  ->dyn_cast<paddle::dialect::FullOp>()
                  .attribute<paddle::dialect::ScalarAttribute>("value")
                  .data()
@@ -2100,11 +2099,10 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   phi::Scalar i_scalar;
-  if (i_.dyn_cast<pir::OpResult>() &&
-      i_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {
+  if (i_.isa<pir::OpResult>() &&
+      i_.defining_op()->isa<paddle::dialect::FullOp>()) {
     i_scalar =
-        std::move(phi::Scalar(i_.dyn_cast<pir::OpResult>()
-                                  .owner()
+        std::move(phi::Scalar(i_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
@@ -3395,7 +3393,7 @@ void ExpandOp::Build(pir::Builder &builder,
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
           shape, phi::DataType::INT64, phi::CPUPlace());
-  pir::OpResult shape_ = full_shape_op->result(0);
+  pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {x_, shape_};
@@ -3428,7 +3426,7 @@ void ExpandOp::Build(pir::Builder &builder,
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
           shape, phi::DataType::INT64, phi::CPUPlace());
-  pir::OpResult shape_ = full_shape_op->result(0);
+  pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {x_, shape_};
@@ -3469,8 +3467,10 @@ bool ExpandOp::InferSymbolicShape(
              "Value shape comes from ShapeOp, it must have data");
   const auto &data = data_shape.data().value();
 
-  shape_analysis->SetShapeOrDataForValue(out(),
-                                         symbol::ShapeOrDataDimExprs(data));
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(data)};
+
+  shape_analysis->SetShapeOrDataForValue(out(), shape_data);
   return true;
 }
 
@@ -3555,12 +3555,9 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   }
 
   phi::IntArray shape;
-  if (shape_.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     shape = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        shape_.dyn_cast<pir::OpResult>()
-            .owner()
+        shape_.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"))));
   } else if (shape_.type().isa<pir::VectorType>()) {
@@ -4138,10 +4135,12 @@ bool ShapeBroadcastOp::InferSymbolicShape(
     output_data.emplace_back(GetBroadcastDimExpr(x_data.at(i), y_data.at(i)));
   }
 
-  pir::OpResult res = result(0);
+  pir::Value res = result(0);
   // TODO(HongyuJia): use op->result(0) to infer the shape
   std::vector<symbol::DimExpr> shape(std::int64_t(output_data.size()));
-  symbol::ShapeOrDataDimExprs output_data_shape{shape, output_data};
+
+  symbol::ShapeOrDataDimExprs output_data_shape{
+      symbol::TensorShapeOrDataDimExprs(shape, output_data)};
   shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }

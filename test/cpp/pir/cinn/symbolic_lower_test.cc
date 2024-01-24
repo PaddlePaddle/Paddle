@@ -97,12 +97,17 @@ BuildGroupProgramForLowering() {
   symbol::DimExpr y_dim_0(1);
   symbol::DimExpr y_dim_1("S1");
   symbol::DimExpr y_dim_2(2);
-  value_to_shape_data[x] = symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1});
-  value_to_shape_data[y] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[exp.result(0)] = value_to_shape_data[x];
-  value_to_shape_data[reshape.result(0)] = value_to_shape_data[y];
-  value_to_shape_data[sub.result(0)] = value_to_shape_data[y];
+  value_to_shape_data.emplace(
+      x,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({x_dim_0, x_dim_1})));
+  value_to_shape_data.emplace(
+      y,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(exp.result(0), value_to_shape_data.at(x));
+  value_to_shape_data.emplace(reshape.result(0), value_to_shape_data.at(y));
+  value_to_shape_data.emplace(sub.result(0), value_to_shape_data.at(y));
   groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
 
   return {program, groups};
@@ -185,14 +190,22 @@ BuildBroadcastGroupProgramForLowering() {
   symbol::DimExpr y_dim_0(1);
   symbol::DimExpr y_dim_1("S0");
   symbol::DimExpr y_dim_2(128);
-  value_to_shape_data[x] =
-      symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1, x_dim_2});
-  value_to_shape_data[y] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[x_broadcast.result(0)] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[sub.result(0)] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
+  value_to_shape_data.emplace(
+      x,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({x_dim_0, x_dim_1, x_dim_2})));
+  value_to_shape_data.emplace(
+      y,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(
+      x_broadcast.result(0),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(
+      sub.result(0),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
   groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
 
   return {program, groups};

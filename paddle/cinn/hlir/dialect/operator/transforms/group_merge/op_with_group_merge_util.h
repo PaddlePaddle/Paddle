@@ -203,7 +203,7 @@ inline bool is_horizontal_relation(::pir::Operation* producer,
         if (!consumer->ops_set.count(tmp_op)) {
           continue;
         }
-        // recored visited op.
+        // recorded visited op.
         if (!visited_set.count(tmp_op)) {
           visited_set.insert(tmp_op);
           candidates.push(tmp_op);
