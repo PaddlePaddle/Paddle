@@ -39,9 +39,10 @@ class IR_API ShapeConstraintIRAnalysis {
 
   bool HasShapeOrDataForValue(Value val) const;
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
-  void SetShapeOrDataForValue(Value val,
+  // Returns true if shape_or_data is first inserted.
+  bool SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
   symbol::DimExprBuilder CreateDimExprBuilder();
