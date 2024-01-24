@@ -174,10 +174,10 @@ def is_to_variable(node):
     assert isinstance(node, gast.Call)
     api_name = utils.ast_to_source_code(node.func).strip()
 
-    if utils.is_dygraph_api(node):
-        return api_name.endswith("to_variable")
-
-    return False
+    api_parts = api_name.split(".")
+    if not api_parts:
+        return False
+    return api_name.split(".")[-1] == "to_variable"
 
 
 def to_assign_node(node):
