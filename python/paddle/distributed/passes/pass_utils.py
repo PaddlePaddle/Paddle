@@ -290,13 +290,11 @@ def shadow_var_between_sub_programs(sub_programs):
     """
     Add shadow_output and data op pair to share vars between sub_programs.
     """
-    print("begin shadow")
     suffixed_shadow_arg_names = (
         set()
     )  # arg_names that are required in later sub_programs
     for sub_program in reversed(sub_programs):
         # step 1: parse shadow arguements
-        print(f"program : {sub_program}")
         block = sub_program.global_block()
         input_arg_names = set()
         output_arg_names = set()
@@ -317,11 +315,7 @@ def shadow_var_between_sub_programs(sub_programs):
         shadow_arg_names_for_suffixed_programs = (
             output_arg_names & suffixed_shadow_arg_names
         )
-        print(
-            f"shadow_arg_names_for_suffixed_programs: {shadow_arg_names_for_suffixed_programs}"
-        )
         for shadow_arg_name in shadow_arg_names_for_suffixed_programs:
-            print(f"append_op for {shadow_arg_name}")
             block.append_op(
                 type="shadow_output",
                 inputs={"x": shadow_arg_name},
@@ -330,7 +324,6 @@ def shadow_var_between_sub_programs(sub_programs):
             )
 
         # step3: add `data` op
-        print(f"shadow_arg_names : {shadow_arg_names}")
         for shadow_arg_name in shadow_arg_names:
             shadow_var = block.var(shadow_arg_name)
             block._prepend_op(
@@ -349,8 +342,6 @@ def shadow_var_between_sub_programs(sub_programs):
         # step4: update suffixed_shadow_arg_names
         suffixed_shadow_arg_names -= shadow_arg_names_for_suffixed_programs
         suffixed_shadow_arg_names |= shadow_arg_names
-
-        print("end shadow")
 
 
 def _create_param(dst_block, src_var):
