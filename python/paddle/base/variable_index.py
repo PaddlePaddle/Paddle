@@ -82,12 +82,10 @@ def replace_none(item):
     return new_item, none_axes
 
 
-def is_integer_or_scalar_tensor(ele):
+def is_scalar_tensor(ele):
     from .framework import Variable
 
-    if type(ele) is int:
-        return True
-    elif isinstance(ele, Variable):
+    if isinstance(ele, Variable):
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
     elif isinstance(ele, paddle.pir.Value):
@@ -113,7 +111,6 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
         attrs[attr_name] = attr
 
 
-# the item is a tensor of bool
 def get_value_for_bool_tensor(var, item):
     if len(item.shape) > len(var.shape):
         raise IndexError(
@@ -285,10 +282,9 @@ def parse_index(x, indices):
     dim = 0
     for i, slice_item in enumerate(indices):
         start, end, step = None, None, None
-        if is_integer_or_scalar_tensor(slice_item):
+        if type(slice_item) is int:
             if (
                 not is_tensor_array
-                and isinstance(slice_item, int)
                 and x.shape[dim] is not None
                 and x.shape[dim] >= 0
                 and slice_item >= x.shape[dim]
@@ -308,6 +304,13 @@ def parse_index(x, indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            dim += 1
+        elif is_scalar_tensor(slice_item):
+            # not calculate result to reduce call times for slice OP.
+            decrease_axes.append(dim)
+            start = slice_item
+            step = 1
+            end = slice_item + 1
             dim += 1
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
@@ -625,12 +628,31 @@ def _setitem_static(x, indices, values):
             values = values.astype(transed_sub_tensor.dtype)
 
         if paddle.in_dynamic_mode():
-            # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
-            transed_sub_tensor = transed_sub_tensor.index_put_(
-                adjusted_advanced_index, values
-            )
-            if not is_view:
-                return transed_sub_tensor
+            if (
+                len(adjusted_advanced_index) == 1
+                and adjusted_advanced_index[0].dtype
+                in (paddle.bool, paddle.base.libpaddle.BOOL)
+                and len(
+                    adjusted_advanced_index[0].shape
+                    == len(transed_sub_tensor.shape)
+                )
+            ):
+                if values.shape != transed_sub_tensor.shape:
+                    values = values.expand(transed_sub_tensor.shape)
+                transed_sub_tensor = paddle._C_ops.where_(
+                    paddle.logical_not(adjusted_advanced_index[0]),
+                    transed_sub_tensor,
+                    values,
+                )
+                if not is_view:
+                    return x
+            else:
+                # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
+                transed_sub_tensor = transed_sub_tensor.index_put_(
+                    adjusted_advanced_index, values
+                )
+                if not is_view:
+                    return x
         else:
             transed_sub_tensor = transed_sub_tensor.index_put(
                 adjusted_advanced_index, values
@@ -845,10 +867,9 @@ def _getitem_static(x, indices):
         ) = deal_advanced_index(out, advanced_index, False, None)
 
         # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
-        if (
-            len(adjusted_advanced_index) == 1
-            and adjusted_advanced_index[0].dtype == paddle.bool
-        ):
+        if len(adjusted_advanced_index) == 1 and adjusted_advanced_index[
+            0
+        ].dtype in (paddle.bool, paddle.base.libpaddle.BOOL):
             # Note: now slice not support 0-size Tensor, so only one bool tensor can return empty 0-size.
             out = get_value_for_bool_tensor(
                 transed_tensor, adjusted_advanced_index[0]

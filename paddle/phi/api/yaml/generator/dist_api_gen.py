@@ -1730,8 +1730,8 @@ class DistForwardAPI(ForwardAPI):
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
-    def generate_auto_paralel_branch(self) -> str:
-        # if no tensor input, do not genetate auto parallel branch
+    def generate_auto_parallel_branch(self) -> str:
+        # if no tensor input, do not generate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
 
@@ -1815,7 +1815,7 @@ class DistForwardAPI(ForwardAPI):
                     and not self.api.endswith("_double_grad")
                     and not self.api.endswith("_triple_grad")
                 ):
-                    dist_branch_code += self.generate_auto_paralel_branch()
+                    dist_branch_code += self.generate_auto_parallel_branch()
             kernel_dispatch_code += dist_branch_code
             for kernel_name in self.kernel['func']:
                 kernel_dispatch_code += self.gene_dispatch_code(
@@ -1837,7 +1837,7 @@ class DistForwardAPI(ForwardAPI):
                 and not self.api.endswith("_double_grad")
                 and not self.api.endswith("_triple_grad")
             ):
-                dist_branch_code = self.generate_auto_paralel_branch()
+                dist_branch_code = self.generate_auto_parallel_branch()
             return API_IMPL_TEMPLATE.format(
                 self.get_return_type(inplace_flag),
                 api_func_name,

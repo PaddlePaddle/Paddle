@@ -1537,8 +1537,8 @@ void MergeReduceLoop(
     auto dst_loops = ir_sch.GetLoops(tensor_->name);
     auto src_loops = ir_sch.GetLoops(tensor__->name);
     int index = -1;
-    while (src_loops[index + 1].As<ir::For>()->extent.as_int32() ==
-           dst_loops[index + 1].As<ir::For>()->extent.as_int32()) {
+    while (src_loops[index + 1].As<ir::For>()->extent.as_int64() ==
+           dst_loops[index + 1].As<ir::For>()->extent.as_int64()) {
       ++index;
       if (src_loops.size() == index + 1 || dst_loops.size() == index + 1) {
         break;
@@ -1661,8 +1661,8 @@ void LoopComputeAt(
   int index = std::min(node_loops.size(), master_loops.size()) - 1;
   do {
     // if loop range is not equal.
-    if (node_loops[index].As<ir::For>()->extent.as_int32() !=
-        master_loops[index].As<ir::For>()->extent.as_int32()) {
+    if (node_loops[index].As<ir::For>()->extent.as_int64() !=
+        master_loops[index].As<ir::For>()->extent.as_int64()) {
       continue;
     }
     MergeLoops(

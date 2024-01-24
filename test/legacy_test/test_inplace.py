@@ -909,6 +909,70 @@ class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
         return paddle.neg(var)
 
 
+class TestDygraphInplaceGammaincc(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
+        self.input_var_numpy = (
+            np.random.random(self.shape).astype(self.dtype) + 1
+        )
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+
+    def inplace_api_processing(self, var):
+        return paddle.gammaincc_(var, y=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gammaincc(var, y=self.y)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestDygraphInplaceGammainc(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
+        self.input_var_numpy = (
+            np.random.random(self.shape).astype(self.dtype) + 1
+        )
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+
+    def inplace_api_processing(self, var):
+        return paddle.gammainc_(var, y=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gammainc(var, y=self.y)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
 class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.lgamma_(var)
