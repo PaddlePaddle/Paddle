@@ -66,7 +66,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
-  int num_inputs = 0;
+  int num_inputs = 1;
 
   if (dout_k.get_ptr()) {
     dev_ctx.template Alloc<T>(dk);

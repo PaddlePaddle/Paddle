@@ -128,7 +128,7 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
 
 #pragma unroll
     for (int iter = 0; iter < NInputs; iter++) {
-      if (iter > num_inputs) break;
+      if (iter >= num_inputs) break;
       const T* input = ins_data[iter] + index;
       VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
 
@@ -205,7 +205,7 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int stride_r = head_dim / 2;
 #pragma unroll
     for (int iter = 0; iter < NInputs; iter++) {
-      if (iter > num_inputs) break;
+      if (iter >= num_inputs) break;
       // get value_index and rotate_half_index
       int index_v = index;
       int index_r = (index % head_dim) < stride_r ? (index + stride_r)
