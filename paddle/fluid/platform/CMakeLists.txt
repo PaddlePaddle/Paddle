@@ -3,10 +3,14 @@ cc_library(
   SRCS denormal.cc
   DEPS)
 
-cc_test(
+paddle_test(
   errors_test
-  SRCS errors_test.cc
-  DEPS phi common enforce)
+  SRCS
+  errors_test.cc
+  DEPS
+  phi
+  common
+  enforce)
 
 set(enforce_deps phi common)
 if(WITH_GPU)
@@ -18,28 +22,24 @@ cc_library(
   SRCS enforce.cc
   DEPS ${enforce_deps} common)
 cc_library(monitor SRCS monitor.cc)
-cc_test(
-  enforce_test
-  SRCS enforce_test.cc
-  DEPS enforce common)
+paddle_test(enforce_test SRCS enforce_test.cc DEPS enforce common)
 
-cc_test(
-  cpu_info_test
-  SRCS cpu_info_test.cc
-  DEPS phi common)
-cc_test(
-  os_info_test
-  SRCS os_info_test.cc
-  DEPS phi common)
+paddle_test(cpu_info_test SRCS cpu_info_test.cc DEPS phi common)
+paddle_test(os_info_test SRCS os_info_test.cc DEPS phi common)
 
 cc_library(
   place
   SRCS place.cc
   DEPS enforce phi common)
-cc_test(
+paddle_test(
   place_test
-  SRCS place_test.cc
-  DEPS place glog phi common)
+  SRCS
+  place_test.cc
+  DEPS
+  place
+  glog
+  phi
+  common)
 
 if(WITH_MKLDNN)
   set(MKLDNN_CTX_DEPS mkldnn)
@@ -54,10 +54,7 @@ cc_library(
   cpu_helper
   SRCS cpu_helper.cc
   DEPS cblas enforce common)
-cc_test(
-  cpu_helper_test
-  SRCS cpu_helper_test.cc
-  DEPS cpu_helper)
+paddle_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
 
 set(dgc_deps "")
 if(WITH_DGC)
@@ -150,10 +147,7 @@ if(WITH_CUSTOM_DEVICE)
   target_link_libraries(device_context custom_device_resource_pool)
 endif()
 
-cc_test(
-  init_test
-  SRCS init_test.cc
-  DEPS device_context)
+paddle_test(init_test SRCS init_test.cc DEPS device_context)
 
 # Manage all device event library
 set(DEVICE_EVENT_LIBS)
@@ -237,10 +231,7 @@ if(WITH_ROCM)
 endif()
 
 cc_library(timer SRCS timer.cc)
-cc_test(
-  timer_test
-  SRCS timer_test.cc
-  DEPS timer)
+paddle_test(timer_test SRCS timer_test.cc DEPS timer)
 
 cc_library(
   lodtensor_printer
@@ -253,10 +244,8 @@ cc_library(
        lod_tensor
        variable_helper
        framework_proto)
-cc_test(
-  lodtensor_printer_test
-  SRCS lodtensor_printer_test.cc
-  DEPS lodtensor_printer)
+paddle_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS
+            lodtensor_printer)
 
 add_subdirectory(profiler)
 
@@ -288,22 +277,10 @@ else()
     DEPS phi common enforce op_proto_maker shape_inference)
 endif()
 
-cc_test(
-  profiler_test
-  SRCS profiler_test.cc
-  DEPS profiler)
-cc_test(
-  float16_test
-  SRCS float16_test.cc
-  DEPS lod_tensor)
-cc_test(
-  bfloat16_test
-  SRCS bfloat16_test.cc
-  DEPS lod_tensor)
-cc_test(
-  complex_test
-  SRCS complex_test.cc
-  DEPS lod_tensor)
+paddle_test(profiler_test SRCS profiler_test.cc DEPS profiler)
+paddle_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
+paddle_test(bfloat16_test SRCS bfloat16_test.cc DEPS lod_tensor)
+paddle_test(complex_test SRCS complex_test.cc DEPS lod_tensor)
 
 if(WITH_GPU)
   nv_test(
@@ -345,10 +322,14 @@ endif()
 
 if(NOT APPLE AND NOT WIN32)
   if(WITH_GPU OR WITH_ROCM)
-    cc_test(
+    paddle_test(
       device_code_test
-      SRCS device_code_test.cc
-      DEPS phi common lod_tensor)
+      SRCS
+      device_code_test.cc
+      DEPS
+      phi
+      common
+      lod_tensor)
   endif()
 endif()
 
@@ -367,7 +348,11 @@ cc_library(
   SRCS init_phi.cc
   DEPS init)
 
-cc_test(
+paddle_test(
   init_phi_test
-  SRCS init_phi_test.cc
-  DEPS phi common init_phi)
+  SRCS
+  init_phi_test.cc
+  DEPS
+  phi
+  common
+  init_phi)
