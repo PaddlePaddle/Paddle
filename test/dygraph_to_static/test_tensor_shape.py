@@ -296,7 +296,7 @@ class TestTensorShapeBasic(Dy2StTestBase):
         return op_num, shape_op_num, slice_op_num
 
     def _compute_pir_op_num(self, program):
-        op_num = len(program.global_block().ops)
+        op_num = program.global_block().num_ops()
         shape_op_num = 0
         slice_op_num = 0
 
@@ -651,7 +651,7 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
             )
 
     def _compute_pir_op_num(self, program):
-        op_num = len(program.global_block().ops)
+        op_num = program.global_block().num_ops()
         shape_op_num = 0
         slice_op_num = 0
 
@@ -732,15 +732,9 @@ class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
         self.expected_slice_op_num = 4
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
-
-    @test_ast_only
-    @test_pir_only
-    def test_pir_op_num(self):
-        # Remove this after we support control flow
-        pass
+        self.pir_expected_op_num = 42
+        self.pir_expected_shape_op_num = 1
+        self.pir_expected_slice_op_num = 1
 
 
 class TestOpNumWithTensorShapeInFor1(TestOpNumBasicWithTensorShape):
@@ -774,15 +768,9 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
         self.expected_slice_op_num = 3
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
+        self.pir_expected_op_num = 28
         self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
-
-    @test_ast_only
-    @test_pir_only
-    def test_pir_op_num(self):
-        # Remove this after we support control flow
-        pass
+        self.pir_expected_slice_op_num = 2
 
 
 class TestChangeShapeAfterAssign(TestTensorShapeBasic):
