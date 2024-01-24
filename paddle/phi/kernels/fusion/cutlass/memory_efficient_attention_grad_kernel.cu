@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/get_pad_lse.cu.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
@@ -58,8 +59,14 @@ void MemoryEfficientAttentionGradKernel(
     DenseTensor* bias_grad) {
   bool kernel_launched = false;
 
+  DenseTensor dq_tmp;
+  DenseTensor dk_tmp;
+  DenseTensor dv_tmp;
+  bool has_query_grad = (query_grad != nullptr);
+  bool has_key_grad = (key_grad != nullptr);
+  bool has_value_grad = (value_grad != nullptr);
+
   auto launchKernel = [&](auto k_, auto kernel_fn) {
-    // ndim
     PADDLE_ENFORCE_EQ(
         query.dims().size(),
         output_grad.dims().size(),
@@ -289,7 +296,6 @@ void MemoryEfficientAttentionGradKernel(
     int compute_capacity = ctx.GetComputeCapability();
     const auto max_shmem =
         getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;
-
     using KernelType = decltype(k_);
     using scalar_t = typename KernelType::scalar_t;
     if (kernel_launched) {
@@ -405,23 +411,6 @@ void MemoryEfficientAttentionGradKernel(
     p.output_ptr = phi::SafeGetTensorPtr<scalar_t>(output);
     p.grad_output_ptr = phi::SafeGetTensorPtr<scalar_t>(output_grad);
 
-    if (query_grad) {
-      p.grad_query_ptr =
-          phi::SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
-    } else {
-      p.grad_query_ptr = nullptr;
-    }
-    if (key_grad) {
-      p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
-    } else {
-      p.grad_key_ptr = nullptr;
-    }
-    if (value_grad) {
-      p.grad_value_ptr =
-          phi::SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
-    } else {
-      p.grad_value_ptr = nullptr;
-    }
     p.delta_ptr = phi::SafeGetTensorPtr<float>(delta);
     PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
     PD_MEA_CHECK_OVERFLOW(p.head_dim_value, v_dims[3]);
@@ -458,44 +447,55 @@ void MemoryEfficientAttentionGradKernel(
     PD_MEA_CHECK_OVERFLOW(p.o_strideH, DimStride(output.dims(), 2));
     PD_MEA_CHECK_OVERFLOW(p.o_strideB, DimStride(output.dims(), 0));
 
-    if(query_grad){
-      PD_MEA_CHECK_OVERFLOW(p.gQ_strideH, DimStride(query_grad->dims(), 2));
-      PD_MEA_CHECK_OVERFLOW(p.gQ_strideB, DimStride(query_grad->dims(), 0));
+    if (!has_query_grad) {
+      dq_tmp.clear();
+      dq_tmp = EmptyLike<T, Context>(ctx, query);
+      query_grad = &dq_tmp;
     }
-    if(key_grad){
-      PD_MEA_CHECK_OVERFLOW(p.gK_strideH, DimStride(key_grad->dims(), 2));
-      PD_MEA_CHECK_OVERFLOW(p.gK_strideB, DimStride(key_grad->dims(), 0));
+    p.grad_query_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
+
+    if (!has_key_grad) {
+      dk_tmp.clear();
+      dk_tmp = EmptyLike<T, Context>(ctx, key);
+      key_grad = &dk_tmp;
     }
-    if(value_grad){
-      PD_MEA_CHECK_OVERFLOW(p.gV_strideH, DimStride(value_grad->dims(), 2));
-      PD_MEA_CHECK_OVERFLOW(p.gV_strideB, DimStride(value_grad->dims(), 0));
+    p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
+
+    if (!has_value_grad) {
+      dv_tmp.clear();
+      dv_tmp = EmptyLike<T, Context>(ctx, value);
+      value_grad = &dv_tmp;
     }
+    p.grad_value_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
+
+    PD_MEA_CHECK_OVERFLOW(p.gQ_strideH, DimStride(query_grad->dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.gQ_strideB, DimStride(query_grad->dims(), 0));
+
+    PD_MEA_CHECK_OVERFLOW(p.gK_strideH, DimStride(key_grad->dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.gK_strideB, DimStride(key_grad->dims(), 0));
+
+    PD_MEA_CHECK_OVERFLOW(p.gV_strideH, DimStride(value_grad->dims(), 2));
+    PD_MEA_CHECK_OVERFLOW(p.gV_strideB, DimStride(value_grad->dims(), 0));
 
     p.gQKV_strideM_multiplier = 1;
-    if(query_grad){
-      PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
+    PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
                       DimStride(query_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad query"
                           "should be euqal to the first dimension size of "
                           "query grad's stride"));
-    }
-    if(key_grad){
-      PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
+    PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
                       DimStride(key_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad key"
                           "should be euqal to the first dimension size of key "
                           "grad's stride"));
-    }
-    if(value_grad){
-      PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
+    PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
                       DimStride(value_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad value"
                           "should be euqal to the first dimension size of "
                           "value grad's stride"));
-    }
 
     PD_MEA_CHECK_OVERFLOW(p.q_strideB, DimStride(query.dims(), 0));
     PD_MEA_CHECK_OVERFLOW(p.k_strideB, DimStride(key.dims(), 0));

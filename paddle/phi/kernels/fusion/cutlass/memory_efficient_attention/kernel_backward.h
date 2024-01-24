@@ -37,6 +37,7 @@
 #include "cutlass/numeric_conversion.h"
 #include "cutlass/numeric_types.h"
 #include "cutlass/tensor_ref.h"
+#include "glog/logging.h"
 
 #include "cutlass/epilogue/thread/linear_combination_relu.h"
 #include "cutlass/epilogue/threadblock/epilogue_smem_accumulator.h"
@@ -214,6 +215,26 @@ struct AttentionBackwardKernel {
     output_t* grad_key_ptr;    //    [Mk, nH, K]
     output_t* grad_value_ptr;  //  [Mk, nH, Kv]
     output_t* grad_bias_ptr = nullptr;
+
+    void print() {
+      // VLOG(3) << "query_ptr = " << query_ptr << " "<<query_ptr->data();
+      // VLOG(3) << "key_ptr = " << key_ptr << " "<<key_ptr->data();
+      // VLOG(3) << "value_ptr = " << value_ptr << " "<<value_ptr->data();
+      // VLOG(3) << "bias_ptr = " << bias_ptr << " "<<bias_ptr->data();
+      // VLOG(3) << "logsumexp_ptr = " << logsumexp_ptr << "
+      // "<<logsumexp_ptr->data(); VLOG(3) << "output_ptr = " << output_ptr << "
+      // "<<output_ptr->data(); VLOG(3) << "grad_output_ptr = " <<
+      // grad_output_ptr << " "<<grad_output_ptr->data(); VLOG(3) << "delta_ptr
+      // = " << delta_ptr << " "<<delta_ptr->data(); VLOG(3) <<
+      // "cu_seqlens_q_ptr = " << cu_seqlens_q_ptr << " " <<
+      // cu_seqlens_q_ptr->data(); VLOG(3) << "cu_seqlens_k_ptr = " <<
+      // cu_seqlens_k_ptr << " " << cu_seqlens_k_ptr->data(); VLOG(3) <<
+      // "grad_query_ptr = " << grad_query_ptr << " "<<grad_query_ptr->data();
+      // VLOG(3) << "grad_key_ptr = " << grad_key_ptr << "
+      // "<<grad_key_ptr->data(); VLOG(3) << "grad_value_ptr = " <<
+      // grad_value_ptr << " "<<grad_value_ptr->data(); VLOG(3) <<
+      // "grad_bias_ptr = " << grad_bias_ptr << " "<<grad_bias_ptr->data();
+    }
 
     // Accumulators
     union {
