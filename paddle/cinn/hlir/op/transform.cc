@@ -1633,7 +1633,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
         CHECK(arg_pack[1].is_string());
         std::string tensor_name = arg_pack[1].operator std::string();
 
-        auto out = pe::Slice(
+        auto out = pe::SliceSymbolic(
             A, starts, axes, strides, decrease_axis, output_shape, tensor_name);
         LOG(INFO) << "out: " << out;
         auto stages = CreateStages({out});
