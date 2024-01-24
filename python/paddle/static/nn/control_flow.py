@@ -1116,10 +1116,13 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
 
 class OutputSelector:
-    def __init__(self, if_op, flattened_true_output, flattened_false_output):
+    def __init__(
+        self, if_op, flattened_true_output, flattened_false_output, names
+    ):
         self.if_op = if_op
         self.true_output = flattened_true_output
         self.false_output = flattened_false_output
+        self.names = names
         assert len(flattened_true_output) == len(flattened_false_output)
 
     @cached_property
@@ -1127,14 +1130,16 @@ class OutputSelector:
         unified_true_output = []
         unified_false_output = []
         variable_indices = []
-        for true_out, false_out in zip(self.true_output, self.false_output):
+        for true_out, false_out, name in zip(
+            self.true_output, self.false_output, self.names
+        ):
             (
                 true_out,
                 false_out,
             ) = OutputSelector.constant_to_variable_promotion(
                 [
-                    (true_out, self.if_op.true_block),
-                    (false_out, self.if_op.false_block),
+                    (true_out, self.if_op.true_block, name),
+                    (false_out, self.if_op.false_block, name),
                 ]
             )
             if isinstance(true_out, paddle.pir.Value):
@@ -1181,7 +1186,7 @@ class OutputSelector:
         from paddle.jit.dy2static.variable_trans_func import to_static_variable
 
         promotion_builtin_types = (bool, int, float)
-        outs, _ = zip(*out_with_blocks)
+        outs, _, names = zip(*out_with_blocks)
 
         def all_has_same_value(outs):
             if len(outs) <= 1:
@@ -1212,7 +1217,7 @@ class OutputSelector:
                 # TODO: add promotion warning
                 return [
                     constant_to_variable_with_block(out, block)
-                    for out, block in out_with_blocks
+                    for out, block, name in out_with_blocks
                 ]
 
         if any(isinstance(out, paddle.pir.Value) for out in outs) and all(
@@ -1222,13 +1227,13 @@ class OutputSelector:
             # TODO: Add promotion warning
             return [
                 constant_to_variable_with_block(out, block)
-                for out, block in out_with_blocks
+                for out, block, name in out_with_blocks
             ]
 
         # TODO: Add arg name
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            f"returned by false_fn is '{outs[0]}' and true_var of true_fn is '{outs[1]}'"
+            f"returned `{names[0]}` by false_fn is `{outs[0]}` and true_var of true_fn is `{outs[1]}`"
         )
 
 
@@ -1516,7 +1521,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         ), flatten(false_output)
         num_output = len(flattened_true_output)
         output_selector = OutputSelector(
-            if_op, flattened_true_output, flattened_false_output
+            if_op,
+            flattened_true_output,
+            flattened_false_output,
+            names=return_names,
         )
         variable_true_output = output_selector.select_by_indices(
             output_selector.unified_true_output,
@@ -1535,6 +1543,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             cf_yield(variable_true_output)
         with if_op.false_block():
             cf_yield(variable_false_output)
+        print("True branch outputs:")
+        print(variable_true_output)
+        print("False branch outputs:")
+        print(variable_false_output)
         if_op.update_output()
         variable_results = flatten(if_op.results())
 

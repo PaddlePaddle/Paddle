@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.base import unique_name
+from paddle.jit.dy2static.variable_trans_func import create_bool_node
 from paddle.utils import gast
 
 from ..utils import (
@@ -261,17 +262,7 @@ class SingleReturnTransformer(BaseTransformer):
             node.body.insert(0, assign_return_value_node)
 
         for return_flag_name in return_flag_names:
-            assign_return_flag_node = gast.Assign(
-                targets=[
-                    gast.Name(
-                        id=return_flag_name,
-                        ctx=gast.Store(),
-                        annotation=None,
-                        type_comment=None,
-                    )
-                ],
-                value=gast.Constant(kind=None, value=False),
-            )
+            assign_return_flag_node = create_bool_node(return_flag_name, False)
             node.body.insert(0, assign_return_flag_node)
 
         # Prepend no value placeholders
