@@ -465,69 +465,91 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        def test_type():
-            paddle.add_n([11, 22])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
-        self.assertRaises(TypeError, test_type)
+            def test_type():
+                paddle.add_n([11, 22])
 
-        def test_dtype():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
-            paddle.add_n([data1, data2])
+            self.assertRaises(TypeError, test_type)
 
-        self.assertRaises(TypeError, test_dtype)
+            def test_dtype():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="int8"
+                )
+                data2 = paddle.static.data(
+                    name="input2", shape=[10], dtype="int8"
+                )
+                paddle.add_n([data1, data2])
 
-        def test_dtype1():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            paddle.add_n(data1)
+            self.assertRaises(TypeError, test_dtype)
 
-        self.assertRaises(TypeError, test_dtype1)
+            def test_dtype1():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="int8"
+                )
+                paddle.add_n(data1)
+
+            self.assertRaises(TypeError, test_dtype1)
 
 
 class TestRaiseSumsError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        def test_type():
-            paddle.add_n([11, 22])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
-        self.assertRaises(TypeError, test_type)
+            def test_type():
+                paddle.add_n([11, 22])
 
-        def test_dtype():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
-            paddle.add_n([data1, data2])
+            self.assertRaises(TypeError, test_type)
 
-        self.assertRaises(TypeError, test_dtype)
+            def test_dtype():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="int8"
+                )
+                data2 = paddle.static.data(
+                    name="input2", shape=[10], dtype="int8"
+                )
+                paddle.add_n([data1, data2])
 
-        def test_dtype1():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            paddle.add_n(data1)
+            self.assertRaises(TypeError, test_dtype)
 
-        self.assertRaises(TypeError, test_dtype1)
+            def test_dtype1():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="int8"
+                )
+                paddle.add_n(data1)
 
-        def test_out_type():
-            data1 = paddle.static.data(
-                name="input1", shape=[10], dtype="flaot32"
-            )
-            data2 = paddle.static.data(
-                name="input2", shape=[10], dtype="float32"
-            )
-            out = [10]
-            out = paddle.add_n([data1, data2])
+            self.assertRaises(TypeError, test_dtype1)
 
-        self.assertRaises(TypeError, test_out_type)
+            def test_out_type():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="flaot32"
+                )
+                data2 = paddle.static.data(
+                    name="input2", shape=[10], dtype="float32"
+                )
+                out = [10]
+                out = paddle.add_n([data1, data2])
 
-        def test_out_dtype():
-            data1 = paddle.static.data(
-                name="input1", shape=[10], dtype="flaot32"
-            )
-            data2 = paddle.static.data(
-                name="input2", shape=[10], dtype="float32"
-            )
-            out = paddle.static.data(name="out", shape=[10], dtype="int8")
-            out = paddle.add_n([data1, data2])
+            self.assertRaises(TypeError, test_out_type)
 
-        self.assertRaises(TypeError, test_out_dtype)
+            def test_out_dtype():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="flaot32"
+                )
+                data2 = paddle.static.data(
+                    name="input2", shape=[10], dtype="float32"
+                )
+                out = paddle.static.data(name="out", shape=[10], dtype="int8")
+                out = paddle.add_n([data1, data2])
+
+            self.assertRaises(TypeError, test_out_dtype)
 
 
 class TestSumOpError(unittest.TestCase):

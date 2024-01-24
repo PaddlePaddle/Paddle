@@ -66,13 +66,13 @@ class ParallelMode:
 
     DataParallel = "auto_parallel/data_parallel"
     TensorParallel = "auto_parallel/tensor_parallel"
-    PipelineParalel = "auto_parallel/pipeline_paralel"
+    PipelineParallel = "auto_parallel/pipeline_parallel"
     MoEParallel = "auto_parallel/moe_parallel"
 
 
 class SyncMode:
     """
-    the synchorization mode for communication or auxiliary operator
+    the synchronization mode for communication or auxiliary operator
     """
 
     AmpFlagSync = "auto_parallel/amp_flag_synchorization"

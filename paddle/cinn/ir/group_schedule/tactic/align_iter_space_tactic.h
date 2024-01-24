@@ -15,7 +15,6 @@
 #pragma once
 
 #include <string>
-#include <unordered_set>
 #include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 
 namespace cinn {

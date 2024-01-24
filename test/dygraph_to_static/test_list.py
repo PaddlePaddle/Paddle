@@ -21,6 +21,7 @@ from dygraph_to_static_utils import (
     IrMode,
     ToStaticMode,
     disable_test_case,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -272,6 +273,7 @@ class TestListWithoutControlFlowConfig(Dy2StTestBase):
 
 
 class TestListWithoutControlFlow(TestListWithoutControlFlowConfig):
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 
@@ -292,6 +294,7 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
             test_list_pop_in_while_loop,
         ]
 
+    # TODO(zhangbo): Refine BuildOpFrom for op with sub_block
     def train(self, to_static=False):
         with base.dygraph.guard():
             if to_static:
@@ -342,6 +345,9 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
 
     def init_data(self):
         self.input = np.random.random((3, 4)).astype('float32')
+
+    def test_transformed_static_result(self):
+        self.compare_transformed_static_result()
 
 
 class ListWithCondNet(paddle.nn.Layer):

@@ -25,7 +25,6 @@
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-#include "paddle/phi/kernels/trunc_kernel.h"
 
 namespace phi {
 namespace sparse {

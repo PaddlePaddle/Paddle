@@ -26,10 +26,6 @@ from paddle.distributed.auto_parallel.static.utils import (
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
-from paddle.static.amp.bf16.amp_utils import (
-    AutoMixedPrecisionListsBF16,
-    _is_in_fp32_varnames,
-)
 from paddle.static.amp.fp16_utils import (
     AutoMixedPrecisionLists,
     _is_in_black_varnames,
@@ -88,33 +84,18 @@ class AMPLists:
         black_varnames=None,
         dtype="float16",
     ):
-        self._amp_list = None
-        if dtype == "float16":
-            self._amp_list = AutoMixedPrecisionLists(
-                set(white_list), set(black_list), set(black_varnames)
-            )
-        elif dtype == "bfloat16":
-            self._amp_list = AutoMixedPrecisionListsBF16(
-                set(white_list), set(black_list), set(black_varnames)
-            )
-
-        assert self._amp_list is not None
+        self._amp_list = AutoMixedPrecisionLists(
+            set(white_list), set(black_list), set(black_varnames), dtype=dtype
+        )
         self._dtype = dtype
-        self._is_float16 = dtype == "float16"
 
     @property
     def white_list(self):
-        if self._is_float16:
-            return self._amp_list.white_list
-        else:
-            return self._amp_list.bf16_list
+        return self._amp_list.white_list
 
     @property
     def black_list(self):
-        if self._is_float16:
-            return self._amp_list.black_list
-        else:
-            return self._amp_list.fp32_list
+        return self._amp_list.black_list
 
     @property
     def gray_list(self):
@@ -122,14 +103,7 @@ class AMPLists:
 
     @property
     def black_varnames(self):
-        if self._is_float16:
-            return self._amp_list.black_varnames
-        else:
-            return self._amp_list.fp32_varnames
-
-    @property
-    def is_fp16(self):
-        return self._is_float16
+        return self._amp_list.black_varnames
 
     @property
     def dtype(self):
@@ -140,36 +114,17 @@ class AMPLists:
         return self._amp_list
 
     def _is_in_black_fp32_varnames(self, op):
-        if self._is_float16:
-            return _is_in_black_varnames(op, self._amp_list)
-        else:
-            return _is_in_fp32_varnames(op, self._amp_list)
+        return _is_in_black_varnames(op, self._amp_list)
 
     def _op_keep_fp32_input(self, op, in_name):
         if not op.amp_options.enable:
             return True
-        if self._is_float16:
-            return _keep_fp32_input(op, in_name)
-        else:
-            if op.type in ['batch_norm', 'layer_norm']:
-                return in_name != 'X'
-            if op.type == 'fused_bn_add_activation':
-                return in_name not in {'X', 'Z'}
-            return False
+        return _keep_fp32_input(op, in_name)
 
     def _op_keep_fp32_output(self, op, out_name):
         if not op.amp_options.enable:
             return True
-        if self._is_float16:
-            return _keep_fp32_output(op, out_name)
-        else:
-            if op.type in [
-                'batch_norm',
-                'fused_bn_add_activation',
-                'layer_norm',
-            ]:
-                return out_name != 'Y'
-            return False
+        return _keep_fp32_output(op, out_name)
 
 
 class AMPState:
@@ -324,12 +279,12 @@ class AMPState:
                         self.dist_context,
                     )
                 elif self._is_fp16_op(op.desc.original_id()) is True:
-                    if self.amp_dtype == "bfloat16":
-                        if (
-                            op.has_attr('dtype')
-                            and op.attr('dtype') == core.VarDesc.VarType.FP32
-                        ):
-                            op._set_attr('dtype', core.VarDesc.VarType.BF16)
+                    # deal with op with attribute 'dtype', such as 'fill_constant'
+                    if (
+                        op.has_attr('dtype')
+                        and op.attr('dtype') == core.VarDesc.VarType.FP32
+                    ):
+                        op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
                     num_cast_ops = self._insert_cast_op_forward(
                         block,
                         op,
@@ -362,16 +317,13 @@ class AMPState:
                             self.dist_context,
                             appended_grad_times,
                         )
-                    elif (
-                        self._is_fp16_op(op.desc.original_id()) is True
-                    ):  # fp16/bf16
-                        if self.amp_dtype == "bfloat16":
-                            if (
-                                op.has_attr('dtype')
-                                and op.attr('dtype')
-                                == core.VarDesc.VarType.FP32
-                            ):
-                                op._set_attr('dtype', core.VarDesc.VarType.BF16)
+                    elif self._is_fp16_op(op.desc.original_id()) is True:
+                        # deal with op with attribute 'dtype', such as 'fill_constant'
+                        if (
+                            op.has_attr('dtype')
+                            and op.attr('dtype') == core.VarDesc.VarType.FP32
+                        ):
+                            op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
                         num_cast_ops = self._insert_cast_op_backward(
                             block,
                             op,
@@ -522,6 +474,7 @@ class AMPState:
                             op._set_attr(
                                 'out_dtype', _str_to_dtype(self.amp_dtype)
                             )
+
         return num_cast_ops
 
     def _insert_cast_op_backward(
@@ -698,6 +651,12 @@ class AMPState:
                             num_cast_ops += 1
                 else:
                     assert out_var.dtype == dst_dtype
+
+        if (
+            op.has_attr('dtype')
+            and op.attr('dtype') == core.VarDesc.VarType.FP32
+        ):
+            op._set_attr('dtype', _str_to_dtype(self.amp_dtype))
 
         return num_cast_ops
 

@@ -72,12 +72,14 @@ void NaiveExecutor::PrepareInterpreterCore(
 }
 
 void NaiveExecutor::RunInterpreterCore(
-    const std::vector<std::string> &feed_names, bool need_fetch) {
+    const std::vector<std::string> &feed_names,
+    bool need_fetch,
+    bool switch_stream) {
   platform::ScopedFlushDenormal flush;
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
-  interpreter_core_->Run(feed_names, need_fetch);
+  interpreter_core_->Run(feed_names, need_fetch, false, false, switch_stream);
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
 #endif

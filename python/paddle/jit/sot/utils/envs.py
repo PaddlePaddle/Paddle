@@ -32,6 +32,7 @@ ENV_CLEAN_CODE = BooleanEnvironmentVariable("CLEAN_CODE", False)
 ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
     "SOT_WITH_CONTROL_FLOW", True
 )
+ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 
 
 @contextmanager
@@ -55,4 +56,10 @@ def min_graph_size_guard(value: int):
 @contextmanager
 def with_control_flow_guard(value: bool):
     with EnvironmentVariableGuard(ENV_SOT_WITH_CONTROL_FLOW, value):
+        yield
+
+
+@contextmanager
+def with_export_guard(value: str):
+    with EnvironmentVariableGuard(ENV_SOT_EXPORT, value):
         yield

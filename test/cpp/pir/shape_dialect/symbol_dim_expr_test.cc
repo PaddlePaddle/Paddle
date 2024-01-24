@@ -63,9 +63,7 @@ TEST(DimExpr, DataShapeExpr) {
   ShapeOrDataDimExprs x_data_shape{x_shapes};
   // y => {shape: [1, S1, 2], data: nullopt}
   ShapeOrDataDimExprs y_data_shape{y_shapes};
-  // extend_x => {shape: [2], data: [S0, 2]}
-  ShapeOrDataDimExprs extend_x_data_shape =
-      ShapeOrDataDimExprs::MakeConsistentShapeOrData(x_shapes);
+
   // out => {shape: [S0, 2], data: nullopt}
   ShapeOrDataDimExprs out_value_shape{x_shapes};
 }

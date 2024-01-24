@@ -24,16 +24,14 @@ namespace hlir {
 namespace framework {
 
 void GroupCompilationContext::SetLoweredFuncs(
-    std::vector<std::pair<ir::SymbolicPredicate,
-                          pir::OpLowererImpl::WrapLoweredFunc>>&& funcs) {
-  for (std::pair<ir::SymbolicPredicate, pir::OpLowererImpl::WrapLoweredFunc>&
-           predicate2func : funcs) {
-    predicates_.push_back(predicate2func.first);
-    lowered_funcs_.push_back(predicate2func.second.kernel_func);
-    infer_shape_lowered_funcs_.push_back(
-        predicate2func.second.infer_shape_func);
+    BucketLoweredFuncsWrapper&& funcs) {
+  for (std::pair<ir::SymbolicPredicate, ir::LoweredFunc>& predicate2func :
+       funcs.predicate2funcs) {
+    predicates_.push_back(std::move(predicate2func.first));
+    lowered_funcs_.push_back(std::move(predicate2func.second));
     ++func_size_;
   }
+  infer_shape_lowered_func_ = std::move(funcs.infer_shape_func);
 }
 
 std::string GroupCompilationContext::PrintPredicate2Funcs() const {
@@ -77,7 +75,7 @@ void CompilationTask::CodegenAndJit() {
   for (const ir::LoweredFunc& func : context_->lowered_funcs_) {
     builder.AddFunction(func);
   }
-  builder.AddInferShapeFunc(context_->infer_shape_lowered_funcs_[0]);
+  builder.SetInferShapeFunc(context_->infer_shape_lowered_func_);
   ir::Module ir_module = builder.Build();
 
   context_->backend_compiler_ = backends::Compiler::Create(context_->target_);

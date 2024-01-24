@@ -239,6 +239,16 @@ PD_DEFINE_bool(cinn_use_cutlass,
                BoolFromEnv("FLAGS_cinn_use_cutlass", false),
                "Whether to use cutlass kernels");
 
+PD_DEFINE_string(cinn_convert_static_dim_to_dynamic,
+                 StringFromEnv("FLAGS_cinn_convert_static_dim_to_dynamic", ""),
+                 "A test flag whether to convert static dim to dynamic, e.g.: "
+                 "FLAGS_cinn_convert_static_dim_to_dynamic=128:s0,299:s1");
+
+PD_DEFINE_string(cinn_convert_dynamic_to_static_dim,
+                 StringFromEnv("FLAGS_cinn_convert_dynamic_to_static_dim", ""),
+                 "A test flag whether to convert dynamic to static dim, e.g.: "
+                 "FLAGS_cinn_convert_dynamic_to_static_dim=s0:128,s1:299");
+
 namespace cinn {
 namespace runtime {
 

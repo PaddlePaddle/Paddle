@@ -28,7 +28,11 @@ struct DimExprToIrExprVisitor {
   ir::Expr operator()(const int64_t& dim) { return ir::Expr(dim); }
 
   ir::Expr operator()(const std::string& dim_expr) {
-    Var x = ir::_Var_::Make(dim_expr, Int(64));
+    Var x = ir::_Var_::Make(ir::Expr(static_cast<int64_t>(0)),
+                            ir::Expr(INT64_MAX),
+                            dim_expr,
+                            /* is_reduce  = */ false,
+                            /* is_symbolic_constant = */ true);
     return x;
   }
 

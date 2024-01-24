@@ -31,9 +31,7 @@ class GroupCompilationContext {
                           std::shared_ptr<Scope> scope)
       : target_(target), group_(group), scope_(scope) {}
 
-  void SetLoweredFuncs(
-      std::vector<std::pair<ir::SymbolicPredicate,
-                            pir::OpLowererImpl::WrapLoweredFunc>>&& funcs);
+  void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
   std::string PrintPredicate2Funcs() const;
   void* FuncPtr();
   std::shared_ptr<backends::Compiler> BackendCompiler();
@@ -48,7 +46,7 @@ class GroupCompilationContext {
   size_t func_size_ = 0;
   std::vector<ir::SymbolicPredicate> predicates_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
-  std::vector<ir::LoweredFunc> infer_shape_lowered_funcs_;
+  ir::LoweredFunc infer_shape_lowered_func_;
   std::string host_func_name_;
   std::string host_code_;
   std::vector<std::string> device_code_;

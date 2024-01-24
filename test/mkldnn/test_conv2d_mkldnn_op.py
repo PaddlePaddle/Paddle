@@ -17,9 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 from test_conv2d_op import TestConv2DOp, TestConv2DOp_v2
-from utils import compare_legacy_with_pt
-
-from paddle.base import core
 
 
 def conv2d_bias_naive(out, bias):
@@ -64,6 +61,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         self.input_residual_size = None
 
         TestConv2DOp.setUp(self)
+        self.check_pir_onednn = True
 
         output = self.outputs['Output']
 
@@ -144,6 +142,7 @@ class TestConv2DMKLDNNOp2(TestConv2DOp):
         self.input_residual_size = None
 
         TestConv2DOp.setUp(self)
+        self.check_pir_onednn = True
 
         output = self.outputs['Output']
 
@@ -194,14 +193,6 @@ class TestConv2DMKLDNNOp2(TestConv2DOp):
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
 
         self.outputs['Output'] = output
-
-    @compare_legacy_with_pt
-    def test_check_output(self):
-        place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output_with_place(
-            place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
-        )
 
 
 @skip_check_grad_ci(

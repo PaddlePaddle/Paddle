@@ -38,7 +38,7 @@ void BindGenerator(py::module* m_ptr) {
                                                               "GeneratorState")
       .def("current_seed",
            [](std::shared_ptr<phi::Generator::GeneratorState>& self) {
-             return self->current_seed;
+             return self->seed;
            })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
@@ -46,7 +46,7 @@ void BindGenerator(py::module* m_ptr) {
       // type, resulting in a problem with precision under the cpu.
       .def(py::pickle(
           [](const phi::Generator::GeneratorState& s) {  // __getstate__
-            return py::make_tuple(s.device, s.current_seed, s.thread_offset);
+            return py::make_tuple(s.device, s.seed, s.offset);
           },
           [](py::tuple s) {  // __setstate__
             if (s.size() != 3)
@@ -54,21 +54,19 @@ void BindGenerator(py::module* m_ptr) {
                   "Invalid Random state. Please check the format(device, "
                   "current_seed, thread_offset).");
 
-            phi::Generator::GeneratorState state;
-            state.device = s[0].cast<std::int64_t>();
-            state.current_seed = s[1].cast<std::uint64_t>();
-            state.thread_offset = s[2].cast<std::uint64_t>();
+            int64_t device = s[0].cast<int64_t>();
+            int64_t seed = s[1].cast<int64_t>();
+            uint64_t offset = s[2].cast<uint64_t>();
 
-            std::seed_seq seq({state.current_seed});
-            auto engine = std::make_shared<std::mt19937_64>(seq);
-            state.cpu_engine = *engine;
+            phi::Generator::GeneratorState state(device, seed, offset);
+
             return state;
           }))
 #endif
       .def("__str__", [](const phi::Generator::GeneratorState& self) {
         std::stringstream ostr;
-        ostr << self.device << " " << self.current_seed << " "
-             << self.thread_offset << " " << self.cpu_engine;
+        ostr << self.device << " " << self.seed << " " << self.offset << " "
+             << self.cpu_engine;
         return ostr.str();
       });
 
@@ -78,6 +76,9 @@ void BindGenerator(py::module* m_ptr) {
            [](phi::Generator& self) { new (&self) phi::Generator(); })
       .def("get_state", &phi::Generator::GetState)
       .def("set_state", &phi::Generator::SetState)
+      .def("get_state_index", &phi::Generator::GetStateIndex)
+      .def("set_state_index", &phi::Generator::SetStateIndex)
+      .def("register_state_index", &phi::Generator::RegisterStateIndex)
       .def("manual_seed",
            [](std::shared_ptr<phi::Generator>& self, uint64_t seed) {
              self->SetCurrentSeed(seed);

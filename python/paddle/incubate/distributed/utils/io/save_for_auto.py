@@ -121,7 +121,7 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
         save params' attr dict
     Args:
         state_dict_:
-            state for which to save attrs, when the state is optimzier state, the master and LRScheduler will be reomoved.
+            state for which to save attrs, when the state is optimizer state, the master and LRScheduler will be removed.
         path:
             path to save
         dims_mapping_dict:

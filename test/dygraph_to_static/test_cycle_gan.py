@@ -549,8 +549,7 @@ def train(args):
 
         random.seed(SEED)
         np.random.seed(SEED)
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
 
         A_pool = ImagePool()
         B_pool = ImagePool()

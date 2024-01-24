@@ -18,6 +18,16 @@
     func : isclose
     data_type : x
 
+- op : pool2d
+  args : (Tensor x, int[] kernel_size, int[] stride_size, int[] padding_size, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : Pool2DInferMeta
+    param : [x, kernel_size, stride_size, padding_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : pool2d
+    param : [x, kernel_size, stride_size, padding_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+
 - op : reduce_max
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)
@@ -66,6 +76,7 @@
     param : [x]
   kernel :
     func : scale
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : slice
   args : (Tensor x, int64_t[] axes, int64_t[] starts, int64_t[] ends, int64_t[] infer_flags, int64_t[] decrease_axis)
