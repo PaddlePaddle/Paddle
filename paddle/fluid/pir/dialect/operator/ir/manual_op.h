@@ -667,6 +667,47 @@ class Increment_Op
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
+class AssignOut_Op
+    : public pir::Op<AssignOut_Op,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::VjpInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface,
+                     paddle::dialect::InplaceTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.assign_out_"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::Value output_);
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::Value output() { return operand_source(1); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+  static std::vector<std::vector<pir::Value>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::Value>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
+};
+
 class MemcpyD2hMultiIoOp
     : public pir::Op<MemcpyD2hMultiIoOp,
                      paddle::dialect::OpYamlInfoInterface,
@@ -740,6 +781,7 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignOut_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)

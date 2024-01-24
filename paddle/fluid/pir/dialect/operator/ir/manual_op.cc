@@ -15,7 +15,7 @@
 #undef GET_OP_LIST
 paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::AddNWithKernelOp, paddle::dialect::AddNArrayOp,
-    paddle::dialect::FusedGemmEpilogueOp,
+    paddle::dialect::FusedGemmEpilogueOp, paddle::dialect::AssignOut_Op,
     paddle::dialect::FusedGemmEpilogueGradOp, paddle::dialect::SplitGradOp,
     paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
     paddle::dialect::CreateArrayLikeOp, paddle::dialect::ArrayLengthOp,
@@ -3997,6 +3997,174 @@ phi::DataType Increment_Op::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+OpInfoTuple AssignOut_Op::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true),
+      paddle::dialect::OpInputInfo("output",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("UnchangedInferMeta",
+                                     {"x"},
+                                     "assign",
+                                     {"x"},
+                                     {},
+                                     {},
+                                     {{"out", "output"}},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "assign_out_");
+}
+
+void AssignOut_Op::Build(pir::Builder &builder,
+                         pir::OperationArgument &argument,
+                         pir::Value x_,
+                         pir::Value output_) {
+  VLOG(4) << "Start build AssignOut_Op";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_, output_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+
+  std::vector<pir::Type> argument_outputs =
+      AssignOut_Op::InferMeta(argument_inputs, argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  constexpr char kStopGradientAttrName[] = "stop_gradient";
+  auto stop_gradient0 =
+      argument.inputs[0].attribute<pir::BoolAttribute>(kStopGradientAttrName);
+  std::cout << "111111"
+            << "  " << stop_gradient0 << std::endl;
+  argument.inputs[1].set_attribute(kStopGradientAttrName,
+                                   builder.bool_attr(stop_gradient0.data()));
+  std::cout << "^^^^^^"
+            << "  "
+            << argument.inputs[1].attribute<pir::BoolAttribute>(
+                   kStopGradientAttrName)
+            << std::endl;
+}
+
+void AssignOut_Op::VerifySig() {
+  VLOG(4)
+      << "Start Verifying inputs, outputs and attributes for: AssignOut_Op.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 2u,
+               "The size %d of inputs must be equal to 2.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+    IR_ENFORCE((*this)
+                   ->operand_source(1)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 1th input, got %s.",
+               (*this)->operand_source(1).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    // Attributes num is 0, not need to check attributes type.
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: AssignOut_Op.";
+}
+
+void AssignOut_Op::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::UnchangedInferMeta);
+  fn(infer_meta);
+}
+
+std::vector<pir::Type> AssignOut_Op::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  IR_ENFORCE(input_values.size() == 2,
+             "Num of inputs is expected to be 2 but got %d.",
+             input_values.size());
+
+  pir::Value x_ = input_values[0];
+  (void)x_;
+  VLOG(4) << "Builder construction outputs";
+
+  paddle::dialect::DenseTensorType x;
+  if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
+    x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    (void)x;
+  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    paddle::dialect::AllocatedDenseTensorType allocated_x =
+        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    x = paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
+                                              allocated_x.dtype(),
+                                              allocated_x.dims(),
+                                              allocated_x.data_layout(),
+                                              allocated_x.lod(),
+                                              allocated_x.offset());
+    (void)x;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorType or "
+        "paddle::dialect::AllocatedDenseTensorType"));
+  }
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      x.lod(),
+      x.offset());
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::UnchangedInferMeta(meta_x, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+
+  return argument_outputs;
+}
+
+phi::DataType AssignOut_Op::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: AssignOut_Op";
+
+  return expected_kernel_dtype;
+}
+
 void ShapeBroadcastOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
                              pir::Value x_,
@@ -4301,6 +4469,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNArrayOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignOut_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)

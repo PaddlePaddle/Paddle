@@ -399,12 +399,14 @@ def inverse_sort_op(ops):
 
 
 def inplace_net(op_list):
-    op_name_list = [op.name() for op in op_list]
-    if (
-        "pd_op.array_write_" in op_name_list
-        or "pd_op.array_read" in op_name_list
-    ):
-        return True
+    for op in op_list:
+        string = op.name()
+        if string[-1] == '_':
+            return True
+        if op.name() in ["pd_op.if", "pd_op.while"]:
+            for block in op.blocks():
+                if inplace_net(block.ops):
+                    return True
     return False
 
 
@@ -505,6 +507,8 @@ def append_backward_ops(
         output_grads = []
         if op.name() == "pd_op.array_write_":
             output_list = [op.operand_source(0)]
+        elif op.name() == "pd_op.assign_out_":
+            output_list = [op.operand_source(1)]
         else:
             output_list = op.results()
 
@@ -658,7 +662,7 @@ def append_backward_ops(
                 ]
                 inputs.append(tmp_input)
 
-                if input in no_grad_set or input.stop_gradient is True:
+                if input.stop_gradient is True:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
@@ -830,10 +834,11 @@ def append_backward_ops(
                     # should be delete (prune sub_graph)
                     if (
                         len(output_grads) == 0 or all(zero_flag)
-                    ) and op.name() not in ["pd_op.while", "pd_op.increment_"]:
-                        continue
-
-                    if all(input_grad_stopgradients):
+                    ) and op.name() not in [
+                        "pd_op.while",
+                        "pd_op.if",
+                        "pd_op.increment_",
+                    ]:
                         continue
 
                     if op.name() == "pd_op.if":
@@ -1062,21 +1067,6 @@ def all_stop_gradient_true(block):
     return True
 
 
-def update_total_ops(block):
-    '''
-    when block is sub_block, forward op should include its parent block ops
-    (sub block nest should Add on demand to aviod block copy)
-    '''
-    total_ops = []
-    if block.parent_block is not None:
-        if block.parent_block.parent_block:
-            total_ops += block.parent_block.parent_block.ops
-        total_ops += block.parent_block.ops
-    total_ops += block.ops
-
-    return total_ops
-
-
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
@@ -1086,14 +1076,16 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         )
         return state.value_to_valuegrad
 
-    total_ops = update_total_ops(block)
+    total_ops = []
+    if block.parent_block is not None:
+        total_ops += block.parent_block.ops
+    total_ops += block.ops
 
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
-    with block:
-        complete_outputs, backward_ops = prepare_grad_outputs(
-            grad_outputs, outputs, state
-        )
+    complete_outputs, backward_ops = prepare_grad_outputs(
+        grad_outputs, outputs, state
+    )
 
     inputs_set = ValueSet(inputs)
     stop_gradient_false_outputs = []
