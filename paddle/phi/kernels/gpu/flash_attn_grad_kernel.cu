@@ -55,15 +55,6 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   void* dk_ptr = nullptr;
   void* dv_ptr = nullptr;
 
-  DenseTensor dq_tmp;
-  if (dq) {
-    ctx.template Alloc<T>(dq);
-    dq_ptr = dq->data();
-  } else {
-    dq_tmp = EmptyLike<T, Context>(ctx, q);
-    dq_ptr = dq_tmp.data();
-  }
-
   DenseTensor dk_tmp;
   if (dk) {
     ctx.template Alloc<T>(dk);
@@ -180,15 +171,6 @@ void FlashAttnGradKernel(const Context& ctx,
   void* dq_ptr = nullptr;
   void* dk_ptr = nullptr;
   void* dv_ptr = nullptr;
-
-  DenseTensor dq_tmp;
-  if (dq) {
-    ctx.template Alloc<T>(dq);
-    dq_ptr = dq->data();
-  } else {
-    dq_tmp = EmptyLike<T, Context>(ctx, q);
-    dq_ptr = dq_tmp.data();
-  }
 
   DenseTensor dk_tmp;
   if (dk) {
