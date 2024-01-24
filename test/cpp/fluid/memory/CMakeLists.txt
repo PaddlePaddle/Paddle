@@ -1,10 +1,17 @@
 paddle_test(memory_stats_test SRCS memory_stats_test.cc DEPS)
-paddle_test(stats_test SRCS stats_test.cc DEPS)
+cc_test(
+  stats_test
+  SRCS stats_test.cc
+  DEPS)
 
-paddle_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc
-            DEPS allocator)
-paddle_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS
-            allocator)
+cc_test(
+  naive_best_fit_allocator_test
+  SRCS naive_best_fit_allocator_test.cc
+  DEPS allocator)
+cc_test(
+  buffered_allocator_test
+  SRCS buffered_allocator_test.cc
+  DEPS allocator)
 
 if(WITH_GPU)
   nv_test(
@@ -30,24 +37,35 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator)
 else()
-  paddle_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
-              allocator)
+  cc_test(
+    best_fit_allocator_test
+    SRCS best_fit_allocator_test.cc
+    DEPS allocator)
 endif()
 
-paddle_test(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS
-            allocator)
+cc_test(
+  test_aligned_allocator
+  SRCS test_aligned_allocator.cc
+  DEPS allocator)
 
-paddle_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS allocator)
+cc_test(
+  retry_allocator_test
+  SRCS retry_allocator_test.cc
+  DEPS allocator)
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
 endif()
 
-paddle_test(allocator_facade_abs_flags_test SRCS
-            allocator_facade_abs_flags_test.cc DEPS allocator)
+cc_test(
+  allocator_facade_abs_flags_test
+  SRCS allocator_facade_abs_flags_test.cc
+  DEPS allocator)
 
-paddle_test(allocator_facade_frac_flags_test SRCS
-            allocator_facade_frac_flags_test.cc DEPS allocator)
+cc_test(
+  allocator_facade_frac_flags_test
+  SRCS allocator_facade_frac_flags_test.cc
+  DEPS allocator)
 
 if(WITH_GPU)
   nv_test(
@@ -102,15 +120,28 @@ if(WITH_GPU AND WITH_TESTING)
                                     FLAGS_use_stream_safe_cuda_allocator=true;")
 endif()
 
-paddle_test(auto_growth_best_fit_allocator_facade_test SRCS
-            auto_growth_best_fit_allocator_facade_test.cc DEPS allocator)
-paddle_test(auto_growth_best_fit_allocator_test SRCS
-            auto_growth_best_fit_allocator_test.cc DEPS allocator)
+cc_test(
+  auto_growth_best_fit_allocator_facade_test
+  SRCS auto_growth_best_fit_allocator_facade_test.cc
+  DEPS allocator)
+cc_test(
+  auto_growth_best_fit_allocator_test
+  SRCS auto_growth_best_fit_allocator_test.cc
+  DEPS allocator)
 
 if(NOT WIN32)
-  paddle_test(mmap_allocator_test SRCS mmap_allocator_test.cc DEPS allocator)
+  cc_test(
+    mmap_allocator_test
+    SRCS mmap_allocator_test.cc
+    DEPS allocator)
 endif()
 
-paddle_test(system_allocator_test SRCS system_allocator_test.cc DEPS allocator)
+cc_test(
+  system_allocator_test
+  SRCS system_allocator_test.cc
+  DEPS allocator)
 
-paddle_test(buddy_allocator_test SRCS buddy_allocator_test.cc DEPS allocator)
+cc_test(
+  buddy_allocator_test
+  SRCS buddy_allocator_test.cc
+  DEPS allocator)
