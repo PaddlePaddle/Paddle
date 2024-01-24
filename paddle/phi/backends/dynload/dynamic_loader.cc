@@ -30,72 +30,72 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/flags.h"
 
-PHI_DEFINE_string(cudnn_dir,  // NOLINT
+PHI_DEFINE_EXPORTED_string(cudnn_dir,  // NOLINT
                   "",
                   "Specify path for loading libcudnn.so. For instance, "
                   "/usr/local/cudnn/lib. If empty [default], dlopen "
                   "will search cudnn from LD_LIBRARY_PATH");
 
-PHI_DEFINE_string(  // NOLINT
+PHI_DEFINE_EXPORTED_string(  // NOLINT
     cuda_dir,
     "",
     "Specify path for loading cuda library, such as libcublas, libcublasLt "
     "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
     "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
-PHI_DEFINE_string(nccl_dir,  // NOLINT
+PHI_DEFINE_EXPORTED_string(nccl_dir,  // NOLINT
                   "",
                   "Specify path for loading nccl library, such as libnccl.so. "
                   "For instance, /usr/local/cuda/lib64. If default, "
                   "dlopen will search cuda from LD_LIBRARY_PATH");
 
-PHI_DEFINE_string(cupti_dir,
+PHI_DEFINE_EXPORTED_string(cupti_dir,
                   "",
                   "Specify path for loading cupti.so.");  // NOLINT
 
-PHI_DEFINE_string(  // NOLINT
+PHI_DEFINE_EXPORTED_string(  // NOLINT
     tensorrt_dir,
     "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
-PHI_DEFINE_string(mklml_dir,
+PHI_DEFINE_EXPORTED_string(mklml_dir,
                   "",
                   "Specify path for loading libmklml_intel.so.");  // NOLINT
 
-PHI_DEFINE_string(lapack_dir,
+PHI_DEFINE_EXPORTED_string(lapack_dir,
                   "",
                   "Specify path for loading liblapack.so.");  // NOLINT
 
-PHI_DEFINE_string(mkl_dir,  // NOLINT
+PHI_DEFINE_EXPORTED_string(mkl_dir,  // NOLINT
                   "",
                   "Specify path for loading libmkl_rt.so. "
                   "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
                   "If default, "
                   "dlopen will search mkl from LD_LIBRARY_PATH");
 
-PHI_DEFINE_string(op_dir,  // NOLINT
+PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
                   "",
                   "Specify path for loading user-defined op library.");
 
-PHI_DEFINE_string(cusparselt_dir,  // NOLINT
+PHI_DEFINE_EXPORTED_string(cusparselt_dir,  // NOLINT
                   "",
                   "Specify path for loading libcusparseLt.so.");
 
 #ifdef PADDLE_WITH_HIP
 
-PHI_DEFINE_string(miopen_dir,
+PHI_DEFINE_EXPORTED_string(miopen_dir,
                   "",
                   "Specify path for loading libMIOpen.so. For instance, "
                   "/opt/rocm/miopen/lib. If empty [default], dlopen "
                   "will search miopen from LD_LIBRARY_PATH");
 
-PHI_DEFINE_string(rocm_dir,
+PHI_DEFINE_EXPORTED_string(rocm_dir,
                   "",
                   "Specify path for loading rocm library, such as librocblas, "
                   "libmiopen, libhipsparse. For instance, /opt/rocm/lib. "
                   "If default, dlopen will search rocm from LD_LIBRARY_PATH");
 
-PHI_DEFINE_string(rccl_dir,
+PHI_DEFINE_EXPORTED_string(rccl_dir,
                   "",
                   "Specify path for loading rccl library, such as librccl.so. "
                   "For instance, /opt/rocm/rccl/lib. If default, "
