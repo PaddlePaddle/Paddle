@@ -75,7 +75,7 @@ Dialect2NameSpaceMap = {
 Dialect2OpHeaderMap = {
     "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
     "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
-    "onednn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/onednn_op.h\"",
+    "onednn_op": "#include \"paddle/fluid/pir/dialect/operator/ir/onednn_op.h\"",
 }
 
 
@@ -112,7 +112,7 @@ class OpCreatorCodeGen:
                 ops_onednn_extra = yaml.safe_load(f)
                 ops_onednn_extra_set = set()
                 for op in ops_onednn_extra:
-                    ops_onednn_extra_set.insert(op['op'])
+                    ops_onednn_extra_set.add(op['op'])
             with open(onednn_yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops

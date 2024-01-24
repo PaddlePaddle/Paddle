@@ -62,6 +62,9 @@ class OperationFactory {
 #ifdef PADDLE_WITH_CINN
     RegisterCinnOpGeneratedOpCreator();
 #endif
+#ifdef PADDLE_WITH_DNNL
+    RegisterOnednnOpGeneratedOpCreator();
+#endif
     RegisterManualOpCreator();
   }
 
