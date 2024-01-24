@@ -517,6 +517,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
   sym_data.emplace_back(value);
 
   symbol::ShapeOrDataDimExprs shape_data{sym_shape};
+  shape_data.SetData(sym_data);
 
   op->set_attribute(
       "symbolic_shape",
