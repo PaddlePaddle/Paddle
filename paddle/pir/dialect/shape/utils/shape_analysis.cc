@@ -49,13 +49,22 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
 }
 
 const symbol::ShapeOrDataDimExprs&
-ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
-  return value_to_shape_or_data_[val];
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
+  // TODO(zhangbopd): Uncomment this part and remove `if` later.
+  // IR_ENFORCE(this->HasShapeOrDataForValue(val),
+  //            "No shape_or_data for this value.");
+  if (!HasShapeOrDataForValue(val)) {
+    static symbol::ShapeOrDataDimExprs empty{
+        symbol::TensorShapeOrDataDimExprs{}};
+    return empty;
+  }
+
+  return value_to_shape_or_data_.at(val);
 }
 
-void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
+bool ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  value_to_shape_or_data_[val] = shape_or_data;
+  return value_to_shape_or_data_.emplace(val, shape_or_data).second;
 }
 
 symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {

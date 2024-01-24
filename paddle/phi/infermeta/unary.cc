@@ -426,7 +426,7 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_layout(x.layout());
   out->share_lod(x);
-  // In inpalce case, setting the dtype of out will reset the dtype of x at the
+  // In inplace case, setting the dtype of out will reset the dtype of x at the
   // same time, which will cause bugs, so move the dtype setting of out to the
   // kernel
   if (!(out->is_same_tensor(x))) {

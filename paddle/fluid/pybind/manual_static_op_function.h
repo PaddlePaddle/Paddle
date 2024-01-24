@@ -14,13 +14,20 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/builtin_op.h"
 
 namespace paddle {
 
@@ -410,6 +417,343 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
   }
 }
 
+extern PyObject *eager_api_run_custom_op(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs);
+
+static PyObject *static_api_run_custom_op(PyObject *self,
+                                          PyObject *args,
+                                          PyObject *kwargs) {
+  std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+  VLOG(7) << "Get things from python for Custom Op: " << op_type;
+  const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
+  PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
+                    meta_info_map.end(),
+                    paddle::platform::errors::NotFound(
+                        "Can't find %s in Eager OpMetaInfoMap which should be "
+                        "created by LoadOpMetaInfoAndRegisterOp, please make "
+                        "sure you registered your op first and try again. ",
+                        op_type));
+
+  const auto &vec_map = meta_info_map.at(op_type);
+  const auto &inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
+  const auto &attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
+  const auto &outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
+  const auto &inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+  const auto &inplace_reverse_map =
+      paddle::OpMetaInfoHelper::GetInplaceReverseMap(vec_map[0]);
+  auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(vec_map[0]);
+  auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(vec_map[0]);
+
+  std::string pir_op_name = paddle::framework::kCustomDialectPrefix + op_type;
+  if (!inplace_map.empty()) {
+    pir_op_name += "_";
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(pir_op_name);
+  pir::OperationArgument argument(pir_info);
+  std::vector<pir::Value> argument_inputs;
+  std::vector<pir::Type> argument_outputs;
+
+  std::vector<std::vector<int64_t>> input_shapes;
+  std::vector<DataType> input_dtypes;
+  std::unordered_map<std::string, int> input_name2id_map;
+  std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
+  std::vector<std::vector<DataType>> vec_input_dtypes;
+  std::unordered_map<std::string, int> vec_input_name2id_map;
+  std::vector<paddle::any> custom_attrs;
+  int input_index = 0;
+  int vec_input_index = 0;
+
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    const auto &input = inputs.at(i);
+    // Parse op_type first, so that use i + 1
+    PyObject *obj = PyTuple_GET_ITEM(args, i + 1);
+    // Emplace Py_None from python, this means optional inputs passed to C++,
+    // use one un-initialized tensor to indicate both Tensor and
+    // vector<Tensor> inputs.
+    if (obj == Py_None) {
+      VLOG(7) << "Add un-initialized tensor "
+                 "because the optional input is None";
+      if (paddle::framework::detail::IsDuplicableVar(input)) {
+        vec_input_shapes.emplace_back();
+        vec_input_dtypes.emplace_back();
+        vec_input_name2id_map[inputs[i]] = vec_input_index;
+        vec_input_index++;
+      } else {
+        input_shapes.emplace_back();
+        input_dtypes.emplace_back();
+        input_name2id_map[inputs[i]] = input_index;
+        input_index++;
+      }
+      argument_inputs.emplace_back();
+      continue;
+    }
+    if (paddle::framework::detail::IsDuplicableVar(input)) {
+      std::vector<std::vector<int64_t>> tmp_input_shapes;
+      std::vector<phi::DataType> tmp_input_dtypes;
+      vec_input_name2id_map[inputs[i]] = vec_input_index;
+      vec_input_index++;
+      std::vector<pir::Value> input_values =
+          std::move(CastPyArg2VectorOfValue(obj, op_type, i + 1));  // NOLINT
+      for (auto &input_value : input_values) {
+        paddle::dialect::DenseTensorType input_tensor =
+            input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+        tmp_input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+        tmp_input_dtypes.push_back(
+            paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+      }
+      vec_input_shapes.push_back(tmp_input_shapes);
+      vec_input_dtypes.push_back(tmp_input_dtypes);
+      auto input_value = paddle::dialect::stack(input_values, /*axis*/ 0);
+      argument_inputs.push_back(input_value);
+    } else {
+      input_name2id_map[inputs[i]] = input_index;
+      input_index++;
+      pir::Value input_value = CastPyArg2Value(obj, op_type, i + 1);  // NOLINT
+      paddle::dialect::DenseTensorType input_tensor =
+          input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+      input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+      input_dtypes.push_back(
+          paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+      argument_inputs.push_back(input_value);
+    }
+  }
+  argument.AddInputs(argument_inputs);
+
+  // Parse op_type and inputs first, so that use 1 + inputs.size() + i
+  int attr_start_idx = static_cast<int>(1 + inputs.size());
+  for (size_t i = 0; i < attrs.size(); ++i) {
+    const auto &attr = attrs.at(i);
+    std::vector<std::string> attr_name_and_type = paddle::ParseAttrStr(attr);
+    auto attr_type_str = attr_name_and_type[1];
+    VLOG(7) << "Custom operator add attrs " << attr_name_and_type[0]
+            << " to CustomOpKernelContext. Attribute type = " << attr_type_str;
+    PyObject *obj = PyTuple_GET_ITEM(args, attr_start_idx + i);
+    if (attr_type_str == "bool") {
+      bool bool_attr = CastPyArg2AttrBoolean(obj, attr_start_idx + i);
+      custom_attrs.push_back(bool_attr);  // NOLINT
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::BoolAttribute::get(pir::IrContext::Instance(), bool_attr));
+    } else if (attr_type_str == "int") {
+      int int_attr = CastPyArg2AttrInt(obj, attr_start_idx + i);
+      custom_attrs.push_back(int_attr);  // NOLINT
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::Int32Attribute::get(pir::IrContext::Instance(), int_attr));
+    } else if (attr_type_str == "float") {
+      float float_attr = CastPyArg2AttrFloat(obj, attr_start_idx + i);
+      custom_attrs.push_back(float_attr);  // NOLINT
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::FloatAttribute::get(pir::IrContext::Instance(), float_attr));
+    } else if (attr_type_str == "int64_t") {
+      int64_t long_attr = CastPyArg2AttrLong(obj, attr_start_idx + i);
+      custom_attrs.push_back(long_attr);  // NOLINT
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::Int64Attribute::get(pir::IrContext::Instance(), long_attr));
+    } else if (attr_type_str == "std::string") {
+      std::string str_attr = CastPyArg2AttrString(obj, attr_start_idx + i);
+      custom_attrs.push_back(str_attr);  // NOLINT
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::StrAttribute::get(pir::IrContext::Instance(), str_attr));
+    } else if (attr_type_str == "std::vector<int>") {
+      std::vector<int> vec_int_attr =
+          CastPyArg2VectorOfInt(obj, attr_start_idx + i);
+      custom_attrs.push_back(vec_int_attr);
+      std::vector<pir::Attribute> array_attr;
+      for (size_t i = 0; i < static_cast<size_t>(vec_int_attr.size()); i++) {
+        pir::Attribute attr = pir::Int32Attribute::get(
+            pir::IrContext::Instance(), vec_int_attr[i]);
+        array_attr.push_back(attr);
+      }
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), array_attr));
+    } else if (attr_type_str == "std::vector<float>") {
+      std::vector<float> vec_float_attr =
+          CastPyArg2VectorOfFloat(obj, attr_start_idx + i);
+      custom_attrs.push_back(vec_float_attr);
+      std::vector<pir::Attribute> array_attr;
+      for (size_t i = 0; i < static_cast<size_t>(vec_float_attr.size()); i++) {
+        pir::Attribute attr = pir::FloatAttribute::get(
+            pir::IrContext::Instance(), vec_float_attr[i]);
+        array_attr.push_back(attr);
+      }
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), array_attr));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      std::vector<int64_t> vec_long_attr =
+          CastPyArg2VectorOfInt64(obj, attr_start_idx + i);
+      custom_attrs.push_back(vec_long_attr);  // NOLINT
+      std::vector<pir::Attribute> array_attr;
+      for (size_t i = 0; i < static_cast<size_t>(vec_long_attr.size()); i++) {
+        pir::Attribute attr = pir::Int64Attribute::get(
+            pir::IrContext::Instance(), vec_long_attr[i]);
+        array_attr.push_back(attr);
+      }
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), array_attr));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      std::vector<std::string> vec_str_attr =
+          CastPyArg2VectorOfString(obj, attr_start_idx + i);
+      custom_attrs.push_back(vec_str_attr);  // NOLINT
+      std::vector<pir::Attribute> array_attr;
+      for (size_t i = 0; i < static_cast<size_t>(vec_str_attr.size()); i++) {
+        pir::Attribute attr =
+            pir::StrAttribute::get(pir::IrContext::Instance(), vec_str_attr[i]);
+        array_attr.push_back(attr);
+      }
+      argument.AddAttribute(
+          attr_name_and_type[0],
+          pir::ArrayAttribute::get(pir::IrContext::Instance(), array_attr));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether "
+          "the attribute data type and data type string are matched.",
+          attr_type_str));
+    }
+  }
+
+  paddle::framework::CheckDefaultInferShapeDtype(
+      infershape_func, inferdtype_func, vec_map[0]);
+  std::vector<std::vector<int64_t>> output_shapes =
+      paddle::framework::RunInferShape(infershape_func,
+                                       vec_map[0],
+                                       input_shapes,
+                                       input_name2id_map,
+                                       vec_input_shapes,
+                                       vec_input_name2id_map,
+                                       custom_attrs);
+  std::vector<phi::DataType> output_dtypes =
+      paddle::framework::RunInferDtype(inferdtype_func,
+                                       vec_map[0],
+                                       input_dtypes,
+                                       input_name2id_map,
+                                       vec_input_dtypes,
+                                       vec_input_name2id_map,
+                                       custom_attrs);
+
+  size_t all_values_num = 0;
+  // output name -> value num (that output should hold)
+  std::unordered_map<std::string, size_t> output_name2value_num;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto &output = outputs.at(i);
+    if (paddle::framework::detail::IsDuplicableVar(output)) {
+      PADDLE_ENFORCE_NE(
+          inplace_reverse_map.find(output),
+          inplace_reverse_map.end(),
+          phi::errors::InvalidArgument(
+              "Only support vector output that is set for inplace, Please use "
+              "`SetInplaceMap` in your output when registry custom operator."));
+      const auto &input = inplace_reverse_map.at(output);
+      auto index = vec_input_name2id_map[input];
+      auto &input_shapes = vec_input_shapes[index];
+      output_name2value_num[output] = input_shapes.size();
+      all_values_num += input_shapes.size();
+    } else {
+      output_name2value_num[output] = 1;
+      all_values_num++;
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      all_values_num,
+      phi::errors::InvalidArgument(
+          "The number of output shapes after running custom operator's "
+          "InferShapeFunc is wrong, "
+          "expected contains %d Tensors' shape, but actually contains %d "
+          "Tensors' shape",
+          all_values_num,
+          output_shapes.size()));
+
+  PADDLE_ENFORCE_EQ(
+      output_dtypes.size(),
+      all_values_num,
+      phi::errors::InvalidArgument(
+          "The number of output dtypes after running custom operator's "
+          "InferDtypeFunc is wrong, "
+          "expected contains %d Tensors' dtype, but actually contains %d "
+          "Tensors' dtype",
+          all_values_num,
+          output_dtypes.size()));
+
+  size_t value_index = 0;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto &output = outputs.at(i);
+    if (paddle::framework::detail::IsDuplicableVar(output)) {
+      auto value_num = output_name2value_num[output];
+      std::vector<pir::Type> out_types;
+      for (size_t j = 0; j < value_num; ++j) {
+        auto ddims = phi::make_ddim(output_shapes[value_index]);
+        auto dtype = output_dtypes[value_index];
+        phi::DataLayout layout{DataLayout::NCHW};
+        phi::LoD lod;
+        out_types.push_back(paddle::dialect::DenseTensorType::get(
+            pir::IrContext::Instance(),
+            paddle::dialect::TransToIrDataType(dtype),
+            ddims,
+            layout,
+            lod,
+            0));
+        value_index++;
+      }
+      pir::Type out_vector_type =
+          pir::VectorType::get(pir::IrContext::Instance(), out_types);
+      argument_outputs.push_back(out_vector_type);
+    } else {
+      auto ddims = phi::make_ddim(output_shapes[value_index]);
+      auto dtype = output_dtypes[value_index];
+      phi::DataLayout layout{DataLayout::NCHW};
+      phi::LoD lod;
+      auto out_type = paddle::dialect::DenseTensorType::get(
+          pir::IrContext::Instance(),
+          paddle::dialect::TransToIrDataType(dtype),
+          ddims,
+          layout,
+          lod,
+          0);
+      argument_outputs.push_back(out_type);
+      value_index++;
+    }
+  }
+
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+
+  std::vector<pir::Value> op_results;
+  pir::Operation *op =
+      paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
+          std::move(argument));
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    op_results.push_back(op->result(i));
+  }
+
+  return ToPyObject(op_results);
+}
+
+static PyObject *run_custom_op(PyObject *self,
+                               PyObject *args,
+                               PyObject *kwargs) {
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
+    VLOG(6) << "Call static_api_abs";
+    return static_api_run_custom_op(self, args, kwargs);
+  } else {
+    VLOG(6) << "Call eager_api_abs";
+    return eager_api_run_custom_op(self, args, kwargs);
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
@@ -455,6 +799,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_slice_array_dense,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for slice_array_dense."},
+    {"_run_custom_op",
+     (PyCFunction)(void (*)(void))run_custom_op,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for run_custom_op."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
