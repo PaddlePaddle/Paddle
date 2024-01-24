@@ -109,11 +109,11 @@ class TestPixelShuffleFP16Op(TestPixelShuffleOp):
         self.dtype = np.float16
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda()
-#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-#     "core is not compiled with CUDA or not support bfloat16",
-# )
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
 class TestPixelShuffleBF16Op(OpTest):
     def setUp(self):
         self.op_type = "pixel_shuffle"
