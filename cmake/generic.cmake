@@ -486,6 +486,8 @@ function(cc_test_build TARGET_NAME)
 endfunction()
 
 set(LD_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
+# for CUDA forward compatibility
+set(LD_LIBRARY_PATH "/usr/local/cuda/compat/lib:${LD_LIBRARY_PATH}")
 
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
