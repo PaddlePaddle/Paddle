@@ -97,7 +97,7 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    pir::OpResult res0 = op->result(0);
+    pir::Value res0 = op->result(0);
 
     std::vector<int64_t> dims =
         common::vectorize(res0.type().dyn_cast<pir::DenseTensorType>().dims());
