@@ -485,6 +485,8 @@ function(cc_test_build TARGET_NAME)
   endif()
 endfunction()
 
+set(LD_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
+
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs DIR)
@@ -505,7 +507,7 @@ function(cc_test_run TARGET_NAME)
         FLAGS_cpu_deterministic=true
         FLAGS_init_allocated_mem=true
         FLAGS_cudnn_deterministic=true
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
     )
     # No unit test should exceed 2 minutes.
     if(WIN32)
@@ -741,6 +743,7 @@ function(nv_test TARGET_NAME)
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${LD_LIBRARY_PATH})
     if((CUDA_VERSION GREATER 9.2)
        AND (CUDA_VERSION LESS 11.0)
        AND (MSVC_VERSION LESS 1910))
