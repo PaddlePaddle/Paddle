@@ -364,7 +364,7 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
     logger.debug("all gathered ...")
 
     if dist.get_rank() in dst:
-        # convert numpy.ndarray to Tensor in cpu palce
+        # convert numpy.ndarray to Tensor in cpu place
         place = paddle.CPUPlace()
         for k in output_state.keys():
             output_state[k] = paddle.to_tensor(output_state[k], place=place)

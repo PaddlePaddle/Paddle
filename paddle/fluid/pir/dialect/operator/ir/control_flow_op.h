@@ -169,7 +169,7 @@ class SelectInputOp : public pir::Op<SelectInputOp> {
   static constexpr uint32_t attributes_num = 0;
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
-  pir::OpResult out() { return result(0); }
+  pir::Value out() { return result(0); }
 };
 
 class SelectOutputOp : public pir::Op<SelectOutputOp> {

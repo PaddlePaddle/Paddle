@@ -454,9 +454,9 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
     }
   }
   auto& python_end = statistics_[name2idx_["PythonEnd"]];
-  const auto& totol = statistics_[name2idx_["Total"]];
+  const auto& total = statistics_[name2idx_["Total"]];
   const auto& cplusplus_end = statistics_[name2idx_["CplusplusEnd"]];
-  python_end.total_time = totol.total_time - cplusplus_end.total_time;
+  python_end.total_time = total.total_time - cplusplus_end.total_time;
   python_end.count = cplusplus_end.count + 1;
 
   auto& launch_kernel = statistics_[name2idx_["LaunchKernel"]];
