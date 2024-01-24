@@ -17,7 +17,7 @@ import warnings
 from paddle import _C_ops
 
 from ..base import framework
-from ..base.framework import in_dygraph_mode
+from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -252,7 +252,7 @@ class RMSProp(Optimizer):
             else None
         )
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _C_ops.rmsprop_(
                 param_and_grad[0],
                 mean_square_acc,
