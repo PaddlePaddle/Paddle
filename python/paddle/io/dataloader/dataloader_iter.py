@@ -49,11 +49,11 @@ from .worker import (
 # NOTE: fix `terminate called without an active exception`
 # if for loop break and program exit immediately(with no model
 # layers processing) after iterate **the first few data** in
-# distributed lauch mode, distributed launch will call
+# distributed launch mode, distributed launch will call
 # terminate() to kill main process on each devices, but thread
 # is still iterating to fullfill blocking queue caches, which
 # may cause thread error `terminate called without an active
-# exception` for terminate is a strong singal and `__del__`
+# exception` for terminate is a strong signal and `__del__`
 # of DataLoader may not be called, so we add a global link to
 # the last DataLoader instance to call `__del__` to clean up
 # resources
