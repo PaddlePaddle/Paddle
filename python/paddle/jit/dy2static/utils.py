@@ -42,13 +42,10 @@ from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
 from .utils_helper import (  # noqa: F401
-    DYGRAPH_MODULE_PREFIX,
-    DYGRAPH_TO_STATIC_MODULE_PREFIX,
     PADDLE_MODULE_PREFIX,
     _is_api_in_module_helper,
     index_in_list,
     is_api_in_module,
-    is_dygraph_api,
     is_paddle_api,
 )
 
