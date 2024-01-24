@@ -84,6 +84,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
@@ -1575,10 +1576,17 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
+  bool force_static_shape = false;
+  if (auto pass = cinn::dialect::ir::CreateConvertDynamicToStaticDimPass()) {
+    pass_manager->AddPass(std::move(pass.value()));
+    force_static_shape = true;
+  }
   if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
     pass_manager->AddPass(std::move(pass.value()));
   }
-  if (has_dynamic_shape) {
+
+  if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   }
