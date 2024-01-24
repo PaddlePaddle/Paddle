@@ -96,7 +96,7 @@ ir::Tensor GatherNdSymbolic(const ir::Tensor &x,
   std::vector<Expr> out_shape;
   out_shape.insert(out_shape.end(), index_shape.begin(), index_shape.end() - 1);
   out_shape.insert(out_shape.end(),
-                   x_shape.begin() + index_shape.back().as_int64(),
+                   x_shape.begin() + index_shape.back().as_int32(),
                    x_shape.end());
   auto res = Compute(
       out_shape,
@@ -104,17 +104,17 @@ ir::Tensor GatherNdSymbolic(const ir::Tensor &x,
         std::vector<Expr> indices_position;
         for (size_t i = 0; i < index_shape_size - 1; ++i) {
           indices_position.push_back(
-              ir::Cast::Make(cinn::common::Int(64), indices[i]));
+              ir::Cast::Make(cinn::common::Int(32), indices[i]));
         }
         indices_position.push_back(
-            ir::Cast::Make(cinn::common::Int(64), Expr(0)));
+            ir::Cast::Make(cinn::common::Int(32), Expr(0)));
         size_t indices_position_size = indices_position.size();
         std::vector<Expr> real_indices;
         for (size_t i = 0; i < index_shape.back().as_int64(); ++i) {
           indices_position[indices_position_size - 1] =
-              ir::Cast::Make(cinn::common::Int(64), Expr(i));
+              ir::Cast::Make(cinn::common::Int(32), Expr(i));
           real_indices.push_back(
-              ir::Cast::Make(cinn::common::Int(64), index(indices_position)));
+              ir::Cast::Make(cinn::common::Int(32), index(indices_position)));
         }
         if (real_indices.size() == x_shape_size) {
           return x(real_indices);
