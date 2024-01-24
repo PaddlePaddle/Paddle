@@ -279,15 +279,15 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 
 #if CUDA_VERSION >= 11000
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    cudaFunction_t cudaFunc,
     parameterSetter_t parameterSetter,
     cudaKernelCallback_t cudakernelCallback) {
-  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-    unsigned int id = GenerateIndentifier();
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+    unsigned int id = GenerateIdentifier();
+    auto cudaFunc = cudakernelCallback(id);
 
     parameterSetters[cudaFunc][id] = parameterSetter;
-    cudakernelCallback(id);
-
+    VLOG(10) << "[KernelNodeLaunch] Launch kernel with cudaFunc = " << cudaFunc
+             << " id = " << id;
   } else {
     cudakernelCallback(0);
   }
@@ -308,16 +308,21 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cuGraphNodeGetType(cuNode, &pType));
     if (pType == CU_GRAPH_NODE_TYPE_KERNEL) {
       CUDA_KERNEL_NODE_PARAMS cuParams;
+
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cuGraphKernelNodeGetParams(cuNode, &cuParams));
       CUDAKernelParams kernel_params(cuParams.kernelParams);
       auto kernel =
           parameterSetters.find(static_cast<cudaFunction_t>(cuParams.func));
-
+      VLOG(10) << "[GetParameterSettersForExecGraph] cuParams.func = "
+               << cuParams.func;
       // There exists a parameter setter
       if (kernel != parameterSetters.end()) {
         auto launchSequence = kernel->second;
         unsigned int id = kernel_params.As<int>(0);
+
+        VLOG(10) << "[GetParameterSettersForExecGraph] Find launch kernel id = "
+                 << id;
         auto parameterSetter = launchSequence.find(id);
         if (parameterSetter != launchSequence.end()) {
           auto setter = parameterSetter->second;
