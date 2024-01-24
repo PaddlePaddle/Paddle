@@ -1014,7 +1014,7 @@ ir::Tensor Slice(const ir::Tensor& A,
                  const std::string& output_name) {
   std::vector<int> input_shape;
   for (const auto& shape : A->shape) {
-    input_shape.emplace_back(shape.as_int32());
+    input_shape.emplace_back(shape.as_int64());
   }
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
