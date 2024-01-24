@@ -558,6 +558,7 @@ class TestSoftmaxAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
