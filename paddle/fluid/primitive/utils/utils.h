@@ -20,6 +20,7 @@
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/op_result.h"
 
 namespace paddle {
 namespace primitive {

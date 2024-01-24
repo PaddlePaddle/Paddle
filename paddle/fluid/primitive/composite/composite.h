@@ -282,7 +282,13 @@ template <typename T>
 Tensor relu_decomp(const Tensor& x) {
   bool flag = is_dynamic_shape(x);
   VLOG(0) << "test is_dynamic_shape =====================  " << flag;
-  return maximum<T>(x, full<T>(common::vectorize(x.dims()), 0.0, x.dtype()));
+  if (flag) {
+    IntArray shape_ = IntArray(shape<T>(x));
+    VLOG(0) << "begin to call full with intarray------  " << flag;
+    return maximum<T>(x, full<T>(shape_, 0.0, x.dtype()));
+  } else {
+    return maximum<T>(x, full<T>(common::vectorize(x.dims()), 0.0, x.dtype()));
+  }
 }
 
 template <typename T>
