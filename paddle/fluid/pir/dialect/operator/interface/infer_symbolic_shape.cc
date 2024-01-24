@@ -508,7 +508,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
     sym_shape.push_back(dim_expr);
   }
 
-  // DimExpr only keep shape info, which always be int type
+  // DimExpr only keep shape info, which is always int type
   int64_t value = attributes.at("value")
                       .dyn_cast<paddle::dialect::ScalarAttribute>()
                       .data()
