@@ -71,9 +71,10 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 
 int GetSharedSize(::pir::Operation* op);
 
-inline bool always_fuse(::pir::Operation* producer,
-                        const std::shared_ptr<Group>& consumer,
-                        ::pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+inline bool always_fuse(
+    ::pir::Operation* producer,
+    const std::shared_ptr<Group>& consumer,
+    ::pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
   return true;
 }
 
