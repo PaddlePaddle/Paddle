@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
 import unittest
 
 import numpy as np
@@ -26,8 +25,6 @@ from paddle import base, to_tensor
 from paddle.base import dygraph
 from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
-from paddle.jit.dy2static.utils import is_dygraph_api
-from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)
@@ -471,23 +468,6 @@ def _dygraph_fn():
     with base.dygraph.guard():
         base.dygraph.to_variable(x)
         np.random.random(1)
-
-
-class TestDygraphApiRecognition(Dy2StTestBase):
-    def setUp(self):
-        self.src = inspect.getsource(_dygraph_fn)
-        self.root = gast.parse(self.src)
-
-    def _get_dygraph_ast_node(self):
-        return self.root.body[0].body[2].body[0].value
-
-    def _get_static_ast_node(self):
-        return self.root.body[0].body[2].body[1].value
-
-    @test_default_and_pir
-    def test_dygraph_api(self):
-        self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
-        self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)
 
 
 if __name__ == '__main__':
