@@ -27,7 +27,7 @@ class TestDistributedPushSparseOpTranslator(
         self.op_type = "distributed_push_sparse"
         ids = paddle.ones(shape=(100, 2, 3), dtype='float32')
         shows = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        clicks = paddle.one(shape=(100, 2, 3), dtype='float32')
+        clicks = paddle.ones(shape=(100, 2, 3), dtype='float32')
         out = paddle.ones(shape=(100, 2, 3), dtype='float32')
         attrs = {
             'table_id': 0,
