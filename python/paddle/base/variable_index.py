@@ -82,12 +82,10 @@ def replace_none(item):
     return new_item, none_axes
 
 
-def is_integer_or_scalar_tensor(ele):
+def is_scalar_tensor(ele):
     from .framework import Variable
 
-    if type(ele) is int:
-        return True
-    elif isinstance(ele, Variable):
+    if isinstance(ele, Variable):
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
     elif isinstance(ele, paddle.pir.Value):
@@ -284,10 +282,9 @@ def parse_index(x, indices):
     dim = 0
     for i, slice_item in enumerate(indices):
         start, end, step = None, None, None
-        if is_integer_or_scalar_tensor(slice_item):
+        if type(slice_item) is int:
             if (
                 not is_tensor_array
-                and isinstance(slice_item, int)
                 and x.shape[dim] is not None
                 and x.shape[dim] >= 0
                 and slice_item >= x.shape[dim]
@@ -307,6 +304,13 @@ def parse_index(x, indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            dim += 1
+        elif is_scalar_tensor(slice_item):
+            # not calculate result to reduce call times for slice OP.
+            decrease_axes.append(dim)
+            start = slice_item
+            step = 1
+            end = slice_item + 1
             dim += 1
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing

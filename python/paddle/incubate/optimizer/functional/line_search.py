@@ -30,7 +30,7 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
         x1, f1, g1: point1's position, value and gradient.
         x2, f2, g2: point2's position, value and gradient.
     Returns:
-        min_pos: the minimun point between the specified points in the cubic curve.
+        min_pos: the minimum point between the specified points in the cubic curve.
     """
     xmin, xmax = paddle.static.nn.cond(
         x1 <= x2, lambda: (x1, x2), lambda: (x2, x1)
