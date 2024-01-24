@@ -563,7 +563,7 @@ class TestConcatOpError(unittest.TestCase):
             x2 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
             )
-            self.assertRaises(TypeError, paddle.concat, [x2])
+            self.assertRaises(TypeError, paddle.concat, [x2, x2])
             # The input dtype of concat_op must be float16, float32, float64, int32, int64.
 
             x4 = paddle.static.data(shape=[-1, 4], dtype='uint8', name='x4')
@@ -699,7 +699,7 @@ class TestConcatAPI(unittest.TestCase):
             x3 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
             )
-            self.assertRaises(TypeError, paddle.concat, [x2])
+            self.assertRaises(TypeError, paddle.concat, [x2, x2])
             # The input dtype of concat_op must be float16, float32, float64, int32, int64.
             x4 = paddle.static.data(shape=[4], dtype='uint8', name='x4')
             x5 = paddle.static.data(shape=[4], dtype='uint8', name='x5')
