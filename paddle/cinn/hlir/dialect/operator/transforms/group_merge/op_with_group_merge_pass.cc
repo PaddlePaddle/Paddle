@@ -43,7 +43,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    auto* source_op = operand.source().defining_op();
 
     if (!op2id.count(source_op)) {
       continue;
@@ -73,7 +73,7 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    auto* source_op = operand.source().defining_op();
     producers.insert(source_op);
   }
   return producers;
@@ -109,7 +109,7 @@ std::vector<pir::Operation*> TopologicalSort(
         continue;
       }
 
-      if (inner_set.count(operand.source().dyn_cast<pir::OpResult>().owner())) {
+      if (inner_set.count(operand.source().defining_op())) {
         count++;
       }
     }
@@ -281,7 +281,7 @@ class OpFusionPassHelper {
         // input op
 
         for (size_t i = 0; i < op->num_operands(); ++i) {
-          auto input = op->operand_source(i).dyn_cast<pir::OpResult>().owner();
+          auto input = op->operand_source(i).defining_op();
           if (input && (local_ops_.count(input))) {
             group->input_ops[input] = 1;
           }

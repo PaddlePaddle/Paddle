@@ -2810,13 +2810,10 @@ void SliceArrayOp::VerifySig() {
 
 phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
   phi::IntArray starts_or_ends_list;
-  if (starts_or_ends.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (starts_or_ends.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     starts_or_ends_list =
         std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-            starts_or_ends.dyn_cast<pir::OpResult>()
-                .owner()
+            starts_or_ends.defining_op()
                 ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                 .attribute("value"))));
   } else if (starts_or_ends.type().isa<pir::VectorType>()) {
