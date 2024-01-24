@@ -35,6 +35,7 @@
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/pir/core/block.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/value.h"
 
 namespace paddle {
