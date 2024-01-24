@@ -27,17 +27,17 @@ enum class WalkOrder { PreOrder, PostOrder };
 
 namespace detail {
 // Defines utilities for walking and visiting operations.
-void Walk(Operation *op,
-          const std::function<void(Region *)> &callback,
-          WalkOrder order);
+TEST_API void Walk(Operation *op,
+                   const std::function<void(Region *)> &callback,
+                   WalkOrder order);
 
-void Walk(Operation *op,
-          const std::function<void(Block *)> &callback,
-          WalkOrder order);
+TEST_API void Walk(Operation *op,
+                   const std::function<void(Block *)> &callback,
+                   WalkOrder order);
 
-void Walk(Operation *op,
-          const std::function<void(Operation *)> &callback,
-          WalkOrder order);
+TEST_API void Walk(Operation *op,
+                   const std::function<void(Operation *)> &callback,
+                   WalkOrder order);
 
 template <WalkOrder Order = WalkOrder::PostOrder, typename FuncTy>
 void Walk(Operation *op, FuncTy &&callback) {
