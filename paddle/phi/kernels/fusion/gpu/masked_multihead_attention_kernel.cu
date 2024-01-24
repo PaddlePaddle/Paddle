@@ -32,8 +32,7 @@ struct Masked_multihead_attention_params {
   T *out;
   float *qk_sum_max_split_seq;
   int * real_split_each_batch;
-  /* 现在假设每个seq被拆成2部分来做 */
-  int split_seq = 4;
+  int split_seq = -1;
   float *split_out;
 
   // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
@@ -156,9 +155,6 @@ __global__ void masked_multihead_attention_kernel(
   int act_time_step = params.sequence_lengths == nullptr
                           ? params.timestep
                           : params.sequence_lengths[bi];
-  
-  const int split_k = gridDim.x;
-  //const int steps_per_block = (act_time_step + split_k - 1) / split_k;
   constexpr int steps_per_block = 128;
   // 最后的单独的那个q*k*v让split_index的最后的那个cuda thread block来计算！
   const int split_index = blockIdx.x;
@@ -179,13 +175,6 @@ __global__ void masked_multihead_attention_kernel(
     end_seq = act_time_step;
     is_last_block = true;
   }
-  // end_seq = end_seq > act_time_step ? act_time_step : end_seq;
-
-  // if (blockIdx.y == 0 && blockIdx.z == 0 && threadIdx.x == 0) {
-  //   printf("start_seq %d \n", start_seq);
-  //   printf("end_seq %d \n", end_seq);
-  //   printf("split_index %d \n", split_index);
-  // }
 
   // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
   // this hi means the head index in query!
@@ -507,7 +496,6 @@ __global__ void masked_multihead_attention_kernel(
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
   
   int useful_smem_index = end_seq - start_seq;
-  //if (split_index < split_k - 1) {
   if (!is_last_block) {
     useful_smem_index = end_seq - start_seq - 1;
   }
@@ -655,7 +643,7 @@ __global__ void masked_multihead_attention_kernel(
   return;
 
   // write the [1, head_dim] result back to global memory.
-  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh) && (split_index == 0)) {
+  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     // convert_from_float(*reinterpret_cast<V_vec *>(&params.out[bhi * Dh +
     // vi]),
