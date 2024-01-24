@@ -397,7 +397,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/i
 def get_paddle_extra_install_requirements():
     #(Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
     paddle_cuda_install_requirements = os.getenv(
-        "PADDLE_CUDA_INSTALL_REQUIREMENTS", ""
+        "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
     )
     if paddle_cuda_install_requirements is not None:
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
@@ -837,7 +837,6 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/:$ORIGIN/../../nvidia/cuda_runtime/lib' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
-            #commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs:$ORIGIN/../../nvidia/cuda_runtime/lib' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
