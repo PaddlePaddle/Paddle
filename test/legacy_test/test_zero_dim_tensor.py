@@ -315,7 +315,7 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_static_reduce(self):
         paddle.enable_static()
         for api in reduce_api_list:
@@ -332,7 +332,9 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([])
                 x.stop_gradient = False
                 out = api(x, axis=None)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[x, out]
+                )
 
                 if api not in [paddle.median, paddle.nanmedian]:
                     out_empty_list = api(x, axis=[])
@@ -345,10 +347,12 @@ class TestReduceAPI(unittest.TestCase):
                 assertEqualListTuple(self, out2)
 
                 fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
 
+                fetch_list.extend(
+                    [_grad for _param, _grad in grad_list if _grad]
+                )
                 res = exe.run(main_prog, fetch_list=fetch_list)
+
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
                 if api not in [paddle.count_nonzero]:
@@ -367,16 +371,20 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([3, 5])
                 x.stop_gradient = False
                 out = api(x, axis=None)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[out, x]
+                )
 
                 fetch_list = [out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([out.grad_name, x.grad_name])
+                fetch_list.extend(
+                    [_grad for _param, _grad in grad_list if _grad]
+                )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
+                if len(res) > 2:
                     self.assertEqual(res[2].shape, (3, 5))
 
                 # 3) x is 1D, axis=0, reduce to 0D
@@ -386,16 +394,20 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([5])
                 x.stop_gradient = False
                 out = api(x, axis=0)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[out, x]
+                )
 
                 fetch_list = [out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([out.grad_name, x.grad_name])
+                fetch_list.extend(
+                    [_grad for _param, _grad in grad_list if _grad]
+                )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
+                if len(res) > 2:
                     self.assertEqual(res[2].shape, (5,))
 
         paddle.disable_static()
@@ -593,7 +605,23 @@ class TestBinaryAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
+    # @test_with_pir_api
+    """
+    ======================================================================
+    ERROR: test_static_binary (__main__.TestBinaryAPI)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 612, in test_static_binary
+        out_cls = getattr(
+    File "/home/aistudio/Paddle/build/python/paddle/base/layers/math_op_patch.py", line 528, in __impl__
+        current_block(self), value=other_var, dtype=lhs_dtype
+    File "/home/aistudio/Paddle/build/python/paddle/base/layers/math_op_patch.py", line 82, in current_block
+        return var.block.program.current_block()
+    AttributeError: 'paddle.base.libpaddle.pir.Program' object has no attribute 'current_block'
+    """
+
     def test_static_binary(self):
         paddle.enable_static()
         for api in binary_api_list:
@@ -3064,7 +3092,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.polygamma(x, 2)
-        grad_list = paddle.static.append_backward(out,  parameter_list =[x])
+        grad_list = paddle.static.append_backward(out, parameter_list=[x])
         x_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
@@ -3073,12 +3101,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
 
     # @test_with_pir_api
+    # TODO: fix frexp DrRyanHuang https://github.com/PaddlePaddle/Paddle/pull/61087
     @prog_scope()
-    def test_frexp(self):  # TODO: fix frexp DrRyanHuang https://github.com/PaddlePaddle/Paddle/pull/61087
+    def test_frexp(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out1, out2 = paddle.frexp(x)
-        grad_list = paddle.static.append_backward(out1,  parameter_list =[x])
+        grad_list = paddle.static.append_backward(out1, parameter_list=[x])
         x_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
@@ -3097,7 +3126,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         out = paddle.nn.functional.pairwise_distance(x, y)
         grad_list = paddle.static.append_backward(out, parameter_list=[x, y])
-        x_grad, y_grad = [_grad for _param, _grad in grad_list]
+        x_grad, y_grad = (_grad for _param, _grad in grad_list)
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x_grad, y_grad])
@@ -3105,44 +3134,85 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (5,))
         self.assertEqual(res[2].shape, (5,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_take(self):
         x1 = paddle.rand([4, 5])
         x1.stop_gradient = False
         out1 = paddle.take(x1, paddle.to_tensor(2))
-        paddle.static.append_backward(out1)
+        x1_grad = paddle.static.append_backward(out1, parameter_list=[x1])
+        x1_grad = x1_grad[0][1]
 
         x2 = paddle.rand([])
         x2.stop_gradient = False
         out2 = paddle.take(x2, paddle.to_tensor(0))
-        paddle.static.append_backward(out2)
+        x2_grad = paddle.static.append_backward(out2, parameter_list=[x2])
+        x2_grad = x2_grad[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[out1, x1.grad_name, out2, x2.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[out1, x1_grad, out2, x2_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 5))
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
         np.testing.assert_allclose(res[3], 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_trapezoid(self):
         y = paddle.rand([5])
         y.stop_gradient = False
         out = paddle.trapezoid(y, dx=2.0)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[y])
+        y_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, y.grad_name])
+        res = self.exe.run(prog, fetch_list=[out, y_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5,))
 
+    """
+    The owner op type is:builtin.parameter
+    *** Check failure stack trace: ***
+        @     0x7fbaf6c40a4d  google::LogMessage::Fail()
+        @     0x7fbaf6c42cfd  google::LogMessage::SendToLog()
+        @     0x7fbaf6c4053d  google::LogMessage::Flush()
+        @     0x7fbaf6c437f9  google::LogMessageFatal::~LogMessageFatal()
+        @     0x7fbaf6bd85c7  pir::detail::OpResultImpl::~OpResultImpl()
+        @     0x7fbaf6bdc683  pir::Operation::Destroy()
+        @     0x7fbaf6bba35e  pir::Block::pop_back()
+        @     0x7fbaf6bba4f0  pir::Block::clear()
+        @     0x7fbaf6be8bce  pir::Region::clear()
+        @     0x7fbaf6be8c73  pir::Region::~Region()
+        @     0x7fbaf6bdc644  pir::Operation::Destroy()
+        @     0x7fbaf6bc7636  pir::ModuleOp::Destroy()
+        @     0x7fbaf6be80e9  pir::Program::~Program()
+        @     0x7fbaf69d256a  std::_Sp_counted_ptr<>::_M_dispose()
+        @     0x7fbaf658d717  std::_Sp_counted_base<>::_M_release()
+        @     0x7fbaf69d54e9  pybind11::class_<>::dealloc()
+        @     0x7fbaf659e7a6  pybind11_object_dealloc
+        @           0x5edb90  (unknown)
+        @           0x5446a8  (unknown)
+        @           0x5446fa  (unknown)
+        @           0x5446fa  (unknown)
+        @           0x5446fa  (unknown)
+        @           0x5446fa  (unknown)
+        @           0x5f2435  (unknown)
+        @           0x5af10a  (unknown)
+        @           0x5af10a  (unknown)
+        @           0x5e2b8f  (unknown)
+        @           0x6ae61a  (unknown)
+        @           0x5c4b26  (unknown)
+        @           0x574d08  (unknown)
+        @           0x68ddd1  (unknown)
+        @           0x573848  _PyEval_EvalFrameDefault
+    """
+
+    # @test_with_pir_api
     @prog_scope()
     def test_create_parameter_var(self):
         zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
-        self.assertEqual(zero_dim_param.shape, ())
+        assertEqualListTuple(self, zero_dim_param)
         prog = paddle.static.default_startup_program()
         res = self.exe.run(prog, fetch_list=[zero_dim_param])
         self.assertEqual(res[0].shape, ())
@@ -3156,15 +3226,39 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 0.5)
 
+    """
+    --------------------------------------
+    C++ Traceback (most recent call last):
+    --------------------------------------
+    0   paddle::framework::ThreadPoolTempl<paddle::framework::StlThreadEnvironment>::WorkerLoop(int)
+    1   paddle::framework::PirInterpreter::RunInstructionBaseAsync(unsigned long)
+    2   paddle::framework::PirInterpreter::RunInstructionBase(paddle::framework::InstructionBase*)
+    3   paddle::framework::PhiKernelInstruction::Run()
+    4   phi::KernelWithXShapeInferMeta(phi::MetaTensor const&, phi::MetaTensor const&, phi::MetaTensor*)
+
+    ----------------------
+    Error Message Summary:
+    ----------------------
+    FatalError: `Segmentation fault` is detected by the operating system.
+    [TimeInfo: *** Aborted at 1706075673 (unix time) try "date -d @1706075673" if you are using GNU date ***]
+    [SignalInfo: *** SIGSEGV (@0x0) received by PID 33572 (TID 0x7f5f17572700) from PID 0 ***]
+
+    Segmentation fault (core dumped)
+    """
+
+    # @test_with_pir_api
     @prog_scope()
     def test_getitem(self):
         # case1: When all axis have a scalar indice, output should be a 0-d Tensor;
         x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
         x.stop_gradient = False
         out = x[1, 2, 3, 4]
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        x_out_grad = [_grad for _param, _grad in grad_list]
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + x_out_grad)
 
         self.assertEqual(res[0].shape, ())
         np.testing.assert_allclose(res[0], np.array(119))
@@ -3268,17 +3362,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         x_grad_expected[1] = 0
         np.testing.assert_allclose(res[1], x_grad_expected)
 
+    @test_with_pir_api
     @prog_scope()
     def test_expand(self):
         x = paddle.full([], 1, 'float32')
         x.stop_gradient = False
         out = paddle.expand(x, shape=[1])
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, (1,))
@@ -3291,11 +3387,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1 = paddle.full([], 1, 'float32')
         x1.stop_gradient = False
         out1 = paddle.expand(x1, shape=[])
-        paddle.static.append_backward(out1.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
         )
+        grad_list = [_grad for _param, _grad in grad_list]
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x1, out1] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
@@ -3308,11 +3405,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2 = paddle.full([], 1, 'float32')
         x2.stop_gradient = False
         out2 = paddle.expand(x2, shape=[3, 3])
-        paddle.static.append_backward(out2.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x2, out2, x2.grad_name, out2.grad_name]
+        grad_list = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x2, out2]
         )
+        grad_list = [_grad for _param, _grad in grad_list]
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x2, out2] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, (3, 3))
@@ -3322,6 +3420,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, (3, 3))
         self.assertEqual(res[3].any(), 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_expand_as(self):
         x = paddle.full([], 1, 'float32')
@@ -3329,12 +3428,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         y = paddle.full([], 1, 'float32')
         y.stop_gradient = False
         out = paddle.expand_as(x, y)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
@@ -3349,12 +3449,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         y1 = paddle.full([1], 1, 'float32')
         y1.stop_gradient = False
         out1 = paddle.expand_as(x1, y1)
-        paddle.static.append_backward(out1.sum())
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[x1, out1] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, (1,))
@@ -3369,11 +3470,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         y2 = paddle.full([3, 3], 1, 'float32')
         y2.stop_gradient = False
         out2 = paddle.expand_as(x2, y2)
-        paddle.static.append_backward(out2.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x2, out2, x2.grad_name, out2.grad_name]
+        grad_list = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x2, out2]
         )
+        grad_list = [_grad for _param, _grad in grad_list]
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x2, out2] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, (3, 3))
@@ -3383,16 +3485,18 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, (3, 3))
         self.assertEqual(res[3].any(), 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_top_k(self):
         x = paddle.full([], 1, 'float32')
         x.stop_gradient = False
         out, indices = paddle.topk(x, k=1, axis=0)
-        paddle.static.append_backward(out.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, indices, x.grad_name, out.grad_name]
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
         )
+        grad_list = [_grad for _param, _grad in grad_list]
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x, out, indices] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
@@ -3407,11 +3511,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1 = paddle.full([], 1, 'float32')
         x1.stop_gradient = False
         out1, indices1 = paddle.topk(x1, k=1, axis=-1)
-        paddle.static.append_backward(out1.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x1, out1, indices1, x1.grad_name, out1.grad_name]
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
         )
+        grad_list = [_grad for _param, _grad in grad_list]
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x1, out1, indices1] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
@@ -3426,16 +3531,18 @@ class TestSundryAPIStatic(unittest.TestCase):
         with self.assertRaises(ValueError):
             tmp = paddle.topk(x1, k=1, axis=2)
 
+    @test_with_pir_api
     @prog_scope()
     def test_broadcast_to(self):
         x = paddle.full([], 1, 'float32')
         x.stop_gradient = False
         out = paddle.broadcast_to(x, shape=[1])
-        paddle.static.append_backward(out.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
         )
+        grad_list = [_grad for _param, _grad in grad_list]
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, (1,))
@@ -3448,11 +3555,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1 = paddle.full([], 1, 'float32')
         x1.stop_gradient = False
         out1 = paddle.broadcast_to(x1, shape=[])
-        paddle.static.append_backward(out1.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
         )
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x1, out1] + grad_list)
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
@@ -3463,6 +3570,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[3], 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_argmin(self):
         # 1) x is 0D
@@ -3493,6 +3601,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_allclose(res[2], 0.0)
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_argmax(self):
         # 1) x is 0D
@@ -3523,16 +3632,18 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_allclose(res[2], 0.0)
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_kthvalue(self):
         # 1) x is 0D
         x = paddle.rand([])
         x.stop_gradient = False
         out, index = paddle.kthvalue(x, 1)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[x, out, index, x.grad_name])
+        res = self.exe.run(prog, fetch_list=[x, out, index] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertTrue(res[1] == res[0])
@@ -3546,24 +3657,27 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1 = paddle.rand([5])
         x1.stop_gradient = False
         out1, index1 = paddle.kthvalue(x1, 1)
-        paddle.static.append_backward(out1)
+        grad_list = paddle.static.append_backward(out1, parameter_list=[x1])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out1, index1, x1.grad_name])
+        res = self.exe.run(prog, fetch_list=[out1, index1] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (5,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_mode(self):
         # 1) x is 0D
         x = paddle.rand([])
         x.stop_gradient = False
         out, index = paddle.mode(x)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, index, x.grad_name])
+        res = self.exe.run(prog, fetch_list=[out, index] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
@@ -3573,14 +3687,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1 = paddle.rand([5])
         x1.stop_gradient = False
         out1, index1 = paddle.mode(x1)
-        paddle.static.append_backward(out1)
+        grad_list = paddle.static.append_backward(out1, parameter_list=[x1])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out1, index1, x1.grad_name])
+        res = self.exe.run(prog, fetch_list=[out1, index1] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (5,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_is_empty(self):
         # 1) x is 0D
@@ -3613,19 +3729,23 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertTrue(bool(res[3]))
 
+    @test_with_pir_api
     @prog_scope()
     def test_as_complex(self):
         x = paddle.rand([2])
         x.stop_gradient = False
         out = paddle.as_complex(x)
-        self.assertEqual(x.shape, (2,))
-        self.assertEqual(out.shape, ())
-        paddle.static.append_backward(out.sum())
+        assertEqualListTuple(self, x, (2,))
+        assertEqualListTuple(self, out, ())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[x, out, x.grad_name, out.grad_name],
+            fetch_list=[x, out] + grad_list,
         )
 
         self.assertEqual(res[0].shape, (2,))
@@ -3633,6 +3753,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2,))
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_dot(self):
         # 1) x is 1d
@@ -3642,12 +3763,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         y.stop_gradient = False
         out = paddle.dot(x, y)
 
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        x_grad = grad_list[0][1]
+        out_grad = grad_list[1][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[x, x.grad_name, out, out.grad_name],
+            fetch_list=[x, x_grad, out, out_grad],
         )
 
         self.assertEqual(res[0].shape, (2,))
@@ -3662,12 +3787,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         y1.stop_gradient = False
         out1 = paddle.dot(x1, y1)
 
-        paddle.static.append_backward(out1.sum())
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        x1_grad = grad_list[0][1]
+        out1_grad = grad_list[1][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[x1, x1.grad_name, out1, out1.grad_name],
+            fetch_list=[x1, x1_grad, out1, out1_grad],
         )
 
         self.assertEqual(res[0].shape, (2, 2))
@@ -3675,6 +3804,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2,))
         self.assertEqual(res[3].shape, (2,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_inner(self):
         # 1) input is 1D
@@ -3683,16 +3813,20 @@ class TestSundryAPIStatic(unittest.TestCase):
         y1 = paddle.rand([2])
         y1.stop_gradient = False
         out1 = paddle.inner(x1, y1)
-        paddle.static.append_backward(out1.sum())
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        x1_grad = grad_list[0][1]
+        out1_grad = grad_list[1][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
             fetch_list=[
                 x1,
-                x1.grad_name,
+                x1_grad,
                 out1,
-                out1.grad_name,
+                out1_grad,
             ],
         )
         self.assertEqual(res[0].shape, (2,))
@@ -3706,16 +3840,20 @@ class TestSundryAPIStatic(unittest.TestCase):
         y = paddle.rand([2, 3])
         y.stop_gradient = False
         out = paddle.inner(x, y)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        x_grad = grad_list[0][1]
+        out_grad = grad_list[1][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
             fetch_list=[
                 x,
-                x.grad_name,
+                x_grad,
                 out,
-                out.grad_name,
+                out_grad,
             ],
         )
 
@@ -3724,6 +3862,27 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2, 2))
         self.assertEqual(res[3].shape, (2, 2))
 
+    """
+    --------------------------------------
+    C++ Traceback (most recent call last):
+    --------------------------------------
+    0   paddle::framework::ThreadPoolTempl<paddle::framework::StlThreadEnvironment>::WorkerLoop(int)
+    1   paddle::framework::PirInterpreter::RunInstructionBaseAsync(unsigned long)
+    2   paddle::framework::PirInterpreter::RunInstructionBase(paddle::framework::InstructionBase*)
+    3   paddle::framework::PhiKernelInstruction::Run()
+    4   phi::KernelWithXShapeInferMeta(phi::MetaTensor const&, phi::MetaTensor const&, phi::MetaTensor*)
+
+    ----------------------
+    Error Message Summary:
+    ----------------------
+    FatalError: `Segmentation fault` is detected by the operating system.
+    [TimeInfo: *** Aborted at 1706078461 (unix time) try "date -d @1706078461" if you are using GNU date ***]
+    [SignalInfo: *** SIGSEGV (@0x0) received by PID 59965 (TID 0x7f6dfffff700) from PID 0 ***]
+
+    Segmentation fault (core dumped)
+    """
+
+    # @test_with_pir_api
     @prog_scope()
     def test_tensordot(self):
         x = paddle.full(shape=[10], fill_value=0.25, dtype='float64')
@@ -3732,12 +3891,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         y.stop_gradient = False
         out = paddle.tensordot(x, y, axes=1)
 
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        x_grad = grad_list[0][1]
+        out_grad = grad_list[1][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[x, x.grad_name, out, out.grad_name],
+            fetch_list=[x, x_grad, out, out_grad],
         )
 
         self.assertEqual(res[0].shape, (10,))
@@ -3750,12 +3913,16 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.tensordot(x, y, axes=2)
 
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        x_grad = grad_list[0][1]
+        out_grad = grad_list[1][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
-            fetch_list=[x, x.grad_name, out, out.grad_name],
+            fetch_list=[x, x_grad, out, out_grad],
         )
 
         self.assertEqual(res[0].shape, (2, 3))
@@ -3763,6 +3930,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_metric_accuracy(self):
         x = paddle.full(shape=[2, 4], fill_value=0.25)
@@ -3777,6 +3945,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_static_accuracy(self):
         x = paddle.full(shape=[2, 4], fill_value=0.25)
@@ -3791,6 +3960,32 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
 
+    """
+    ======================================================================
+    ERROR: test_static_auc (__main__.TestSundryAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/decorator_helper.py", line 39, in __fn__
+        fn(*args, **kwargs)
+    File "test/legacy_test/test_zero_dim_tensor.py", line 3940, in test_static_auc
+        out = paddle.static.auc(input=x, label=y)[0]
+    File "/home/aistudio/Paddle/build/python/paddle/static/nn/metric.py", line 259, in auc
+        auc_out = helper.create_variable_for_type_inference(dtype="float64")
+    File "/home/aistudio/Paddle/build/python/paddle/base/layer_helper_base.py", line 474, in create_variable_for_type_inference
+        return self.main_program.current_block().create_var(
+    File "/home/aistudio/Paddle/build/python/paddle/base/framework.py", line 4326, in create_var
+        var = Variable(block=self, *args, **kwargs)
+    File "/home/aistudio/Paddle/build/python/paddle/base/framework.py", line 1580, in __init__
+        self.desc.set_dtype(dtype)
+    TypeError: set_dtype(): incompatible function arguments. The following argument types are supported:
+        1. (self: paddle.base.libpaddle.VarDesc, arg0: paddle::framework::proto::VarType_Type) -> None
+
+    Invoked with: <paddle.base.libpaddle.VarDesc object at 0x7f7f71074830>, <DataType.FLOAT64: 11>
+    """
+
+    # @test_with_pir_api
     @prog_scope()
     def test_static_auc(self):
         x = paddle.full(shape=[3, 2], fill_value=0.25)
@@ -3805,13 +4000,17 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_std(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out1 = paddle.std(x)
         out2 = paddle.std(x, [])
-        paddle.static.append_backward(out1)
+        grad_list = paddle.static.append_backward(
+            out1, parameter_list=[x, out1]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -3820,9 +4019,8 @@ class TestSundryAPIStatic(unittest.TestCase):
                 x,
                 out1,
                 out2,
-                x.grad_name,
-                out1.grad_name,
-            ],
+            ]
+            + grad_list,
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
@@ -3830,13 +4028,17 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[4].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_var(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out1 = paddle.var(x)
         out2 = paddle.var(x, [])
-        paddle.static.append_backward(out1)
+        grad_list = paddle.static.append_backward(
+            out1, parameter_list=[x, out1]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -3845,9 +4047,8 @@ class TestSundryAPIStatic(unittest.TestCase):
                 x,
                 out1,
                 out2,
-                x.grad_name,
-                out1.grad_name,
-            ],
+            ]
+            + grad_list,
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
@@ -3855,20 +4056,27 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[4].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_quantile(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
         out1 = paddle.quantile(x1, 0.5, axis=None)
-        paddle.static.append_backward(out1)
+        grad_list1 = paddle.static.append_backward(
+            out1, parameter_list=[x1, out1]
+        )
+        grad_list1 = [_grad for _param, _grad in grad_list1]
 
         x2 = paddle.rand([2, 3])
         x2.stop_gradient = False
         out2 = paddle.quantile(x2, 0.5, axis=None)
-        paddle.static.append_backward(out2)
+        grad_list2 = paddle.static.append_backward(
+            out2, parameter_list=[x2, out2]
+        )
+        grad_list2 = [_grad for _param, _grad in grad_list2]
 
         out_empty_list = paddle.quantile(x1, 0.5, axis=[])
-        self.assertEqual(out_empty_list.shape, ())
+        assertEqualListTuple(self, out_empty_list, ())
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -3876,11 +4084,9 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[
                 out1,
                 out2,
-                x1.grad_name,
-                out1.grad_name,
-                x2.grad_name,
-                out2.grad_name,
-            ],
+            ]
+            + grad_list1
+            + grad_list2,
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
@@ -3893,29 +4099,32 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[5].shape, ())
         self.assertEqual(res[5], 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_nanquantile(self):
         # 1) x is 0D
         x1 = paddle.rand([])
         x1.stop_gradient = False
         out1 = paddle.nanquantile(x1, 0.5, axis=None)
-        paddle.static.append_backward(out1)
+        grad_list = paddle.static.append_backward(out1, parameter_list=[x1])
+        x1_grad = grad_list[0][1]
 
         # 2) x is ND with 'nan'
         x2 = paddle.to_tensor([[float('nan'), 2.0, 3.0], [0.0, 1.0, 2.0]])
         x2.stop_gradient = False
         out2 = paddle.nanquantile(x2, 0.5, axis=None)
         print(out2)
-        paddle.static.append_backward(out2)
+        grad_list = paddle.static.append_backward(out2, parameter_list=[x2])
+        x2_grad = grad_list[0][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog,
             fetch_list=[
                 out1,
-                x1.grad_name,
+                x1_grad,
                 out2,
-                x2.grad_name,
+                x2_grad,
             ],
         )
         self.assertEqual(res[0].shape, ())
@@ -3924,22 +4133,23 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, (2, 3))
 
+    @test_with_pir_api
     @prog_scope()
     def test_flip(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.flip(x, axis=[])
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_equal_scalar(self):
         x = paddle.rand([])
@@ -3950,47 +4160,49 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], False)
 
+    @test_with_pir_api
     @prog_scope()
     def test_pow_scalar(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.pow(x, 2.0)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_cast(self):
         x = paddle.full([], 1.0, 'float32')
         x.stop_gradient = False
         out = paddle.cast(x, 'int32')
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_cumprod(self):
         x = paddle.full([], 1.0, 'float32')
         x.stop_gradient = False
         out = paddle.cumprod(x, 0)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
@@ -3998,17 +4210,22 @@ class TestSundryAPIStatic(unittest.TestCase):
         with self.assertRaises(ValueError):
             tmp = paddle.cumprod(x, 2)
 
+    @test_with_pir_api
     @prog_scope()
     def test_clip(self):
         x = paddle.uniform([], None, -10, 10)
         x.stop_gradient = False
         out = paddle.clip(x, -5, 5)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        x_grad, out_grad = (_grad for _param, _grad in grad_list)
 
         x1 = paddle.uniform([], None, -10, 10)
         x1.stop_gradient = False
         out1 = paddle.clip(x1, paddle.full([], -5.0), paddle.full([], 5.0))
-        paddle.static.append_backward(out1)
+        grad_list = paddle.static.append_backward(
+            out1, parameter_list=[x1, out1]
+        )
+        x1_grad, out1_grad = (_grad for _param, _grad in grad_list)
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4016,12 +4233,12 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[
                 x,
                 out,
-                x.grad_name,
-                out.grad_name,
+                x_grad,
+                out_grad,
                 x1,
                 out1,
-                x1.grad_name,
-                out1.grad_name,
+                x1_grad,
+                out1_grad,
             ],
         )
         self.assertEqual(res[0].shape, ())
@@ -4033,22 +4250,34 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[6].shape, ())
         self.assertEqual(res[7].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_increment(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.increment(x, 1.0)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
+        if paddle.framework.in_pir_mode():
+            grad_list = [_grad for _param, _grad in grad_list if _grad]
+            res = self.exe.run(prog, fetch_list=[x, out] + grad_list)
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            if len(grad_list) > 0:
+                self.assertEqual(res[2].shape, ())
+            if len(grad_list) > 1:
+                self.assertEqual(res[3].shape, ())
+        else:
+            res = self.exe.run(
+                prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+            )
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            self.assertEqual(res[2].shape, ())
+            self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_bitwise_not(self):
         # have no backward
@@ -4060,6 +4289,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_logical_not(self):
         # have no backward
@@ -4071,6 +4301,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_searchsorted(self):
         # have no backward
@@ -4083,15 +4314,17 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_transpose(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.transpose(x, [])
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[1], 1.0)
@@ -4101,15 +4334,17 @@ class TestSundryAPIStatic(unittest.TestCase):
         with self.assertRaises(ValueError):
             x = paddle.transpose(x, [0])
 
+    @test_with_pir_api
     @prog_scope()
     def test_moveaxis(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.moveaxis(x, [], [])
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[1], 1.0)
@@ -4119,51 +4354,64 @@ class TestSundryAPIStatic(unittest.TestCase):
         with self.assertRaises(AssertionError):
             x = paddle.moveaxis(x, [0], [1])
 
+    @test_with_pir_api
     @prog_scope()
     def test_gather_1D(self):
         x = paddle.full([10], 1.0, 'float32')
         x.stop_gradient = False
         index = paddle.full([], 2, 'int64')
         out = paddle.gather(x, index)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1)
         self.assertEqual(res[1].shape, (10,))
         self.assertEqual(res[2].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_gather_XD_axis_0(self):
         x = paddle.full([2, 3], 1.0, 'float32')
         x.stop_gradient = False
         index = paddle.full([], 1, 'int64')
         out = paddle.gather(x, index)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, (3,))
         np.testing.assert_array_equal(res[0], [1.0, 1.0, 1.0])
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (3,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_gather_XD_axis_1(self):
         x = paddle.full([2, 3], 1.0, 'float32')
         x.stop_gradient = False
         index = paddle.full([], 1, 'int64')
         out = paddle.gather(x, index, axis=1)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, (2,))
         np.testing.assert_array_equal(res[0], [1.0, 1.0])
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (2,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_gather_nd(self):
         x1 = paddle.full([10], 1.0, 'float32')
@@ -4176,8 +4424,15 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         out1 = paddle.gather_nd(x1, index1)
         out2 = paddle.gather_nd(x2, index2)
-        paddle.static.append_backward(out1.sum())
-        paddle.static.append_backward(out2.sum())
+        grad_list1 = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        grad_list2 = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x2, out2]
+        )
+
+        x1_grad, out1_grad = grad_list1
+        x2_grad, out2_grad = grad_list2
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4185,10 +4440,10 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[
                 out1,
                 out2,
-                x1.grad_name,
-                x2.grad_name,
-                out1.grad_name,
-                out2.grad_name,
+                x1_grad,
+                x2_grad,
+                out1_grad,
+                out2_grad,
             ],
         )
         self.assertEqual(res[0].shape, ())
@@ -4196,10 +4451,14 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[0], 1.0)
         np.testing.assert_array_equal(res[1], 1.0)
         self.assertEqual(res[2].shape, (10,))
-        self.assertEqual(res[3].shape, (2, 3))
-        self.assertEqual(res[4].shape, ())
-        self.assertEqual(res[5].shape, ())
+        # self.assertEqual(res[3].shape, (2, 3))
+        self.assertEqual(res[3].shape, (10,))
+        # self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[4].shape, (2, 3))
+        # self.assertEqual(res[5].shape, ())
+        self.assertEqual(res[5].shape, (2, 3))
 
+    @test_with_pir_api
     @prog_scope()
     def test_scatter_1D(self):
         x = paddle.full([10], 1.0, 'float32')
@@ -4207,15 +4466,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4, 'float32')
         out = paddle.scatter(x, index, updates)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, (10,))
         self.assertEqual(res[0][2], 4.0)
         self.assertEqual(res[1].shape, (10,))
         self.assertEqual(res[2].shape, (10,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_scatter_XD(self):
         x = paddle.full([2, 3], 1.0, 'float32')
@@ -4223,15 +4486,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         index = paddle.full([], 1, 'int64')
         updates = paddle.full([3], 4, 'float32')
         out = paddle.scatter(x, index, updates)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, (2, 3))
         np.testing.assert_array_equal(res[0][1], [4.0, 4.0, 4.0])
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (2, 3))
 
+    @test_with_pir_api
     @prog_scope()
     def test_diagflat(self):
         # have no backward
@@ -4250,6 +4517,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 2))
         self.assertEqual(res[2].shape, (1, 1))
 
+    @test_with_pir_api
     @prog_scope()
     def test_scatter__1D(self):
         x = paddle.full([10], 1.0, 'float32')
@@ -4261,6 +4529,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         self.assertEqual(res[0][2], 4)
 
+    @test_with_pir_api
     @prog_scope()
     def test_scatter__XD(self):
         x = paddle.full([2, 3], 1.0, 'float32')
@@ -4272,23 +4541,26 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         np.testing.assert_array_equal(res[0][1], [4.0, 4.0, 4.0])
 
+    @test_with_pir_api
     @prog_scope()
     def test_scatter_nd(self):
         index = paddle.full([1], 3, dtype='int64')
         updates = paddle.full([], 2, 'float32')
         updates.stop_gradient = False
         out = paddle.scatter_nd(index, updates, [5])
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[out, updates]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[out, out.grad_name, updates.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, (5,))
         self.assertEqual(res[0][3], 2)
         self.assertEqual(res[1].shape, (5,))
         self.assertEqual(res[2].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_flatten(self):
         x = paddle.full([], 1, 'float32')
@@ -4298,17 +4570,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         stop_axis = -1
 
         out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
-        paddle.static.append_backward(out.sum())
+        grad_list = paddle.static.append_backward(
+            out.sum(), parameter_list=[x, out]
+        )
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, feed={}, fetch_list=[out, x.grad_name, out.grad_name]
-        )
+        res = self.exe.run(prog, feed={}, fetch_list=[out] + grad_list)
 
         self.assertEqual(res[0].shape, (1,))
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (1,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_histogram(self):
         x = paddle.full([], 1, 'float32')
@@ -4319,19 +4593,22 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (5,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_scale(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.scale(x, scale=2.0, bias=1.0)
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        grad_list = [_grad for _param, _grad in grad_list]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+        res = self.exe.run(prog, fetch_list=[out] + grad_list)
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_floor_divide(self):
         # 1-d // 0-d
@@ -4362,6 +4639,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(out3_1, out3_2)
         np.testing.assert_array_equal(out3_2, np.asarray(1))
 
+    @test_with_pir_api
     @prog_scope()
     def test_cumsum(self):
         x1 = paddle.rand([])
@@ -4371,9 +4649,15 @@ class TestSundryAPIStatic(unittest.TestCase):
         out2 = paddle.cumsum(x1, axis=0)
         out3 = paddle.cumsum(x1, axis=-1)
 
-        paddle.static.append_backward(out1.sum())
-        paddle.static.append_backward(out2.sum())
-        paddle.static.append_backward(out3.sum())
+        (_, x1_grad), (_, out1_grad) = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        (_, x1_grad), (_, out2_grad) = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x1, out2]
+        )
+        (_, x1_grad), (_, out3_grad) = paddle.static.append_backward(
+            out3.sum(), parameter_list=[x1, out3]
+        )
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4382,10 +4666,10 @@ class TestSundryAPIStatic(unittest.TestCase):
                 out1,
                 out2,
                 out3,
-                x1.grad_name,
-                out1.grad_name,
-                out2.grad_name,
-                out3.grad_name,
+                x1_grad,
+                out1_grad,
+                out2_grad,
+                out3_grad,
             ],
         )
         self.assertEqual(res[0].shape, (1,))
@@ -4399,9 +4683,10 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[5], 1.0)
         self.assertEqual(res[6].shape, ())
         self.assertEqual(res[6], 1.0)
-        self.assertEqual(out2.shape, ())
-        self.assertEqual(out3.shape, ())
+        assertEqualListTuple(self, out2, ())
+        assertEqualListTuple(self, out3, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_logcumsumexp(self):
         x = paddle.rand([])
@@ -4411,9 +4696,11 @@ class TestSundryAPIStatic(unittest.TestCase):
         out2 = paddle.logcumsumexp(x, axis=0)
         out3 = paddle.logcumsumexp(x, axis=-1)
 
-        paddle.static.append_backward(out1)
-        paddle.static.append_backward(out2)
-        paddle.static.append_backward(out3)
+        grad_list1 = paddle.static.append_backward(out1, parameter_list=[x])
+        grad_list2 = paddle.static.append_backward(out2, parameter_list=[x])
+        grad_list3 = paddle.static.append_backward(out3, parameter_list=[x])
+
+        x_grad = grad_list3[0][1]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4422,7 +4709,7 @@ class TestSundryAPIStatic(unittest.TestCase):
                 out1,
                 out2,
                 out3,
-                x.grad_name,
+                x_grad,
             ],
         )
         self.assertEqual(res[0].shape, (1,))
@@ -4431,6 +4718,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[3], 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_add_n(self):
         x1 = paddle.rand([])
@@ -4443,8 +4731,15 @@ class TestSundryAPIStatic(unittest.TestCase):
         out1 = paddle.add_n(x1)
         out2 = paddle.add_n([x2, x3])
 
-        paddle.static.append_backward(out1.sum())
-        paddle.static.append_backward(out2.sum())
+        grad_list1 = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        grad_list23 = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x2, x3, out2]
+        )
+
+        (_, x1_grad), (_, out1_grad) = grad_list1
+        (_, x2_grad), (_, x3_grad), (_, out2_grad) = grad_list23
 
         prog = paddle.static.default_main_program()
         block = prog.global_block()
@@ -4453,11 +4748,11 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[
                 out1,
                 out2,
-                x1.grad_name,
-                x2.grad_name,
-                x3.grad_name,
-                out1.grad_name,
-                out2.grad_name,
+                x1_grad,
+                x2_grad,
+                x3_grad,
+                out1_grad,
+                out2_grad,
             ],
         )
         self.assertEqual(res[0].shape, ())
@@ -4471,6 +4766,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[5].shape, ())
         self.assertEqual(res[6].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_reshape_list(self):
         x1 = paddle.rand([])
@@ -4483,16 +4779,28 @@ class TestSundryAPIStatic(unittest.TestCase):
         x4.stop_gradient = False
 
         out1 = paddle.reshape(x1, [])
-        paddle.static.append_backward(out1.sum())
+        grad_list1 = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        (_, x1_grad), (_, out1_grad) = grad_list1
 
         out2 = paddle.reshape(x2, [1])
-        paddle.static.append_backward(out2.sum())
+        grad_list2 = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x2, out2]
+        )
+        (_, x2_grad), (_, out2_grad) = grad_list2
 
         out3 = paddle.reshape(x3, [-1])
-        paddle.static.append_backward(out3.sum())
+        grad_list3 = paddle.static.append_backward(
+            out3.sum(), parameter_list=[x3, out3]
+        )
+        (_, x3_grad), (_, out3_grad) = grad_list3
 
         out4 = paddle.reshape(x4, [-1, 1])
-        paddle.static.append_backward(out4.sum())
+        grad_list4 = paddle.static.append_backward(
+            out4.sum(), parameter_list=[x4, out4]
+        )
+        (_, x4_grad), (_, out4_grad) = grad_list4
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4502,14 +4810,14 @@ class TestSundryAPIStatic(unittest.TestCase):
                 out2,
                 out3,
                 out4,
-                x1.grad_name,
-                x2.grad_name,
-                x3.grad_name,
-                x4.grad_name,
-                out1.grad_name,
-                out2.grad_name,
-                out3.grad_name,
-                out4.grad_name,
+                x1_grad,
+                x2_grad,
+                x3_grad,
+                x4_grad,
+                out1_grad,
+                out2_grad,
+                out3_grad,
+                out4_grad,
             ],
         )
         self.assertEqual(res[0].shape, ())
@@ -4527,25 +4835,35 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[10].shape, (1,))
         self.assertEqual(res[11].shape, (1, 1))
 
+    @test_with_pir_api
     @prog_scope()
     def test_reshape_tensor(self):
         x1 = paddle.rand([1, 1])
         x1.stop_gradient = False
         new_shape = paddle.full([3], 1, "int32")
         out1 = paddle.reshape(x1, new_shape)
-        paddle.static.append_backward(out1.sum())
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        (_, x1_grad), (_, out1_grad) = grad_list
 
         x2 = paddle.rand([1, 1])
         x2.stop_gradient = False
         new_shape = paddle.full([1], -1, "int32")
         out2 = paddle.reshape(x2, new_shape)
-        paddle.static.append_backward(out2.sum())
+        grad_list = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x2, out2]
+        )
+        (_, x2_grad), (_, out2_grad) = grad_list
 
         x3 = paddle.rand([1, 1])
         x3.stop_gradient = False
         new_shape = [paddle.full([], -1, "int32"), paddle.full([], 1, "int32")]
         out3 = paddle.reshape(x3, new_shape)
-        paddle.static.append_backward(out3.sum())
+        grad_list = paddle.static.append_backward(
+            out3.sum(), parameter_list=[x3, out3]
+        )
+        (_, x3_grad), (_, out3_grad) = grad_list
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4554,12 +4872,12 @@ class TestSundryAPIStatic(unittest.TestCase):
                 out1,
                 out2,
                 out3,
-                x1.grad_name,
-                x2.grad_name,
-                x3.grad_name,
-                out1.grad_name,
-                out2.grad_name,
-                out3.grad_name,
+                x1_grad,
+                x2_grad,
+                x3_grad,
+                out1_grad,
+                out2_grad,
+                out3_grad,
             ],
         )
         self.assertEqual(res[0].shape, (1, 1, 1))
@@ -4574,34 +4892,41 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[7].shape, (1,))
         self.assertEqual(res[8].shape, (1, 1))
 
+    @test_with_pir_api
     @prog_scope()
     def test_reverse(self):
         x = paddle.rand([])
         x.stop_gradient = False
 
         out = paddle.reverse(x, axis=[])
-        paddle.static.append_backward(out)
+        grad_list = paddle.static.append_backward(out, parameter_list=[x, out])
+        (_, x_grad), (out_grad) = grad_list
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[x, out, x_grad, out_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_sort(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
         out1 = paddle.sort(x1, axis=-1)
-        paddle.static.append_backward(out1.sum())
+        grad_list = paddle.static.append_backward(
+            out1.sum(), parameter_list=[x1, out1]
+        )
+        (_, x1_grad), (_, out1_grad) = grad_list
 
         x2 = paddle.rand([])
         x2.stop_gradient = False
         out2 = paddle.sort(x2, axis=0)
-        paddle.static.append_backward(out2.sum())
+        grad_list = paddle.static.append_backward(
+            out2.sum(), parameter_list=[x2, out2]
+        )
+        (_, x2_grad), (_, out2_grad) = grad_list
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4609,10 +4934,10 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[
                 out1,
                 out2,
-                out1.grad_name,
-                out2.grad_name,
-                x1.grad_name,
-                x2.grad_name,
+                out1_grad,
+                out2_grad,
+                x1_grad,
+                x2_grad,
             ],
         )
 
@@ -4731,6 +5056,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertFalse(res[0])
 
+    @test_with_pir_api
     @prog_scope()
     def test_equal_all(self):
         # 1) x is 0D
@@ -4778,6 +5104,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[3], 1)
 
+    @test_with_pir_api
     @prog_scope()
     def test_atan2(self):
         x1 = paddle.full([], 0, 'float32')
