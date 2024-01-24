@@ -1282,28 +1282,22 @@ def get_package_data_and_package_dir():
                     )
             else:
                 commands = [
-                    "patchelf --set-rpath '$ORIGIN/../libs/' "
+                    "patchelf --set-rpath '$ORIGIN/../libs/:$ORIGIN/../../nvidia/cuda_runtime/lib' "
                     + env_dict.get("PADDLE_BINARY_DIR")
                     + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
-                commands.append(
-                    "patchelf --set-rpath '$ORIGIN' "
-                    + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/libs/'
-                    + env_dict.get("COMMON_NAME")
-                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
-                        "patchelf --set-rpath '$ORIGIN' "
+                        "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs:$ORIGIN/../../nvidia/cuda_runtime/lib' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
-                        "patchelf --set-rpath '$ORIGIN' "
+                        "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs:$ORIGIN/../../nvidia/cuda_runtime/lib' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/libs/'
                         + env_dict.get("IR_NAME")
