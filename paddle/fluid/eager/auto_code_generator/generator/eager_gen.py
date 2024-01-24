@@ -560,12 +560,12 @@ CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = """
 
 CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = """
   paddle::optional<paddle::Tensor> {}_optional;
-  if ( {}.impl() ) {}_optional = paddle::make_optional<paddle::Tensor>({});
+  if ({}.impl()) {}_optional = paddle::make_optional<paddle::Tensor>({});
 """
 
 CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE = """
   paddle::optional<std::vector<paddle::Tensor>> {}_optional;
-  if ( !{}.empty() ) {}_optional = paddle::make_optional<std::vector<paddle::Tensor>>({});
+  if (!{}.empty()) {}_optional = paddle::make_optional<std::vector<paddle::Tensor>>({});
 """
 
 SET_GRAD_OUT_DIST_ATTR_TEMPLATE = """
