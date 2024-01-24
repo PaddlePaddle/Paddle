@@ -700,7 +700,7 @@ class AssignOut_Op
 
   pir::Value x() { return operand_source(0); }
   pir::Value output() { return operand_source(1); }
-  pir::OpResult out() { return result(0); }
+  pir::Value out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<pir::Type> InferMeta(
