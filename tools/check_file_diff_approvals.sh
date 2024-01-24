@@ -260,6 +260,16 @@ if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg YuanRisheng phlrain
 fi
 
+DIFF_OUTPUT=$(git diff --unified=0 upstream/$BRANCH)
+# check if any .cc or .cu file in the phi/kernels/ directory is changed and if any template is added
+if echo "$DIFF_OUTPUT" | grep -q 'diff --git a/paddle/phi/kernels/.*\.cc b/paddle/phi/kernels/.*\.cc\|diff --git a/paddle/phi/kernels/.*\.cu b/paddle/phi/kernels/.*\.cu'; then
+    if echo "$DIFF_OUTPUT" | grep -q '+.*template <'; then
+        echo "A C++ template is added in .cc or .cu file in the phi/kernels directory,which can lead to an overly large size of the compiled .o file, resulting in a failure in multi-architecture compilation!"
+        echo_line="You must have one RD (risemeup1 or Galaxy1458) approval for the change of C++ template.\n"
+        check_approval 1 risemeup1 Galaxy1458
+    fi
+fi
+
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
