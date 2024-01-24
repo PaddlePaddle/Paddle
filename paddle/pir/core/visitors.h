@@ -39,7 +39,7 @@ IR_API void Walk(Operation *op,
                  WalkOrder order);
 
 template <WalkOrder Order = WalkOrder::PostOrder, typename FuncTy>
-void Walk(Operation *op, FuncTy &&callback) {
+IR_API void Walk(Operation *op, FuncTy &&callback) {
   return Walk(op, callback, Order);
 }
 
