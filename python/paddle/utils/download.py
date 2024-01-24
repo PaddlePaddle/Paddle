@@ -206,9 +206,9 @@ def _wget_download(url: str, fullname: str):
         # using wget to download url
         tmp_fullname = fullname + "_tmp"
         # –user-agent
-        command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
+        command = ['wget', '-O', tmp_fullname, '-t', str(DOWNLOAD_RETRY_LIMIT), url]
         subprc = subprocess.Popen(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         _ = subprc.communicate()
 
