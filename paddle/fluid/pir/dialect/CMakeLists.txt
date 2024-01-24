@@ -187,7 +187,7 @@ set(generated_files_python_c "${python_c_header_file}"
 
 set(ops_api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/ops_api_gen.py)
-set(ops_api_source_file ${PADDLE_BINARY_DIR}/paddle/fluid/pybind/ops_api.cc)
+set(ops_api_source_file ${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/ops_api.cc)
 set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 
 execute_process(

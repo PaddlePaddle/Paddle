@@ -25,7 +25,7 @@ set(cinn_op_yaml_file
     ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
 
 set(cinn_op_yaml_source_file
-    ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
+    ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
 
 set(parsed_op_dir
     ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
