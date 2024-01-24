@@ -720,20 +720,28 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = ::common::vectorize<int>(type_info.dims());
-  auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  if (!group->value_to_shape_or_data_exprs.empty()) {
-    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+  auto dtype = type_info.dtype();
+
+  if (FLAGS_cinn_bucket_compile) {
     std::vector<ir::Dim> sym_shape;
-    for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(input_id, sym);
+    const auto& dims = type_info.dims();
+    if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+      const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+      for (auto& sym : sym_vec) {
+        sym_shape.emplace_back(input_id, sym);
+      }
+    } else {  // static shape
+      for (int i = 0; i < dims.size(); ++i) {
+        sym_shape.emplace_back(input_id, symbol::DimExpr{dims[i]});
+      }
     }
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   } else {
-    return lang::CreatePlaceHolder(
-        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+    return lang::CreatePlaceHolder(::common::vectorize<int>(type_info.dims()),
+                                   CompatibleInfo::ConvertIRType(dtype),
+                                   input_id);
   }
 }
 
@@ -804,14 +812,15 @@ void OpLowererImpl::CollectOutputInfo(
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
 
     auto ForEachDimExpr = [&](const auto& DoEach) {
-      if (!group->value_to_shape_or_data_exprs.empty()) {
+      const auto& dims = type_info.dims();
+      if (::common::contain_unknown_dim(dims)) {  // dynamic shape
         auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
         }
-      } else {
-        auto out_shape = ::common::vectorize<int64_t>(type_info.dims());
+      } else {  // static shape
+        auto out_shape = ::common::vectorize<int64_t>(dims);
         for (int64_t dim : out_shape) {
           DoEach(symbol::DimExpr{dim});
         }

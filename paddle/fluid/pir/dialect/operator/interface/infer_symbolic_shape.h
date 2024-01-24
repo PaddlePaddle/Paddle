@@ -181,6 +181,9 @@ bool FullWithTensorOpInferSymbolicShape(
 
 namespace cinn::dialect {
 
+bool ReduceSumOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 bool ScaleOpInferSymbolicShape(pir::Operation *op,

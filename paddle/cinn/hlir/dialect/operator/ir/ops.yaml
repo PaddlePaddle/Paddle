@@ -59,6 +59,7 @@
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reshape
   args : (Tensor x, int[] shape)

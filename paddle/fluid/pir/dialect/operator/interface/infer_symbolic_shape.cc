@@ -565,7 +565,7 @@ bool Pow_OpInferSymbolicShape(pir::Operation *op,
 
 bool RsqrtOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return true;
+  return SameOperandsAndResultShape(op, shape_analysis);
 }
 bool Rsqrt_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
@@ -691,6 +691,18 @@ bool FullWithTensorOpInferSymbolicShape(
 }  // namespace paddle::dialect
 namespace cinn::dialect {
 
+bool ReduceSumOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  VLOG(1) << "ReduceSumOpInferSymbolicShape begin";
+
+  auto attributes = op->attributes();
+  bool keepdim = attributes["keep_dim"].dyn_cast<pir::BoolAttribute>().data();
+  auto axis = GetVectorAttr(op, "dim");
+  bool reduce_all = axis.size() == 0 ? true : false;
+  return paddle::dialect::ReduceInferDim(
+      op, shape_analysis, axis, keepdim, reduce_all);
+}
+
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // TODO(zhangbopd): Not implemented yet, different from the one in paddle
@@ -725,7 +737,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return true;
+  return SameOperandsAndResultShape(op, shape_analysis);
 }
 
 }  // namespace cinn::dialect
