@@ -235,8 +235,8 @@ int GetSharedSize(::pir::Operation* op) {
   return 0;
 }
 
-using ConditionFunction =
-    std::function<bool(::pir::Operation*, const GroupPtr&)>;
+using ConditionFunction = std::function<bool(
+    ::pir::Operation*, const GroupPtr&, ::pir::ShapeConstraintIRAnalysis&)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -354,6 +354,8 @@ class OpFusionPassHelper {
 
  private:
   void DoOpFusion() {
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        ops_.front()->GetParentProgram());
     for (auto consumer : ops_) {
       auto consumer_kind =
           hlir::framework::pir::CompatibleInfo::OpKind(*consumer);
@@ -411,7 +413,7 @@ class OpFusionPassHelper {
           }
         }
 
-        if (!can_fuse || !CanFuse(producer, consumer)) {
+        if (!can_fuse || !CanFuse(producer, consumer, shape_analysis)) {
           continue;
         }
 
@@ -441,7 +443,7 @@ class OpFusionPassHelper {
           // VLOG(3) << "Insert Global Output Node : " << producer->id();
           consumer_fusion->output_ops.insert(producer);
         } else if (producer_data_used_num > 1 && producer->num_operands() > 0 &&
-                   is_same_size(producer, consumer_fusion)) {
+                   is_same_size(producer, consumer_fusion, shape_analysis)) {
           // producer is not a const value op.
           consumer_fusion->internal_ops.insert(producer);
         }
@@ -480,9 +482,11 @@ class OpFusionPassHelper {
           // must be horizontal, as Elementwise + Broadcast is left to fusion
           // merge pass.
           {OpPatternKind::kBroadcast,
-           [](::pir::Operation* producer, const GroupPtr& consumer) -> bool {
+           [](::pir::Operation* producer,
+              const GroupPtr& consumer,
+              ::pir::ShapeConstraintIRAnalysis& shape_analysis) -> bool {
              // NOTE, producer and consumer NEVER be same size
-             if (is_same_size(producer, consumer)) {
+             if (is_same_size(producer, consumer, shape_analysis)) {
                return true;
              }
 
@@ -592,7 +596,9 @@ class OpFusionPassHelper {
     }
   }
 
-  bool CanFuse(::pir::Operation* producer, const ::pir::Operation* consumer) {
+  bool CanFuse(::pir::Operation* producer,
+               const ::pir::Operation* consumer,
+               ::pir::ShapeConstraintIRAnalysis& shape_analysis) {
     auto& relation =
         fusion_relation_map_[hlir::framework::pir::CompatibleInfo::OpKind(
             *producer)];
@@ -607,7 +613,7 @@ class OpFusionPassHelper {
               << consumer_group->op_pattern_kind;
 
       return relation.fusion_op_kind[consumer_group->op_pattern_kind](
-          producer, fusion_groups_[consumer]);
+          producer, fusion_groups_[consumer], shape_analysis);
     }
 
     return false;
@@ -662,6 +668,8 @@ GroupList OpFusionPassInternal(
     }
     VLOG(6) << ss.str();
   }
+  VLOG(3) << "OpFusionPass Finish...!";
+
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;
