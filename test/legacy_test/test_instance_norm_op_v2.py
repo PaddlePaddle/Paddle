@@ -220,7 +220,12 @@ class TestInstanceNormFP32OP(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            atol=self.atol, check_prim=self.check_prim, check_pir=True
+            atol=self.atol,
+            check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
     def test_check_grad(self):
@@ -275,7 +280,13 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, atol=self.atol, check_prim=self.check_prim, check_pir=True
+            place,
+            atol=self.atol,
+            check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
     def test_check_grad(self):
@@ -350,7 +361,12 @@ class TestInstanceNormBF16OP(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_prim=self.check_prim, check_pir=True
+            place,
+            check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
     def test_check_grad(self):

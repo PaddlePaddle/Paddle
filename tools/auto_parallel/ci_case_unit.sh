@@ -52,6 +52,13 @@ main() {
     elif [[ $exec_case =~ "dygraph_unit_test" ]];then
         cd ${dygraph_case_path}
         case_list_unit
+    elif [[ $exec_case =~ "test_semi_auto_parallel_hybrid_strategy" ]];then
+        cd ${auto_case_path}
+        export PYTHONPATH=../..:$PYTHNPATH
+        python test_semi_auto_parallel_hybrid_strategy.py >>${log_path}/$exec_case 2>&1
+        if [ $? -eq 0 ]; then
+            tail -n 10 ${log_path}/$exec_case
+        fi
     else
         echo -e "\033[31m ---- Invalid exec_case $exec_case \033[0m"
     fi

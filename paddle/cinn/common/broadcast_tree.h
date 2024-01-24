@@ -31,4 +31,6 @@ using BroadcastTree = adt::Tree<BroadcastBranch, BroadcastLeaf>;
 
 BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves);
 
+std::string ToTxtString(const BroadcastTree&);
+
 }  // namespace cinn::common

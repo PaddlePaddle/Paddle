@@ -223,18 +223,23 @@ class TestPirArrayOp(unittest.TestCase):
                         dd0 = g
                     if p.is_same(mem_array):
                         dmem_array = g
+                dmem0 = paddle.tensor.array_read(
+                    dmem_array, paddle.zeros(shape=[1], dtype='int64')
+                )
                 res = exe.run(
                     main_program,
                     feed={'d0': d},
-                    fetch_list=[mean, dd0],  # dmem_array
+                    fetch_list=[mean, dd0, dmem0],  # dmem_array
                 )
                 # pir not support fetch tensorarray
+                np.testing.assert_allclose(res[2], [0.0] * 10, rtol=1e-05)
             else:
                 res = exe.run(
                     main_program,
                     feed={'d0': d},
                     fetch_list=[mean.name, d0.grad_name, mem_array.grad_name],
                 )
+                # this ans is wrong array is empty at begining ,so it no grad.
                 np.testing.assert_allclose(res[2], [[0.1] * 10], rtol=1e-05)
 
             mean = 0.6097253

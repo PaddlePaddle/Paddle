@@ -25,8 +25,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
@@ -37,6 +37,9 @@ namespace dialect {
 namespace ir {
 
 namespace {
+
+using ShapeOrDataDimExprs4ValueT =
+    std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
 
 std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     pir::Value shape,
@@ -126,15 +129,35 @@ std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
       .out();
 }
 
-bool ProcessOp(paddle::dialect::ExpandOp op,
-               pir::PatternRewriter* rewriter,
-               const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
+bool ReplaceShapeOpsToGenerateShape(
+    pir::Value shape_operand,
+    pir::PatternRewriter* rewriter,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  if (shape_operand.defining_op()->isa<cinn::dialect::GenerateShapeOp>()) {
+    return false;
+  }
+  auto ShapeOrDataDimExprs4Value =
+      [&shape_analysis](
+          pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+    CHECK(shape_analysis->HasShapeOrDataForValue(value));
+    return shape_analysis->GetShapeOrDataForValue(value);
+  };
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewritedGenerateShapeOp(
-          op.shape(), rewriter, ShapeOrDataDimExprs4Value);
+          shape_operand, rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
-  op->operand(1).set_source(opt_generated_shape.value());
+  shape_analysis->SetShapeOrDataForValue(
+      opt_generated_shape.value(), ShapeOrDataDimExprs4Value(shape_operand));
+  rewriter->ReplaceAllUsesWith(shape_operand, opt_generated_shape.value());
   return true;
+}
+
+template <typename OP_TYPE>
+bool ProcessOp(OP_TYPE op,
+               pir::PatternRewriter* rewriter,
+               pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return ReplaceShapeOpsToGenerateShape(
+      op->operand_source(1), rewriter, shape_analysis);
 }
 
 }  // namespace
@@ -143,32 +166,28 @@ template <typename OPTYPE>
 class FuseShapeOpsIntoGenerateShapeOpPattern
     : public pir::OpRewritePattern<OPTYPE> {
  public:
-  FuseShapeOpsIntoGenerateShapeOpPattern(
-      pir::IrContext* context,
-      const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value)
-      : pir::OpRewritePattern<OPTYPE>(context),
-        ShapeOrDataDimExprs4Value_(ShapeOrDataDimExprs4Value) {}
+  explicit FuseShapeOpsIntoGenerateShapeOpPattern(pir::IrContext* context)
+      : pir::OpRewritePattern<OPTYPE>(context) {}
 
   bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
-    return ProcessOp(op, &rewriter, ShapeOrDataDimExprs4Value_);
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    return ProcessOp(op, &rewriter, &shape_analysis);
   }
-
- private:
-  ShapeOrDataDimExprs4ValueT ShapeOrDataDimExprs4Value_;
 };
 
-FuseShapeOpsIntoGenerateShapeOpPass::FuseShapeOpsIntoGenerateShapeOpPass(
-    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value)
-    : pir::PatternRewritePass("fuse_shape_ops_into_generate_shape_op_pass", 1),
-      ShapeOrDataDimExprs4Value_(ShapeOrDataDimExprs4Value) {}
+FuseShapeOpsIntoGenerateShapeOpPass::FuseShapeOpsIntoGenerateShapeOpPass()
+    : pir::PatternRewritePass("fuse_shape_ops_into_generate_shape_op_pass", 1) {
+}
 
 pir::RewritePatternSet FuseShapeOpsIntoGenerateShapeOpPass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
-  // elementwise ops
   ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ExpandOp>>(
-      context, ShapeOrDataDimExprs4Value_);
+      context);
+  ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
+      context);
 
   return ps;
 }

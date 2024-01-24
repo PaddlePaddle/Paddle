@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The design and code is mainly from MLIR, thanks to the greate project.
+// The design and code is mainly from MLIR, thanks to the great project.
 
 #pragma once
 
@@ -21,10 +21,13 @@
 
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace pir {
+
+class FrozenRewritePatternSet;
+class RewritePattern;
+class Pattern;
 
 class PatternApplicator {
  public:

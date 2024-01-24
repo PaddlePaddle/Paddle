@@ -29,7 +29,7 @@ class TestSemiAutoParallelLazyInit(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {
             "backend": ["cpu", "gpu"],
-            "_placements_type": ["DP", "PP"],
+            "_placements_type": ["DP", "PP", "MP"],
         }
 
     def test_lazy_init(self):

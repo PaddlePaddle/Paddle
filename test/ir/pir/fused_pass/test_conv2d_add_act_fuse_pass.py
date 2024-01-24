@@ -43,7 +43,7 @@ class TestConv2dAddActFusePattern(PassTest):
     def is_program_valid(self, program):
         return True
 
-    def build_ir_progam(self):
+    def build_ir_program(self):
         with paddle.pir_utils.IrGuard():
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -86,7 +86,7 @@ class TestConv2dAddActFusePattern(PassTest):
         self.skip_accuracy_verification = True
 
     def sample_program(self):
-        yield self.build_ir_progam(), False
+        yield self.build_ir_program(), False
 
     def test_check_output(self):
         self.check_pass_correct()
@@ -114,7 +114,7 @@ class TestConv2dAdd2ActFusePattern(PassTest):
     def is_program_valid(self, program):
         return True
 
-    def build_ir_progam(self):
+    def build_ir_program(self):
         with paddle.pir_utils.IrGuard():
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -165,7 +165,7 @@ class TestConv2dAdd2ActFusePattern(PassTest):
         self.skip_accuracy_verification = True
 
     def sample_program(self):
-        yield self.build_ir_progam(), False
+        yield self.build_ir_program(), False
 
     def test_check_output(self):
         self.check_pass_correct()

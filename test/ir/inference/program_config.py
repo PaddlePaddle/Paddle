@@ -260,7 +260,7 @@ class ProgramConfig:
         no_cast_list: Optional[List[str]] = None,
     ):
         self.ops = ops
-        # if no weight need to save, we create a place_holder to help seriazlie params.
+        # if no weight need to save, we create a place_holder to help serialize params.
         if not weights:
 
             def generate_weight():
@@ -344,6 +344,7 @@ class ProgramConfig:
 
 def create_fake_model(program_config):
     '''Create a Paddle model(in memory) according to the given config.'''
+    paddle.set_flags({'FLAGS_enable_pir_in_executor': False})
     program_config = copy.deepcopy(program_config)
     program_config._cast()
     paddle.enable_static()

@@ -94,8 +94,7 @@ struct OpRunTimeInfo {
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
   std::vector<std::string> extra_args;
-  std::string layout_transform_arg;
-  std::vector<std::string> layout_transform_inputs;
+  std::vector<std::string> data_format_tensors;
   bool is_onednn_only;
   bool dynamic_fallback;
 
@@ -108,8 +107,7 @@ struct OpRunTimeInfo {
                 const std::vector<std::pair<std::string, std::string>>& inplace,
                 const std::vector<std::pair<std::string, std::string>>& view,
                 const std::vector<std::string>& extra_args = {},
-                const std::string& layout_transform_arg = "",
-                const std::vector<std::string>& layout_transform_inputs = {},
+                const std::vector<std::string>& data_format_tensors = {},
                 bool is_onednn_only = false,
                 bool dynamic_fallback = false)
       : infer_meta_func(infer_meta_func),
@@ -121,8 +119,7 @@ struct OpRunTimeInfo {
         inplace(inplace),
         view(view),
         extra_args(extra_args),
-        layout_transform_arg(layout_transform_arg),
-        layout_transform_inputs(layout_transform_inputs),
+        data_format_tensors(data_format_tensors),
         is_onednn_only(is_onednn_only),
         dynamic_fallback(dynamic_fallback) {}
 };

@@ -840,6 +840,10 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 place);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -973,6 +977,10 @@ static PyObject* tensor__gt__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 place);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1078,6 +1086,10 @@ static PyObject* tensor__ge__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 place);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1184,6 +1196,10 @@ static PyObject* tensor__mod__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1289,6 +1305,10 @@ static PyObject* tensor__matmul__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1410,6 +1430,10 @@ static PyObject* tensor__lt__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1515,6 +1539,10 @@ static PyObject* tensor__le__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1621,6 +1649,10 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1828,6 +1860,10 @@ static PyObject* tensor__rpow__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -1933,6 +1969,10 @@ static PyObject* tensor__ne__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
@@ -2036,6 +2076,10 @@ static PyObject* tensor__eq__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+    }
   } else if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);

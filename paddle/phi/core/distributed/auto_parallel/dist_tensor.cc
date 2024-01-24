@@ -162,6 +162,21 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
   }
 }
 
+DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+                       const DDim& global_dims,
+                       const TensorDistAttr& dist_attr)
+    : global_dims_(global_dims), dist_attr_(dist_attr) {
+  process_mesh_ = dist_attr_.process_mesh();
+  placements_ = ToPlacements(dist_attr);
+  if (IsCurRankInMesh(process_mesh_)) {
+    value_ = local_value;
+  } else {
+    value_ = std::make_shared<DenseTensor>(
+        std::make_shared<phi::Allocation>(nullptr, 0, local_value->place()),
+        phi::DenseTensorMeta(local_value->dtype(), global_dims_));
+  }
+}
+
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const ProcessMesh& process_mesh,
                        const Placements& placements)
@@ -174,17 +189,26 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   // uninitialized tensor only with dist_tensor_meta_.
   if (IsCurRankInMesh(process_mesh)) {
     if (!dist_attr_.is_replicated()) {
-      value_ = std::make_shared<DenseTensor>();
-      // 1. create replicated global tensor
-      TensorDistAttr replicated_dist_attr(
-          common::vectorize(global_value->dims()));
-      replicated_dist_attr.set_process_mesh(process_mesh);
-      DistTensor replicated_tensor(global_value, replicated_dist_attr);
+      if (global_value->initialized()) {
+        value_ = std::make_shared<DenseTensor>();
+        // 1. create replicated global tensor
+        TensorDistAttr replicated_dist_attr(
+            common::vectorize(global_value->dims()));
+        replicated_dist_attr.set_process_mesh(process_mesh);
+        DistTensor replicated_tensor(global_value, replicated_dist_attr);
 
-      // 2. reshard from replicated to other state
-      auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr_);
-      auto* dev_ctx = DeviceContextPool::Instance().Get(global_value->place());
-      func->Eval(dev_ctx, replicated_tensor, dist_attr_, this);
+        // 2. reshard from replicated to other state
+        auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr_);
+        auto* dev_ctx =
+            DeviceContextPool::Instance().Get(global_value->place());
+        func->Eval(dev_ctx, replicated_tensor, dist_attr_, this);
+      } else {
+        // For lazy init, the global value is an uninitialized tensor.
+        // Just infer the local shape of the dist tensor.
+        value_ = global_value;
+        value_->Resize(
+            InferShapeForReshardFromReplicate(global_value, dist_attr_));
+      }
     } else {
       value_ = global_value;
     }

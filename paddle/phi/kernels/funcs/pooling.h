@@ -100,6 +100,45 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
       ceil(static_cast<float>((ph + 1) * input_size) / output_size));
 }
 
+/* used for fractional pool to calculate start and end index of each divided
+ * grid
+ */
+HOSTDEVICE inline float FractionalRationalU(
+    float u, float alpha, int input, int output, int pool_size = 0) {
+  if (pool_size > 0) {
+    return u;
+  }
+
+  int base = input / output;
+
+  float u_max1 = static_cast<float>(base + 2) / alpha - 1;
+  float u_max2 = static_cast<float>(input + 1 - base) / alpha -
+                 static_cast<float>(output - 1);
+  float max_u = std::min(u_max1, u_max2);
+
+  return u * max_u;
+}
+
+HOSTDEVICE inline int FractionalStartIndex(int idx,
+                                           float alpha,
+                                           float u,
+                                           int pool_size = 0) {
+  // paper use ceil instead: static_cast<int>(ceil(alpha * (idx + u) - 1));
+  return static_cast<int>((idx + u) * alpha) - static_cast<int>(u * alpha);
+}
+
+HOSTDEVICE inline int FractionalEndIndex(int idx,
+                                         float alpha,
+                                         float u,
+                                         int pool_size = 0) {
+  if (pool_size > 0) {
+    return static_cast<int>((idx + u) * alpha) - static_cast<int>(u * alpha) +
+           pool_size;
+  }
+  // paper use ceil instead: static_cast<int>(ceil(alpha * (idx + 1 + u) - 1));
+  return static_cast<int>((idx + 1 + u) * alpha) - static_cast<int>(u * alpha);
+}
+
 /*
  * \brief Getting pooling results, and calculating gradient.
  *
@@ -362,6 +401,64 @@ class MaxPool3dWithIndexGradFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  DenseTensor* input_grad);
+};
+
+/*
+ * \brief Getting fractional max pooling results and corresponding max index,
+ * and calculating gradient. In up-sampling-pooling, it is necessary to know max
+ * element index. In pool2d, all tensors are in NCHW format. In pool3d, all
+ * tensors are in NCDHW format.
+ */
+template <typename Context, typename T1, typename T2>
+class FractionalMaxPool2dFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
+                  float random_u,
+                  bool return_mask,
+                  DenseTensor* output,
+                  DenseTensor* mask);
+};
+
+template <typename Context, typename T1, typename T2>
+class FractionalMaxPool2dGradFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
+                  float random_u,
+                  bool return_mask,
+                  DenseTensor* input_grad);
+};
+
+template <typename Context, typename T1, typename T2>
+class FractionalMaxPool3dFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
+                  float random_u,
+                  bool return_mask,
+                  DenseTensor* output,
+                  DenseTensor* mask);
+};
+
+template <typename Context, typename T1, typename T2>
+class FractionalMaxPool3dGradFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
+                  float random_u,
+                  bool return_mask,
                   DenseTensor* input_grad);
 };
 

@@ -36,8 +36,10 @@ OP_SKIP_TRANSFORM_CHECK_TEMPLATE = """
 
 OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE = """
   // deal support data transform
-  VLOG(8) << "SUPPORT_TRANSFORM: " << \"{support_dtype_name};";
-  return tensor_dtype;
+  VLOG(8) << "SUPPORT_TRANSFORM";
+  if ({support_transform_check}){{
+    return tensor_dtype;
+  }}
 """
 
 OP_COMPLEX_PROMOTE_CHECK_TEMPLATE = """
@@ -65,10 +67,15 @@ def get_data_transform_check_str(op_data_transform_map):
                 )
         if "support_trans_dtype" in op_data_transform_map:
             args = op_data_transform_map["support_trans_dtype"]
-            # TODO:(chenxi) comlete SUPPORT logic
+            # TODO:(chenxi67) comlete SUPPORT logic
+            if args is not None:
+                if_cond_args = []
+                for support_arg in args:
+                    if_cond_args.append("var_name == \"" + support_arg + "\"")
             if args is not None:
                 support_trans_str = OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE.format(
-                    support_dtype_name=args
+                    support_transform_check=' || '.join(if_cond_args)
+                    # support_dtype_name=args.join(", ")
                 )
 
     return OP_DATA_TRANSFORM_CHECK_TEMPLATE.format(
