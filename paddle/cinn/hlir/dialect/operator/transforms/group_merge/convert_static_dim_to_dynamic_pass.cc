@@ -374,7 +374,8 @@ struct StaticDimToDynamicConverter {
       if (opt_exprs.has_value()) {
         return opt_exprs.value();
       } else {
-        return symbol::ShapeOrDataDimExprs{old};
+        return symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(old)};
       }
     }
     LOG(FATAL) << "Dead code";
@@ -400,7 +401,8 @@ struct StaticDimToDynamicConverter {
     }
 
     if (!converted_once) return std::nullopt;
-    return symbol::ShapeOrDataDimExprs{ret_shape};
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(ret_shape)};
   }
 
   template <typename DoEachT>

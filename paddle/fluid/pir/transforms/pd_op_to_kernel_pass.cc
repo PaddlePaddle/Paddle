@@ -190,7 +190,7 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
-  // GetExepectKernelKey
+  // GetExpectKernelKey
   if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
       op->isa<Pool3dGradOp>()) {
     if (kernel_key.backend() == phi::Backend::GPUDNN &&
@@ -355,12 +355,12 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
   return res;
 }
 
-static pir::OpResult AddPlaceTransferOp(pir::Value in,
-                                        pir::Type out_type,
-                                        const phi::Place& src_place,
-                                        const phi::Place& dst_place,
-                                        const phi::KernelKey& kernel_key,
-                                        pir::Block* block) {
+static pir::Value AddPlaceTransferOp(pir::Value in,
+                                     pir::Type out_type,
+                                     const phi::Place& src_place,
+                                     const phi::Place& dst_place,
+                                     const phi::KernelKey& kernel_key,
+                                     pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
 
   auto copy_kernel_key = kernel_key;
@@ -393,7 +393,7 @@ static pir::OpResult AddPlaceTransferOp(pir::Value in,
   pir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
   pir::Operation* op =
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
-  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  auto in_op = in.defining_op();
   if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
     op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
   }
@@ -403,7 +403,7 @@ static pir::OpResult AddPlaceTransferOp(pir::Value in,
 }
 
 #ifdef PADDLE_WITH_DNNL
-static pir::OpResult AddOneDNN2PaddleLayoutTransferOp(
+static pir::Value AddOneDNN2PaddleLayoutTransferOp(
     pir::Value in, const phi::DataLayout& dst_layout, pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   auto in_alloc_type = in.type().dyn_cast<AllocatedDenseTensorType>();
@@ -433,7 +433,7 @@ static pir::OpResult AddOneDNN2PaddleLayoutTransferOp(
   pir::Operation* op =
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
 
-  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  auto in_op = in.defining_op();
   if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
     op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
   }
@@ -572,13 +572,13 @@ static pir::Type BuildOutputType(pir::Type type,
 }
 #endif
 
-pir::OpResult AddDtypeTransferOp(pir::Value in,
-                                 pir::Block* block,
-                                 const phi::KernelKey& kernel_key,
-                                 const phi::Place& origin_place,
-                                 const phi::Place& out_place,
-                                 const phi::DataType& src_dtype,
-                                 const phi::DataType& dst_dtype) {
+pir::Value AddDtypeTransferOp(pir::Value in,
+                              pir::Block* block,
+                              const phi::KernelKey& kernel_key,
+                              const phi::Place& origin_place,
+                              const phi::Place& out_place,
+                              const phi::DataType& src_dtype,
+                              const phi::DataType& dst_dtype) {
   pir::IrContext* ctx = pir::IrContext::Instance();
 
   pir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
@@ -620,12 +620,12 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
   pir::Operation* op = pir::Operation::Create(
       {in}, op_attribute, {output_types}, kernel_op_info);
 
-  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  auto in_op = in.defining_op();
   if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
     op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
   }
   block->push_back(op);
-  pir::OpResult new_in = op->result(0);
+  pir::Value new_in = op->result(0);
   return new_in;
 }
 
@@ -980,7 +980,7 @@ phi::KernelKey GetKernelKey(
         continue;
       }
       if (op_res.owner()->isa<DataOp>()) {
-        auto data_op = op->operand_source(i).dyn_cast<pir::OpResult>().owner();
+        auto data_op = op->operand_source(i).defining_op();
         auto data_place = data_op->attribute<PlaceAttribute>("place").data();
 
         auto data_op_backend = paddle::experimental::ParseBackend(data_place);
@@ -1996,7 +1996,7 @@ std::vector<pir::Value> BuildInputs(
       } else if (new_in_type.isa<pir::VectorType>()) {
         // [ todo need update here, support combine data transfomer]
         // deal with pre combine op
-        auto pre_define_op = cur_in.dyn_cast<pir::OpResult>().owner();
+        auto pre_define_op = cur_in.defining_op();
         if (pre_define_op->isa<::pir::CombineOp>()) {
           std::vector<pir::Value> inner_inputs;
           std::vector<pir::Type> types_in_vec;

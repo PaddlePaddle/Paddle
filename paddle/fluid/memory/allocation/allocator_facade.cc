@@ -1349,7 +1349,7 @@ class AllocatorFacadePrivate {
       const platform::Place& place = pair.first;
       if (platform::is_cpu_place(place) ||
           platform::is_cuda_pinned_place(place) ||
-          platform::is_gpu_place(place)) {
+          platform::is_gpu_place(place) || platform::is_custom_place(place)) {
         pair.second = std::make_shared<StatAllocator>(pair.second);
       }
     }

@@ -1015,7 +1015,7 @@ class PSGPUWrapper {
 #ifdef PADDLE_WITH_CUDA
   std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPoolFix*> hbm_pools_;  // in multi mfdim, one table need
-                                              // hbm pools of totol dims number
+                                              // hbm pools of total dims number
 #endif
 
   std::shared_ptr<

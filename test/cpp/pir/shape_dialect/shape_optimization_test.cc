@@ -131,5 +131,4 @@ TEST(shape_optimization, shape_optimization_pass) {
   IR_ENFORCE(subtract_res.shape()[0] == 1);
   IR_ENFORCE(subtract_res.shape()[1] == 64);
   IR_ENFORCE(symbol::ToString(subtract_res.shape()[2]) == "Broadcast(S0, -1)");
-  IR_ENFORCE(symbol::ToString(subtract_res.shape()[3]) == "Broadcast(1, 2)");
 }

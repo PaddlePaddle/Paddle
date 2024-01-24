@@ -122,13 +122,13 @@ ProgramInfo BuildSoftmax() {
 
   std::vector<GroupPtr> groups;
   groups.emplace_back(std::make_shared<Group>(
-      std::initializer_list<::pir::Operation*>({max.owner(),
-                                                broadcast_1.owner(),
-                                                sub.owner(),
-                                                exp.owner(),
-                                                sum.owner(),
-                                                broadcast_2.owner(),
-                                                divide.owner()})));
+      std::initializer_list<::pir::Operation*>({max.defining_op(),
+                                                broadcast_1.defining_op(),
+                                                sub.defining_op(),
+                                                exp.defining_op(),
+                                                sum.defining_op(),
+                                                broadcast_2.defining_op(),
+                                                divide.defining_op()})));
   groups[0]->output_ops.insert(groups[0]->ops.back());
 
   groups[0]->op_pattern_kind = cinn::hlir::framework::kReduction;

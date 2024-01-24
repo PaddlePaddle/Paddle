@@ -91,7 +91,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       return true;
     }
 
-    auto is_numel_euqal = [](const TensorType& in,
+    auto is_numel_equal = [](const TensorType& in,
                              const TensorType& out) -> bool {
       int64_t in_numel = 1;
       int64_t out_numel = 1;
@@ -127,7 +127,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     };
     // In this version, we don't consider the -1 in ddim, we just calculate the
     // result.
-    auto is_numel_euqal_loose_version = [](const TensorType& in,
+    auto is_numel_equal_loose_version = [](const TensorType& in,
                                            const TensorType& out) -> bool {
       auto calculate_numel = [](const phi::DDim& ddim) -> int64_t {
         int64_t numel = 1;
@@ -144,10 +144,10 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     bool equal = false;
     bool relax = (RelaxShapeCheckOps.count(op_name) > 0);
     if (relax) {
-      equal = is_numel_euqal_loose_version(input_alloc_tensor_type,
+      equal = is_numel_equal_loose_version(input_alloc_tensor_type,
                                            output_alloc_tensor_type);
     } else {
-      equal = is_numel_euqal(input_alloc_tensor_type, output_alloc_tensor_type);
+      equal = is_numel_equal(input_alloc_tensor_type, output_alloc_tensor_type);
     }
 
     if (!equal) {
@@ -159,7 +159,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     return false;
   }
   if (eager_dels.count(input) == 0) {
-    VLOG(9) << "     -- input not in eager_deletion_valus, can't do inplace";
+    VLOG(9) << "     -- input not in eager_deletion_vars, can't do inplace";
     return false;
   }
   return true;
