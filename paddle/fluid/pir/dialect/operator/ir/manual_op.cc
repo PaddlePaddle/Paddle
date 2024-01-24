@@ -4043,15 +4043,8 @@ void AssignOut_Op::Build(pir::Builder &builder,
   constexpr char kStopGradientAttrName[] = "stop_gradient";
   auto stop_gradient0 =
       argument.inputs[0].attribute<pir::BoolAttribute>(kStopGradientAttrName);
-  std::cout << "111111"
-            << "  " << stop_gradient0 << std::endl;
   argument.inputs[1].set_attribute(kStopGradientAttrName,
                                    builder.bool_attr(stop_gradient0.data()));
-  std::cout << "^^^^^^"
-            << "  "
-            << argument.inputs[1].attribute<pir::BoolAttribute>(
-                   kStopGradientAttrName)
-            << std::endl;
 }
 
 void AssignOut_Op::VerifySig() {

@@ -269,10 +269,10 @@ class TestAssignOut_(unittest.TestCase):
             startup_program = base.Program()
             with base.program_guard(main_program, startup_program):
                 out = paddle.tensor.fill_constant(
-                    [10, 10], dtype='float32', value=0.0
+                    [2, 2], dtype='float32', value=0.0
                 )
                 tmp = paddle.tensor.fill_constant(
-                    [10, 10], dtype='float32', value=1.0
+                    [2, 2], dtype='float32', value=1.0
                 )
                 tmp.stop_gradient = False
                 x = paddle.add(tmp, tmp)
@@ -287,7 +287,7 @@ class TestAssignOut_(unittest.TestCase):
                     fetch_list=[dx],
                 )[0]
 
-        np.testing.assert_array_equal(dx_out, 0.02 * np.ones((10, 10)))
+        np.testing.assert_array_equal(dx_out, 0.5 * np.ones((2, 2)))
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
