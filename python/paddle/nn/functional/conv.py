@@ -138,7 +138,7 @@ def _conv_nd(
             new_shape = [1] * len(x.shape)
             new_shape[channel_dim] = -1
             bias = bias.reshape(new_shape)
-            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
             if (
                 _global_flags()['FLAGS_npu_storage_format']
                 and 'npu' in get_all_custom_device_type()
@@ -452,8 +452,8 @@ def conv1d(
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
-    squeeze_aixs = -3 if channel_last else -2
-    x = unsqueeze(x, axis=[squeeze_aixs])
+    squeeze_axis = -3 if channel_last else -2
+    x = unsqueeze(x, axis=[squeeze_axis])
 
     if in_dynamic_or_pir_mode():
         if l_type == 'conv2d':
@@ -508,7 +508,7 @@ def conv1d(
         )
         if bias is not None:
             out = _add_with_axis(out, bias, axis=channel_dim)
-    out = squeeze(out, axis=[squeeze_aixs])
+    out = squeeze(out, axis=[squeeze_axis])
     return out
 
 
@@ -714,7 +714,7 @@ def conv2d(
                         + bias.shape
                         + [1 for i in range(len(x.shape) - channel_dim - 1)],
                     )
-                # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+                # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
                 if (
                     _global_flags()['FLAGS_npu_storage_format']
                     and 'npu' in get_all_custom_device_type()
@@ -1353,7 +1353,7 @@ def conv3d(
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    and W is the width of the feature. Convolution3D is similar with Convolution2D
     but adds one dimension(depth). If bias attribution and activation type are
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.

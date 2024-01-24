@@ -666,7 +666,8 @@ class TestHSigmoidLossAPI(unittest.TestCase):
 
             np.testing.assert_allclose(ret, self.out_np, rtol=1e-05)
 
-    def test_errors(self):
+    @test_with_pir_api
+    def test_static_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -727,6 +728,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 path_code=path_code_int32,
             )
 
+    def test_dygraph_errors(self):
         # test paddle.nn.HSigmoidLoss
         paddle.disable_static(self.place)
         x_arr = np.array([], dtype=np.float32)
@@ -767,7 +769,10 @@ class TestHSigmoidLossAPICustom(TestHSigmoidLossAPI):
             ]
         ).astype(np.int64)
 
-    def test_errors(self):
+    def test_static_errors(self):
+        pass
+
+    def test_dygraph_errors(self):
         pass
 
 

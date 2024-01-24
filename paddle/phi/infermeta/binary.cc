@@ -508,7 +508,7 @@ void ConvInferMeta(const MetaTensor& input,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -550,7 +550,7 @@ void ConvInferMeta(const MetaTensor& input,
         strides[i],
         0,
         phi::errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -561,7 +561,7 @@ void ConvInferMeta(const MetaTensor& input,
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv). "
+          "length must be equal to 2 for Op(Conv). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
           "difference of input's dimention and Attr(strides)'s length = %u.",
@@ -720,7 +720,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -732,7 +732,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
       2U,
       errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "be equal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d], the shape of input "
           "is [%s], the Attr(stride)'s size is [%d].",
           in_sub_stride_size,
@@ -2614,6 +2614,37 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scales,
+                                   MetaTensor* out) {
+  auto x_dim = x.dims();
+  auto scales_dim = scales.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(x) must be 2, but received %d.", x_dim.size()));
+
+  PADDLE_ENFORCE_EQ(scales_dim.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(scales) must be 1, but received %d.",
+                        scales_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[1],
+      scales_dim[0],
+      phi::errors::InvalidArgument(
+          "The second dim of Input(x) must be equal to the first dim of scales,"
+          "but received %d and %d.",
+          x_dim[2],
+          scales_dim[1]));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(x_dim);
+  out->set_layout(x.layout());
+}
+
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
                                std::vector<float>* output_aspect_ratior) {
@@ -2857,7 +2888,7 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y) {
   auto dim = common::vectorize<int>(x.dims());
 
@@ -2868,8 +2899,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
   }
 
   y->set_dims(common::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,

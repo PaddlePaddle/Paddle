@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
@@ -49,11 +49,10 @@
     output0 output1 output2    output3  output4  output5             output6
 */
 
-class SameTypeBindingTestPattern
-    // This class is for test cases of the same type of OP.
-    // (without considering the computational logic between OPs,
-    // only focusing on the process of matching and replacing)
-    : public paddle::drr::DrrPatternBase<SameTypeBindingTestPattern> {
+// This class is for test cases of the same type of OP.
+// (without considering the computational logic between OPs,
+// only focusing on the process of matching and replacing)
+class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
@@ -179,6 +178,8 @@ class SameTypeBindingTestPattern
     res.Tensor("output5") = full_5();
     res.Tensor("output6") = full_6();
   }
+
+  std::string name() const override { return "SameTypeBindingTestPattern"; }
 };
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT

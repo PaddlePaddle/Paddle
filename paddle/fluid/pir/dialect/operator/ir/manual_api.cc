@@ -193,11 +193,40 @@ pir::OpResult add_n_array(const std::vector<pir::Value>& inputs) {
   return add_n_array_op.result(0);
 }
 
+pir::OpResult slice_array(pir::Value input,
+                          pir::Value starts,
+                          pir::Value ends) {
+  auto op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::SliceArrayOp>(
+          input, starts, ends);
+  return op.result(0);
+}
+
 pir::OpResult slice_array_dense(pir::Value input, pir::Value starts) {
   auto op = ApiBuilder::Instance()
                 .GetBuilder()
                 ->Build<paddle::dialect::SliceArrayDenseOp>(input, starts);
   return op.result(0);
+}
+
+pir::OpResult assign(const pir::Value& x) {
+  CheckValueDataType(x, "x", "assign");
+  if (x.type().isa<paddle::dialect::DenseTensorType>()) {
+    paddle::dialect::AssignOp assign_op =
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::AssignOp>(
+            x);
+    return assign_op.result(0);
+  } else if (x.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    paddle::dialect::AssignArrayOp assign_array_op =
+        ApiBuilder::Instance()
+            .GetBuilder()
+            ->Build<paddle::dialect::AssignArrayOp>(x);
+    return assign_array_op.result(0);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently, assign only supports DenseTensorType and "
+        "DenseTensorArrayType."));
+  }
 }
 
 }  // namespace dialect

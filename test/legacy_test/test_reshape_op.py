@@ -560,6 +560,7 @@ class TestReshapeOpError(unittest.TestCase):
         self.data = paddle.static.data
         self.reshape = paddle.reshape
 
+    @test_with_pir_api
     def _test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
