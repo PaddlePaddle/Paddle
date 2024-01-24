@@ -332,7 +332,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0) {
       if (loops_index[i - 1] + 1 != loops_index[i]) {
-        os << "Loops index in Fuse shoule be continuous!\n";
+        os << "Loops index in Fuse should be continuous!\n";
         throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
       }
     }
@@ -364,7 +364,7 @@ Expr DyScheduleImpl::Fuse(const Expr& block,
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0) {
       if (loops_index[i - 1] + 1 != loops_index[i]) {
-        os << "Loops index in Fuse shoule be continuous!\n";
+        os << "Loops index in Fuse should be continuous!\n";
         throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
       }
     }
@@ -604,7 +604,7 @@ Expr StScheduleImpl::Fuse(const std::string& block_name,
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0)
       CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse shoule be continuous!";
+          << "Loops index in Fuse should be continuous!";
   }
   for (int i : loops_index) {
     CHECK_LT(i, (int)all_loops.size())
@@ -623,7 +623,7 @@ Expr StScheduleImpl::Fuse(const Expr& block,
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0)
       CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse shoule be continuous!";
+          << "Loops index in Fuse should be continuous!";
   }
   for (int i : loops_index) {
     CHECK_LT(i, (int)all_loops.size())

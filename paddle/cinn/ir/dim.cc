@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/dim.h"
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
@@ -31,13 +32,8 @@ Dim _Dim_::Make(const std::string& name, const symbol::DimExpr& sym_dim) {
   auto* n = make_shared<_Dim_>();
   n->name = name;
   n->sym_dim = sym_dim;
-  if (sym_dim.isa<std::string>()) {
-    n->dim_expr =
-        Expr(Var(sym_dim.dyn_cast<std::string>(), cinn::common::Int(32)));
-  } else {
-    n->dim_expr = Expr(static_cast<int32_t>(sym_dim.dyn_cast<int64_t>()));
-  }
-
+  n->dim_expr = common::DimExprConverter().ConvertToIrExpr(sym_dim);
+  n->set_type(n->dim_expr.type());
   return Dim(n);
 }
 
