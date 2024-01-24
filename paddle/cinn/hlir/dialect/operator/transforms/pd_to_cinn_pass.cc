@@ -301,8 +301,8 @@ class IsCloseOpPattern
     return flag && rtol_op && atol_op;
   }
 
-  bool MatchAndRewrite(paddle::dialect::IscloseOp op,
-                       pir::PatternRewriter &rewriter) const override {
+  void Rewrite(paddle::dialect::IscloseOp op,
+               pir::PatternRewriter &rewriter) const override {
     auto rtol_op = op->operand_source(2)
                        .defining_op()
                        ->dyn_cast<paddle::dialect::FullOp>();

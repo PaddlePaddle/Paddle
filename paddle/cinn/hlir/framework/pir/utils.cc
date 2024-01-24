@@ -136,6 +136,7 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
               in.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
         if (tensor_type.dims().size() == 0) {
           have_zero_dim = true;
+          break;
         }
       }
     }
@@ -151,6 +152,7 @@ bool AllInputDenseTensor(const ::pir::Operation& op) {
     if (in) {
       if (!(in.type().isa<paddle::dialect::DenseTensorType>())) {
         all_denese_tensor = false;
+        break;
       }
     }
   }
