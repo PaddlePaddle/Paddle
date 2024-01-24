@@ -75,18 +75,59 @@ Dialect2OpHeaderMap = {
 
 
 class OpCreatorCodeGen:
-    def __init__(self, op_yaml_files, op_compat_yaml_file, dialect_name):
-        self.op_info_items = self.parse_yaml(op_yaml_files, op_compat_yaml_file)
+    def __init__(
+        self,
+        op_yaml_files,
+        op_compat_yaml_file,
+        dialect_name,
+        onednn_yaml_file=None,
+        ops_onednn_extra_yaml_file=None,
+    ):
+        self.op_info_items = self.parse_yaml(
+            op_yaml_files,
+            op_compat_yaml_file,
+            onednn_yaml_file,
+            ops_onednn_extra_yaml_file,
+        )
         self.dialect_name = dialect_name
+        raise Exception("aaa")
 
-    def parse_yaml(self, op_yaml_files, op_compat_yaml_file):
+    def parse_yaml(
+        self,
+        op_yaml_files,
+        op_compat_yaml_file,
+        onednn_yaml_file=None,
+        ops_onednn_extra_yaml_file=None,
+    ):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
         op_yaml_items = []
-        for yaml_file in op_yaml_files:
-            with open(yaml_file, "r") as f:
+
+        if dialect_name == "onednn_op":
+            raise Exception("onednn_op is not supported")
+            with open(ops_onednn_extra_yaml_file, "r") as f:
+                ops_onednn_extra = yaml.safe_load(f)
+                ops_onednn_extra_set = set()
+                for op in ops_onednn_extra:
+                    ops_onednn_extra_set.insert(op['op'])
+            with open(onednn_yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+
+            for yaml_file in op_yaml_files:
+                with open(yaml_file, "r") as f:
+                    ops = yaml.safe_load(f)
+                    onednn_ops = []
+                    for op in ops:
+                        if op['name'] in ops_onednn_extra_set:
+                            onednn_ops.append(op)
+                    op_yaml_items = op_yaml_items + onednn_ops
+
+        else:
+            for yaml_file in op_yaml_files:
+                with open(yaml_file, "r") as f:
+                    ops = yaml.safe_load(f)
+                    op_yaml_items = op_yaml_items + ops
 
         op_info_items = []
         for op in op_yaml_items:
@@ -171,6 +212,8 @@ def ParseArguments():
     parser.add_argument('--op_compat_yaml_file', type=str)
     parser.add_argument('--dialect_name', type=str)
     parser.add_argument('--op_creator_file', type=str)
+    parser.add_argument('--onednn_yaml_file', type=str)
+    parser.add_argument('--ops_onednn_extra_yaml_file', type=str)
     return parser.parse_args()
 
 
@@ -180,8 +223,14 @@ if __name__ == '__main__':
     op_compat_yaml_file = args.op_compat_yaml_file
     op_creator_file = args.op_creator_file
     dialect_name = args.dialect_name
+    onednn_yaml_file = args.onednn_yaml_file
+    ops_onednn_extra_yaml_file = args.ops_onednn_extra_yaml_file
 
     code_gen = OpCreatorCodeGen(
-        op_yaml_files, op_compat_yaml_file, dialect_name
+        op_yaml_files,
+        op_compat_yaml_file,
+        dialect_name,
+        onednn_yaml_file,
+        ops_onednn_extra_yaml_file,
     )
     code_gen.gen_cpp_file_code(op_creator_file)
