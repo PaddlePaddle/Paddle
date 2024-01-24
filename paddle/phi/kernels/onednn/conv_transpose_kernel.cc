@@ -363,8 +363,6 @@ void Execute(const OneDNNContext& dev_ctx,
              int groups,
              const std::vector<int>& dilations,
              DenseTensor* out) {
-  // const auto* bias =
-  //     dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
 
   std::shared_ptr<dnnl::deconvolution_forward> conv_p;
   std::shared_ptr<dnnl::memory> src_memory_p;
