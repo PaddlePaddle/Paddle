@@ -235,8 +235,10 @@ int GetSharedSize(::pir::Operation* op) {
   return 0;
 }
 
-using ConditionFunction = std::function<bool(
-    ::pir::Operation*, const GroupPtr&, ::pir::ShapeConstraintIRAnalysis&)>;
+using ConditionFunction =
+    std::function<bool(::pir::Operation*,
+                       const GroupPtr&,
+                       const ::pir::ShapeConstraintIRAnalysis&)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -484,7 +486,7 @@ class OpFusionPassHelper {
           {OpPatternKind::kBroadcast,
            [](::pir::Operation* producer,
               const GroupPtr& consumer,
-              ::pir::ShapeConstraintIRAnalysis& shape_analysis) -> bool {
+              const ::pir::ShapeConstraintIRAnalysis& shape_analysis) -> bool {
              // NOTE, producer and consumer NEVER be same size
              if (is_same_size(producer, consumer, shape_analysis)) {
                return true;
@@ -598,7 +600,7 @@ class OpFusionPassHelper {
 
   bool CanFuse(::pir::Operation* producer,
                const ::pir::Operation* consumer,
-               ::pir::ShapeConstraintIRAnalysis& shape_analysis) {
+               const ::pir::ShapeConstraintIRAnalysis& shape_analysis) {
     auto& relation =
         fusion_relation_map_[hlir::framework::pir::CompatibleInfo::OpKind(
             *producer)];
