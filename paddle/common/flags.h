@@ -28,6 +28,12 @@
 #include "paddle/utils/test_macros.h"
 #include "paddle/utils/variant.h"
 
+#if defined(_WIN32)
+#define COMMON_IMPORT_FLAG __declspec(dllimport)
+#else
+#define COMMON_IMPORT_FLAG
+#endif
+
 #ifdef PADDLE_WITH_GFLAGS
 #define PD_DEFINE_bool(name, val, txt) DEFINE_bool(name, val, txt)
 #define PD_DEFINE_int32(name, val, txt) DEFINE_int32(name, val, txt)
@@ -52,10 +58,10 @@
   }                                         \
   using paddle_flags::FLAGS_##name
 
-#define COMMON_DECLARE_VARIABLE(type, name) \
-  namespace paddle_flags {                  \
-  extern PADDLE_API type FLAGS_##name;      \
-  }                                         \
+#define COMMON_DECLARE_VARIABLE(type, name)    \
+  namespace paddle_flags {                     \
+  extern COMMON_IMPORT_FLAG type FLAGS_##name; \
+  }                                            \
   using paddle_flags::FLAGS_##name
 
 #define PD_DECLARE_bool(name) PD_DECLARE_VARIABLE(bool, name)
