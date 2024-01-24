@@ -46,10 +46,10 @@
 #define PD_DECLARE_string(name) DECLARE_string(name)
 #endif
 
-#define PD_DECLARE_VARIABLE(type, name)     \
-  namespace paddle_flags {                  \
-  extern PHI_IMPORT_FLAG type FLAGS_##name; \
-  }                                         \
+#define PD_DECLARE_VARIABLE(type, name)           \
+  namespace paddle_flags {                        \
+  extern PHI_IMPORT_FLAG(name) type FLAGS_##name; \
+  }                                               \
   using paddle_flags::FLAGS_##name
 
 #define PD_DECLARE_bool(name) PD_DECLARE_VARIABLE(bool, name)
@@ -210,16 +210,15 @@ DEFINE_FROM_ENV_FUNC(std::string, String);
 }  // namespace flags
 }  // namespace paddle
 
+#define PHI_IMPORT_FLAG(name) \
+#if defined(_WIN32) &&      \
+      defined(PHI_INNER_DEFINE_##name) __declspec(dllexport) #else\
+__declspec(dllimport) #endif
+
 #if defined(_WIN32)
 #define PHI_EXPORT_FLAG __declspec(dllexport)
-#if defined(PHI_INNER)
-#define PHI_IMPORT_FLAG __declspec(dllexport)
-#else
-#define PHI_IMPORT_FLAG __declspec(dllimport)
-#endif  // PHI_INNER
 #else
 #define PHI_EXPORT_FLAG
-#define PHI_IMPORT_FLAG
 #endif  // _WIN32
 
 // We redefine the flags macro for exporting flags defined in phi
@@ -228,7 +227,7 @@ DEFINE_FROM_ENV_FUNC(std::string, String);
 // clang-format off
 #define PHI_DECLARE_VARIABLE(type, shorttype, name) \
   namespace fL##shorttype {                         \
-    extern PHI_IMPORT_FLAG type FLAGS_##name;       \
+    extern PHI_IMPORT_FLAG(name) type FLAGS_##name;       \
   }                                                 \
   using fL##shorttype::FLAGS_##name
 // clang-format on
@@ -250,15 +249,16 @@ DEFINE_FROM_ENV_FUNC(std::string, String);
 
 #define PHI_DECLARE_VARIABLE(type, shorttype, name) \
   namespace paddle_flags {                          \
-  extern PHI_IMPORT_FLAG type FLAGS_##name;         \
+  extern PHI_IMPORT_FLAG(name) type FLAGS_##name;   \
   }                                                 \
   using paddle_flags::FLAGS_##name
 
 #define PHI_DEFINE_VARIABLE(type, shorttype, name, default_value, description) \
   namespace paddle_flags {                                                     \
-  static const type FLAGS_##name##_default = default_value;                    \
-  PHI_EXPORT_FLAG type FLAGS_##name = default_value;                           \
-  /* Register FLAG */                                                          \
+#if defined(                                                                 \
+      PHI_INNER) #define PHI_INNER_DEFINE_##name #endif static const type      \
+      FLAGS_##name##_default = default_value;                                  \
+  PHI_EXPORT_FLAG type FLAGS_##name = default_value; /* Register FLAG */       \
   static ::paddle::flags::FlagRegisterer flag_##name##_registerer(             \
       #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name);   \
   }                                                                            \
@@ -289,10 +289,10 @@ DEFINE_FROM_ENV_FUNC(std::string, String);
   PHI_DEFINE_VARIABLE(double, D, name, val, txt)
 
 #ifdef PADDLE_WITH_GFLAGS
-#define PHI_DECLARE_string(name)                        \
-  namespace fLS {                                       \
-  extern PHI_IMPORT_FLAG ::fLS::clstring& FLAGS_##name; \
-  }                                                     \
+#define PHI_DECLARE_string(name)                             \
+  namespace fLS {                                            \
+  extern PHI_IMPORT_FLAG(name)::fLS::clstring& FLAGS_##name; \
+  }                                                          \
   using fLS::FLAGS_##name
 
 #define PHI_DEFINE_string(name, val, txt)                                    \
