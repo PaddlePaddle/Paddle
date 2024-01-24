@@ -1634,10 +1634,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             cf_yield(variable_true_output)
         with if_op.false_block():
             cf_yield(variable_false_output)
-        print("True branch outputs:")
-        print(variable_true_output)
-        print("False branch outputs:")
-        print(variable_false_output)
+
         if_op.update_output()
         variable_results = flatten(if_op.results())
 

@@ -233,8 +233,6 @@ class SingleReturnTransformer(BaseTransformer):
             return node
 
         # Prepend initialization of final return and append final return statement
-        print(self.return_name)
-        print(self.return_value_name)
         return_flag_names = self.return_name
         value_name = self.return_value_name
         if value_name is not None:
