@@ -165,7 +165,7 @@ def test_reverse_compute_inline_elementwise_dynamic():
     assert_llir_equal(elementwise_add_inline, elementwise_add_inline_gt)
 
 
-def test_llama_rope_compute_inline():
+def test_gather_slice_concat_mul_pattern_compute_inline():
     class origin:
         @to_cinn_llir
         def fn_rotary(
@@ -174,7 +174,7 @@ def test_llama_rope_compute_inline():
             var_2: DataArray((1, -1, 1, 256)),
             var_3: DataArray((1, -1, 1, 512)),
             C: DataArray((1, -1, 1, 512)),
-            index: DataArray((2, 1), dtype=common.Int(32)),
+            index: DataArray((2, 1), dtype=common.Int(64)),
             Out: DataArray((1, -1, 1, 512)),
             seq_len: ir.Var(),
         ):
@@ -245,7 +245,7 @@ def test_llama_rope_compute_inline():
         def fn_rotary(
             A: DataArray((1, -1, 1, 512)),
             C: DataArray((1, -1, 1, 512)),
-            index: DataArray((2, 1), dtype=common.Int(32)),
+            index: DataArray((2, 1), dtype=common.Int(64)),
             Out: DataArray((1, -1, 1, 512)),
             seq_len: ir.Var(),
         ):
@@ -285,4 +285,4 @@ if __name__ == "__main__":
     test_reverse_compute_inline_elementwise()
     test_compute_inline_elementwise_dynamic()
     test_reverse_compute_inline_elementwise_dynamic()
-    test_llama_rope_compute_inline()
+    test_gather_slice_concat_mul_pattern_compute_inline()
