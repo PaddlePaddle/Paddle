@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -26,6 +25,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
@@ -339,7 +339,7 @@ class SplitGenerateShapeIntoShapeOps
       CachedDimExprToValueConverter* converter) const {
     std::vector<pir::Value> ret;
     for (const auto& dim_expr : dim_exprs) {
-      const auto& simplified = cinn::common::SimplifyDimExpr(dim_expr);
+      const auto& simplified = symbol::SimplifyDimExpr(dim_expr);
       pir::Value value = converter->ConvertToValue(simplified);
       ret.push_back(value);
     }

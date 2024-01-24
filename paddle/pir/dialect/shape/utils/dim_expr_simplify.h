@@ -16,8 +16,8 @@
 
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-namespace cinn::common {
+namespace symbol {
 
-symbol::DimExpr SimplifyDimExpr(const symbol::DimExpr&);
+DimExpr SimplifyDimExpr(const DimExpr&);
 
 }

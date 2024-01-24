@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 #include <numeric>
 
-namespace cinn::common {
-
-using namespace symbol;  // NOLINT
+namespace symbol {
 
 namespace {
 
@@ -871,4 +869,4 @@ DimExpr Simplify(const DimExpr& expr) {
 
 DimExpr SimplifyDimExpr(const DimExpr& expr) { return Simplify(expr); }
 
-}  // namespace cinn::common
+}  // namespace symbol
