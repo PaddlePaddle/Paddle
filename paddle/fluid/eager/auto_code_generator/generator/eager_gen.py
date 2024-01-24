@@ -2609,25 +2609,17 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 """
             else:
                 # composite + not has_higher_order_node
-                # ==> call composite or throw error kernel according to if composite enabled
+                # ==> call composite for make program runnable as much as possible
                 grad_function_call_str = f"""
   std::string grad_op_name = "{composite_grad_api_name}";
-  auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
-  {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
-  {indent}if (!create_graph) {{
-  {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
-  {indent}}}
-  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
-  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called ";
-  {indent}if (!create_graph) {{
-  {indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
-  {indent}}}
-  }} else {{
-  {indent}PADDLE_THROW(phi::errors::Unavailable(
-  {indent}\"The Op {self.backward_api_name} doesn't have any grad\"
-  {indent}\"op. If you don't intend calculating higher order\"
-  {indent}\"derivatives, please set `create_graph`to False.\"));
+  bool original_global_grad = egr::Controller::Instance().HasGrad();
+  if (!create_graph) {{
+  {indent}egr::Controller::Instance().SetHasGrad(create_graph);
+  }}
+  {composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+  if (!create_graph) {{
+  {indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
   }}
 """
         else:
