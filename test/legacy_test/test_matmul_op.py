@@ -223,47 +223,41 @@ class Test_API_Matmul(unittest.TestCase):
 class API_TestMmError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        with paddle_static_guard():
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_error1():
-                with paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
-                ):
-                    data1 = paddle.static.data(
-                        name="data1", shape=[10, 2], dtype="float32"
-                    )
-                    data2 = paddle.static.data(
-                        name="data2", shape=[3, 10], dtype="float32"
-                    )
-                    paddle.mm(data1, data2)
+                data1 = paddle.static.data(
+                    name="data1", shape=[10, 2], dtype="float32"
+                )
+                data2 = paddle.static.data(
+                    name="data2", shape=[3, 10], dtype="float32"
+                )
+                paddle.mm(data1, data2)
 
             self.assertRaises(ValueError, test_error1)
 
             def test_error2():
-                with paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
-                ):
-                    data1 = paddle.static.data(
-                        name="data1", shape=[-1, 10, 2], dtype="float32"
-                    )
-                    data2 = paddle.static.data(
-                        name="data2", shape=[-1, 2, 10], dtype="float32"
-                    )
-                    paddle.mm(data1, data2)
+                data1 = paddle.static.data(
+                    name="data1", shape=[-1, 10, 2], dtype="float32"
+                )
+                data2 = paddle.static.data(
+                    name="data2", shape=[-1, 2, 10], dtype="float32"
+                )
+                paddle.mm(data1, data2)
 
             test_error2()
 
             def test_error3():
-                with paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
-                ):
-                    data1 = paddle.static.data(
-                        name="data1", shape=[10, 10, 2], dtype="float32"
-                    )
-                    data2 = paddle.static.data(
-                        name="data2", shape=[3, 2, 10], dtype="float32"
-                    )
-                    paddle.mm(data1, data2)
+                data1 = paddle.static.data(
+                    name="data1", shape=[10, 10, 2], dtype="float32"
+                )
+                data2 = paddle.static.data(
+                    name="data2", shape=[3, 2, 10], dtype="float32"
+                )
+                paddle.mm(data1, data2)
 
             self.assertRaises(ValueError, test_error3)
 
