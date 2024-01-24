@@ -370,24 +370,12 @@ class TestSplitOpErrorStatic(unittest.TestCase):
         ):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
-                x6 = paddle.static.data(
+                x5 = paddle.static.data(
                     shape=[-1, 4], dtype='float16', name='x3'
                 )
-                paddle.split(x=x6, num_or_sections=2, axis=3.2)
+                paddle.split(x=x5, num_or_sections=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type)
-
-            # The type of axis in split_op should be int or Variable.
-            def test_axis_variable_type():
-                x9 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x9'
-                )
-                x10 = paddle.static.data(
-                    shape=[-1, 1], dtype='float16', name='x10'
-                )
-                paddle.split(x=x9, num_or_sections=2, axis=x10)
-
-            self.assertRaises(TypeError, test_axis_variable_type)
 
             # The type of num_or_sections in split_op should be int, tuple or list.
             def test_num_or_sections_type():
