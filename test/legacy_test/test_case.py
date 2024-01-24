@@ -415,7 +415,6 @@ class TestAPICase_Nested(unittest.TestCase):
             out_1 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
             )
-
             out_2 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
             )
@@ -543,6 +542,7 @@ class TestAPICase_Nested(unittest.TestCase):
 
 
 class TestAPICase_Error(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -611,58 +611,61 @@ class TestAPICase_Error(unittest.TestCase):
 
 # when optimizer in case
 class TestMutiTask(unittest.TestCase):
+    @test_with_pir_api
     def test_optimizer_in_case(self):
         BATCH_SIZE = 1
         INPUT_SIZE = 784
         EPOCH_NUM = 2
-
-        x = paddle.static.data(
-            name='x', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
-        )
-        y = paddle.static.data(
-            name='y', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
-        )
-
-        switch_id = paddle.static.data(
-            name='switch_id', shape=[1], dtype='int32'
-        )
-
-        one = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1)
-        adam = paddle.optimizer.Adam(learning_rate=0.001)
-        adagrad = paddle.optimizer.Adagrad(learning_rate=0.001)
-
-        def fn_1():
-            sum = paddle.multiply(x, y)
-            loss = paddle.mean(sum, name="f_1_loss")
-            adam.minimize(loss)
-
-        def fn_2():
-            sum = paddle.multiply(x, y)
-            loss = paddle.mean(sum, name="f_2_loss")
-            adagrad.minimize(loss)
-
-        paddle.static.nn.control_flow.case(
-            pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2
-        )
-
-        exe = base.Executor(base.CPUPlace())
-        exe.run(base.default_startup_program())
-
-        for epoch in range(EPOCH_NUM):
-            np.random.seed(epoch)
-            feed_image = np.random.random(size=[BATCH_SIZE, INPUT_SIZE]).astype(
-                'float32'
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                name='x', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
             )
-            main_program = base.default_main_program()
-            out = exe.run(
-                main_program,
-                feed={
-                    'x': feed_image,
-                    'y': feed_image,
-                    'switch_id': np.array([epoch]).astype('int32'),
-                },
-                fetch_list=[],
+            y = paddle.static.data(
+                name='y', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32'
             )
+            x.stop_gradient = False
+            y.stop_gradient = False
+            switch_id = paddle.static.data(
+                name='switch_id', shape=[1], dtype='int32'
+            )
+
+            one = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1)
+            adam = paddle.optimizer.Adam(learning_rate=0.001)
+            adagrad = paddle.optimizer.Adagrad(learning_rate=0.001)
+
+            def fn_1():
+                sum = paddle.multiply(x, y)
+                loss = paddle.mean(sum, name="f_1_loss")
+                adam.minimize(loss)
+
+            def fn_2():
+                sum = paddle.multiply(x, y)
+                loss = paddle.mean(sum, name="f_2_loss")
+                adagrad.minimize(loss)
+
+            paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2
+            )
+
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+
+            for epoch in range(EPOCH_NUM):
+                np.random.seed(epoch)
+                feed_image = np.random.random(
+                    size=[BATCH_SIZE, INPUT_SIZE]
+                ).astype('float32')
+                out = exe.run(
+                    main_program,
+                    feed={
+                        'x': feed_image,
+                        'y': feed_image,
+                        'switch_id': np.array([epoch]).astype('int32'),
+                    },
+                    fetch_list=[],
+                )
 
 
 if __name__ == '__main__':

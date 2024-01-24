@@ -19,47 +19,12 @@
 #include "paddle/cinn/adt/arithmetic.h"
 #include "paddle/cinn/adt/logical.h"
 #include "paddle/cinn/adt/symbolic_dim.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::adt {
 
-template <typename T>
-struct BroadcastedDim final {
-  List<T> operands;
-
-  const BroadcastedDim& tuple() const { return *this; }
-};
-
-// DimExpr = std::int64_t
-//                 | SymbolicDim
-//                 | Negative DimExpr
-//                 | Reciprocal DimExpr
-//                 | Sum DimExpr
-//                 | Product DimExpr
-//                 | BroadcastedDim DimExpr
-DEFINE_ADT_UNION(DimExpr,
-                 std::int64_t,
-                 SymbolicDim,
-                 Negative<DimExpr>,
-                 Reciprocal<DimExpr>,
-                 Sum<DimExpr>,
-                 Product<DimExpr>,
-                 BroadcastedDim<DimExpr>);
-
-DimExpr operator+(const DimExpr& lhs, const DimExpr& rhs);
-DimExpr operator-(const DimExpr& lhs, const DimExpr& rhs);
-DimExpr operator*(const DimExpr& lhs, const DimExpr& rhs);
-DimExpr operator/(const DimExpr& lhs, const DimExpr& rhs);
+using DimExpr = ::symbol::DimExpr;
 
 DimExpr MakeBroadcastedDim(const DimExpr& lhs, const DimExpr& rhs);
-
-bool operator==(const DimExpr& lhs, const DimExpr& rhs);
-
-inline bool operator!=(const DimExpr& lhs, const DimExpr& rhs) {
-  return !(lhs == rhs);
-}
-
-std::size_t GetHashValue(const DimExpr& expr);
-
-std::ostream& operator<<(std::ostream&, const DimExpr& expr);
 
 }  // namespace cinn::adt

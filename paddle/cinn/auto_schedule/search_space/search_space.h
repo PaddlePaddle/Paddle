@@ -43,7 +43,7 @@ class SearchSpace {
   SearchSpace(const TuneTask& tune_task,
               utils::LinearRandomEngine::StateType rand_seed = -1);
 
-  // Sketch mutate, returns the mutated ModuleExpr and estimited cost
+  // Sketch mutate, returns the mutated ModuleExpr and estimated cost
   virtual SearchState GetScheduleMutate(const SearchState& state,
                                         const ExprCostModel& cost_model);
 

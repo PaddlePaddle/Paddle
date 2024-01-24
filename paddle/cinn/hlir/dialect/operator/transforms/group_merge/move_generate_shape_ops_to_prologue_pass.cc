@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
@@ -62,7 +62,7 @@ class GroupOpGenerateShapeOpsPattern
                 const symbol::ShapeOrDataDimExprs& dim_exprs) {
               shape_analysis.SetShapeOrDataForValue(value, dim_exprs);
             }};
-    return RewriteGenerateShapeOpToRunFirst(
+    return MoveGenerateShapeOpsToPrologue(
         ctx, group_op.block(), dim_exprs_accessor);
   }
 };

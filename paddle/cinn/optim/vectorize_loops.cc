@@ -731,7 +731,8 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     if (forloop->extent.As<IntImm>()) {
       var_intervals.emplace(
           loopvar_name,
-          cinn::common::CasInterval{0, forloop->extent.as_int32() - 1});
+          cinn::common::CasInterval{static_cast<int64_t>(0),
+                                    forloop->extent.as_int64() - 1});
     } else {
       var_intervals.emplace(
           loopvar_name,

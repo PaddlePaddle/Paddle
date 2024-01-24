@@ -130,7 +130,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     src_rank = hcg.get_model_parallel_group_src_rank()
     mp_rank = hcg.get_model_parallel_rank()
 
-    shape_gpu = shape._copy_to(data.place, False)
+    shape_gpu = paddle.to_tensor(shape, dtype="int32")
     paddle.distributed.broadcast(
         shape_gpu, src=src_rank, group=model_parallel_group, sync_op=True
     )
@@ -192,7 +192,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
-                _broadcast_data_help(v, paddle.shape(v), v.dtype, hcg)
+                _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
             _broadcast_object_list_help(v, hcg)
 
@@ -203,7 +203,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
-                _broadcast_data_help(v, paddle.shape(v), v.dtype, hcg)
+                _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
             kwargs[k] = _broadcast_object_list_help(v, hcg)
