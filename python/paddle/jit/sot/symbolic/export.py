@@ -204,8 +204,9 @@ class PyFileGen:
         )
 
     def create_inputs(self):
-        create_paddle_inputs = self.new_root("def create_paddle_inputs:")
-        craete_numpy_inputs = self.new_root("def create_numpy_inputs:")
+        create_paddle_inputs = self.new_root("def create_paddle_inputs():")
+        self.new_root("\n")
+        craete_numpy_inputs = self.new_root("def create_numpy_inputs():")
 
         paddle_inputs = ["inputs = ("]
         numpy_inputs = ["inputs = ("]
@@ -239,7 +240,7 @@ class PyFileGen:
                     )
 
         paddle_inputs.append(")")
-        paddle_inputs.append("return inputs\n")
+        paddle_inputs.append("return inputs")
         numpy_inputs.append(")")
         numpy_inputs.append("return inputs")
 
