@@ -164,7 +164,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._drop_last,
         )
 
-        # NOTE: _structrue_infos used to record the data structure of
+        # NOTE: _structure_infos used to record the data structure of
         # batch to restore batch structure after reading Tensor
         # from blocking_queue in single-process mode. Note that
         # only single process is used in single-process mode, we
