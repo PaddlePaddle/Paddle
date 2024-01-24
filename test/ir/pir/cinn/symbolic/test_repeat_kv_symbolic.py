@@ -30,6 +30,7 @@ def apply_to_static(net, use_cinn, input_spec=None):
         full_graph=True,
     )
 
+
 class RepeatKV(nn.Layer):
     def __init__(self):
         super().__init__()
@@ -49,7 +50,6 @@ class RepeatKV(nn.Layer):
 
 
 class TestRepeatKV(unittest.TestCase):
-
     def setUp(self):
         paddle.seed(2022)
         self.prepare_data()
@@ -64,10 +64,9 @@ class TestRepeatKV(unittest.TestCase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = RepeatKV()
-        # TODO(Aurelius84): Need to remove it after verify CINN
         if use_cinn:
             input_spec = [
-                InputSpec(shape=[None, 2048, 8, 96], dtype='float32'),
+                InputSpec(shape=[1, None, 8, 96], dtype='float32'),
             ]
             net = apply_to_static(net, use_cinn, input_spec)
         net.eval()
