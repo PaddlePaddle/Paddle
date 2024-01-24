@@ -474,10 +474,7 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
                 in_channels=input[1], out_channels=4, kernel_size=1
             )(input, offset, mask)
 
-        err_type = (
-            ValueError if paddle.base.framework.in_pir_mode() else TypeError
-        )
-        self.assertRaises(err_type, test_invalid_input)
+        self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_offset():
             paddle.enable_static()

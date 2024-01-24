@@ -77,6 +77,15 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       [](const auto& name_view) { return std::string(name_view.data()); });
   // build name map between the original variables and compiled ones
   BuildVarNameMap(compiled_obj.paddle2cinn_varmap, cinn_argument_names_);
+  if (FLAGS_save_static_runtime_data) {
+    auto graph_compilation_key =
+        std::hash<const framework::ir::Graph*>()((&graph));
+    paddle::framework::save_paddle2cinn_varmap(
+        paddle2cinn_varmap_,
+        graph_compilation_key,
+        FLAGS_static_runtime_data_save_path +
+            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
+  }
 
   const auto& input_var_names =
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kInputVars);
@@ -190,15 +199,9 @@ void CinnLaunchContext::BuildVarNameMap(
       paddle2cinn_varmap_.size(),
       cinn2paddle_varmap_.size(),
       platform::errors::PreconditionNotMet(
-          "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
+          "Size of variables is not equal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
-  if (FLAGS_save_static_runtime_data) {
-    paddle::framework::save_paddle2cinn_varmap(
-        paddle2cinn_varmap_,
-        FLAGS_static_runtime_data_save_path +
-            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
-  }
 }
 
 std::unordered_set<std::string> CinnLaunchContext::GetVisibleVarNames() const {
@@ -423,7 +426,7 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   //   to the new VarDesc.
   //   (2) For all variables, the shape, data type of their VarDescs
   //   are set by values of the corresponding compiled tensors,
-  //   including the in/out variables where the equiality between their tensors
+  //   including the in/out variables where the equality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);

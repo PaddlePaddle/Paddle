@@ -291,7 +291,7 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
       dilations,
       0,
       phi::errors::InvalidArgument(
-          "The dilation of Op(Conv) should be larget than 0, but received "
+          "The dilation of Op(Conv) should be larger than 0, but received "
           "dilation is %d.",
           dilations));
 
@@ -390,7 +390,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv_xpu). "
+          "length must be equal to 2 for Op(Conv_xpu). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
           "difference of input's dimention and Attr(strides)'s length = %u.",
@@ -405,7 +405,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -1870,7 +1870,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
       x_dims[x_dims_size - 1],
       4,
       phi::errors::InvalidArgument(
-          "The last dim of x should be larget than 4, but received "
+          "The last dim of x should be larger than 4, but received "
           " is %d.",
           x_dims[x_dims_size - 1]));
   // compute left out_dims
@@ -1993,7 +1993,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -2005,7 +2005,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
       2U,
       errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "be equal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d], the shape of input "
           "is [%s], the Attr(stride)'s size is [%d].",
           in_sub_stride_size,
@@ -2331,7 +2331,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -2630,7 +2630,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
         embs_dim.size(),
         2,
         phi::errors::InvalidArgument(
-            "The Emb dim's size shoule be 2, but found %d.", embs_dim.size()));
+            "The Emb dim's size should be 2, but found %d.", embs_dim.size()));
     PADDLE_ENFORCE_EQ(
         embs_dim[1],
         dims_bias[0],
@@ -3158,7 +3158,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
                 std::end(mkldnn_data_type_list),
                 mkldnn_data_type) != std::end(mkldnn_data_type_list),
       true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
+      phi::errors::InvalidArgument("The mkldnn_data_type should be [float32, "
                                    "int8, bfloat16], but found %s.",
                                    mkldnn_data_type.c_str()));
 

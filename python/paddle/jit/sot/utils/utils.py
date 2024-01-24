@@ -44,6 +44,7 @@ from .paddle_api_config import (
 )
 
 T = TypeVar("T")
+ConstTypes = (int, float, str, bool, type(None))
 
 
 class Singleton(Generic[T]):

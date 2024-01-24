@@ -19,6 +19,7 @@ from collections import OrderedDict
 from functools import reduce
 from typing import TYPE_CHECKING, Any
 
+from ....utils import ConstTypes
 from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import StringifyExpression, check_guard
@@ -32,7 +33,7 @@ from ..tracker import (
     GetIterTracker,
     Tracker,
 )
-from .base import ConstTypes, VariableBase, VariableFactory
+from .base import VariableBase, VariableFactory
 from .basic import ConstantVariable
 from .callable import BuiltinVariable, UserDefinedFunctionVariable
 
@@ -449,7 +450,7 @@ class ListVariable(ContainerVariable):
         # Note(SigureMo): Why not use isinstance?
         # Because user may define a class that inherit from list.
         # We should convert it to ObjectVariable instead of ListVariable.
-        if type(value) is list:  # noqa: E721
+        if type(value) is list:
             return ListVariable(value, graph=graph, tracker=tracker)
         return None
 

@@ -102,13 +102,17 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
       // reduce last dim
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_max<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_max<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           logits_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -194,13 +198,17 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_sum<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_sum<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           softmax_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -323,13 +331,17 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_max<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_max<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           logits_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -436,13 +448,17 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_sum<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_sum<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           softmax_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -567,9 +583,11 @@ PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           XPU,
                           ALL_LAYOUT,
                           ops::CSoftmaxWithCrossEntropyOp,
-                          float) {}
+                          float,
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
                           XPU,
                           ALL_LAYOUT,
                           ops::CSoftmaxWithCrossEntropyGrad,
-                          float) {}
+                          float,
+                          phi::dtype::bfloat16) {}

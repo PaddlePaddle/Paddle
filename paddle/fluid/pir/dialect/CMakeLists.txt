@@ -119,13 +119,13 @@ if(WITH_MKLDNN)
       ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
   )
 
-  set(op_onednn_info_file ${PD_DIALECT_SOURCE_DIR}/pd_onednn_op_info.cc)
+  set(op_onednn_info_file ${PD_DIALECT_SOURCE_DIR}/onednn_op_info.cc)
   set(op_onednn_info_file_tmp ${op_onednn_info_file}.tmp)
 
   set(onednn_op_namespace paddle,onednn,dialect)
-  set(onednn_dialect_name pd_onednn_op)
-  set(onednn_op_header_file ${PD_DIALECT_SOURCE_DIR}/pd_onednn_op.h)
-  set(onednn_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_onednn_op.cc)
+  set(onednn_dialect_name onednn_op)
+  set(onednn_op_header_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.h)
+  set(onednn_op_source_file ${PD_DIALECT_SOURCE_DIR}/onednn_op.cc)
   set(onednn_op_header_file_tmp ${onednn_op_header_file}.tmp)
   set(onednn_op_source_file_tmp ${onednn_op_source_file}.tmp)
 
@@ -248,7 +248,8 @@ set(op_dialect_srcs
     ${api_source_file})
 
 if(WITH_MKLDNN)
-  set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file})
+  set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file}
+                      ${op_onednn_info_file})
 endif()
 
 set(op_dialect_deps phi common pir type_info string_helper)

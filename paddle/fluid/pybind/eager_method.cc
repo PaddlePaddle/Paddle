@@ -1005,12 +1005,17 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
   EAGER_TRY
   paddle::Tensor* dst_ptr =
       &(reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor);
-  PADDLE_ENFORCE_EQ(self->tensor.initialized(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Tensor %s has not been initialized! please initialize "
-                        "src tensor before share_buffer_with to other.",
-                        self->tensor.name()));
+  if (!self->tensor.initialized()) {
+    if (self->tensor.numel() == 0) {
+      // Do nothing for 0-size Tensor
+      Py_RETURN_NONE;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized! please initialize "
+          "src tensor before share_buffer_with to other.",
+          self->tensor.name()));
+    }
+  }
   if (self->tensor.is_dist_tensor()) {
     auto* src_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
@@ -1364,6 +1369,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
              &use_strided_slice);
 
   // step2: Dealing with basic indexing
+  bool out_is_view = false;
   auto out = getTensorWithBasicIndexing(tensor,
                                         &slice_axes,
                                         &slice_starts,
@@ -1372,7 +1378,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                         &decrease_axis,
                                         &none_axes,
                                         &infer_flags,
-                                        &use_strided_slice);
+                                        &use_strided_slice,
+                                        &out_is_view);
 
   if (!has_advanced_index) {
     return ToPyObject(out);
@@ -1391,7 +1398,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &trans_back_dim,
                                                         &pos_of_new_dim,
                                                         &rank_of_new_dim,
-                                                        &trans_dim);
+                                                        &trans_dim,
+                                                        &out_is_view);
 
   if (transed_index.size() == 1 &&
       transed_index[0].dtype() == phi::DataType::BOOL) {
@@ -1686,6 +1694,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     //   3. assign values to the sliced result by index_put OP;
     //   4. transpose back and assign the result to original tensor by set_value
     //   OP.
+    bool out_is_view = false;
     paddle::Tensor sub_tensor = getTensorWithBasicIndexing(tensor,
                                                            &slice_axes,
                                                            &slice_starts,
@@ -1694,7 +1703,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                                                            &decrease_axis,
                                                            &none_axes,
                                                            &infer_flags,
-                                                           &use_strided_slice);
+                                                           &use_strided_slice,
+                                                           &out_is_view);
 
     std::vector<paddle::Tensor> transed_index;
     std::vector<int> trans_back_dim, trans_dim;
@@ -1710,65 +1720,76 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                               &trans_back_dim,
                               &pos_of_new_dim,
                               &rank_of_new_dim,
-                              &trans_dim);
+                              &trans_dim,
+                              &out_is_view);
 
     // Release gil and do tracing
     py::gil_scoped_release release;
-
-    if (value_tensor.initialized() &&
-        (self->tensor.dtype() != value_tensor.dtype())) {
-      if (egr::Controller::Instance().GetAMPLevel() !=
-          paddle::imperative::AmpLevel::O0) {
-        paddle::small_vector<std::vector<paddle::Tensor>,
-                             egr::kSlotSmallVectorSize>
-            tmps = {{self->tensor}, {value_tensor}};
-        auto amp_dtype = egr::GetAmpDestDtype("index_put", tmps);
-        self->tensor = egr::EagerAmpAutoCast(
-            self->tensor.name(), self->tensor, amp_dtype, "index_put");
-        value_tensor = egr::EagerAmpAutoCast(
-            value_tensor.name(), value_tensor, amp_dtype, "index_put");
-      }
+    if (value_tensor.initialized()) {
       if (self->tensor.dtype() != value_tensor.dtype()) {
-        value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+        if (egr::Controller::Instance().GetAMPLevel() !=
+            paddle::imperative::AmpLevel::O0) {
+          paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+              tmps = {{self->tensor}, {value_tensor}};
+          auto amp_dtype = egr::GetAmpDestDtype("index_put", tmps);
+          self->tensor = egr::EagerAmpAutoCast(
+              self->tensor.name(), self->tensor, amp_dtype, "index_put");
+          value_tensor = egr::EagerAmpAutoCast(
+              value_tensor.name(), value_tensor, amp_dtype, "index_put");
+        }
+        if (self->tensor.dtype() != value_tensor.dtype()) {
+          value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
+        }
       }
-    }
 
-    if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
-      value_tensor = transpose_ad_func(value_tensor, trans_dim);
-    }
+      if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
+        value_tensor = transpose_ad_func(value_tensor, trans_dim);
+      }
 
-    // TODO(zoooo0820) 1.Using inplace version index_put
-    //                  2.Remove following code after backward bug fixed.
-    transed_sub_tensor = assign_ad_func(transed_sub_tensor);
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(
+              &mesh, self->tensor, transed_sub_tensor, value_tensor)) {
+        ConvertAllInputsToDistTensor(
+            mesh, self->tensor, transed_sub_tensor, value_tensor);
+      }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(
-            &mesh, self->tensor, transed_sub_tensor, value_tensor)) {
-      ConvertAllInputsToDistTensor(
-          mesh, self->tensor, transed_sub_tensor, value_tensor);
-    }
+      if (transed_index.size() == 1 &&
+          transed_index[0].dtype() == phi::DataType::BOOL &&
+          transed_index[0].shape().size() == self->tensor.shape().size()) {
+        if (value_tensor.shape() != self->tensor.shape()) {
+          value_tensor = expand_ad_func(value_tensor, self->tensor.shape());
+        }
+        transed_sub_tensor =
+            where__ad_func(logical_not_ad_func(transed_index[0]),
+                           transed_sub_tensor,
+                           value_tensor);
+      } else {
+        transed_sub_tensor =
+            index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
+      }
+      // TODO(zoooo0820) Remove following code after backward bug fixed.
+      if (out_is_view) {
+        paddle::Tensor transback_sub_tensor =
+            transpose_ad_func(transed_sub_tensor, trans_back_dim);
 
-    transed_sub_tensor =
-        index_put_ad_func(transed_sub_tensor, transed_index, value_tensor);
-
-    paddle::Tensor transback_sub_tensor =
-        transpose_ad_func(transed_sub_tensor, trans_back_dim);
-
-    self->tensor = set_value_with_tensor__ad_func(self->tensor,
-                                                  transback_sub_tensor,
-                                                  slice_starts,
-                                                  slice_ends,
-                                                  slice_strides,
-                                                  slice_axes,
-                                                  decrease_axis,
-                                                  none_axes);
-    if (PyCheckTensor(value_obj)) {
-      // pass the stop_gradient from value to tensor.
-      // pass stop gradient should be done after CheckInplace in
-      // set_value__dygraph_function.
-      if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
-          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
-        egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
+        self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                      transback_sub_tensor,
+                                                      slice_starts,
+                                                      slice_ends,
+                                                      slice_strides,
+                                                      slice_axes,
+                                                      decrease_axis,
+                                                      none_axes);
+      }
+      if (PyCheckTensor(value_obj)) {
+        // pass the stop_gradient from value to tensor.
+        // pass stop gradient should be done after CheckInplace in
+        // set_value__dygraph_function.
+        if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
+            egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
+          egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
+        }
       }
     }
   }

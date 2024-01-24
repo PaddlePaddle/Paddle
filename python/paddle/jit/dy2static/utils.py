@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import builtins
 import copy
@@ -35,7 +37,8 @@ from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.utils import gast
+from paddle.framework import CUDAPinnedPlace
+from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
 from .utils_helper import (  # noqa: F401
@@ -46,7 +49,6 @@ from .utils_helper import (  # noqa: F401
     index_in_list,
     is_api_in_module,
     is_dygraph_api,
-    is_numpy_api,
     is_paddle_api,
 )
 
@@ -116,6 +118,14 @@ class BaseNodeVisitor(gast.NodeVisitor):
         ret = visitor(node)
         self.ancestor_nodes.pop()
         return ret
+
+
+def get_parent_mapping(root):
+    to_parent: dict[gast.AST, gast.AST] = {}
+    for node in gast.walk(root):
+        for child in gast.iter_child_nodes(node):
+            to_parent[child] = node
+    return to_parent
 
 
 dygraph_class_to_static_api = {
@@ -1279,3 +1289,19 @@ def tensor_name_guard(tensors, names):
     finally:
         for t, name in zip(tensors, origin_names):
             t.name = name
+
+
+def cuda_pinned_tensors_move_to_excepted_place(inputs):
+    if paddle.is_compiled_with_cuda():
+        expected_place = framework._current_expected_place()
+        cuda_pinned_place = CUDAPinnedPlace()
+
+        for value in flatten(inputs):
+            if (
+                isinstance(value, core.eager.Tensor)
+                and value.stop_gradient
+                and value.place._equals(cuda_pinned_place)
+            ):
+                var = value._copy_to(expected_place, True)
+                var.stop_gradient = True
+                var._share_buffer_to(value)

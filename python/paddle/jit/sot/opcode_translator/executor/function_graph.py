@@ -24,6 +24,8 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any, Callable
 
+from paddle.utils import flatten
+
 from ...infer_meta import (
     InferMetaCache,
     LayerInferMetaCache,
@@ -67,6 +69,7 @@ from .variables import (
     ListVariable,
     NullVariable,
     PaddleLayerVariable,
+    ParameterVariable,
     TensorVariable,
     VariableBase,
     VariableFactory,
@@ -105,16 +108,36 @@ def convert_to_symbol(inputs: Any):
     return map_variables(func, inputs)
 
 
-def get_symbol_meta_map(inputs):
-    output = {}
+def record_symbols(SIR, *args, **kwargs):
+    symbol_meta_map = {}
+    params = set()
+    non_params = set()
 
-    def func(x):
-        if isinstance(x, TensorVariable):
-            output[x.get_symbol()] = x.meta
-        return x
+    def fn(value):
+        if isinstance(value, TensorVariable):
+            symbol_meta_map[value.get_symbol()] = value.meta
+            if isinstance(value, ParameterVariable):
+                params.add(value.get_symbol())
+            else:
+                non_params.add(value.get_symbol())
+        return value
 
-    map_variables(func, inputs)
-    return output
+    map_variables(fn, [args, kwargs])
+    SIR.set_symbol_meta_map(symbol_meta_map)
+    SIR.set_parameter_info(params, non_params)
+
+
+def get_params_and_non_param_symbol(*args, **kwargs):
+    params = set()
+    non_params = set()
+
+    for value in flatten([args, kwargs]):
+        if isinstance(value, ParameterVariable):
+            params.add(value.get_symbol())
+        elif isinstance(value, TensorVariable):
+            non_params.add(value.get_symbol())
+
+    return params, non_params
 
 
 class FunctionGraph:
@@ -557,8 +580,7 @@ class FunctionGraph:
             convert_to_symbol(kwargs),
         )
 
-        self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(args))
-        self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(kwargs))
+        record_symbols(self.sir_ctx.TOS, *args, **kwargs)
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
