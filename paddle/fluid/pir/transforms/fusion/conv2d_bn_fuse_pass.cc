@@ -44,7 +44,8 @@ class Conv2dBnFusePattern
     pir::OpResult conv2d_filter_result =
         conv2d_filter.dyn_cast<pir::OpResult>();
     IR_ENFORCE(conv2d_filter_result);
-
+    auto conv2d_filter_type = pir::GetDataTypeFromValue(conv2d_filter);
+    auto conv2d_filter_is_fp16 = conv2d_filter_type.isa<pir::Float16Type>();
     pir::Value bn_input = op.x();
     IR_ENFORCE(bn_input == conv2d_out);
 
@@ -75,16 +76,49 @@ class Conv2dBnFusePattern
     paddle::dialect::ReshapeOp reshape_scale_op =
         rewriter.Build<paddle::dialect::ReshapeOp>(div_op.out(),
                                                    bn_scale_new_shape);
-    // new filter --> mul_op.out()
-    paddle::dialect::MultiplyOp mul_op =
-        rewriter.Build<paddle::dialect::MultiplyOp>(conv2d_filter_result,
-                                                    reshape_scale_op.out());
-
+    paddle::dialect::MultiplyOp mul_op;
+    paddle::dialect::Conv2dOp new_conv2d_op;
     auto conv2d_attributes = conv2d_op->attributes();
-    auto new_conv2d_op = rewriter.Build<paddle::dialect::Conv2dOp>(
-        conv2d_op.input().dyn_cast<pir::OpResult>(),
-        mul_op.out(),
-        conv2d_attributes);
+    auto padding_algorithm = conv2d_attributes.at("padding_algorithm")
+                                 .dyn_cast<pir::StrAttribute>()
+                                 .AsString();
+    if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+        padding_algorithm != "VALID") {
+      return false;
+    }
+    auto data_format = conv2d_attributes.at("data_format")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    if (data_format != "NCHW" && data_format != "AnyLayout" &&
+        data_format != "NHWC") {
+      return false;
+    }
+    auto groups =
+        conv2d_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+    if (groups < 1) {
+      return false;
+    }
+    if (conv2d_filter_is_fp16) {
+      // new filter --> mul_op.out()
+      paddle::dialect::CastOp cast_op = rewriter.Build<paddle::dialect::CastOp>(
+          conv2d_filter_result, phi::DataType::FLOAT32);
+      mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
+          cast_op.out(), reshape_scale_op.out());
+      paddle::dialect::CastOp cast_op2 =
+          rewriter.Build<paddle::dialect::CastOp>(mul_op.out(),
+                                                  phi::DataType::FLOAT16);
+      new_conv2d_op = rewriter.Build<paddle::dialect::Conv2dOp>(
+          conv2d_op.input().dyn_cast<pir::OpResult>(),
+          cast_op2.out(),
+          conv2d_attributes);
+    } else {
+      mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
+          conv2d_filter_result, reshape_scale_op.out());
+      new_conv2d_op = rewriter.Build<paddle::dialect::Conv2dOp>(
+          conv2d_op.input().dyn_cast<pir::OpResult>(),
+          mul_op.out(),
+          conv2d_attributes);
+    }
 
     // --- deal with bias ---
     paddle::dialect::MultiplyOp mul_bias_op =
@@ -97,17 +131,21 @@ class Conv2dBnFusePattern
     // reshape new bias
     auto new_conv2d_out_shape = pir::GetShapeFromValue(new_conv2d_op.out());
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
-    std::string data_format =
-        new_conv2d_op.attribute<pir::StrAttribute>("data_format").AsString();
-    if (data_format != "NCHW") {
-      return false;
-    }
     new_bias_new_shape[1] = new_conv2d_out_shape[1];
     paddle::dialect::ReshapeOp reshape_bias_op =
         rewriter.Build<paddle::dialect::ReshapeOp>(sub_op.out(),
                                                    new_bias_new_shape);
-    paddle::dialect::AddOp add_bias_op = rewriter.Build<paddle::dialect::AddOp>(
-        new_conv2d_op.out(), reshape_bias_op.out());
+    paddle::dialect::AddOp add_bias_op;
+    if (conv2d_filter_is_fp16) {
+      paddle::dialect::CastOp cast_op3 =
+          rewriter.Build<paddle::dialect::CastOp>(reshape_bias_op.out(),
+                                                  phi::DataType::FLOAT16);
+      add_bias_op = rewriter.Build<paddle::dialect::AddOp>(new_conv2d_op.out(),
+                                                           cast_op3.out());
+    } else {
+      add_bias_op = rewriter.Build<paddle::dialect::AddOp>(
+          new_conv2d_op.out(), reshape_bias_op.out());
+    }
 
     rewriter.ReplaceAllUsesWith(op.out(), add_bias_op.out());
 

@@ -43,13 +43,18 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
-          if (padding_algorithm != "EXPLICIT" || padding_algorithm != "SAME" ||
-              padding_algorithm != "VALID")
+          if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+              padding_algorithm != "VALID") {
             return false;
+          }
           auto groups = match_ctx.Attr<int>("groups");
-          if (groups < 1) return false;
+          if (groups < 1) {
+            return false;
+          }
           auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (data_format != "NCHW" || data_format != "AnyLayout") return false;
+          if (data_format != "NCHW" && data_format != "AnyLayout") {
+            return false;
+          }
           return true;
         });
     paddle::drr::ResultPattern res = pat.ResultPattern();
