@@ -67,7 +67,7 @@ bool SameOperandsAndResultShape(
   op->set_attribute("symbolic_shape",
                     pir::shape::SymbolAttribute::get(pir::IrContext::Instance(),
                                                      operand_shape_or_data));
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, operand_shape_or_data);
   return true;
 }
@@ -120,7 +120,7 @@ bool InferSymbolicShapeElementWiseBinary(
   // TODO(lanxianghit): fill data when the operation is on shape computation
   // std::vector<symbol::DimExpr> data;
 
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   symbol::ShapeOrDataDimExprs shape_data{shapes};
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   op->set_attribute(
@@ -167,7 +167,7 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
 
   return true;
@@ -216,7 +216,7 @@ bool Subtract_OpInferSymbolicShape(
 bool ShapeOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
 
   symbol::ShapeOrDataDimExprs operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
@@ -275,7 +275,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   op->set_attribute(
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
@@ -333,7 +333,7 @@ bool ReduceInferDim(pir::Operation *op,
     }
   }
 
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   symbol::ShapeOrDataDimExprs shape_data{shapes};
   op->set_attribute(
       "symbolic_shape",
@@ -387,8 +387,8 @@ bool ReshapeOpInferSymbolicShape(
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  pir::OpResult res0 = op->result(0);
-  pir::OpResult res1 = op->result(1);
+  pir::Value res0 = op->result(0);
+  pir::Value res1 = op->result(1);
   shape_analysis->SetShapeOrDataForValue(res0, shape_data);
   shape_analysis->SetShapeOrDataForValue(
       res1, shape_analysis->GetShapeOrDataForValue(operand_source_shape));
@@ -421,7 +421,7 @@ bool FullIntArrayOpInferSymbolicShape(
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
@@ -432,7 +432,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   pir::Value operand_source = op->operand_source(0);
   pir::Value operand_starts = op->operand_source(1);
   pir::Value operand_ends = op->operand_source(2);
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
 
   symbol::ShapeOrDataDimExprs operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
@@ -522,7 +522,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
@@ -654,7 +654,7 @@ bool TileOpInferSymbolicShape(pir::Operation *op,
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
 
   return true;
@@ -718,7 +718,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  pir::OpResult res = op->result(0);
+  pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
