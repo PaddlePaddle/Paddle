@@ -128,17 +128,6 @@ def get_parent_mapping(root):
     return to_parent
 
 
-dygraph_class_to_static_api = {
-    "CosineDecay": "cosine_decay",
-    "ExponentialDecay": "exponential_decay",
-    "InverseTimeDecay": "inverse_time_decay",
-    "NaturalExpDecay": "natural_exp_decay",
-    "NoamDecay": "noam_decay",
-    "PiecewiseDecay": "piecewise_decay",
-    "PolynomialDecay": "polynomial_decay",
-}
-
-
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
     This function creates a Tensor on the global block. The created Tensor
@@ -324,105 +313,6 @@ def is_paddle_func(func, ignore_white_list=True):
         return flag
     except Exception:
         return False
-
-
-def _delete_keywords_from(node):
-    assert isinstance(node, gast.Call)
-    func_src = ast_to_source_code(node.func)
-
-    full_args = eval(f"inspect.getfullargspec({func_src})")
-    full_args_name = full_args[0]
-
-    node.keywords = [k for k in node.keywords if k.arg in full_args_name]
-
-
-def to_static_api(dygraph_class):
-    if dygraph_class in dygraph_class_to_static_api:
-        return dygraph_class_to_static_api[dygraph_class]
-    else:
-        raise NotImplementedError(
-            f"Paddle dygraph API {dygraph_class} cannot be converted "
-            "to static graph at present."
-        )
-
-
-def _add_keywords_to(node, dygraph_api_name):
-    assert isinstance(node, gast.Call)
-    if dygraph_api_name == "Linear":
-        for ast_keyword in node.keywords:
-            if ast_keyword.arg == "output_dim":
-                ast_keyword.arg = "size"
-
-        node.keywords.append(
-            gast.keyword(
-                arg="num_flatten_dims", value=gast.Constant(value=-1, kind=None)
-            )
-        )
-
-    if dygraph_api_name == "BilinearTensorProduct":
-        for ast_keyword in node.keywords:
-            if ast_keyword.arg == "output_dim":
-                ast_keyword.arg = "size"
-
-    if dygraph_api_name == "PRelu":
-        for ast_keyword in node.keywords:
-            if ast_keyword.arg == "input":
-                ast_keyword.arg = "x"
-
-
-def to_static_ast(node, class_node):
-    assert isinstance(node, gast.Call)
-    assert isinstance(class_node, gast.Call)
-    static_api = to_static_api(class_node.func.attr)
-
-    node.func = gast.Attribute(
-        attr=static_api,
-        ctx=gast.Load(),
-        value=gast.Attribute(
-            attr='layers',
-            ctx=gast.Load(),
-            value=gast.Name(
-                ctx=gast.Load(), id='base', annotation=None, type_comment=None
-            ),
-        ),
-    )
-
-    update_args_of_func(node, class_node, 'forward')
-
-    node.args.extend(class_node.args)
-    node.keywords.extend(class_node.keywords)
-    _add_keywords_to(node, class_node.func.attr)
-    _delete_keywords_from(node)
-
-    gast.fix_missing_locations(node)
-
-    return node
-
-
-def update_args_of_func(node, dygraph_node, method_name):
-    assert isinstance(node, gast.Call)
-    if method_name not in ["__init__", "forward"]:
-        raise ValueError(
-            "The method name of class to update args should be '__init__' or 'forward'"
-        )
-
-    class_src = ast_to_source_code(dygraph_node.func)
-
-    if method_name == "__init__" or eval(
-        f"issubclass({class_src}, paddle.nn.Layer)"
-    ):
-        full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
-        full_args_name = [
-            arg_name for arg_name in full_args[0] if arg_name != "self"
-        ]
-    else:
-        full_args_name = []
-    added_keywords = []
-    for idx, arg in enumerate(node.args):
-        added_keywords.append(gast.keyword(arg=full_args_name[idx], value=arg))
-
-    node.args = []
-    node.keywords = added_keywords + node.keywords
 
 
 def create_api_shape_node(tensor_shape_node):
