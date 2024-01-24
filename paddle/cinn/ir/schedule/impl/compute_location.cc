@@ -152,13 +152,14 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   // collect if
   auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
   auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(body, if_checker);
+  auto checker = [block_name](const Expr* x) {
+    return x->As<ir::ScheduleBlockRealize>() &&
+           x->As<ir::ScheduleBlockRealize>()
+                   ->schedule_block.As<ScheduleBlock>()
+                   ->name == block_name;
+  };
   for (auto if_expr : if_set) {
-    auto checker = [block_name](const Expr* x) {
-      return x->As<ir::ScheduleBlockRealize>() &&
-             x->As<ir::ScheduleBlockRealize>()
-                     ->schedule_block.As<ScheduleBlock>()
-                     ->name == block_name;
-    };
+    if (Contains(result, if_expr)) continue;
     if (ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker, true)
             .size() > 0) {
       result =

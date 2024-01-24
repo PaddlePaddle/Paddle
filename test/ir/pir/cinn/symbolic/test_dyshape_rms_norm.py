@@ -14,10 +14,11 @@
 import unittest
 
 import numpy as np
-from test_cinn_sub_graph import TestCinnSubGraphBase, apply_to_static
+from test_cinn_sub_graph_symbolic import apply_to_static
 
 import paddle
 from paddle import nn
+from paddle.static import InputSpec
 
 
 class LlamaRMSNorm(nn.Layer):
@@ -39,7 +40,11 @@ class LlamaRMSNorm(nn.Layer):
         return hidden_states * self.weight
 
 
-class TestLlamaRMSNorm(TestCinnSubGraphBase):
+class TestLlamaRMSNorm(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2022)
+        self.prepare_data()
+
     def prepare_data(self):
         self.shape = [1, 2048, 768]
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
@@ -48,9 +53,10 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = LlamaRMSNorm()
-        # TODO(Aurelius84): Need to remove it after verify CINN
-        if use_cinn:
-            net = apply_to_static(net, use_cinn)
+        input_spec = [
+            InputSpec(shape=[1, None, 768], dtype='float32'),
+        ]
+        net = apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.hidden_states)
         return out
